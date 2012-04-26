@@ -1636,7 +1636,7 @@ helpAvocadoQueryCursor = TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
 'Attributes:                                                         ' + "\n" +
 '  _database                             database object             ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a" });  ' + "\n" +
+' > st = db._createStatement({ "query" : "for c in coll return c" });' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
 ' > documents = c.elements();                                        ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
@@ -1843,8 +1843,8 @@ function AvocadoStatement (database, data) {
 
 helpAvocadoStatement = TRI_CreateHelpHeadline("AvocadoStatement help") +
 'AvocadoStatement constructor:                                       ' + "\n" +
-' > st = new AvocadoStatement({ "query" : "select..." });            ' + "\n" +
-' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
+' > st = new AvocadoStatement({ "query" : "for ..." });              ' + "\n" +
+' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
 '  bind(<values>);                bind multiple variables            ' + "\n" +
@@ -1862,8 +1862,8 @@ helpAvocadoStatement = TRI_CreateHelpHeadline("AvocadoStatement help") +
 'Attributes:                                                         ' + "\n" +
 '  _database                      database object                    ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a       ' + "\n" +
-'                              where a.x = @a@ and a.y = @b@" });    ' + "\n" +
+' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
+'                              c.x = @a@ && c.y = @b@ return c" });  ' + "\n" +
 ' > st.bind("a", "hello");                                           ' + "\n" +
 ' > st.bind("b", "world");                                           ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
@@ -2073,8 +2073,8 @@ HELP = TRI_CreateHelpHeadline("Help") +
 
 helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
-' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
-' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
+' > st = new AvocadoStatement(db, { "query" : "for..." });           ' + "\n" +
+' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
 'Set query options:                                                  ' + "\n" +
 ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
