@@ -44,8 +44,8 @@
 #include "VocBase/shadow-data.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"
-#include "VocBase/query-functions.h"
 #include "VocBase/general-cursor.h"
+
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
