@@ -32,10 +32,11 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/logging.h>
 
-#include "Ahuacatl/ahuacatl-parser.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
+
+#include "Ahuacatl/ahuacatl-context.h"
 
 #ifdef __cplusplus
 extern "C" {

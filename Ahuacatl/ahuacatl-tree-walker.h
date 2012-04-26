@@ -36,7 +36,7 @@
 #include <BasicsC/json.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 
 #ifdef __cplusplus
 extern "C" {

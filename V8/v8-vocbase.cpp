@@ -46,7 +46,7 @@
 #include "SkipLists/sl-operator.h"
 #include "Ahuacatl/ast-codegen-js.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
 
 using namespace std;

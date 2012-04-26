@@ -29,7 +29,7 @@
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-constant-folder.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
