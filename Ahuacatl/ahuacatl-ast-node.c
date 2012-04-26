@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
