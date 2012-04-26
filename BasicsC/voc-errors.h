@@ -238,6 +238,8 @@ extern "C" {
 ///   Will be raised when updating the value for a key does not work
 /// - 1805: @CODE{key value not removed}
 ///   Will be raised when deleting a key/value pair does not work
+/// - 1806: @CODE{missing value}
+///   Will be raised when the value is missing
 /// - 1901: @CODE{invalid graph}
 ///   Will be raised when an invalid name is passed to the server
 /// - 1902: @CODE{could not create graph}
@@ -1299,6 +1301,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1806: ERROR_KEYVALUE_NO_VALUE
+///
+/// missing value
+///
+/// Will be raised when the value is missing
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
