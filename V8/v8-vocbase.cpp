@@ -47,7 +47,8 @@
 #include "Ahuacatl/ast-codegen-js.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-tree-dump.h"
+#include "Ahuacatl/ahuacatl-result.h"
+#include "VocBase/general-cursor.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -86,22 +87,10 @@ static int32_t const WRP_VOCBASE_TYPE = 1;
 static int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_query_template_t
+/// @brief wrapped class for general cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_QUERY_TEMPLATE_TYPE = 3;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_query_cursor_t
-////////////////////////////////////////////////////////////////////////////////
-
-static int32_t const WRP_QUERY_CURSOR_TYPE = 4;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_query_instance_t
-////////////////////////////////////////////////////////////////////////////////
-
-static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
+static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
@@ -112,31 +101,49 @@ static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
 /// - SLOT_BARRIER
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_SHAPED_JSON_TYPE = 6;
+static int32_t const WRP_SHAPED_JSON_TYPE = 4;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_query_template_t - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_QUERY_TEMPLATE_TYPE = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_query_cursor_t - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_QUERY_CURSOR_TYPE = 6;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_query_instance_t - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_QUERY_INSTANCE_TYPE = 7;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_qry_where_t - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_QRY_WHERE_TYPE = 7;
+static int32_t const WRP_QRY_WHERE_TYPE = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_rc_cursor_t - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_RC_CURSOR_TYPE = 8;
+static int32_t const WRP_RC_CURSOR_TYPE = 9;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_query_t - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_QUERY_TYPE = 9;
+static int32_t const WRP_QUERY_TYPE = 10;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for SL Operator
+/// @brief wrapped class for SL Operator - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_SL_OPERATOR_TYPE = 10;
+static int32_t const WRP_SL_OPERATOR_TYPE = 11;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -2227,6 +2234,431 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for general cursors
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  v8::HandleScope scope;
+
+  LOG_TRACE("weak-callback for general cursor called");
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return;
+  }
+
+  TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
+
+  // find the persistent handle
+  TRI_v8_global_t* v8g;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Persistent<v8::Value> persistent = v8g->JSGeneralCursors[parameter];
+  v8g->JSGeneralCursors.erase(parameter);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a general cursor in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  TRI_v8_global_t* v8g;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSGeneralCursors.find(cursor);
+  
+  if (i == v8g->JSGeneralCursors.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::Undefined());
+    }
+
+    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
+    cursorObject->SetInternalField(SLOT_CLASS, persistent);
+    v8g->JSGeneralCursors[cursor] = persistent;
+
+    persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
+  }
+  else {
+    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
+    cursorObject->SetInternalField(SLOT_CLASS, i->second);
+  }
+  
+  return scope.Close(cursorObject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a cursor from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
+  return TRI_UnwrapClass<void>(cursorObject, WRP_GENERAL_CURSOR_TYPE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a general cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: dispose()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  if (TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()))) {
+    if (!tryCatch.HasCaught()) {
+      return scope.Close(v8::True());
+    }
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the id of a general cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+  if (id && !tryCatch.HasCaught()) {
+    return scope.Close(v8::Number::New((double) id));
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of results
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    size_t  length = (size_t) cursor->_length;
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(v8::Number::New(length));
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next result from the general cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  bool result = false;
+  v8::Handle<v8::Value> value;
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_LockGeneralCursor(cursor);
+
+    if (cursor->_length == 0) {
+      TRI_UnlockGeneralCursor(cursor);
+      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+
+      return scope.Close(v8::Undefined());
+    }
+
+    // exceptions must be caught in the following part because we hold an exclusive
+    // lock that might otherwise not be freed
+    try {
+      TRI_general_cursor_row_t row = cursor->next(cursor);
+      if (!row) {
+        value = v8::Undefined();
+      }
+      else {
+        value = TRI_ObjectJson((TRI_json_t*) row);
+        result = true;
+      }
+    }
+    catch (...) {
+    }
+
+    TRI_UnlockGeneralCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    
+    if (result && !tryCatch.HasCaught()) {
+      return scope.Close(value);
+    }
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief persist the general cursor for usage in subsequent requests
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: persist()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+  if (result && !tryCatch.HasCaught()) {
+    return scope.Close(v8::True());
+  }
+    
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next x rows from the cursor in one go
+///
+/// This function constructs multiple rows at once and should be preferred over
+/// hasNext()...next() when iterating over bigger result sets
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getRows()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  bool result = false;  
+  v8::Handle<v8::Array> rows = v8::Array::New();
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_LockGeneralCursor(cursor);
+
+    // exceptions must be caught in the following part because we hold an exclusive
+    // lock that might otherwise not be freed
+    try {
+      uint32_t max = (uint32_t) cursor->getBatchSize(cursor);
+
+      for (uint32_t i = 0; i < max; ++i) {
+        TRI_general_cursor_row_t row = cursor->next(cursor);
+        if (!row) {
+          break;
+        }
+        rows->Set(i, TRI_ObjectJson((TRI_json_t*) row));
+      }
+
+      result = true;
+    }
+    catch (...) {
+    } 
+    
+    TRI_UnlockGeneralCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+
+    if (result && !tryCatch.HasCaught()) {
+      return scope.Close(rows);
+    }
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return max number of results per transfer for cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getBatchSize()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    uint32_t max = cursor->getBatchSize(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(v8::Number::New(max));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if count flag was set for cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasCount()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    bool hasCount = cursor->hasCount(cursor);
+
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(hasCount ? v8::True() : v8::False());
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the cursor is exhausted 
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  TRI_general_cursor_t* cursor;
+  
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_LockGeneralCursor(cursor);
+    bool hasNext = cursor->hasNext(cursor);
+    TRI_UnlockGeneralCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(hasNext ? v8::True() : v8::False());
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create an Ahuacatl error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
@@ -2280,27 +2712,21 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
   string queryString = TRI_ObjectToString(queryArg);
 
-  /* currently unused, causes compile warnings
-
   // return number of total records in cursor?
   bool doCount = false;
-  if (argv.Length() > 0) {
+  if (argv.Length() > 2) {
     doCount = TRI_ObjectToBoolean(argv[2]);
   }
 
   // maximum number of results to return at once
-  uint32_t max = 1000;
-  if (argv.Length() > 1) {
+  uint32_t batchSize = 1000;
+  if (argv.Length() > 3) {
     double maxValue = TRI_ObjectToDouble(argv[3]);
     if (maxValue >= 1.0) {
-      max = (uint32_t) maxValue;
+      batchSize = (uint32_t) maxValue;
     }
   }
-
-  */
   
-  v8::Handle<v8::Value> result;
-
   TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str()); 
   if (!context) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
@@ -2346,19 +2772,43 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     return scope.Close(errorObject);
   }
 
+  TRI_general_cursor_t* cursor = 0;
+  
   // generate code
   if (context->_first) {
     char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
     
     if (code) {
+      v8::Handle<v8::Value> result;
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
       TRI_Free(code);
+
+      TRI_json_t* json = ConvertHelper(result);
+      if (json) {
+        TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
+        if (cursorResult) {
+          cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+          if (!cursor) {
+            TRI_Free(cursorResult);
+            TRI_FreeJson(json);
+          }
+        }
+        else {
+          TRI_Free(cursorResult);
+          TRI_FreeJson(json);
+        }
+      }
     }
   }
 
   TRI_FreeContextAql(context);
 
-  return scope.Close(result);
+  if (cursor) {
+    TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+    return scope.Close(WrapGeneralCursor(cursor));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("cannot create cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6725,6 +7175,32 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoQueryError"),
+                         ft->GetFunction());
+  
+  // .............................................................................
+  // generate the general cursor template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoGeneralCursor"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountGeneralCursor));
+  rt->Set(DisposeFuncName, v8::FunctionTemplate::New(JS_DisposeGeneralCursor));
+  rt->Set(GetBatchSizeFuncName, v8::FunctionTemplate::New(JS_GetBatchSizeGeneralCursor));
+  rt->Set(GetRowsFuncName, v8::FunctionTemplate::New(JS_GetRowsGeneralCursor));
+  rt->Set(HasCountFuncName, v8::FunctionTemplate::New(JS_HasCountGeneralCursor));
+  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextGeneralCursor));
+  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
+  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
+  rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
+
+  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoGeneralCursor"),
                          ft->GetFunction());
   
   // .............................................................................

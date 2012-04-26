@@ -63,7 +63,8 @@ typedef struct TRI_v8_global_s {
 
   TRI_v8_global_s ()
     : JSFluentQueries(),
-      JSQueryCursors(),
+      JSGeneralCursors(),
+      JSQueryCursors(), // DEPRECATED
       JSQueries(), // DEPRECATED
       JSCursors(), // DEPRECATED
       JSWheres(), // DEPRECATED
@@ -75,14 +76,15 @@ typedef struct TRI_v8_global_s {
       EdgesColTempl(),
       ErrorTempl(),
       FluentQueryTempl(),
-      QueryCursorTempl(),
+      GeneralCursorTempl(),
+      QueryCursorTempl(), // DEPRECATED
       QueryErrorTempl(),
       QueryTempl(), // DEPRECATED
       CursorTempl(), // DEPRECATED
-      WhereTempl(),
+      WhereTempl(), // DEPRECATED
       VocbaseColTempl(),
       VocbaseTempl(),
-      SLOperatorTempl(),
+      SLOperatorTempl(), // DEPRECATED
       DictionaryTempl(),
       CollectionQueryType(),
       OutputFuncName(),
@@ -110,7 +112,13 @@ typedef struct TRI_v8_global_s {
   std::map< void*, v8::Persistent<v8::Value> > JSFluentQueries;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor mapping for weak pointers
+/// @brief general cursor mapping for weak pointers
+////////////////////////////////////////////////////////////////////////////////
+
+  std::map< void*, v8::Persistent<v8::Value> > JSGeneralCursors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cursor mapping for weak pointers - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   std::map< void*, v8::Persistent<v8::Value> > JSQueryCursors;
@@ -207,7 +215,13 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::ObjectTemplate> FluentQueryTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor template
+/// @brief general cursor template
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::ObjectTemplate> GeneralCursorTempl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cursor template - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::ObjectTemplate> QueryCursorTempl;
@@ -219,7 +233,7 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::ObjectTemplate> QueryErrorTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query template
+/// @brief query template - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::ObjectTemplate> QueryTempl;
@@ -255,7 +269,7 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::ObjectTemplate> ShapedJsonTempl;
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skiplistoperator  template
+/// @brief skiplistoperator template - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::ObjectTemplate> SLOperatorTempl;
