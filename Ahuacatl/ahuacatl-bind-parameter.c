@@ -281,7 +281,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
   assert(context);
 
   if (parameters == NULL) {
-    // no bind parameters
+    // no bind parameters, direclty return
     return true;
   }
 

@@ -2301,34 +2301,52 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   
   v8::Handle<v8::Value> result;
 
-  TRI_json_t* parameters = NULL;
-
-  TRI_aql_context_t* context;
-  context = TRI_CreateContextAql(vocbase, queryString.c_str()); 
+  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str()); 
   if (!context) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
-
-  if (argv.Length() > 1) {
-    parameters = ConvertHelper(argv[1]);
-    if (!TRI_AddBindParametersAql(context, parameters)) {
-      v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
-      TRI_FreeJson(parameters);
-      TRI_FreeContextAql(context);
-      return scope.Close(errorObject);
-    }
-  }
-  
-  if (parameters) {
-    TRI_FreeJson(parameters);
-  }
-  
-  if (!TRI_ParseQueryAql(context)) {
+ 
+  // parse & validate 
+  if (!TRI_ValidateQueryContextAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     TRI_FreeContextAql(context);
     return scope.Close(errorObject);
   }
 
+  // bind parameters
+  TRI_json_t* parameters = NULL;
+  if (argv.Length() > 1) {
+    parameters = ConvertHelper(argv[1]);
+  }
+
+  if (!TRI_BindQueryContextAql(context, parameters)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    if (parameters) {
+      TRI_FreeJson(parameters);
+    }
+    TRI_FreeContextAql(context);
+    return scope.Close(errorObject);
+  }
+  
+  if (parameters) {
+    TRI_FreeJson(parameters);
+  }
+
+  // optimise
+  if (!TRI_OptimiseQueryContextAql(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeContextAql(context);
+    return scope.Close(errorObject);
+  }
+
+  // acquire locks
+  if (!TRI_LockQueryContextAql(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeContextAql(context);
+    return scope.Close(errorObject);
+  }
+
+  // generate code
   if (context->_first) {
     char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
     
@@ -2339,6 +2357,53 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_FreeContextAql(context);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a query and returns the parse result
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_PARSE(<querystring>)")));
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // get the query string
+  v8::Handle<v8::Value> queryArg = argv[0];
+  if (!queryArg->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
+  }
+  string queryString = TRI_ObjectToString(queryArg);
+
+  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str()); 
+  if (!context) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
+  // parse & validate 
+  if (!TRI_ValidateQueryContextAql(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeContextAql(context);
+    return scope.Close(errorObject);
+  }
+
+  // return the bind parameter names
+  v8::Handle<v8::Array> result = TRI_ArrayAssociativePointer(&context->_parameterNames);
+    
+  TRI_FreeContextAql(context);
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
 
   return scope.Close(result);
 }
@@ -6816,6 +6881,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   
   context->Global()->Set(v8::String::New("AHUACATL_RUN"),
                          v8::FunctionTemplate::New(JS_RunAhuacatl)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("AHUACATL_PARSE"),
+                         v8::FunctionTemplate::New(JS_ParseAhuacatl)->GetFunction(),
                          v8::ReadOnly);
   
   // .............................................................................
