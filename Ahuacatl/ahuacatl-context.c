@@ -255,43 +255,66 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add bind parameters to the context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddBindParametersAql (TRI_aql_context_t* const context, 
-                               const TRI_json_t* const parameters) {
-  return TRI_AddParameterValuesAql(context, parameters);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string
 ////////////////////////////////////////////////////////////////////////////////
   
-bool TRI_ParseQueryAql (TRI_aql_context_t* const context) {
+bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
   // parse the query
   if (Ahuacatlparse(context)) {
     // lexing/parsing failed
     return false;
   }
 
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add bind parameters to the query context
+////////////////////////////////////////////////////////////////////////////////
+ 
+bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
+                              const TRI_json_t* const parameters) {
+
+  // add the bind parameters
+  if (!TRI_AddParameterValuesAql(context, parameters)) {
+    // adding parameters failed
+    return false;
+  }
+  
   // validate the bind parameters used/passed
   if (!TRI_ValidateBindParametersAql(context)) {
     // invalid bind parameters
     return false;
   }
-  
-  // inject the bind parameter values into the query
+
+  // inject the bind parameter values into the query AST
   if (!TRI_InjectBindParametersAql(context, (TRI_aql_node_t*) context->_first)) {
     // bind parameter injection failed
     return false;
   }
 
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform some AST optimisations
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
   // do some basic optimisations in the AST
   if (!TRI_FoldConstantsAql(context, (TRI_aql_node_t*) context->_first)) {
     // constant folding failed
     return false;
   }
 
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire all locks necessary for the query
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   // mark all used collections as being used
   if (!TRI_LockCollectionsAql(context)) {
     return false;
