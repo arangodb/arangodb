@@ -2303,8 +2303,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   TRI_json_t* parameters = NULL;
 
-  TRI_aql_parse_context_t* context;
-  context = TRI_CreateParseContextAql(vocbase, queryString.c_str()); 
+  TRI_aql_context_t* context;
+  context = TRI_CreateContextAql(vocbase, queryString.c_str()); 
   if (!context) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -2314,7 +2314,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     if (!TRI_AddBindParametersAql(context, parameters)) {
       v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
       TRI_FreeJson(parameters);
-      TRI_FreeParseContextAql(context);
+      TRI_FreeContextAql(context);
       return scope.Close(errorObject);
     }
   }
@@ -2325,7 +2325,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   
   if (!TRI_ParseQueryAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
-    TRI_FreeParseContextAql(context);
+    TRI_FreeContextAql(context);
     return scope.Close(errorObject);
   }
 
@@ -2338,7 +2338,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     }
   }
 
-  TRI_FreeParseContextAql(context);
+  TRI_FreeContextAql(context);
 
   return scope.Close(result);
 }
