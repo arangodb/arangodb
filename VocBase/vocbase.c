@@ -45,6 +45,7 @@
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"
 #include "VocBase/query-functions.h"
+#include "VocBase/general-cursor.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
@@ -1041,7 +1042,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
-  vocbase->_cursors = TRI_CreateShadowsQueryCursor();
+//  vocbase->_cursors = TRI_CreateShadowsQueryCursor();
+  vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
+
   vocbase->_functionsAql = TRI_InitialiseFunctionsAql();
   vocbase->_functions = TRI_InitialiseQueryFunctions(); // deprecated
   vocbase->_lockFile = lockFile;
