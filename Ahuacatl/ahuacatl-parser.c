@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-parser.h"
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
 #include "Ahuacatl/ahuacatl-constant-folder.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"

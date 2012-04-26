@@ -35,9 +35,9 @@
 #include <BasicsC/associative.h>
 #include <BasicsC/json.h>
 
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
-#include "Ahuacatl/ast-node.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -34,7 +34,7 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
