@@ -44,37 +44,40 @@ extern "C" {
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
 
-#define TRI_AQL_IDX_FOR_VARIABLE              0
-#define TRI_AQL_IDX_FOR_EXPRESSION            1
-#define TRI_AQL_IDX_ASSIGN_VARIABLE              0
-#define TRI_AQL_IDX_ASSIGN_EXPRESSION            1
-#define TRI_AQL_IDX_FILTER_EXPRESSION            0
-#define TRI_AQL_IDX_COLLECT_LIST            0
-#define TRI_AQL_IDX_COLLECT_INTO            1
-#define TRI_AQL_IDX_RETURN_EXPRESSION       0
-#define TRI_AQL_IDX_SORT_LIST      0
-#define TRI_AQL_IDX_SORT_ELEMENT_EXPRESSION      0
-#define TRI_AQL_IDX_ATTRIBUTE_ACCESS_ACCESSED 0
-#define TRI_AQL_IDX_INDEXED_ACCESSED 0
-#define TRI_AQL_IDX_INDEXED_INDEX 1
-#define TRI_AQL_IDX_EXPAND_EXPANDED 0
-#define TRI_AQL_IDX_EXPAND_EXPANSION 1
-#define TRI_AQL_IDX_UNARY_OPERAND 0
-#define TRI_AQL_IDX_BINARY_LHS 0
-#define TRI_AQL_IDX_BINARY_RHS 1
-#define TRI_AQL_IDX_TERNARY_CONDITION 0
-#define TRI_AQL_IDX_TERNARY_TRUEPART 1
-#define TRI_AQL_IDX_TERNARY_FALSEPART 2
-#define TRI_AQL_IDX_SUBQUERY_QUERY 0
-#define TRI_AQL_IDX_FCALL_PARAMETERS 0
-#define TRI_AQL_IDX_ARRAY_ELEMENT_SUBNODE 0
-#define TRI_AQL_IDX_ARRAY_VALUES 0
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indexes of variable subnodes and their meanings
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_AQL_IDX_FOR_VARIABLE                                              0
+#define TRI_AQL_IDX_FOR_EXPRESSION                                            1
+#define TRI_AQL_IDX_ASSIGN_VARIABLE                                           0
+#define TRI_AQL_IDX_ASSIGN_EXPRESSION                                         1
+#define TRI_AQL_IDX_FILTER_EXPRESSION                                         0
+#define TRI_AQL_IDX_COLLECT_LIST                                              0
+#define TRI_AQL_IDX_COLLECT_INTO                                              1
+#define TRI_AQL_IDX_RETURN_EXPRESSION                                         0
+#define TRI_AQL_IDX_SORT_LIST                                                 0
+#define TRI_AQL_IDX_SORT_ELEMENT_EXPRESSION                                   0
+#define TRI_AQL_IDX_ATTRIBUTE_ACCESS_ACCESSED                                 0
+#define TRI_AQL_IDX_INDEXED_ACCESSED                                          0
+#define TRI_AQL_IDX_INDEXED_INDEX                                             1
+#define TRI_AQL_IDX_EXPAND_EXPANDED                                           0
+#define TRI_AQL_IDX_EXPAND_EXPANSION                                          1
+#define TRI_AQL_IDX_UNARY_OPERAND                                             0
+#define TRI_AQL_IDX_BINARY_LHS                                                0
+#define TRI_AQL_IDX_BINARY_RHS                                                1
+#define TRI_AQL_IDX_TERNARY_CONDITION                                         0
+#define TRI_AQL_IDX_TERNARY_TRUEPART                                          1
+#define TRI_AQL_IDX_TERNARY_FALSEPART                                         2
+#define TRI_AQL_IDX_SUBQUERY_QUERY                                            0
+#define TRI_AQL_IDX_FCALL_PARAMETERS                                          0
+#define TRI_AQL_IDX_ARRAY_ELEMENT_SUBNODE                                     0
+#define TRI_AQL_IDX_ARRAY_VALUES                                              0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief access the int value of a node
@@ -117,6 +120,10 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_AQL_NODE_SUBNODE(node, n) (TRI_aql_node_t*) node->_subNodes._buffer[n]
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

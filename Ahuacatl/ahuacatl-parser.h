@@ -94,10 +94,12 @@ typedef struct TRI_aql_parse_context_s {
   TRI_vector_pointer_t _nodes;
   TRI_vector_pointer_t _strings;
   TRI_vector_pointer_t _stack;
+  TRI_vector_pointer_t _collections;
   TRI_aql_error_t _error;
   TRI_vocbase_t* _vocbase;
   TRI_associative_pointer_t _parameterValues;
   TRI_associative_pointer_t _parameterNames;
+  TRI_associative_pointer_t _collectionNames;
   void* _first;
   char* _query;
 }
