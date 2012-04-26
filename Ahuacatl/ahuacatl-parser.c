@@ -25,10 +25,11 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
+#include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-constant-folder.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
@@ -126,10 +127,18 @@ TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
   
+  // collections
+  TRI_InitAssociativePointer(&context->_collectionNames,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_EqualStringKeyAssociativePointer,
+                             0);
+  
   TRI_InitVectorPointer(&context->_stack);
   TRI_InitVectorPointer(&context->_nodes);
   TRI_InitVectorPointer(&context->_strings);
   TRI_InitVectorPointer(&context->_scopes);
+  TRI_InitVectorPointer(&context->_collections);
 
   TRI_InitErrorAql(&context->_error);
 
@@ -167,6 +176,8 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 
   assert(context);
 
+  TRI_UnlockCollectionsAql(context);
+
   // free all remaining scopes
   while (context->_scopes._length) {
     TRI_EndScopeParseContextAql(context);
@@ -201,6 +212,19 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 
   // free parameter names hash
   TRI_DestroyAssociativePointer(&context->_parameterNames);
+  
+  // free collection names
+  TRI_DestroyAssociativePointer(&context->_collectionNames);
+  
+  // free collections
+  i = context->_collections._length;
+  while (i--) {
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    if (collection) {
+      TRI_Free(collection);
+    }
+  }
+  TRI_DestroyVectorPointer(&context->_collections);
   
   // free parameter values
   TRI_FreeBindParametersAql(context);
@@ -252,9 +276,13 @@ bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
     // bind parameter injection failed
     return false;
   }
-  
+
   if (!TRI_FoldConstantsAql(context, (TRI_aql_node_t*) context->_first)) {
     // constant folding failed
+    return false;
+  }
+  
+  if (!TRI_LockCollectionsAql(context)) {
     return false;
   }
 

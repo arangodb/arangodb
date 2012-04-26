@@ -310,6 +310,9 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_parse_context_t* const cont
   
   TRI_AQL_NODE_STRING(node) = (char*) name;
 
+  // duplicates are not a problem here, we simply ignore them
+  TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
+
   return node;
 }
 
