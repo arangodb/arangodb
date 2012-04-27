@@ -662,7 +662,7 @@ static TRI_shadow_document_t* CreateShadowDocument (void* const element,
     return NULL;
   }
 
-  shadow = TRI_Allocate(sizeof(TRI_shadow_document_t));
+  shadow = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_document_t), false);
   if (!shadow) {
     TRI_Free(base);
     return NULL;
@@ -751,7 +751,7 @@ TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
   TRI_shadow_document_store_t* store;
   TRI_shadow_store_t* base;
   
-  base = (TRI_shadow_store_t*) TRI_Allocate(sizeof(TRI_shadow_store_t));
+  base = (TRI_shadow_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_store_t), false);
   if (!base) {
     return NULL;
   }
@@ -762,7 +762,7 @@ TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
                              NULL,
                              EqualShadowDocumentElement);
 
-  store = (TRI_shadow_document_store_t*) TRI_Allocate(sizeof(TRI_shadow_document_store_t));
+  store = (TRI_shadow_document_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_document_store_t), false);
   if (!store) {
     TRI_FreeShadowStore(base);
     return NULL;
