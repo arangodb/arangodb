@@ -1003,7 +1003,7 @@ var logTable = $('#logTableID').dataTable({
       else {
         $('#logTableID').dataTable().fnClearTable();
         $('#logTableID_status').text('Showing all entries for: "' + content + '"'); 
-        $.getJSON("/_admin/log?search=" + content, function(data) {
+        $.getJSON("/_admin/log?search=" + content + "&upto=5", function(data) {
           var totalAmount = data.totalAmount; 
           var items=[];
           var i=0; 
