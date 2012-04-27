@@ -114,7 +114,7 @@ static TRI_associative_pointer_t ErrorMessages;
 #ifdef TRI_HAVE_POSIX_THREADS
 
 static void CleanupError (void* ptr) {
-  TRI_Free(ptr);
+  TRI_Free(TRI_CORE_MEM_ZONE, ptr);
 }
 
 #endif
