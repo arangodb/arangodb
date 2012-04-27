@@ -406,9 +406,12 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
 
   // fill with 1000 elements
   for (size_t i = 1; i <= 1000; ++i) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
 
     data_container_t* e = (data_container_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(data_container_t), false);
     e->key = TRI_DuplicateString(key);
@@ -430,9 +433,12 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
   
   // remove 500 elements
   for (size_t i = 1; i <= 1000; i += 2) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
     
     TRI_RemoveKeyAssociativePointer(&a1, key);
   }
@@ -441,9 +447,12 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
 
   // check remaining elements 
   for (size_t i = 1; i <= 1000; ++i) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
 
     data_container_t* s = (data_container_t*) TRI_LookupByKeyAssociativePointer(&a1, key);
     if (i % 2) {
