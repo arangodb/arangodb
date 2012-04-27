@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-parser-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
