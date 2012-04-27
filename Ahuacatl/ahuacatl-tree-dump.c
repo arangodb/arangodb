@@ -45,6 +45,8 @@ static char* GetTypeName (const TRI_aql_node_type_e type) {
     case AQL_NODE_UNDEFINED:
       assert(false);
       return "undefined";
+    case AQL_NODE_MAIN:
+      return "main";
     case AQL_NODE_FOR:
       return "for";
     case AQL_NODE_LET:

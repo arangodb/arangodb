@@ -159,6 +159,8 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-parser.c \
+        Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, parser types and helper functionality
+/// @brief Ahuacatl, query context
 ///
 /// @file
 ///
@@ -25,11 +25,12 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-constant-folder.h"
-#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-parser-functions.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
@@ -46,7 +47,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define ABORT_OOM \
-  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+  TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
   return NULL;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +100,7 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create and initialize a parse context
+/// @brief create and initialize a context
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
@@ -152,23 +153,24 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  context->_parser = (TRI_aql_parser_t*) TRI_Allocate(sizeof(TRI_aql_parser_t));
+  context->_parser = TRI_CreateParserAql(context->_query);
   if (!context->_parser) {
+    // could not create the parser
     TRI_FreeContextAql(context);
     return NULL;
   }
 
-  context->_parser->_buffer = context->_query;
-  context->_parser->_length = strlen(context->_query);
-
-  Ahuacatllex_init(&context->_parser->_scanner);
-  Ahuacatlset_extra(context, context->_parser->_scanner);
+  if (!TRI_InitParserAql(context)) {
+    // could not initialise the lexer
+    TRI_FreeContextAql(context);
+    return NULL;
+  }
 
   return context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a parse context
+/// @brief free a context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
@@ -237,17 +239,14 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   TRI_FreeBindParametersAql(context);
   TRI_DestroyAssociativePointer(&context->_parameterValues);
 
+  // free parser/lexer
+  TRI_FreeParserAql(context->_parser);
+
   // free query string
   if (context->_query) {
     TRI_Free(context->_query);
   }
 
-  // free lexer
-  if (context->_parser) {
-    Ahuacatllex_destroy(context->_parser->_scanner);
-    TRI_Free(context->_parser);
-  }
-  
   // free error struct
   TRI_DestroyErrorAql(&context->_error);
 
@@ -260,7 +259,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   
 bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
   // parse the query
-  if (Ahuacatlparse(context)) {
+  if (!TRI_ParseAql(context)) {
     // lexing/parsing failed
     return false;
   }
@@ -388,7 +387,7 @@ void TRI_FreeScopeAql (TRI_aql_scope_t* const scope) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
-                                      void* const node) {
+                                 void* const node) {
   assert(context);
   assert(node);
 
@@ -401,9 +400,9 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorAql (TRI_aql_context_t* const context, 
-                      const int code,
-                      const char* const data) {
+void TRI_SetErrorContextAql (TRI_aql_context_t* const context, 
+                             const int code,
+                             const char* const data) {
 
   assert(context);
   assert(code > 0);
@@ -417,27 +416,6 @@ void TRI_SetErrorAql (TRI_aql_context_t* const context,
       context->_error._data = TRI_DuplicateString(data);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a parse error
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetParseErrorAql (TRI_aql_context_t* const context,
-                           const char* const message,
-                           const int line,
-                           const int column) {
-  char buffer[1024];
-
-  snprintf(buffer, 
-           sizeof(buffer), 
-           "%d:%d %s near '%s'", 
-           line,
-           column,
-           message, 
-           TRI_GetContextErrorAql(context->_query, line, column));
-
-  TRI_SetErrorAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,7 +514,7 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new variable scope and stack it in the parser context
+/// @brief create a new variable scope and stack it in the context
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
@@ -554,7 +532,7 @@ TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a variable scope from parser context scopes stack
+/// @brief remove a variable scope from context scopes stack
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_EndScopeContextAql (TRI_aql_context_t* const context) {
@@ -705,7 +683,7 @@ bool TRI_VariableExistsAql (TRI_aql_context_t* const context,
   size_t current = context->_scopes._length;
 
   if (!name) {
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
