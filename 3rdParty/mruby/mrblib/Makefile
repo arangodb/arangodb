@@ -16,7 +16,7 @@ MRBS := $(MRB1)
 # C compiler (gcc)
 CC = gcc
 LL = gcc
-DEBUG_MODE = 0
+DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else

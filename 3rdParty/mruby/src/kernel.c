@@ -686,17 +686,13 @@ mrb_obj_ivar_defined(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "o", &arg);
   mrb_sym mid = mrb_to_id(mrb, arg);
 
-  //if (!mrb_is_instance_id(id)) {
-  //      mrb_name_error(id, "`%s' is not allowed as an instance variable name", mrb_sym2name(mrb, id));
-  //}
-  //return mrb_ivar_defined(self, id);
-  k = kh_get(iv, h, mid);
-  if (k != kh_end(h)) {
-    return mrb_true_value();
+  if (h) {
+    k = kh_get(iv, h, mid);
+    if (k != kh_end(h)) {
+      return mrb_true_value();
+    }
   }
-  else {
-    return mrb_false_value();
-  }
+  return mrb_false_value();
 }
 
 /* 15.3.1.3.21 */
@@ -795,16 +791,15 @@ mrb_obj_instance_variables(mrb_state *mrb, mrb_value self)
     const char* p;
 
     ary = mrb_ary_new(mrb);
-    //if (mrb_is_instance_id(key)) {
-      //  mrb_ary_push(mrb, ary, mrb_sym2name(mrb, key));
-    //}
-    for (i=0;i<kh_end(h);i++) {
-      if (kh_exist(h, i)) {
+    if (h) {
+      for (i=0;i<kh_end(h);i++) {
+	if (kh_exist(h, i)) {
           p = mrb_sym2name(mrb, kh_key(h,i));
           if (*p == '@') {
             if (mrb_type(kh_value(h, i)) != MRB_TT_UNDEF)
               mrb_ary_push(mrb, ary, mrb_str_new_cstr(mrb, p));
           }
+	}
       }
     }
     return ary;
@@ -922,6 +917,7 @@ method_entry_loop(mrb_state *mrb, struct RClass* klass, mrb_value ary)
   int i;
 
   khash_t(mt) *h = klass->mt;
+  if (!h) return;
   for (i=0;i<kh_end(h);i++) {
     if (kh_exist(h, i)) {
       mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(h,i)));
@@ -1244,6 +1240,7 @@ mrb_obj_remove_instance_variable(mrb_state *mrb, mrb_value self)
     case MRB_TT_MODULE:
       if (!mrb_obj_ptr(self)->iv) break;
       h = mrb_obj_ptr(self)->iv;
+      if (!h) break;
       k = kh_get(iv, h, sym);
       if (k != kh_end(h)) {
         val = kh_value(h, k);
