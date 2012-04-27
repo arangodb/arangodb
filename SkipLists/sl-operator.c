@@ -196,7 +196,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: 
     {
-      oldLogicalOperator              = (TRI_sl_logical_operator_t*)(TRI_UNKNOWN_MEM_ZONE, slOperator);
+      oldLogicalOperator              = (TRI_sl_logical_operator_t*)(slOperator);
       newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false));
       /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = slOperator->_type;
