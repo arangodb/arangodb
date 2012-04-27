@@ -1065,6 +1065,9 @@ void AvocadoServer::openDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AvocadoServer::closeDatabase () {
+  ApplicationUserManager::unloadUsers();
+  ApplicationUserManager::unloadRoles();
+
   TRI_DestroyVocBase(_vocbase);
   _vocbase = 0;
   LOGGER_INFO << "AvocadoDB has been shut down";
