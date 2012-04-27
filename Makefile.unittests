@@ -134,7 +134,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (BASCIS)                                                >>"
+	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
 	@echo "================================================================================"
 	@echo
 

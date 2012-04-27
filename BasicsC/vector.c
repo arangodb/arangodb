@@ -443,8 +443,10 @@ int TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    vector->_capacity = newSize;
     vector->_buffer = newBuffer;
+    // prefill the new vector elements with 0's
+    memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
+    vector->_capacity = newSize;
   }
 
   vector->_buffer[vector->_length++] = element;
@@ -469,9 +471,11 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
     if (newBuffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    vector->_capacity = newSize;
+    
     vector->_buffer = newBuffer;
+    // prefill the new vector elements with 0's
+    memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
+    vector->_capacity = newSize;
   }
 
   if (n < vector->_length) {
