@@ -40,9 +40,9 @@ YACC = bison
 
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g -O3
+CFLAGS = -g
 else
-CFLAGS = -O3
+CFLAGS = -O2
 endif
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
 MAKE_FLAGS = --no-print-directory CC=$(CC) LL=$(LL)
