@@ -98,6 +98,7 @@ UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 
 UnitTests_test_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \

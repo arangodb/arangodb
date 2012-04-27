@@ -280,6 +280,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -289,6 +290,7 @@ am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
@@ -1004,6 +1006,7 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -1487,6 +1490,9 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/hashes-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2075,6 +2081,7 @@ mostlyclean-compile:
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/hashes-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
@@ -2312,6 +2319,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
