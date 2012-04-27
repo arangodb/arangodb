@@ -146,7 +146,7 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*start)(void*), void* data) {
   DWORD threadId;
   thread_data_t* d;
 
-  d = TRI_Allocate(sizeof(thread_data_t));
+  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
 
   d->starter = start;
   d->_data = data;
