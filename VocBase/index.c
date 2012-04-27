@@ -2403,8 +2403,7 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
   switch (slOperator->_type) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
-    case TRI_SL_OR_OPERATOR: 
-    {
+    case TRI_SL_OR_OPERATOR: {
       logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
       FillLookupSLOperator(logicalOperator->_left,collection);
       FillLookupSLOperator(logicalOperator->_right,collection);
@@ -2416,22 +2415,24 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
     case TRI_SL_GT_OPERATOR: 
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
-    case TRI_SL_LT_OPERATOR: 
-    {
+    case TRI_SL_LT_OPERATOR: {
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = TRI_Allocate( sizeof(TRI_shaped_json_t) * relationOperator->_numFields);
-      /* TODO FIXME: memory allocation might fail */
       relationOperator->_collection = collection;
-      
-      for (j = 0; j < relationOperator->_numFields; ++j) {
-        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-        shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
-        if (shapedObject) {
-          relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
-          TRI_Free(shapedObject); // don't require storage anymore
+      relationOperator->_fields     = TRI_Allocate( sizeof(TRI_shaped_json_t) * relationOperator->_numFields);
+      if (relationOperator->_fields != NULL) {
+        for (j = 0; j < relationOperator->_numFields; ++j) {
+          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
+          shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+          if (shapedObject) {
+            relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+            TRI_Free(shapedObject); // don't require storage anymore
+          }
         }
-      }
+      }  
+      else {
+        relationOperator->_numFields = 0;
+      }        
       break;
     }
   }
