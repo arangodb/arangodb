@@ -115,7 +115,7 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
                                              const TRI_aql_scope_type_e type) {
   TRI_aql_codegen_scope_t* scope;
   
-  scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t));
+  scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
 
   if (!scope) {
     return NULL;
@@ -1118,7 +1118,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
   TRI_aql_codegen_t* generator;
   
-  generator = (TRI_aql_codegen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_t));
+  generator = (TRI_aql_codegen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_t), false);
 
   if (!generator) {
     return NULL;

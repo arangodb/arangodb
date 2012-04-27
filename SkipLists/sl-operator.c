@@ -76,7 +76,7 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: 
     {
-      newLogicalOperator = (TRI_sl_logical_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t));
+      newLogicalOperator = (TRI_sl_logical_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false);
 
       if (!newLogicalOperator) {
         return NULL;
@@ -97,7 +97,7 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: 
     {
-      newRelationOperator = (TRI_sl_relation_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t));
+      newRelationOperator = (TRI_sl_relation_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false);
 
       if (!newRelationOperator) {
         return NULL;
@@ -197,7 +197,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_OR_OPERATOR: 
     {
       oldLogicalOperator              = (TRI_sl_logical_operator_t*)(TRI_UNKNOWN_MEM_ZONE, slOperator);
-      newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t)));
+      newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false));
       /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = slOperator->_type;
       newLogicalOperator->_left       = CopySLOperator(oldLogicalOperator->_left);
@@ -214,7 +214,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LT_OPERATOR: 
     {
       oldRelationOperator              = (TRI_sl_relation_operator_t*)(slOperator);
-      newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t) ));
+      newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false));
       /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = slOperator->_type;
       newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);

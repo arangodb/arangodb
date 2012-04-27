@@ -98,7 +98,7 @@ static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
     return;
   }
   
-  node->_column = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) * newHeight);
+  node->_column = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) * newHeight, false);
   /* FIXME: memory allocation might fail */
   memcpy(node->_column, oldColumn, node->_colLength * sizeof(TRI_skiplist_node_t) );
   
@@ -386,7 +386,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // Create storage for where to store the random numbers which we generated
   // do it here once off.
   // ..........................................................................  
-  skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom);
+  skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
   
   // ..........................................................................  
   // Assign the element size
@@ -549,7 +549,7 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
   // Create the new node to be inserted. If there is some sort of failure,
   // then we delete the node memory.
   // ...........................................................................  
-  newNode = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) + skiplist->_base._elementSize);
+  newNode = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) + skiplist->_base._elementSize, false);
   if (newNode == NULL) { // out of memory?
     return false;
   }
@@ -1423,7 +1423,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // Create storage for where to store the random numbers which we generated
   // do it here once off.
   // ..........................................................................  
-  skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom);
+  skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
   /* FIXME: memory allocation might fail */
   
   // ..........................................................................  
@@ -1733,7 +1733,7 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
   // Create the new node to be inserted. If there is some sort of failure,
   // then we delete the node memory.
   // ...........................................................................  
-  newNode = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) + skiplist->_base._elementSize);
+  newNode = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_node_t) + skiplist->_base._elementSize, false);
   if (newNode == NULL) { // out of memory?
     return false;
   }

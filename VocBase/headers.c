@@ -88,7 +88,7 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     char* begin;
     char* ptr;
 
-    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
+    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, NUMBER_HEADERS_PER_BLOCK * headers->_headerSize, false);
     if (!begin) {
       // out of memory
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -156,7 +156,7 @@ static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
-  simple_headers_t* headers = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t));
+  simple_headers_t* headers = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t), false);
 
   if (!headers) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);

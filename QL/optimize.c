@@ -1039,7 +1039,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_
   size_t i;
   int compareResult;
 
-  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!vector) {
     QLOptimizeFreeRangeVector(ranges);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ranges);
@@ -1413,7 +1413,7 @@ static TRI_vector_pointer_t* QLOptimizeCreateRangeVector (QL_optimize_range_t* r
     return NULL;
   }
   
-  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!vector) {
     return NULL;
   }
@@ -1465,7 +1465,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     return NULL;
   }
 
-  range = (QL_optimize_range_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_optimize_range_t));
+  range = (QL_optimize_range_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_optimize_range_t), false);
   if (!range) {
     // clean up
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, name);

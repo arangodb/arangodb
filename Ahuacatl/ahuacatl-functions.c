@@ -100,7 +100,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   TRI_associative_pointer_t* functions;
   bool result = true;
   
-  functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t)); 
+  functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false); 
 
   if (!functions) {
     return NULL;
@@ -211,7 +211,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
                               const int maxArgs) {
   TRI_aql_function_t* function;
   
-  function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t));
+  function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t), false);
 
   if (!function) {
     return false;

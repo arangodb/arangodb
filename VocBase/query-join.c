@@ -111,7 +111,7 @@ bool TRI_AddPartSelectJoinX (TRI_select_join_t* join,
   TRI_join_part_t* part;
   
   assert(join != NULL);
-  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t));
+  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t), false);
 
   if (!part) {
     return false;
@@ -151,7 +151,7 @@ bool TRI_AddPartSelectJoinX (TRI_select_join_t* join,
 TRI_select_join_t* TRI_CreateSelectJoin (void) {
   TRI_select_join_t* join;
 
-  join = (TRI_select_join_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_join_t));
+  join = (TRI_select_join_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_join_t), false);
   if (!join) {
     return NULL;
   }

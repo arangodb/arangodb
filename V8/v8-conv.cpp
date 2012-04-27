@@ -94,7 +94,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (dst->_value == NULL) {
     return false;
@@ -116,7 +116,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (dst->_value == NULL) {
     return false;
@@ -138,7 +138,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = shaper->_sidNumber;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (dst->_value == NULL) {
     return false;
@@ -160,7 +160,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = shaper->_sidNumber;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (dst->_value == NULL) {
     return false;
@@ -185,7 +185,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = shaper->_sidShortString;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       return false;
@@ -201,7 +201,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = shaper->_sidShortString;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       return false;
@@ -218,7 +218,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = shaper->_sidLongString;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + size;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       return false;
@@ -272,7 +272,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       return false;
@@ -284,7 +284,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   }
 
   // convert into TRI_shape_value_t array
-  p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_value_t) * n));
+  p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_value_t) * n, true));
 
   if (p == NULL) {
     return false;
@@ -336,7 +336,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   if (hs && hl) {
     TRI_homogeneous_sized_list_shape_t* shape;
 
-    shape = (TRI_homogeneous_sized_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t));
+    shape = (TRI_homogeneous_sized_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t), true);
 
     if (shape == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -376,7 +376,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t) + total;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -405,7 +405,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   else if (hs) {
     TRI_homogeneous_list_shape_t* shape;
 
-    shape = (TRI_homogeneous_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_list_shape_t));
+    shape = (TRI_homogeneous_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_list_shape_t), true);
 
     if (shape == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -446,7 +446,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = offset + total;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == 0) {
       for (p = values;  p < e;  ++p) {
@@ -491,7 +491,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = offset + total;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
     if (dst->_value == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -575,13 +575,11 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   n = names->Length();
 
   // convert into TRI_shape_value_t array
-  p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t)));
+  p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t), true));
 
   if (p == NULL) {
     return false;
   }
-
-  memset(values, 0, n * sizeof(TRI_shape_value_t));
 
   total = 0;
   f = 0;
@@ -661,7 +659,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     + n * sizeof(TRI_shape_aid_t)
     + (f + 1) * sizeof(TRI_shape_size_t);
 
-  a = (TRI_array_shape_t*) (ptr = (char*) TRI_Allocate(shaper->_memoryZone, i));
+  a = (TRI_array_shape_t*) (ptr = (char*) TRI_Allocate(shaper->_memoryZone, i, true));
 
   if (ptr == NULL) {
     for (p = values;  p < e;  ++p) {
@@ -674,8 +672,6 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 
     return false;
   }
-
-  memset(ptr, 0, i);
 
   a->base._type = TRI_SHAPE_ARRAY;
   a->base._size = i;
@@ -703,7 +699,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 
   dst->_fixedSized = true;
   dst->_size = total;
-  dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size));
+  dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (ptr == NULL) {
     for (p = values;  p < e;  ++p) {
@@ -1482,7 +1478,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
     return 0;
   }
 
-  TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t));
+  TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true);
 
   if (shaped == NULL) {
     return NULL;

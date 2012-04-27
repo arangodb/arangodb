@@ -144,7 +144,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
     }
 
     // allocate a new lock struct
-    lock = (TRI_query_instance_lock_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_lock_t));
+    lock = (TRI_query_instance_lock_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_lock_t), false);
     if (!lock) {
       TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -262,7 +262,7 @@ bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instanc
 ////////////////////////////////////////////////////////////////////////////////
   
 TRI_vector_pointer_t* TRI_InitLocksQueryInstance (void) {
-  TRI_vector_pointer_t* locks = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  TRI_vector_pointer_t* locks = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
   if (!locks) {
     return NULL;

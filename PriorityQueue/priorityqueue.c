@@ -149,7 +149,7 @@ bool TRI_InitPQueue (TRI_pqueue_t* pq, size_t initialCapacity, size_t itemSize, 
   // Set the capacity and assign memeory for storage
   // ..........................................................................  
   pq->_base._capacity = initialCapacity;
-  pq->_base._items    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize * pq->_base._capacity);
+  pq->_base._items    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize * pq->_base._capacity, false);
   if (pq->_base._items == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue storage");
@@ -426,7 +426,7 @@ static bool CheckPQSize(TRI_pqueue_t* pq) {
   }
   
   pq->_base._capacity = pq->_base._capacity * 2;
-  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize);
+  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize, false);
   if (newItems == NULL) {
     return false;    
   }
@@ -455,7 +455,7 @@ static bool FixPQ(TRI_pqueue_t* pq, uint64_t position) {
   char* rightChildItem;
   
   currentPos  = position;
-  currentItem = (char*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize));
+  currentItem = (char*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize, false));
   if (currentItem == NULL) { // out of memory
     return false;
   }  

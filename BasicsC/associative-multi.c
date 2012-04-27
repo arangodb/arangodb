@@ -83,7 +83,7 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, false);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -147,7 +147,7 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
   array->_elementSize = elementSize;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc, false);
 
   p = array->_table;
   e = p + array->_elementSize * array->_nrAlloc;
@@ -553,7 +553,7 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*));
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -564,10 +564,7 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
 
   array->_nrUsed = 0;
 
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = 0;
-  }
-
+  // table is already clear by allocate, copy old data
   for (j = 0; j < oldAlloc; j++) {
     if (oldTable[j] != NULL) {
       AddNewElementPointer(array, oldTable[j]);
@@ -600,9 +597,6 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                            uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
                            bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
                            bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*)) {
-  void** p;
-  void** e;
-
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
@@ -611,19 +605,10 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc);
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
 
-  p = array->_table;
-
-  if (p == NULL) {
+  if (array->_table == NULL) {
     array->_nrAlloc = 0;
-  }
-  else {
-    e = p + array->_nrAlloc;
-
-    for (;  p < e;  ++p) {
-      *p = 0;
-    }
   }
 
   array->_nrUsed = 0;

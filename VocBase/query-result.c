@@ -104,7 +104,7 @@ TRI_select_datapart_t* TRI_CreateDataPart(const char* alias,
     assert(extraDataSize == 0);
   }
 
-  datapart = (TRI_select_datapart_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_datapart_t));
+  datapart = (TRI_select_datapart_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_datapart_t), false);
   if (!datapart) {
     return NULL;
   }
@@ -193,7 +193,7 @@ static void InitSelectResult (TRI_select_result_t* result,
   result->_index._numAllocated       = 0;
   result->_index._numUsed            = 0;
   result->_index._start              = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
-                                                    INDEX_INIT_SIZE * sizeof(TRI_sr_index_t));
+                                                    INDEX_INIT_SIZE * sizeof(TRI_sr_index_t), false);
   result->_index._current            = result->_index._start;
   if (result->_index._start) {
     result->_index._numAllocated     = INDEX_INIT_SIZE;
@@ -201,7 +201,7 @@ static void InitSelectResult (TRI_select_result_t* result,
 
   result->_documents._bytesAllocated = 0;
   result->_documents._bytesUsed      = 0;
-  result->_documents._start          = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, RESULT_INIT_SIZE);
+  result->_documents._start          = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, RESULT_INIT_SIZE, false);
   result->_documents._current        = result->_documents._start;
   if (result->_documents._start) {
     result->_documents._bytesAllocated = RESULT_INIT_SIZE;
@@ -608,7 +608,7 @@ bool TRI_SliceSelectResult (TRI_select_result_t* result,
     newSize = 1;
   }
 
-  newIndex = (TRI_sr_index_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, newSize * sizeof(TRI_sr_index_t));
+  newIndex = (TRI_sr_index_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, newSize * sizeof(TRI_sr_index_t), false);
   if (!newIndex) {
     // error: memory allocation failed
     return false;
@@ -636,7 +636,7 @@ bool TRI_SliceSelectResult (TRI_select_result_t* result,
 TRI_select_result_t* TRI_CreateSelectResult (TRI_vector_pointer_t *dataparts) {
   TRI_select_result_t* result;
 
-  result = (TRI_select_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_result_t));
+  result = (TRI_select_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_result_t), false);
   if (!result) {
     return NULL;
   }

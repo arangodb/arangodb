@@ -146,9 +146,9 @@ TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, char const* file, int line) {
+void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* file, int line) {
 #else
-void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n) {
+void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
   char* m;
 
@@ -179,8 +179,18 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n) {
     printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
     exit(EXIT_FAILURE);
   }
-
-  memset(m, 0, (size_t) n + sizeof(intptr_t));
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  else if (set) {
+    memset(m, 0, (size_t) n + sizeof(intptr_t));
+  }
+  else {
+    memset(m, 0xA5, (size_t) n + sizeof(intptr_t));
+  }
+#else
+  else if (set) {
+    memset(m, 0, (size_t) n);
+  }
+#endif
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
   * (intptr_t*) m = zone->_zid;
@@ -203,9 +213,9 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
   if (m == NULL) {
 #ifdef TRI_ENABLE_ZONE_DEBUG
-    return TRI_AllocateZ(zone, n, file, line);
+    return TRI_AllocateZ(zone, n, false, file, line);
 #else
-    return TRI_Allocate(zone, n);
+    return TRI_Allocate(zone, n, false);
 #endif
   }
 

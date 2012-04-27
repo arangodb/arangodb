@@ -106,7 +106,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                                     const char* const query) {
   TRI_aql_context_t* context;
 
-  context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t));
+  context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t), false);
   if (!context) {
     return NULL;
   }
@@ -155,7 +155,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  context->_parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t));
+  context->_parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t), false);
   if (!context->_parser) {
     TRI_FreeContextAql(context);
     return NULL;
@@ -345,7 +345,7 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
 TRI_aql_scope_t* TRI_CreateScopeAql (void) {
   TRI_aql_scope_t* scope;
 
-  scope = (TRI_aql_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope_t));
+  scope = (TRI_aql_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope_t), false);
   if (!scope) {
     return NULL;
   }
@@ -648,7 +648,7 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
 TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) {
   TRI_aql_variable_t* variable;
 
-  variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t));
+  variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
   if (!variable) {
     return NULL;
   }

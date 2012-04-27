@@ -339,7 +339,7 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
   buf->_timestamp = timestamp;
 
   if (length > OUTPUT_MAX_LENGTH) {
-    buf->_text = TRI_Allocate(TRI_CORE_MEM_ZONE, OUTPUT_MAX_LENGTH + 1);
+    buf->_text = TRI_Allocate(TRI_CORE_MEM_ZONE, OUTPUT_MAX_LENGTH + 1, false);
 
     memcpy(buf->_text, text, OUTPUT_MAX_LENGTH - 4);
     memcpy(buf->_text + OUTPUT_MAX_LENGTH - 4, " ...", 4);
@@ -706,7 +706,7 @@ static void LogThread (char const* func,
       int m;
       char* p;
 
-      p = TRI_Allocate(TRI_CORE_MEM_ZONE, n);
+      p = TRI_Allocate(TRI_CORE_MEM_ZONE, n, false);
 
       if (p == NULL) {
         TRI_Log(func, file, line, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, "log message is too large (%d bytes)", n);
@@ -1079,7 +1079,7 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
   size_t pos;
   size_t cur;
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_t));
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_t), false);
   TRI_InitVector(result, TRI_CORE_MEM_ZONE, sizeof(TRI_log_buffer_t));
 
   begin = 0;
@@ -1338,7 +1338,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
   }
 
   // allocate space
-  appender = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_file_t));
+  appender = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_file_t), false);
 
   // logging to stdout
   if (TRI_EqualString(filename, "+")) {
@@ -1531,7 +1531,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   }
 
   // allocate space
-  appender = (log_appender_syslog_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_syslog_t));
+  appender = (log_appender_syslog_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_syslog_t), false);
 
   // set methods
   appender->base.log = LogAppenderSyslog_Log;

@@ -13,11 +13,10 @@ unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-boost \
-	unittests-shell-server-ahuacatl \
 	unittests-shell-server \
+	unittests-shell-server-ahuacatl \
 	unittests-http-server \
-	unittests-shell-client \
-	unittests-http-server 
+	unittests-shell-client
 
 
 unittests-verbose:

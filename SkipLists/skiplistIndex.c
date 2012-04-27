@@ -1096,13 +1096,13 @@ static int CompareKeyElement (struct TRI_skiplist_s* skiplist, void* leftElement
 SkiplistIndex* SkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex));
+  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), false);
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
   skiplistIndex->unique = true;
-  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t));
+  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), false);
   if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
     return NULL;
@@ -1429,7 +1429,7 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 TRI_skiplist_iterator_t* SkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   TRI_skiplist_iterator_t*         results;
  
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), false);    
   if (results == NULL) {
     return NULL; // calling procedure needs to care when the iterator is null
   }  
@@ -1663,13 +1663,13 @@ static bool MultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist, void*
 SkiplistIndex* MultiSkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex));
+  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), false);
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
   skiplistIndex->unique = false;
-  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t));
+  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t), false);
   if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
     return NULL;
@@ -1971,7 +1971,7 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   TRI_skiplist_iterator_t* results;
  
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), false);    
   if (results == NULL) {
     return NULL;
   }  

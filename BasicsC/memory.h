@@ -111,8 +111,8 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 void TRI_ActivateMemFailures (double probability);
 void TRI_DeactivateMemFailures (void);
 #else
-#define TRI_ActiveMemFailures(p)    while (0)
-#define TRI_DeactivateMemFailures() while (0)
+#define TRI_ActiveMemFailures(p)    do {} while (0)
+#define TRI_DeactivateMemFailures() do {} while (0)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,10 +120,10 @@ void TRI_DeactivateMemFailures (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-#define TRI_Allocate(a,b) TRI_AllocateZ((a),(b),__FILE__,__LINE__)
-void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, char const* file, int line);
+#define TRI_Allocate(a,b,c) TRI_AllocateZ((a),(b),(c),__FILE__,__LINE__)
+void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const* file, int line);
 #else
-void* TRI_Allocate (TRI_memory_zone_t*, uint64_t);
+void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

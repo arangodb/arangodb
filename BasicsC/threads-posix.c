@@ -158,7 +158,7 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) 
   thread_data_t* d;
   int rc;
 
-  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t));
+  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
 
   d->starter = starter;
   d->_data = data;

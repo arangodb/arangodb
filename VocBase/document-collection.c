@@ -155,8 +155,9 @@ static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
   TRI_doc_collection_info_t* info;
   size_t i;
 
-  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t));
-  if (!info) {
+  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
+
+  if (info == NULL) {
     return NULL;
   }
 
@@ -511,8 +512,9 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
     return cnv.v;
   }
 
-  dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
-  if (!dfi) {
+  dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true);
+
+  if (dfi == NULL) {
     return NULL;
   }
 

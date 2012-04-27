@@ -336,7 +336,7 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
 
   assert(name);
 
-  parameter = (TRI_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bind_parameter_t));
+  parameter = (TRI_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bind_parameter_t), false);
   if (!parameter) {
     return NULL;
   }
@@ -417,7 +417,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
   assert(queryString);
   assert(vocbase);
 
-  template_ = (TRI_query_template_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_template_t));
+  template_ = (TRI_query_template_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_template_t), false);
   if (!template_) {
     return NULL;
   }
@@ -428,7 +428,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
     return NULL;
   }
   
-  template_->_query = (QL_ast_query_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_t));
+  template_->_query = (QL_ast_query_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_t), false);
   if (!template_->_query) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_->_queryString);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_);
@@ -552,7 +552,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   TRI_join_part_t* part;
   QL_ast_query_collection_t* collection;
   
-  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t));
+  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t), false);
 
   if (!part) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -845,7 +845,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
     }
 
     collection = (QL_ast_query_collection_t*) 
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t), false);
     if (!collection) { 
       return false;
     }
@@ -1292,7 +1292,7 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
 
   assert(template_);
   
-  instance = (TRI_query_instance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_t));
+  instance = (TRI_query_instance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_t), false);
   if (!instance) {
     return NULL;
   }

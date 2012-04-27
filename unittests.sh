@@ -59,6 +59,20 @@ case $TRI_OS_LONG in
 
 esac
 
+while [ $? -ne 0 ]; do
+  if [ "$1" == "--valgrind" ];  then
+    VALGRIND_TEST="yes"
+  elif [ "$1" == "--no-valgrind" ];  then
+    VALGRIND_TEST="no"
+  elif [ "$1" == "--resc" ];  then
+    RSPEC_AVAILABLE="yes"
+  elif [ "$1" == "--no-resc" ];  then
+    RSPEC_AVAILABLE="no"
+  fi
+
+  shift
+done
+
 echo
 echo "########################################################"
 echo "unittests:"
@@ -68,6 +82,7 @@ echo
 
 make unittests-boost || exit 1
 make unittests-shell-server || exit 1
+make unittests-shell-server-ahuacatl || exit 1
 
 if text "x$RSPEC_AVAILABLE" = "xyes";  then
   make unittests-http-server || exit 1
@@ -83,5 +98,5 @@ if test "x$VALGRIND_TEST" = "xyes";  then
   echo "########################################################"
   echo
 
-  make unittests VALGRIND="valgrind --leak-check=full" || exit 1
+  make unittests VALGRIND="valgrind --suppressions=RestServer/avocado.supp --leak-check=full" || exit 1
 fi

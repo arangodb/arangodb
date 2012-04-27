@@ -103,7 +103,7 @@ static int Reserve (TRI_string_buffer_t * self, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
-  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t));
+  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
 
   if (self == NULL) {
     return NULL;

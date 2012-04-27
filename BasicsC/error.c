@@ -303,7 +303,7 @@ void TRI_set_errno_string (int error, char const* msg) {
     exit(EXIT_FAILURE);
   }
 
-  entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t));
+  entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t), false);
 
   if (entry) {
     entry->_code = error;

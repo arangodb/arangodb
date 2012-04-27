@@ -82,7 +82,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, false);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -146,7 +146,7 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_elementSize = elementSize;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc);
+  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc, false);
 
   p = array->_table;
 
@@ -562,7 +562,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*));
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -573,10 +573,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
 
   array->_nrUsed = 0;
 
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = NULL;
-  }
-
+  // table is already cleared by allocate, copy old data
   for (j = 0; j < oldAlloc; j++) {
     if (oldTable[j] != NULL) {
       AddNewElementPointer(array, oldTable[j]);
@@ -609,9 +606,6 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
                                  uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
                                  bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
                                  bool (*isEqualElementElement) (TRI_associative_pointer_t*, void const*, void const*)) {
-  void** p;
-  void** e;
-
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
@@ -620,19 +614,10 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc);
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
 
-  p = array->_table;
-
-  if (p == NULL) {
+  if (array->_table == NULL) {
     array->_nrAlloc = 0;
-  }
-  else {
-    e = p + array->_nrAlloc;
-
-    for (;  p < e;  ++p) {
-      *p = NULL;
-    }
   }
 
   array->_nrUsed = 0;
@@ -1020,7 +1005,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*));
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -1031,10 +1016,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
 
   array->_nrUsed = 0;
 
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = NULL;
-  }
-
+  // table is already cleared by allocate, copy old data
   for (j = 0; j < oldAlloc; j++) {
     if (oldTable[j] != NULL) {
       AddNewElementSynced(array, oldTable[j]);
@@ -1067,9 +1049,6 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
                                 uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
                                 bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
                                 bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
-  void** p;
-  void** e;
-
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
@@ -1078,19 +1057,10 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc);
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
 
-  p = array->_table;
-
-  if (p == NULL) {
+  if (array->_table == NULL) {
     array->_nrAlloc = 0;
-  }
-  else {
-    e = p + array->_nrAlloc;
-
-    for (;  p < e;  ++p) {
-      *p = NULL;
-    }
   }
 
   array->_nrUsed = 0;

@@ -81,7 +81,7 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 TRI_barrier_t* TRI_CreateBarrierElement (TRI_barrier_list_t* container) {
   TRI_barrier_t* element;
 
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_t));
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_t), false);
   if (!element) {
     return NULL;
   }
@@ -126,7 +126,7 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
                                           void* data) {
   TRI_barrier_datafile_cb_t* element;
 
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_cb_t));
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_cb_t), false);
   if (!element) {
     return NULL;
   }
@@ -174,7 +174,7 @@ TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
                                             void* data) {
   TRI_barrier_collection_cb_t* element;
 
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t));
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
   if (!element) {
     return NULL;
   }

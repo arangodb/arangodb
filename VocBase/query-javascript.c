@@ -244,7 +244,7 @@ TRI_query_javascript_converter_t* TRI_InitQueryJavascript (void) {
   TRI_query_javascript_converter_t* converter;
 
   converter = (TRI_query_javascript_converter_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_javascript_converter_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_javascript_converter_t), false);
 
   if (!converter) { 
     return NULL;
