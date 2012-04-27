@@ -3,13 +3,18 @@
 /// avocadodb js api  
 ///////////////////////////////////////////////////////////////////////////////
 
+// documents global vars
+var collectionCount;
+var totalCollectionCount;
+var collectionCurrentPage;  
+var globalCollectionName;  
+
 $(document).ready(function() {       
 
 showCursor();
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
-var userScreenSize = $(window).width();  
 var open = false;
 var tableView = true;
 var sid = ($.cookie("sid")); 
@@ -18,8 +23,9 @@ var currentUser;
 var currentPage = 1; 
 var currentAmount; 
 var currentTableID = "#logTableID"; 
-var currentLoglevel = 5;   
+var currentLoglevel = 5;  
 //live click for all log tables 
+
 var tables = ["#logTableID", "#critLogTableID", "#warnLogTableID", "#infoLogTableID", "#debugLogTableID"];
 
 $.each(tables, function(v, i ) {
@@ -40,6 +46,15 @@ $.each(tables, function(v, i ) {
       createPrevPagination();  
     }
   });
+});
+
+
+$("#documents_prev").live('click', function () {
+  createPrevDocPagination();
+});
+
+$("#documents_next").live('click', function () {
+  createNextDocPagination();
 });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -401,21 +416,22 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
-      var collectionName; 
-
+      
       $.ajax({
         type: "GET",
-        url: "/_api/collection/" + collectionID,
+        url: "/_api/collection/" + collectionID + "/count", 
         contentType: "application/json",
-        processData: false, 
+        processData: false,
+        async: false,  
         success: function(data) {
-          collectionName = data.name;
-          $('#nav2').text('-> ' + collectionName);
+          globalCollectionName = data.name;
+          test = data.name; 
+          collectionCount = data.count; 
+          $('#nav2').text('-> ' + globalCollectionName);
         },
         error: function(data) {
         }
       });
-
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
@@ -423,60 +439,27 @@ var logTable = $('#logTableID').dataTable({
       $('#nav3').text(''); 
 
       $.ajax({
-        type: "GET",
-        url: "/document?collection=" + collectionID ,
+        type: 'PUT',
+        url: '/_api/simple/all/',
+        data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
         contentType: "application/json",
-        processData: false, 
         success: function(data) {
-          documentsTable.fnClearTable(); 
-          hideAllSubDivs();
-          $('#collectionsView').hide();
-          $('#documentsView').show();
-          $.each(data, function(key, val) {
-            $.each(val, function(key, val) {
-              $.ajax({
-                type: "GET", 
-                url: val,
-                contentType: "application/json", 
-                processData: false, 
-                success: function(data) {
-                  var dataString; 
-                  var content; 
-                  dataString = JSON.stringify(data);
-                  var escapedContent = escaped(dataString); 
-
-                  var userContent; 
-                  
-                  if (userScreenSize <= 1024) {
-                    userContent = 150; 
-                  }
-                  else if (userScreenSize > 1024 && userScreenSize < 1680) {
-                    userContent = 250; 
-                  }
-                  else if (userScreenSize > 1680) {
-                    userContent = 350; 
-                  }
-
-                  if (escapedContent.length > userContent) { 
-                    content = escapedContent.substr(0,(userContent-3))+'...';   
-                  }
-                  else {
-                    content = escapedContent; 
-                  }
-                  documentsTable.fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-                    data._id, data._rev, content]);
-                },
-                error: function (data) {
-                } 
-              });
-            });
-          }); 
+          $.each(data, function(k, v) {
+            documentsTable.fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+          });
         },
         error: function(data) {
-
+          
         }
       });
-
+      documentsTable.fnClearTable(); 
+      hideAllSubDivs();
+      $('#collectionsView').hide();
+      $('#documentsView').show();
+      totalCollectionCount = Math.ceil(collectionCount / 10); 
+      collectionCurrentPage = 1;
+      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
+      console.log(globalCollectionName); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -586,7 +569,6 @@ var logTable = $('#logTableID').dataTable({
         $.each(content[data], function(key, val) {
           $('#configView').append('<a>' + key + ":" + val + '</a><br>');
         });         
- 
         //$('#configView').append('<a>' + menues + '</a><br>');
       }); 
 
@@ -647,6 +629,7 @@ var logTable = $('#logTableID').dataTable({
           collectionID = row_data[3]; 
         } 
         else {
+          //TODO
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
         
@@ -1002,7 +985,6 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#submitLogSearch').live('click', function () {  
-   //marker 
 
     var content = $('#logSearchField').val();
     var selected = $("#tabs").tabs( "option", "selected" ); 
@@ -1656,10 +1638,61 @@ function createLogTable(loglevel) {
   }
 
   $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
-  console.log("current:" + currentPage); 
-  console.log("total:" + totalPages);
-  console.log("id:" + currentTableID);  
   });
+}
+
+function createPrevDocPagination() {
+  if (collectionCurrentPage == 1) {
+    return 0; 
+  }
+  var prevPage = JSON.parse(collectionCurrentPage) -1; 
+  var offset = prevPage * 10 - 10; 
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+    },
+    error: function(data) {        
+    }
+  });
+  collectionCurrentPage = prevPage; 
+  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
+}
+//marker
+function createNextDocPagination () {
+
+console.log("start"); 
+
+  if (collectionCurrentPage == totalCollectionCount) {
+    return 0; 
+  }
+   
+  var nextPage = JSON.parse(collectionCurrentPage) +1; 
+  var offset =  collectionCurrentPage * 10; 
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $("#documentsTableID").dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+    },
+    error: function(data) {        
+    }
+  });
+  collectionCurrentPage = nextPage; 
+  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
 }
 
 function createPrevPagination(checked) {
@@ -1701,7 +1734,6 @@ function createNextPagination(checked) {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
 
-
   $.getJSON(url, function(data) {
     $(currentTableID).dataTable().fnClearTable();
 
@@ -1719,4 +1751,29 @@ function showCursor() {
   $(':button').mouseover(function () {
     $(this).css('cursor', 'pointer');
   });
+}
+
+function cutByResolution (string) {
+  var userScreenSize = $(window).width();  
+  var content; 
+  var escapedContent = escaped(string); 
+  var userContent; 
+
+  if (userScreenSize <= 1024) {
+    userContent = 150; 
+  }
+  else if (userScreenSize > 1024 && userScreenSize < 1680) {
+    userContent = 250; 
+  }
+  else if (userScreenSize > 1680) {
+    userContent = 350; 
+  }
+
+  if (escapedContent.length > userContent) { 
+    content = escapedContent.substr(0,(userContent-3))+'...';   
+  }
+  else {
+    content = escapedContent; 
+  }
+  return content; 
 }
