@@ -3015,7 +3015,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (BASCIS)                                                >>"
+	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
 	@echo "================================================================================"
 	@echo
 
