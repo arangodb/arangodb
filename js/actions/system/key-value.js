@@ -83,25 +83,25 @@ function buildDocumentFromReq(req) {
     }
 
     var doc = {
-      "key" : key,
-      "value" : req.requestBody      
+      "$key" : key,
+      "$value" : req.requestBody      
     }
     
     if (req.headers["x-voc-expires"] != undefined) {
       var d = new Date(req.headers["x-voc-expires"]);
       // store time stamp as double
-      doc["x-voc-expires"] = d.getTime() / 1000;      
+      doc["$expires"] = d.getTime() / 1000;      
     }
     
     if (req.headers["x-voc-extended"] != undefined) {
       var json = JSON.parse(req.headers["x-voc-extended"]);
       if (json != undefined) {
-        doc["x-voc-extended"] = json;
+        doc["$extended"] = json;
       }
     }
     
     // store time stamp as double
-    doc["x-voc-created"] = internal.time();
+    doc["$created"] = internal.time();
     
     return doc;
 }
@@ -109,6 +109,11 @@ function buildDocumentFromReq(req) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a key value pair
+///
+/// @REST{POST /_api/key/@FA{collection-name}/@FA{key}}
+/// {data}
+///
+/// headers "x-voc-expires" and "x-voc-extended"
 ////////////////////////////////////////////////////////////////////////////////
 
 function postKeyValue(req, res) {
@@ -124,14 +129,18 @@ function postKeyValue(req, res) {
       actions.collectionNotFound(req, res, collection);
       return;      
     }
-    
+
+    if (req.requestBody == "") {
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_NO_VALUE, actions.getErrorMessage(actions.ERROR_KEYVALUE_NO_VALUE));
+      return;
+    }
+  
     var doc = buildDocumentFromReq(req);
 
-    var s = db[collection].byExample({"key" : doc.key});
-    s.execute();
+    var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
         
-    if (s._countTotal != 0) {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
+    if (oldDoc != undefined) {
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
     }
     else {
       var id = db[collection].save(doc);    
@@ -149,6 +158,10 @@ function postKeyValue(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update the value of a key value pair
+///
+/// @REST{PUT /_api/key/@FA{collection-name}/@FA{key}}
+/// {data}
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function putKeyValue(req, res) {
@@ -167,10 +180,9 @@ function putKeyValue(req, res) {
     
     var doc = buildDocumentFromReq(req);
 
-    var s = db[collection].byExample({"key" : doc.key});
-    s.execute();
+    var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
         
-    if (s._countTotal < 1) {
+    if (oldDoc == undefined) {
       if (req.parameters["create"] == 1) {
         var id = db[collection].save(doc);    
         var result = {
@@ -180,17 +192,14 @@ function putKeyValue(req, res) {
         actions.resultOk(req, res, actions.HTTP_CREATED, result);      
         return;
       }
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
-    }
-    else if (s._countTotal > 1) {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else {
       // get _id
-      var id = s._execution._documents[0]._id;
+      var id = oldDoc._id;
       
       // save x-voc-created
-      var created = s._execution._documents[0]["x-voc-created"];      
+      var created = oldDoc["$created"];      
       if (created != undefined) {
         doc["x-voc-created"] = created;        
       }
@@ -200,7 +209,7 @@ function putKeyValue(req, res) {
         actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"changed" : true});                              
       }
       else {
-        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
+        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
       }
     }
   }
@@ -211,6 +220,9 @@ function putKeyValue(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete an existing key value pair
+///
+/// @REST{DELETE /_api/key/@FA{collection-name}/@FA{key}}
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function deleteKeyValue(req, res) {
@@ -233,22 +245,18 @@ function deleteKeyValue(req, res) {
       key += "/" + req.suffix[i];
     }
 
-    var s = db[collection].byExample({"key" : key});
-    s.execute();
+    var doc = internal.db._collection(collection).firstExample("$key", key);
     
-    if (s._countTotal < 1) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
-    }
-    else if (s._countTotal > 1) {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
+    if (doc == undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else {
-      var id = s._execution._documents[0]._id;
+      var id = doc._id;
       if (db[collection].remove(id)) {            
         actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
       }
       else {
-        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
+        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
       }
     }
   }
@@ -259,6 +267,11 @@ function deleteKeyValue(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an existing key value pair
+///
+/// @REST{GET /_api/key/@FA{collection-name}/@FA{key}}
+///
+/// returned headers: "x-voc-expires", "x-voc-extended" and "x-voc-created"
+/// 
 ////////////////////////////////////////////////////////////////////////////////
 
 function getKeyValue(req, res) {
@@ -281,32 +294,28 @@ function getKeyValue(req, res) {
       key += "/" + req.suffix[i];
     }
         
-    var s = db[collection].byExample({"key" : key});
-    s.execute();
-    
-    if (s._countTotal < 1) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
-    }
-    else if (s._countTotal > 1) {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
+    var doc = internal.db._collection(collection).firstExample("$key", key); 
+        
+    if (doc == undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else {
       var headers = {};
       
-      if (s._execution._documents[0]["x-voc-expires"] != undefined) {
+      if (doc["$expires"] != undefined) {
         // format timestamp
-        headers["x-voc-expires"] = formatTimeStamp(s._execution._documents[0]["x-voc-expires"]);
+        headers["x-voc-expires"] = formatTimeStamp(doc["$expires"]);
       }
-      if (s._execution._documents[0]["x-voc-extended"] != undefined) {
+      if (doc["$extended"] != undefined) {
         // serialize header value
-        headers["x-voc-extended"] = JSON.stringify(s._execution._documents[0]["x-voc-extended"]);
+        headers["x-voc-extended"] = JSON.stringify(doc["$extended"]);
       }
-      if (s._execution._documents[0]["x-voc-created"] != undefined) {
+      if (doc["$created"] != undefined) {
         // format timestamp
-        headers["x-voc-created"] = formatTimeStamp(s._execution._documents[0]["x-voc-created"]);
+        headers["x-voc-created"] = formatTimeStamp(doc["$created"]);
       }
       
-      actions.resultOk(req, res, actions.HTTP_OK, s._execution._documents[0].value, headers);                      
+      actions.resultOk(req, res, actions.HTTP_OK, doc["$value"], headers);                      
     }
   }
   catch (err) {
@@ -366,6 +375,9 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief key value pair search
+///
+/// @REST{GET /_api/keys/@FA{collection-name}/@FA{key-prefix}}
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function searchKeyValue(req, res) {
@@ -392,17 +404,14 @@ function searchKeyValue(req, res) {
     // TODO: build a query which selects the keys
     //
     
-    var query = "select f from `" + collection + "` f ";
-    var bindVars = {};    
-    var cursor = AQL_STATEMENT(query, 
-                               bindVars, 
-                               false, 
-                               1000);  
+    var cursor = internal.db._collection(collection).all();
+    
     result = [];
+    
     while (cursor.hasNext() ) {
       var doc = cursor.next();
-      if (doc["key"] != undefined && doc["key"].indexOf(prefix) === 0) {
-        result.push(doc["key"]);
+      if (doc["$key"] != undefined && doc["$key"].indexOf(prefix) === 0) {
+        result.push(doc["$key"]);
       }
     }
 

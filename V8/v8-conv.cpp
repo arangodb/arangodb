@@ -1165,6 +1165,29 @@ static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes the names of an associative char* array into a V8 array
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer_t* const array) {
+  v8::HandleScope scope;
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  uint32_t j = 0;
+  uint32_t n = (uint32_t) array->_nrAlloc;
+  for (uint32_t i = 0;  i < n;  ++i) {
+    char* value = (char*) array->_table[i];
+
+    if (value == 0) {
+      continue;
+    }
+
+    result->Set(j++, v8::String::New(value));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief converts identifier into a object reference
 ////////////////////////////////////////////////////////////////////////////////
 

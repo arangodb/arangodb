@@ -41,10 +41,10 @@ function ahuacatlQueryCollectionTestSuite () {
 
   function executeQuery (query) {
     var cursor = AHUACATL_RUN(query, undefined);
-    if (cursor instanceof AvocadoQueryError) {
-      print(query, cursor.message);
+    if (cursor instanceof AvocadoError) {
+      print(query, cursor.errorMessage);
     }
-    assertFalse(cursor instanceof AvocadoQueryError);
+    assertFalse(cursor instanceof AvocadoError);
     return cursor;
   }
 
@@ -53,7 +53,7 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query, isFlat) {
-    var result = executeQuery(query);
+    var result = executeQuery(query).getRows();
     var results = [ ];
 
     for (var i in result) {

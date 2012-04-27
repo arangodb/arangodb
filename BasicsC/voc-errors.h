@@ -238,6 +238,8 @@ extern "C" {
 ///   Will be raised when updating the value for a key does not work
 /// - 1805: @CODE{key value not removed}
 ///   Will be raised when deleting a key/value pair does not work
+/// - 1806: @CODE{missing value}
+///   Will be raised when the value is missing
 /// - 1901: @CODE{invalid graph}
 ///   Will be raised when an invalid name is passed to the server
 /// - 1902: @CODE{could not create graph}
@@ -247,10 +249,14 @@ extern "C" {
 ///   Will be raised when an invalid vertex id is passed to the server
 /// - 1904: @CODE{could not create vertex}
 ///   Will be raised when the vertex could not be created
-/// - 1905: @CODE{invalid edge}
+/// - 1905: @CODE{could not change vertex}
+///   Will be raised when the vertex could not be changed
+/// - 1906: @CODE{invalid edge}
 ///   Will be raised when an invalid edge id is passed to the server
-/// - 1906: @CODE{could not create edge}
+/// - 1907: @CODE{could not create edge}
 ///   Will be raised when the edge could not be created
+/// - 1908: @CODE{could not change edge}
+///   Will be raised when the edge could not be changed
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -1301,6 +1307,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1806: ERROR_KEYVALUE_NO_VALUE
+///
+/// missing value
+///
+/// Will be raised when the value is missing
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
 ///
 /// invalid graph
@@ -1342,24 +1358,44 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1905: ERROR_GRAPH_INVALID_EDGE
+/// @brief 1905: ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX
+///
+/// could not change vertex
+///
+/// Will be raised when the vertex could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX                           (1905)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1906: ERROR_GRAPH_INVALID_EDGE
 ///
 /// invalid edge
 ///
 /// Will be raised when an invalid edge id is passed to the server
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1905)
+#define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1906)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1906: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
+/// @brief 1907: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
 ///
 /// could not create edge
 ///
 /// Will be raised when the edge could not be created
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1906)
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1907)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1908: ERROR_GRAPH_COULD_NOT_CHANGE_EDGE
+///
+/// could not change edge
+///
+/// Will be raised when the edge could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR

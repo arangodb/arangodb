@@ -110,12 +110,15 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_UNIQUE, "key is not unique");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
+  REG_ERROR(ERROR_KEYVALUE_NO_VALUE, "missing value");
   REG_ERROR(ERROR_GRAPH_INVALID_GRAPH, "invalid graph");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "could not create graph");
   REG_ERROR(ERROR_GRAPH_INVALID_VERTEX, "invalid vertex");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, "could not create vertex");
+  REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "could not change vertex");
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
+  REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
