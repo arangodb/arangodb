@@ -2576,14 +2576,14 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   if (!TRI_BindQueryContextAql(context, parameters)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     if (parameters) {
-      TRI_FreeJson(parameters);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     }
     TRI_FreeContextAql(context);
     return scope.Close(errorObject);
   }
   
   if (parameters) {
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
   // optimise
@@ -2609,7 +2609,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     if (code) {
       v8::Handle<v8::Value> result;
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
-      TRI_Free(code);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
       TRI_json_t* json = ConvertHelper(result);
       if (json) {
@@ -2617,13 +2617,13 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
         if (cursorResult) {
           cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
           if (!cursor) {
-            TRI_Free(cursorResult);
-            TRI_FreeJson(json);
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
         else {
-          TRI_Free(cursorResult);
-          TRI_FreeJson(json);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }
@@ -2806,7 +2806,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
   // ..........................................................................
   // Store the index field parameters in a json object 
   // ..........................................................................
-  parameterList = TRI_CreateListJson();
+  parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!parameterList) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -2817,7 +2817,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
     if (jsonParameter == NULL) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
-    TRI_PushBackListJson(parameterList, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     
     /*
     if (parameter->IsBoolean() ) {
@@ -2882,18 +2882,18 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   // possible parameter to be sent - the number of top documents to query.
   // ..........................................................................
   
-  parameterList = TRI_CreateListJson();
+  parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!parameterList) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory in JS_WherePQConstAql")));
   }
 
   
   if (argv.Length() == 1) {
-    TRI_json_t* jsonParameter = TRI_CreateNumberJson(1);
+    TRI_json_t* jsonParameter = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1);
     if (jsonParameter == NULL) { // failure of some sort
       return scope.Close(v8::ThrowException(v8::String::New("internal error in JS_WherePQConstAql")));       
     }
-    TRI_PushBackListJson(parameterList, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
   }
   
   else {
@@ -2903,7 +2903,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
-      TRI_PushBackListJson(parameterList, jsonParameter);
+      TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     }
   }  
 
@@ -2985,7 +2985,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
           TRI_FreeSLOperator(leftOp); 
           return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
         }
-        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, 2, NULL);
+        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, NULL, 2, NULL);
         leftOp = tempAndOperator;
       }  
       where = TRI_CreateQueryWhereSkiplistConstant(iid, leftOp);
@@ -3006,7 +3006,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
     // ..........................................................................
     // Store the index field parameters in a json object 
     // ..........................................................................
-    parameterList = TRI_CreateListJson();
+    parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameterList) {
       return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
     }
@@ -3017,9 +3017,9 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
-      TRI_PushBackListJson(parameterList, jsonParameter);
+      TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     }
-    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, 
+    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, NULL, 
                                                      parameterList->_value._objects._length, NULL);
     where = TRI_CreateQueryWhereSkiplistConstant(iid, eqOperator);
   }
@@ -3067,7 +3067,7 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
   TRI_qry_where_t* where = TRI_CreateQueryWhereWithinConstant(iid, nameDistance, latitude, longitude, radius);
 
   if (nameDistance != 0) {
-    TRI_FreeString(nameDistance);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, nameDistance);
   }
 
   // wrap it up
@@ -3375,7 +3375,7 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
 }
 
 static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {
-  TRI_json_t* result = TRI_CreateListJson();
+  TRI_json_t* result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   
   if (result == NULL) {
     v8::ThrowException(v8::String::New("out of memory"));
@@ -3389,7 +3389,7 @@ static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
       return NULL;
     }
-    TRI_PushBackListJson(result, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, jsonParameter);
   }
   return result;
 }
@@ -3440,8 +3440,8 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,
-                                                 CopySLOperator(leftOperator),
-                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(leftOperator),
+                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
   // ...........................................................................
   // Wrap it up for later use and return.
   // ...........................................................................
@@ -3491,8 +3491,8 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,
-                                                 CopySLOperator(leftOperator),
-                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(leftOperator),
+                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
   
   return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
 }
@@ -3526,7 +3526,7 @@ static v8::Handle<v8::Value> JS_Operator_EQ (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (EQ) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL));
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3560,7 +3560,7 @@ static v8::Handle<v8::Value> JS_Operator_GE (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (GE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                      parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3595,7 +3595,7 @@ static v8::Handle<v8::Value> JS_Operator_GT (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (GT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3630,7 +3630,7 @@ static v8::Handle<v8::Value> JS_Operator_LE (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (LE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, NULL, 
                                                      parameters->_value._objects._length, NULL) );  
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3665,7 +3665,7 @@ static v8::Handle<v8::Value> JS_Operator_LT (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (LT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));

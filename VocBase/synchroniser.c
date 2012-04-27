@@ -339,7 +339,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
   assert(vocbase->_active);
 
-  TRI_InitVectorPointer(&collections);
+  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
     size_t n;

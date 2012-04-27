@@ -57,7 +57,7 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
     return NULL;
   }
 
-  result = (TRI_general_cursor_result_t*) TRI_Allocate(sizeof(TRI_general_cursor_result_t));
+  result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t));
   if (!result) {
     return NULL;
   }
@@ -92,7 +92,7 @@ void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
 void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
   if (result) {
     TRI_DestroyCursorResult(result);
-    TRI_Free(result);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
   }
 }
 
@@ -181,7 +181,7 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
   TRI_FreeCursorResult(cursor->_result);
   
   TRI_DestroyMutex(&cursor->_lock);
-  TRI_Free(cursor);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
 
   LOG_TRACE("destroyed general cursor");
 }
@@ -195,7 +195,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* resu
                                                const TRI_general_cursor_length_t batchSize) {
   TRI_general_cursor_t* cursor;
 
-  cursor = (TRI_general_cursor_t*) TRI_Allocate(sizeof(TRI_general_cursor_t));
+  cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t));
   if (!cursor) {
     return NULL;
   }

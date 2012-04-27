@@ -1427,7 +1427,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   int j;
 
   // load json description of the index
-  json = TRI_JsonFile(filename, &error);
+  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
 
   // simple collection of the index
   doc = (TRI_sim_collection_t*) data;
@@ -1441,7 +1441,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot read index definition from '%s': expecting an array", filename);
 
-    TRI_FreeJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -1451,7 +1451,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   if (type->_type != TRI_JSON_STRING) {
     LOG_ERROR("cannot read index definition from '%s': expecting a string for type", filename);
 
-    TRI_FreeJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -1475,7 +1475,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list",
               typeStr, (unsigned long) iid);
 
-    TRI_FreeJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -1488,7 +1488,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
         LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list of attribute paths", 
                   typeStr, (unsigned long) iid);
 
-        TRI_FreeJson(json);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return false;
     }
   }
@@ -1514,7 +1514,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
       CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, iid, NULL);
 
-      TRI_FreeJson(json);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       return true;
     }
     else if (fieldCount == 2) {
@@ -1526,14 +1526,14 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
       CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, iid, NULL);
 
-      TRI_FreeJson(json);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       return true;
     }
     else {
       LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list with 1 or 2 entries",
                 typeStr, (unsigned long) iid);
 
-      TRI_FreeJson(json);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       return false;
     }
   }
@@ -1557,7 +1557,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
       LOG_ERROR("ignoring %s-index %lu, could not determine if unique or non-unique",
                 typeStr, (unsigned long) iid);
 
-      TRI_FreeJson(json);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       return false;
     }  
     
@@ -1566,13 +1566,13 @@ static bool OpenIndexIterator (char const* filename, void* data) {
       LOG_ERROR("ignoring %s-index %lu, need at least von attribute path",
                 typeStr, (unsigned long) iid);
 
-      TRI_FreeJson(json);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       return false;
     }
 
     // Initialise the vector in which we store the fields on which the hashing
     // will be based.
-    TRI_InitVector(&attributes, sizeof(char*));
+    TRI_InitVector(&attributes, TRI_UNKNOWN_MEM_ZONE, sizeof(char*)); // TODO FIXME use VectorPointer
     
     // find fields
     for (j = 0;  j < fieldCount;  ++j) {
@@ -1597,7 +1597,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     }
 
     TRI_DestroyVector(&attributes);
-    TRI_FreeJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (idx == NULL) {
       LOG_ERROR("cannot create hash index %lu", (unsigned long) iid);
@@ -1617,7 +1617,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
               typeStr,
               (unsigned long) iid);
 
-    TRI_FreeJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 }
@@ -1678,7 +1678,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   char* id;
   
   // create primary index
-  primary = TRI_Allocate(sizeof(TRI_index_t));
+  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t));
   /* TODO FIXME: memory allocation might fail */
 
   id = TRI_DuplicateString("_id");
@@ -1696,12 +1696,14 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   }
 
   TRI_InitAssociativePointer(&collection->_primaryIndex,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              HashKeyHeader,
                              HashElementDocument,
                              IsEqualKeyDocument,
                              0);
 
   TRI_InitMultiPointer(&collection->_edgesIndex,
+                       TRI_UNKNOWN_MEM_ZONE, 
                        HashElementEdge,
                        HashElementEdge,
                        IsEqualKeyEdge,
@@ -1709,9 +1711,9 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 
   TRI_InitCondition(&collection->_journalsCondition);
 
-  TRI_InitVectorPointer(&collection->_indexes);
+  TRI_InitVectorPointer(&collection->_indexes, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitVectorString(&primary->_fields);
+  TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&primary->_fields, id);
 
   primary->_iid = 0;
@@ -1780,7 +1782,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   info._maximalSize = parameter->_maximalSize;
 
   // first create the document collection
-  doc = TRI_Allocate(sizeof(TRI_sim_collection_t));
+  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t));
 
   if (doc == NULL) {
     LOG_ERROR("cannot create document");
@@ -1792,7 +1794,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   if (collection == NULL) {
     LOG_ERROR("cannot create document collection");
 
-    TRI_Free(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
     return NULL;
   }
 
@@ -1853,7 +1855,7 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
 
 void TRI_FreeSimCollection (TRI_sim_collection_t* collection) {
   TRI_DestroySimCollection(collection);
-  TRI_Free(collection);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1897,7 +1899,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   char* shapes;
 
   // first open the document collection
-  doc = TRI_Allocate(sizeof(TRI_sim_collection_t));
+  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t));
   if (!doc) {
     return NULL;
   }
@@ -1907,7 +1909,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   if (collection == NULL) {
     LOG_ERROR("cannot open document collection");
 
-    TRI_Free(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
     return NULL;
   }
 
@@ -1916,12 +1918,12 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   if (!shapes) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    TRI_Free(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
     return NULL;
   }
 
   shaper = TRI_OpenVocShaper(vocbase, shapes);
-  TRI_FreeString(shapes);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, shapes);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot open shapes collection");
@@ -2042,7 +2044,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     edge = header->_data;
 
     // IN
-    entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2053,7 +2055,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // OUT
-    entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2064,7 +2066,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // ANY
-    entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2075,7 +2077,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+      entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
       /* TODO FIXME: memory allocation might fail */
 
       entry->_mptr = header;
@@ -2245,7 +2247,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
     old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
     if (old != NULL) {
-      TRI_Free(old);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
     }
 
     // OUT
@@ -2255,7 +2257,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
     old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
     if (old != NULL) {
-      TRI_Free(old);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
     }
 
     // ANY
@@ -2265,7 +2267,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
     old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
     if (old != NULL) {
-      TRI_Free(old);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
     }
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
@@ -2275,7 +2277,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
       old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
       if (old != NULL) {
-        TRI_Free(old);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
       }
     }
   }
@@ -2375,12 +2377,12 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   size_t n;
   size_t i;
 
-  vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  vector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
   if (!vector) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(vector);
+  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
 
   // .............................................................................
   // inside read-lock
@@ -2574,14 +2576,14 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t const* co
   TRI_json_t* json;
   TRI_json_t* fields;
 
-  json = TRI_CreateArrayJson();
-  fields = TRI_CreateListJson();
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson("_id"));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "_id"));
 
-  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(0));
-  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("primary"));
-  TRI_Insert3ArrayJson(json, "fields", fields);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "primary"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
 
   return json;
 }
@@ -2617,13 +2619,13 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
   TRI_vector_pointer_t found;
   size_t i;
 
-  TRI_InitVectorPointer(&result);
+  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
 
   entry._direction = direction;
   entry._cid = cid;
   entry._did = did;
 
-  found = TRI_LookupByKeyMultiPointer(&edges->_edgesIndex, &entry);
+  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &edges->_edgesIndex, &entry);
 
   for (i = 0;  i < found._length;  ++i) {
     cnv.c = ((TRI_edge_header_t*) found._buffer[i])->_mptr;
@@ -2787,8 +2789,8 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   idx     = NULL;
   shaper = collection->base._shaper;
   
-  TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorPointer(&fields);
+  TRI_InitVector(&paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
+  TRI_InitVectorPointer(&fields, TRI_UNKNOWN_MEM_ZONE);
 
   // ...........................................................................
   // Determine the shape ids for the attributes
@@ -2898,8 +2900,8 @@ static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t*
   size_t j;
 
 
-  TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorPointer(&fields);
+  TRI_InitVector(&paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
+  TRI_InitVectorPointer(&fields, TRI_UNKNOWN_MEM_ZONE);
 
   // ...........................................................................
   // Determine the shape ids for the attributes
@@ -3002,8 +3004,8 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   bool ok;
   size_t j;
   
-  TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorPointer(&fields);
+  TRI_InitVector(&paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
+  TRI_InitVectorPointer(&fields, TRI_UNKNOWN_MEM_ZONE);
 
   // ...........................................................................
   // Determine the shape ids for the attributes
@@ -3209,7 +3211,7 @@ TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
   TRI_vector_t filtered;
 
   // use filtered to hold copies of the master pointer
-  TRI_InitVector(&filtered, sizeof(TRI_doc_mptr_t));
+  TRI_InitVector(&filtered, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t));
 
   // do a full scan
   shaper = sim->base._shaper;
