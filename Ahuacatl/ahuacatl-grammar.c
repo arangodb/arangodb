@@ -78,7 +78,6 @@
 /* Line 189 of yacc.c  */
 #line 10 "Ahuacatl/ahuacatl-grammar.y"
 
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -89,7 +88,8 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-error.h"
-
+#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-parser-functions.h"
 
 
 /* Line 189 of yacc.c  */
@@ -226,7 +226,7 @@ int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char* err) {
-  TRI_SetParseErrorAql(context, err, locp->first_line, locp->first_column);
+  TRI_SetErrorParseAql(context, err, locp->first_line, locp->first_column);
 }
 
 #define scanner context->_parser->_scanner

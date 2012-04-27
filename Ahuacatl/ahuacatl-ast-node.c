@@ -42,7 +42,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define ABORT_OOM                                                                \
-  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                       \
+  TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                \
   return NULL;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,6 +107,16 @@ static inline void InitNode (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST main node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeMainAql (TRI_aql_context_t* const context) {
+  CREATE_NODE(AQL_NODE_MAIN)
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,7 +130,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
   }
 
   if (!TRI_IsValidVariableNameAql(name)) { 
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
     return NULL;
   }
   
@@ -132,6 +142,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
 
   return node;
 }
+
 /*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node
@@ -288,7 +299,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
   
   if (!TRI_AddVariableContextAql(context, name)) {
     // duplicate variable name 
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
   }
   
@@ -843,7 +854,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
 
     if (!function) {
       // function name is unknown
-      TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
       return NULL;
     }
 

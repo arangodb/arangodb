@@ -50,7 +50,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
 
   if (!TRI_IsNumericValueNodeAql(operand)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
@@ -66,7 +66,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     // - number => eval!
     node = TRI_CreateNodeValueDoubleAql(context, - TRI_GetNumericNodeValueAql(operand));
     if (!node) {
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
   }
 
@@ -87,7 +87,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
 
   if (!TRI_IsBooleanValueNodeAql(operand)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
   
@@ -97,7 +97,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
     // ! bool => evaluate
     node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
     if (!node) {
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
   }
 
@@ -125,13 +125,13 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
 
   if (isEligibleLhs && !TRI_IsBooleanValueNodeAql(lhs)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   if (isEligibleRhs && !TRI_IsBooleanValueNodeAql(rhs)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
@@ -189,19 +189,19 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   
   if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
   
   if (isEligibleRhs && !TRI_IsNumericValueNodeAql(rhs)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
   
   if (TRI_IsConstantValueNodeAql(rhs) && !TRI_IsNumericValueNodeAql(rhs)) {
     // todo: fix error message
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
   
@@ -227,7 +227,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // todo: fix error message
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return node;
     }
     value = TRI_GetNumericNodeValueAql(lhs) / TRI_GetNumericNodeValueAql(rhs);
@@ -235,7 +235,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // todo: fix error message
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return node;
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
@@ -243,7 +243,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   
   node = TRI_CreateNodeValueDoubleAql(context, value);
   if (!node) {
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -306,7 +306,7 @@ TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
 
   walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);
   if (!walker) {
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
