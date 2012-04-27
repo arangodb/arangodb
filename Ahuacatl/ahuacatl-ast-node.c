@@ -50,7 +50,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define CREATE_NODE(type)                                                        \
-  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(sizeof(TRI_aql_node_t)); \
+  TRI_aql_node_t* node = (TRI_aql_node_t*)                                       \
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);           \
   if (!node) {                                                                   \
     ABORT_OOM                                                                    \
   }                                                                              \
@@ -88,7 +89,7 @@ static inline void InitNode (TRI_aql_context_t* const context,
   node->_type = type;
   node->_next = NULL;
  
-  TRI_InitVectorPointer(&node->_subNodes);
+  TRI_InitVectorPointer(&node->_subNodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_RegisterNodeContextAql(context, node);
 }
 
@@ -947,7 +948,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     }
 
     function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-    TRI_Free(upperName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
 
     if (!function) {
       // function name is unknown

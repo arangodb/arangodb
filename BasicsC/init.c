@@ -48,6 +48,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseC () {
+  TRI_InitialiseMemory();
   TRI_InitialiseError();
   TRI_InitialiseLogging(true);
   TRI_InitialiseHashes();

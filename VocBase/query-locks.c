@@ -64,11 +64,11 @@ void TRI_FreeLocksQueryInstance (TRI_vocbase_t* const vocbase,
 
     EndCollectionUsage(vocbase, lock->_collection, lock->_collectionName);
 
-    TRI_Free(lock->_collectionName);
-    TRI_Free(lock);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, lock->_collectionName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, lock);
   }
 
-  TRI_FreeVectorPointer(locks);
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, locks);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
     }
 
     // allocate a new lock struct
-    lock = (TRI_query_instance_lock_t*) TRI_Allocate(sizeof(TRI_query_instance_lock_t));
+    lock = (TRI_query_instance_lock_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_lock_t), false);
     if (!lock) {
       TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -158,7 +158,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
       TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         
       TRI_UnlockCollectionsQueryInstance(vocbase, locks);
-      TRI_Free(lock);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lock);
       return false;
     }
 
@@ -174,8 +174,8 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
                                      part->_collectionName);
 
       TRI_UnlockCollectionsQueryInstance(vocbase, locks);
-      TRI_Free(lock->_collectionName);
-      TRI_Free(lock);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lock->_collectionName);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lock);
       return false;
     }
 
@@ -262,13 +262,13 @@ bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instanc
 ////////////////////////////////////////////////////////////////////////////////
   
 TRI_vector_pointer_t* TRI_InitLocksQueryInstance (void) {
-  TRI_vector_pointer_t* locks = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  TRI_vector_pointer_t* locks = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
   if (!locks) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(locks);
+  TRI_InitVectorPointer(locks, TRI_UNKNOWN_MEM_ZONE);
 
   return locks;
 }

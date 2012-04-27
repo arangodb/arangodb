@@ -56,7 +56,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 
   assert(name);
 
-  collection = (TRI_aql_collection_t*) TRI_Allocate(sizeof(TRI_aql_collection_t));
+  collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
   if (!collection) {
     return NULL;
   }

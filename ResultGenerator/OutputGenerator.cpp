@@ -92,7 +92,7 @@ namespace triagens {
 
 
       string json (VariantObject* object) {
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
         string contentType;
 

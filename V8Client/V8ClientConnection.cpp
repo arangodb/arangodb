@@ -198,16 +198,17 @@ namespace triagens {
         // complete        
         _lastHttpReturnCode = _httpResult->getHttpReturnCode();
         
+        // got a body
         if (_httpResult->getBody().str().length() > 0) {
-          // got a body
-          
           string contentType = _httpResult->getContentType(true);
+
           if (contentType == "application/json") {
-            TRI_json_t* js = TRI_JsonString(_httpResult->getBody().str().c_str());
-            if (js) {
+            TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _httpResult->getBody().str().c_str());
+
+            if (js != NULL) {
               // return v8 object
               v8::Handle<v8::Value> result = TRI_ObjectJson(js);
-              TRI_FreeJson(js);
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
               return result;
             }
           }

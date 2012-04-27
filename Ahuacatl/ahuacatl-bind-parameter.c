@@ -184,21 +184,21 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
   assert(name);
   assert(value);
 
-  parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(sizeof(TRI_aql_bind_parameter_t));
+  parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
   if (!parameter) {
     return NULL;
   }
 
   parameter->_name = TRI_DuplicateString(name);
   if (!parameter->_name) {
-    TRI_Free(parameter);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
     return NULL;
   }
 
-  parameter->_value = TRI_CopyJson((TRI_json_t*) value);
+  parameter->_value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) value);
   if (!parameter->_value) {
-    TRI_Free(parameter->_name);
-    TRI_Free(parameter);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
     return NULL;
   }
 
@@ -263,9 +263,9 @@ void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
     assert(parameter->_name);
     assert(parameter->_value);
 
-    TRI_FreeString(parameter->_name);
-    TRI_FreeJson(parameter->_value);
-    TRI_Free(parameter);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_value);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
   }
 }
 

@@ -34,7 +34,8 @@ namespace triagens {
 /// @brief constructs a JSON data container
 ////////////////////////////////////////////////////////////////////////////////
 
-    JsonContainer::JsonContainer (TRI_json_t* data) : _data(data) {
+    JsonContainer::JsonContainer (TRI_memory_zone_t* zone, TRI_json_t* data)
+      : _memoryZone(zone), _data(data) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +44,7 @@ namespace triagens {
     
     JsonContainer::~JsonContainer () {
       if (_data) {
-        TRI_FreeJson(_data);
+        TRI_FreeJson(_memoryZone, _data);
       } 
     }
   }

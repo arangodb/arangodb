@@ -91,8 +91,8 @@ namespace triagens {
 /// @brief initialises the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer () {
-          TRI_InitStringBuffer(&_buffer);
+        StringBuffer (TRI_memory_zone_t* zone) {
+          TRI_InitStringBuffer(&_buffer, zone);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

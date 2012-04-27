@@ -303,15 +303,15 @@ void TRI_set_errno_string (int error, char const* msg) {
     exit(EXIT_FAILURE);
   }
 
-  entry = (TRI_error_t*) TRI_Allocate(sizeof(TRI_error_t));
-  if (entry) {
-    entry->_code = error;
-    entry->_message = TRI_DuplicateString(msg);
-    TRI_InsertKeyAssociativePointer(&ErrorMessages,
-                                    &error, 
-                                    entry, 
-                                    false);
-  }
+  entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t), false);
+
+  entry->_code = error;
+  entry->_message = TRI_DuplicateString(msg);
+
+  TRI_InsertKeyAssociativePointer(&ErrorMessages,
+                                  &error, 
+                                  entry, 
+                                  false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +357,7 @@ void TRI_InitialiseError () {
   }
 
   TRI_InitAssociativePointer(&ErrorMessages,
+                             TRI_CORE_MEM_ZONE,
                              HashErrorCode,
                              HashError,
                              EqualError,
@@ -389,11 +390,13 @@ void TRI_ShutdownError () {
 
   for (i = 0; i < ErrorMessages._nrAlloc; i++) {
     TRI_error_t* entry = ErrorMessages._table[i];
+
     if (entry) {
       if (entry->_message) {
-        TRI_Free(entry->_message);
+        TRI_Free(TRI_CORE_MEM_ZONE, entry->_message);
       }
-      TRI_Free(entry);
+
+      TRI_Free(TRI_CORE_MEM_ZONE, entry);
     }
   }
 

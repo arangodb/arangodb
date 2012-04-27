@@ -6,18 +6,18 @@
 
 BUILT_SOURCES += @MRUBY_LIBS@
 
-@MRUBY_LIBS@: .mruby-build
+@MRUBY_LIBS@: .mruby-build-@TRI_BITS@
 
-.mruby-build:
+.mruby-build-@TRI_BITS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING LIBEV"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/mruby && make
+	cd @top_srcdir@/3rdParty/mruby && $(MAKE)
 
-	touch .mruby-build
+	touch .mruby-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"

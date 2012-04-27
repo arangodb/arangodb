@@ -6,18 +6,18 @@
 
 BUILT_SOURCES += @V8_LIBS@
 
-@V8_LIBS@: .v8-build
+@V8_LIBS@: .v8-build-@TRI_BITS@
 
-.v8-build:
+.v8-build-@TRI_BITS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING V8"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off @V8_TARGET@
+	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
 
-	touch .v8-build
+	touch .v8-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
