@@ -654,6 +654,7 @@ static yyconst flex_int16_t yy_rule_linenum[47] =
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*
 
@@ -662,7 +663,7 @@ static yyconst flex_int16_t yy_rule_linenum[47] =
 #define YY_NO_INPUT 1
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
-  TRI_aql_parser_t* parser = (yyextra)->_parser;                         \
+  TRI_aql_parser_t* parser = (TRI_aql_parser_t*) (yyextra)->_parser;     \
   int length = parser->_length;                                          \
   if (length > maxBytesToRead) {                                         \
     length = maxBytesToRead;                                             \

@@ -92,7 +92,7 @@ bool SetupCollections (TRI_aql_context_t* const context) {
     collection = CreateCollectionContainer(name);
     if (!collection) {
       result = false;
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
     }
 
@@ -135,7 +135,7 @@ bool OpenCollections (TRI_aql_context_t* const context) {
     name = collection->_name;
     collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, name);
     if (!collection->_collection) {
-      TRI_SetErrorAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
       return false;
     }
   }
@@ -233,7 +233,7 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
     if (lockResult != TRI_ERROR_NO_ERROR) {
       // couldn't acquire the read lock
       result = false;
-      TRI_SetErrorAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
       break;
     }
     else {
@@ -314,7 +314,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     if (!ce) {
       // couldn't create the barrier
       result = false;
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
     }
     else {

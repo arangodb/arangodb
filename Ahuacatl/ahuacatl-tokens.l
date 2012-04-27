@@ -14,6 +14,7 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*
 
@@ -22,7 +23,7 @@
 #define YY_NO_INPUT 1
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
-  TRI_aql_parser_t* parser = (yyextra)->_parser;                         \
+  TRI_aql_parser_t* parser = (TRI_aql_parser_t*) (yyextra)->_parser;     \
   int length = parser->_length;                                          \
   if (length > maxBytesToRead) {                                         \
     length = maxBytesToRead;                                             \
@@ -37,7 +38,6 @@
     resultState = YY_NULL;                                               \
   }                                                                      \
 }
-
 %}
 
 %%

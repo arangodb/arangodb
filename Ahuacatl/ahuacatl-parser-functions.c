@@ -1,0 +1,115 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Ahuacatl, parser functionality
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Ahuacatl/ahuacatl-parser-functions.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    private macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut macro for signalling out of memory
+////////////////////////////////////////////////////////////////////////////////
+
+#define ABORT_OOM \
+  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+  return NULL;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @} 
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init the lexer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_InitParserAql (TRI_aql_context_t* const context) {
+  assert(context);
+  assert(context->_parser);
+
+  Ahuacatllex_init(&context->_parser->_scanner);
+  Ahuacatlset_extra(context, context->_parser->_scanner);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse & validate the query string
+////////////////////////////////////////////////////////////////////////////////
+  
+bool TRI_ParseAql (TRI_aql_context_t* const context) {
+  if (Ahuacatlparse(context)) {
+    // lexing/parsing failed
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a parse error
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
+                           const char* const message,
+                           const int line,
+                           const int column) {
+  char buffer[1024];
+
+  snprintf(buffer, 
+           sizeof(buffer), 
+           "%d:%d %s near '%s'", 
+           line,
+           column,
+           message, 
+           TRI_GetContextErrorAql(context->_query, line, column));
+
+  TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

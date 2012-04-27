@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 utility functions
+/// @brief general cursors
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,139 +21,180 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_CONV_H
-#define TRIAGENS_V8_V8_CONV_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_GENERAL_CURSOR_H
+#define TRIAGENS_DURHAM_VOC_BASE_GENERAL_CURSOR_H 1
 
-#include "V8/v8-globals.h"
+#include <BasicsC/vector.h>
+#include <BasicsC/logging.h>
 
-#include "BasicsC/json.h"
-#include "V8/v8-c-utils.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/shadow-data.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
+// --SECTION--                                                cursor result sets
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Conversions
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes the names of an associative char* array into a V8 array
+/// @brief typedef for cursor result set length and position
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer_t* const);
+typedef uint32_t TRI_general_cursor_length_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts identifier into a object reference
+/// @brief typedef for cursor result row data type
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t, TRI_voc_did_t);
+typedef void* TRI_general_cursor_row_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extratcs identifiers from a object reference
+/// @brief cursor result set data type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value>, TRI_voc_cid_t&, TRI_voc_did_t&);
+typedef struct TRI_general_cursor_result_s {
+  void* _data;
+  bool _freed;
+
+  void (*freeData)(struct TRI_general_cursor_result_s*);
+  TRI_general_cursor_row_t (*getAt)(struct TRI_general_cursor_result_s*, const TRI_general_cursor_length_t);
+  TRI_general_cursor_length_t (*getLength)(struct TRI_general_cursor_result_s*);
+}
+TRI_general_cursor_result_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_json_t into a V8 object
+/// @brief create a cursor result set
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
+TRI_general_cursor_result_t* TRI_CreateCursorResult (void*,
+  void (*freeData)(TRI_general_cursor_result_t*),
+  TRI_general_cursor_row_t (*getAt)(TRI_general_cursor_result_t*, const TRI_general_cursor_length_t),
+  TRI_general_cursor_length_t (*getLength)(TRI_general_cursor_result_t*));
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a TRI_shaped_json_t
+/// @brief destroy a cursor result set but do not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value>, TRI_shaper_t*);
+void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a string
+/// @brief free a cursor result set 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_ObjectToString (v8::Handle<v8::Value>);
+void TRI_FreeCursorResult (TRI_general_cursor_result_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a character
+/// @} 
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_ObjectToCharacter (v8::Handle<v8::Value>, bool& error);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           cursors
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to an int64_t
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value>);
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a uint64_t
+/// @brief result cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value>);
+typedef struct TRI_general_cursor_s {
+  TRI_general_cursor_result_t* _result;
+  TRI_general_cursor_length_t _length;
+  TRI_general_cursor_length_t _currentRow;
+  bool _hasCount;
+  uint32_t _batchSize;
+  
+  TRI_mutex_t _lock;
+  bool _deleted;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a double
-////////////////////////////////////////////////////////////////////////////////
-
-double TRI_ObjectToDouble (v8::Handle<v8::Value>);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a double
-////////////////////////////////////////////////////////////////////////////////
-
-double TRI_ObjectToDouble (v8::Handle<v8::Value>, bool& error);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a boolean
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ObjectToBoolean (v8::Handle<v8::Value>);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
-                                         TRI_shape_t const*,
-                                         char const* data,
-                                         size_t size);
+  void (*free)(struct TRI_general_cursor_s*);
+  TRI_general_cursor_row_t (*next)(struct TRI_general_cursor_s* const);
+  bool (*hasNext)(const struct TRI_general_cursor_s* const);
+  bool (*hasCount)(const struct TRI_general_cursor_s* const);
+  TRI_general_cursor_length_t (*getBatchSize)(const struct TRI_general_cursor_s* const);
+}
+TRI_general_cursor_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Conversions
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the V8 conversion module
+/// @brief frees a cursor 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Conversions (v8::Handle<v8::Context>);
+void TRI_FreeGeneralCursor (TRI_general_cursor_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a cursor
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t*,
+                                               const bool,
+                                               const TRI_general_cursor_length_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exclusively lock a cursor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LockGeneralCursor (TRI_general_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock a general cursor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UnlockGeneralCursor (TRI_general_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free a cursor based on its data pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowGeneralCursor (void*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create shadow data store for cursors 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_store_t* TRI_CreateShadowsGeneralCursor (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
