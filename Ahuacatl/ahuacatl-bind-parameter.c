@@ -83,7 +83,7 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&node->_subNodes, (void*) subNode); 
         }
         else {
-          TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
       }
@@ -116,7 +116,7 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
 
         valueNode = CreateNodeFromJson(context, valueJson);
         if (!valueNode) {
-          TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
 
@@ -125,7 +125,7 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&node->_subNodes, (void*) subNode); 
         }
         else {
-          TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
       }
@@ -134,7 +134,7 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
   }
 
   if (!node) {
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   return node;
@@ -287,7 +287,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
 
   if (parameters->_type != TRI_JSON_ARRAY) {
     // parameters must be a list
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
     return false;
   }
 
@@ -308,7 +308,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
 
     parameter = CreateParameter(name->_value._string.data, value);
     if (!parameter) {
-      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
  
@@ -336,7 +336,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
     }
 
     if (!TRI_LookupByKeyAssociativePointer(&context->_parameterValues, name)) {
-      TRI_SetErrorAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
       return false;
     }
   }
@@ -355,7 +355,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
     assert(parameter->_name);
 
     if (!TRI_LookupByKeyAssociativePointer(&context->_parameterNames, parameter->_name)) {
-      TRI_SetErrorAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
       return false;
     }
   }
@@ -381,7 +381,7 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context,
   
   walker = TRI_CreateModifyTreeWalkerAql(context, &ModifyNode);
   if (!walker) {
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
