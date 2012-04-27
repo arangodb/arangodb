@@ -421,7 +421,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   intptr_t handle;
   char* filter;
   
-  TRI_InitVectorString(&result);
+  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   filter = TRI_Concatenate2String(path, "\\*");
   if (!filter) {
