@@ -37,7 +37,7 @@ dnl ----------------------------------------------------------------------------
 
 AC_DEFUN([TRI_TRY_CC_OPTION],
          [AC_MSG_CHECKING([$1 for $CC])
-          AS_IF([AC_TRY_COMMAND([${CC-cc} $1 -xc /dev/null -S -o /dev/null])],
+          AS_IF([AC_TRY_COMMAND([${CC-cc} -Werror $1 -xc /dev/null -S -o /dev/null])],
                 AC_MSG_RESULT([yes])
                 [$2], 
                 AC_MSG_RESULT([no])
@@ -51,7 +51,7 @@ dnl ----------------------------------------------------------------------------
 
 AC_DEFUN([TRI_TRY_CXX_OPTION],
          [AC_MSG_CHECKING([$1] for $CXX)
-          AS_IF([AC_TRY_COMMAND([${CXX-c++} $1 -xc /dev/null -S -o /dev/null])],
+          AS_IF([AC_TRY_COMMAND([${CXX-c++} -Werror $1 -xc++ /dev/null -S -o /dev/null])],
                 AC_MSG_RESULT([yes])
                 [$2], 
                 AC_MSG_RESULT([no])
