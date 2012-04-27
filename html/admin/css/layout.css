@@ -12,6 +12,9 @@ th {
   font-size: 1.1em; 
 }
 
+#logToolbar a {
+  font-size: 0.85em;  
+}
 #logToolbar {
   height:24px; 
   border: 1px solid #AAAAAA;
@@ -72,6 +75,10 @@ th {
 
 #createCollectionView {
   height:130px;
+}
+
+#editCollectionView {
+  width: 50%;  
 }
 
 #newCollection_left  {
@@ -136,7 +143,6 @@ th {
 
 #queryContent {
   width: 100%;
-  height: 60%;  
 }
 
 #avocshWindow {
