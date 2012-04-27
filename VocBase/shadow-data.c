@@ -664,7 +664,7 @@ static TRI_shadow_document_t* CreateShadowDocument (void* const element,
 
   shadow = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_document_t), false);
   if (!shadow) {
-    TRI_Free(base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, base);
     return NULL;
   }
 
@@ -786,7 +786,7 @@ void TRI_FreeShadowDocumentStore (TRI_shadow_document_store_t* const store) {
   assert(store);
 
   TRI_FreeShadowStore(store->_base);
-  TRI_Free(store);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,8 +864,8 @@ bool TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const store,
   if (shadow->_base->_rc < 1) {
     TRI_RemoveElementAssociativePointer(&store->_base->_index, shadow);
     store->destroyShadow(store, shadow);
-    TRI_Free(shadow->_base);
-    TRI_Free(shadow);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow->_base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow);
     result = true; // object was destroyed
   }
   else {
@@ -906,7 +906,7 @@ void TRI_CleanupShadowDocuments (TRI_shadow_document_store_t* const store, const
         LOG_DEBUG("cleaning expired shadow %p", shadow);
         TRI_RemoveElementAssociativePointer(&store->_base->_index, shadow);
 //        store->destroyShadow(store, shadow);
-//        TRI_Free(shadow);
+//        TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow);
 
         deleted = true;
         // the remove might reposition elements in the container.

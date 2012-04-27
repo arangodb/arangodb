@@ -75,7 +75,7 @@ static DWORD __stdcall ThreadStarter (void* data) {
   d = data;
   d->starter(d->_data);
 
-  TRI_Free(d);
+  TRI_Free(TRI_CORE_MEM_ZONE, d);
 
   return 0;
 }
@@ -159,7 +159,7 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*start)(void*), void* data) {
                          &threadId); // returns the thread identifier
 
   if (*thread == 0) {
-    TRI_Free(d);
+    TRI_Free(TRI_CORE_MEM_ZONE, d);
     LOG_ERROR("could not start thread: %s ", strerror(errno));
     return false;
   }
