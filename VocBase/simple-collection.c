@@ -2692,7 +2692,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   if (latitude != NULL) {
     lat = shaper->findAttributePathByName(shaper, latitude);
 
-    if (loc == 0) {
+    if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }
@@ -2701,7 +2701,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   if (longitude != NULL) {
     lon = shaper->findAttributePathByName(shaper, longitude);
 
-    if (loc == 0) {
+    if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }

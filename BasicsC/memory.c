@@ -274,8 +274,9 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 #endif
   char* p;
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
   p = (char*) m;
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
   p -= sizeof(intptr_t);
 
   if (* (intptr_t*) p != zone->_zid) {

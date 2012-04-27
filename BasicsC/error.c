@@ -305,14 +305,13 @@ void TRI_set_errno_string (int error, char const* msg) {
 
   entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t), false);
 
-  if (entry) {
-    entry->_code = error;
-    entry->_message = TRI_DuplicateString(msg);
-    TRI_InsertKeyAssociativePointer(&ErrorMessages,
-                                    &error, 
-                                    entry, 
-                                    false);
-  }
+  entry->_code = error;
+  entry->_message = TRI_DuplicateString(msg);
+
+  TRI_InsertKeyAssociativePointer(&ErrorMessages,
+                                  &error, 
+                                  entry, 
+                                  false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
