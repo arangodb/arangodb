@@ -3,13 +3,18 @@
 /// avocadodb js api  
 ///////////////////////////////////////////////////////////////////////////////
 
+// documents global vars
+var collectionCount;
+var totalCollectionCount;
+var collectionCurrentPage;  
+var globalCollectionName;  
+
 $(document).ready(function() {       
 
 showCursor();
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
-var userScreenSize = $(window).width();  
 var open = false;
 var tableView = true;
 var sid = ($.cookie("sid")); 
@@ -18,8 +23,9 @@ var currentUser;
 var currentPage = 1; 
 var currentAmount; 
 var currentTableID = "#logTableID"; 
-var currentLoglevel = 5;   
+var currentLoglevel = 5;  
 //live click for all log tables 
+
 var tables = ["#logTableID", "#critLogTableID", "#warnLogTableID", "#infoLogTableID", "#debugLogTableID"];
 
 $.each(tables, function(v, i ) {
@@ -40,6 +46,15 @@ $.each(tables, function(v, i ) {
       createPrevPagination();  
     }
   });
+});
+
+
+$("#documents_prev").live('click', function () {
+  createPrevDocPagination();
+});
+
+$("#documents_next").live('click', function () {
+  createNextDocPagination();
 });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -401,21 +416,22 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
-      var collectionName; 
-
+      
       $.ajax({
         type: "GET",
-        url: "/_api/collection/" + collectionID,
+        url: "/_api/collection/" + collectionID + "/count", 
         contentType: "application/json",
-        processData: false, 
+        processData: false,
+        async: false,  
         success: function(data) {
-          collectionName = data.name;
-          $('#nav2').text('-> ' + collectionName);
+          globalCollectionName = data.name;
+          test = data.name; 
+          collectionCount = data.count; 
+          $('#nav2').text('-> ' + globalCollectionName);
         },
         error: function(data) {
         }
       });
-
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
@@ -423,60 +439,27 @@ var logTable = $('#logTableID').dataTable({
       $('#nav3').text(''); 
 
       $.ajax({
-        type: "GET",
-        url: "/document?collection=" + collectionID,
+        type: 'PUT',
+        url: '/_api/simple/all/',
+        data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
         contentType: "application/json",
-        processData: false, 
         success: function(data) {
-          documentsTable.fnClearTable(); 
-          hideAllSubDivs();
-          $('#collectionsView').hide();
-          $('#documentsView').show();
-          $.each(data, function(key, val) {
-            $.each(val, function(key, val) {
-              $.ajax({
-                type: "GET", 
-                url: val,
-                contentType: "application/json", 
-                processData: false, 
-                success: function(data) {
-                  var dataString; 
-                  var content; 
-                  dataString = JSON.stringify(data);
-                  var escapedContent = escaped(dataString); 
-
-                  var userContent; 
-                  
-                  if (userScreenSize <= 1024) {
-                    userContent = 150; 
-                  }
-                  else if (userScreenSize > 1024 && userScreenSize < 1680) {
-                    userContent = 250; 
-                  }
-                  else if (userScreenSize > 1680) {
-                    userContent = 350; 
-                  }
-
-                  if (escapedContent.length > userContent) { 
-                    content = escapedContent.substr(0,(userContent-3))+'...';   
-                  }
-                  else {
-                    content = escapedContent; 
-                  }
-                  documentsTable.fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-                    data._id, data._rev, content]);
-                },
-                error: function (data) {
-                } 
-              });
-            });
-          }); 
+          $.each(data, function(k, v) {
+            documentsTable.fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+          });
         },
         error: function(data) {
-
+          
         }
       });
-
+      documentsTable.fnClearTable(); 
+      hideAllSubDivs();
+      $('#collectionsView').hide();
+      $('#documentsView').show();
+      totalCollectionCount = Math.ceil(collectionCount / 10); 
+      collectionCurrentPage = 1;
+      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
+      console.log(globalCollectionName); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -586,7 +569,6 @@ var logTable = $('#logTableID').dataTable({
         $.each(content[data], function(key, val) {
           $('#configView').append('<a>' + key + ":" + val + '</a><br>');
         });         
- 
         //$('#configView').append('<a>' + menues + '</a><br>');
       }); 
 
@@ -647,6 +629,7 @@ var logTable = $('#logTableID').dataTable({
           collectionID = row_data[3]; 
         } 
         else {
+          //TODO
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
         
@@ -998,6 +981,62 @@ var logTable = $('#logTableID').dataTable({
   });
 
 ///////////////////////////////////////////////////////////////////////////////
+/// submit log search 
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#submitLogSearch').live('click', function () {  
+
+    var content = $('#logSearchField').val();
+    var selected = $("#tabs").tabs( "option", "selected" ); 
+    
+    var currentTableID; 
+    if (selected == 1) {currentTableID = "#critLogTableID";  } 
+    else if (selected == 2) {currentTableID = "#warnLogTableID";} 
+    else if (selected == 3) {currentTableID = "#infoLogTableID";} 
+    else if (selected == 4) {currentTableID = "#debugLogTableID";} 
+ 
+    switch (selected) {
+    case 0:
+      if(content == '') {
+        createLogTable(5); 
+      }
+      else {
+        $('#logTableID').dataTable().fnClearTable();
+        $('#logTableID_status').text('Showing all entries for: "' + content + '"'); 
+        $.getJSON("/_admin/log?search=" + content, function(data) {
+          var totalAmount = data.totalAmount; 
+          var items=[];
+          var i=0; 
+     
+          $.each(data.lid, function () {
+            $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
+            i++;
+          });
+        });
+      }
+      break; 
+      default:
+        if(content == '') {
+          createLogTable(selected); 
+        } 
+        else { 
+          $(currentTableID).dataTable().fnClearTable();
+          $(currentTableID + '_status').text('Showing all entries for: "' + content + '"'); 
+          $.getJSON("/_admin/log?search=" + content + "&level=" + selected, function(data) {
+            var totalAmount = data.totalAmount; 
+            var items=[];
+            var i=0; 
+            $.each(data.lid, function () {
+              $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]);
+              i++;
+            });
+          });
+        }
+    }
+  return false;          
+  });
+
+///////////////////////////////////////////////////////////////////////////////
 /// deletes a row in new document view
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1346,7 +1385,7 @@ function drawCollectionsTable () {
        }
       else if (tempStatus == 3) {
         tempStatus = "loaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus, "", ""]);
       }
       else if (tempStatus == 4) {
@@ -1413,7 +1452,6 @@ function documentTableMakeEditable (tableID) {
         return value; 
       }
       if (aPos[1] == 2) {
-        //marker
         var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
         if (typeof(oldContent) == 'object') {
           return JSON.stringify(oldContent); 
@@ -1565,9 +1603,7 @@ $(function() {
 ///////////////////////////////////////////////////////////////////////////////
 /// Log tables pagination  
 ///////////////////////////////////////////////////////////////////////////////
-
 function createLogTable(loglevel) { 
-  console.log(loglevel); 
   currentPage = 1;  
   currentLoglevel = loglevel;  
   var url = "/_admin/log?level="+loglevel+"&size=10";
@@ -1577,7 +1613,8 @@ function createLogTable(loglevel) {
   else if (loglevel == 2) {currentTableID = "#warnLogTableID";} 
   else if (loglevel == 3) {currentTableID = "#infoLogTableID";} 
   else if (loglevel == 4) {currentTableID = "#debugLogTableID";} 
-  else if (loglevel == 5) {currentTableID = "#logTableID";
+  else if (loglevel == 5) {
+    currentTableID = "#logTableID";
     url = "/_admin/log?upto=4&size=10"; 
   } 
 //get first rows
@@ -1586,6 +1623,7 @@ function createLogTable(loglevel) {
     var items=[];
     var i=0; 
     currentAmount = data.totalAmount; 
+    var totalPages = Math.ceil(currentAmount / 10); 
 //clear table   
     $(currentTableID).dataTable().fnClearTable();
 //draw first 10 rows
@@ -1593,17 +1631,79 @@ function createLogTable(loglevel) {
       $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]);
       i++;
     });
+
+  if (totalPages == 0) {
+    $(currentTableID + '_status').text("Showing page 0 of 0");
+    return 0;  
+  }
+
+  $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
   });
 }
 
-function createPrevPagination(checked) {
-  if (currentPage == 1) {
+function createPrevDocPagination() {
+  if (collectionCurrentPage == 1) {
     return 0; 
   }
+  var prevPage = JSON.parse(collectionCurrentPage) -1; 
+  var offset = prevPage * 10 - 10; 
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+    },
+    error: function(data) {        
+    }
+  });
+  collectionCurrentPage = prevPage; 
+  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
+}
+//marker
+function createNextDocPagination () {
+
+console.log("start"); 
+
+  if (collectionCurrentPage == totalCollectionCount) {
+    return 0; 
+  }
+   
+  var nextPage = JSON.parse(collectionCurrentPage) +1; 
+  var offset =  collectionCurrentPage * 10; 
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $("#documentsTableID").dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+    },
+    error: function(data) {        
+    }
+  });
+  collectionCurrentPage = nextPage; 
+  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
+}
+
+function createPrevPagination(checked) {
   var prevPage = JSON.parse(currentPage) - 1; 
   var offset = prevPage * 10 - 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
+  var totalPages = Math.ceil(currentAmount / 10); 
 
+  if (currentPage == 1 || totalPages == 0 ) {
+    return 0; 
+  }
   if (checked == "all") {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
@@ -1617,6 +1717,7 @@ function createPrevPagination(checked) {
       i++; 
     });
   currentPage = JSON.parse(currentPage) - 1; 
+  $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
   }); 
 }
 
@@ -1626,12 +1727,11 @@ function createNextPagination(checked) {
   var offset = currentPage * 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
 
+  if (currentPage == totalPages || totalPages == 0 ) {
+    return 0; 
+  }
   if (checked == "all") {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
-  }
-
-  if (currentPage == totalPages) {
-    return 0; 
   }
 
   $.getJSON(url, function(data) {
@@ -1643,6 +1743,7 @@ function createNextPagination(checked) {
       i++
     });
     currentPage = JSON.parse(currentPage) + 1; 
+    $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
   });
 }
     
@@ -1650,4 +1751,29 @@ function showCursor() {
   $(':button').mouseover(function () {
     $(this).css('cursor', 'pointer');
   });
+}
+
+function cutByResolution (string) {
+  var userScreenSize = $(window).width();  
+  var content; 
+  var escapedContent = escaped(string); 
+  var userContent; 
+
+  if (userScreenSize <= 1024) {
+    userContent = 150; 
+  }
+  else if (userScreenSize > 1024 && userScreenSize < 1680) {
+    userContent = 250; 
+  }
+  else if (userScreenSize > 1680) {
+    userContent = 350; 
+  }
+
+  if (escapedContent.length > userContent) { 
+    content = escapedContent.substr(0,(userContent-3))+'...';   
+  }
+  else {
+    content = escapedContent; 
+  }
+  return content; 
 }
