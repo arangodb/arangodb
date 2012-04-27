@@ -28,6 +28,8 @@
 #include "skiplist.h"
 #include <BasicsC/random.h>
 
+#include "compare.h"
+
 #define SKIPLIST_ABSOLUTE_MAX_HEIGHT 100
 
 // -----------------------------------------------------------------------------
@@ -89,18 +91,26 @@ static void TRI_DestroySkipListNode (TRI_skiplist_node_t* node) {
 /// @brief Grow the node at the height specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
+static bool GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
                            
   TRI_skiplist_nb_t* oldColumn = node->_column;
   uint32_t j;
 
   if (node->_colLength >= newHeight) {
-    return;
+    return true;
   }
   
-  node->_column = TRI_Allocate(sizeof(TRI_skiplist_node_t) * newHeight);
-  /* FIXME: memory allocation might fail */
-  memcpy(node->_column, oldColumn, node->_colLength * sizeof(TRI_skiplist_node_t) );
+  node->_column = TRI_Allocate(sizeof(TRI_skiplist_nb_t) * newHeight);
+  
+  if (node->_column == NULL) {
+    // out of memory?
+    return false;
+  }
+  
+  if (oldColumn != NULL) {
+    memcpy(node->_column, oldColumn, node->_colLength * sizeof(TRI_skiplist_nb_t) );
+    TRI_Free(oldColumn);
+  }
   
   // ...........................................................................
   // Initialise the storage
@@ -111,8 +121,9 @@ static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
     (node->_column)[j]._next = NULL; 
   }
   
-  TRI_Free(oldColumn);
   node->_colLength = newHeight;
+  
+  return true;
 }
 
 
@@ -323,6 +334,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
                        int (*compareKeyElement) (TRI_skiplist_t*, void*, void*, int),
                        TRI_skiplist_prob_e probability, uint32_t maximumHeight) {
 
+  bool growResult;
   if (skiplist == NULL) {
     return;
   }
@@ -333,6 +345,12 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   
   skiplist->compareElementElement = compareElementElement;
   skiplist->compareKeyElement     = compareKeyElement;
+
+#ifndef USE_STATIC_SKIPLIST_COMPARE  
+  if (compareElementElement == NULL || compareKeyElement == NULL) {
+    printf("%s:%d:Compare function pointers have a value of NULL\n",__FILE__,__LINE__);
+    assert(0);
+#endif
 
   // ..........................................................................  
   // Assign the maximum height of the skip list. This maximum height must be
@@ -413,8 +431,12 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // each node will have a height of two. So initialise the start and end nodes
   // with this 'average' height
   // ..........................................................................  
-  GrowNodeHeight(&(skiplist->_base._startNode), 2);
-  GrowNodeHeight(&(skiplist->_base._endNode), 2);
+  growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2); // may fail
+  growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2); // may fail
+  if (!growResult) {
+    // todo: undo growth by cutting down the node height
+    return;
+  }
 
   // ..........................................................................  
   // Join the empty lists together
@@ -502,6 +524,7 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  bool growResult;
   int j;
   
   // ...........................................................................  
@@ -539,8 +562,12 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
   // ...........................................................................  
   oldColLength = skiplist->_base._startNode._colLength;
   if ((uint32_t)(newHeight) > oldColLength) {
-    GrowNodeHeight(&(skiplist->_base._startNode), newHeight);
-    GrowNodeHeight(&(skiplist->_base._endNode), newHeight);
+    growResult = GrowNodeHeight(&(skiplist->_base._startNode), newHeight);
+    growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), newHeight);
+    if (!growResult) {
+      // todo: undo growth by cutting down the node height
+      return false;
+    }
     JoinNodes(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1); 
   }
   
@@ -559,11 +586,15 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
   // Copy the contents of element into the new node to be inserted.
   // If a duplicate has been found, then we destroy the allocated memory.
   // ...........................................................................  
-  newNode->_extraData = NULL;
+  newNode->_column    = NULL;
   newNode->_colLength = 0;  
+  newNode->_extraData = NULL;
   memcpy(&(newNode->_element),element,skiplist->_base._elementSize);
-  GrowNodeHeight(newNode, newHeight);
-
+  growResult = GrowNodeHeight(newNode, newHeight);
+  if (!growResult) {
+    TRI_FreeSkipListNode(&(skiplist->_base), newNode);
+    return false;
+  }
   
   // ...........................................................................  
   // Determine the path where the new item is to be inserted. If the item 
@@ -639,7 +670,12 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(nextNode->_element), 0);
+#else
       compareResult = skiplist->compareKeyElement(skiplist,key,&(nextNode->_element), 0);   
+#endif
+
       
       // .......................................................................    
       // The element matches the next element. Overwrite if possible and return.
@@ -794,7 +830,12 @@ void* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
+#else
       compareResult = skiplist->compareKeyElement(skiplist,key,&(nextNode->_element), -1);   
+#endif
+
     
       // .......................................................................    
       // -1 is returned if the number of fields (attributes) in the key is LESS
@@ -940,7 +981,11 @@ void* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(nextNode->_element), 0);
+#else
       compareResult = skiplist->compareKeyElement(skiplist,key,&(nextNode->_element), 0);   
+#endif
       
       // .......................................................................    
       // We have found the item!
@@ -1095,7 +1140,11 @@ bool TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* o
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticCompareElementElement(skiplist,element,&(nextNode->_element), -1);
+#else
       compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), -1);   
+#endif
       
       // .......................................................................    
       // We have found the item!
@@ -1260,7 +1309,11 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = skiplist->compareKeyElement(skiplist,key,&(prevNode->_element),1);   
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
+#else
+      compareResult = skiplist->compareKeyElement(skiplist,key,&(prevNode->_element), 1);   
+#endif
       
 
       // .......................................................................    
@@ -1359,6 +1412,8 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
                             TRI_skiplist_prob_e probability,
                             uint32_t maximumHeight) {
 
+  bool growResult;
+  
   if (skiplist == NULL) {
     return;
   }
@@ -1370,6 +1425,12 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   skiplist->compareElementElement = compareElementElement;
   skiplist->compareKeyElement     = compareKeyElement;
   skiplist->equalElementElement   = equalElementElement;
+  
+#ifndef USE_STATIC_SKIPLIST_COMPARE  
+  if (compareElementElement == NULL || compareKeyElement == NULL || equalElementElement == NULL) {
+    printf("%s:%d:Compare function pointers have a value of NULL\n",__FILE__,__LINE__);
+    assert(0);
+#endif
 
   // ..........................................................................  
   // Assign the maximum height of the skip list. This maximum height must be
@@ -1451,9 +1512,13 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // each node will have a height of two. So initialise the start and end nodes
   // with this 'average' height
   // ..........................................................................  
-  GrowNodeHeight(&(skiplist->_base._startNode), 2);
-  GrowNodeHeight(&(skiplist->_base._endNode), 2);
-
+  growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2);
+  growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2);
+  if (!growResult) {
+    // todo: truncate he nodes and return
+    return;
+  }
+  
   // ..........................................................................  
   // Join the empty lists together
   // [N]<----------------------------------->[N]
@@ -1603,7 +1668,11 @@ void* TRI_LeftLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
+#else
       compareResult = skiplist->compareKeyElement(skiplist,key,&(nextNode->_element), -1);   
+#endif
       
       
       // .......................................................................    
@@ -1685,6 +1754,7 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
   TRI_skiplist_node_t* newNode;
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
+  bool growResult;
   int compareResult;
   int j;
   
@@ -1723,8 +1793,12 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
   // ...........................................................................  
   oldColLength = skiplist->_base._startNode._colLength;
   if ((uint32_t)(newHeight) > oldColLength) {
-    GrowNodeHeight(&(skiplist->_base._startNode), newHeight);
-    GrowNodeHeight(&(skiplist->_base._endNode), newHeight);
+    growResult = GrowNodeHeight(&(skiplist->_base._startNode), newHeight);
+    growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), newHeight);
+    if (!growResult) {
+      // todo: truncate the nodes and return;
+      return false;
+    }
     JoinNodes(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1); 
   }
   
@@ -1743,11 +1817,15 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
   // Copy the contents of element into the new node to be inserted.
   // If a duplicate has been found, then we destroy the allocated memory.
   // ...........................................................................  
-  newNode->_extraData = NULL;
+  newNode->_column    = NULL;  
   newNode->_colLength = 0;  
+  newNode->_extraData = NULL;
   memcpy(&(newNode->_element),element,skiplist->_base._elementSize);
-  GrowNodeHeight(newNode, newHeight);
-
+  growResult = GrowNodeHeight(newNode, newHeight);
+  if (!growResult) {
+    TRI_FreeSkipListNode(&(skiplist->_base), newNode);
+    return false;
+  }
   
   // ...........................................................................  
   // Determine the path where the new item is to be inserted. If the item 
@@ -1823,7 +1901,11 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticMultiCompareElementElement(skiplist,element,&(nextNode->_element), -1);
+#else
       compareResult = skiplist->compareElementElement(skiplist, element, &(nextNode->_element), -1);   
+#endif
       
       
       // .......................................................................    
@@ -2030,7 +2112,11 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticMultiCompareElementElement(skiplist,element,&(nextNode->_element), TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS);
+#else
       compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS);   
+#endif
       
       // .......................................................................    
       // We have found an item which matches the key
@@ -2091,9 +2177,15 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
   // ..........................................................................
   
   while (currentNode != NULL) {
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+    if (IndexStaticMultiEqualElementElement(skiplist, element, &(currentNode->_element))) {
+      break;
+    }
+#else
     if (skiplist->equalElementElement(skiplist, element, &(currentNode->_element))) {
       break;
     }
+#endif    
     currentNode = TRI_NextNodeBaseSkipList(&(skiplist->_base), currentNode); 
   }
   
@@ -2230,7 +2322,11 @@ void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* ke
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
+#ifdef USE_STATIC_SKIPLIST_COMPARE  
+      compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
+#else
       compareResult = skiplist->compareKeyElement(skiplist,key,&(prevNode->_element), 1);   
+#endif
       
       
       // .......................................................................    
