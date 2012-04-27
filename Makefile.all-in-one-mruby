@@ -15,7 +15,7 @@ BUILT_SOURCES += @MRUBY_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/mruby && make
+	cd @top_srcdir@/3rdParty/mruby && make -j1
 
 	touch .mruby-build
 
