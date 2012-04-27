@@ -1,4 +1,5 @@
 #logView .fg-toolbar{display: none;}
+#documentsView .fg-toolbar{display: none;}
 
 html {
   font-family: Verdana,Arial,sans-serif; 
@@ -12,7 +13,10 @@ th {
   font-size: 1.1em; 
 }
 
-#logToolbar {
+#logToolbar a, #documentsToolbar a {
+  font-size: 0.85em;  
+}
+#logToolbar, #documentsToolbar{
   height:24px; 
   border: 1px solid #AAAAAA;
   padding-left: 3px; 
@@ -136,7 +140,6 @@ th {
 
 #queryContent {
   width: 100%;
-  height: 60%;  
 }
 
 #avocshWindow {
@@ -426,7 +429,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button {
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button, #documentsToolbar button {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
@@ -444,16 +447,11 @@ th {
   text-align: center;  
 }
 
-#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
+#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover, #documentsToolbar button:hover {
     background: #d9d9d9;
     -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
     -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
     box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
-    cursor: pointer; }
-#avocshView button:active, #queryView button:active, #tab_right button:active, #footerSlideContent button:active, form.jediTextarea > button:active {
-    background: #d0d0d0;
-    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
-    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
-    box-shadow: inset 0 0 1px 1px #e3e3e3;
-
+    cursor: pointer; 
+}
