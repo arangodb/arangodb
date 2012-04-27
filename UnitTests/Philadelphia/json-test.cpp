@@ -245,6 +245,38 @@ BOOST_AUTO_TEST_CASE (tst_json_string_escaped) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test string value (special chars)
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_string_utf8_1) {
+  INIT_BUFFER
+
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기");
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("\"\\uCF54\\uB9AC\\uC544\\uB2F7\\uCEF4 \\uBA54\\uC77C\\uC54C\\uB9AC\\uBBF8 \\uC11C\\uBE44\\uC2A4 \\uC911\\uB2E8\\uC548\\uB0B4 [\\uC548\\uB0B4] \\uAC1C\\uC778\\uC815\\uBCF4\\uCDE8\\uAE09\\uBC29\\uCE68 \\uBCC0\\uACBD \\uC548\\uB0B4 \\uD68C\\uC0AC\\uC18C\\uAC1C | \\uAD11\\uACE0\\uC548\\uB0B4 | \\uC81C\\uD734\\uC548\\uB0B4 | \\uAC1C\\uC778\\uC815\\uBCF4\\uCDE8\\uAE09\\uBC29\\uCE68 | \\uCCAD\\uC18C\\uB144\\uBCF4\\uD638\\uC815\\uCC45 | \\uC2A4\\uD338\\uBC29\\uC9C0\\uC815\\uCC45 | \\uC0AC\\uC774\\uBC84\\uACE0\\uAC1D\\uC13C\\uD130 | \\uC57D\\uAD00\\uC548\\uB0B4 | \\uC774\\uBA54\\uC77C \\uBB34\\uB2E8\\uC218\\uC9D1\\uAC70\\uBD80 | \\uC11C\\uBE44\\uC2A4 \\uC804\\uCCB4\\uBCF4\\uAE30\"", STRING_VALUE); 
+      
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string value (special chars)
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_string_utf8_2) {
+  INIT_BUFFER
+
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "äöüßÄÖÜ€µ");
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("\"\\u00E4\\u00F6\\u00FC\\u00DF\\u00C4\\u00D6\\u00DC\\u20AC\\u00B5\"", STRING_VALUE);
+   
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test empty json list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -255,6 +287,27 @@ BOOST_AUTO_TEST_CASE (tst_json_list_empty) {
 
   STRINGIFY
   BOOST_CHECK_EQUAL("[]", STRING_VALUE);
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty json list mixed
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_list_mixed) {
+  INIT_BUFFER
+
+  TRI_json_t* json = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -8093));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.5));
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox"));
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[null,true,false,-8093,1.5,\"the quick brown fox\"]", STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
