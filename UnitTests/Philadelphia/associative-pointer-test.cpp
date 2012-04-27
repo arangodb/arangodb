@@ -38,7 +38,7 @@
 
 #define INIT_ASSOC \
   TRI_associative_pointer_t a1; \
-  TRI_InitAssociativePointer(&a1, TRI_HashStringKeyAssociativePointer, HashElement, IsEqualKeyElement, IsEqualElementElement);
+  TRI_InitAssociativePointer(&a1, TRI_CORE_MEM_ZONE, TRI_HashStringKeyAssociativePointer, HashElement, IsEqualKeyElement, IsEqualElementElement);
 
 #define DESTROY_ASSOC \
   TRI_DestroyAssociativePointer(&a1);
@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert) {
     strcpy(key, "test");
     strcat(key, TRI_StringUInt32((uint32_t) i));
 
-    data_container_t* e = (data_container_t*) TRI_Allocate(sizeof(data_container_t));
+    data_container_t* e = (data_container_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(data_container_t), false);
     e->key = TRI_DuplicateString(key);
     e->a = i;
     e->b = i + 1;
@@ -410,7 +410,7 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
     strcpy(key, "test");
     strcat(key, TRI_StringUInt32((uint32_t) i));
 
-    data_container_t* e = (data_container_t*) TRI_Allocate(sizeof(data_container_t));
+    data_container_t* e = (data_container_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(data_container_t), false);
     e->key = TRI_DuplicateString(key);
     e->a = i;
     e->b = i + 1;
