@@ -1,3 +1,7 @@
+* Prerequisites
+  
+  1. Make sure you have bison (http://www.gnu.org/software/bison/) installed in your system. 
+
 * Compilation and Installation
 
   1. Run make in the top directory.

@@ -16,7 +16,7 @@
 #define NEGFIXABLE(f) ((f) >= FIXNUM_MIN)
 #define FIXABLE(f) (POSFIXABLE(f) && NEGFIXABLE(f))
 
-mrb_value mrb_dbl2big(mrb_state *mrb, float d);
+mrb_value mrb_flt2big(mrb_state *mrb, float d);
 void mrb_num_zerodiv(mrb_state *mrb);
 mrb_value mrb_fix2str(mrb_state *mrb, mrb_value x, int base);
 

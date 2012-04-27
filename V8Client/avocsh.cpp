@@ -975,8 +975,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
   }
 
   console->close();
-  
-  printf("\n");
+  printf("\nBye Bye! Auf Wiedersehen!\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

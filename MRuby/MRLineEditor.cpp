@@ -36,10 +36,12 @@
 #define completion_matches rl_completion_matches
 #endif
 
+#ifdef TRI_ENABLE_MRUBY
 extern "C" {
 #include "mruby.h"
 #include "compile.h"
 }
+#endif
 
 using namespace std;
 
@@ -278,6 +280,8 @@ bool MRLineEditor::open (const bool autoComplete) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t column) {
+ 
+#ifdef TRI_ENABLE_MRUBY	
   char const* msg = "syntax error, unexpected $end";
   char* text = TRI_DuplicateString(source.c_str());
 
@@ -300,6 +304,7 @@ bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t colum
       return false;
     }
   }
+#endif
 
   return true;
 }
