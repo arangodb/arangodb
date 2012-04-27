@@ -20,7 +20,7 @@ DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else
-CFLAGS = -O3
+CFLAGS = -O2
 endif
 INCLUDES = -I../src -I../include
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
