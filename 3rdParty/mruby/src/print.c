@@ -42,14 +42,14 @@ static mrb_value
 p_m(mrb_state *mrb, mrb_value self)
 {
   int argc, i;
-  mrb_value *argv;
+  mrb_value *argv = NULL;
 
   mrb_get_args(mrb, "*", &argv, &argc);
   for (i=0; i<argc; i++) {
     mrb_p(mrb, argv[i]);
   }
 
-  return argv[0];
+  return argv ? argv[0] : mrb_nil_value();
 }
 
 mrb_value
