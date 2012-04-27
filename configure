@@ -8966,7 +8966,7 @@ if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
 
-  TRI_MRUBY_VERSION="0.0.0"
+  TRI_MRUBY_VERSION="2012-04-27"
 
 
 cat >>confdefs.h <<_ACEOF
