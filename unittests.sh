@@ -80,11 +80,14 @@ echo "    make unittests"
 echo "########################################################"
 echo
 
+echo "VALGRIND: $VALGRIND_TEST"
+echo "RSPEC: $RSPEC_AVAILABLE"
+
 make unittests-boost || exit 1
 make unittests-shell-server || exit 1
 make unittests-shell-server-ahuacatl || exit 1
 
-if text "x$RSPEC_AVAILABLE" = "xyes";  then
+if test "x$RSPEC_AVAILABLE" = "xyes";  then
   make unittests-http-server || exit 1
 fi
 

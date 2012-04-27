@@ -2978,6 +2978,7 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
 	curl http://$(VOCHOST):$(VOCPORT)/version
+	sleep 5
 
 	@echo
 

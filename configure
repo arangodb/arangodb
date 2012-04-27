@@ -5332,7 +5332,7 @@ if test x$GCC == xyes;  then
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking -Wstrict-null-sentinel for $CXX" >&5
 $as_echo_n "checking -Wstrict-null-sentinel for $CXX... " >&6; }
-          if { ac_try='${CXX-c++} -Wstrict-null-sentinel -xc /dev/null -S -o /dev/null'
+          if { ac_try='${CXX-c++} -Werror -Wstrict-null-sentinel -xc++ /dev/null -S -o /dev/null'
   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
   (eval $ac_try) 2>&5
   ac_status=$?
@@ -5354,7 +5354,7 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking -std=gnu90 for $CC" >&5
 $as_echo_n "checking -std=gnu90 for $CC... " >&6; }
-          if { ac_try='${CC-cc} -std=gnu90 -xc /dev/null -S -o /dev/null'
+          if { ac_try='${CC-cc} -Werror -std=gnu90 -xc /dev/null -S -o /dev/null'
   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
   (eval $ac_try) 2>&5
   ac_status=$?
@@ -5368,7 +5368,7 @@ else
 $as_echo "no" >&6; }
                 { $as_echo "$as_me:${as_lineno-$LINENO}: checking -std=gnu89 for $CC" >&5
 $as_echo_n "checking -std=gnu89 for $CC... " >&6; }
-          if { ac_try='${CC-cc} -std=gnu89 -xc /dev/null -S -o /dev/null'
+          if { ac_try='${CC-cc} -Werror -std=gnu89 -xc /dev/null -S -o /dev/null'
   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
   (eval $ac_try) 2>&5
   ac_status=$?
@@ -5388,7 +5388,7 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking -std=c++98 for $CXX" >&5
 $as_echo_n "checking -std=c++98 for $CXX... " >&6; }
-          if { ac_try='${CXX-c++} -std=c++98 -xc /dev/null -S -o /dev/null'
+          if { ac_try='${CXX-c++} -Werror -std=c++98 -xc++ /dev/null -S -o /dev/null'
   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
   (eval $ac_try) 2>&5
   ac_status=$?
@@ -9047,7 +9047,7 @@ if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
 
-  TRI_MRUBY_VERSION="0.0.0"
+  TRI_MRUBY_VERSION="2012-04-27"
 
 
 cat >>confdefs.h <<_ACEOF

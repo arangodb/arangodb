@@ -3038,8 +3038,11 @@ skip(parser_state *p, char term)
 {
   int c;
 
-  while ((c = nextc(p)) != term)
-    ;
+  for (;;) {
+    c = nextc(p);
+    if (c < 0) break;
+    if (c == term) break;
+  }
 }
 
 static int
