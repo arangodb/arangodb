@@ -1,0 +1,16 @@
+nodes:
+- escape variable names
+
+code generation:
+- symbol tables/scopes
+
+avocado integration:
+- error handling
+- Avocado integration
+
+bind:
+- bind parameter injection
+- bind parameter validation
+
+optimization:
+- constant folding
