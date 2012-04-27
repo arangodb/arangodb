@@ -366,7 +366,7 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       TRI_json_t* value;
       TRI_vector_string_t parts;
 
@@ -628,7 +628,7 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
     }
  
@@ -1083,7 +1083,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       TRI_sl_operator_t* skiplistOperation = CreateRefSkipListOperation(feeder, parameters);
       if (skiplistOperation) {
         state->_skiplistOperation = skiplistOperation;

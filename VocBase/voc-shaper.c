@@ -348,7 +348,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // shape found, free argument and return
   if (found != 0) {
-    TRI_Free(shape);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return found;
   }
 
@@ -358,7 +358,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
   if (found != 0) {
-    TRI_Free(shape);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
     TRI_UnlockMutex(&s->_shapeLock);
     return found;
@@ -380,7 +380,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
     return NULL;
   }
 
-  TRI_Free(shape);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
@@ -519,30 +519,35 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
   shaper->base.lookupShapeId = LookupShapeId;
 
   TRI_InitAssociativeSynced(&shaper->_attributeNames,
+                            TRI_UNKNOWN_MEM_ZONE, 
                             HashKeyAttributeName,
                             HashElementAttributeName,
                             EqualKeyAttributeName,
                             0);
 
   TRI_InitAssociativeSynced(&shaper->_attributeIds,
+                            TRI_UNKNOWN_MEM_ZONE, 
                             HashKeyAttributeId,
                             HashElementAttributeId,
                             EqualKeyAttributeId,
                             0);
 
   TRI_InitAssociativeSynced(&shaper->_shapeDictionary,
+                            TRI_UNKNOWN_MEM_ZONE, 
                             0,
                             HashElementShape,
                             0,
                             EqualElementShape);
 
   TRI_InitAssociativeSynced(&shaper->_shapeIds,
+                            TRI_UNKNOWN_MEM_ZONE, 
                             HashKeyShapeId,
                             HashElementShapeId,
                             EqualKeyShapeId,
                             0);
 
   TRI_InitAssociativePointer(&shaper->_accessors,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              0,
                              HashElementAccessor,
                              0,
@@ -590,8 +595,8 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  shaper = TRI_Allocate(sizeof(voc_shaper_t));
-  TRI_InitShaper(&shaper->base);
+  shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t));
+  TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
   // handle basics
@@ -636,7 +641,7 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
 
 void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
   TRI_DestroyVocShaper(shaper);
-  TRI_Free(shaper);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,8 +681,8 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  shaper = TRI_Allocate(sizeof(voc_shaper_t));
-  TRI_InitShaper(&shaper->base);
+  shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t));
+  TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
   // read all shapes and attributes
