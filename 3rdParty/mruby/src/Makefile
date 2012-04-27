@@ -78,7 +78,8 @@ $(OBJY) : $(YC)
 
 # yacc complie
 $(YC) : $(YSRC)
-	$(YACC) -o $(YC) $(YSRC)
+	echo $(YACC) -o $(YC) $(YSRC)
+	touch $(YC)
 
 # clean up
 .PHONY : clean #cleandep
