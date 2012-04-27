@@ -863,6 +863,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   a = (TRI_array_shape_t*) (ptr = TRI_Allocate(shaper->_memoryZone, i, true));
 
   if (ptr == NULL) {
+    // TODO: FIXME my compiler complains about e being potentially undefined. what to do?    
     for (p = values;  p < e;  ++p) {
       if (p->_value != NULL) {
         TRI_Free(shaper->_memoryZone, p->_value);
