@@ -558,26 +558,26 @@ bool QLOptimizeToJsonListRange (TRI_json_t* const list,
                                 const bool useMax) {
   if (range->_valueType == RANGE_TYPE_STRING) {
     if (useMax) {
-      TRI_PushBack3ListJson(list, TRI_CreateStringCopyJson(range->_maxValue._stringValue));
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, range->_maxValue._stringValue));
     }
     else {
-      TRI_PushBack3ListJson(list, TRI_CreateStringCopyJson(range->_minValue._stringValue));
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue));
     }
   }
   else if (range->_valueType == RANGE_TYPE_DOUBLE) {
     if (useMax) {
-      TRI_PushBack3ListJson(list, TRI_CreateNumberJson(range->_maxValue._doubleValue));
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, range->_maxValue._doubleValue));
     }
     else {
-      TRI_PushBack3ListJson(list, TRI_CreateNumberJson(range->_minValue._doubleValue));
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, range->_minValue._doubleValue));
     }
   }
   else if (range->_valueType == RANGE_TYPE_JSON) {
-    TRI_json_t* doc = TRI_JsonString(range->_minValue._stringValue);
+    TRI_json_t* doc = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue);
     if (!doc) {
       return false;
     }
-    TRI_PushBackListJson(list, doc);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, list, doc);
   }
 
   return true;
@@ -987,35 +987,35 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
     }
     
     if (range->_collection) {
-      TRI_Free(range->_collection);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, range->_collection);
     }
     
     if (range->_field) {
-      TRI_Free(range->_field);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, range->_field);
     }
 
     if (range->_refValue._collection) {
-      TRI_FreeString(range->_refValue._collection);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_refValue._collection);
     }
     
     if (range->_refValue._field) {
-      TRI_FreeString(range->_refValue._field);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_refValue._field);
     }
 
     if (range->_valueType == RANGE_TYPE_JSON ||
         range->_valueType == RANGE_TYPE_STRING) {
       if (range->_minValue._stringValue) {
-        TRI_FreeString(range->_minValue._stringValue);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue);
         range->_minValue._stringValue = 0;
       }
 
       if (range->_maxValue._stringValue) {
-        TRI_FreeString(range->_maxValue._stringValue);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_maxValue._stringValue);
         range->_maxValue._stringValue = 0;
       }
     }
 
-    TRI_Free(range);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, range);
   }
 
   TRI_DestroyVectorPointer(vector);
@@ -1039,14 +1039,14 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_
   size_t i;
   int compareResult;
 
-  vector = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!vector) {
     QLOptimizeFreeRangeVector(ranges);
-    TRI_Free(ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ranges);
     return NULL;
   }
 
-  TRI_InitVectorPointer(vector);
+  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
 
   for (i = 0; i < ranges->_length; i++) {
     range = (QL_optimize_range_t*) ranges->_buffer[i];
@@ -1076,7 +1076,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_
       // effectively kills all ranges
       if (vector->_length >0 && !previous) { 
         QLOptimizeFreeRangeVector(vector);
-        TRI_InitVectorPointer(vector);
+        TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
         goto EXIT;
       }
     }
@@ -1359,13 +1359,13 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_
 INVALIDATE_NODE:
   QLOptimizeMakeValueBool(node, false);
   QLOptimizeFreeRangeVector(vector);
-  TRI_InitVectorPointer(vector);
+  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
   // push nil pointer to indicate range is invalid
   TRI_PushBackVectorPointer(vector, NULL); 
 
 EXIT:
   QLOptimizeFreeRangeVector(ranges);
-  TRI_Free(ranges);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ranges);
 
   return vector;
 }
@@ -1397,7 +1397,7 @@ static TRI_vector_pointer_t* QLOptimizeMergeRangeVectors (TRI_vector_pointer_t* 
   }
 
   TRI_DestroyVectorPointer(right);
-  TRI_Free(right);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, right);
 
   return left;
 }
@@ -1413,7 +1413,7 @@ static TRI_vector_pointer_t* QLOptimizeCreateRangeVector (QL_optimize_range_t* r
     return NULL;
   }
   
-  vector = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!vector) {
     return NULL;
   }
@@ -1465,10 +1465,10 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     return NULL;
   }
 
-  range = (QL_optimize_range_t*) TRI_Allocate(sizeof(QL_optimize_range_t));
+  range = (QL_optimize_range_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_optimize_range_t), false);
   if (!range) {
     // clean up
-    TRI_FreeStringBuffer(name);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, name);
     return NULL;
   }
 
@@ -1505,7 +1505,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   range->_hash       = QLAstQueryGetMemberNameHash(memberNode);
 
   // we can now free the temporary name buffer
-  TRI_FreeStringBuffer(name);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (type == TRI_QueryNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
@@ -1515,7 +1515,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       name = QLAstQueryGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
-        TRI_FreeStringBuffer(name);
+        TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, name);
       }
     }
     else if (range->_valueType == RANGE_TYPE_DOUBLE) {
@@ -1525,20 +1525,20 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     else if (range->_valueType == RANGE_TYPE_STRING) { 
       range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
       if (!range->_minValue._stringValue) {
-        TRI_Free(range);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, range);
         return NULL;
       }
 
       range->_maxValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
       if (!range->_maxValue._stringValue) {
-        TRI_Free(range);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, range);
         return NULL;
       }
     }
     else if (range->_valueType == RANGE_TYPE_JSON) {
       documentJs = TRI_InitQueryJavascript();
       if (!documentJs) {
-        TRI_Free(range);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, range);
         return NULL;
       }
       TRI_ConvertQueryJavascript(documentJs, valueNode, bindParameters);
@@ -1548,14 +1548,14 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
 
       if (!range->_minValue._stringValue || !range->_maxValue._stringValue) {
         if (range->_minValue._stringValue) {
-          TRI_FreeString(range->_minValue._stringValue);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue);
         }
 
         if (range->_maxValue._stringValue) {
-          TRI_FreeString(range->_maxValue._stringValue);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, range->_maxValue._stringValue);
         }
 
-        TRI_Free(range);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, range);
         return NULL;
       }
     }

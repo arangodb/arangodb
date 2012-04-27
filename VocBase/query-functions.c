@@ -78,13 +78,14 @@ static bool EqualName (TRI_associative_pointer_t* array,
 
 TRI_associative_pointer_t* TRI_InitialiseQueryFunctions (void) {
   TRI_associative_pointer_t* functions = 
-    (TRI_associative_pointer_t*) TRI_Allocate(sizeof(TRI_associative_pointer_t)); 
+    (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false); 
 
   if (!functions) {
     return NULL;
   }
 
   TRI_InitAssociativePointer(functions, 
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer, 
                              HashFunction, 
                              EqualName, 
@@ -144,13 +145,13 @@ void TRI_FreeQueryFunctions (TRI_associative_pointer_t* functions) {
       continue;
     }
 
-    TRI_Free(function->_externalName);
-    TRI_Free(function->_internalName);
-    TRI_Free(function);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
   }
 
   TRI_DestroyAssociativePointer(functions);
-  TRI_Free(functions);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, functions);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +193,7 @@ bool TRI_RegisterQueryFunction (TRI_associative_pointer_t* functions,
                                 const int minArgs, 
                                 const int maxArgs) {
   TRI_query_function_t* function = 
-    (TRI_query_function_t*) TRI_Allocate(sizeof(TRI_query_function_t));
+    (TRI_query_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_function_t), false);
 
   if (!function) {
     return false;
@@ -200,23 +201,23 @@ bool TRI_RegisterQueryFunction (TRI_associative_pointer_t* functions,
 
   function->_externalName = TRI_DuplicateString(externalName);
   if (!function->_externalName) {
-    TRI_Free(function);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
 
   function->_internalName = TRI_DuplicateString(internalName);
   if (!function->_internalName) {
-    TRI_Free(function->_externalName);
-    TRI_Free(function);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
   function->_minArgs = minArgs; 
   function->_maxArgs = maxArgs; 
 
   if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
-    TRI_Free(function->_externalName);
-    TRI_Free(function->_internalName);
-    TRI_Free(function);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
 

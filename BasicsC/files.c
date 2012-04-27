@@ -134,7 +134,7 @@ static void InitialiseLockFiles (void) {
     return;
   }
 
-  TRI_InitVectorString(&FileNames);
+  TRI_InitVectorString(&FileNames, TRI_CORE_MEM_ZONE);
   TRI_InitReadWriteLock(&LockFileNames);
 
   atexit(&RemoveAllLockedFiles);
@@ -255,6 +255,8 @@ int TRI_RemoveDirectory (char const* filename) {
     int res;
     int subres;
 
+    LOG_TRACE("removing directory '%s'", filename);
+
     res = TRI_ERROR_NO_ERROR;
     files = TRI_FilesDirectory(filename);
 
@@ -264,7 +266,7 @@ int TRI_RemoveDirectory (char const* filename) {
       full = TRI_Concatenate2File(filename, files._buffer[i]);
 
       subres = TRI_RemoveDirectory(full);
-      TRI_FreeString(full);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
       if (subres != TRI_ERROR_NO_ERROR) {
         res = subres;
@@ -280,9 +282,13 @@ int TRI_RemoveDirectory (char const* filename) {
     return res;
   }
   else if (TRI_ExistsFile(filename)) {
+    LOG_TRACE("removing file '%s'", filename);
+
     return TRI_UnlinkFile(filename);
   }
   else {
+    LOG_TRACE("removing non-existing file '%s'", filename);
+
     return TRI_ERROR_NO_ERROR;
   }
 }
@@ -449,7 +455,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   DIR * d;
   struct dirent * de;
 
-  TRI_InitVectorString(&result);
+  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   d = opendir(path);
 
@@ -592,10 +598,11 @@ bool TRI_fsync (int fd) {
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (char const* filename) {
+char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
   TRI_string_buffer_t result;
   char buffer[10240];
   int fd;
+  int res;
 
   fd = TRI_OPEN(filename, O_RDONLY);
 
@@ -604,7 +611,7 @@ char* TRI_SlurpFile (char const* filename) {
     return NULL;
   }
 
-  TRI_InitStringBuffer(&result);
+  TRI_InitStringBuffer(&result, zone);
 
   while (true) {
     ssize_t n;
@@ -624,7 +631,15 @@ char* TRI_SlurpFile (char const* filename) {
       return NULL;
     }
 
-    TRI_AppendString2StringBuffer(&result, buffer, n);
+    res = TRI_AppendString2StringBuffer(&result, buffer, n);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_CLOSE(fd);
+
+      TRI_AnnihilateStringBuffer(&result);
+
+      return NULL;
+    }
   }
 
   TRI_CLOSE(fd);
@@ -663,7 +678,7 @@ int TRI_CreateLockFile (char const* filename) {
   if (rv == -1) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    TRI_FreeString(buf);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
@@ -671,7 +686,7 @@ int TRI_CreateLockFile (char const* filename) {
     return res;
   }
 
-  TRI_FreeString(buf);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
   TRI_CLOSE(fd);
 
   fd = TRI_OPEN(filename, O_RDONLY);
@@ -810,7 +825,7 @@ char* TRI_LocateBinaryPath (char const* argv0) {
     }
     else {
       binaryPath = TRI_DuplicateString(dir);
-      TRI_FreeString(dir);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 
@@ -830,12 +845,12 @@ char* TRI_LocateBinaryPath (char const* argv0) {
         char* full = TRI_Concatenate2File(files._buffer[i], argv0);
 
         if (TRI_ExistsFile(full)) {
-          TRI_FreeString(full);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, full);
           binaryPath = TRI_DuplicateString(files._buffer[i]);
           break;
         }
 
-        TRI_FreeString(full);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, full);
       }
 
       TRI_DestroyVectorString(&files);

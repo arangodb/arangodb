@@ -55,7 +55,7 @@ static inline void UpdateTimestampShadow (TRI_shadow_t* const shadow) {
 ////////////////////////////////////////////////////////////////////////////////
   
 static TRI_shadow_t* CreateShadow (const void* const data) {
-  TRI_shadow_t* shadow = (TRI_shadow_t*) TRI_Allocate(sizeof(TRI_shadow_t)); 
+  TRI_shadow_t* shadow = (TRI_shadow_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_t), false); 
 
   if (!shadow) {
     return NULL;
@@ -93,7 +93,7 @@ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* con
     TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
     TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
     store->destroyShadow(shadow->_data);
-    TRI_Free(shadow);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow);
   }
 }
 
@@ -220,16 +220,18 @@ static bool EqualKeyData (TRI_associative_pointer_t* array, void const* k, void 
 
 TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (void*)) {
   TRI_shadow_store_t* store = 
-    (TRI_shadow_store_t*) TRI_Allocate(sizeof(TRI_shadow_store_t));
+    (TRI_shadow_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_store_t), false);
 
   if (store) {
     TRI_InitAssociativePointer(&store->_ids,
+                               TRI_UNKNOWN_MEM_ZONE, 
                                HashKeyId,
                                HashElementId,
                                EqualKeyId,
                                NULL); 
     
     TRI_InitAssociativePointer(&store->_pointers,
+                               TRI_UNKNOWN_MEM_ZONE, 
                                HashKeyData,
                                HashElementData,
                                EqualKeyData,
@@ -258,7 +260,7 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
   TRI_DestroyMutex(&store->_lock);
   TRI_DestroyAssociativePointer(&store->_ids);
   TRI_DestroyAssociativePointer(&store->_pointers);
-  TRI_Free(store);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -544,7 +546,7 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
           TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
           TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
           store->destroyShadow(shadow->_data);
-          TRI_Free(shadow);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow);
 
           deleted = true;
           // the remove might reposition elements in the container.
@@ -586,7 +588,7 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store,
       // duplicate entry
       LOG_INFO("storing shadow failed");
       TRI_UnlockMutex(&store->_lock);
-      TRI_Free(shadow);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, shadow);
       return NULL;
     }
     TRI_InsertKeyAssociativePointer(&store->_pointers, data, shadow, false);

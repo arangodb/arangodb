@@ -839,7 +839,7 @@ function Graph(name, vertices, edges) {
 
     // gdb.ensureUniqueConstraint("name");
   }
-
+  
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }

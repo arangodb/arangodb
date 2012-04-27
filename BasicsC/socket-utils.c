@@ -89,7 +89,7 @@ char* TRI_GetHostByName (char const* hostname, size_t* length) {
   }
 
   *length = sheep->h_length;
-  netaddress = TRI_Allocate(*length);
+  netaddress = TRI_Allocate(TRI_CORE_MEM_ZONE, *length, false);
   memcpy(netaddress, sheep->h_addr_list[0], *length);
 
   TRI_UnlockMutex(&GethostbynameLock);

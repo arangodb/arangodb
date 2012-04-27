@@ -242,7 +242,7 @@ bool RestImportHandler::createByArray () {
       else {
         ++numError;
       }
-      TRI_FreeJson(values);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
       
     }
     else {
@@ -340,7 +340,7 @@ bool RestImportHandler::createByList () {
     if (keys->_type == TRI_JSON_LIST) {
       if (!checkKeys(keys)) {
         LOGGER_WARNING << "No JSON string list in first line found: " << line;
-        TRI_FreeJson(keys);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "No JSON string list in first line found");
@@ -350,7 +350,7 @@ bool RestImportHandler::createByList () {
     }
     else {
       LOGGER_WARNING << "Wrong JSON data in first line: " << line;
-      TRI_FreeJson(keys);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "Wrong JSON data");
@@ -372,7 +372,7 @@ bool RestImportHandler::createByList () {
     releaseCollection();
     
     if (keys) {
-      TRI_FreeJson(keys);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     }
  
     generateError(HttpResponse::BAD,
@@ -412,7 +412,7 @@ bool RestImportHandler::createByList () {
       
       // build the json object from the list
       json = createJsonObject(keys, values);
-      TRI_FreeJson(values);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
       if (!json) {
         LOGGER_WARNING << "no valid JSON data in line: " << (line);            
@@ -429,7 +429,7 @@ bool RestImportHandler::createByList () {
         ++numError;
       }
       
-      TRI_FreeJson(json);      
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
     }
     else {
       LOGGER_WARNING << "no JSON data in line: " << (line);            
@@ -439,7 +439,7 @@ bool RestImportHandler::createByList () {
   }
   
   if (keys) {
-    TRI_FreeJson(keys);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
 
   _documentCollection->endWrite(_documentCollection);
@@ -475,7 +475,7 @@ void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numE
 
 TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(line.c_str(), &errmsg);
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, line.c_str(), &errmsg);
   return json;
 }
 
@@ -489,7 +489,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* v
     return 0;
   }
   
-  TRI_json_t* result = TRI_CreateArrayJson();
+  TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   
   size_t n = keys->_value._objects._length;
 
@@ -499,7 +499,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* v
     TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&values->_value._objects, i);
     
     if (key->_type == TRI_JSON_STRING && value->_type > TRI_JSON_NULL) {
-      TRI_InsertArrayJson(result, key->_value._string.data, value);      
+      TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);      
     }
   }  
   

@@ -96,12 +96,12 @@ BUILT_SOURCES += \
 endif
 
 if ENABLE_ALL_IN_ONE
-include Makefile.all-in-one-libev
-include Makefile.all-in-one-v8
+include m4/Makefile.all-in-one-libev
+include m4/Makefile.all-in-one-v8
 endif
 
 if ENABLE_MRUBY
-include Makefile.all-in-one-mruby
+include m4/Makefile.all-in-one-mruby
 endif
 
 ################################################################################

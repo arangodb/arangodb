@@ -193,7 +193,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
 
-  TRI_FreeString(p);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // .............................................................................
   // use relative system paths
@@ -484,7 +484,7 @@ void AvocadoServer::buildApplicationServer () {
     }
 
     string pathString(path);
-    TRI_FreeString(path);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
     if (! TRI_IsDirectory(pathString.c_str())) {
       bool ok = TRI_ExistsFile(pathString.c_str());
@@ -856,7 +856,7 @@ int AvocadoServer::executeShell (bool tests) {
       }
 
       if (*input == '\0') {
-        TRI_FreeString(input);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, input);
         continue;
       }
 
@@ -866,7 +866,7 @@ int AvocadoServer::executeShell (bool tests) {
       v8::TryCatch tryCatch;
 
       TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
-      TRI_FreeString(input);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       
       if (tryCatch.HasCaught()) {
         cout << TRI_StringifyV8Exception(&tryCatch);
@@ -1003,14 +1003,14 @@ int AvocadoServer::executeRubyShell () {
     }
 
     if (*input == '\0') {
-      TRI_FreeString(input);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
     console->addHistory(input);
 
     p = mrb_parse_string(mrb, input);
-    TRI_FreeString(input);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
       cout << "UPPS!\n";

@@ -82,7 +82,7 @@ namespace triagens {
         }
 
         char buffer[10240];
-        StringBuffer result;
+        StringBuffer result(TRI_CORE_MEM_ZONE);
 
         while (true) {
           ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));

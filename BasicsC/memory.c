@@ -41,7 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MEMFAIL
-static bool Initialised = false;
+static bool MemFailInitialised = false;
 #endif 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +51,45 @@ static bool Initialised = false;
 #ifdef TRI_ENABLE_MEMFAIL
 static double MemFailProbability;
 #endif 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_memory_zone_t TriCoreMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unknown memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_memory_zone_t TriUnknownMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unknown memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_ENABLE_ZONE_DEBUG
+TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -73,7 +112,7 @@ static double MemFailProbability;
 void TRI_ActivateMemFailures (double probability) {
   srand(32452843 + time(NULL) * 49979687);
   MemFailProbability = probability;
-  Initialised = true;
+  MemFailInitialised = true;
 }
 #endif 
 
@@ -83,34 +122,80 @@ void TRI_ActivateMemFailures (double probability) {
 
 #ifdef TRI_ENABLE_MEMFAIL
 void TRI_DeactiveMemFailures (void) {
-  Initialised = false;
+  MailFailInitialised = false;
   MemFailProbability = 0.0;
 }
 #endif 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error message
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
+  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
+         file,
+         line);
+
+  return &TriUnknownMemZone;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Allocate (uint64_t n) {
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* file, int line) {
+#else
+void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
+#endif
   char* m;
 
 #ifdef TRI_ENABLE_MEMFAIL
   // if configured with --enable-memfail, we can make calls to malloc fail
   // deliberately. This makes testing memory bottlenecks easier.
-  if (Initialised) {
+
+  if (MemFailInitialised && zone->_failable) {
     if (RAND_MAX * MemFailProbability >= rand ()) {
       errno = ENOMEM;
+      zone->_failed = true;
       return NULL;
     }
   }
 #endif
 
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  m = malloc((size_t) n + sizeof(intptr_t));
+#else
   m = malloc((size_t) n);
-  if (m) {
-    // only clear memory if we were able to allocate it beforehand
+#endif
+
+  if (m == NULL) {
+    if (zone->_failable) {
+      return NULL;
+    }
+
+    printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+    exit(EXIT_FAILURE);
+  }
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  else if (set) {
+    memset(m, 0, (size_t) n + sizeof(intptr_t));
+  }
+  else {
+    memset(m, 0xA5, (size_t) n + sizeof(intptr_t));
+  }
+#else
+  else if (set) {
     memset(m, 0, (size_t) n);
   }
+#endif
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  * (intptr_t*) m = zone->_zid;
+  m += sizeof(intptr_t);
+#endif
 
   return m;
 }
@@ -119,16 +204,109 @@ void* TRI_Allocate (uint64_t n) {
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Reallocate (void* m, uint64_t n) {
-  return realloc(m, n);
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void* TRI_ReallocateZ (TRI_memory_zone_t* zone, void* m, uint64_t n, char const* file, int line) {
+#else
+void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
+#endif
+  char* p;
+
+  if (m == NULL) {
+#ifdef TRI_ENABLE_ZONE_DEBUG
+    return TRI_AllocateZ(zone, n, false, file, line);
+#else
+    return TRI_Allocate(zone, n, false);
+#endif
+  }
+
+#ifdef TRI_ENABLE_MEMFAIL
+  // if configured with --enable-memfail, we can make calls to malloc fail
+  // deliberately. This makes testing memory bottlenecks easier.
+
+  if (MemFailInitialised && zone->_failable) {
+    if (RAND_MAX * MemFailProbability >= rand ()) {
+      errno = ENOMEM;
+      zone->_failed = true;
+      return NULL;
+    }
+  }
+#endif
+
+  p = (char*) m;
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  p -= sizeof(intptr_t);
+
+  if (* (intptr_t*) p != zone->_zid) {
+    printf("MEMORY ZONE: mismatch in TRI_Reallocate(%s,%d), old '%d', new '%d'\n",
+           file,
+           line,
+           (int) * (intptr_t*) p,
+           (int) zone->_zid);
+  }
+
+  p = realloc(p, (size_t) n + sizeof(intptr_t));
+  p = p + sizeof(intptr_t);
+#else
+  p = realloc(p, (size_t) n);
+#endif
+
+  if (p == NULL) {
+    if (zone->_failable) {
+      return NULL;
+    }
+
+    printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+    exit(EXIT_FAILURE);
+  }
+
+  return p;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Free (void* m) {
-  free(m);
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void TRI_FreeZ (TRI_memory_zone_t* zone, void* m, char const* file, int line) {
+#else
+void TRI_Free (TRI_memory_zone_t* zone, void* m) {
+#endif
+  char* p;
+
+  p = (char*) m;
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  p -= sizeof(intptr_t);
+
+  if (* (intptr_t*) p != zone->_zid) {
+    printf("MEMORY ZONE: mismatch in TRI_Free(%s,%d), old '%d', new '%d'\n",
+           file,
+           line,
+           (int) * (intptr_t*) p,
+           (int) zone->_zid);
+  }
+#endif
+
+  free(p);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseMemory () {
+  static bool initialised = false;
+
+  if (! initialised) {
+    TriCoreMemZone._zid = 0;
+    TriCoreMemZone._failed = false;
+    TriCoreMemZone._failable = false;
+
+    TriUnknownMemZone._zid = 1;
+    TriUnknownMemZone._failed = false;
+    TriUnknownMemZone._failable = true;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

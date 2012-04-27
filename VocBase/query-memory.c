@@ -39,7 +39,7 @@
 TRI_query_node_t* TRI_CreateNodeQuery (TRI_vector_pointer_t* memory,
                                        const TRI_query_node_type_e type) {
   // allocate memory
-  TRI_query_node_t* node = (TRI_query_node_t *) TRI_Allocate(sizeof(TRI_query_node_t));
+  TRI_query_node_t* node = (TRI_query_node_t *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_node_t), false);
   if (!node) {
     return NULL; 
   }
@@ -83,7 +83,7 @@ void TRI_RegisterNodeQuery (TRI_vector_pointer_t* memory,
 
 void TRI_FreeNodeQuery (TRI_query_node_t* node) {
   if (node) {
-    TRI_Free(node);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
     node = NULL;
   }
 }
@@ -125,7 +125,7 @@ void TRI_FreeStringVectorQuery (TRI_vector_pointer_t* const memory) {
     i--;
     stringPtr = TRI_RemoveVectorPointer(memory, i);
     if (stringPtr) {
-      TRI_Free(stringPtr);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, stringPtr);
       stringPtr = NULL;
     }
     if (i == 0) {

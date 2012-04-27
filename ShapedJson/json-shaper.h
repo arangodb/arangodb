@@ -76,6 +76,8 @@ typedef struct TRI_shaper_s {
   TRI_shape_sid_t _sidShortString;
   TRI_shape_sid_t _sidLongString;
   TRI_shape_sid_t _sidList;
+
+  TRI_memory_zone_t* _memoryZone;
 }
 TRI_shaper_t;
 
@@ -100,7 +102,7 @@ TRI_shaper_t;
 /// @brief creates a simple, array-based shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateArrayShaper (void);
+TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array-based shaper, but does not free the pointer
@@ -112,7 +114,7 @@ void TRI_DestroyArrayShaper (TRI_shaper_t*);
 /// @brief destroys an array-based shaper and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeArrayShaper (TRI_shaper_t*);
+void TRI_FreeArrayShaper (TRI_memory_zone_t*, TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -154,7 +156,7 @@ char const* TRI_AttributeNameShapePid (TRI_shaper_t*, TRI_shape_pid_t);
 /// @brief initialises the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitShaper (TRI_shaper_t*);
+void TRI_InitShaper (TRI_shaper_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the shaper

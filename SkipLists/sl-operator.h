@@ -28,9 +28,10 @@
 #ifndef TRIAGENS_DURHAM_SKIPLISTS_SL_OPERATOR_H
 #define TRIAGENS_DURHAM_SKIPLISTS_SL_OPERATOR_H 1
 
-#include "VocBase/vocbase.h"
 #include "BasicsC/json.h"
+#include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,6 +73,7 @@ TRI_sl_operator_type_e;
 
 typedef struct TRI_sl_operator_s {
   TRI_sl_operator_type_e _type;
+  TRI_shaper_t* _shaper;
 }
 TRI_sl_operator_t;
 //................................................................................
@@ -98,9 +100,14 @@ TRI_sl_relation_operator_t;
 
 
 TRI_sl_operator_t* CreateSLOperator (TRI_sl_operator_type_e,
-                                    TRI_sl_operator_t*,TRI_sl_operator_t*,
-                                    TRI_json_t*, TRI_shaped_json_t*,
-                                    size_t, void*);                                    
+                                     TRI_sl_operator_t*,
+                                     TRI_sl_operator_t*,
+                                     TRI_json_t*,
+                                     TRI_shaper_t*,
+                                     TRI_shaped_json_t*,
+                                     size_t,
+                                     void*);     
+                               
 TRI_sl_operator_t* CopySLOperator (TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

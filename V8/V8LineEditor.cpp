@@ -172,7 +172,7 @@ static char* CompletionGenerator (char const* text, int state) {
 
     currentIndex = 0;
 
-    TRI_FreeString(prefix);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
   }
 
   if (currentIndex < result.size()) {

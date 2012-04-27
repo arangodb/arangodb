@@ -344,19 +344,22 @@ static uint64_t hashKey (struct TRI_associative_array_s* associativeArray, void*
 HashIndex* HashIndex_new() {
   HashIndex* hashIndex;
 
-  hashIndex = TRI_Allocate(sizeof(HashIndex));
+  hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
+
   if (hashIndex == NULL) {
     return NULL;
   }
 
   hashIndex->unique = true;
-  hashIndex->assocArray.uniqueArray = TRI_Allocate(sizeof(TRI_associative_array_t));
+  hashIndex->assocArray.uniqueArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_array_t), false);
+
   if (hashIndex->assocArray.uniqueArray == NULL) {
-    TRI_Free(hashIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
     return NULL;
   }    
     
   TRI_InitAssociativeArray(hashIndex->assocArray.uniqueArray,
+                           TRI_UNKNOWN_MEM_ZONE,
                            sizeof(HashIndexElement),
                            hashKey,
                            hashElement,
@@ -388,13 +391,13 @@ HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* elemen
   HashIndexElement* result;
   HashIndexElements* results;
 
-  results = TRI_Allocate(sizeof(HashIndexElements));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElements), false);    
   /* FIXME: memory allocation might fail */
   
   result = (HashIndexElement*) (TRI_FindByElementAssociativeArray(hashIndex->assocArray.uniqueArray, element)); 
   
   if (result != NULL) {
-    results->_elements    = TRI_Allocate(sizeof(HashIndexElement) * 1); // unique hash index maximum number is 1
+    results->_elements    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElement) * 1, false); // unique hash index maximum number is 1
     results->_elements[0] = *result;
     results->_numElements = 1;
   }
@@ -557,19 +560,20 @@ static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* elemen
 HashIndex* MultiHashIndex_new() {
   HashIndex* hashIndex;
 
-  hashIndex = TRI_Allocate(sizeof(HashIndex));
+  hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
   if (hashIndex == NULL) {
     return NULL;
   }
 
   hashIndex->unique = false;
-  hashIndex->assocArray.nonUniqueArray = TRI_Allocate(sizeof(TRI_multi_array_t));
+  hashIndex->assocArray.nonUniqueArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_multi_array_t), false);
   if (hashIndex->assocArray.nonUniqueArray == NULL) {
-    TRI_Free(hashIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
     return NULL;
   }    
     
   TRI_InitMultiArray(hashIndex->assocArray.nonUniqueArray,
+                     TRI_UNKNOWN_MEM_ZONE, 
                      sizeof(HashIndexElement),
                      multiHashKey,
                      multiHashElement,
@@ -607,14 +611,14 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   HashIndexElements* results;
   size_t j;
   
-  results = TRI_Allocate(sizeof(HashIndexElements));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElements), false);    
   /* FIXME: memory allocation might fail */
   
   // .............................................................................
   // We can only use the LookupByKey method for non-unique hash indexes, since
   // we want more than one result returned!
   // .............................................................................
-  result  = TRI_LookupByKeyMultiArray (hashIndex->assocArray.nonUniqueArray, element); 
+  result  = TRI_LookupByKeyMultiArray(TRI_UNKNOWN_MEM_ZONE, hashIndex->assocArray.nonUniqueArray, element); 
 
   
   if (result._length == 0) {
@@ -623,7 +627,7 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   }
   else {  
     results->_numElements = result._length;
-    results->_elements = TRI_Allocate(sizeof(HashIndexElement) * result._length); 
+    results->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElement) * result._length, false); 
     /* FIXME: memory allocation might fail */
     for (j = 0; j < result._length; ++j) {  
       results->_elements[j] = *((HashIndexElement*)(result._buffer[j]));

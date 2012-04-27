@@ -668,6 +668,11 @@ ENABLE_LOGGER_TIMING_FALSE
 ENABLE_LOGGER_TIMING_TRUE
 ENABLE_LOGGER_FALSE
 ENABLE_LOGGER_TRUE
+ENABLE_ZONE_DEBUG_FALSE
+ENABLE_ZONE_DEBUG_TRUE
+ENABLE_MEMFAIL_FALSE
+ENABLE_MEMFAIL_TRUE
+TRI_BITS
 ENABLE_FORCE_32BIT_FALSE
 ENABLE_FORCE_32BIT_TRUE
 ENABLE_32BIT_FALSE
@@ -809,6 +814,8 @@ enable_eff_cpp
 enable_isystem
 enable_static_programs
 enable_32bit
+enable_memfail
+enable_zone_debug
 enable_logger
 enable_timing
 enable_figures
@@ -1492,6 +1499,9 @@ Optional Features:
   --enable-static-programs
                           do not use shared libraries (default: no)
   --enable-32bit          force 32bit compilation (default: no)
+  --enable-memfail        enables random memory allocation failures (default:
+                          no)
+  --enable-zone-debug     enables memory zone debugging (default: no)
   --enable-logger         enable logging and timing (default: yes)
   --enable-timing         enable timing (default: yes)
   --enable-figures        enable figures (default: yes)
@@ -5684,11 +5694,82 @@ else
 fi
 
 
+TRI_BITS="$tr_BITS"
+
+
 
 if test "x$tr_32BIT" = xyes;  then
   BASIC_INFO="$BASIC_INFO|32bit: enabled"
 else
   BASIC_INFO="$BASIC_INFO|64bit: enabled"
+fi
+
+
+
+# Check whether --enable-memfail was given.
+if test "${enable_memfail+set}" = set; then :
+  enableval=$enable_memfail; tr_MEMFAIL="${enableval:-yes}"
+else
+  tr_MEMFAIL=no
+
+fi
+
+
+if test "x$tr_MEMFAIL" = xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_MEMFAIL 1
+_ACEOF
+
+fi
+
+ if test "x$tr_MEMFAIL" = xyes; then
+  ENABLE_MEMFAIL_TRUE=
+  ENABLE_MEMFAIL_FALSE='#'
+else
+  ENABLE_MEMFAIL_TRUE='#'
+  ENABLE_MEMFAIL_FALSE=
+fi
+
+
+
+# Check whether --enable-zone-debug was given.
+if test "${enable_zone_debug+set}" = set; then :
+  enableval=$enable_zone_debug; tr_ZONE_DEBUG="${enableval:-yes}"
+else
+  tr_ZONE_DEBUG=no
+
+fi
+
+
+if test "x$tr_ZONE_DEBUG" = xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_ZONE_DEBUG 1
+_ACEOF
+
+fi
+
+ if test "x$tr_ZONE_DEBUG" = xyes; then
+  ENABLE_ZONE_DEBUG_TRUE=
+  ENABLE_ZONE_DEBUG_FALSE='#'
+else
+  ENABLE_ZONE_DEBUG_TRUE='#'
+  ENABLE_ZONE_DEBUG_FALSE=
+fi
+
+
+
+if test "x$tr_MEMFAIL" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|MEMFAIL: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|MEMFAIL: disabled"
+fi
+
+if test "x$tr_ZONE_DEBUG" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|ZONE_DEBUG: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|ZONE_DEBUG: disabled"
 fi
 
 
@@ -8956,7 +9037,7 @@ fi
 if test "${enable_mruby+set}" = set; then :
   enableval=$enable_mruby; tr_MRUBY="${enableval:-yes}"
 else
-  tr_MRUBY=yes
+  tr_MRUBY=no
 
 fi
 
@@ -9560,6 +9641,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FORCE_32BIT_TRUE}" && test -z "${ENABLE_FORCE_32BIT_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FORCE_32BIT\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_MEMFAIL_TRUE}" && test -z "${ENABLE_MEMFAIL_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_MEMFAIL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_ZONE_DEBUG_TRUE}" && test -z "${ENABLE_ZONE_DEBUG_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ZONE_DEBUG\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_LOGGER_TRUE}" && test -z "${ENABLE_LOGGER_FALSE}"; then
