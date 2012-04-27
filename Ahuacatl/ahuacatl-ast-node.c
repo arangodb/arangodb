@@ -258,7 +258,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
   
-  node = (TRI_aql_node_let_t*) TRI_Allocate(sizeof(TRI_aql_node_let_t));
+  node = (TRI_aql_node_let_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_let_t), false);
 
   if (!node) {
     ABORT_OOM
