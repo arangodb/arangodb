@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
   int l1, l2;
 
   TRI_string_buffer_t sb, sb2;
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&sb, STR);
   TRI_AppendStringStringBuffer(&sb, STR);
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, STR);
 
-  TRI_InitStringBuffer(&sb2);
+  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&sb2, STR);
   TRI_AppendStringBufferStringBuffer(&sb, &sb2);
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE (tst_char_append) {
   int l1, l2, i;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
   
   for (i=0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb, 'a');
@@ -163,8 +163,8 @@ BOOST_AUTO_TEST_CASE (tst_swp) {
   int l1, l2, i;
 
   TRI_string_buffer_t sb1, sb2;
-  TRI_InitStringBuffer(&sb1);
-  TRI_InitStringBuffer(&sb2);
+  TRI_InitStringBuffer(&sb1, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
   
   for (i=0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb1, 'a');
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE (tst_begin_end_empty_clear) {
   const char * ptr;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
   
   TRI_AppendStringStringBuffer(&sb, STR);
   
@@ -230,8 +230,8 @@ BOOST_AUTO_TEST_CASE (tst_cpy) {
   int l1, i;
 
   TRI_string_buffer_t sb1, sb2;
-  TRI_InitStringBuffer(&sb1);
-  TRI_InitStringBuffer(&sb2);
+  TRI_InitStringBuffer(&sb1, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
   
   for (i=0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb1, 'a');
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
   int l;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
   TRI_AppendStringStringBuffer(&sb, Z_2_T);
   TRI_EraseFrontStringBuffer(&sb, 5);
 
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
   TRI_string_buffer_t sb;
   TRI_string_buffer_t sb2;
 
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&sb, ABC);
   TRI_ReplaceStringStringBuffer(&sb, "REP", 3);
@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, ABC);
 
-  TRI_InitStringBuffer(&sb2);
+  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
   TRI_AppendStringStringBuffer(&sb2, "REP");
 
   TRI_ReplaceStringBufferStringBuffer(&sb, &sb2);
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
 
   // these are built on prev. tested building blocks...
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
   TRI_AppendInteger3StringBuffer(&sb, 123);
 
   BOOST_TEST_CHECKPOINT("append int3");
@@ -365,7 +365,7 @@ BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
 BOOST_AUTO_TEST_CASE (tst_length) {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb);
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
   BOOST_TEST_CHECKPOINT("length empty");
   BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
 
   // integer
   for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb);
+    TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
     for (i = 0;  i < loop1;  ++i) {
       TRI_AppendInt32StringBuffer(&sb, 12345678);
@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
   t1 = TRI_microtime();
 
   for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb);
+    TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
     for (i = 0;  i < loop2;  ++i) {
       TRI_AppendCharStringBuffer(&sb, 'A');

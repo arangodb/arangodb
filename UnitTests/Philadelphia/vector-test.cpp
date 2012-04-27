@@ -35,7 +35,7 @@
 
 #define VECTOR_INIT \
   TRI_vector_t v1; \
-  TRI_InitVector(&v1, sizeof(int));
+  TRI_InitVector(&v1, TRI_CORE_MEM_ZONE, sizeof(int));
 
 #define VECTOR_DESTROY \
   TRI_DestroyVector(&v1);
@@ -527,7 +527,7 @@ BOOST_AUTO_TEST_CASE (tst_copy) {
   TRI_PushBackVector(&v1, &c);
   TRI_PushBackVector(&v1, &d);
 
-  v2 = TRI_CopyVector(&v1);
+  v2 = TRI_CopyVector(TRI_CORE_MEM_ZONE, &v1);
 
   VECTOR_DESTROY 
 
@@ -565,7 +565,7 @@ BOOST_AUTO_TEST_CASE (tst_value_modifications) {
   BOOST_CHECK_EQUAL(3, *(int*) TRI_AtVector(&v1, 2));
   BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(&v1, 3));
 
-  v2 = TRI_CopyVector(&v1);
+  v2 = TRI_CopyVector(TRI_CORE_MEM_ZONE, &v1);
   a = 99;
   b = 42;
   c = -1;
