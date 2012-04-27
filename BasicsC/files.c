@@ -429,7 +429,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   }
 
   handle = _findfirst(filter, &fd);
-  TRI_FreeString(filter);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filter);
 
   if (handle == -1) {
     return result;
