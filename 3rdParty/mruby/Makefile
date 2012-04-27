@@ -49,11 +49,11 @@ IOSDEVCC := xcrun -sdk iphoneos llvm-gcc-4.2 -arch armv7 -isysroot "/Developer/P
 CC = gcc
 LL = gcc
 YACC = bison
-DEBUG_MODE = 0
+DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else
-CFLAGS = -O2 -g
+CFLAGS = -O3
 endif
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
 MAKE_FLAGS = --no-print-directory CC=$(CC) LL=$(LL)

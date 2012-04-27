@@ -811,7 +811,7 @@ bin_retry:
             val = mrb_fixnum_value((mrb_int)mrb_float(val));
             goto bin_retry;
           }
-          val = mrb_dbl2big(mrb, mrb_float(val));
+          val = mrb_flt2big(mrb, mrb_float(val));
           if (FIXNUM_P(val)) goto bin_retry;
           break;
         case MRB_TT_STRING:

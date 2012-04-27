@@ -101,28 +101,13 @@ const unsigned char mrb_nan[] = "\x00\x00\xc0\x7f";
 const unsigned char mrb_nan[] = "\x7f\xc0\x00\x00";
 #endif
 
-extern double round(double);
-
-#ifndef HAVE_ROUND
-double
-round(double x)
-{
-    double f;
-
-    if (x > 0.0) {
-        f = floor(x);
-        x = f + (x - f >= 0.5);
-    }
-    else if (x < 0.0) {
-        f = ceil(x);
-        x = f - (f - x >= 0.5);
-    }
-    return x;
-}
+#ifdef MRB_USE_FLOAT
+#define round(f) roundf(f)
+#define floor(f) floorf(f)
+#define ceil(f) ceilf(f)
+#define floor(f) floorf(f)
+#define fmod(x,y) fmodf(x,y)
 #endif
-
-
-
 
 void mrb_cmperr(mrb_state *mrb, mrb_value x, mrb_value y);
 
@@ -274,7 +259,7 @@ num_quo(mrb_state *mrb, mrb_value x)
     mrb_value y;
 
     mrb_get_args(mrb, "o", &y);
-    return mrb_funcall(mrb, mrb_float_value((double)mrb_fixnum(x)), "/", 1, y);
+    return mrb_funcall(mrb, mrb_float_value((mrb_float)mrb_fixnum(x)), "/", 1, y);
 }
 
 /*
@@ -308,7 +293,7 @@ num_abs(mrb_state *mrb, mrb_value num)
  */
 
 mrb_value
-mrb_float_new(double d)
+mrb_float_new(mrb_float d)
 {
   //NEWOBJ(flt, struct RFloat);
   //OBJSETUP(flt, mrb_cFloat, MRB_TT_FLOAT);
@@ -333,7 +318,7 @@ static mrb_value
 flo_to_s(mrb_state *mrb, mrb_value flt)
 {
     char buf[32];
-    double value = mrb_float(flt);
+    mrb_float value = mrb_float(flt);
     char *p, *e;
 
     if (isinf(value))
@@ -376,7 +361,7 @@ flo_minus(mrb_state *mrb, mrb_value x)
 
     switch (mrb_type(y)) {
       case MRB_TT_FIXNUM:
-        return mrb_float_value(mrb_float(x) - (double)mrb_fixnum(y));
+        return mrb_float_value(mrb_float(x) - (mrb_float)mrb_fixnum(y));
       case MRB_TT_FLOAT:
         return mrb_float_value(mrb_float(x) - mrb_float(y));
       default:
@@ -402,7 +387,7 @@ flo_mul(mrb_state *mrb, mrb_value x)
 
     switch (mrb_type(y)) {
       case MRB_TT_FIXNUM:
-        return mrb_float_value(mrb_float(x) * (double)mrb_fixnum(y));
+        return mrb_float_value(mrb_float(x) * (mrb_float)mrb_fixnum(y));
       case MRB_TT_FLOAT:
         return mrb_float_value(mrb_float(x) * mrb_float(y));
       default:
@@ -424,14 +409,13 @@ flo_div(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
   long f_y;
-  //double d;
 
   mrb_get_args(mrb, "o", &y);
 
   switch (mrb_type(y)) {
     case MRB_TT_FIXNUM:
       f_y = mrb_fixnum(y);
-      return mrb_float_value(mrb_float(x) / (double)f_y);
+      return mrb_float_value(mrb_float(x) / (mrb_float)f_y);
     case MRB_TT_FLOAT:
       return mrb_float_value(mrb_float(x) / mrb_float(y));
     default:
@@ -455,21 +439,12 @@ flo_quo(mrb_state *mrb, mrb_value x)
 }
 
 static void
-flodivmod(mrb_state *mrb, double x, double y, double *divp, double *modp)
+flodivmod(mrb_state *mrb, mrb_float x, mrb_float y, mrb_float *divp, mrb_float *modp)
 {
-    double div, mod;
+    mrb_float div, mod;
 
     if (y == 0.0) mrb_num_zerodiv(mrb);
-#ifdef HAVE_FMOD
     mod = fmod(x, y);
-#else
-    {
-        double z;
-
-        modf(x/y, &z);
-        mod = x - z * y;
-    }
-#endif
     if (isinf(x) && !isinf(y) && !isnan(y))
         div = x;
     else
@@ -498,12 +473,12 @@ static mrb_value
 flo_mod(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
-  double fy, mod;
+  mrb_float fy, mod;
   mrb_get_args(mrb, "o", &y);
 
     switch (mrb_type(y)) {
       case MRB_TT_FIXNUM:
-        fy = (double)mrb_fixnum(y);
+        fy = (mrb_float)mrb_fixnum(y);
         break;
       case MRB_TT_FLOAT:
         fy = mrb_float(y);
@@ -516,13 +491,13 @@ flo_mod(mrb_state *mrb, mrb_value x)
 }
 
 static mrb_value
-dbl2ival(double d)
+flt2ival(mrb_float d)
 {
     if (FIXABLE(d)) {
         d = round(d);
         return mrb_fixnum_value((long)d);
     }
-    return mrb_nil_value(); /* range over */ //mrb_dbl2big(d);
+    return mrb_nil_value();
 }
 
 
@@ -576,12 +551,12 @@ static mrb_value
 flo_eq(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
-  volatile double a, b;
+  volatile mrb_float a, b;
   mrb_get_args(mrb, "o", &y);
 
     switch (mrb_type(y)) {
       case MRB_TT_FIXNUM:
-        b = (double)mrb_fixnum(y);
+        b = (mrb_float)mrb_fixnum(y);
         break;
       case MRB_TT_FLOAT:
         b = mrb_float(y);
@@ -609,14 +584,14 @@ flo_eq(mrb_state *mrb, mrb_value x)
 static mrb_value
 flo_hash(mrb_state *mrb, mrb_value num)
 {
-  double d;
+  mrb_float d;
   char *c;
   int i, hash;
 
-  d = (double)mrb_fixnum(num);
+  d = (mrb_float)mrb_fixnum(num);
   if (d == 0) d = fabs(d);
   c = (char*)&d;
-  for (hash=0, i=0; i<sizeof(double);i++) {
+  for (hash=0, i=0; i<sizeof(mrb_float);i++) {
     hash = (hash * 971) ^ (unsigned char)c[i];
   }
   if (hash < 0) hash = -hash;
@@ -624,7 +599,7 @@ flo_hash(mrb_state *mrb, mrb_value num)
 }
 
 mrb_value
-mrb_dbl_cmp(double a, double b)
+mrb_flt_cmp(double a, double b)
 {
     if (isnan(a) || isnan(b)) return mrb_nil_value();
     if (a == b) return mrb_fixnum_value(0);
@@ -663,7 +638,7 @@ flo_to_f(mrb_state *mrb, mrb_value num)
 static mrb_value
 flo_is_infinite_p(mrb_state *mrb, mrb_value num)
 {
-    double value = mrb_float(num);
+    mrb_float value = mrb_float(num);
 
     if (isinf(value)) {
         return mrb_fixnum_value( value < 0 ? -1 : 1 );
@@ -686,7 +661,7 @@ flo_is_infinite_p(mrb_state *mrb, mrb_value num)
 static mrb_value
 flo_is_finite_p(mrb_state *mrb, mrb_value num)
 {
-    double value = mrb_float(num);
+    mrb_float value = mrb_float(num);
 
 #if HAVE_FINITE
     if (!finite(value))
@@ -715,11 +690,11 @@ flo_is_finite_p(mrb_state *mrb, mrb_value num)
 static mrb_value
 flo_floor(mrb_state *mrb, mrb_value num)
 {
-    double f = floor(mrb_float(num));
+    mrb_float f = floor(mrb_float(num));
     long val;
 
     if (!FIXABLE(f)) {
-        return mrb_dbl2big(mrb, f);
+        return mrb_flt2big(mrb, f);
     }
     val = (long)f;
     return mrb_fixnum_value(val);
@@ -742,11 +717,11 @@ flo_floor(mrb_state *mrb, mrb_value num)
 static mrb_value
 flo_ceil(mrb_state *mrb, mrb_value num)
 {
-    double f = ceil(mrb_float(num));
+    mrb_float f = ceil(mrb_float(num));
     long val;
 
     if (!FIXABLE(f)) {
-        return mrb_dbl2big(mrb, f);
+        return mrb_flt2big(mrb, f);
     }
     val = (long)f;
     return mrb_fixnum_value(val);
@@ -787,7 +762,7 @@ static mrb_value
 flo_round(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value num)
 {
   mrb_value nd;
-  double number, f;
+  mrb_float number, f;
   int ndigits = 0, i;
   long val;
   mrb_value *argv;
@@ -819,7 +794,7 @@ flo_round(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value num)
     if (ndigits > 0) return mrb_float_value(number);
 
     if (!FIXABLE(number)) {
-        return mrb_dbl2big(mrb, number);
+        return mrb_flt2big(mrb, number);
     }
     val = (long)number;
     return mrb_fixnum_value(val);
@@ -839,14 +814,14 @@ flo_round(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value num)
 static mrb_value
 flo_truncate(mrb_state *mrb, mrb_value num)
 {
-    double f = mrb_float(num);
+    mrb_float f = mrb_float(num);
     long val;
 
     if (f > 0.0) f = floor(f);
     if (f < 0.0) f = ceil(f);
 
     if (!FIXABLE(f)) {
-        return mrb_dbl2big(mrb, f);
+        return mrb_flt2big(mrb, f);
     }
     val = (long)f;
     return mrb_fixnum_value(val);
@@ -900,8 +875,8 @@ mrb_num2long(mrb_state *mrb, mrb_value val)
 
     switch (mrb_type(val)) {
       case MRB_TT_FLOAT:
-        if (mrb_float(val) <= (double)LONG_MAX
-            && mrb_float(val) >= (double)LONG_MIN) {
+        if (mrb_float(val) <= (mrb_float)LONG_MAX
+            && mrb_float(val) >= (mrb_float)LONG_MIN) {
             return (SIGNED_VALUE)(mrb_float(val));
         }
         else {
@@ -931,8 +906,8 @@ mrb_num2ulong(mrb_state *mrb, mrb_value val)
 
     switch (mrb_type(val)) {
       case MRB_TT_FLOAT:
-       if (mrb_float(val) <= (double)LONG_MAX
-           && mrb_float(val) >= (double)LONG_MIN) {
+       if (mrb_float(val) <= (mrb_float)LONG_MAX
+           && mrb_float(val) >= (mrb_float)LONG_MIN) {
            return mrb_fixnum_value(mrb_float(val));
        }
        else {
@@ -1121,7 +1096,7 @@ fix_mul(mrb_state *mrb, mrb_value x)
     }
     switch (mrb_type(y)) {
       case MRB_TT_FLOAT:
-        return mrb_float_value((double)mrb_fixnum(x) * mrb_float(y));
+        return mrb_float_value((mrb_float)mrb_fixnum(x) * mrb_float(y));
       default:
         return mrb_num_coerce_bin(mrb, x, y, "*");
     }
@@ -1170,16 +1145,16 @@ fix_divide(mrb_state *mrb, mrb_value x, mrb_value y, char* op)
     switch (mrb_type(y)) {
       case MRB_TT_FLOAT:
         {
-            double div;
+            mrb_float div;
 
             if (*op == '/') {
-                div = (double)mrb_fixnum(x) / mrb_float(y);
+                div = (mrb_float)mrb_fixnum(x) / mrb_float(y);
                 return mrb_float_value(div);
             }
             else {
                 if (mrb_float(y) == 0) mrb_num_zerodiv(mrb);
-                div = (double)mrb_fixnum(x) / mrb_float(y);
-                return mrb_dbl2big(mrb, floor(div));
+                div = (mrb_float)mrb_fixnum(x) / mrb_float(y);
+                return mrb_flt2big(mrb, floor(div));
             }
         }
       //case MRB_TT_RATIONAL:
@@ -1235,9 +1210,9 @@ fix_mod(mrb_state *mrb, mrb_value x)
     switch (mrb_type(y)) {
       case MRB_TT_FLOAT:
         {
-            double mod;
+            mrb_float mod;
 
-            flodivmod(mrb, (double)mrb_fixnum(x), mrb_float(y), 0, &mod);
+            flodivmod(mrb, (mrb_float)mrb_fixnum(x), mrb_float(y), 0, &mod);
             return mrb_float_value(mod);
         }
       default:
@@ -1267,11 +1242,11 @@ fix_divmod(mrb_state *mrb, mrb_value x)
     switch (mrb_type(y)) {
       case MRB_TT_FLOAT:
         {
-            double div, mod;
+            mrb_float div, mod;
             volatile mrb_value a, b;
 
-            flodivmod(mrb, (double)mrb_fixnum(x), mrb_float(y), &div, &mod);
-            a = dbl2ival(div);
+            flodivmod(mrb, (mrb_float)mrb_fixnum(x), mrb_float(y), &div, &mod);
+            a = flt2ival(div);
             b = mrb_float_value(mod);
             return mrb_assoc_new(mrb, a, b);
         }
@@ -1302,7 +1277,7 @@ fix_equal(mrb_state *mrb, mrb_value x)
     if (FIXNUM_P(y)) return mrb_false_value();
     switch (mrb_type(y)) {
       case MRB_TT_FLOAT:
-        return (double)mrb_fixnum(x) == mrb_float(y) ? mrb_true_value() : mrb_false_value();
+        return (mrb_float)mrb_fixnum(x) == mrb_float(y) ? mrb_true_value() : mrb_false_value();
       default:
         return num_equal(mrb, x, y);
     }
@@ -1507,9 +1482,9 @@ fix_rshift(long val, unsigned long i)
 static mrb_value
 fix_to_f(mrb_state *mrb, mrb_value num)
 {
-    double val;
+    mrb_float val;
 
-    val = (double)mrb_fixnum(num);
+    val = (mrb_float)mrb_fixnum(num);
 
     return mrb_float_value(val);
 }
@@ -1547,13 +1522,12 @@ fix_to_f(mrb_state *mrb, mrb_value num)
  */
 /* ------------------------------------------------------------------------*/
 static mrb_int
-dbl2big(mrb_state *mrb, float d)
+flt2big(mrb_state *mrb, float d)
 {
   //long i = 0;
   //BDIGIT c;
   //BDIGIT *digits;
   mrb_int z;
-  //double u = (d < 0)?-d:d;
 
   if (isinf(d)) {
     mrb_raise(mrb, E_FLOATDOMAIN_ERROR, d < 0 ? "-Infinity" : "Infinity");
@@ -1566,9 +1540,9 @@ dbl2big(mrb_state *mrb, float d)
 }
 
 mrb_value
-mrb_dbl2big(mrb_state *mrb, float d)
+mrb_flt2big(mrb_state *mrb, float d)
 {
-    return mrb_fixnum_value(dbl2big(mrb, d));//bignorm(dbl2big(d));
+    return mrb_fixnum_value(flt2big(mrb, d));
 }
 
 /* 15.2.8.3.1  */
