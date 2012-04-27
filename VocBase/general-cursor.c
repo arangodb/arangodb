@@ -57,7 +57,7 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
     return NULL;
   }
 
-  result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t));
+  result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t), false);
   if (!result) {
     return NULL;
   }
@@ -195,7 +195,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* resu
                                                const TRI_general_cursor_length_t batchSize) {
   TRI_general_cursor_t* cursor;
 
-  cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t));
+  cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
   if (!cursor) {
     return NULL;
   }

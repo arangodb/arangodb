@@ -474,7 +474,7 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
   size_t i;
   bool error = false;
 
-  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!dataparts) {
     return NULL;
   }
@@ -691,7 +691,7 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
   TRI_select_result_t* result;
   TRI_vector_pointer_t* dataparts;
 
-  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!dataparts) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;

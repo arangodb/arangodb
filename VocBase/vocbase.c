@@ -418,7 +418,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   TRI_vocbase_col_t* collection;
 
   // create a new proxy
-  collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t));
+  collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
   if (collection == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -1051,7 +1051,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // setup vocbase structure
   // .............................................................................
 
-  vocbase = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t));
+  vocbase = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false);
 
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
 

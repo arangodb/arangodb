@@ -163,7 +163,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 
   assert(instance);
   
-  cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_cursor_t));
+  cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_cursor_t), false);
   if (!cursor) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;

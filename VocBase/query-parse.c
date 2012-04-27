@@ -114,7 +114,7 @@ static TRI_query_parser_t* InitParserQueryTemplate (TRI_query_template_t* const 
   assert(template_);
   assert(template_->_queryString);
 
-  parser = (TRI_query_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_parser_t));
+  parser = (TRI_query_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_parser_t), false);
   if (!parser) {
     TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;

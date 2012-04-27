@@ -184,7 +184,7 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
   assert(name);
   assert(value);
 
-  parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t));
+  parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
   if (!parameter) {
     return NULL;
   }

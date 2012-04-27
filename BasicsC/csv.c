@@ -60,7 +60,7 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 
   parser->_memoryZone = zone;
 
-  parser->_begin = TRI_Allocate(zone, length);
+  parser->_begin = TRI_Allocate(zone, length, false);
 
   if (parser->_begin == NULL) {
     length = 0;
@@ -173,7 +173,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
         l4 = parser->_written - parser->_start;
         l5 = parser->_current - parser->_start;
 
-        ptr = TRI_Allocate(parser->_memoryZone, l3);
+        ptr = TRI_Allocate(parser->_memoryZone, l3, false);
 
         if (ptr == NULL) {
           return TRI_ERROR_OUT_OF_MEMORY;

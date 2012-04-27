@@ -506,7 +506,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           btr = _valuesBool[option];
 
           if (btr == 0) {
-            btr = _valuesBool[option] = (bool*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(bool));
+            btr = _valuesBool[option] = (bool*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(bool), true);
           }
 
           TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), btr);
@@ -522,7 +522,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           ptr = _valuesString[option];
 
           if (ptr == 0) {
-            ptr = _valuesString[option] = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(char*));
+            ptr = _valuesString[option] = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(char*), true);
           }
 
           TRI_AddStringPODescription(desc, option.c_str(), shortOption, help.c_str(), ptr);
@@ -537,7 +537,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           wtr = _valuesVector[option];
 
           if (wtr == 0) {
-            wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t));
+            wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t), false);
             TRI_InitVectorString(wtr, TRI_CORE_MEM_ZONE);
           }
 

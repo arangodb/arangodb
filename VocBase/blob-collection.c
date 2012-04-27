@@ -313,7 +313,7 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t));
+  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t), false);
 
   if (blob == NULL) {
     return NULL;
@@ -433,7 +433,7 @@ TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t* vocbase,
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t));
+  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t), false);
 
   if (blob == NULL) {
     return NULL;

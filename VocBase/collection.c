@@ -478,7 +478,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // create collection structure
   if (collection == NULL) {
-    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t));
+    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
     /* TODO FIXME: memory allocation might fail */
   }
 
@@ -859,7 +859,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
   // create collection
   if (collection == NULL) {
-    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t));
+    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
     /* TODO FIXME: memory allocation might fail */
     freeCol = true;
   }

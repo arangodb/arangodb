@@ -78,7 +78,7 @@ static bool EqualName (TRI_associative_pointer_t* array,
 
 TRI_associative_pointer_t* TRI_InitialiseQueryFunctions (void) {
   TRI_associative_pointer_t* functions = 
-    (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t)); 
+    (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false); 
 
   if (!functions) {
     return NULL;
@@ -193,7 +193,7 @@ bool TRI_RegisterQueryFunction (TRI_associative_pointer_t* functions,
                                 const int minArgs, 
                                 const int maxArgs) {
   TRI_query_function_t* function = 
-    (TRI_query_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_function_t));
+    (TRI_query_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_function_t), false);
 
   if (!function) {
     return false;

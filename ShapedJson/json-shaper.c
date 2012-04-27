@@ -219,7 +219,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
 
   // split path into attribute pieces
   count = 0;
-  aids = TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t));
+  aids = TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false);
 
   if (aids == NULL) {
     return 0;
@@ -251,7 +251,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
 
   // create element
   total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
-  result = TRI_Allocate(shaper->_memoryZone, total);
+  result = TRI_Allocate(shaper->_memoryZone, total, false);
 
   if (result == NULL) {
     return 0;
@@ -348,7 +348,7 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
     int res;
 
     n = strlen(name) + 1;
-    a2i = TRI_Allocate(shaper->_memoryZone, sizeof(attribute_2_id_t) + n);
+    a2i = TRI_Allocate(shaper->_memoryZone, sizeof(attribute_2_id_t) + n, false);
 
     if (a2i == NULL) {
       return 0;
@@ -524,7 +524,7 @@ TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
   bool ok;
 
   // create the shaper
-  shaper = TRI_Allocate(zone, sizeof(array_shaper_t));
+  shaper = TRI_Allocate(zone, sizeof(array_shaper_t), false);
 
   if (shaper == NULL) {
     return NULL;
@@ -721,13 +721,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   TRI_shape_t* shape;
 
   // NULL
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_null_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_null_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_null_shape_t));
 
   shape->_size = sizeof(TRI_null_shape_t);
   shape->_type = TRI_SHAPE_NULL;
@@ -742,13 +740,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidNull = l->_sid;
 
   // BOOLEAN
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_boolean_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_boolean_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_boolean_shape_t));
 
   shape->_size = sizeof(TRI_boolean_shape_t);
   shape->_type = TRI_SHAPE_BOOLEAN;
@@ -763,13 +759,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidBoolean = l->_sid;
 
   // NUMBER
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_number_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_number_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_number_shape_t));
 
   shape->_size = sizeof(TRI_number_shape_t);
   shape->_type = TRI_SHAPE_NUMBER;
@@ -784,13 +778,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidNumber = l->_sid;
 
   // SHORT STRING
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_short_string_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_short_string_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_short_string_shape_t));
 
   shape->_size = sizeof(TRI_short_string_shape_t);
   shape->_type = TRI_SHAPE_SHORT_STRING;
@@ -805,13 +797,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidShortString = l->_sid;
 
   // LONG STRING
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_long_string_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_long_string_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_long_string_shape_t));
 
   shape->_size = sizeof(TRI_long_string_shape_t);
   shape->_type = TRI_SHAPE_LONG_STRING;
@@ -826,13 +816,11 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidLongString = l->_sid;
 
   // LIST
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_list_shape_t));
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_list_shape_t), true);
 
   if (shape == NULL) {
     return NULL;
   }
-
-  memset(shape, 0, sizeof(TRI_list_shape_t));
 
   shape->_size = sizeof(TRI_list_shape_t);
   shape->_type = TRI_SHAPE_LIST;

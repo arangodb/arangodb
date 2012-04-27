@@ -376,7 +376,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     return;
   }
 
-  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n));
+  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
   gnd = tmp + n;
 
   ptr = cors->coordinates;
@@ -1746,9 +1746,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   }
 
   size_t n = argv.Length() / 2;
-  TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t));
+  TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
   // TODO FIXME: memory allocation might fail
-  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*));
+  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
   // TODO FIXME: memory allocation might fail
   
   for (size_t i = 0;  i < n;  ++i) {
@@ -4464,7 +4464,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     // ...........................................................................
     
     v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, argumentString.length() + 1));       
+    char* cArgument = (char*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, argumentString.length() + 1, false));       
     if (cArgument == NULL) {
       errorString = "insuffient memory to complete ensurePQIndex(...) command";
       ok = false;

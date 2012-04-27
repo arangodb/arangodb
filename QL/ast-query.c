@@ -344,7 +344,7 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
   }
 
   collection = (QL_ast_query_collection_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t), false);
   if (!collection) { 
     return false;
   }
@@ -401,7 +401,7 @@ QL_ast_query_geo_restriction_t* QLAstQueryCreateRestriction (void) {
   QL_ast_query_geo_restriction_t* restriction;
   
   restriction = (QL_ast_query_geo_restriction_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_geo_restriction_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_geo_restriction_t), false);
   if (!restriction) {
     return NULL;
   }

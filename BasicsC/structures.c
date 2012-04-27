@@ -83,7 +83,7 @@ void TRI_FreeBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
 TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t* zone, TRI_blob_t const* src) {
   TRI_blob_t* dst;
 
-  dst = (TRI_blob_t*) TRI_Allocate(zone, sizeof(TRI_blob_t));
+  dst = (TRI_blob_t*) TRI_Allocate(zone, sizeof(TRI_blob_t), false);
 
   if (dst == NULL) {
     return NULL;
@@ -97,7 +97,7 @@ TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t* zone, TRI_blob_t const* src) {
   }
   else {
     dst->length = src->length;
-    dst->data = TRI_Allocate(zone, dst->length);
+    dst->data = TRI_Allocate(zone, dst->length, false);
 
     if (dst->data == NULL) {
       TRI_Free(zone, dst);
@@ -123,7 +123,7 @@ int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* 
   }
   else {
     dst->length = src->length;
-    dst->data = TRI_Allocate(zone, dst->length);
+    dst->data = TRI_Allocate(zone, dst->length, false);
 
     if (dst->data == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;

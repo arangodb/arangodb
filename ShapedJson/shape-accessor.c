@@ -285,7 +285,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   }
 
   accessor->_shape = shape;
-  cv.c = accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*));
+  cv.c = accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
 
   if (accessor->_code == NULL) {
     TRI_DestroyVectorPointer(&ops);
@@ -395,7 +395,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   TRI_shape_access_t* accessor;
   bool ok;
 
-  accessor = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_access_t));
+  accessor = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_access_t), false);
 
   if (accessor == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -405,6 +405,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   accessor->_sid = sid;
   accessor->_pid = pid;
   accessor->_code = NULL;
+  accessor->_memoryZone = shaper->_memoryZone;
 
   ok = BytecodeShapeAccessor(shaper, accessor);
 

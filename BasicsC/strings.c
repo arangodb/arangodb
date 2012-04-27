@@ -339,12 +339,8 @@ char* TRI_LowerAsciiString (const char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1);
-  if (!buffer) {
-    // out of memory
-    return NULL;
-  }
-  
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+
   p = (char*) value;
   out = buffer;
 
@@ -379,11 +375,7 @@ char* TRI_UpperAsciiString (const char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1);
-  if (!buffer) {
-    // out of memory
-    return NULL;
-  }
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
   
   p = (char*) value;
   out = buffer;
@@ -443,7 +435,7 @@ char* TRI_DuplicateString (char const* value) {
   char* result;
 
   n = strlen(value) + 1;
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, n);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, n, false);
 
   memcpy(result, value, n);
 
@@ -459,7 +451,7 @@ char* TRI_DuplicateStringZ (TRI_memory_zone_t* zone, char const* value) {
   char* result;
 
   n = strlen(value) + 1;
-  result = TRI_Allocate(zone, n);
+  result = TRI_Allocate(zone, n, false);
 
   if (result != NULL) {
     memcpy(result, value, n);
@@ -477,7 +469,7 @@ char* TRI_DuplicateString2 (char const* value, size_t length) {
   size_t n;
 
   n = length + 1;
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, n);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, n, false);
 
   memcpy(result, value, length);
   result[length] = '\0';
@@ -494,7 +486,7 @@ char* TRI_DuplicateString2Z (TRI_memory_zone_t* zone, char const* value, size_t 
   size_t n;
 
   n = length + 1;
-  result = TRI_Allocate(zone, n);
+  result = TRI_Allocate(zone, n, false);
 
   if (result != NULL) {
     memcpy(result, value, length);
@@ -538,7 +530,7 @@ char* TRI_Concatenate2String (char const* a, char const* b) {
   na = strlen(a);
   nb = strlen(b);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + 1);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + 1, false);
 
   memcpy(result, a, na);
   memcpy(result + na, b, nb);
@@ -562,7 +554,7 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   nb = strlen(b);
   nc = strlen(c);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + 1);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + 1, false);
 
   memcpy(result, a, na);
   memcpy(result + na, b, nb);
@@ -589,7 +581,7 @@ char* TRI_Concatenate4String (char const* a, char const* b, char const* c, char 
   nc = strlen(c);
   nd = strlen(d);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + 1);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + 1, false);
 
   memcpy(result, a, na);
   memcpy(result + na, b, nb);
@@ -619,7 +611,7 @@ char* TRI_Concatenate5String (char const* a, char const* b, char const* c, char 
   nd = strlen(d);
   ne = strlen(e);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + ne + 1);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + ne + 1, false);
 
   memcpy(result, a, na);
   memcpy(result + na, b, nb);
@@ -652,7 +644,7 @@ char* TRI_Concatenate6String (char const* a, char const* b, char const* c, char 
   ne = strlen(e);
   nf = strlen(f);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + ne + nf + 1);
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + nd + ne + nf + 1, false);
 
   memcpy(result, a, na);
   memcpy(result + na, b, nb);
@@ -685,7 +677,7 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
   }
 
   size = strlen(source);
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, size + 1);
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, size + 1, false);
 
   p = buffer;
 
@@ -739,7 +731,7 @@ TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
   
   delimiterSize = strlen(delim);
   size = strlen(source);
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, size + 1);
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, size + 1, false);
 
   p = buffer;
 
@@ -835,7 +827,7 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
   char const * ptr;
   char const * end;
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, 4 * inLength + 1);
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, 4 * inLength + 1, false);
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
@@ -886,7 +878,7 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
   *qtr = '\0';
   *outLength = qtr - buffer;
 
-  qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1);
+  qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1, false);
   memcpy(qtr, buffer, *outLength + 1);
 
   TRI_Free(TRI_CORE_MEM_ZONE, buffer);
@@ -903,7 +895,7 @@ char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLen
   char const * ptr;
   char const * end;
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, 4 * inLength + 1);
+  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, 4 * inLength + 1, false);
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
@@ -943,7 +935,7 @@ char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLen
   *qtr = '\0';
   *outLength = qtr - buffer;
 
-  qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1);
+  qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1, false);
   memcpy(qtr, buffer, *outLength + 1);
 
   TRI_Free(TRI_CORE_MEM_ZONE, buffer);
@@ -973,7 +965,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
   char const * ptr;
   char const * end;
 
-  buffer = (char*) TRI_Allocate(zone, 6 * inLength + 1);
+  buffer = (char*) TRI_Allocate(zone, 6 * inLength + 1, false);
 
   if (buffer == NULL) {
     return NULL;
@@ -1107,7 +1099,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
   *qtr = '\0';
   *outLength = qtr - buffer;
 
-  qtr = TRI_Allocate(zone, *outLength + 1);
+  qtr = TRI_Allocate(zone, *outLength + 1, false);
 
   if (qtr != NULL) {
     memcpy(qtr, buffer, *outLength + 1);
@@ -1139,7 +1131,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char c3;
   char c4;
 
-  buffer = TRI_Allocate(zone, inLength + 1);
+  buffer = TRI_Allocate(zone, inLength + 1, false);
 
   if (buffer == NULL) {
     return NULL;
@@ -1239,7 +1231,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *qtr = '\0';
   *outLength = qtr - buffer;
 
-  qtr = TRI_Allocate(zone, *outLength + 1);
+  qtr = TRI_Allocate(zone, *outLength + 1, false);
 
   if (qtr != NULL) {
     memcpy(qtr, buffer, *outLength + 1);

@@ -53,7 +53,7 @@ static TRI_data_feeder_t* CreateDataFeederX (const TRI_data_feeder_type_e type,
                                             size_t level) {
   TRI_data_feeder_t* feeder;
   
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t));
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t), false);
   if (!feeder) {
     return NULL;
   }
@@ -84,7 +84,7 @@ static TRI_data_feeder_t* CreateDataFeeder (TRI_query_instance_t* const instance
                                             size_t level) {
   TRI_data_feeder_t* feeder;
   
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t));
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t), false);
   if (!feeder) {
     return NULL;
   }
@@ -233,7 +233,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScanX (const TRI_doc_collection_t* c
   }
 
   feeder->_state = (TRI_data_feeder_table_scan_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t), false);
 
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
@@ -263,7 +263,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScan (TRI_query_instance_t* const in
   }
 
   feeder->_state = (TRI_data_feeder_table_scan_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t), false);
 
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
@@ -460,7 +460,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookupX (const TRI_doc_collection_
   }
 
   feeder->_state = (TRI_data_feeder_primary_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -491,7 +491,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (TRI_query_instance_t* cons
   }
 
   feeder->_state = (TRI_data_feeder_primary_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -709,7 +709,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookupX (const TRI_doc_collection_t* 
   }
   
   feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -740,7 +740,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const i
   }
   
   feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -1172,7 +1172,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookupX (const TRI_doc_collection
   }
   
   feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -1203,7 +1203,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (TRI_query_instance_t* con
   }
   
   feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t), false);
   if (!feeder->_state) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
@@ -1346,7 +1346,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookupX (const TRI_doc_collection_t* c
   }
   
   feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t), false);
 
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
 
@@ -1383,7 +1383,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (TRI_query_instance_t* const in
   }
   
   feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t), false);
 
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
 

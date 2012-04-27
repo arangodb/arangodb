@@ -1678,7 +1678,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   char* id;
   
   // create primary index
-  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t));
+  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
   /* TODO FIXME: memory allocation might fail */
 
   id = TRI_DuplicateString("_id");
@@ -1782,7 +1782,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   info._maximalSize = parameter->_maximalSize;
 
   // first create the document collection
-  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t));
+  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
 
   if (doc == NULL) {
     LOG_ERROR("cannot create document");
@@ -1899,7 +1899,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   char* shapes;
 
   // first open the document collection
-  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t));
+  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
   if (!doc) {
     return NULL;
   }
@@ -2044,7 +2044,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     edge = header->_data;
 
     // IN
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2055,7 +2055,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // OUT
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2066,7 +2066,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // ANY
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
+    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
     /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
@@ -2077,7 +2077,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t));
+      entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
       /* TODO FIXME: memory allocation might fail */
 
       entry->_mptr = header;
@@ -2377,7 +2377,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   size_t n;
   size_t i;
 
-  vector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t));
+  vector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!vector) {
     return NULL;
   }

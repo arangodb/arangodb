@@ -930,7 +930,7 @@ static void UsageVectorStringNode (TRI_PO_vector_string_t * desc, void const * i
 TRI_PO_section_t* TRI_CreatePODescription (char const *description) {
   TRI_PO_section_t * desc;
 
-  desc = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_section_t));
+  desc = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_section_t), false);
 
   desc->base._type = TRI_PO_SECTION;
   desc->base._name = TRI_DuplicateString("Program Options");
@@ -973,7 +973,7 @@ TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc) {
   po_visit_functions_t optionBuilders;
   struct option nullOpt;
 
-  po = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t));
+  po = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t), false);
 
   TRI_InitVector(&po->_longopts, TRI_CORE_MEM_ZONE, sizeof(struct option));
   TRI_InitVector(&po->_items, TRI_CORE_MEM_ZONE, sizeof(TRI_PO_item_t));
@@ -1049,7 +1049,7 @@ void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
   assert(name != NULL);
   assert(variable != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t), false);
 
   res->base._type  = TRI_PO_DOUBLE;
   res->base._name  = TRI_DuplicateString(name);
@@ -1074,7 +1074,7 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
 
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t), false);
 
   res->base._type  = TRI_PO_FLAG;
   res->base._name  = TRI_DuplicateString(name);
@@ -1101,7 +1101,7 @@ void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t), false);
 
   res->base._type  = TRI_PO_INT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1128,7 +1128,7 @@ void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t), false);
 
   res->base._type  = TRI_PO_INT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1155,7 +1155,7 @@ void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t), false);
 
   res->base._type  = TRI_PO_INT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1181,7 +1181,7 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t), false);
 
   res->base._type  = TRI_PO_STRING;
   res->base._name  = TRI_DuplicateString(name);
@@ -1208,7 +1208,7 @@ void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t), false);
 
   res->base._type  = TRI_PO_UINT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1235,7 +1235,7 @@ void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t), false);
 
   res->base._type  = TRI_PO_UINT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1262,7 +1262,7 @@ void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t), false);
 
   res->base._type  = TRI_PO_UINT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1289,7 +1289,7 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t), false);
 
   res->base._type  = TRI_PO_VECTOR_STRING;
   res->base._name  = TRI_DuplicateString(name);
