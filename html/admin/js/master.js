@@ -424,7 +424,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "GET",
-        url: "/document?collection=" + collectionID,
+        url: "/document?collection=" + collectionID ,
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -998,6 +998,63 @@ var logTable = $('#logTableID').dataTable({
   });
 
 ///////////////////////////////////////////////////////////////////////////////
+/// submit log search 
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#submitLogSearch').live('click', function () {  
+   //marker 
+
+    var content = $('#logSearchField').val();
+    var selected = $("#tabs").tabs( "option", "selected" ); 
+    
+    var currentTableID; 
+    if (selected == 1) {currentTableID = "#critLogTableID";  } 
+    else if (selected == 2) {currentTableID = "#warnLogTableID";} 
+    else if (selected == 3) {currentTableID = "#infoLogTableID";} 
+    else if (selected == 4) {currentTableID = "#debugLogTableID";} 
+ 
+    switch (selected) {
+    case 0:
+      if(content == '') {
+        createLogTable(5); 
+      }
+      else {
+        $('#logTableID').dataTable().fnClearTable();
+        $('#logTableID_status').text('Showing all entries for: "' + content + '"'); 
+        $.getJSON("/_admin/log?search=" + content, function(data) {
+          var totalAmount = data.totalAmount; 
+          var items=[];
+          var i=0; 
+     
+          $.each(data.lid, function () {
+            $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
+            i++;
+          });
+        });
+      }
+      break; 
+      default:
+        if(content == '') {
+          createLogTable(selected); 
+        } 
+        else { 
+          $(currentTableID).dataTable().fnClearTable();
+          $(currentTableID + '_status').text('Showing all entries for: "' + content + '"'); 
+          $.getJSON("/_admin/log?search=" + content + "&level=" + selected, function(data) {
+            var totalAmount = data.totalAmount; 
+            var items=[];
+            var i=0; 
+            $.each(data.lid, function () {
+              $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]);
+              i++;
+            });
+          });
+        }
+    }
+  return false;          
+  });
+
+///////////////////////////////////////////////////////////////////////////////
 /// deletes a row in new document view
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1346,7 +1403,7 @@ function drawCollectionsTable () {
        }
       else if (tempStatus == 3) {
         tempStatus = "loaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus, "", ""]);
       }
       else if (tempStatus == 4) {
@@ -1413,7 +1470,6 @@ function documentTableMakeEditable (tableID) {
         return value; 
       }
       if (aPos[1] == 2) {
-        //marker
         var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
         if (typeof(oldContent) == 'object') {
           return JSON.stringify(oldContent); 
@@ -1565,9 +1621,7 @@ $(function() {
 ///////////////////////////////////////////////////////////////////////////////
 /// Log tables pagination  
 ///////////////////////////////////////////////////////////////////////////////
-
 function createLogTable(loglevel) { 
-  console.log(loglevel); 
   currentPage = 1;  
   currentLoglevel = loglevel;  
   var url = "/_admin/log?level="+loglevel+"&size=10";
@@ -1577,7 +1631,8 @@ function createLogTable(loglevel) {
   else if (loglevel == 2) {currentTableID = "#warnLogTableID";} 
   else if (loglevel == 3) {currentTableID = "#infoLogTableID";} 
   else if (loglevel == 4) {currentTableID = "#debugLogTableID";} 
-  else if (loglevel == 5) {currentTableID = "#logTableID";
+  else if (loglevel == 5) {
+    currentTableID = "#logTableID";
     url = "/_admin/log?upto=4&size=10"; 
   } 
 //get first rows
@@ -1586,6 +1641,7 @@ function createLogTable(loglevel) {
     var items=[];
     var i=0; 
     currentAmount = data.totalAmount; 
+    var totalPages = Math.ceil(currentAmount / 10); 
 //clear table   
     $(currentTableID).dataTable().fnClearTable();
 //draw first 10 rows
@@ -1593,17 +1649,28 @@ function createLogTable(loglevel) {
       $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]);
       i++;
     });
+
+  if (totalPages == 0) {
+    $(currentTableID + '_status').text("Showing page 0 of 0");
+    return 0;  
+  }
+
+  $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
+  console.log("current:" + currentPage); 
+  console.log("total:" + totalPages);
+  console.log("id:" + currentTableID);  
   });
 }
 
 function createPrevPagination(checked) {
-  if (currentPage == 1) {
-    return 0; 
-  }
   var prevPage = JSON.parse(currentPage) - 1; 
   var offset = prevPage * 10 - 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
+  var totalPages = Math.ceil(currentAmount / 10); 
 
+  if (currentPage == 1 || totalPages == 0 ) {
+    return 0; 
+  }
   if (checked == "all") {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
@@ -1617,6 +1684,7 @@ function createPrevPagination(checked) {
       i++; 
     });
   currentPage = JSON.parse(currentPage) - 1; 
+  $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
   }); 
 }
 
@@ -1626,13 +1694,13 @@ function createNextPagination(checked) {
   var offset = currentPage * 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
 
+  if (currentPage == totalPages || totalPages == 0 ) {
+    return 0; 
+  }
   if (checked == "all") {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
 
-  if (currentPage == totalPages) {
-    return 0; 
-  }
 
   $.getJSON(url, function(data) {
     $(currentTableID).dataTable().fnClearTable();
@@ -1643,6 +1711,7 @@ function createNextPagination(checked) {
       i++
     });
     currentPage = JSON.parse(currentPage) + 1; 
+    $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
   });
 }
     
