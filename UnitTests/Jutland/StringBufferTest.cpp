@@ -62,7 +62,7 @@ BOOST_FIXTURE_TEST_SUITE (StringBufferTest, StringBufferSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (test_StringBuffer1) {
-  StringBuffer buffer;
+  StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
   BOOST_CHECK_EQUAL(buffer.length(), (size_t) 0);
   BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "");
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE (test_StringBuffer1) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (test_StringBuffer2) {
-  StringBuffer buffer;
+  StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
   BOOST_CHECK(buffer.length() == (size_t) 0);
   BOOST_CHECK(std::string(buffer.c_str()) == "");

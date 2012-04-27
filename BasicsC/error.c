@@ -266,7 +266,7 @@ int TRI_set_errno (int error) {
   eptr = pthread_getspecific(ErrorKey);
 
   if (eptr == NULL) {
-    eptr = TRI_Allocate(sizeof(tri_error_t));
+    eptr = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(tri_error_t), false);
     pthread_setspecific(ErrorKey, eptr);
   }
 
