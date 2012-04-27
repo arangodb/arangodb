@@ -233,7 +233,7 @@ void TRI_RemoveVector (TRI_vector_t* vector, size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
-  if (pos >= vector->_length) {
+  if (vector->_buffer == NULL || pos >= vector->_length) {
     return 0;
   }
 
@@ -443,8 +443,10 @@ int TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    vector->_capacity = newSize;
     vector->_buffer = newBuffer;
+    // prefill the new vector elements with 0's
+    memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
+    vector->_capacity = newSize;
   }
 
   vector->_buffer[vector->_length++] = element;
@@ -456,7 +458,7 @@ int TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
-  if (vector->_length >= vector->_capacity) {
+  if (vector->_length >= vector->_capacity || n >= vector->_length) {
     void* newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
@@ -469,9 +471,11 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
     if (newBuffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    vector->_capacity = newSize;
+    
     vector->_buffer = newBuffer;
+    // prefill the new vector elements with 0's
+    memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
+    vector->_capacity = newSize;
   }
 
   if (n < vector->_length) {
@@ -521,7 +525,7 @@ void* TRI_RemoveVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
-  if (pos >= vector->_length) {
+  if (vector->_buffer == NULL || pos >= vector->_length) {
     return 0;
   }
 
@@ -724,7 +728,7 @@ int TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n) {
-  if (n >= vector->_capacity) {
+  if (n >= vector->_capacity || n >= vector->_length) {
     char** newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
