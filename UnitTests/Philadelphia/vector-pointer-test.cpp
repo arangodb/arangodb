@@ -634,7 +634,7 @@ BOOST_AUTO_TEST_CASE (tst_copy) {
   BOOST_CHECK_EQUAL(&d, TRI_AtVectorPointer(v2, 3));
   BOOST_CHECK_EQUAL(r, TRI_AtVectorPointer(v2, 4));
 
-  TRI_DestroyVectorPointer(v2);
+  TRI_FreeVectorPointer(v2->_memoryZone, v2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -675,7 +675,7 @@ BOOST_AUTO_TEST_CASE (tst_value_modifications) {
   BOOST_CHECK_EQUAL(-1, *(int*) TRI_AtVectorPointer(v2, 2));
   BOOST_CHECK_EQUAL(0, *(int*) TRI_AtVectorPointer(v2, 3));
 
-  TRI_DestroyVectorPointer(v2);
+  TRI_FreeVectorPointer(v2->_memoryZone, v2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
