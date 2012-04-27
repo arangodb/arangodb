@@ -323,7 +323,7 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   // Remove item from the priority queue
   // ...........................................................................
   
-  ok = idx->_pq->remove(idx->_pq,item->pqSlot, true) && ok;
+  ok = idx->_pq->remove(idx->_pq,item->pqSlot, true);
 
  
   // ...........................................................................
@@ -331,7 +331,7 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   // Must come after remove above, since update storage will be called.
   // ...........................................................................
   
-  ok = TRI_RemoveElementAssociativeArray(idx->_aa,item,NULL);
+  ok = TRI_RemoveElementAssociativeArray(idx->_aa,item,NULL) && ok;
 
   
   if (!ok) {
