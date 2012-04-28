@@ -44,13 +44,13 @@ case $TRI_OS_LONG in
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
-    OPTIONS="$OPTIONS --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     ;;
 
