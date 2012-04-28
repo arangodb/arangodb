@@ -385,8 +385,6 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	JavaScriptFunc \
-	JavaScriptFuncIndex \
 	Key-Value \
 	OTWP \
 	Optimizer \

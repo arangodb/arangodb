@@ -972,8 +972,6 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	JavaScriptFunc \
-	JavaScriptFuncIndex \
 	Key-Value \
 	OTWP \
 	Optimizer \
@@ -3194,7 +3192,7 @@ unittests-http-server:
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE)
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
 
 @ENABLE_MRUBY_TRUE@	touch .mruby-build-@TRI_BITS@
 
