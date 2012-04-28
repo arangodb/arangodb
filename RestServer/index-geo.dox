@@ -29,7 +29,16 @@
 /// @page IndexGeoTOC
 ///
 /// <ol>
-///  <li>MISSING</li>
+///  <li>@ref IndexGeoShell
+///   <ol>
+///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
+///    <li>@ref IndexGeoShellGeo "collection.geo"</li>
+///    <li>@ref IndexGeoShellNear "collection.near"</li>
+///    <li>@ref IndexGeoShellWithin "collection.within"</li>
+///   </ol>
+///  </li>
+///  <li>@ref IndexGeoHttp
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,6 +50,31 @@
 /// <hr>
 /// @copydoc IndexGeoTOC
 /// <hr>
+///
+/// AvocadoDB uses Hilbert curves to implement geo-spatial indexes. See this
+/// <a href="http://www.avocadodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
+/// for details.
+///
+/// @section IndexGeoShell Accessing Geo Indexes from the Shell
+///////////////////////////////////////////////////////////////
+///
+/// @anchor IndexGeoShellEnsureGeoIndex
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
+/// <hr>
+///
+/// @anchor IndexGeoShellGeo
+/// @copydetails JSF_AvocadoCollection_prototype_geo
+/// <hr>
+///
+/// @anchor IndexGeoShellNear
+/// @copydetails JSF_AvocadoCollection_prototype_near
+/// <hr>
+///
+/// @anchor IndexGeoShellWithin
+/// @copydetails JSF_AvocadoCollection_prototype_within
+///
+/// @section IndexGeoHttp Accessing Geo Indexes via Http
+////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
