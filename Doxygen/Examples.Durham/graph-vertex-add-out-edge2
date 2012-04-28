@@ -1,0 +1,2 @@
+avocado> v1.addOutEdge(v2, 3, "knows");
+Edge(3)

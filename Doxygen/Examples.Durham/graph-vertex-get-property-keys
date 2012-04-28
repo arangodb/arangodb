@@ -1,10 +1,8 @@
-avocado> var Graph = require("graph").Graph;
-
 avocado> g = new Graph("graph", "vertices", "edges");
-Graph("vertices", "edges")
+Graph("graph")
 
-avocado> v = g.addVertex(null, { name : "Hugo" });
-Vertex(<graph>, "153246:2310672")
+avocado> v = g.addVertex(1, { name : "Hugo" });
+Vertex(1)
 
 avocado> v.getPropertyKeys();
 [ "name" ]

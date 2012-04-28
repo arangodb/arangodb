@@ -1,5 +1,0 @@
-avocado> v1.addInEdge(v2, "K", "knows");
-Edge("K")
-
-avocado> v1.getInEdges();
-[ Edge("K"), Edge("2 -> 1") ]

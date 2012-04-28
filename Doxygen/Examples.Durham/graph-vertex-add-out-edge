@@ -1,0 +1,16 @@
+avocado> var Graph = require("graph").Graph;
+
+avocado> g = new Graph("graph", "vertices", "edges");
+Graph("graph")
+
+avocado> v1 = g.addVertex(1);
+Vertex(1)
+
+avocado> v2 = g.addVertex(2);
+Vertex(2)
+
+avocado> v1.addOutEdge(v2, "1->2");
+Edge("1->2")
+
+avocado> v1.getOutEdges();
+[ Edge(1->2") ]

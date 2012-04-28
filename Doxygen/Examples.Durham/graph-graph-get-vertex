@@ -1,0 +1,5 @@
+avocado> g.addVertex(1);
+Vertex(1)
+
+avocado> g.getVertex(1)
+Vertex(1)
