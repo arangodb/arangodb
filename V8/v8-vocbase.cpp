@@ -389,7 +389,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     gtr->_data = ptr->data;
   }
 
-  //GeoIndex_CoordinatesFree(cors);
+  // GeoIndex_CoordinatesFree(cors);
 
   SortGeoCoordinates(tmp, gnd);
 
@@ -4195,7 +4195,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// @FUN{ensureGeoIndex(@FA{location})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
 ///
 /// Creates a geo-spatial index on all documents using @FA{location} as path to
 /// the coordinates. The value of the attribute must be a list with at least two
@@ -4203,17 +4203,17 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// longitude (second value). All documents, which do not have the attribute
 /// path or with value that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
-/// is returned.
+/// In case that the index was successfully created, the index identifier is
+/// returned.
 ///
-/// @FUN{ensureGeoIndex(@FA{location}, @LIT{true})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location}, @LIT{true})}
 ///
 /// As above which the exception, that the order within the list is longitude
 /// followed by latitude. This corresponds to the format described in
 ///
 /// http://geojson.org/geojson-spec.html#positions
 ///
-/// @FUN{ensureGeoIndex(@FA{latitude}, @FA{longitude})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{latitude}, @FA{longitude})}
 ///
 /// Creates a geo-spatial index on all documents using @FA{latitude} and
 /// @FA{longitude} as paths the latitude and the longitude. The value of the
@@ -4221,18 +4221,18 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// double. All documents, which do not have the attribute paths or which values
 /// are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @EXAMPLES
 ///
 /// Create an geo index for a list attribute:
 ///
-/// @verbinclude admin3
+/// @verbinclude ensure-geo-index-list
 ///
 /// Create an geo index for a hash array attribute:
 ///
-/// @verbinclude admin4
+/// @verbinclude ensure-geo-index-array
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& argv) {
@@ -4344,7 +4344,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 /// must be a list. All documents, which do not have the attribute path or where
 /// one or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @EXAMPLES
@@ -4366,7 +4366,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 /// not have the attribute path or with one or more values that are not
 /// suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4386,7 +4386,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
 /// the fields. Currently only supports one attribute of the type double.
 /// All documents, which do not have the attribute path are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4559,7 +4559,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 /// All documents, which do not have the attribute path or 
 /// with ore or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4581,7 +4581,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments co
 /// All documents, which do not have the attribute path or 
 /// with ore or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14

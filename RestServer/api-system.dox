@@ -68,8 +68,8 @@
 /// @copydetails JSF_GET_system_status
 /// <hr>
 ///
-/// @section HtppSystemUserManagement "Front-End User Management"
-/////////////////////////////////////////////////////////////////
+/// @section HtppSystemUserManagement Front-End User Management
+///////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemUsers
 /// @copydetails triagens::admin::UsersHandler::execute
@@ -83,8 +83,8 @@
 /// @copydetails triagens::admin::UserHandler::executePost
 /// <hr>
 ///
-/// @section HtppSystemSessionManagement "Front-End Session Management"
-///////////////////////////////////////////////////////////////////////
+/// @section HtppSystemSessionManagement Front-End Session Management
+/////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemSessionGet
 /// @copydetails triagens::admin::SessionHandler::executeGet
