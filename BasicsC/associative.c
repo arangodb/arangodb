@@ -82,7 +82,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, false);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -146,7 +146,7 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_elementSize = elementSize;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc, false);
+  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc, true);
 
   p = array->_table;
 

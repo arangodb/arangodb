@@ -378,6 +378,7 @@ HashIndex* HashIndex_new() {
 
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
+  
   result = TRI_InsertKeyAssociativeArray(hashIndex->assocArray.uniqueArray, element, element, false);
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
 }
@@ -440,6 +441,29 @@ int HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement
                       const HashIndexElement* afterElement) {
   assert(false);
   return TRI_ERROR_INTERNAL;                      
+}
+
+
+// .............................................................................
+// free the data of a unique hash index
+// .............................................................................
+  
+
+void HashIndex_free (HashIndex* hashIndex, TRI_shaper_t* shaper) {
+  TRI_associative_array_t* array = hashIndex->assocArray.uniqueArray;
+  size_t i;
+  size_t n;
+
+  n = array->_nrAlloc;
+  for (i = 0; i < n; ++i) {
+    HashIndexElement* element = (HashIndexElement*) (array->_table + i * array->_elementSize);
+
+    if (element->fields && element->data) {
+      // TODO: Free shaped json data for each element
+    }
+  }
+
+  TRI_FreeAssociativeArray(array->_memoryZone, array);
 }
 
 //------------------------------------------------------------------------------
@@ -549,8 +573,6 @@ static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* elemen
   }
   return  hash;
 }
-
-
 
 
 // .............................................................................
@@ -668,3 +690,15 @@ int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement,
   assert(false);
   return TRI_ERROR_INTERNAL;
 }
+
+// .............................................................................
+// free the data of a multi hash index
+// .............................................................................
+
+void MultiHashIndex_free (HashIndex* hashIndex) {
+  TRI_multi_array_t* array = hashIndex->assocArray.nonUniqueArray;
+
+  // TODO: free elements in array
+  TRI_FreeMultiArray(array->_memoryZone, array);
+}
+

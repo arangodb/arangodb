@@ -1545,7 +1545,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
   else {
     hashIndex->_hashIndex = MultiHashIndex_new();
   }  
-  
+
   return &hashIndex->base;
 }
 
@@ -1555,16 +1555,21 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
 
 void TRI_DestroyHashIndex (TRI_index_t* idx) {
   TRI_hash_index_t* hash;
+  HashIndex* hashIndex;
 
   LOG_TRACE("destroying hash index");
   TRI_DestroyVectorString(&idx->_fields);
 
   hash = (TRI_hash_index_t*) idx;
-
   TRI_DestroyVector(&hash->_paths);
 
-  // TODO FIXME: not implemented
-  LOG_DEBUG("TRI_DestroyHashIndex not implemented TODO oreste");
+  hashIndex = hash->_hashIndex;
+  if (hashIndex->unique) {
+    HashIndex_free(hashIndex, hash->base._collection->_shaper);
+  }
+  else {
+    MultiHashIndex_free(hashIndex);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1573,6 +1578,7 @@ void TRI_DestroyHashIndex (TRI_index_t* idx) {
 
 void TRI_FreeHashIndex (TRI_index_t* idx) {
   TRI_DestroyHashIndex(idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ((TRI_hash_index_t*) idx)->_hashIndex);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
