@@ -1,6 +1,3 @@
-avocado> g = new Graph("graph", "vertices", "edges");
-Graph("graph")
-
 avocado> v = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
