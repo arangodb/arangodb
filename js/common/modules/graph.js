@@ -446,8 +446,6 @@ function Vertex(graph, id) {
 /// @verbinclude graph-vertex-add-in-edge
 ///
 /// @verbinclude graph-vertex-add-in-edge2
-///
-/// @verbinclude graph-vertex-add-in-edge3
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addInEdge = function (out, id, label, data) {
