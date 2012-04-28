@@ -28,5 +28,5 @@ make configure
 git commit -m "release version $VERSION" -a
 git push
 
-#git tag "v$VERSION"
-#git push --tags
+git tag "v$VERSION"
+git push --tags
