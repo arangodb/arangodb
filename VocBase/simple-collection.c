@@ -1830,6 +1830,14 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
 
   TRI_DestroyAssociativePointer(&collection->_primaryIndex);
 
+  // free all elements in the edges index
+  n = collection->_edgesIndex._nrAlloc;
+  for (i = 0; i < n; ++i) {
+    void* element = collection->_edgesIndex._table[i];
+    if (element) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    }
+  }
   TRI_DestroyMultiPointer(&collection->_edgesIndex);
 
   TRI_FreeSimpleHeaders(collection->_headers);
