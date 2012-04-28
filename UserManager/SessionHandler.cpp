@@ -314,6 +314,10 @@ HttpHandler::status_e SessionHandler::executeLogin (Session* session) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs out an user
+///
+/// @REST{PUT /_admin/user-manager/session/@FA{sid}/logout}
+///
+/// Logs out an user from the existing session.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executeLogout (Session* session) {
@@ -325,6 +329,14 @@ HttpHandler::status_e SessionHandler::executeLogout (Session* session) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the password
+///
+/// @REST{PUT /_admin/user-manager/session/@FA{sid}/password}
+///
+/// Changes the password of an user. Expects an object with the following
+/// attributes.
+///
+/// - @LIT{password}: The password. The password must be a SHA256 hash of the
+///   real password.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executePassword (Session* session) {

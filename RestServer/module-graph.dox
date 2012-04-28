@@ -99,10 +99,9 @@
 /// @page JSModuleGraph Module "graph"
 ///
 /// The graph module provides basic functions dealing with graph structures.
-/// It exports the constructors for Graph, Vertex, and Edge. In the
-/// following examples, we assume the following
+/// The examples assume
 ///
-/// @verbinclude graph39
+/// @verbinclude graph-setup
 ///
 /// <hr>
 /// @copydoc JSModuleGraphTOC

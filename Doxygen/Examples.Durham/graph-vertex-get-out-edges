@@ -1,0 +1,28 @@
+avocado> var Graph = require("graph").Graph;
+
+avocado> g = new Graph("graph", "vertices", "edges");
+Graph("graph")
+
+avocado> v1 = g.addVertex(1, { name : "Hugo" });
+Vertex(1)
+
+avocado> v2 = g.addVertex(2, { name : "Emil" }); 
+Vertex(2)
+
+avocado> e1 = g.addEdge(v1, v2, 3, "knows");
+Edge(3)
+
+avocado> e2 = g.addEdge(v1, v2, 4, "hates");
+Edge(4)
+
+avocado> v1.getInEdges();
+[ Edge(3), Edge(4) ]
+
+avocado> v1.getInEdges("knows");
+[ Edge(3) ]
+
+avocado> v1.getInEdges("hates");
+[ Edge(4) ]
+
+avocado> v1.getInEdges("knows", "hates");
+[ Edge(3), Edge(4) ]

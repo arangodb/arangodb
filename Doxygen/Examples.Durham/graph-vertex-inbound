@@ -1,0 +1,14 @@
+avocado> v1 = g.addVertex(1, { name : "Hugo" });
+Vertex(1)
+
+avocado> v2 = g.addVertex(2, { name : "Emil" }); 
+Vertex(2)
+
+avocado> e = g.addEdge(v1, v2, 3, "knows", { "weight" : 10 });
+Edge(3)
+
+avocado> v1.inbound();
+[ ]
+
+avocado> v2.inbound();
+[  Edge(3) ]
