@@ -543,12 +543,21 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 
   if (type == 0) {
     idx = TRI_EnsureHashIndexSimCollection(sim, &attributes, unique, &created);
+
+    if (idx == 0) {
+      res = TRI_errno();
+    }
   }
   else if (type == 1) {
     idx = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, unique, &created);
+
+    if (idx == 0) {
+      res = TRI_errno();
+    }
   }
   else {
     LOG_ERROR("unknown index type %d", type);
+    res = TRI_ERROR_INTERNAL;
     idx = 0;
   }
 
@@ -4317,6 +4326,11 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
   }
 
+  if (idx == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "index could not be created")));
+  }  
+  
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
   if (!json) {
