@@ -78,7 +78,7 @@ function geoIndexCreationSuite() {
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(false, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
@@ -86,7 +86,7 @@ function geoIndexCreationSuite() {
       idx = collection.ensureGeoIndex("loc");
 
       assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(false, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
@@ -94,10 +94,20 @@ function geoIndexCreationSuite() {
       idx = collection.ensureGeoIndex("loc", true);
 
       assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(true, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
+
+      collection.unload();
+
+      idx = collection.ensureGeoIndex("loc", true);
+
+      assertNotEqual(id, idx.id);
+      assertEqual("geo1", idx.type);
+      assertEqual(true, idx.geoJson);
+      assertEqual(["loc"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +119,7 @@ function geoIndexCreationSuite() {
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(true, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
@@ -117,7 +127,7 @@ function geoIndexCreationSuite() {
       idx = collection.ensureGeoIndex("loc", true);
 
       assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(true, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
@@ -125,10 +135,20 @@ function geoIndexCreationSuite() {
       idx = collection.ensureGeoIndex("loc", false);
 
       assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo1", idx.type);
       assertEqual(false, idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
+
+      collection.unload();
+
+      idx = collection.ensureGeoIndex("loc", false);
+
+      assertNotEqual(id, idx.id);
+      assertEqual("geo1", idx.type);
+      assertEqual(false, idx.geoJson);
+      assertEqual(["loc"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,31 +160,88 @@ function geoIndexCreationSuite() {
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo2", idx.type);
       assertEqual(["lat", "lon"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("lat", "lon");
 
       assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
+      assertEqual("geo2", idx.type);
       assertEqual(["lat", "lon"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
-    },
+
+      collection.unload();
+
+      idx = collection.ensureGeoIndex("lat", "lon");
+
+      assertEqual(id, idx.id);
+      assertEqual("geo2", idx.type);
+      assertEqual(["lat", "lon"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     basic methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: error handling
+/// @brief test suite: Simple Queries
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationLocationError : function () {
-      collection.save({ loc : [ -100, 0 ] });
+function geoIndexErrorHandlingSuite() {
+  var cn = "UnitTestsCollectionGeo";
+  var collection = null;
 
-      try {
-        collection.ensureGeoIndex("loc");
-        fail();
-      }
-      catch (err) {
-      }
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+  setUp : function () {
+    db._drop(cn);
+    collection = db._create(cn, { waitForSync : false });
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+  tearDown : function () {
+    collection.drop();
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: error handling index
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlerIndexList : function () {
+      collection.ensureGeoIndex("loc");
+
+      var d1 = collection.save({ a : 1 });
+      var d2 = collection.save({ loc : null });
+      var d3 = collection.save({ loc : [0] });
+      var d4 = collection.save({ loc : [ -100, -200 ] });
+      var d5 = collection.save({ loc : [ -10, -20 ]});
+
+      assertEqual(1, collection.near(0,0).toArray().length);
+
+      d1 = collection.replace(d1, { loc : [ 0, 0 ] });
+      d2 = collection.replace(d2, { loc : [ 0, 0 ] });
+      d3 = collection.replace(d3, { loc : [ 0, 0 ] });
+      d4 = collection.replace(d4, { loc : [ 0, 0 ] });
+
+      assertEqual(5, collection.near(0,0).toArray().length);
+
+      collection.replace(d1, { a : 2 });
+      collection.replace(d2, { loc : null });
+      collection.replace(d3, { loc : [ 0 ] });
+      collection.replace(d4, { loc : [ -100, -200 ] });
+
+      assertEqual(1, collection.near(0,0).toArray().length);
     }
   };
 }
@@ -458,6 +535,7 @@ function geoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(geoIndexCreationSuite);
+jsunity.run(geoIndexErrorHandlingSuite);
 jsunity.run(geoIndexSimpleQueriesSuite);
 
 return jsunity.done();

@@ -174,7 +174,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
 
     idx = (TRI_index_t*) indexes->_buffer[i];
 
-    if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
+    if (idx->_type != TRI_IDX_TYPE_GEO_INDEX1 && idx->_type != TRI_IDX_TYPE_GEO_INDEX2) {
       // ignore all indexes except geo indexes here
       continue;
     }
@@ -250,7 +250,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
       QL_optimize_range_compare_type_e lastCompareType = COMPARE_TYPE_UNKNOWN;
       size_t j;
 
-      if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
+      if (idx->_type == TRI_IDX_TYPE_GEO_INDEX1 || idx->_type == TRI_IDX_TYPE_GEO_INDEX2) {
         // ignore all geo indexes here
         continue;
       }

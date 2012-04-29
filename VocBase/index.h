@@ -72,7 +72,8 @@ typedef TRI_voc_tick_t TRI_idx_iid_t;
 
 typedef enum {
   TRI_IDX_TYPE_PRIMARY_INDEX,
-  TRI_IDX_TYPE_GEO_INDEX,
+  TRI_IDX_TYPE_GEO_INDEX1,
+  TRI_IDX_TYPE_GEO_INDEX2,
   TRI_IDX_TYPE_HASH_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX
@@ -125,6 +126,7 @@ typedef struct TRI_geo_index_s {
   TRI_shape_pid_t _longitude;
 
   bool _geoJson;
+  bool _constraint;
 }
 TRI_geo_index_t;
 
@@ -262,10 +264,11 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// first and latitude second.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s*,
-                                 char const* locationName,
-                                 TRI_shape_pid_t,
-                                 bool geoJson);
+TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s*,
+                                  char const* locationName,
+                                  TRI_shape_pid_t,
+                                  bool geoJson,
+                                  bool constraint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for arrays
@@ -275,7 +278,8 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s*,
                                   char const* latitudeName,
                                   TRI_shape_pid_t,
                                   char const* longitudeName,
-                                  TRI_shape_pid_t);
+                                  TRI_shape_pid_t,
+                                  bool constraint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

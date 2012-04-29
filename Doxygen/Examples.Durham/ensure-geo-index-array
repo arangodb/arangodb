@@ -1,5 +1,5 @@
 avocado> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
-{ "id" : "87612/1070652", "type" : "geo", "fields" : ["location.latitude", "location.longitude"], "isNewlyCreated" : true }
+{ "id" : "87612/1070652", "type" : "geo2", "fields" : ["location.latitude", "location.longitude"], "isNewlyCreated" : true }
 
 avocado> for (i = -90;  i <= 90;  i += 10) {
 .......>   for (j = -180; j <= 180; j += 10) {

@@ -128,7 +128,8 @@ endif
 
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index-geo.js
 
 .PHONY: unittests-shell-server
 
@@ -159,7 +160,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		     @srcdir@/js/server/tests/ahuacatl-functions.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
- 
+
 
 .PHONY: unittests-shell-server-ahuacatl
 

@@ -1021,7 +1021,8 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 ################################################################################
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index-geo.js
 
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
