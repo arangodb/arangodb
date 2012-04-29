@@ -192,6 +192,7 @@ function geoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function geoIndexErrorHandlingSuite() {
+  var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -218,7 +219,7 @@ function geoIndexErrorHandlingSuite() {
 /// @brief test: error handling index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlerIndexList : function () {
+    testErrorHandlingIndexList : function () {
       collection.ensureGeoIndex("loc");
 
       var d1 = collection.save({ a : 1 });
@@ -240,6 +241,84 @@ function geoIndexErrorHandlingSuite() {
       collection.replace(d2, { loc : null });
       collection.replace(d3, { loc : [ 0 ] });
       collection.replace(d4, { loc : [ -100, -200 ] });
+
+      assertEqual(1, collection.near(0,0).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: error handling index
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingConstraintList : function () {
+      collection.ensureGeoConstraint("loc");
+
+      var d1 = collection.save({ loc : [ 0, 0 ] });
+
+      try {
+        collection.save({ a : 1 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.save({ loc : null });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.save({ loc : [0] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.save({ loc : [ -100, -200 ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(1, collection.near(0,0).toArray().length);
+
+      try {
+        collection.replace(d1._id, { a : 1 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.replace(d1._id, { loc : null });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.replace(d1._id, { loc : [0] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
+
+      try {
+        collection.replace(d1._id, { loc : [ -100, -200 ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+      }
 
       assertEqual(1, collection.near(0,0).toArray().length);
     }

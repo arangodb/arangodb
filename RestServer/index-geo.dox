@@ -32,6 +32,7 @@
 ///  <li>@ref IndexGeoShell
 ///   <ol>
 ///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
+///    <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
 ///    <li>@ref IndexGeoShellGeo "collection.geo"</li>
 ///    <li>@ref IndexGeoShellNear "collection.near"</li>
 ///    <li>@ref IndexGeoShellWithin "collection.within"</li>
@@ -68,6 +69,10 @@
 ///
 /// @anchor IndexGeoShellEnsureGeoIndex
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
+/// <hr>
+///
+/// @anchor IndexGeoShellEnsureGeoConstraint
+/// @copydetails JS_EnsureGeoConstraintVocbaseCol
 /// <hr>
 ///
 /// @anchor IndexGeoShellGeo
