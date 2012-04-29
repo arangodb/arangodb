@@ -2176,7 +2176,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
   TRI_shaped_json_t old;
   bool constraint;
-  bool result;
+  int result;
   size_t i;
   size_t n;
 
