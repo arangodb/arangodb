@@ -189,7 +189,7 @@ AvocadoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo") {
+      if (index.type == "geo1") {
         if (index.fields[0] == loc && index.geoJson == order) {
           return index;
         }
@@ -205,7 +205,7 @@ AvocadoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo" && 2 <= index.fields.length) {
+      if (index.type == "geo2") {
         if (index.fields[0] == lat && index.fields[1] == lon) {
           return index;
         }
@@ -1144,7 +1144,7 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo") {
+      if (index.type == "geo1" || index.type == "geo2") {
         if (this._index == null) {
           this._index = index.id;
         }
@@ -1327,7 +1327,7 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo") {
+      if (index.type == "geo1" || index.type == "geo2") {
         if (this._index == null) {
           this._index = index.id;
         }

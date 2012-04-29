@@ -408,9 +408,10 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                                     TRI_shape_pid_t location,
-                                                     bool geoJson);
+struct TRI_index_s* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
+                                                      TRI_shape_pid_t location,
+                                                      bool geoJson,
+                                                      bool constraint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index
@@ -420,7 +421,8 @@ struct TRI_index_s* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* colle
 
 struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                       TRI_shape_pid_t latitude,
-                                                      TRI_shape_pid_t longitude);
+                                                      TRI_shape_pid_t longitude,
+                                                      bool constraint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
@@ -455,19 +457,21 @@ struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                                     char const* location,
-                                                     bool geoJson,
-                                                     bool* created);
+struct TRI_index_s* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* collection,
+                                                      char const* location,
+                                                      bool geoJson,
+                                                      bool constraint,
+                                                      bool* created);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                                       char const* latitude,
-                                                       char const* longitude,
-                                                       bool* created);
+                                                      char const* latitude,
+                                                      char const* longitude,
+                                                      bool constraint,
+                                                      bool* created);
                                                 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds or returns an existing hash index to a collection
