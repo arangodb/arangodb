@@ -27,6 +27,19 @@
 
 #include "Ahuacatl/ahuacatl-result.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the data held by a cursor
+////////////////////////////////////////////////////////////////////////////////
+
 static void FreeData (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
@@ -34,6 +47,10 @@ static void FreeData (TRI_general_cursor_result_t* result) {
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the record at position n of the cursor
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t* result, 
                                        const TRI_general_cursor_length_t n) {
@@ -44,6 +61,10 @@ static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t* result,
   return (TRI_general_cursor_row_t*) TRI_AtVector(&json->_value._objects, (size_t) n);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of rows in the cursor
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
   
@@ -51,6 +72,10 @@ static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t* resul
 
   return (TRI_general_cursor_length_t) json->_value._objects._length;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

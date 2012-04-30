@@ -220,10 +220,9 @@ TRI_aql_value_t;
 
 typedef struct TRI_aql_node_s {
   TRI_vector_pointer_t _members;
-  TRI_vector_pointer_t _subNodes;
+  struct TRI_aql_node_s* _next;
   TRI_aql_node_type_e _type;
   TRI_aql_value_t _value;
-  struct TRI_aql_node_s* _next;
 }
 TRI_aql_node_t;
 

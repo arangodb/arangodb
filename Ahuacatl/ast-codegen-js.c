@@ -112,7 +112,7 @@ static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
 
 static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
                                              const char* const funcName, 
-                                             const TRI_aql_scope_type_e type) {
+                                             const TRI_aql_code_scope_type_e type) {
   TRI_aql_codegen_scope_t* scope;
   
   scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
@@ -126,6 +126,8 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
     FreeScope(scope);
     return NULL;
   }
+
+  printf("CREATING A SCOPE\n");
 
   RegisterString(generator, scope->_funcName);
   scope->_variablePrefix = NULL;
@@ -147,7 +149,7 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool StartScope (TRI_aql_codegen_t* const generator, 
-                        const TRI_aql_scope_type_e type, 
+                        const TRI_aql_code_scope_type_e type, 
                         const char* const funcName) {
   TRI_aql_codegen_scope_t* scope;
   
@@ -246,6 +248,7 @@ static void RemoveCurrentScope (TRI_aql_codegen_t* const generator) {
 
   scope = (TRI_aql_codegen_scope_t*) TRI_RemoveVectorPointer(&generator->_scopes, length - 1);
   FreeScope(scope);
+  printf("REMOVING A SCOPE\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +280,7 @@ static void CloseForLoops (TRI_aql_codegen_t* const generator) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendFunction (TRI_aql_codegen_t* const generator, 
-                            const TRI_aql_scope_type_e type, 
+                            const TRI_aql_code_scope_type_e type, 
                             const char* const name, 
                             const char* const body) {
   assert(generator);
@@ -287,7 +290,7 @@ static bool AppendFunction (TRI_aql_codegen_t* const generator,
   TRI_AppendStringStringBuffer(&generator->_buffer, "\nfunction ");
   TRI_AppendStringStringBuffer(&generator->_buffer, name);
   TRI_AppendStringStringBuffer(&generator->_buffer, "(");
-  if (type == AQL_SCOPE_COMPARE) {
+  if (type == AQL_CODE_SCOPE_COMPARE) {
     TRI_AppendStringStringBuffer(&generator->_buffer, "l, r");
   }
   else {
@@ -295,7 +298,7 @@ static bool AppendFunction (TRI_aql_codegen_t* const generator,
   }
 
   TRI_AppendStringStringBuffer(&generator->_buffer, ") {\n");
-  if (type != AQL_SCOPE_COMPARE) {
+  if (type != AQL_CODE_SCOPE_COMPARE) {
     TRI_AppendStringStringBuffer(&generator->_buffer, "  var $ = AHUACATL_CLONE(previous);\n");
   }
   TRI_AppendStringStringBuffer(&generator->_buffer, body);
@@ -329,7 +332,7 @@ static char* EndScope (TRI_aql_codegen_t* const generator) {
     generator->_error = true;
   }
   else {
-    if (scope->_type == AQL_SCOPE_RESULT) {
+    if (scope->_type == AQL_CODE_SCOPE_RESULT) {
       TRI_AppendStringStringBuffer(body, "  var result = [];\n");
       TRI_AppendStringStringBuffer(body, scope->_buffer->_buffer);
       TRI_AppendStringStringBuffer(body, "  return result;");
@@ -546,21 +549,37 @@ static bool AppendOwnPropertyVar (TRI_aql_codegen_t* const generator,
   return true;
 }
 
+static void ProcessNode (TRI_aql_codegen_t* const, const TRI_aql_node_t* const);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate the code for an individual node and all members
 ////////////////////////////////////////////////////////////////////////////////
 
 static void GenerateCode (TRI_aql_codegen_t* const generator, 
-                          const TRI_aql_node_t* const data) {
-  TRI_aql_node_t* node;
+                          const TRI_aql_node_t* const node) {
+  size_t i;
+  size_t n;
 
-  if (!data) {
+  if (!node) {
     return;
   }
 
-  node = (TRI_aql_node_t*) data;
+  ProcessNode(generator, node);
+  n = node->_subNodes._length;
 
-  while (node) {
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* subNode = (TRI_aql_node_t*) node->_subNodes._buffer[i];
+
+    ProcessNode(generator, subNode);
+  }
+}
+
+
+static void ProcessNode (TRI_aql_codegen_t* const generator, 
+                         const TRI_aql_node_t* const node) {
+
+  printf("GENERATING CODE FOR NODE: %s\n", TRI_NodeNameAql(node->_type));
+
     switch (node->_type) {
       case AQL_NODE_VALUE:
         AppendValue(generator, node);
@@ -635,7 +654,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         sortFuncName = GetNextFunctionName(generator);
 
-        StartScope(generator, AQL_SCOPE_COMPARE, sortFuncName);
+        StartScope(generator, AQL_CODE_SCOPE_COMPARE, sortFuncName);
         AppendIndent(generator);
         AppendCode(generator, "var lhs, rhs;\n");
 
@@ -682,7 +701,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         groupFuncName = GetNextFunctionName(generator);
 
-        StartScope(generator, AQL_SCOPE_RESULT, groupFuncName);
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, groupFuncName);
         AppendIndent(generator);
 
         AppendCode(generator, "return { ");
@@ -718,7 +737,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ");\n");
         previousFunction = EndScope(generator);
 
-        StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator));
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, GetNextFunctionName(generator));
         AppendIndent(generator);
         AppendCode(generator, "var __group = ");
         AppendCode(generator, previousFunction);
@@ -740,7 +759,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
           // TODO: oom
         }
         
-        StartScope(generator, AQL_SCOPE_RESULT, funcName);
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, funcName);
         AppendIndent(generator);
         AppendCode(generator, "var __e = AHUACATL_LIST($);\n");
         AppendIndent(generator);
@@ -778,7 +797,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
           // TODO: oom
         }
 
-        StartScope(generator, AQL_SCOPE_RESULT, funcName);
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, funcName);
         GenerateCode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 
         AppendCode(generator, funcName);
@@ -819,7 +838,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ");\n");
         previousFunction = EndScope(generator);
 
-        StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator));
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, GetNextFunctionName(generator));
         AppendIndent(generator);
         AppendCode(generator, "var __limit = ");
         AppendCode(generator, previousFunction);
@@ -845,7 +864,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         sortFuncName = GetNextFunctionName(generator);
 
-        StartScope(generator, AQL_SCOPE_COMPARE, sortFuncName);
+        StartScope(generator, AQL_CODE_SCOPE_COMPARE, sortFuncName);
         AppendIndent(generator);
         AppendCode(generator, "var lhs, rhs;\n");
 
@@ -908,7 +927,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ");\n");
         EndScope(generator);
 
-        StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator));
+        StartScope(generator, AQL_CODE_SCOPE_RESULT, GetNextFunctionName(generator));
         AppendIndent(generator);
         AppendCode(generator, "var __sort = ");
         AppendCode(generator, previousFunction);
@@ -1093,9 +1112,6 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
       default:
         break;
     }
-    
-    node = node->_next;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1134,7 +1150,7 @@ TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
 
   TRI_InitVectorPointer(&generator->_scopes, TRI_UNKNOWN_MEM_ZONE);
   
-  if (!StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator))) { 
+  if (!StartScope(generator, AQL_CODE_SCOPE_RESULT, GetNextFunctionName(generator))) { 
     TRI_FreeCodegenAql(generator);
     return NULL;
   }
@@ -1210,7 +1226,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
 
     code = TRI_DuplicateString(generator->_buffer._buffer);
     LOG_TRACE("generated code:\n%s\n",code);
-    // printf("generated code:\n%s\n",code);
+    printf("generated code:\n%s\n",code);
   }
 
   TRI_FreeCodegenAql(generator);

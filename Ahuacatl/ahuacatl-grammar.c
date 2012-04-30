@@ -1788,7 +1788,7 @@ yyreduce:
       if (!TRI_AddStatementAql(context, node)) {
         ABORT_OOM
       }
-
+      
       (yyval.node) = node;
     ;}
     break;
@@ -2084,7 +2084,7 @@ yyreduce:
       if (!TRI_AddStatementAql(context, node)) {
         ABORT_OOM
       }
-
+      
       (yyval.node) = node;
     ;}
     break;

@@ -52,6 +52,7 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
   }
 
   TRI_InitVectorPointer(&parser->_scopes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&parser->_stack, TRI_UNKNOWN_MEM_ZONE);
 
   parser->_buffer = (char*) query;
   parser->_length = strlen(query);
@@ -65,6 +66,7 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
 
 void TRI_FreeParserAql (TRI_aql_parser_t* const parser) {
   TRI_DestroyVectorPointer(&parser->_scopes);
+  TRI_DestroyVectorPointer(&parser->_stack);
 
   // free lexer
   if (parser) {

@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 
 // -----------------------------------------------------------------------------
@@ -97,7 +98,7 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  TRI_PushBackVectorPointer(&context->_stack, (void*) value);
+  TRI_PushBackVectorPointer(&context->_parser->_stack, (void*) value);
 
   return true;
 }
@@ -108,9 +109,9 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
 
 void* TRI_PopStackParseAql (TRI_aql_context_t* const context) {
   assert(context);
-  assert(context->_stack._length > 0);
+  assert(context->_parser->_stack._length > 0);
 
-  return TRI_RemoveVectorPointer(&context->_stack, context->_stack._length - 1);
+  return TRI_RemoveVectorPointer(&context->_parser->_stack, context->_parser->_stack._length - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,9 +120,9 @@ void* TRI_PopStackParseAql (TRI_aql_context_t* const context) {
 
 void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
   assert(context);
-  assert(context->_stack._length > 0);
+  assert(context->_parser->_stack._length > 0);
 
-  return context->_stack._buffer[context->_stack._length - 1];
+  return context->_parser->_stack._buffer[context->_parser->_stack._length - 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
