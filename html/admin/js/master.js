@@ -29,7 +29,7 @@ var currentLoglevel = 5;
 var tables = ["#logTableID", "#critLogTableID", "#warnLogTableID", "#infoLogTableID", "#debugLogTableID"];
 
 $.each(tables, function(v, i ) {
-  $(i + '_next').live('click', function () {
+  $(i + '_prev').live('click', function () {
 
     if ( i == "#logTableID" ) {
       createNextPagination("all");  
@@ -38,13 +38,20 @@ $.each(tables, function(v, i ) {
       createNextPagination();  
     }
   });
-  $(i + '_prev').live('click', function () {
+  $(i + '_next').live('click', function () {
     if ( i == "#logTableID" ) {
       createPrevPagination("all");  
     }
     else {
       createPrevPagination();  
     }
+  });
+  $(i + '_last').live('click', function () {
+    createLogTable(currentLoglevel);
+  });
+  $(i+ '_first').live('click', function () {
+    createLastLogPagination(i); 
+    
   });
 });
 
@@ -57,6 +64,13 @@ $("#documents_next").live('click', function () {
   createNextDocPagination();
 });
 
+$("#documents_first").live('click', function () {
+  createFirstPagination("#documentsTable"); 
+});
+
+$("#documents_last").live('click', function () {
+  createLastPagination("#documentsTable"); 
+});
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -69,9 +83,11 @@ $('#logView ul').append('<button id="refreshLogButton"><img src="/_admin/html/me
 $("#tabs").tabs({
   select: function(event, ui) {
     if (ui.index == 0) {
+      currentLoglevel = 5; 
       createLogTable(5); 
     }
     else {
+      currentLoglevel = ui.index; 
       createLogTable(ui.index); 
     }
   }    
@@ -347,7 +363,7 @@ var logTable = $('#logTableID').dataTable({
       $('#nav3').text('-> New Document'); 
 
       newDocumentTable.fnClearTable(); 
-      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "key", value2html("clicktoedit"), "clicktoedit" ]);
+      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "key", value2html("clicktoedit"), JSON.stringify("click2edit")]);
       documentTableMakeEditable('#NewDocumentTableID');
       hideAllSubDivs();
       $('#collectionsView').hide();
@@ -362,6 +378,8 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
+      $('#documentEditSourceView').hide();
+      $('#documentEditTableView').show();
       var collectiondocID = location.hash.substr(14, location.hash.length); 
       collectionID = collectiondocID.split("/"); 
 
@@ -397,10 +415,10 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
             if (key == '_id' || key == '_rev') {
-              documentEditTable.fnAddData(["", key, val, val]);
+              documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
             }
             else {
-                documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), val]);
+              documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
             }
           });
           documentTableMakeEditable('#documentEditTableID');
@@ -417,6 +435,7 @@ var logTable = $('#logTableID').dataTable({
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
       
+      globalAjaxCursorChange();
       $.ajax({
         type: "GET",
         url: "/_api/collection/" + collectionID + "/count", 
@@ -459,7 +478,6 @@ var logTable = $('#logTableID').dataTable({
       totalCollectionCount = Math.ceil(collectionCount / 10); 
       collectionCurrentPage = 1;
       $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
-      console.log(globalCollectionName); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -629,7 +647,6 @@ var logTable = $('#logTableID').dataTable({
           collectionID = row_data[3]; 
         } 
         else {
-          //TODO
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
         
@@ -637,13 +654,13 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "PUT",
-        url: "/document/" + collectionID,
+        url: "/document/" + JSON.parse(collectionID),
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
           tableView = true;
-          var collID = collectionID.split("/");  
+          var collID = JSON.parse(collectionID).split("/");  
           window.location.href = "#showCollection?" + collID[0];  
           alert("done");
         },
@@ -672,6 +689,8 @@ var logTable = $('#logTableID').dataTable({
           tableView = true;
           var collID = collectionID.split("/");  
           window.location.href = "#showCollection?" + collID[0];  
+          var img = $('#toggleEditedDocButton').find('img'); 
+          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
           alert("done");
         },
         error: function(data) {
@@ -692,7 +711,7 @@ var logTable = $('#logTableID').dataTable({
       createLogTable(5);
       break; 
     default:
-      createLogTable(selected); 
+      createLogTable(selected);
       break;
     }
   });
@@ -703,7 +722,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addEditedDocRowButton').live('click', function () {
     if (tableView == true) {
-      documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), 1337]);
+      documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("somevalue")]);
       documentTableMakeEditable('#documentEditTableID');
     }
     else {
@@ -778,7 +797,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addNewDocButton').live('click', function () {
     if (tableView == true) {
-      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), 1337 ]);
+      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), JSON.stringify("editme") ]);
       documentTableMakeEditable('#NewDocumentTableID');
     }
     else {
@@ -791,13 +810,12 @@ var logTable = $('#logTableID').dataTable({
 
   $('#toggleEditedDocButton').live('click', function () {
     if (tableView == true) {
-      try {
         var content = documentEditTable.fnGetData();
         var result = {}; 
  
         for (row in content) {
           var row_data = content[row];
-          result[row_data[1]] = row_data[3];
+          result[row_data[1]] = JSON.parse(row_data[3]);
         }
         $('#documentEditSourceBox').val(JSON.stringify(result));  
         $('#documentEditTableView').toggle();
@@ -805,11 +823,6 @@ var logTable = $('#logTableID').dataTable({
         tableView = false; 
         var img = $(this).find('img'); 
         img.attr('src', '/_admin/html/media/icons/on_icon16.png');
-      }
-  
-      catch(e) {
-        alert(e); 
-      }
     }
     else {
       try {
@@ -819,10 +832,10 @@ var logTable = $('#logTableID').dataTable({
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
           if (key == '_id' || key == '_rev') {
-            documentEditTable.fnAddData(["", key, val, val]);
+            documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              documentEditTable.fnAddData(['<button id="deleteEditedDocButton">delete</button>',key, value2html(val), val]);
+            documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
   
@@ -950,10 +963,10 @@ var logTable = $('#logTableID').dataTable({
         newDocumentTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
           if (key == '_id' || key == '_rev') {
-            newDocumentTable.fnAddData(["", key, val, val]);
+            newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              newDocumentTable.fnAddData(['<button id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), val]);
+              newDocumentTable.fnAddData(['<button id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
         documentTableMakeEditable ('#NewDocumentTableID'); 
@@ -1310,6 +1323,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "load") {
+      globalAjaxCursorChange();
       $.ajax({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/load",
@@ -1329,6 +1343,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "unload") {
+      globalAjaxCursorChange();
       $.ajax({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/unload",
@@ -1385,8 +1400,25 @@ function drawCollectionsTable () {
        }
       else if (tempStatus == 3) {
         tempStatus = "loaded";
+        var alive; 
+        var size; 
+      
+        $.ajax({
+          type: "GET",
+          url: "/_api/collection/" + val.id + "/figures",
+          contentType: "application/json",
+          processData: false,
+          async: false,   
+          success: function(data) {
+            size = data.figures.alive.size / 1024; 
+            alive = data.figures.alive.count; 
+          },
+          error: function(data) {
+          }
+        });
+	
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus, "", ""]);
+        val.id, val.name, tempStatus, size + " kB", alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
@@ -1427,10 +1459,12 @@ function documentTableMakeEditable (tableID) {
   $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
     var aPos = documentEditTable.fnGetPosition(this);
     if (aPos[1] == 1) {
+      //return key column
       documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
       return value;
     }
     if (aPos[1] == 2) {
+      //TODO
       var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
       var test = getTypedValue(value);
       if (String(value) == String(oldContent)) {
@@ -1438,8 +1472,10 @@ function documentTableMakeEditable (tableID) {
         return value2html(oldContent);
       }
       else {
-        // change
+        // change update hidden row
+       //MARKER 
         documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1); 
+        // return visible row 
         return value2html(test);
       } 
     } 
@@ -1454,7 +1490,8 @@ function documentTableMakeEditable (tableID) {
       if (aPos[1] == 2) {
         var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
         if (typeof(oldContent) == 'object') {
-          return JSON.stringify(oldContent); 
+          //grep hidden row and paste in visible row
+          return value2html(oldContent);
         }
         else {
           return oldContent;  
@@ -1506,7 +1543,7 @@ function getTypedValue (value) {
       return test;
     }
     if (typeof(test) == 'object') {
-      // value is an object
+      // value is an object 
       return test;
     }
   }
@@ -1665,10 +1702,7 @@ function createPrevDocPagination() {
   collectionCurrentPage = prevPage; 
   $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
 }
-//marker
 function createNextDocPagination () {
-
-console.log("start"); 
 
   if (collectionCurrentPage == totalCollectionCount) {
     return 0; 
@@ -1724,7 +1758,7 @@ function createPrevPagination(checked) {
 function createNextPagination(checked) { 
 
   var totalPages = Math.ceil(currentAmount / 10); 
-  var offset = currentPage * 10; 
+ var offset = currentPage * 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
 
   if (currentPage == totalPages || totalPages == 0 ) {
@@ -1777,3 +1811,88 @@ function cutByResolution (string) {
   }
   return content; 
 }
+
+function createFirstPagination () {
+
+  if (collectionCurrentPage == 1) {
+    return 0; 
+  }
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+      collectionCurrentPage = 1;
+      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
+    },
+    error: function(data) {
+      
+    }
+  });
+}
+
+function createLastLogPagination (tableid) {
+  var totalPages = Math.ceil(currentAmount / 10); 
+  var offset = (totalPages * 10) - 10; 
+  var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
+
+  if (currentPage == totalPages || totalPages == 0 ) {
+    return 0; 
+  }
+  if (tableid = "#logTableID") {
+    url = "/_admin/log?upto=4&size=10&offset="+offset; 
+  }
+
+  $.getJSON(url, function(data) {
+    $(currentTableID).dataTable().fnClearTable();
+
+    var i = 0; 
+    $.each(data.level, function() {
+      $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]); 
+      i++
+    });
+    currentPage = totalPages;  
+    $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
+  });
+
+}
+
+function createLastPagination () {
+  if (totalCollectionCount == collectionCurrentPage) {
+    return 0
+  }
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  
+  var offset = totalCollectionCount * 10 - 10; 
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+      collectionCurrentPage = totalCollectionCount;
+      $('#documents_status').text("Showing page " + totalCollectionCount + " of " + totalCollectionCount); 
+    },
+    error: function(data) {
+    }
+  });
+}
+
+function globalAjaxCursorChange() {  
+  $("html").bind("ajaxStart", function(){  
+    $(this).addClass('busy');  
+  }).bind("ajaxStop", function(){  
+    $(this).removeClass('busy');  
+  });  
+}  

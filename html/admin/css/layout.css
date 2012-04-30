@@ -1,3 +1,19 @@
+html.busy, html.busy * {  
+  cursor: wait !important;  
+}  
+
+#centerView .ui-state-default {
+  background-color: #e6e6e6;
+}
+
+#logView .ui-tabs-nav .ui-state-default {
+  background-color: white !important; 
+}
+
+#logView .ui-tabs-nav .ui-state-active {
+  background-color: #E4E9D2 !important; 
+}
+
 #logView .fg-toolbar{display: none;}
 #documentsView .fg-toolbar{display: none;}
 
@@ -11,6 +27,14 @@ tr {
 }
 th {
   font-size: 1.1em; 
+}
+
+#documentsToolbar a {
+  font-size: 0.8em !important; 
+}
+
+#logToolbar button, #documentsToolbar button {
+  float:right;
 }
 
 #logToolbar a, #documentsToolbar a {
@@ -72,6 +96,7 @@ th {
   text-decoration: none;
   border-top: 1px dashed #7E9246;
   border-bottom: 1px dashed #7E9246;
+  padding-left: 7px; 
 }
 
 #createCollectionView {
@@ -214,7 +239,7 @@ th {
 
 #menue-left {
   margin-top: 3px;
-  margin-left: 10px; 
+  margin-left: 17px; 
   height:48px; 
   width:auto; 
   float:left;
@@ -429,7 +454,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button, #documentsToolbar button {
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button  {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
@@ -447,7 +472,7 @@ th {
   text-align: center;  
 }
 
-#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover, #documentsToolbar button:hover {
+#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
     background: #d9d9d9;
     -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
     -moz-box-shadow: inset 0 0 1px 1px #eaeaea;

@@ -974,8 +974,6 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	JavaScriptFunc \
-	JavaScriptFuncIndex \
 	Key-Value \
 	OTWP \
 	Optimizer \
@@ -1025,17 +1023,19 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 ################################################################################
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index.js \
+               @srcdir@/js/common/tests/shell-index-geo.js
 
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
-		     @srcdir@/js/server/tests/ahuacatl-escaping.js \
-		     @srcdir@/js/server/tests/ahuacatl-functions.js \
-		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
+			@srcdir@/js/server/tests/ahuacatl-functions.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 
@@ -1043,7 +1043,8 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 ################################################################################
 SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index.js
 
 UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
@@ -2999,8 +3000,9 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
-	curl http://$(VOCHOST):$(VOCPORT)/version
-	sleep 5
+	curl -sS http://$(VOCHOST):$(VOCPORT)/version
+
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@echo
 
@@ -3103,7 +3105,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
@@ -3200,7 +3202,7 @@ unittests-http-server:
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE)
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
 
 @ENABLE_MRUBY_TRUE@	touch .mruby-build-@TRI_BITS@
 

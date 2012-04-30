@@ -1,0 +1,8 @@
+avocado> v = g.addVertex("v");
+Vertex("v")
+
+avocado> e = g.addEdge(v, v, 1, "self");
+Edge(1)
+
+avocado> e.getId();
+1

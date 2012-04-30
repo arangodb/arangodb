@@ -31,12 +31,22 @@
 /// <ol>
 ///  <li>@ref HttpSystemLog</li>
 ///  <li>@ref HttpSystemStatus</li>
-///  <li>@ref HttpSystemUsers</li>
-///  <li>@ref HttpSystemUserGet</li>
-///  <li>@ref HttpSystemUserPost</li>
-///  <li>@ref HttpSystemSessionGet</li>
-///  <li>@ref HttpSystemSessionPost</li>
-///  <li>@ref HttpSystemSessionLogin</li>
+///  <li>@ref HtppSystemUserManagement
+///   <ol>
+///    <li>@ref HttpSystemUsers</li>
+///    <li>@ref HttpSystemUserGet</li>
+///    <li>@ref HttpSystemUserPost</li>
+///   </ol>
+///  </li>
+///  <li>@ref HtppSystemSessionManagement
+///   <ol>
+///    <li>@ref HttpSystemSessionGet</li>
+///    <li>@ref HttpSystemSessionPost</li>
+///    <li>@ref HttpSystemSessionLogin</li>
+///    <li>@ref HttpSystemSessionLogout</li>
+///    <li>@ref HttpSystemSessionPassword</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,6 +68,9 @@
 /// @copydetails JSF_GET_system_status
 /// <hr>
 ///
+/// @section HtppSystemUserManagement Front-End User Management
+///////////////////////////////////////////////////////////////
+///
 /// @anchor HttpSystemUsers
 /// @copydetails triagens::admin::UsersHandler::execute
 /// <hr>
@@ -69,6 +82,9 @@
 /// @anchor HttpSystemUserPost
 /// @copydetails triagens::admin::UserHandler::executePost
 /// <hr>
+///
+/// @section HtppSystemSessionManagement Front-End Session Management
+/////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemSessionGet
 /// @copydetails triagens::admin::SessionHandler::executeGet
@@ -82,6 +98,12 @@
 /// @copydetails triagens::admin::SessionHandler::executeLogin
 /// <hr>
 ///
+/// @anchor HttpSystemSessionLogout
+/// @copydetails triagens::admin::SessionHandler::executeLogout
+/// <hr>
+///
+/// @anchor HttpSystemSessionPassword
+/// @copydetails triagens::admin::SessionHandler::executePassword
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

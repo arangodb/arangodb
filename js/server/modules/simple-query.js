@@ -71,7 +71,7 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for a collection
 ///
-/// @FUN{near(@FA{latitude}, @FA{longitude})}
+/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude})}
 ///
 /// The default will find at most 100 documents near the coordinate
 /// (@FA{latitude}, @FA{longitude}). The returned list is sorted according to
@@ -85,17 +85,17 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @FUN{near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
+/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
 ///
 /// Limits the result to @FA{limit} documents. Note that @FA{limit} can be more
 /// than 100, this will raise the default limit.
 ///
-/// @FUN{near(@FA{latitude}, @FA{longitude}).distance()}
+/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance()}
 ///
 /// This will add an attribute @LIT{distance} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{near(@FA{latitude}, @FA{longitude}).distance(@FA{name})}
+/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance(@FA{name})}
 ///
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
@@ -104,11 +104,11 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 ///
 /// To get the nearst two locations:
 ///
-/// @verbinclude simple14
+/// @verbinclude simple-query-near
 ///
 /// If you need the distance as well, then you can use:
 ///
-/// @verbinclude simple15
+/// @verbinclude simple-query-near2
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.near = function (lat, lon) {
@@ -120,7 +120,7 @@ AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for a collection
 ///
-/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius})}
+/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})}
 ///
 /// This will find all documents with in a given radius around the coordinate
 /// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance.
@@ -130,12 +130,12 @@ AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance()}
+/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance()}
 ///
 /// This will add an attribute @LIT{_distance} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
+/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
 ///
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
@@ -144,7 +144,7 @@ AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
-/// @verbinclude simple17
+/// @verbinclude simple-query-within
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.within = function (lat, lon, radius) {
@@ -156,17 +156,17 @@ AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a geo index selection
 ///
-/// @FUN{geo(@FA{location})}
+/// @FUN{@FA{collection}.geo(@FA{location})}
 ///
 /// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
 ///
-/// @FUN{geo(@FA{location}, @LIT{true})}
+/// @FUN{@FA{collection}.geo(@FA{location}, @LIT{true})}
 ///
 /// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
 ///
-/// @FUN{geo(@FA{latitude}, @FA{longitude})}
+/// @FUN{@FA{collection}.geo(@FA{latitude}, @FA{longitude})}
 ///
 /// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
@@ -177,7 +177,7 @@ AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
 /// and a destination stored in the attribute @LIT{work}. Than you can use the
 /// @FN{geo} operator to select, which coordinates to use in a near query.
 ///
-/// @verbinclude simple16
+/// @verbinclude simple-query-geo
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.geo = function(loc, order) {
@@ -189,8 +189,8 @@ AvocadoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo") {
-        if (index.location == loc && index.geoJson == order) {
+      if (index.type == "geo1") {
+        if (index.fields[0] == loc && index.geoJson == order) {
           return index;
         }
       }
@@ -205,8 +205,8 @@ AvocadoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo") {
-        if (index.latitude == lat && index.longitude == lon) {
+      if (index.type == "geo2") {
+        if (index.fields[0] == lat && index.fields[1] == lon) {
           return index;
         }
       }
@@ -229,7 +229,7 @@ AvocadoCollection.prototype.geo = function(loc, order) {
     throw "cannot find a suitable geo index";
   }
 
-  return new SimpleQueryGeo(this, idx.iid);
+  return new SimpleQueryGeo(this, idx.id);
 }
 
 AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
@@ -1144,12 +1144,12 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo") {
+      if (index.type == "geo1" || index.type == "geo2") {
         if (this._index == null) {
-          this._index = index.iid;
+          this._index = index.id;
         }
-        else if (index.iid < this._index) {
-          this._index = index.iid;
+        else if (index.id < this._index) {
+          this._index = index.id;
         }
       }
     }
@@ -1327,12 +1327,12 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo") {
+      if (index.type == "geo1" || index.type == "geo2") {
         if (this._index == null) {
-          this._index = index.iid;
+          this._index = index.id;
         }
-        else if (index.iid < this._index) {
-          this._index = index.iid;
+        else if (index.id < this._index) {
+          this._index = index.id;
         }
       }
     }

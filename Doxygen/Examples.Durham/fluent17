@@ -2,7 +2,7 @@ avocado> db.examples.ensureGeoIndex("location");
 4545321
 
 avocado> db.examples.getIndexes();
-[ { "iid" : 4545321, "type" : "geo", "location" : "location" } ]
+[ { "iid" : 4545321, "type" : "geo1", "location" : "location" } ]
 
 avocado> db.examples.dropIndex(4545321);
 true

@@ -1,7 +1,0 @@
-avocado> var Graph = require("graph").Graph;
-
-avocado> g = new Graph("graph", "vertices", "edges");
-Graph("vertices", "edges")
-
-avocado> v = g.addVertex("hugo");
-Vertex("hugo")

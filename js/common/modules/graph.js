@@ -193,7 +193,7 @@ function Edge(graph, id) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph13
+/// @verbinclude graph-edge-get-id
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getId = function () {
@@ -209,7 +209,7 @@ Edge.prototype.getId = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph21
+/// @verbinclude graph-edge-get-in-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getInVertex = function () {
@@ -225,7 +225,7 @@ Edge.prototype.getInVertex = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph20
+/// @verbinclude graph-edge-get-label
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getLabel = function () {
@@ -241,7 +241,7 @@ Edge.prototype.getLabel = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph22
+/// @verbinclude graph-edge-get-out-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {
@@ -257,7 +257,7 @@ Edge.prototype.getOutVertex = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph12
+/// @verbinclude graph-edge-get-property
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getProperty = function (name) {
@@ -273,7 +273,7 @@ Edge.prototype.getProperty = function (name) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph32
+/// @verbinclude graph-edge-get-property-keys
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
@@ -289,7 +289,7 @@ Edge.prototype.getPropertyKeys = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph14
+/// @verbinclude graph-edge-set-property
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
@@ -316,7 +316,7 @@ Edge.prototype.setProperty = function (name, value) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph11
+/// @verbinclude graph-edge-properties
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
@@ -443,11 +443,9 @@ function Vertex(graph, id) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph33
+/// @verbinclude graph-vertex-add-in-edge
 ///
-/// @verbinclude graph23
-///
-/// @verbinclude graph24
+/// @verbinclude graph-vertex-add-in-edge2
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addInEdge = function (out, id, label, data) {
@@ -474,11 +472,11 @@ Vertex.prototype.addInEdge = function (out, id, label, data) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph34
+/// @verbinclude graph-vertex-add-out-edge
 ///
-/// @verbinclude graph27
+/// @verbinclude graph-vertex-add-out-edge2
 ///
-/// @verbinclude graph28
+/// @verbinclude graph-vertex-add-out-edge3
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addOutEdge = function (ine, id, label, data) {
@@ -494,7 +492,7 @@ Vertex.prototype.addOutEdge = function (ine, id, label, data) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph15
+/// @verbinclude graph-vertex-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
@@ -525,7 +523,7 @@ Vertex.prototype.edges = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph8
+/// @verbinclude graph-vertex-get-id
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function () {
@@ -541,7 +539,7 @@ Vertex.prototype.getId = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph18
+/// @verbinclude graph-vertex-get-in-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
@@ -581,7 +579,7 @@ Vertex.prototype.getInEdges = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph19
+/// @verbinclude graph-vertex-get-out-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
@@ -620,7 +618,7 @@ Vertex.prototype.getOutEdges = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph5
+/// @verbinclude graph-vertex-get-property
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getProperty = function (name) {
@@ -636,7 +634,7 @@ Vertex.prototype.getProperty = function (name) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph7
+/// @verbinclude graph-vertex-get-property-keys
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
@@ -652,7 +650,7 @@ Vertex.prototype.getPropertyKeys = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph16
+/// @verbinclude graph-vertex-inbound
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inbound = function () {
@@ -682,7 +680,7 @@ Vertex.prototype.inbound = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph17
+/// @verbinclude graph-vertex-outbound
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outbound = function () {
@@ -712,7 +710,7 @@ Vertex.prototype.outbound = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph4
+/// @verbinclude graph-vertex-properties
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
@@ -735,7 +733,7 @@ Vertex.prototype.properties = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph6
+/// @verbinclude graph-vertex-set-property
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
@@ -822,7 +820,7 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph1
+/// @verbinclude graph-constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph(name, vertices, edges) {
@@ -837,6 +835,7 @@ function Graph(name, vertices, edges) {
     optionsForGraphCreation = { waitForSync : true, isSystem : true };
     gdb = internal.db._create("_graph", optionsForGraphCreation);
 
+    // Currently buggy:
     // gdb.ensureUniqueConstraint("name");
   }
   
@@ -882,6 +881,7 @@ function Graph(name, vertices, edges) {
     throw "<edges> must be a string or null";
   } 
   else {
+
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
@@ -892,8 +892,8 @@ function Graph(name, vertices, edges) {
 
     graphProperties = gdb.firstExample('name', name);
 
+    // Graph doesn't exist yet
     if (graphProperties === null) {
-      // Graph doesn't exist yet
 
       // check if know that graph
       graphProperties = gdb.firstExample('vertices',
@@ -994,13 +994,9 @@ Graph.prototype.drop = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph30
+/// @verbinclude graph-graph-add-edge
 ///
-/// @verbinclude graph9
-///
-/// @verbinclude graph31
-///
-/// @verbinclude graph10
+/// @verbinclude graph-graph-add-edge2
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
@@ -1047,11 +1043,11 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
 ///
 /// Without any properties:
 ///
-/// @verbinclude graph2
+/// @verbinclude graph-graph-add-vertex
 ///
 /// With given properties:
 ///
-/// @verbinclude graph3
+/// @verbinclude graph-graph-add-vertex2
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addVertex = function (id, data) {
@@ -1080,7 +1076,7 @@ Graph.prototype.addVertex = function (id, data) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph29
+/// @verbinclude graph-graph-get-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
@@ -1113,7 +1109,7 @@ Graph.prototype.getVertex = function (id) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph35
+/// @verbinclude graph-graph-get-vertices
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
@@ -1161,7 +1157,7 @@ Graph.prototype.getVertices = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph36
+/// @verbinclude graph-graph-get-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
@@ -1208,7 +1204,7 @@ Graph.prototype.getEdges = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph37
+/// @verbinclude graph-graph-remove-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex) {
@@ -1242,7 +1238,7 @@ Graph.prototype.removeVertex = function (vertex) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude graph38
+/// @verbinclude graph-graph-remove-edge
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge) {

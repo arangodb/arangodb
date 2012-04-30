@@ -65,8 +65,9 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
-	curl http://$(VOCHOST):$(VOCPORT)/version
-	sleep 5
+	curl -sS http://$(VOCHOST):$(VOCPORT)/version
+
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@echo
 
@@ -128,7 +129,9 @@ endif
 
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index.js \
+               @srcdir@/js/common/tests/shell-index-geo.js
 
 .PHONY: unittests-shell-server
 
@@ -155,11 +158,11 @@ unittests-shell-server:
 ################################################################################
 
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
-		     @srcdir@/js/server/tests/ahuacatl-escaping.js \
-		     @srcdir@/js/server/tests/ahuacatl-functions.js \
-		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
- 
+		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
+			@srcdir@/js/server/tests/ahuacatl-functions.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+
 
 .PHONY: unittests-shell-server-ahuacatl
 
@@ -187,7 +190,8 @@ unittests-shell-server-ahuacatl:
 
 SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js
+               @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-index.js
 
 .PHONY: unittests-shell-client
 
@@ -226,7 +230,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
