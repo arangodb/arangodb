@@ -55,42 +55,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash variable 
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashVariable (TRI_associative_pointer_t* array, 
-                              void const* element) {
-  TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
-
-  return TRI_FnvHashString(variable->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine variable equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualVariable (TRI_associative_pointer_t* array, 
-                           void const* key, 
-                           void const* element) {
-  TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
-
-  return TRI_EqualString(key, variable->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @} 
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -353,8 +317,8 @@ TRI_aql_scope_t* TRI_CreateScopeAql (void) {
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
-                             HashVariable,
-                             EqualVariable, 
+                             TRI_HashVariableAql,
+                             TRI_EqualVariableAql, 
                              0);
   
   scope->_first = NULL;
@@ -621,41 +585,6 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a new variable
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) {
-  TRI_aql_variable_t* variable;
-
-  variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
-  if (!variable) {
-    return NULL;
-  }
-
-  variable->_name = TRI_DuplicateString(name);
-  if (!variable->_name) {
-    TRI_FreeVariableAql(variable);
-    return NULL;
-  }
-
-  return variable;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an existing variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
-  assert(variable);
-
-  if (variable->_name) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -708,27 +637,6 @@ bool TRI_VariableExistsAql (TRI_aql_context_t* const context,
   }
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a variable name follows the required naming convention 
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsValidVariableNameAql (const char* const name) {
-  assert(name);
-
-  if (strlen(name) == 0) {
-    // name must be at least one char long
-    return false;
-  }
-
-  if (*name == '_') {
-    // name must not start with an underscore
-    return false;
-  }
-
-  // everything else is allowed
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
