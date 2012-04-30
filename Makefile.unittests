@@ -67,7 +67,7 @@ start-server:
 
 	curl -sS http://$(VOCHOST):$(VOCPORT)/version
 
-	@if [ "$(VALGRIND)" != "" ]; sleep 60; fi
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@echo
 
@@ -228,7 +228,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
