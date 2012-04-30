@@ -435,6 +435,7 @@ var logTable = $('#logTableID').dataTable({
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
       
+      globalAjaxCursorChange();
       $.ajax({
         type: "GET",
         url: "/_api/collection/" + collectionID + "/count", 
@@ -1322,6 +1323,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "load") {
+      globalAjaxCursorChange();
       $.ajax({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/load",
@@ -1341,6 +1343,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "unload") {
+      globalAjaxCursorChange();
       $.ajax({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/unload",
@@ -1885,3 +1888,11 @@ function createLastPagination () {
     }
   });
 }
+
+function globalAjaxCursorChange() {  
+  $("html").bind("ajaxStart", function(){  
+    $(this).addClass('busy');  
+  }).bind("ajaxStop", function(){  
+    $(this).removeClass('busy');  
+  });  
+}  
