@@ -102,6 +102,7 @@ typedef struct TRI_index_s {
   struct TRI_doc_collection_s* _collection;
 
   bool _unique;
+  bool _ignoreNull;
   TRI_vector_string_t _fields;
 
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
@@ -268,7 +269,8 @@ TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s*,
                                   char const* locationName,
                                   TRI_shape_pid_t,
                                   bool geoJson,
-                                  bool constraint);
+                                  bool constraint,
+                                  bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for arrays
@@ -279,7 +281,8 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s*,
                                   TRI_shape_pid_t,
                                   char const* longitudeName,
                                   TRI_shape_pid_t,
-                                  bool constraint);
+                                  bool constraint,
+                                  bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

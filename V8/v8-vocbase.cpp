@@ -1207,12 +1207,14 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
   TRI_index_t* idx = 0;
   bool created;
+  int off = constraint ? 1 : 0;
+  bool ignoreNull = false;
 
   // .............................................................................
   // case: <location>
   // .............................................................................
 
-  if (argv.Length() == 1) {
+  if (argv.Length() == 1 + off) {
     v8::String::Utf8Value loc(argv[0]);
 
     if (*loc == 0) {
@@ -1220,14 +1222,18 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
     }
 
-    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, false, constraint, &created);
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[1]);
+    }
+
+    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, false, constraint, ignoreNull, &created);
   }
 
   // .............................................................................
   // case: <location>, <geoJson>
   // .............................................................................
 
-  else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
+  else if (argv.Length() == 2 + off && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
     v8::String::Utf8Value loc(argv[0]);
 
     if (*loc == 0) {
@@ -1235,14 +1241,18 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
     }
 
-    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), constraint, &created);
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[2]);
+    }
+
+    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
   }
 
   // .............................................................................
   // case: <latitude>, <longitude>
   // .............................................................................
 
-  else if (argv.Length() == 2) {
+  else if (argv.Length() == 2 + off) {
     v8::String::Utf8Value lat(argv[0]);
     v8::String::Utf8Value lon(argv[1]);
 
@@ -1256,7 +1266,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<longitude> must be an attribute path")));
     }
 
-    idx = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon, constraint, &created);
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[2]);
+    }
+
+    idx = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon, constraint, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1265,8 +1279,15 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
   else {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-      "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+
+    if (constraint) {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                              "usage: ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)")));
+    }
+    else {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                              "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+    }
   }
 
   if (idx == 0) {
@@ -4359,14 +4380,16 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location})}
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @FA{ignore-null})}
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true})}
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true}, @FA{ignore-null})}
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude})}
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
 ///
 /// Works like @FN{ensureGeoIndex} but requires that the documents contain
-/// a valid geo definition.
+/// a valid geo definition. If @FA{ignore-null} is true, than documents with
+/// a null in @FA{location} or null in at least @FA{latitude} or
+/// @FA{longitude} are ignored.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments const& argv) {

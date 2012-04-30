@@ -65,8 +65,9 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
-	curl http://$(VOCHOST):$(VOCPORT)/version
-	sleep 5
+	curl -sS http://$(VOCHOST):$(VOCPORT)/version
+
+	@if [ "$(VALGRIND)" != "" ]; sleep 60; fi
 
 	@echo
 

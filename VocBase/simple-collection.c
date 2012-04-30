@@ -84,6 +84,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* longitude,
                                                  bool geoJson,
                                                  bool constraint,
+                                                 bool ignoreNull,
                                                  TRI_idx_iid_t iid,
                                                  bool* created);
 
@@ -1502,12 +1503,20 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
   if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
     bool constraint;
+    bool ignoreNull;
 
     bv = TRI_LookupArrayJson(json, "contraint");
     constraint = false;
     
     if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
       constraint = bv->_value._boolean;
+    }
+
+    bv = TRI_LookupArrayJson(json, "ignoreNull");
+    ignoreNull = false;
+    
+    if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+      ignoreNull = bv->_value._boolean;
     }
 
     if (TRI_EqualString(typeStr, "geo1")) {
@@ -1525,7 +1534,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
         loc = TRI_AtVector(&fld->_value._objects, 0);
 
-        CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, constraint, iid, NULL);
+        CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, constraint, ignoreNull, iid, NULL);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return true;
@@ -1547,7 +1556,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
         lat = TRI_AtVector(&fld->_value._objects, 0);
         lon = TRI_AtVector(&fld->_value._objects, 1);
 
-        CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, constraint, iid, NULL);
+        CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, constraint, ignoreNull, iid, NULL);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return true;
@@ -2705,6 +2714,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
                                                  char const* longitude,
                                                  bool geoJson,
                                                  bool constraint,
+                                                 bool ignoreNull,
                                                  TRI_idx_iid_t iid,
                                                  bool* created) {
   TRI_index_t* idx;
@@ -2750,10 +2760,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndex1SimCollection(sim, loc, geoJson, constraint);
+    idx = TRI_LookupGeoIndex1SimCollection(sim, loc, geoJson, constraint, ignoreNull);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon, constraint);
+    idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon, constraint, ignoreNull);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -2773,14 +2783,14 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeoIndex1(&sim->base, location, loc, geoJson, constraint);
+    idx = TRI_CreateGeoIndex1(&sim->base, location, loc, geoJson, constraint, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %d",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_CreateGeoIndex2(&sim->base, latitude, lat, longitude, lon, constraint);
+    idx = TRI_CreateGeoIndex2(&sim->base, latitude, lat, longitude, lon, constraint, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %d, %d",
               location,
@@ -3291,7 +3301,8 @@ TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
 TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
                                               TRI_shape_pid_t location,
                                                bool geoJson,
-                                               bool constraint) {
+                                               bool constraint,
+                                               bool ignoreNull) {
   size_t n;
   size_t i;
 
@@ -3306,7 +3317,9 @@ TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
       if (geo->_location != 0 && geo->_location == location && geo->_geoJson == geoJson && geo->_constraint == constraint) {
-        return idx;
+        if (! constraint || geo->base._ignoreNull == ignoreNull) {
+          return idx;
+        }
       }
     }
   }
@@ -3321,7 +3334,8 @@ TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
 TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                TRI_shape_pid_t latitude,
                                                TRI_shape_pid_t longitude,
-                                               bool constraint) {
+                                               bool constraint,
+                                               bool ignoreNull) {
   size_t n;
   size_t i;
 
@@ -3336,7 +3350,9 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
       if (geo->_latitude != 0 && geo->_longitude != 0 && geo->_latitude == latitude && geo->_longitude == longitude && geo->_constraint == constraint) {
-        return idx;
+        if (! constraint || geo->base._ignoreNull == ignoreNull) {
+          return idx;
+        }
       }
     }
   }
@@ -3554,6 +3570,7 @@ TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
                                                char const* location,
                                                bool geoJson,
                                                bool constraint,
+                                               bool ignoreNull,
                                                bool* created) {
   TRI_index_t* idx;
   int res;
@@ -3564,7 +3581,7 @@ TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, constraint, 0, created);
+  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, constraint, ignoreNull, 0, created);
 
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -3590,6 +3607,7 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
                                                char const* latitude,
                                                char const* longitude,
                                                bool constraint,
+                                               bool ignoreNull,
                                                bool* created) {
   TRI_index_t* idx;
   int res;
@@ -3600,7 +3618,7 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, constraint, 0, created);
+  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, constraint, ignoreNull, 0, created);
 
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);

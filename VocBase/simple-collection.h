@@ -411,7 +411,8 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
 struct TRI_index_s* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
                                                       TRI_shape_pid_t location,
                                                       bool geoJson,
-                                                      bool constraint);
+                                                      bool constraint,
+                                                      bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index
@@ -422,7 +423,8 @@ struct TRI_index_s* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* coll
 struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                       TRI_shape_pid_t latitude,
                                                       TRI_shape_pid_t longitude,
-                                                      bool constraint);
+                                                      bool constraint,
+                                                      bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
@@ -461,6 +463,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* coll
                                                       char const* location,
                                                       bool geoJson,
                                                       bool constraint,
+                                                      bool ignoreNull,
                                                       bool* created);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,6 +474,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* coll
                                                       char const* latitude,
                                                       char const* longitude,
                                                       bool constraint,
+                                                      bool ignoreNull,
                                                       bool* created);
                                                 
 ////////////////////////////////////////////////////////////////////////////////
