@@ -25,8 +25,15 @@ th {
   font-size: 1.1em; 
 }
 
+#documentsToolbar a {
+  font-size: 0.8em !important; 
+}
+
 #logToolbar a, #documentsToolbar a {
   font-size: 0.85em;  
+  float:right;
+  padding-right: 10px; 
+  padding-top: 3px;    
 }
 #logToolbar, #documentsToolbar{
   height:24px; 
@@ -441,7 +448,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #documentsToolbar button {
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button  {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
@@ -459,7 +466,7 @@ th {
   text-align: center;  
 }
 
-#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover, #documentsToolbar button:hover {
+#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
     background: #d9d9d9;
     -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
     -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
