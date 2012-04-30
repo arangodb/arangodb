@@ -29,7 +29,7 @@ var currentLoglevel = 5;
 var tables = ["#logTableID", "#critLogTableID", "#warnLogTableID", "#infoLogTableID", "#debugLogTableID"];
 
 $.each(tables, function(v, i ) {
-  $(i + '_next').live('click', function () {
+  $(i + '_prev').live('click', function () {
 
     if ( i == "#logTableID" ) {
       createNextPagination("all");  
@@ -38,7 +38,7 @@ $.each(tables, function(v, i ) {
       createNextPagination();  
     }
   });
-  $(i + '_prev').live('click', function () {
+  $(i + '_next').live('click', function () {
     if ( i == "#logTableID" ) {
       createPrevPagination("all");  
     }
@@ -46,10 +46,10 @@ $.each(tables, function(v, i ) {
       createPrevPagination();  
     }
   });
-  $(i + '_first').live('click', function () {
+  $(i + '_last').live('click', function () {
     createLogTable(currentLoglevel);
   });
-  $(i+ '_last').live('click', function () {
+  $(i+ '_first').live('click', function () {
     createLastLogPagination(i); 
     
   });
