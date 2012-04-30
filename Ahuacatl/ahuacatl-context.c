@@ -490,32 +490,6 @@ for (i = 0; i < scope->_variables._nrAlloc; i++) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief move the contents of the outermost variable scope into the previous 
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExchangeScopeContextAql (TRI_aql_context_t* const context) {
-  TRI_aql_scope_t* scope;
-  size_t length;
-
-  assert(context);
-  
-  length = context->_scopes._length;
-
-  assert(length > 1);
-  
-  scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_scopes, length - 2);
-printf("EXCHANGING SCOPE\n");
-  if (!scope) {
-    // signal OOM
-    return false;
-  }
-
-  TRI_FreeScopeAql(scope);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief push a variable into the current scope context
 ////////////////////////////////////////////////////////////////////////////////
 
