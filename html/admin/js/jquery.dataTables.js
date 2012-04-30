@@ -2291,6 +2291,7 @@
 		 *  @returns {string} search string
 		 *  @memberof DataTable#oApi
 		 */
+                //TODO
 		function _fnDataToSearch ( sData, sType )
 		{
 			if ( typeof DataTable.ext.ofnSearch[sType] === "function" )
@@ -11355,7 +11356,8 @@
 		 */
 		"html-pre": function ( a )
 		{
-			return a.replace( /<.*?>/g, "" ).toLowerCase();
+			//TODO 
+                        return a.replace( /<.*?>/g, "" ).toLowerCase();
 		},
 		
 		"html-asc": function ( x, y )
