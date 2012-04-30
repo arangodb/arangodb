@@ -569,7 +569,7 @@ mrb_convert_to_integer(mrb_state *mrb, mrb_value val, int base)
           && mrb_float(val) >= (double)FIXNUM_MIN) {
           break;
       }
-      return mrb_dbl2big(mrb, mrb_float(val));
+      return mrb_flt2big(mrb, mrb_float(val));
 
     case MRB_TT_FIXNUM:
       if (base != 0) goto arg_error;

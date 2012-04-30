@@ -66,7 +66,10 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
 
     ImportHelper::ImportHelper (httpclient::SimpleHttpClient* _client, size_t maxUploadSize)
-    : _client (_client), _maxUploadSize (maxUploadSize) {
+    : _client(_client),
+      _maxUploadSize(maxUploadSize),
+      _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
       _quote = '"';
       _separator = ',';
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
@@ -110,9 +113,10 @@ namespace triagens {
       TRI_csv_parser_t parser;
 
       TRI_InitCsvParser(&parser,
-              ProcessCsvBegin,
-              ProcessCsvAdd,
-              ProcessCsvEnd);
+                        TRI_UNKNOWN_MEM_ZONE,
+                        ProcessCsvBegin,
+                        ProcessCsvAdd,
+                        ProcessCsvEnd);
 
       parser._separator = _separator;
       parser._quote = _quote;

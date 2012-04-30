@@ -71,10 +71,10 @@ static void InitCollection (TRI_vocbase_t* vocbase,
 
   collection->_directory = directory;
 
-  TRI_InitVectorPointer(&collection->_datafiles);
-  TRI_InitVectorPointer(&collection->_journals);
-  TRI_InitVectorPointer(&collection->_compactors);
-  TRI_InitVectorString(&collection->_indexFiles);
+  TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&collection->_compactors, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&collection->_indexFiles, TRI_UNKNOWN_MEM_ZONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,11 +103,11 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
 
-  TRI_InitVectorPointer(&journals);
-  TRI_InitVectorPointer(&compactors);
-  TRI_InitVectorPointer(&datafiles);
-  TRI_InitVectorPointer(&sealed);
-  TRI_InitVectorPointer(&all);
+  TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&datafiles, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&sealed, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&all, TRI_UNKNOWN_MEM_ZONE);
 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
@@ -163,7 +163,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           LOG_ERROR("collection header mismatch, expected TRI_COL_MARKER_HEADER, found %lu",
                     (unsigned long) cm->base._type);
 
-          TRI_FreeString(filename);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
           break;
         }
@@ -173,7 +173,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
                     (unsigned long) collection->_cid,
                     (unsigned long) cm->_cid);
 
-          TRI_FreeString(filename);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
           break;
         }
@@ -218,7 +218,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           LOG_ERROR("unknown datafile '%s'", file);
         }
 
-        TRI_FreeString(filename);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       }
       else {
         LOG_ERROR("unknown datafile '%s'", file);
@@ -244,8 +244,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
       number = TRI_StringUInt32(datafile->_fid);
       dname = TRI_Concatenate3String("datafile-", number, ".db");
       filename = TRI_Concatenate2File(collection->_directory, dname);
-      TRI_FreeString(dname);
-      TRI_FreeString(number);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
       ok = TRI_RenameDatafile(datafile, filename);
 
@@ -262,7 +263,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         break;
       }
 
-      TRI_FreeString(filename);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     }
   }
 
@@ -421,13 +422,11 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
-    /* TODO FIXME: memory allocation might fail */
 
     filename = TRI_Concatenate2File(path, tmp2);
-    /* TODO FIXME: memory allocation might fail */
 
-    TRI_FreeString(tmp2);
-    TRI_FreeString(tmp1);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
   }
 
   // uups
@@ -445,7 +444,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // directory must not exists
   if (TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
               parameter->_name, path);
@@ -461,7 +460,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
               filename,
               TRI_last_error());
 
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return NULL;
   }
@@ -470,7 +469,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   res = TRI_SaveParameterInfoCollection(filename, parameter);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     LOG_ERROR("cannot save collection parameter '%s': '%s'", filename, TRI_last_error());
 
@@ -479,7 +478,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // create collection structure
   if (collection == NULL) {
-    collection = TRI_Allocate(sizeof(TRI_collection_t));
+    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
     /* TODO FIXME: memory allocation might fail */
   }
 
@@ -503,7 +502,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
   FreeDatafilesVector(&collection->_compactors);
 
   TRI_DestroyVectorString(&collection->_indexFiles);
-  TRI_FreeString(collection->_directory);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, collection->_directory);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,7 +512,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
 void TRI_FreeCollection (TRI_collection_t* collection) {
   assert(collection);
   TRI_DestroyCollection(collection);
-  TRI_Free(collection);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,22 +548,22 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
   if (! TRI_ExistsFile(filename)) {
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
 
-  json = TRI_JsonFile(filename, &error);
+  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
 
   if (json == NULL) {
-    TRI_FreeString(error);
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
@@ -610,7 +609,7 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
     }
   }
 
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -629,28 +628,28 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
   // create a json info object
-  json = TRI_CreateArrayJson();
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_Insert3ArrayJson(json, "version",     TRI_CreateNumberJson(info->_version));
-  TRI_Insert3ArrayJson(json, "type",        TRI_CreateNumberJson(info->_type)); 
-  TRI_Insert3ArrayJson(json, "cid",         TRI_CreateNumberJson(info->_cid));
-  TRI_Insert3ArrayJson(json, "name",        TRI_CreateStringCopyJson(info->_name));
-  TRI_Insert3ArrayJson(json, "maximalSize", TRI_CreateNumberJson(info->_maximalSize));
-  TRI_Insert3ArrayJson(json, "waitForSync", TRI_CreateBooleanJson(info->_waitForSync));
-  TRI_Insert3ArrayJson(json, "deleted",     TRI_CreateBooleanJson(info->_deleted));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
 
   // save json info to file
   ok = TRI_SaveJson(filename, json);
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
 
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_errno();
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -729,9 +728,9 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   size_t i;
   size_t n;
 
-  datafiles = TRI_CopyVectorPointer(&collection->_datafiles);
-  journals = TRI_CopyVectorPointer(&collection->_journals);
-  compactors = TRI_CopyVectorPointer(&collection->_compactors);
+  datafiles = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_datafiles);
+  journals = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_journals);
+  compactors = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_compactors);
 
   // iterate over all datafiles
   n = datafiles->_length;
@@ -745,9 +744,9 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_FreeVectorPointer(datafiles);
-      TRI_FreeVectorPointer(journals);
-      TRI_FreeVectorPointer(compactors);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
 
       return false;
     }
@@ -765,9 +764,9 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_FreeVectorPointer(datafiles);
-      TRI_FreeVectorPointer(journals);
-      TRI_FreeVectorPointer(compactors);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
 
       return false;
     }
@@ -785,17 +784,17 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_FreeVectorPointer(datafiles);
-      TRI_FreeVectorPointer(journals);
-      TRI_FreeVectorPointer(compactors);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
 
       return false;
     }
   }
 
-  TRI_FreeVectorPointer(datafiles);
-  TRI_FreeVectorPointer(journals);
-  TRI_FreeVectorPointer(compactors);
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
 
   return true;
 }
@@ -860,7 +859,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
   // create collection
   if (collection == NULL) {
-    collection = TRI_Allocate(sizeof(TRI_collection_t));
+    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
     /* TODO FIXME: memory allocation might fail */
     freeCol = true;
   }
@@ -873,10 +872,10 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   if (! ok) {
     LOG_ERROR("cannot open '%s', check failed", collection->_directory);
 
-    TRI_FreeString(collection->_directory);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, collection->_directory);
 
     if (freeCol) {
-      TRI_Free(collection);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     }
 
     return NULL;

@@ -56,6 +56,8 @@ typedef struct TRI_shape_access_s {
 
   TRI_shape_t const* _shape;            // resulting shape
   void* const* _code;                   // bytecode
+
+  TRI_memory_zone_t* _memoryZone;
 }
 TRI_shape_access_t;
 

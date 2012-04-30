@@ -347,9 +347,11 @@ mrb_f_global_variables(mrb_state *mrb, mrb_value self)
   struct kh_iv *h = mrb->globals;
   mrb_value ary = mrb_ary_new(mrb);
 
-  for (i=0;i< kh_end(h);i++) {
-    if (kh_exist(h, i)) {
-      mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(h,i)));
+  if (h) {
+    for (i=0;i < kh_end(h);i++) {
+      if (kh_exist(h, i)) {
+        mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(h,i)));
+      }
     }
   }
   buf[0] = '$';

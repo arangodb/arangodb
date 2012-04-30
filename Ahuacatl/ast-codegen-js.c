@@ -70,7 +70,7 @@ static char* GetIndexedFunctionName (TRI_aql_codegen_t* const generator,
     RegisterString(generator, functionName);
   }
 
-  TRI_Free(numberString);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, numberString);
 
   return functionName; 
 }
@@ -100,10 +100,10 @@ static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
   // note: scope->_funcName is freed globally
 
   if (scope->_buffer) {
-   TRI_FreeStringBuffer(scope->_buffer);
+   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, scope->_buffer);
   }
 
-  TRI_Free(scope);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
                                              const TRI_aql_scope_type_e type) {
   TRI_aql_codegen_scope_t* scope;
   
-  scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(sizeof(TRI_aql_codegen_scope_t));
+  scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
 
   if (!scope) {
     return NULL;
@@ -133,7 +133,7 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
   scope->_forLoops = 0;
   scope->_type = type;
 
-  scope->_buffer = TRI_CreateStringBuffer();
+  scope->_buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   if (!scope->_buffer) {
     FreeScope(scope);
     return NULL;
@@ -323,7 +323,7 @@ static char* EndScope (TRI_aql_codegen_t* const generator) {
 
   funcName = scope->_funcName;
 
-  body = TRI_CreateStringBuffer();
+  body = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   if (!body) {
     // oom
     generator->_error = true;
@@ -339,7 +339,7 @@ static char* EndScope (TRI_aql_codegen_t* const generator) {
     }
 
     AppendFunction(generator, scope->_type, funcName, body->_buffer);
-    TRI_FreeStringBuffer(body);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, body);
   }
 
   generator->_funcName = funcName;
@@ -428,7 +428,7 @@ static bool AppendValue (TRI_aql_codegen_t* const generator,
       escapedString = TRI_EscapeUtf8String(node->_value._value._string, strlen(node->_value._value._string), false, &outLength);
       if (escapedString) {
         TRI_AppendStringStringBuffer(scope->_buffer, escapedString);
-        TRI_Free(escapedString); 
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString); 
       }
       TRI_AppendStringStringBuffer(scope->_buffer, "'");
       break;
@@ -1118,7 +1118,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
   TRI_aql_codegen_t* generator;
   
-  generator = (TRI_aql_codegen_t*) TRI_Allocate(sizeof(TRI_aql_codegen_t));
+  generator = (TRI_aql_codegen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_t), false);
 
   if (!generator) {
     return NULL;
@@ -1128,11 +1128,11 @@ TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
   generator->_funcIndex = 0;
   generator->_funcName = NULL;
 
-  TRI_InitStringBuffer(&generator->_buffer);
+  TRI_InitStringBuffer(&generator->_buffer, TRI_UNKNOWN_MEM_ZONE);
   
-  TRI_InitVectorPointer(&generator->_strings);
+  TRI_InitVectorPointer(&generator->_strings, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitVectorPointer(&generator->_scopes);
+  TRI_InitVectorPointer(&generator->_scopes, TRI_UNKNOWN_MEM_ZONE);
   
   if (!StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator))) { 
     TRI_FreeCodegenAql(generator);
@@ -1159,12 +1159,12 @@ void TRI_FreeCodegenAql (TRI_aql_codegen_t* const generator) {
   while (i--) {
     void* string = generator->_strings._buffer[i];
     if (string) {
-      TRI_Free(string);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, string);
     }
   }
   TRI_DestroyVectorPointer(&generator->_strings);
 
-  TRI_Free(generator);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, generator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

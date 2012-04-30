@@ -43,6 +43,7 @@
 #include <BasicsC/associative-multi.h>
 #include <BasicsC/hashes.h>
 #include "ShapedJson/shaped-json.h"
+#include "ShapedJson/json-shaper.h"
 
 // ...............................................................................
 // Define the structure of a unique or non-unique hashindex
@@ -89,6 +90,8 @@ int HashIndex_remove (HashIndex*, HashIndexElement*);
 
 int HashIndex_update (HashIndex*, const HashIndexElement*, const HashIndexElement*);
 
+void HashIndex_free (HashIndex*, TRI_shaper_t*);
+
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -108,5 +111,7 @@ int MultiHashIndex_insert (HashIndex*, HashIndexElement*);
 int MultiHashIndex_remove (HashIndex*, HashIndexElement*); 
 
 int MultiHashIndex_update (HashIndex*, HashIndexElement*, HashIndexElement*);
+
+void MultiHashIndex_free (HashIndex*);
 
 #endif

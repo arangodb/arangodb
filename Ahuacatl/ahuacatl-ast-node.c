@@ -50,7 +50,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define CREATE_NODE(type)                                                        \
-  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(sizeof(TRI_aql_node_t)); \
+  TRI_aql_node_t* node = (TRI_aql_node_t*)                                       \
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);           \
   if (!node) {                                                                   \
     ABORT_OOM                                                                    \
   }                                                                              \
@@ -88,7 +89,7 @@ static inline void InitNode (TRI_aql_context_t* const context,
   node->_type = type;
   node->_next = NULL;
  
-  TRI_InitVectorPointer(&node->_subNodes);
+  TRI_InitVectorPointer(&node->_subNodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_RegisterNodeContextAql(context, node);
 }
 
@@ -104,6 +105,104 @@ static inline void InitNode (TRI_aql_context_t* const context,
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the "nice" name of an AST node
+////////////////////////////////////////////////////////////////////////////////
+      
+const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
+  switch (type) {
+    case AQL_NODE_UNDEFINED:
+      return "undefined";
+    case AQL_NODE_MAIN:
+      return "main";
+    case AQL_NODE_FOR:
+      return "for";
+    case AQL_NODE_LET:
+      return "let";
+    case AQL_NODE_FILTER:
+      return "filter";
+    case AQL_NODE_RETURN:
+      return "return";
+    case AQL_NODE_COLLECT:
+      return "collect";
+    case AQL_NODE_SORT:
+      return "sort";
+    case AQL_NODE_SORT_ELEMENT:
+      return "sort element";
+    case AQL_NODE_LIMIT:
+      return "limit";
+    case AQL_NODE_VARIABLE:
+      return "variable";
+    case AQL_NODE_COLLECTION:
+      return "collection";
+    case AQL_NODE_REFERENCE:
+      return "reference";
+    case AQL_NODE_ATTRIBUTE:
+      return "attribute";
+    case AQL_NODE_ASSIGN:
+      return "assign";
+    case AQL_NODE_OPERATOR_UNARY_PLUS:
+      return "uplus";
+    case AQL_NODE_OPERATOR_UNARY_MINUS:
+      return "uminus";
+    case AQL_NODE_OPERATOR_UNARY_NOT:
+      return "unot";
+    case AQL_NODE_OPERATOR_BINARY_AND:
+      return "and";
+    case AQL_NODE_OPERATOR_BINARY_OR:
+      return "or";
+    case AQL_NODE_OPERATOR_BINARY_PLUS:
+      return "plus";
+    case AQL_NODE_OPERATOR_BINARY_MINUS:
+      return "minus";
+    case AQL_NODE_OPERATOR_BINARY_TIMES:
+      return "times";
+    case AQL_NODE_OPERATOR_BINARY_DIV:
+      return "div";
+    case AQL_NODE_OPERATOR_BINARY_MOD:
+      return "mod";
+    case AQL_NODE_OPERATOR_BINARY_EQ:
+      return "eq";
+    case AQL_NODE_OPERATOR_BINARY_NE:
+      return "ne";
+    case AQL_NODE_OPERATOR_BINARY_LT:
+      return "lt";
+    case AQL_NODE_OPERATOR_BINARY_LE:
+      return "le";
+    case AQL_NODE_OPERATOR_BINARY_GT:
+      return "gt";
+    case AQL_NODE_OPERATOR_BINARY_GE:
+      return "ge";
+    case AQL_NODE_OPERATOR_BINARY_IN:
+      return "in";
+    case AQL_NODE_OPERATOR_TERNARY:
+      return "ternary";
+    case AQL_NODE_SUBQUERY:
+      return "subquery";
+    case AQL_NODE_ATTRIBUTE_ACCESS:
+      return "attribute access";
+    case AQL_NODE_INDEXED:
+      return "indexed";
+    case AQL_NODE_EXPAND:
+      return "expand";
+    case AQL_NODE_VALUE:
+      return "value";
+    case AQL_NODE_LIST:
+      return "list";
+    case AQL_NODE_ARRAY:
+      return "array";
+    case AQL_NODE_ARRAY_ELEMENT:
+      return "array element";
+    case AQL_NODE_PARAMETER:
+      return "parameter";
+    case AQL_NODE_FCALL:
+      return "function call";
+  }
+ 
+  assert(false);
+  return "undefined";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST main node
@@ -159,7 +258,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
   
-  node = (TRI_aql_node_let_t*) TRI_Allocate(sizeof(TRI_aql_node_let_t));
+  node = (TRI_aql_node_let_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_let_t), false);
 
   if (!node) {
     ABORT_OOM
@@ -849,7 +948,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     }
 
     function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-    TRI_Free(upperName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
 
     if (!function) {
       // function name is unknown

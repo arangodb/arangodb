@@ -296,7 +296,7 @@ uint64_t TRI_Crc32HashString (char const* data) {
   crc = TRI_InitialCrc32();
   ptr = (uint8_t const*) data;
 
-  while (*data) {
+  while (*ptr) {
     crc = (crc >> 8) ^ (Crc32Polynomial[(crc & 0xFF) ^ (*ptr)]);
     ++ptr;
   }

@@ -23,6 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Dr. O
 /// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +38,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           MULTI ASSOCIATIVE ARRAY
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -65,7 +70,6 @@ typedef struct TRI_multi_array_s {
   
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
-
   
   char* _table;          // the table itself
 
@@ -78,45 +82,14 @@ typedef struct TRI_multi_array_s {
   uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
   uint64_t _nrProbesR;   // statistics: number of misses while adding
+
+  TRI_memory_zone_t* _memoryZone;
 }
 TRI_multi_array_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative multi array of pointers
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_multi_pointer_s {
-  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const*);
-  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const*);
-
-  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const*, void const*);
-  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, void const*, void const*);
-
-  uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed; // the number of used entries
-
-  void** _table; // the table itself
-
-  uint64_t _nrFinds; // statistics: number of lookup calls
-  uint64_t _nrAdds; // statistics: number of insert calls
-  uint64_t _nrRems; // statistics: number of remove calls
-  uint64_t _nrResizes; // statistics: number of resizes
-
-  uint64_t _nrProbesF; // statistics: number of misses while looking up
-  uint64_t _nrProbesA; // statistics: number of misses while inserting
-  uint64_t _nrProbesD; // statistics: number of misses while removing
-  uint64_t _nrProbesR; // statistics: number of misses while adding
-}
-TRI_multi_pointer_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           MULTI ASSOCIATIVE ARRAY
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -132,6 +105,7 @@ TRI_multi_pointer_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMultiArray (TRI_multi_array_t*,
+                         TRI_memory_zone_t*,
                          size_t elementSize,
                          uint64_t (*hashKey) (TRI_multi_array_t*, void*),
                          uint64_t (*hashElement) (TRI_multi_array_t*, void*),
@@ -150,7 +124,7 @@ void TRI_DestroyMultiArray (TRI_multi_array_t*);
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeMultiArray (TRI_multi_array_t*);
+void TRI_FreeMultiArray (TRI_memory_zone_t*, TRI_multi_array_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -169,13 +143,17 @@ void TRI_FreeMultiArray (TRI_multi_array_t*);
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_multi_array_t*, void* key);
+TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t*,
+                                                TRI_multi_array_t*,
+                                                void* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_multi_array_t*, void* element);
+TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t*, 
+                                                    TRI_multi_array_t*,
+                                                    void* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
@@ -205,12 +183,52 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t*, void* key, void* old);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        MULTI ASSOCIATIVE POINTERS
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief associative multi array of pointers
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_multi_pointer_s {
+  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const*);
+  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const*);
+
+  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const*, void const*);
+  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, void const*, void const*);
+
+  uint64_t _nrAlloc;     // the size of the table
+  uint64_t _nrUsed;      // the number of used entries
+
+  void** _table;         // the table itself
+
+  uint64_t _nrFinds;     // statistics: number of lookup calls
+  uint64_t _nrAdds;      // statistics: number of insert calls
+  uint64_t _nrRems;      // statistics: number of remove calls
+  uint64_t _nrResizes;   // statistics: number of resizes
+
+  uint64_t _nrProbesF;   // statistics: number of misses while looking up
+  uint64_t _nrProbesA;   // statistics: number of misses while inserting
+  uint64_t _nrProbesD;   // statistics: number of misses while removing
+  uint64_t _nrProbesR;   // statistics: number of misses while adding
+
+  TRI_memory_zone_t* _memoryZone;
+}
+TRI_multi_pointer_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -226,6 +244,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t*, void* key, void* old);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
+                           TRI_memory_zone_t*,
                            uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
                            uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
                            bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
@@ -241,7 +260,7 @@ void TRI_DestroyMultiPointer (TRI_multi_pointer_t*);
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeMultiPointer (TRI_multi_pointer_t*);
+void TRI_FreeMultiPointer (TRI_memory_zone_t*, TRI_multi_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -260,7 +279,9 @@ void TRI_FreeMultiPointer (TRI_multi_pointer_t*);
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_multi_pointer_t*, void const* key);
+TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t*,
+                                                  TRI_multi_pointer_t*,
+                                                  void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element

@@ -44,39 +44,29 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
+///
+/// Note: no out-of-memory possible.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddNewElement(TRI_multi_array_t* array, void* element) {
+static void AddNewElement (TRI_multi_array_t* array, void* element) {
   uint64_t hash;
   uint64_t i;
-  
 
-  // ...........................................................................
   // compute the hash
-  // ...........................................................................
-
   hash = array->hashElement(array, element);
 
-
-  // ...........................................................................
   // search the table
-  // ...........................................................................
-
   i = hash % array->_nrAlloc;
+
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesR++;
   }
 
-
-  // ...........................................................................
   // add a new element to the associative array
-  // ...........................................................................
-
   memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
   array->_nrUsed++;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
@@ -91,10 +81,18 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_nrAlloc * array->_elementSize);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, false);
+
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return;
+  }
+
+  array->_nrUsed = 0;
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->clearElement(array, array->_table + j * array->_elementSize);
@@ -106,9 +104,8 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
     }
   }
 
-  TRI_Free(oldTable);
+  TRI_Free(array->_memoryZone, oldTable);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -128,6 +125,7 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMultiArray(TRI_multi_array_t* array,
+                        TRI_memory_zone_t* zone,
                         size_t elementSize,
                         uint64_t (*hashKey) (TRI_multi_array_t*, void*),
                         uint64_t (*hashElement) (TRI_multi_array_t*, void*),
@@ -145,10 +143,11 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
+  array->_memoryZone = zone;
   array->_elementSize = elementSize;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(array->_elementSize * array->_nrAlloc);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc, false);
 
   p = array->_table;
   e = p + array->_elementSize * array->_nrAlloc;
@@ -173,18 +172,17 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMultiArray (TRI_multi_array_t* array) {
-  TRI_Free(array->_table);
+  TRI_Free(array->_memoryZone, array->_table);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeMultiArray (TRI_multi_array_t* array) {
+void TRI_FreeMultiArray (TRI_memory_zone_t* zone, TRI_multi_array_t* array) {
   TRI_DestroyMultiArray(array);
-  TRI_Free(array);
+  TRI_Free(zone, array);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -203,38 +201,24 @@ void TRI_FreeMultiArray (TRI_multi_array_t* array) {
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_multi_array_t* array, void* key) {
+TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
+                                                TRI_multi_array_t* array,
+                                                void* key) {
   TRI_vector_pointer_t result;
   uint64_t hash;
   uint64_t i;
 
-  
-  // ...........................................................................
   // initialise the vector which will hold the result if any
-  // ...........................................................................
- 
-   TRI_InitVectorPointer(&result);
+  TRI_InitVectorPointer(&result, zone);
    
-   
-  // ...........................................................................
   // compute the hash
-  // ...........................................................................
-
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
-  
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
-
   array->_nrFinds++;
 
-  
-  // ...........................................................................
   // search the table
-  // ...........................................................................
-
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
   
     if (array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
@@ -249,50 +233,36 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_multi_array_t* array, void* 
 
   // ...........................................................................
   // return whatever we found -- which could be an empty vector list if nothing
-  // matches.
+  // matches. If an out-of-memory occurred than the zone will have a suitable
+  // marker.
   // ...........................................................................
+
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_multi_array_t* array, void* element) {
+TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
+                                                    TRI_multi_array_t* array,
+                                                    void* element) {
   TRI_vector_pointer_t result;
   uint64_t hash;
   uint64_t i;
 
-  
-  // ...........................................................................
   // initialise the vector which will hold the result if any
-  // ...........................................................................
- 
-   TRI_InitVectorPointer(&result);
+  TRI_InitVectorPointer(&result, zone);
    
-   
-  // ...........................................................................
   // compute the hash
-  // ...........................................................................
-
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
-  
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
-
   array->_nrFinds++;
 
-  
-  // ...........................................................................
   // search the table
-  // ...........................................................................
-
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
-  
     if (array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
       TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
     }
@@ -305,42 +275,35 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_multi_array_t* array, vo
 
   // ...........................................................................
   // return whatever we found -- which could be an empty vector list if nothing
-  // matches. Note that we allow multiple elements (compare with pointer impl).
+  // matches. Note that we allow multiple elements (compare with pointer
+  // impl). If an out-of-memory occurred than the zone will have a suitable
+  // marker.
   // ...........................................................................
+
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool overwrite) {
-
   uint64_t hash;
   uint64_t i;
-
   
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
+  // compute the hash
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
-  
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
-
   array->_nrAdds++;
-
   
-  
-  // ...........................................................................
   // search the table
-  // ...........................................................................
-
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
@@ -354,6 +317,7 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
   // TRI_InsertElementMultiArray function below where we only have keys to
   // differentiate between elements.
   // ...........................................................................
+
   if (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     if (overwrite) {
       memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
@@ -361,20 +325,12 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
 
     return false;
   }
-
   
-  // ...........................................................................
   // add a new element to the associative array
-  // ...........................................................................
-
   memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
   array->_nrUsed++;
 
-
-  // ...........................................................................
   // if we were adding and the table is more than half full, extend it
-  // ...........................................................................
-
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     ResizeMultiArray(array);
   }
@@ -389,27 +345,20 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
 bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element, bool overwrite) {
   uint64_t hash;
   uint64_t i;
-
   
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
+  // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
-
   
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
-
   array->_nrAdds++;
-
   
-  // ...........................................................................
   // search the table
-  // ...........................................................................
-
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesA++;
@@ -420,19 +369,11 @@ bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element
   // or not there exists a duplicate we do not care.
   // ...........................................................................
 
-
-  // ...........................................................................
   // add a new element to the associative array
-  // ...........................................................................
-
   memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
   array->_nrUsed++;
 
-
-  // ...........................................................................
   // if we were adding and the table is more than half full, extend it
-  // ...........................................................................
-
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     ResizeMultiArray(array);
   }
@@ -449,33 +390,21 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
   uint64_t i;
   uint64_t k;
 
-  
-  // ...........................................................................
   // Obtain the hash
-  // ...........................................................................
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
-
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
   array->_nrRems++;
 
-  
-  // ...........................................................................
   // search the table
-  // ...........................................................................
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
 
-
-  // ...........................................................................
   // if we did not find such an item return false
-  // ...........................................................................
   if (array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     if (old != NULL) {
       memset(old, 0, array->_elementSize);
@@ -484,22 +413,15 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
     return false;
   }
 
-
-  // ...........................................................................
   // remove item
-  // ...........................................................................
   if (old != NULL) {
     memcpy(old, array->_table + i * array->_elementSize, array->_elementSize);
   }
 
-
   array->clearElement(array, array->_table + i * array->_elementSize);
   array->_nrUsed--;
 
-
-  // ...........................................................................
   // and now check the following places for items to move here
-  // ...........................................................................
   k = (i + 1) % array->_nrAlloc;
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
@@ -526,32 +448,21 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
   uint64_t i;
   uint64_t k;
 
-  
-  // ...........................................................................
   // generate hash using key
-  // ...........................................................................
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
-
-  // ...........................................................................
   // update statistics
-  // ...........................................................................
   array->_nrRems++;
 
-
-  // ...........................................................................
   // search the table -- we can only match keys
-  // ...........................................................................
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
 
-  // ...........................................................................
   // if we did not find such an item return false
-  // ...........................................................................
   if (array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     if (old != NULL) {
       memset(old, 0, array->_elementSize);
@@ -560,10 +471,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
     return false;
   }
 
-
-  // ...........................................................................
   // remove item
-  // ...........................................................................
   if (old != NULL) {
     memcpy(old, array->_table + i * array->_elementSize, array->_elementSize);
   }
@@ -571,10 +479,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
   array->clearElement(array, array->_table + i * array->_elementSize);
   array->_nrUsed--;
 
-
-  // ...........................................................................
   // and now check the following places for items to move here
-  // ...........................................................................
   k = (i + 1) % array->_nrAlloc;
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
@@ -595,7 +500,6 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              ASSOCIATIVE POINTERS
@@ -647,22 +551,27 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = 0;
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return;
   }
 
+  array->_nrUsed = 0;
+
+  // table is already clear by allocate, copy old data
   for (j = 0; j < oldAlloc; j++) {
     if (oldTable[j] != NULL) {
       AddNewElementPointer(array, oldTable[j]);
     }
   }
 
-  TRI_Free(oldTable);
+  TRI_Free(array->_memoryZone, oldTable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,27 +592,23 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
+                           TRI_memory_zone_t* zone,
                            uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
                            uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
                            bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
                            bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*)) {
-  void** p;
-  void** e;
-
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
+  array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
 
-  p = array->_table;
-  e = p + array->_nrAlloc;
-
-  for (;  p < e;  ++p) {
-    *p = 0;
+  if (array->_table == NULL) {
+    array->_nrAlloc = 0;
   }
 
   array->_nrUsed = 0;
@@ -722,16 +627,16 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMultiPointer (TRI_multi_pointer_t* array) {
-  TRI_Free(array->_table);
+  TRI_Free(array->_memoryZone, array->_table);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeMultiPointer (TRI_multi_pointer_t* array) {
+void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) {
   TRI_DestroyMultiPointer(array);
-  TRI_Free(array);
+  TRI_Free(zone, array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,13 +656,15 @@ void TRI_FreeMultiPointer (TRI_multi_pointer_t* array) {
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_multi_pointer_t* array, void const* key) {
+TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
+                                                  TRI_multi_pointer_t* array,
+                                                  void const* key) {
   TRI_vector_pointer_t result;
   uint64_t hash;
   uint64_t i;
 
   // initialises the result vector
-  TRI_InitVectorPointer(&result);
+  TRI_InitVectorPointer(&result, zone);
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -815,6 +722,11 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, void* element, 
   uint64_t hash;
   uint64_t i;
   void* old;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashElement(array, element);

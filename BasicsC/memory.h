@@ -37,6 +37,61 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_memory_zone_s {
+  uint32_t _zid;
+  bool _failed;
+  bool _failable;
+  void* _impl;
+}
+TRI_memory_zone_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+////////////////////////////////////////////////////////////////////////////////
+
+extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unknown memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__,__LINE__)
+TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line);
+#else
+extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -56,27 +111,48 @@ extern "C" {
 void TRI_ActivateMemFailures (double probability);
 void TRI_DeactivateMemFailures (void);
 #else
-#define TRI_ActiveMemFailures(p) ;
-#define TRI_DeactivateMemFailures() ;
+#define TRI_ActiveMemFailures(p)    do {} while (0)
+#define TRI_DeactivateMemFailures() do {} while (0)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Allocate (uint64_t);
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Allocate(a,b,c) TRI_AllocateZ((a),(b),(c),__FILE__,__LINE__)
+void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const* file, int line);
+#else
+void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Reallocate (void*, uint64_t);
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Reallocate(a,b,c) TRI_ReallocateZ((a),(b),(c),__FILE__,__LINE__)
+void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const* file, int line);
+#else
+void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Free (void*);
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Free(a,b) TRI_FreeZ((a),(b),__FILE__,__LINE__)
+void TRI_FreeZ (TRI_memory_zone_t*, void*, char const* file, int line);
+#else
+void TRI_Free (TRI_memory_zone_t*, void*);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseMemory (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

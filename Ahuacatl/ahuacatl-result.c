@@ -32,7 +32,7 @@ static void FreeData (TRI_general_cursor_result_t* result) {
 
   assert(json);
 
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t* result, 

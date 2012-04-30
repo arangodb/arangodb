@@ -142,6 +142,10 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   worked = false;
   base = &sim->base.base;
 
+  if (sim->base.base._state != TRI_COL_STATE_WRITE) {
+    return false;
+  }
+
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
   // therefore no locking is required to access the _journals
@@ -335,7 +339,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
   assert(vocbase->_active);
 
-  TRI_InitVectorPointer(&collections);
+  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
     size_t n;

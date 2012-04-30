@@ -465,7 +465,7 @@ char* TRI_StringUInt64 (uint64_t attr) {
 char* TRI_StringDouble (double value) {
   TRI_string_buffer_t buffer;
 
-  TRI_InitStringBuffer(&buffer);
+  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
   TRI_AppendDoubleStringBuffer(&buffer, value);
 
   return buffer._buffer;

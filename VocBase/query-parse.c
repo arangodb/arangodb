@@ -114,7 +114,7 @@ static TRI_query_parser_t* InitParserQueryTemplate (TRI_query_template_t* const 
   assert(template_);
   assert(template_->_queryString);
 
-  parser = (TRI_query_parser_t*) TRI_Allocate(sizeof(TRI_query_parser_t));
+  parser = (TRI_query_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_parser_t), false);
   if (!parser) {
     TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
@@ -142,7 +142,7 @@ static void FreeParserQueryTemplate (TRI_query_template_t* const template_) {
   // free lexer/scanner
   QLlex_destroy(template_->_parser->_scanner);
 
-  TRI_Free(template_->_parser);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_->_parser);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ char* TRI_ParseQueryRegisterString (TRI_query_template_t* const template_,
 
 void TRI_ParseQueryFreeString (char* string) {
   if (string) {
-    TRI_Free(string);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, string);
     string = NULL;
   }
 }

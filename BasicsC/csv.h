@@ -63,6 +63,8 @@ TRI_csv_parser_states_e;
 typedef struct TRI_csv_parser_s {
   TRI_csv_parser_states_e _state;
 
+  TRI_memory_zone_t* _memoryZone;
+
   char _quote;
   char _separator;
   char _eol;
@@ -109,6 +111,7 @@ TRI_csv_parser_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCsvParser (TRI_csv_parser_t*,
+                        TRI_memory_zone_t*,
                         void (*) (TRI_csv_parser_t*, size_t),
                         void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, bool),
                         void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, bool));
@@ -136,13 +139,13 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseCsvString (TRI_csv_parser_t*, char const*);
+int TRI_ParseCsvString (TRI_csv_parser_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseCsvString2 (TRI_csv_parser_t*, char const*, size_t);
+int TRI_ParseCsvString2 (TRI_csv_parser_t*, char const*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

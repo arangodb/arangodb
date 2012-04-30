@@ -53,7 +53,7 @@ static TRI_data_feeder_t* CreateDataFeederX (const TRI_data_feeder_type_e type,
                                             size_t level) {
   TRI_data_feeder_t* feeder;
   
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t), false);
   if (!feeder) {
     return NULL;
   }
@@ -84,7 +84,7 @@ static TRI_data_feeder_t* CreateDataFeeder (TRI_query_instance_t* const instance
                                             size_t level) {
   TRI_data_feeder_t* feeder;
   
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t), false);
   if (!feeder) {
     return NULL;
   }
@@ -207,15 +207,15 @@ static void FreeFeederTableScan (TRI_data_feeder_t* feeder) {
   state = (TRI_data_feeder_table_scan_t*) feeder->_state;
 
   if (state) {
-    TRI_Free(state);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state);
   }
 
   if (feeder->_ranges) {
     TRI_DestroyVectorPointer(feeder->_ranges);
-    TRI_Free(feeder->_ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder->_ranges);
   }
 
-  TRI_Free(feeder);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,10 +233,10 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScanX (const TRI_doc_collection_t* c
   }
 
   feeder->_state = (TRI_data_feeder_table_scan_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_table_scan_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t), false);
 
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -263,10 +263,10 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScan (TRI_query_instance_t* const in
   }
 
   feeder->_state = (TRI_data_feeder_table_scan_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_table_scan_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t), false);
 
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -305,7 +305,7 @@ static void InitFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
     // ref access
     feeder->_accessType = ACCESS_REF;
 
-    buffer = TRI_CreateStringBuffer();
+    buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
     if (!buffer) {
       return;
     }
@@ -318,7 +318,7 @@ static void InitFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     if (!state->_context) {
       return;
@@ -358,7 +358,7 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
       return;
     }
 
-    parameters = TRI_CreateListJson();
+    parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameters) {
       return;
     }
@@ -366,16 +366,16 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       TRI_json_t* value;
       TRI_vector_string_t parts;
 
       if (parameters->_type != TRI_JSON_LIST) {
-        TRI_FreeJson(parameters);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
         return;
       }
       if (parameters->_value._objects._length != 1) {
-        TRI_FreeJson(parameters);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
         return;
       }
 
@@ -389,7 +389,7 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
       }
       TRI_DestroyVectorString(&parts);
     }
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
   state->_hasCompared = false;
@@ -434,15 +434,15 @@ static void FreeFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
   }
 
   if (state) {
-    TRI_Free(state);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state);
   }
 
   if (feeder->_ranges) {
     TRI_DestroyVectorPointer(feeder->_ranges);
-    TRI_Free(feeder->_ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder->_ranges);
   }
 
-  TRI_Free(feeder);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,9 +460,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookupX (const TRI_doc_collection_
   }
 
   feeder->_state = (TRI_data_feeder_primary_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_primary_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -491,9 +491,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (TRI_query_instance_t* cons
   }
 
   feeder->_state = (TRI_data_feeder_primary_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_primary_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -542,7 +542,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
   if (range->_valueType == RANGE_TYPE_REF) {
     // ref access
     feeder->_accessType = ACCESS_REF; 
-    buffer = TRI_CreateStringBuffer();
+    buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
     if (!buffer) {
       return;
     }
@@ -561,7 +561,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     if (!state->_context) {
       return;
@@ -571,29 +571,29 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
     // const access
     feeder->_accessType = ACCESS_CONST;
      
-    parameters = TRI_CreateListJson();
+    parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameters) {
       return;
     }
     for (i = 0; i < feeder->_ranges->_length; i++) {
       range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
       if (range->_valueType == RANGE_TYPE_STRING) {
-        TRI_PushBack3ListJson(parameters, TRI_CreateStringCopyJson(range->_minValue._stringValue));
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue));
       }
       else if (range->_valueType == RANGE_TYPE_DOUBLE) {
-        TRI_PushBack3ListJson(parameters, TRI_CreateNumberJson(range->_minValue._doubleValue));
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, range->_minValue._doubleValue));
       }
       else if (range->_valueType == RANGE_TYPE_JSON) {
-        doc = TRI_JsonString(range->_minValue._stringValue);
+        doc = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, range->_minValue._stringValue);
         if (!doc) {
-          TRI_FreeJson(parameters);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
           return;
         }
-        TRI_PushBackListJson(parameters, doc);
+        TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameters, doc);
       }
     }
     state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
   state->_isEmpty = false;
@@ -612,15 +612,15 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
 
   if (feeder->_accessType == ACCESS_REF) {
     if (state->_hashElements) {
-      TRI_Free(state->_hashElements->_elements);
-      TRI_Free(state->_hashElements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, state->_hashElements->_elements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, state->_hashElements);
     }
     state->_hashElements = NULL;
 
     if (!state->_context) {
       return;
     }
-    parameters = TRI_CreateListJson();
+    parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameters) {
       return;
     }
@@ -628,11 +628,11 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
     }
  
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 }
 
@@ -674,8 +674,8 @@ static void FreeFeederHashLookup (TRI_data_feeder_t* feeder) {
 
   state = (TRI_data_feeder_hash_lookup_t*) feeder->_state;
   if (state->_hashElements) {
-    TRI_Free(state->_hashElements->_elements);
-    TRI_Free(state->_hashElements);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state->_hashElements->_elements);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state->_hashElements);
   }
 
   if (state->_context) {
@@ -683,15 +683,15 @@ static void FreeFeederHashLookup (TRI_data_feeder_t* feeder) {
   }
 
   if (state) {
-    TRI_Free(state);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state);
   }
 
   if (feeder->_ranges) {
     TRI_DestroyVectorPointer(feeder->_ranges);
-    TRI_Free(feeder->_ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder->_ranges);
   }
 
-  TRI_Free(feeder);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,9 +709,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookupX (const TRI_doc_collection_t* 
   }
   
   feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_hash_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -740,9 +740,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const i
   }
   
   feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_hash_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -766,12 +766,12 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const i
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* CopyParameters (const TRI_json_t* const src) {
-  TRI_json_t* dst = TRI_CreateListJson();
+  TRI_json_t* dst = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!dst) {
     return NULL;
   }
 
-  TRI_CopyToJson(dst, src);
+  TRI_CopyToJson(TRI_UNKNOWN_MEM_ZONE, dst, src);
 
   return dst;
 }
@@ -795,7 +795,7 @@ static TRI_sl_operator_t* CreateRefSkipListOperation (const TRI_data_feeder_t* c
    
     if (parameters == NULL) {
       // init list
-      parameters = TRI_CreateListJson();
+      parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     }
     else {
       // copy previous list
@@ -810,36 +810,36 @@ static TRI_sl_operator_t* CreateRefSkipListOperation (const TRI_data_feeder_t* c
     }
 
     value = TRI_LookupListJson(values, i);
-    TRI_PushBackListJson(parameters, value);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameters, value);
   
     switch (compareType) {
       case COMPARE_TYPE_LE: {
         // oo .. x| 
-        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       } 
 
       case COMPARE_TYPE_LT: {
         // oo .. |x
-        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GE: {
         // |x .. oo
-        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GT: {
         // x| .. oo
-        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_EQ: {
         // x
-        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
@@ -852,7 +852,7 @@ static TRI_sl_operator_t* CreateRefSkipListOperation (const TRI_data_feeder_t* c
     }
   
     if (lastOp != NULL) {
-      lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, 2, NULL);
+      lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, NULL, 2, NULL);
     }
     else {
       lastOp = op;
@@ -879,7 +879,7 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
    
     if (parameters == NULL) {
       // init list
-      parameters = TRI_CreateListJson();
+      parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     }
     else {
       // copy previous list
@@ -897,35 +897,35 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
       case COMPARE_TYPE_LE: {
         // oo .. x| 
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       } 
 
       case COMPARE_TYPE_LT: {
         // oo .. |x
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GE: {
         // |x .. oo
         QLOptimizeToJsonListRange(parameters, range, false);
-        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GT: {
         // x| .. oo
         QLOptimizeToJsonListRange(parameters, range, false);
-        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_EQ: {
         // x
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
@@ -938,25 +938,25 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
         QLOptimizeToJsonListRange(parameters, range, false);
         if (range->_minStatus == RANGE_VALUE_INCLUDED) {
           // >= 
-          op1 = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+          op1 = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         } 
         else {
           // >
-          op1 = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
+          op1 = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, parameters->_value._objects._length, NULL);
         }
         
         // upper bound operator
         QLOptimizeToJsonListRange(temp, range, true);
         if (range->_maxStatus == RANGE_VALUE_INCLUDED) {
           // <=
-          op2 = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, temp, NULL, temp->_value._objects._length, NULL);
+          op2 = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, temp, NULL, NULL, temp->_value._objects._length, NULL);
         } 
         else {
           // <
-          op2 = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, temp, NULL, temp->_value._objects._length, NULL);
+          op2 = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, temp, NULL, NULL, temp->_value._objects._length, NULL);
         }
 
-        op = CreateSLOperator(TRI_SL_AND_OPERATOR, op1, op2, NULL, NULL, 2, NULL);
+        op = CreateSLOperator(TRI_SL_AND_OPERATOR, op1, op2, NULL, NULL, NULL, 2, NULL);
         break;
       }
 
@@ -969,7 +969,7 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
     }
   
     if (lastOp != NULL) {
-      lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, 2, NULL);
+      lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, NULL, 2, NULL);
     }
     else {
       lastOp = op;
@@ -1010,7 +1010,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     // ref access
     feeder->_accessType = ACCESS_REF; 
 
-    buffer = TRI_CreateStringBuffer();
+    buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
     if (!buffer) {
       return;
     }
@@ -1029,7 +1029,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     if (!state->_context) {
       return;
@@ -1075,7 +1075,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     if (!state->_context) {
       return;
     }
-    parameters = TRI_CreateListJson();
+    parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameters) {
       return;
     }
@@ -1083,7 +1083,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
                                     state->_context, 
                                     feeder->_level, 
                                     true);
-    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+    if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
       TRI_sl_operator_t* skiplistOperation = CreateRefSkipListOperation(feeder, parameters);
       if (skiplistOperation) {
         state->_skiplistOperation = skiplistOperation;
@@ -1091,7 +1091,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
       }
     }
  
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 }
 
@@ -1146,15 +1146,15 @@ static void FreeFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   }
 
   if (state) {
-    TRI_Free(state);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state);
   }
 
   if (feeder->_ranges) {
     TRI_DestroyVectorPointer(feeder->_ranges);
-    TRI_Free(feeder->_ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder->_ranges);
   }
 
-  TRI_Free(feeder);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1172,9 +1172,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookupX (const TRI_doc_collection
   }
   
   feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_skiplist_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -1203,9 +1203,9 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (TRI_query_instance_t* con
   }
   
   feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_skiplist_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t), false);
   if (!feeder->_state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -1321,11 +1321,11 @@ static void FreeFeederGeoLookup (TRI_data_feeder_t* feeder) {
   }
 
   if (state) {
-    TRI_Free(state);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, state);
   }
 
   if (feeder) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
   }
 }
 
@@ -1346,12 +1346,12 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookupX (const TRI_doc_collection_t* c
   }
   
   feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_geo_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t), false);
 
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
 
   if (!state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 
@@ -1383,12 +1383,12 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (TRI_query_instance_t* const in
   }
   
   feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
-    TRI_Allocate(sizeof(TRI_data_feeder_geo_lookup_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t), false);
 
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
 
   if (!state) {
-    TRI_Free(feeder);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
     return NULL;
   }
 

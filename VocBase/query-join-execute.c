@@ -43,7 +43,7 @@
 
 static void LogIndexString(TRI_index_t const* idx,
                            char const* collectionName) {
-  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer();
+  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   size_t i;
 
   if (buffer == NULL) {
@@ -63,7 +63,7 @@ static void LogIndexString(TRI_index_t const* idx,
             buffer->_buffer, 
             collectionName);
 
-  TRI_FreeStringBuffer(buffer);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
 
 
@@ -233,7 +233,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
     size_t numRefs;
     size_t numConsts;
 
-    TRI_InitVectorPointer(&matches);
+    TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
     if (part->_collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
       TRI_RegisterErrorQueryInstance(instance, 
@@ -262,7 +262,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
       numConsts = 0;
       if (matches._length) {
         TRI_DestroyVectorPointer(&matches);
-        TRI_InitVectorPointer(&matches);
+        TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
       }
 
       for (j = 0;  j < numFieldsDefined;  j++) {
@@ -368,7 +368,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
             TRI_CreateDataFeederPrimaryLookup(instance, 
                                               (TRI_doc_collection_t*) part->_collection->_collection, 
                                               level,
-                                              TRI_CopyVectorPointer(&matches));
+                                              TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &matches));
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
@@ -395,7 +395,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                    (TRI_doc_collection_t*) part->_collection->_collection, 
                                                    level,
                                                    idx->_iid,
-                                                   TRI_CopyVectorPointer(&matches));
+                                                   TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &matches));
             
               LogIndexString(idx, part->_alias);
             }
@@ -405,7 +405,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                (TRI_doc_collection_t*) part->_collection->_collection, 
                                                level,
                                                idx->_iid,
-                                               TRI_CopyVectorPointer(&matches));
+                                               TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &matches));
               
               LogIndexString(idx, part->_alias);
             }
@@ -474,12 +474,12 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
   size_t i;
   bool error = false;
 
-  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!dataparts) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(dataparts);
+  TRI_InitVectorPointer(dataparts, TRI_UNKNOWN_MEM_ZONE);
   for (i = 0; i < join->_parts._length; i++) {
     part = (TRI_join_part_t*) join->_parts._buffer[i];
     if (part) {
@@ -555,7 +555,7 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
     }
 
     TRI_DestroyVectorPointer(dataparts);
-    TRI_Free(dataparts);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, dataparts);
     return NULL;
   }
 
@@ -581,7 +581,7 @@ static void FreeDataParts (TRI_query_instance_t* const instance,
   }
 
   TRI_DestroyVectorPointer(dataparts);
-  TRI_Free(dataparts);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, dataparts);
   
   for (i = 0; i < instance->_join._length; i++) {
     TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
@@ -691,13 +691,13 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
   TRI_select_result_t* result;
   TRI_vector_pointer_t* dataparts;
 
-  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  dataparts = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
   if (!dataparts) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
-  TRI_InitVectorPointer(dataparts);
+  TRI_InitVectorPointer(dataparts, TRI_UNKNOWN_MEM_ZONE);
   if (!CreateDataParts(instance, dataparts)) {
     // clean up
     FreeDataParts(instance, dataparts);

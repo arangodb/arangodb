@@ -56,7 +56,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 
   assert(name);
 
-  collection = (TRI_aql_collection_t*) TRI_Allocate(sizeof(TRI_aql_collection_t));
+  collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
   if (!collection) {
     return NULL;
   }
@@ -336,7 +336,6 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
   i = context->_collections._length;
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_doc_collection_t* documentCollection;
 
     assert(collection);
     assert(collection->_name);
@@ -349,8 +348,6 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection->_readLocked);
     assert(collection->_barrier);
     assert(collection->_collection->_collection);
-
-    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
 
     LOG_TRACE("removing barrier for collection '%s'", collection->_name);
 

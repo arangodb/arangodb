@@ -8,12 +8,19 @@
 #define MRUBYCONF_H
 
 #include <stdint.h>
+#define MRB_USE_FLOAT
+
+#ifdef MRB_USE_FLOAT
+typedef float mrb_float;
+#define readfloat(p) strtof((p),NULL)
+#else
 typedef double mrb_float;
+#define readfloat(p) strtod((p),NULL)
+#endif
+
 typedef int32_t mrb_int;
 typedef intptr_t mrb_sym;
-
 #define readint(p,base) strtol((p),NULL,(base))
-#define readfloat(p) strtod((p),NULL)
 
 #undef  INCLUDE_ENCODING   /* not use encoding classes (ascii only) */
 #define INCLUDE_ENCODING   /* use UTF-8 encoding classes */

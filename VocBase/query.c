@@ -65,7 +65,7 @@ static void FreeQuerySelectDocument (TRI_qry_select_t* s) {
 
   selectClause = (TRI_qry_select_direct_t*) s;
 
-  TRI_Free(selectClause);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, selectClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +112,7 @@ static bool ToJavaScriptSelectDocument (TRI_qry_select_t* s,
 TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
   TRI_qry_select_direct_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_select_direct_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_select_direct_t), false);
   
   result->base._type = TRI_QRY_SELECT_DOCUMENT;
 
@@ -161,8 +161,8 @@ static void FreeQuerySelectGeneral (TRI_qry_select_t* s) {
 
   selectClause = (TRI_qry_select_general_t*) s;
 
-  TRI_FreeString(selectClause->_code);
-  TRI_Free(selectClause);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, selectClause->_code);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, selectClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,7 +215,7 @@ static bool ToJavaScriptSelectGeneral (TRI_qry_select_t* s,
 TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const* clause) {
   TRI_qry_select_general_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_select_general_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_select_general_t), false);
 
   result->base._type = TRI_QRY_SELECT_GENERAL;
 
@@ -490,17 +490,17 @@ static void FreeCollectionCursor (TRI_rc_cursor_t* c) {
 
   TRI_FreeContextQuery(cursor->base._context);
 
-  TRI_Free(cursor->_documents);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor->_documents);
 
   if (cursor->_augmentions != NULL) {
     for (i = 0;  i < cursor->_length;  ++i) {
-      TRI_DestroyJson(&cursor->_augmentions[i]);
+      TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &cursor->_augmentions[i]);
     }
 
-    TRI_Free(cursor->_augmentions);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor->_augmentions);
   }
 
-  TRI_Free(cursor);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,7 +573,7 @@ static void FreeQueryWhereBoolean (TRI_qry_where_t* w) {
 
   whereClause = (TRI_qry_where_boolean_t*) w;
 
-  TRI_Free(whereClause);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,7 +596,7 @@ static void FreeQueryWhereBoolean (TRI_qry_where_t* w) {
 TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
   TRI_qry_where_boolean_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_where_boolean_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_boolean_t), false);
 
   result->base.base._type = TRI_QRY_WHERE_BOOLEAN;
 
@@ -646,7 +646,7 @@ static void FreeQueryWherePrimaryConstant (TRI_qry_where_t* w) {
 
   whereClause = (TRI_qry_where_primary_const_t*) w;
 
-  TRI_Free(whereClause);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,7 +682,7 @@ static TRI_voc_did_t DidQueryWherePrimaryConstant (TRI_qry_where_primary_t* w,
 TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did) {
   TRI_qry_where_primary_const_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_where_primary_const_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_primary_const_t), false);
 
   result->base.base._type = TRI_QRY_WHERE_PRIMARY_CONSTANT;
 
@@ -734,8 +734,8 @@ static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
 
   whereClause = (TRI_qry_where_general_t*) w;
 
-  TRI_FreeString(whereClause->_code);
-  TRI_Free(whereClause);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, whereClause->_code);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,7 +758,7 @@ static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const* clause) {
   TRI_qry_where_general_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_where_general_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_general_t), false);
 
   result->base.base._type = TRI_QRY_WHERE_GENERAL;
 
@@ -848,8 +848,8 @@ static TRI_qry_where_t* CloneQueryWhereWithinConstant (const TRI_qry_where_t* w)
 static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
   TRI_qry_where_hash_const_t* whereClause;
   whereClause = (TRI_qry_where_hash_const_t*) w;
-  TRI_FreeJson(whereClause->_parameters);
-  TRI_Free(whereClause);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, whereClause->_parameters);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -859,8 +859,8 @@ static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
 static void FreeQueryWherePQConstant (TRI_qry_where_t* w) {
   TRI_qry_where_priorityqueue_const_t* whereClause;
   whereClause = (TRI_qry_where_priorityqueue_const_t*) w;
-  TRI_FreeJson(whereClause->_parameters);
-  TRI_Free(whereClause);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, whereClause->_parameters);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,10 +879,10 @@ static void FreeQueryWhereWithinConstant (TRI_qry_where_t* w) {
   whereClause = (TRI_qry_where_within_const_t*) w;
 
   if (whereClause->base._nameDistance != NULL) {
-    TRI_Free(whereClause->base._nameDistance);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause->base._nameDistance);
   }
 
-  TRI_Free(whereClause);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, whereClause);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,7 +935,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
                                                      double radius) {
   TRI_qry_where_within_const_t* result;
 
-  result = TRI_Allocate(sizeof(TRI_qry_where_within_const_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_within_const_t), false);
 
   result->base.base._type = TRI_QRY_WHERE_WITHIN_CONSTANT;
 
@@ -962,12 +962,12 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
 
 TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t* parameters) {
   TRI_qry_where_hash_const_t* result;
-  result = TRI_Allocate(sizeof(TRI_qry_where_hash_const_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_hash_const_t), false);
   result->base._type  = TRI_QRY_WHERE_HASH_CONSTANT;
   result->base.clone  = CloneQueryWhereHashConstant;
   result->base.free   = FreeQueryWhereHashConstant;
   result->_iid        = iid;
-  result->_parameters = TRI_CopyJson(parameters);
+  result->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   return &result->base;
 }
 
@@ -978,12 +978,12 @@ TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t
 
 TRI_qry_where_t* TRI_CreateQueryWherePQConstant (TRI_idx_iid_t iid, TRI_json_t* parameters) {
   TRI_qry_where_priorityqueue_const_t* result;
-  result = TRI_Allocate(sizeof(TRI_qry_where_priorityqueue_const_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_priorityqueue_const_t), false);
   result->base._type  = TRI_QRY_WHERE_PRIORITY_QUEUE_CONSTANT;
   result->base.clone  = CloneQueryWherePQConstant;
   result->base.free   = FreeQueryWherePQConstant;
   result->_iid        = iid;
-  result->_parameters = TRI_CopyJson(parameters);
+  result->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   return &result->base;
 }
 
@@ -995,7 +995,7 @@ TRI_qry_where_t* TRI_CreateQueryWherePQConstant (TRI_idx_iid_t iid, TRI_json_t* 
 TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_sl_operator_t* slOperator) {
   TRI_qry_where_skiplist_const_t* result;
   
-  result = TRI_Allocate(sizeof(TRI_qry_where_skiplist_const_t));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_qry_where_skiplist_const_t), false);
   result->base._type  = TRI_QRY_WHERE_SKIPLIST_CONSTANT;
   result->base.clone  = CloneQueryWhereSkiplistConstant;
   result->base.free   = FreeQueryWhereSkiplistConstant;
@@ -1068,7 +1068,7 @@ TRI_query_t* TRI_CreateHashQuery(const TRI_qry_where_t* whereStmt,
                                  TRI_doc_collection_t* collection) {
   TRI_query_t* query;
 
-  query = TRI_Allocate(sizeof(TRI_query_t));
+  query = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_t), false);
   if (!query) {
     return NULL;
   }
@@ -1090,7 +1090,7 @@ TRI_query_t* TRI_CreatePriorityQueueQuery(const TRI_qry_where_t* whereStmt,
                                           TRI_doc_collection_t* collection) {
   TRI_query_t* query;
 
-  query = TRI_Allocate(sizeof(TRI_query_t));
+  query = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_t), false);
   if (!query) {
     return NULL;
   }
@@ -1113,7 +1113,7 @@ TRI_query_t* TRI_CreateSkiplistQuery(const TRI_qry_where_t* whereStmt,
                                      TRI_doc_collection_t* collection) {
   TRI_query_t* query;
 
-  query = TRI_Allocate(sizeof(TRI_query_t));
+  query = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_t), false);
   if (!query) {
     return NULL;
   }
@@ -1139,7 +1139,7 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
                               TRI_voc_ssize_t limit) {
   TRI_query_t* query;
 
-  query = TRI_Allocate(sizeof(TRI_query_t));
+  query = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_t), false);
   if (!query) {
     return NULL;
   }
@@ -1184,7 +1184,7 @@ void TRI_FreeQuery (TRI_query_t* query) {
     query->_joins->free(query->_joins);
   }
 
-  TRI_Free(query);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1196,7 +1196,7 @@ TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
   TRI_qry_select_general_t* selectGeneral;
   TRI_qry_where_general_t* whereGeneral;
 
-  context = TRI_Allocate(sizeof(TRI_rc_context_t));
+  context = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_rc_context_t), false);
 
   context->_primary = query->_primary;
   
@@ -1243,7 +1243,7 @@ void TRI_FreeContextQuery (TRI_rc_context_t* context) {
     TRI_FreeExecutionContext(context->_orderClause);
   }
   
-  TRI_Free(context);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1374,7 +1374,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
    
   cursor->base._select->toJavaScript = ToJavaScriptHashDocument; 
 
-  TRI_InitVectorPointer(&cursor->base._containers);
+  TRI_InitVectorPointer(&cursor->base._containers, TRI_UNKNOWN_MEM_ZONE);
   
   TRI_ReadLockCollectionsQuery(query);
 
@@ -1400,7 +1400,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
   
   
   if (ok) {
-    cursor->_documents = (TRI_doc_mptr_t*) (TRI_Allocate(sizeof(TRI_doc_mptr_t) * hashElements->_numElements));
+    cursor->_documents = (TRI_doc_mptr_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t) * hashElements->_numElements, false));
 
     wtr                            = cursor->_documents;
     cursor->_length                = 0;
@@ -1425,8 +1425,8 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
     
     
     if (hashElements->_elements != NULL) {
-      TRI_Free(hashElements->_elements);
-      TRI_Free(hashElements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElements->_elements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElements);
     }
   }
   
@@ -1471,7 +1471,7 @@ static void FilterDataPQQuery(collection_cursor_t* cursor,TRI_query_t* query,
    
   cursor->base._select->toJavaScript = ToJavaScriptPQDocument; 
 
-  TRI_InitVectorPointer(&cursor->base._containers);
+  TRI_InitVectorPointer(&cursor->base._containers, TRI_UNKNOWN_MEM_ZONE);
   
   TRI_ReadLockCollectionsQuery(query);
 
@@ -1498,7 +1498,7 @@ static void FilterDataPQQuery(collection_cursor_t* cursor,TRI_query_t* query,
   
   
   if (ok) {
-    cursor->_documents = (TRI_doc_mptr_t*) (TRI_Allocate(sizeof(TRI_doc_mptr_t) * pqElements->_numElements));
+    cursor->_documents = (TRI_doc_mptr_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t) * pqElements->_numElements, false));
 
     wtr                            = cursor->_documents;
     cursor->_length                = 0;
@@ -1523,8 +1523,8 @@ static void FilterDataPQQuery(collection_cursor_t* cursor,TRI_query_t* query,
     
     
     if (pqElements->_elements != NULL) {
-      TRI_Free(pqElements->_elements);
-      TRI_Free(pqElements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElements->_elements);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElements);
     }
   }
   
@@ -1564,7 +1564,7 @@ static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query,
    
   cursor->base._select->toJavaScript = ToJavaScriptHashDocument; 
 
-  TRI_InitVectorPointer(&cursor->base._containers);
+  TRI_InitVectorPointer(&cursor->base._containers, TRI_UNKNOWN_MEM_ZONE);
   
   TRI_ReadLockCollectionsQuery(query);
 
@@ -1655,7 +1655,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
     }
     
     else if (where->_type == TRI_QRY_WHERE_HASH_CONSTANT) {
-      cursor = TRI_Allocate(sizeof(collection_cursor_t));
+      cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(collection_cursor_t), false);
       if (cursor == NULL) {
         return NULL;
       }
@@ -1664,7 +1664,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
     }
     
     else if (where->_type == TRI_QRY_WHERE_PRIORITY_QUEUE_CONSTANT) {
-      cursor = TRI_Allocate(sizeof(collection_cursor_t));
+      cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(collection_cursor_t), false);
       if (cursor == NULL) {
         return NULL;
       }
@@ -1673,7 +1673,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
     }
     
     else if (where->_type == TRI_QRY_WHERE_SKIPLIST_CONSTANT) {
-      cursor = TRI_Allocate(sizeof(collection_cursor_t));
+      cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(collection_cursor_t), false);
       if (cursor == NULL) {
         return NULL;
       }
@@ -1692,7 +1692,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   // construct a collection subset
   // .............................................................................
   
-  cursor = TRI_Allocate(sizeof(collection_cursor_t));
+  cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(collection_cursor_t), false);
   if (!cursor) {
     selectResult->free(selectResult);
     return NULL;
@@ -1707,7 +1707,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   cursor->_result._context = context;
   cursor->_result._augmention._type = TRI_JSON_UNUSED;
 
-  TRI_InitVectorPointer(&cursor->base._containers);
+  TRI_InitVectorPointer(&cursor->base._containers, TRI_UNKNOWN_MEM_ZONE);
 
   // .............................................................................
   // inside a read transaction

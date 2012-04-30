@@ -149,7 +149,7 @@ bool TRI_InitPQueue (TRI_pqueue_t* pq, size_t initialCapacity, size_t itemSize, 
   // Set the capacity and assign memeory for storage
   // ..........................................................................  
   pq->_base._capacity = initialCapacity;
-  pq->_base._items    = TRI_Allocate(pq->_base._itemSize * pq->_base._capacity);
+  pq->_base._items    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize * pq->_base._capacity, false);
   if (pq->_base._items == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue storage");
@@ -202,7 +202,7 @@ void TRI_DestroyPQueue(TRI_pqueue_t* pq) {
     thisItem = (j * pq->_base._itemSize) + pq->_base._items;
     pq->clearStoragePQ(pq,thisItem);
   }
-  TRI_Free(pq->_base._items);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq->_base._items);
 }
 
 
@@ -216,7 +216,7 @@ void TRI_FreePQueue(TRI_pqueue_t* pq) {
     return;
   }  
   TRI_DestroyPQueue(pq);
-  TRI_Free(pq);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq);
 }
 
 
@@ -426,7 +426,7 @@ static bool CheckPQSize(TRI_pqueue_t* pq) {
   }
   
   pq->_base._capacity = pq->_base._capacity * 2;
-  newItems = TRI_Allocate(pq->_base._capacity * pq->_base._itemSize);
+  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize, false);
   if (newItems == NULL) {
     return false;    
   }
@@ -434,7 +434,7 @@ static bool CheckPQSize(TRI_pqueue_t* pq) {
   memset(newItems, 0, pq->_base._itemSize * pq->_base._capacity);
   memcpy(newItems, pq->_base._items, (pq->_base._count * pq->_base._itemSize) );
   
-  TRI_Free(pq->_base._items);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq->_base._items);
   pq->_base._items = newItems;
   
   return true;  
@@ -455,14 +455,14 @@ static bool FixPQ(TRI_pqueue_t* pq, uint64_t position) {
   char* rightChildItem;
   
   currentPos  = position;
-  currentItem = (char*)(TRI_Allocate(pq->_base._itemSize));
+  currentItem = (char*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize, false));
   if (currentItem == NULL) { // out of memory
     return false;
   }  
   
   itemAddress = GetItemAddress(pq,currentPos);
   if (itemAddress == NULL) {
-    TRI_Free(currentItem);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, currentItem);
     return false;
   }
 
@@ -505,7 +505,7 @@ static bool FixPQ(TRI_pqueue_t* pq, uint64_t position) {
     itemAddress = GetItemAddress(pq,currentPos);
     memcpy(itemAddress,currentItem,pq->_base._itemSize);
     pq->updateStoragePQ(pq, itemAddress, currentPos);
-    TRI_Free(currentItem);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, currentItem);
     return true;
   }
 
@@ -544,7 +544,7 @@ static bool FixPQ(TRI_pqueue_t* pq, uint64_t position) {
   itemAddress = GetItemAddress(pq,currentPos);
   memcpy(itemAddress,currentItem,pq->_base._itemSize);
   pq->updateStoragePQ(pq, itemAddress, currentPos);
-  TRI_Free(currentItem);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, currentItem);
   return true;          
 }
 
