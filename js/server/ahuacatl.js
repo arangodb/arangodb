@@ -50,7 +50,11 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_CLONE (obj) {
-  if (obj == null || typeof obj != "object") {
+  if (obj == null) {
+    return obj;
+  }
+
+  if (typeof(obj) != "object") {
     return obj;
   }
 

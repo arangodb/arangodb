@@ -91,7 +91,6 @@ static inline void InitNode (TRI_aql_context_t* const context,
   node->_next = NULL;
  
   TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&node->_subNodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_RegisterNodeContextAql(context, node);
 }
 

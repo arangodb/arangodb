@@ -60,8 +60,9 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_scope_s {
-  struct TRI_aql_scope_s* _parent;
-  TRI_associative_pointer_t _variables; 
+  struct TRI_aql_scope_s* _parent; // parent scope
+  TRI_associative_pointer_t _variables; // symbol table
+//  void* _node; // the start node of the scope
   void* _first;
   void* _last;
 }
@@ -76,13 +77,13 @@ typedef struct TRI_aql_context_s {
   TRI_vector_pointer_t _scopes;
   TRI_vector_pointer_t _nodes;
   TRI_vector_pointer_t _strings;
-  TRI_vector_pointer_t _stack;
   TRI_vector_pointer_t _collections;
   TRI_aql_error_t _error;
   TRI_vocbase_t* _vocbase;
   TRI_associative_pointer_t _parameterValues;
   TRI_associative_pointer_t _parameterNames;
   TRI_associative_pointer_t _collectionNames;
+  size_t _variableIndex;
   void* _first;
   char* _query;
 }
@@ -181,7 +182,7 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const, const void* const);
 /// @brief create a new variable scope and stack it in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const);
+TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a variable scope from context scopes stack

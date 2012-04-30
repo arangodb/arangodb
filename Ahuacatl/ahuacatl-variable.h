@@ -53,6 +53,7 @@ extern "C" {
 
 typedef struct TRI_aql_variable_s {
   char* _name;
+  size_t _index;
 }
 TRI_aql_variable_t;
 
@@ -73,7 +74,7 @@ TRI_aql_variable_t;
 /// @brief register a new variable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const);
+TRI_aql_variable_t* TRI_CreateVariableAql (const char* const, const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an existing variable

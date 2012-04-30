@@ -41,8 +41,8 @@
 #include "VocBase/simple-collection.h"
 #include "VocBase/general-cursor.h"
 #include "SkipLists/sl-operator.h"
-#include "Ahuacatl/ast-codegen-js.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-codegen-js.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-result.h"
 
@@ -2604,12 +2604,12 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   
   // generate code
   if (context->_first) {
-    char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
+    TRI_aql_codegen_js_t* generator = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
     
-    if (code) {
+    if (generator && !generator->_error) {
       v8::Handle<v8::Value> result;
-      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
+      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(generator->_buffer._buffer), v8::String::New("query"));
+      TRI_FreeGeneratorAql(generator);
 
       TRI_json_t* json = ConvertHelper(result);
       if (json) {
@@ -2626,6 +2626,9 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
+    }
+    else if (generator) {
+      TRI_FreeGeneratorAql(generator);
     }
   }
 

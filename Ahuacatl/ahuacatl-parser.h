@@ -53,6 +53,7 @@ typedef struct TRI_aql_parser_s {
   char* _buffer;  // the currently procssed part of the query string
   size_t _length; // length of the query string
   TRI_vector_pointer_t _scopes;
+  TRI_vector_pointer_t _stack;
 }
 TRI_aql_parser_t;
 

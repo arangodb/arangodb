@@ -221,7 +221,7 @@ for_statement:
       if (!TRI_AddStatementAql(context, node)) {
         ABORT_OOM
       }
-
+      
       $$ = node;
     }
   ;
@@ -418,7 +418,7 @@ return_statement:
       if (!TRI_AddStatementAql(context, node)) {
         ABORT_OOM
       }
-
+      
       $$ = node;
     }
   ;
