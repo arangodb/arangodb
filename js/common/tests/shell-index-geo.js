@@ -57,8 +57,8 @@ function geoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,8 +524,8 @@ function geoIndexErrorHandlingSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -880,8 +880,8 @@ function geoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
 
     try {
       for (var i = -90;  i <= 90;  i += 10) {

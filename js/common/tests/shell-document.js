@@ -48,8 +48,8 @@ function collectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,8 +177,8 @@ function collectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop(cn);
-      collection = db._create(cn, { waitForSync: false });
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync: false });
 
       collection.load();
     },
@@ -365,7 +365,7 @@ function databaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandle : function () {
       try {
-        db._document("123456");
+        internal.db._document("123456");
         fail();
       }
       catch (err) {
@@ -379,7 +379,7 @@ function databaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleReplace : function () {
       try {
-        db._replace("123456", {});
+        internal.db._replace("123456", {});
         fail();
       }
       catch (err) {
@@ -393,7 +393,7 @@ function databaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleDelete : function () {
       try {
-        db._remove("123456");
+        internal.db._remove("123456");
         fail();
       }
       catch (err) {
@@ -406,10 +406,10 @@ function databaseDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingUnknownDocument : function () {
-      var collection = db._create(cn, { waitForSync : false });
+      var collection = internal.db._create(cn, { waitForSync : false });
 
       try {
-        db._document(collection._id + "/123456");
+        internal.db._document(collection._id + "/123456");
         fail();
       }
       catch (err) {
@@ -437,8 +437,8 @@ function databaseDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
 
       collection.load();
     },
@@ -458,12 +458,12 @@ function databaseDocumentSuite () {
     testReadDocument : function () {
       var d = collection.save({ "Hallo" : "World" });
 
-      var doc = db._document(d._id);
+      var doc = internal.db._document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
-      doc = db._document(d);
+      doc = internal.db._document(d);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
@@ -476,20 +476,20 @@ function databaseDocumentSuite () {
     testReadDocumentConflict : function () {
       var d = collection.save({ "Hallo" : "World" });
 
-      var doc = db._document(d._id);
+      var doc = internal.db._document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
       var r = collection.replace(d, { "Hallo" : "You" });
 
-      doc = db._document(r);
+      doc = internal.db._document(r);
 
       assertEqual(d._id, doc._id);
       assertNotEqual(d._rev, doc._rev);
 
       try {
-        db._document(d);
+        internal.db._document(d);
         fail();
       }
       catch (err) {
@@ -507,32 +507,32 @@ function databaseDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("number", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = internal.db._replace(a1, { a : 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._replace(a1, { a : 3 });
+        internal.db._replace(a1, { a : 3 });
         fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
       }
 
-      var doc2 = db._document(a1._id);
+      var doc2 = internal.db._document(a1._id);
 
       assertEqual(a1._id, doc2._id);
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._replace(a1, { a : 4 }, true);
+      var a4 = internal.db._replace(a1, { a : 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
       assertNotEqual(a2._rev, a4._rev);
 
-      var doc4 = db._document(a1._id);
+      var doc4 = internal.db._document(a1._id);
 
       assertEqual(a1._id, doc4._id);
       assertEqual(a4._rev, doc4._rev);
@@ -549,24 +549,24 @@ function databaseDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("number", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = internal.db._replace(a1, { a : 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._remove(a1);
+        internal.db._remove(a1);
         fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = db._remove(a1, true);
+      var a3 = internal.db._remove(a1, true);
 
       assertEqual(a3, true);
 
-      var a4 = db._remove(a1, true);
+      var a4 = internal.db._remove(a1, true);
 
       assertEqual(a4, false);
     },
@@ -581,10 +581,10 @@ function databaseDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("number", a1._rev);
 
-      db._remove(a1);
+      internal.db._remove(a1);
 
       try {
-        db._remove(a1);
+        internal.db._remove(a1);
         fail();
       }
       catch (err) {
