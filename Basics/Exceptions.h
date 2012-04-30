@@ -39,12 +39,14 @@
 #endif
 
 #ifdef USE_BOOST_EXCEPTIONS
+
 #if BOOST_VERSION < 104000
 #include <boost/exception.hpp>
-#include <boost/exception/info.hpp>
 #else
 #include <boost/exception/all.hpp>
 #endif
+#include <boost/exception/info.hpp>
+
 #else
 #include "Basics/StringUtils.h"
 #endif
@@ -449,7 +451,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
-  typedef boost::error_info<struct TagMessage, string> ErrorMessage;
+  typedef boost::error_info<struct TagMessage, std::string> ErrorMessage;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,7 +459,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
-  typedef boost::error_info<struct TagDetails, string> ErrorDetails;
+  typedef boost::error_info<struct TagDetails, std::string> ErrorDetails;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,49 +736,63 @@ namespace boost {
 #endif
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE triagens::ErrorMessage::tag_typeid_name() const {
+  inline
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::error_info<struct triagens::TagMessage, std::string>::tag_typeid_name () const {
     return "message";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE triagens::ErrorDetails::tag_typeid_name() const {
+  inline
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::error_info<struct TagDetails, std::string>::tag_typeid_name () const {
     return "details";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE boost::errinfo_errno::tag_typeid_name() const {
+  inline 
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::errinfo_errno::tag_typeid_name () const {
     return "errno";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE boost::errinfo_file_name::tag_typeid_name() const {
+  inline 
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::errinfo_file_name::tag_typeid_name () const {
     return "file name";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE boost::errinfo_file_open_mode::tag_typeid_name() const {
+  inline 
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::errinfo_file_open_mode::tag_typeid_name () const {
     return "file open mode";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE boost::errinfo_api_function::tag_typeid_name() const {
+  inline 
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::errinfo_api_function::tag_typeid_name () const {
     return "api function";
   }
 
 
 
   template<>
-  inline TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE boost::errinfo_at_line::tag_typeid_name() const {
+  inline 
+  TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE 
+  boost::errinfo_at_line::tag_typeid_name () const {
     return "at line";
   }
 

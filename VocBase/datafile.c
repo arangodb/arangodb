@@ -293,7 +293,13 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   data = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
   if (data == MAP_FAILED) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    if (errno == ENOMEM) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    }
+
     close(fd);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
@@ -302,7 +308,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   }
 
   // create datafile structure
-  datafile = TRI_Allocate(sizeof(TRI_datafile_t));
+  datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
   if (!datafile) {
     // TODO: FIXME
   }
@@ -400,7 +406,13 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   data = mmap(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
 
   if (data == MAP_FAILED) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    if (errno == ENOMEM) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    }
+
     close(fd);
 
     // remove empty file
@@ -414,7 +426,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   tick = TRI_NewTickVocBase();
 
   // create datafile structure
-  datafile = TRI_Allocate(sizeof(TRI_datafile_t));
+  datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
 
   if (datafile == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -462,8 +474,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     munmap(datafile->_data, datafile->_maximalSize);
     close(fd);
 
-    TRI_FreeString(datafile->_filename);
-    TRI_Free(datafile);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 
     return NULL;
   }
@@ -481,7 +493,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDatafile (TRI_datafile_t* datafile) {
-  TRI_FreeString(datafile->_filename);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +502,7 @@ void TRI_DestroyDatafile (TRI_datafile_t* datafile) {
 
 void TRI_FreeDatafile (TRI_datafile_t* datafile) {
   TRI_DestroyDatafile(datafile);
-  TRI_Free(datafile);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -838,7 +850,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  TRI_FreeString(datafile->_filename);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
   datafile->_filename = TRI_DuplicateString(filename);
 
   return true;

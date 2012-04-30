@@ -364,18 +364,18 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   string id = StringUtils::itoa(_documentCollection->base._cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
 
   TRI_json_t augmented;
-  TRI_InitArrayJson(&augmented);
+  TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
-  TRI_json_t* _id = TRI_CreateStringCopyJson(id.c_str());
+  TRI_json_t* _id = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str());
 
   if (_id) {
-    TRI_Insert2ArrayJson(&augmented, "_id", _id);
+    TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", _id);
   }
 
-  TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
+  TRI_json_t* _rev = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, document->_rid);
 
   if (_rev) {
-    TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
+    TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_rev", _rev);
   }
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
@@ -385,23 +385,23 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
     string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_fromDid);
     string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_toDid);
 
-    TRI_Insert3ArrayJson(&augmented, "_from", TRI_CreateStringCopyJson(from.c_str()));
-    TRI_Insert3ArrayJson(&augmented, "_to", TRI_CreateStringCopyJson(to.c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
   }
 
   // convert object to string
-  TRI_InitStringBuffer(&buffer);
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
 
-  TRI_DestroyJson(&augmented);
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
   if (_id) {
-    TRI_Free(_id);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _id);
   }
 
   if (_rev) {
-    TRI_Free(_rev);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _rev);
   }
 
   // and generate a response
@@ -535,7 +535,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(request->body().c_str(), &errmsg);
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body().c_str(), &errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {
@@ -548,7 +548,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
-      TRI_FreeString(errmsg);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
     }
 
     return 0;

@@ -185,6 +185,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   TRI_csv_parser_t parser;
 
   TRI_InitCsvParser(&parser,
+                    TRI_UNKNOWN_MEM_ZONE, 
                     ProcessCsvBegin,
                     ProcessCsvAdd,
                     ProcessCsvEnd);
@@ -282,7 +283,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 
       if (object->IsUndefined()) {
         v8::Handle<v8::String> msg = v8::String::New(error);
-        TRI_FreeString(error);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
         return scope.Close(v8::ThrowException(msg));
       }
 

@@ -84,14 +84,14 @@ bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
 @ENABLE_MRUBY_TRUE@am__append_3 = avocirb
-DIST_COMMON = $(am__configure_deps) \
-	$(srcdir)/Makefile.all-in-one-libev \
-	$(srcdir)/Makefile.all-in-one-mruby \
-	$(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.am \
+DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
 	$(srcdir)/Makefile.in $(srcdir)/Makefile.javascript \
 	$(srcdir)/Makefile.unittests \
+	$(srcdir)/m4/Makefile.all-in-one-libev \
+	$(srcdir)/m4/Makefile.all-in-one-mruby \
+	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
@@ -125,6 +125,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.static \
 	$(top_srcdir)/m4/configure.32bit \
+	$(top_srcdir)/m4/configure.memory \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
@@ -279,6 +280,8 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/json-test.cpp \
+	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -288,6 +291,8 @@ am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
@@ -572,6 +577,7 @@ READLINE_LIBS = @READLINE_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
+TRI_BITS = @TRI_BITS@
 V8_CPPFLAGS = @V8_CPPFLAGS@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
@@ -1002,6 +1008,8 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -1049,7 +1057,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one-libev $(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.all-in-one-mruby $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1485,6 +1493,12 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/json-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/hashes-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2073,6 +2087,8 @@ mostlyclean-compile:
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/hashes-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/json-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
@@ -2310,6 +2326,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/hashes-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
@@ -2936,11 +2954,10 @@ unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-boost \
-	unittests-shell-server-ahuacatl \
 	unittests-shell-server \
+	unittests-shell-server-ahuacatl \
 	unittests-http-server \
-	unittests-shell-client \
-	unittests-http-server 
+	unittests-shell-client
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -2961,7 +2978,7 @@ unittests-verbose:
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SERVER                                                            ||"
+	@echo "<< STARTING SERVER                                                            >>"
 	@echo "================================================================================"
 	@echo
 
@@ -2977,6 +2994,7 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
 	curl http://$(VOCHOST):$(VOCPORT)/version
+	sleep 5
 
 	@echo
 
@@ -2988,7 +3006,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@unittests-boost:
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_TRUE@	@echo "<< BOOST TESTS                                                                >>"
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -3001,7 +3019,7 @@ start-server:
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_FALSE@	@echo "<< BOOST TESTS                                                                >>"
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_FALSE@	@echo
 
@@ -3014,7 +3032,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (BASICS)                                                ||"
+	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3032,7 +3050,7 @@ unittests-shell-server:
 unittests-shell-server-ahuacatl:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (AHUACATL)                                              ||"
+	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3052,7 +3070,7 @@ unittests-shell-client:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "<< SHELL CLIENT TESTS                                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3075,7 +3093,7 @@ unittests-http-server:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "<< HTTP SERVER TESTS                                                          >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3127,9 +3145,9 @@ unittests-http-server:
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
 
-@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
+@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@.libev-build:
+@ENABLE_ALL_IN_ONE_TRUE@.libev-build-@TRI_BITS@:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
@@ -3138,9 +3156,9 @@ unittests-http-server:
 
 @ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" orig_CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" LDFLAGS="$(LIBEV_BUILD_LDFLAGS_X)" ../configure --disable-shared
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && $(MAKE)
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build
+@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
@@ -3148,18 +3166,18 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build
+@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@.v8-build:
+@ENABLE_ALL_IN_ONE_TRUE@.v8-build-@TRI_BITS@:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off @V8_TARGET@
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
+@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
@@ -3167,18 +3185,18 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build
+@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build-@TRI_BITS@
 
-@ENABLE_MRUBY_TRUE@.mruby-build:
+@ENABLE_MRUBY_TRUE@.mruby-build-@TRI_BITS@:
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && make
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE)
 
-@ENABLE_MRUBY_TRUE@	touch .mruby-build
+@ENABLE_MRUBY_TRUE@	touch .mruby-build-@TRI_BITS@
 
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"

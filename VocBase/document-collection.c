@@ -77,7 +77,7 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
 
   result = collection->create(collection, type, shaped, data, release);
 
-  TRI_FreeShapedJson(shaped);
+  TRI_FreeShapedJson(collection->_shaper, shaped);
 
   return result;
 }
@@ -129,7 +129,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
 
   result = collection->update(collection, shaped, did, rid, oldRid, policy, release);
 
-  TRI_FreeShapedJson(shaped);
+  TRI_FreeShapedJson(collection->_shaper, shaped);
 
   return result;
 }
@@ -155,8 +155,9 @@ static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
   TRI_doc_collection_info_t* info;
   size_t i;
 
-  info = TRI_Allocate(sizeof(TRI_doc_collection_info_t));
-  if (!info) {
+  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
+
+  if (info == NULL) {
     return NULL;
   }
 
@@ -212,7 +213,7 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
+static TRI_datafile_t* CreateJournal (TRI_doc_collection_t* collection, bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -224,50 +225,39 @@ static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collect
 
   // construct a suitable filename
   number = TRI_StringUInt32(TRI_NewTickVocBase());
-  if (number == NULL) {
-    LOG_ERROR("out of memory when creating journal number");
-    return NULL;
-  }
 
   if (compactor) {
     jname = TRI_Concatenate3String("journal-", number, ".db");
-    /* TODO FIXME: memory allocation might fail */
   }
   else {
     jname = TRI_Concatenate3String("compactor-", number, ".db");
-    /* TODO FIXME: memory allocation might fail */
-  }
-
-  if (jname == NULL) {
-    TRI_FreeString(number);
-    LOG_ERROR("out of memory when creating journal name");
-    return NULL;
   }
 
   filename = TRI_Concatenate2File(collection->base._directory, jname);
-  if (filename == NULL) {
-    TRI_FreeString(number);
-    TRI_FreeString(jname);
-    LOG_ERROR("out of memory when creating journal filename");
-    return NULL;
-  }
-  TRI_FreeString(number);
-  TRI_FreeString(jname);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   // create journal file
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
   if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
-    collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+    if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      collection->base._state = TRI_COL_STATE_READ;
+    }
+    else {
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+      collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+    }
 
     LOG_ERROR("cannot create new journal in '%s'", filename);
 
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return NULL;
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   LOG_TRACE("created a new journal '%s'", journal->_filename);
 
   // and use the correct name
@@ -281,9 +271,9 @@ static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collect
   }
 
   filename = TRI_Concatenate2File(collection->base._directory, jname);
-  /* TODO FIXME: memory allocation might fail */
-  TRI_FreeString(number);
-  TRI_FreeString(jname);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   ok = TRI_RenameDatafile(journal, filename);
 
@@ -294,7 +284,7 @@ static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collect
     LOG_TRACE("renamed journal to '%s'", filename);
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // create a collection header
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
@@ -389,8 +379,8 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   dname = TRI_Concatenate3String("datafile-", number, ".db");
   filename = TRI_Concatenate2File(collection->base._directory, dname);
 
-  TRI_FreeString(dname);
-  TRI_FreeString(number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   ok = TRI_RenameDatafile(journal, filename);
 
@@ -399,11 +389,12 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return false;
   }
-  TRI_FreeString(filename);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   LOG_TRACE("closed journal '%s'", journal->_filename);
 
@@ -428,7 +419,7 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
       continue;
     }
 
-    TRI_Free(file);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, file);
   }
 
   TRI_DestroyAssociativePointer(files);
@@ -468,6 +459,7 @@ void TRI_InitDocCollection (TRI_doc_collection_t* collection,
   TRI_InitBarrierList(&collection->_barrierList, collection);
 
   TRI_InitAssociativePointer(&collection->_datafileInfo,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              HashKeyDatafile,
                              HashElementDatafile,
                              IsEqualKeyElementDatafile,
@@ -520,8 +512,9 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
     return cnv.v;
   }
 
-  dfi = TRI_Allocate(sizeof(TRI_doc_datafile_info_t));
-  if (!dfi) {
+  dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true);
+
+  if (dfi == NULL) {
     return NULL;
   }
 
@@ -539,7 +532,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateJournalDocCollection (TRI_doc_collection_t* collection) {
-  return CreateJournalDocCollection(collection, false);
+  return CreateJournal(collection, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,7 +554,7 @@ bool TRI_CloseJournalDocCollection (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateCompactorDocCollection (TRI_doc_collection_t* collection) {
-  return CreateJournalDocCollection(collection, true);
+  return CreateJournal(collection, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

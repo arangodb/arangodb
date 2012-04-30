@@ -243,7 +243,7 @@ bool RestDocumentHandler::createDocument () {
   bool create = found ? StringUtils::boolean(createStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(parseJsonBody());
+  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   TRI_json_t* json = container.ptr();
 
   if (json == 0) {
@@ -531,7 +531,7 @@ bool RestDocumentHandler::readAllDocuments () {
   // generate result
   TRI_string_buffer_t buffer;
 
-  TRI_InitStringBuffer(&buffer);
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&buffer, "{ \"documents\" : [\n");
 
@@ -666,7 +666,7 @@ bool RestDocumentHandler::updateDocument () {
   string didStr = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(parseJsonBody());
+  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   TRI_json_t* json = container.ptr();
   if (json == 0) {
     return false;

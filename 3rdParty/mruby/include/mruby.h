@@ -349,6 +349,7 @@ mrb_state* mrb_open_allocf(mrb_allocf);
 void mrb_close(mrb_state*);
 int mrb_checkstack(mrb_state*,int);
 
+mrb_value mrb_top_self(mrb_state *);
 mrb_value mrb_run(mrb_state*, struct RProc*, mrb_value);
 
 mrb_value mrb_p(mrb_state*, mrb_value);

@@ -146,7 +146,9 @@ bool TRI_ExecuteConditionExecutionContext (TRI_query_instance_t* const,
 /// @brief executes an execution context for a ref access
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t, TRI_json_t*);
+bool TRI_ExecuteRefExecutionContext (TRI_memory_zone_t*,
+                                     TRI_js_exec_context_t, 
+                                     TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an execution context for order by

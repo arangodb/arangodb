@@ -98,7 +98,7 @@ TRI_aql_modify_tree_walker_t* TRI_CreateModifyTreeWalkerAql (void* data,
 
   assert(f);
 
-  walker = (TRI_aql_modify_tree_walker_t*) TRI_Allocate(sizeof(TRI_aql_modify_tree_walker_t));
+  walker = (TRI_aql_modify_tree_walker_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_modify_tree_walker_t), false);
   if (!walker) {
     return NULL;
   }
@@ -116,7 +116,7 @@ TRI_aql_modify_tree_walker_t* TRI_CreateModifyTreeWalkerAql (void* data,
 void TRI_FreeModifyTreeWalkerAql (TRI_aql_modify_tree_walker_t* const walker) {
   assert(walker);
 
-  TRI_Free(walker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ TRI_aql_const_tree_walker_t* TRI_CreateConstTreeWalkerAql (void* data,
                                                            TRI_aql_tree_recurse_f postRecurse) {
   TRI_aql_const_tree_walker_t* walker;
 
-  walker = (TRI_aql_const_tree_walker_t*) TRI_Allocate(sizeof(TRI_aql_const_tree_walker_t));
+  walker = (TRI_aql_const_tree_walker_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_const_tree_walker_t), false);
   if (!walker) {
     return NULL;
   }
@@ -234,7 +234,7 @@ TRI_aql_const_tree_walker_t* TRI_CreateConstTreeWalkerAql (void* data,
 void TRI_FreeConstTreeWalkerAql (TRI_aql_const_tree_walker_t* const walker) {
   assert(walker);
 
-  TRI_Free(walker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

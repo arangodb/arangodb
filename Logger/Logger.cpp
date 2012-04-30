@@ -152,7 +152,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
   char const* end = format + LoggerFormat.size();
   time_t tt = time(0);
 
-  StringBuffer line;
+  StringBuffer line(TRI_CORE_MEM_ZONE);
 
   for (;  format < end;  ++format) {
     if (*format == '%') {

@@ -70,7 +70,7 @@ static void FreeData (TRI_query_cursor_t* const cursor) {
   cursor->_deleted = true;
 
   assert(cursor->_functionCode);
-  TRI_Free(cursor->_functionCode);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor->_functionCode);
 
   // free result set
   if (cursor->_result._selectResult) {
@@ -145,7 +145,7 @@ void TRI_FreeQueryCursor (TRI_query_cursor_t* cursor) {
   TRI_DestroyMutex(&cursor->_lock);
   TRI_DestroyVectorPointer(&cursor->_containers);
 
-  TRI_Free(cursor);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
 
   LOG_DEBUG("destroyed query cursor");
 }
@@ -163,7 +163,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 
   assert(instance);
   
-  cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
+  cursor = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_cursor_t), false);
   if (!cursor) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
@@ -173,7 +173,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->_functionCode = TRI_DuplicateString(instance->_query._select._functionCode);
   if (!cursor->_functionCode) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    TRI_Free(cursor);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
     return NULL;
   }
 
@@ -197,7 +197,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->free = TRI_FreeQueryCursor;
   
   TRI_InitMutex(&cursor->_lock);
-  TRI_InitVectorPointer(&cursor->_containers);
+  TRI_InitVectorPointer(&cursor->_containers, TRI_UNKNOWN_MEM_ZONE);
   
   LOG_DEBUG("created query cursor");
 

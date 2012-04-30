@@ -1857,7 +1857,7 @@ namespace triagens {
 
 
       string ftoa (double i) {
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
         buffer.appendDecimal(i);
 
@@ -2293,7 +2293,7 @@ namespace triagens {
         int minute = (date / 60) % 60;
         int second = date % 60;
 
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
         buffer.appendInteger2(hour);
         buffer.appendChar(':');
@@ -2402,7 +2402,7 @@ namespace triagens {
 #endif
 #endif
 
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
         buffer.appendInteger4(t.tm_year + 1900);
         buffer.appendChar('-');
@@ -2596,7 +2596,7 @@ namespace triagens {
         int minute = (time / 60) % 60;
         int second = time % 60;
 
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
         buffer.appendInteger4(t.tm_year + 1900);
         buffer.appendChar('-');
@@ -2647,7 +2647,7 @@ namespace triagens {
         int minute = (time / 60) % 60;
         int second = time % 60;
 
-        StringBuffer buffer;
+        StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
         char const* p = format.c_str();
         char const* e = p + format.size();

@@ -13,11 +13,10 @@ unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-boost \
-	unittests-shell-server-ahuacatl \
 	unittests-shell-server \
+	unittests-shell-server-ahuacatl \
 	unittests-http-server \
-	unittests-shell-client \
-	unittests-http-server 
+	unittests-shell-client
 
 
 unittests-verbose:
@@ -51,7 +50,7 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SERVER                                                            ||"
+	@echo "<< STARTING SERVER                                                            >>"
 	@echo "================================================================================"
 	@echo
 
@@ -67,6 +66,7 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 
 	curl http://$(VOCHOST):$(VOCPORT)/version
+	sleep 5
 
 	@echo
 
@@ -81,7 +81,7 @@ if ENABLE_BOOST_TEST
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "|| BOOST TESTS                                                                ||"
+	@echo "<< BOOST TESTS                                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -98,6 +98,8 @@ UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 
 UnitTests_test_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/json-test.cpp \
+	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -111,7 +113,7 @@ else
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "|| BOOST TESTS                                                                ||"
+	@echo "<< BOOST TESTS                                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -135,7 +137,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (BASICS)                                                ||"
+	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -166,7 +168,7 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 unittests-shell-server-ahuacatl:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (AHUACATL)                                              ||"
+	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
 	@echo "================================================================================"
 	@echo
 
@@ -196,7 +198,7 @@ unittests-shell-client:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "<< SHELL CLIENT TESTS                                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -220,7 +222,7 @@ unittests-http-server:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "<< HTTP SERVER TESTS                                                          >>"
 	@echo "================================================================================"
 	@echo
 

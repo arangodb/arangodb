@@ -601,7 +601,7 @@ bool TRI_ExecuteConditionExecutionContext (TRI_query_instance_t* const instance,
 /// @brief executes an execution context for ref access
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* r) {
+bool TRI_ExecuteRefExecutionContext (TRI_memory_zone_t* zone, TRI_js_exec_context_t context, TRI_json_t* r) {
   js_exec_context_t* ctx;
 
   ctx = (js_exec_context_t*) context;
@@ -620,19 +620,40 @@ bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* 
   v8::Handle<v8::Object> obj = result->ToObject(); 
 
   uint32_t position = 0;
+
   while (true) {
     if (!obj->Has(position)) {
       break;
     }
+
     v8::Handle<v8::Value> parameter = obj->Get(position++);
+
     if (parameter->IsNumber()) {
       v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-      TRI_PushBack2ListJson(r, TRI_CreateNumberJson(numberParameter->Value()));
+
+      TRI_json_t* tmp = TRI_CreateNumberJson(zone, numberParameter->Value());
+
+      if (tmp == NULL) {
+        return false;
+      }
+
+      int res = TRI_PushBack2ListJson(r, tmp);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
     else if (parameter->IsString() ) {
       v8::Handle<v8::String>  stringParameter= parameter->ToString();
       v8::String::Utf8Value str(stringParameter);
-      TRI_PushBack2ListJson(r, TRI_CreateStringCopyJson(*str));
+
+      TRI_json_t* tmp = TRI_CreateStringCopyJson(zone, *str);
+
+      int res = TRI_PushBack2ListJson(r, tmp);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
     else {
       continue;
@@ -753,8 +774,8 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
     dictionary->erase(key);
   }
 
-  TRI_FreeString(key);
-  TRI_Free(parameter);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, key);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -920,7 +941,11 @@ static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
     return scope.Close(v8::Undefined());
   }  
 
-  char* ckey = TRI_DuplicateString(key.c_str());
+  char* ckey = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key.c_str());
+
+  if (ckey == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("out-of-memory")));
+  }
 
   // create a new weak persistent
   v8::Persistent<v8::Value>* persistent = new v8::Persistent<v8::Value>();
@@ -976,7 +1001,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
                                 bool execute) {
   v8::HandleScope handleScope;
 
-  char* content = TRI_SlurpFile(filename);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
 
   if (content == 0) {
     LOG_TRACE("cannot loaded java script file '%s': %s", filename, TRI_last_error());
@@ -990,7 +1015,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
                                                   filename,
                                                   "' */ })()");
 
-    TRI_FreeString(content);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     content = contentWrapper;
   }
@@ -998,7 +1023,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
   v8::Handle<v8::String> name = v8::String::New(filename);
   v8::Handle<v8::String> source = v8::String::New(content);
 
-  TRI_FreeString(content);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
@@ -1054,7 +1079,7 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
       continue;
     }
     ok = LoadJavaScriptFile(context, full, execute);
-    TRI_FreeString(full);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, full);
 
     result = result && ok;
 
@@ -1228,14 +1253,14 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(*name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
   }
 
   TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
-  TRI_FreeString(content);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(v8::Undefined());
 }
@@ -1400,7 +1425,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(*name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
@@ -1408,7 +1433,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 
   v8::Handle<v8::String> result = v8::String::New(content);
 
-  TRI_FreeString(content);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
 }

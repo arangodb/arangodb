@@ -376,7 +376,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     return;
   }
 
-  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(sizeof(geo_coordinate_distance_t) * n));
+  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
   gnd = tmp + n;
 
   ptr = cors->coordinates;
@@ -401,7 +401,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     distances->Set(i, v8::Number::New(gtr->_distance));
   }
 
-  TRI_Free(tmp);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +476,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   // .............................................................................
   
   TRI_vector_t attributes;
-  TRI_InitVector(&attributes, sizeof(char*));
+  TRI_InitVector(&attributes, TRI_UNKNOWN_MEM_ZONE, sizeof(char*));
   
   for (int j = 0; j < argv.Length(); ++j) {
     v8::Handle<v8::Value> argument = argv[j];
@@ -525,7 +525,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
     // Remove the memory allocated to the list of attributes used for the hash index
     for (size_t j = 0;  j < attributes._length;  ++j) {
       char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_FreeString(cArgument);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, cArgument);
     }    
 
     TRI_DestroyVector(&attributes);
@@ -558,7 +558,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 
   for (size_t j = 0; j < attributes._length; ++j) {
     char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
   }    
 
   TRI_DestroyVector(&attributes);
@@ -580,7 +580,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   }
 
   v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
@@ -680,34 +680,34 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(booleanParameter->Value());
+    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
   }
 
   if (parameter->IsNull()) {
-    return TRI_CreateNullJson();
+    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
   }
   
   if (parameter->IsNumber()) {
     v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(numberParameter->Value());
+    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
   }
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     v8::String::Utf8Value str(stringParameter);
-    return TRI_CreateStringCopyJson(*str);
+    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
   }
 
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson();
+    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (listJson) {
       for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);    
         TRI_json_t* result = ConvertHelper(item);
         if (result) {
           TRI_PushBack2ListJson(listJson, result);
-          TRI_Free(result);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
         }
       }
     }
@@ -716,7 +716,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsObject()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson();
+    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
     if (arrayJson) {
       v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
       for (uint32_t j = 0; j < names->Length(); ++j) {
@@ -724,8 +724,8 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
         v8::Handle<v8::Value> item = arrayParameter->Get(key);    
         TRI_json_t* result = ConvertHelper(item);
         if (result) {
-          TRI_Insert2ArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
-          TRI_Free(result);
+          TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
         }
       }
     }
@@ -971,7 +971,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
   // outside a write transaction
   // .............................................................................
 
-  TRI_FreeShapedJson(shaped);
+  TRI_FreeShapedJson(doc->_shaper, shaped);
 
   if (mptr._did == 0) {
     ReleaseCollection(collection);
@@ -1746,9 +1746,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   }
 
   size_t n = argv.Length() / 2;
-  TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(n * sizeof(TRI_shape_pid_t));
+  TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
   // TODO FIXME: memory allocation might fail
-  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
+  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
   // TODO FIXME: memory allocation might fail
   
   for (size_t i = 0;  i < n;  ++i) {
@@ -1761,11 +1761,11 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     if (*keyStr == 0 || values[i] == 0) {
       for (size_t j = 0;  j < i;  ++j) {
-        TRI_FreeShapedJson(values[i]);
+        TRI_FreeShapedJson(shaper, values[i]);
       }
 
-      TRI_Free(values);
-      TRI_Free(pids);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
 
       ReleaseCollection(collection);
 
@@ -1815,11 +1815,11 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   // free
   for (size_t j = 0;  j < n;  ++j) {
-    TRI_FreeShapedJson(values[j]);
+    TRI_FreeShapedJson(shaper, values[j]);
   }
 
-  TRI_Free(values);
-  TRI_Free(pids);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
 
   ReleaseCollection(collection);
   return scope.Close(result);
@@ -2576,14 +2576,14 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   if (!TRI_BindQueryContextAql(context, parameters)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     if (parameters) {
-      TRI_FreeJson(parameters);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     }
     TRI_FreeContextAql(context);
     return scope.Close(errorObject);
   }
   
   if (parameters) {
-    TRI_FreeJson(parameters);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
   // optimise
@@ -2609,7 +2609,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     if (code) {
       v8::Handle<v8::Value> result;
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
-      TRI_Free(code);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
       TRI_json_t* json = ConvertHelper(result);
       if (json) {
@@ -2617,13 +2617,13 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
         if (cursorResult) {
           cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
           if (!cursor) {
-            TRI_Free(cursorResult);
-            TRI_FreeJson(json);
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
         else {
-          TRI_Free(cursorResult);
-          TRI_FreeJson(json);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }
@@ -2806,7 +2806,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
   // ..........................................................................
   // Store the index field parameters in a json object 
   // ..........................................................................
-  parameterList = TRI_CreateListJson();
+  parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!parameterList) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -2817,7 +2817,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
     if (jsonParameter == NULL) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
-    TRI_PushBackListJson(parameterList, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     
     /*
     if (parameter->IsBoolean() ) {
@@ -2882,18 +2882,18 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   // possible parameter to be sent - the number of top documents to query.
   // ..........................................................................
   
-  parameterList = TRI_CreateListJson();
+  parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!parameterList) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory in JS_WherePQConstAql")));
   }
 
   
   if (argv.Length() == 1) {
-    TRI_json_t* jsonParameter = TRI_CreateNumberJson(1);
+    TRI_json_t* jsonParameter = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1);
     if (jsonParameter == NULL) { // failure of some sort
       return scope.Close(v8::ThrowException(v8::String::New("internal error in JS_WherePQConstAql")));       
     }
-    TRI_PushBackListJson(parameterList, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
   }
   
   else {
@@ -2903,7 +2903,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
-      TRI_PushBackListJson(parameterList, jsonParameter);
+      TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     }
   }  
 
@@ -2985,7 +2985,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
           TRI_FreeSLOperator(leftOp); 
           return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
         }
-        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, 2, NULL);
+        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, NULL, 2, NULL);
         leftOp = tempAndOperator;
       }  
       where = TRI_CreateQueryWhereSkiplistConstant(iid, leftOp);
@@ -3006,7 +3006,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
     // ..........................................................................
     // Store the index field parameters in a json object 
     // ..........................................................................
-    parameterList = TRI_CreateListJson();
+    parameterList = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (!parameterList) {
       return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
     }
@@ -3017,9 +3017,9 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
-      TRI_PushBackListJson(parameterList, jsonParameter);
+      TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     }
-    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, 
+    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, NULL, 
                                                      parameterList->_value._objects._length, NULL);
     where = TRI_CreateQueryWhereSkiplistConstant(iid, eqOperator);
   }
@@ -3067,7 +3067,7 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
   TRI_qry_where_t* where = TRI_CreateQueryWhereWithinConstant(iid, nameDistance, latitude, longitude, radius);
 
   if (nameDistance != 0) {
-    TRI_FreeString(nameDistance);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, nameDistance);
   }
 
   // wrap it up
@@ -3316,7 +3316,6 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
   }
 
-
   // ...........................................................................
   // wrap it up
   // ...........................................................................
@@ -3376,7 +3375,7 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
 }
 
 static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {
-  TRI_json_t* result = TRI_CreateListJson();
+  TRI_json_t* result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   
   if (result == NULL) {
     v8::ThrowException(v8::String::New("out of memory"));
@@ -3390,7 +3389,7 @@ static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
       return NULL;
     }
-    TRI_PushBackListJson(result, jsonParameter);
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, jsonParameter);
   }
   return result;
 }
@@ -3441,8 +3440,8 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,
-                                                 CopySLOperator(leftOperator),
-                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(leftOperator),
+                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
   // ...........................................................................
   // Wrap it up for later use and return.
   // ...........................................................................
@@ -3492,8 +3491,8 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,
-                                                 CopySLOperator(leftOperator),
-                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(leftOperator),
+                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
   
   return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
 }
@@ -3527,7 +3526,7 @@ static v8::Handle<v8::Value> JS_Operator_EQ (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (EQ) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL));
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3561,7 +3560,7 @@ static v8::Handle<v8::Value> JS_Operator_GE (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (GE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                      parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3596,7 +3595,7 @@ static v8::Handle<v8::Value> JS_Operator_GT (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (GT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3631,7 +3630,7 @@ static v8::Handle<v8::Value> JS_Operator_LE (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (LE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, NULL, 
                                                      parameters->_value._objects._length, NULL) );  
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -3666,7 +3665,7 @@ static v8::Handle<v8::Value> JS_Operator_LT (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a relation (LT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, 
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, NULL, 
                                                     parameters->_value._objects._length, NULL) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
@@ -4325,7 +4324,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   }
 
   v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
@@ -4447,7 +4446,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // .............................................................................
   
   TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
+  TRI_InitVector(&attributes, TRI_UNKNOWN_MEM_ZONE, sizeof(char*));
   
   bool ok = true;
   
@@ -4465,7 +4464,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     // ...........................................................................
     
     v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
+    char* cArgument = (char*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, argumentString.length() + 1, false));       
     if (cArgument == NULL) {
       errorString = "insuffient memory to complete ensurePQIndex(...) command";
       ok = false;
@@ -4503,7 +4502,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     // ...........................................................................   
     for (size_t j = 0; j < attributes._length; ++j) {
       char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
     }    
     TRI_DestroyVector(&attributes);
 
@@ -4523,7 +4522,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 
   for (size_t j = 0; j < attributes._length; ++j) {
     char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
   }    
 
   TRI_DestroyVector(&attributes);
@@ -4540,7 +4539,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
   v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
-  TRI_FreeJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
@@ -4667,7 +4666,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   result->Set(v8::String::New("datafiles"), dfs);
   dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
 
-  TRI_Free(info);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   return scope.Close(result);
@@ -4720,13 +4719,13 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
     if (idx) {
       result->Set(j++, IndexRep(&doc->base, idx));
-      TRI_FreeJson(idx);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, idx);
     }
   }
 
   ReleaseCollection(collection);
 
-  TRI_FreeVectorPointer(indexes);
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, indexes);
 
   return scope.Close(result);
 }
@@ -5027,7 +5026,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  TRI_FreeShapedJson(shaped);
+  TRI_FreeShapedJson(doc->_shaper, shaped);
 
   if (mptr._did == 0) {
     ReleaseCollection(collection);
@@ -5214,7 +5213,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  TRI_FreeShapedJson(shaped);
+  TRI_FreeShapedJson(doc->_shaper, shaped);
 
   if (mptr._did == 0) {
     ReleaseCollection(collection);

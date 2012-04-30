@@ -3,19 +3,18 @@
 echo "########################################################"
 echo "#                     build.sh                         #"
 echo "########################################################"
+echo
 
 . config/detect_distro.sh
 
 OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
-RESULTS="avocado avocsh"
+RESULTS="avocado avocsh avocirb"
 
 export CPPFLAGS=""
 export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
-export VALGRIND_TEST="no"
-export RSPEC_AVAILABLE="yes"
 
 echo
 echo "########################################################"
@@ -34,7 +33,6 @@ case $TRI_OS_LONG in
   Linux-openSUSE-11*)
     echo "Using configuration for openSuSE 11"
     OPTIONS="$OPTIONS --enable-all-in-one"
-    VALGRIND_TEST="yes"
     LDD_INFO="yes"
     ;;
 
@@ -48,14 +46,12 @@ case $TRI_OS_LONG in
     echo "Using configuration for Debian"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
-    RSPEC_AVAILABLE="no"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
-    RSPEC_AVAILABLE="no"
     ;;
 
   Linux-Ubuntu-11.10*)
@@ -123,32 +119,3 @@ for result in $RESULTS;  do
     echo
   fi
 done
-
-echo
-
-echo
-echo "########################################################"
-echo "unittests:"
-echo "    make unittests"
-echo "########################################################"
-echo
-
-make unittests-boost || exit 1
-make unittests-shell-server || exit 1
-
-if text "x$RSPEC_AVAILABLE" = "xyes";  then
-  make unittests-http-server || exit 1
-fi
-
-make unittests-shell-client || exit 1
-
-if test "x$VALGRIND_TEST" = "xyes";  then
-  echo
-  echo "########################################################"
-  echo "unittests with VALGRIND:"
-  echo "    make unittests VALGRIND=valgrind --leak-check=full"
-  echo "########################################################"
-  echo
-
-  make unittests VALGRIND="valgrind --leak-check=full" || exit 1
-fi

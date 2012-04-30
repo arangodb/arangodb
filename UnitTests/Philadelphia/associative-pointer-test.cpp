@@ -38,7 +38,7 @@
 
 #define INIT_ASSOC \
   TRI_associative_pointer_t a1; \
-  TRI_InitAssociativePointer(&a1, TRI_HashStringKeyAssociativePointer, HashElement, IsEqualKeyElement, IsEqualElementElement);
+  TRI_InitAssociativePointer(&a1, TRI_CORE_MEM_ZONE, TRI_HashStringKeyAssociativePointer, HashElement, IsEqualKeyElement, IsEqualElementElement);
 
 #define DESTROY_ASSOC \
   TRI_DestroyAssociativePointer(&a1);
@@ -370,11 +370,14 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert) {
   void* r = 0;
 
   for (size_t i = 1; i <= 1000; ++i) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
 
-    data_container_t* e = (data_container_t*) TRI_Allocate(sizeof(data_container_t));
+    data_container_t* e = (data_container_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(data_container_t), false);
     e->key = TRI_DuplicateString(key);
     e->a = i;
     e->b = i + 1;
@@ -389,6 +392,17 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert) {
     BOOST_CHECK_EQUAL((size_t) i + 1, (size_t) s->b);
     BOOST_CHECK_EQUAL((size_t) i + 2, (size_t) s->c);
     BOOST_CHECK_EQUAL(key, s->key);
+  }
+  
+  // clean up memory
+  for (size_t i = 0; i < a1._nrAlloc; ++i) {
+    data_container_t* s = (data_container_t*) a1._table[i];
+
+    if (s) {
+      // free element memory
+      TRI_FreeString(TRI_CORE_MEM_ZONE, s->key);
+      TRI_Free(TRI_CORE_MEM_ZONE, s);
+    }
   }
   
   DESTROY_ASSOC
@@ -406,11 +420,14 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
 
   // fill with 1000 elements
   for (size_t i = 1; i <= 1000; ++i) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
 
-    data_container_t* e = (data_container_t*) TRI_Allocate(sizeof(data_container_t));
+    data_container_t* e = (data_container_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(data_container_t), false); 
     e->key = TRI_DuplicateString(key);
     e->a = i;
     e->b = i + 1;
@@ -430,20 +447,31 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
   
   // remove 500 elements
   for (size_t i = 1; i <= 1000; i += 2) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
     
-    TRI_RemoveKeyAssociativePointer(&a1, key);
+    data_container_t* s = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, key);
+    if (s) {
+      // free element memory
+      TRI_FreeString(TRI_CORE_MEM_ZONE, s->key);
+      TRI_Free(TRI_CORE_MEM_ZONE, s);
+    }
   }
   BOOST_CHECK_EQUAL((size_t) 500, a1._nrUsed);
 
 
   // check remaining elements 
   for (size_t i = 1; i <= 1000; ++i) {
+    char* num = TRI_StringUInt32((uint32_t) i);
+
     memset(&key, 0, sizeof(key));
     strcpy(key, "test");
-    strcat(key, TRI_StringUInt32((uint32_t) i));
+    strcat(key, num);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, num);
 
     data_container_t* s = (data_container_t*) TRI_LookupByKeyAssociativePointer(&a1, key);
     if (i % 2) {
@@ -455,6 +483,17 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
       BOOST_CHECK_EQUAL((size_t) i + 1, (size_t) s->b);
       BOOST_CHECK_EQUAL((size_t) i + 2, (size_t) s->c);
       BOOST_CHECK_EQUAL(key, s->key);
+    }
+  }
+
+  // clean up memory
+  for (size_t i = 0; i < a1._nrAlloc; ++i) {
+    data_container_t* s = (data_container_t*) a1._table[i];
+
+    if (s) {
+      // free element memory
+      TRI_FreeString(TRI_CORE_MEM_ZONE, s->key);
+      TRI_Free(TRI_CORE_MEM_ZONE, s);
     }
   }
   

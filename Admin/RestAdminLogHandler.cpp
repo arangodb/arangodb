@@ -311,7 +311,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
   TRI_vector_t clean;
   
-  TRI_InitVector(&clean, sizeof(TRI_log_buffer_t));
+  TRI_InitVector(&clean, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_log_buffer_t));
   
   for (size_t i = 0;  i < logs->_length;  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);

@@ -286,7 +286,7 @@ TRI_vector_string_t TRI_GetNamesBindParameter (TRI_associative_pointer_t* const 
   TRI_vector_string_t names;
   size_t i;
 
-  TRI_InitVectorString(&names);
+  TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
 
   assert(parameters);
   // enumerate all bind parameters....
@@ -316,14 +316,14 @@ void TRI_FreeBindParameter (TRI_bind_parameter_t* const parameter) {
   assert(parameter);
   
   if (parameter->_name) {
-    TRI_Free(parameter->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
   }
 
   if (parameter->_data) {
-    TRI_FreeJson(parameter->_data);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_data);
   }
 
-  TRI_Free(parameter);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,23 +336,23 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
 
   assert(name);
 
-  parameter = (TRI_bind_parameter_t*) TRI_Allocate(sizeof(TRI_bind_parameter_t));
+  parameter = (TRI_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bind_parameter_t), false);
   if (!parameter) {
     return NULL;
   }
 
   parameter->_name = TRI_DuplicateString(name);
   if (!parameter->_name) {
-    TRI_Free(parameter);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
     return NULL;
   }
 
   parameter->_data = NULL;
   if (data) {
-    parameter->_data = TRI_CopyJson((TRI_json_t*) data);
+    parameter->_data = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) data);
     if (!parameter->_data) {
-      TRI_Free(parameter->_name);
-      TRI_Free(parameter);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
       return NULL;
     }
   }
@@ -417,21 +417,21 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
   assert(queryString);
   assert(vocbase);
 
-  template_ = (TRI_query_template_t*) TRI_Allocate(sizeof(TRI_query_template_t));
+  template_ = (TRI_query_template_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_template_t), false);
   if (!template_) {
     return NULL;
   }
   
   template_->_queryString = TRI_DuplicateString(queryString);
   if (!template_->_queryString) {
-    TRI_Free(template_);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_);
     return NULL;
   }
   
-  template_->_query = (QL_ast_query_t*) TRI_Allocate(sizeof(QL_ast_query_t));
+  template_->_query = (QL_ast_query_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_t), false);
   if (!template_->_query) {
-    TRI_Free(template_->_queryString);
-    TRI_Free(template_);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_->_queryString);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_);
     return NULL;
   }
 
@@ -439,16 +439,17 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
   TRI_InitQueryError(&template_->_error);
 
   TRI_InitAssociativePointer(&template_->_bindParameters,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
   
   // init vectors needed for book-keeping memory
-  TRI_InitVectorPointer(&template_->_memory._nodes);
-  TRI_InitVectorPointer(&template_->_memory._strings);
-  TRI_InitVectorPointer(&template_->_memory._listHeads);
-  TRI_InitVectorPointer(&template_->_memory._listTails);
+  TRI_InitVectorPointer(&template_->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&template_->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&template_->_memory._listHeads, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&template_->_memory._listTails, TRI_UNKNOWN_MEM_ZONE);
   
   QLAstQueryInit(template_->_query);
   TRI_InitMutex(&template_->_lock);
@@ -468,7 +469,7 @@ void TRI_FreeQueryTemplate (TRI_query_template_t* template_) {
   assert(template_->_query);
 
   QLAstQueryFree(template_->_query);
-  TRI_Free(template_->_query);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_->_query);
   
   // list elements in _listHeads and _listTails must not be freed separately as
   // they are AstNodes handled by _nodes already
@@ -479,7 +480,7 @@ void TRI_FreeQueryTemplate (TRI_query_template_t* template_) {
   TRI_DestroyVectorPointer(&template_->_memory._listHeads);
   TRI_DestroyVectorPointer(&template_->_memory._listTails);
 
-  TRI_Free(template_->_queryString);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_->_queryString);
  
   TRI_FreeQueryError(&template_->_error); 
   
@@ -487,7 +488,7 @@ void TRI_FreeQueryTemplate (TRI_query_template_t* template_) {
   TRI_DestroyAssociativePointer(&template_->_bindParameters);
   TRI_DestroyMutex(&template_->_lock);
 
-  TRI_Free(template_);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, template_);
   
   LOG_DEBUG("destroyed query template");
 }
@@ -510,16 +511,16 @@ static size_t GetJoinPartExtraDataSizeGeo (TRI_join_part_t* part) {
 
 static void FreeJoinPart (TRI_join_part_t* part) {
   if (part->_alias) {
-    TRI_Free(part->_alias);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, part->_alias);
   }
 
   if (part->_ranges) {
     QLOptimizeFreeRangeVector(part->_ranges);
-    TRI_Free(part->_ranges);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, part->_ranges);
   }
 
   if (part->_collectionName) {
-    TRI_Free(part->_collectionName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, part->_collectionName);
   }
   
   if (part->_feeder) {
@@ -534,7 +535,7 @@ static void FreeJoinPart (TRI_join_part_t* part) {
     TRI_DestroyVectorPointer(&part->_listDocuments);
   }
 
-  TRI_Free(part);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, part);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +552,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   TRI_join_part_t* part;
   QL_ast_query_collection_t* collection;
   
-  part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
+  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t), false);
 
   if (!part) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -565,7 +566,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   assert(collection);
 
   // initialize vector for list joins
-  TRI_InitVectorPointer(&part->_listDocuments);
+  TRI_InitVectorPointer(&part->_listDocuments, TRI_UNKNOWN_MEM_ZONE);
   part->_context = NULL;
   part->_singleDocument = NULL;
   part->_feeder = NULL; 
@@ -844,7 +845,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
     }
 
     collection = (QL_ast_query_collection_t*) 
-      TRI_Allocate(sizeof(QL_ast_query_collection_t));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t), false);
     if (!collection) { 
       return false;
     }
@@ -866,7 +867,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
       assert(source->_where._base);
       copy = TRI_CopyQueryPartQueryInstance(instance, source->_where._base);
       if (!copy) {
-        TRI_Free(collection);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
         TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
@@ -1276,7 +1277,7 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
     TRI_FreeLocksQueryInstance(instance->_template->_vocbase, instance->_locks);
   }
 
-  TRI_Free(instance);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, instance);
   
   LOG_DEBUG("destroyed query instance");
 }
@@ -1291,7 +1292,7 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
 
   assert(template_);
   
-  instance = (TRI_query_instance_t*) TRI_Allocate(sizeof(TRI_query_instance_t));
+  instance = (TRI_query_instance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_instance_t), false);
   if (!instance) {
     return NULL;
   }
@@ -1299,7 +1300,7 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   // init lock struct
   instance->_locks = TRI_InitLocksQueryInstance();
   if (!instance->_locks) {
-    TRI_Free(instance);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, instance);
     return NULL;
   }
 
@@ -1311,18 +1312,20 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   TRI_InitQueryError(&instance->_error);
   
   // init vectors needed for book-keeping memory
-  TRI_InitVectorPointer(&instance->_memory._nodes);
-  TRI_InitVectorPointer(&instance->_memory._strings);
+  TRI_InitVectorPointer(&instance->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&instance->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
   
-  TRI_InitVectorPointer(&instance->_join);
+  TRI_InitVectorPointer(&instance->_join, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitAssociativePointer(&instance->_bindParameters,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
   
   TRI_InitAssociativePointer(&instance->_query._from._collections,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
@@ -1667,7 +1670,7 @@ void TRI_FreeQueryError (TRI_query_error_t* const error) {
   assert(error);
   
   if (error->_data) {
-    TRI_Free(error->_data);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, error->_data);
   }
 }
 

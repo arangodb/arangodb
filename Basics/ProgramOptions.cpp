@@ -292,18 +292,18 @@ ProgramOptions::~ProgramOptions () {
     char** ptr = i->second;
 
     if (*ptr != 0) {
-      TRI_FreeString(*ptr);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, *ptr);
     }
 
-    TRI_Free(ptr);
+    TRI_Free(TRI_CORE_MEM_ZONE, ptr);
   }
 
   for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();  i != _valuesVector.end();  ++i) {
-    TRI_FreeVectorString(i->second);
+    TRI_FreeVectorString(TRI_CORE_MEM_ZONE, i->second);
   }
 
   for (map<string, bool*>::iterator i = _valuesBool.begin();  i != _valuesBool.end();  ++i) {
-    TRI_Free(i->second);
+    TRI_Free(TRI_CORE_MEM_ZONE, i->second);
   }
 }
 
@@ -506,7 +506,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           btr = _valuesBool[option];
 
           if (btr == 0) {
-            btr = _valuesBool[option] = (bool*) TRI_Allocate(sizeof(bool));
+            btr = _valuesBool[option] = (bool*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(bool), true);
           }
 
           TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), btr);
@@ -522,7 +522,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           ptr = _valuesString[option];
 
           if (ptr == 0) {
-            ptr = _valuesString[option] = (char**) TRI_Allocate(sizeof(char*));
+            ptr = _valuesString[option] = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(char*), true);
           }
 
           TRI_AddStringPODescription(desc, option.c_str(), shortOption, help.c_str(), ptr);
@@ -537,8 +537,8 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
           wtr = _valuesVector[option];
 
           if (wtr == 0) {
-            wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(sizeof(TRI_vector_string_t));
-            TRI_InitVectorString(wtr);
+            wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+            TRI_InitVectorString(wtr, TRI_CORE_MEM_ZONE);
           }
 
           TRI_AddVectorStringPODescription(desc, option.c_str(), shortOption, help.c_str(), wtr);

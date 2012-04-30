@@ -46,7 +46,7 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
   
   assert(query);
 
-  parser = (TRI_aql_parser_t*) TRI_Allocate(sizeof(TRI_aql_parser_t));
+  parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t), false);
   if (!parser) {
     return NULL;
   }
@@ -65,7 +65,7 @@ void TRI_FreeParserAql (TRI_aql_parser_t* const parser) {
   // free lexer
   if (parser) {
     Ahuacatllex_destroy(parser->_scanner);
-    TRI_Free(parser);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parser);
   }
 }
 
