@@ -168,16 +168,54 @@ function POST_api_index_geo (req, res, collection, body) {
     var index;
 
     if (fields.length == 1) {
+
+      // attribute list and geoJson
       if (body.hasOwnProperty("geoJson")) {
-        index = collection.ensureGeoIndex(fields[0], body.geoJson);
+        if (body.hasOwnProperty("constraint") && body.constraint) {
+          if (body.hasOwnProperty("ignoreNull")) {
+            index = collection.ensureGeoConstraint(fields[0], body.geoJson, body.ignoreNull);
+          }
+          else {
+            index = collection.ensureGeoConstraint(fields[0], body.geoJson, false);
+          }
+        }
+        else {
+          index = collection.ensureGeoIndex(fields[0], body.geoJson);
+        }
+      }
+
+      // attribute list
+      else {
+        if (body.hasOwnProperty("constraint") && body.constraint) {
+          if (body.hasOwnProperty("ignoreNull")) {
+            index = collection.ensureGeoConstraint(fields[0], body.ignoreNull);
+          }
+          else {
+            index = collection.ensureGeoConstraint(fields[0], false);
+          }
+        }
+        else {
+          index = collection.ensureGeoIndex(fields[0]);
+        }
+      }
+    }
+
+    // attributes
+    else if (fields.length == 2) {
+      if (body.hasOwnProperty("constraint") && body.constraint) {
+        if (body.hasOwnProperty("ignoreNull")) {
+          index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
+        }
+        else {
+          index = collection.ensureGeoConstraint(fields[0], fields[1], false);
+        }
       }
       else {
-        index = collection.ensureGeoIndex(fields[0]);
+        index = collection.ensureGeoIndex(fields[0], fields[1]);
       }
     }
-    else if (fields.length == 2) {
-      index = collection.ensureGeoIndex(fields[0], fields[1]);
-    }
+
+    // something is wrong
     else {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths of length 1 or 2: " + fields);

@@ -1,0 +1,11 @@
+#!/bin/sh
+test -d logs || mkdir logs
+
+rspec --format d \
+	api-collection-spec.rb \
+	api-index-spec.rb \
+	rest-create-document-spec.rb \
+	rest-read-document-spec.rb \
+	rest-update-document-spec.rb \
+	rest-delete-document-spec.rb \
+	rest-edge-spec.rb
