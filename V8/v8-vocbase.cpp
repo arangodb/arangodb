@@ -4387,7 +4387,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 /// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
 ///
 /// Works like @FN{ensureGeoIndex} but requires that the documents contain
-/// a valid geo definition. If @FA{ignore-null} is true, than documents with
+/// a valid geo definition. If @FA{ignore-null} is true, then documents with
 /// a null in @FA{location} or at least one null in @FA{latitude} or
 /// @FA{longitude} are ignored.
 ////////////////////////////////////////////////////////////////////////////////
@@ -4399,7 +4399,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ///
-/// @FUN{ensureUniqueConstrain(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a hash index on all documents using attributes as paths to the
 /// fields. At least one attribute must be given. The value of this attribute
@@ -4978,7 +4978,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.replace(@FA{document}, @FA{data})}
 ///
 /// Replaces an existing @FA{document}. The @FA{document} must be a document in
-/// the current collection. This document is than replaced with the
+/// the current collection. This document is then replaced with the
 /// @FA{data} given as second argument.
 ///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
@@ -5479,7 +5479,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// @FUN{db._create(@FA{collection-name})}
 ///
 /// Creates a new collection named @FA{collection-name}. If the collection name
-/// already exists, than an error is thrown. The default value for
+/// already exists, then an error is thrown. The default value for
 /// @LIT{waitForSync} is @LIT{false}.
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
@@ -5754,7 +5754,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// @FUN{edges._create(@FA{collection-name})}
 ///
 /// Creates a new collection named @FA{collection-name}. If the collection name
-/// already exists, than an error is thrown. The default value for
+/// already exists, then an error is thrown. The default value for
 /// @LIT{waitForSync} is @LIT{false}.
 ///
 /// @FUN{edges._create(@FA{collection-name}, @FA{properties})}
