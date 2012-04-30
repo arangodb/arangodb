@@ -291,7 +291,8 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 static bool ExtractDoubleArray (TRI_shaper_t* shaper,
                                 TRI_shaped_json_t const* document,
                                 TRI_shape_pid_t pid,
-                                double* result) {
+                                double* result,
+                                bool* missing) {
   TRI_shape_access_t* acc;
   TRI_shaped_json_t json;
   TRI_shape_sid_t sid;
@@ -299,25 +300,42 @@ static bool ExtractDoubleArray (TRI_shaper_t* shaper,
 
   sid = document->_sid;
   acc = TRI_ShapeAccessor(shaper, sid, pid);
+  *missing = false;
 
+  // attribute not known or an internal error
   if (acc == NULL || acc->_shape == NULL) {
-    if (acc) {
+    if (acc != NULL) {
+      TRI_FreeShapeAccessor(acc);
+      *missing = true;
+    }
+
+    return false;
+  }
+
+  // number
+  if (acc->_shape->_sid == shaper->_sidNumber) {
+    ok = TRI_ExecuteShapeAccessor(acc, document, &json);
+
+    if (ok) {
+      *result = * (double*) json._data.data;
       TRI_FreeShapeAccessor(acc);
     }
-    return false;
+
+    return ok;
   }
 
-  if (acc->_shape->_sid != shaper->_sidNumber) {
+  // null
+  else if (acc->_shape->_sid == shaper->_sidNull) {
+    *missing = true;
     TRI_FreeShapeAccessor(acc);
     return false;
   }
 
-  ok = TRI_ExecuteShapeAccessor(acc, document, &json);
-  if (ok) {
-    *result = * (double*) json._data.data;
+  // everyting else
+  else {
     TRI_FreeShapeAccessor(acc);
+    return false;
   }
-  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +346,8 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
                                TRI_shaped_json_t const* document,
                                TRI_shape_pid_t pid,
                                double* latitude,
-                               double* longitude) {
+                               double* longitude,
+                               bool* missing) {
   TRI_shape_access_t* acc;
   TRI_shaped_json_t list;
   TRI_shaped_json_t entry;
@@ -338,11 +357,15 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
   sid = document->_sid;
   acc = TRI_ShapeAccessor(shaper, sid, pid);
+  *missing = false;
 
+  // attribute not known or an internal error
   if (acc == NULL || acc->_shape == NULL) {
-    if (acc) {
+    if (acc != NULL) {
       TRI_FreeShapeAccessor(acc);
+      *missing = true;
     }
+
     return false;
   }
 
@@ -477,6 +500,11 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     return true;
   }
 
+  // null
+  else if (acc->_shape->_type == TRI_SHAPE_NULL) {
+    *missing = true;
+  }
+
   // ups
   TRI_FreeShapeAccessor(acc);
   return false;
@@ -489,11 +517,12 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
+  bool missing;
   bool ok;
   double latitude;
   double longitude;
-  TRI_geo_index_t* geo;
   int res;
 
   geo = (TRI_geo_index_t*) idx;
@@ -502,20 +531,25 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // lookup latitude and longitude
   if (geo->_location != 0) {
     if (geo->_geoJson) {
-      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &longitude, &latitude);
+      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &longitude, &latitude, &missing);
     }
     else {
-      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
     }
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
   }
 
   if (! ok) {
     if (geo->_constraint) {
-      return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      if (geo->base._ignoreNull && missing) {
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      }
     }
     else {
       return TRI_ERROR_NO_ERROR;
@@ -561,11 +595,12 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
+  bool missing;
   bool ok;
   double latitude;
   double longitude;
-  TRI_geo_index_t* geo;
   int res;
 
   geo = (TRI_geo_index_t*) idx;
@@ -573,11 +608,11 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, old, geo->_location, &latitude, &longitude);
+    ok = ExtractDoubleList(shaper, old, geo->_location, &latitude, &longitude, &missing);
   }
   else {
-    ok = ExtractDoubleArray(shaper, old, geo->_latitude, &latitude);
-    ok = ok && ExtractDoubleArray(shaper, old, geo->_longitude, &longitude);
+    ok = ExtractDoubleArray(shaper, old, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, old, geo->_longitude, &longitude, &missing);
   }
 
   // and remove old entry
@@ -597,16 +632,21 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 
   // create new entry with new coordinates
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
   }
 
   if (! ok) {
     if (geo->_constraint) {
-      return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      if (geo->base._ignoreNull && missing) {
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      }
     }
     else {
       return TRI_ERROR_NO_ERROR;
@@ -652,11 +692,12 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
+  bool missing;
   bool ok;
   double latitude;
   double longitude;
-  TRI_geo_index_t* geo;
   int res;
 
   geo = (TRI_geo_index_t*) idx;
@@ -664,11 +705,11 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
   }
 
   // and remove old entry
@@ -727,6 +768,11 @@ static TRI_json_t* JsonGeoIndex1 (TRI_index_t* idx, TRI_doc_collection_t const* 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "geo1"));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geo->_geoJson));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geo->_constraint));
+
+  if (geo->_constraint) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geo->base._ignoreNull));
+  }
+
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -779,6 +825,11 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t const* 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "geo2"));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geo->_constraint));
+
+  if (geo->_constraint) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geo->base._ignoreNull));
+  }
+
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -805,7 +856,8 @@ TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s* collection,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
-                                  bool constraint) {
+                                  bool constraint,
+                                  bool ignoreNull) {
   TRI_geo_index_t* geo;
   char* ln;
 
@@ -824,6 +876,7 @@ TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s* collection,
   geo->base._type = TRI_IDX_TYPE_GEO_INDEX1;
   geo->base._collection = collection;
   geo->base._unique = false;
+  geo->base._ignoreNull = ignoreNull;
 
   geo->base.insert = InsertGeoIndex;
   geo->base.remove = RemoveGeoIndex;
@@ -853,7 +906,8 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
                                   TRI_shape_pid_t longitude,
-                                  bool constraint) {
+                                  bool constraint,
+                                  bool ignoreNull) {
   TRI_geo_index_t* geo;
   char* lat;
   char* lon;
@@ -874,6 +928,7 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
   geo->base._type = TRI_IDX_TYPE_GEO_INDEX2;
   geo->base._collection = collection;
   geo->base._unique = false;
+  geo->base._ignoreNull = ignoreNull;
 
   geo->base.insert = InsertGeoIndex;
   geo->base.remove = RemoveGeoIndex;
