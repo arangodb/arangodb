@@ -46,6 +46,13 @@ $.each(tables, function(v, i ) {
       createPrevPagination();  
     }
   });
+  $(i + '_first').live('click', function () {
+    createLogTable(currentLoglevel);
+  });
+  $(i+ '_last').live('click', function () {
+    createLastLogPagination(i); 
+    
+  });
 });
 
 
@@ -57,6 +64,13 @@ $("#documents_next").live('click', function () {
   createNextDocPagination();
 });
 
+$("#documents_first").live('click', function () {
+  createFirstPagination("#documentsTable"); 
+});
+
+$("#documents_last").live('click', function () {
+  createLastPagination("#documentsTable"); 
+});
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -69,9 +83,11 @@ $('#logView ul').append('<button id="refreshLogButton"><img src="/_admin/html/me
 $("#tabs").tabs({
   select: function(event, ui) {
     if (ui.index == 0) {
+      currentLoglevel = 5; 
       createLogTable(5); 
     }
     else {
+      currentLoglevel = ui.index; 
       createLogTable(ui.index); 
     }
   }    
@@ -459,7 +475,6 @@ var logTable = $('#logTableID').dataTable({
       totalCollectionCount = Math.ceil(collectionCount / 10); 
       collectionCurrentPage = 1;
       $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
-      console.log(globalCollectionName); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -692,7 +707,7 @@ var logTable = $('#logTableID').dataTable({
       createLogTable(5);
       break; 
     default:
-      createLogTable(selected); 
+      createLogTable(selected);
       break;
     }
   });
@@ -778,7 +793,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addNewDocButton').live('click', function () {
     if (tableView == true) {
-      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), 1337 ]);
+      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), "editme" ]);
       documentTableMakeEditable('#NewDocumentTableID');
     }
     else {
@@ -1431,7 +1446,9 @@ function documentTableMakeEditable (tableID) {
       return value;
     }
     if (aPos[1] == 2) {
-      var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
+      //TODO
+      var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
+      console.log(oldContent);  
       var test = getTypedValue(value);
       if (String(value) == String(oldContent)) {
         // no change
@@ -1439,7 +1456,7 @@ function documentTableMakeEditable (tableID) {
       }
       else {
         // change
-        documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1); 
+        documentEditTable.fnUpdate(test, aPos[0], aPos[1] + 1); 
         return value2html(test);
       } 
     } 
@@ -1665,10 +1682,7 @@ function createPrevDocPagination() {
   collectionCurrentPage = prevPage; 
   $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
 }
-//marker
 function createNextDocPagination () {
-
-console.log("start"); 
 
   if (collectionCurrentPage == totalCollectionCount) {
     return 0; 
@@ -1724,7 +1738,7 @@ function createPrevPagination(checked) {
 function createNextPagination(checked) { 
 
   var totalPages = Math.ceil(currentAmount / 10); 
-  var offset = currentPage * 10; 
+ var offset = currentPage * 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
 
   if (currentPage == totalPages || totalPages == 0 ) {
@@ -1776,4 +1790,82 @@ function cutByResolution (string) {
     content = escapedContent; 
   }
   return content; 
+}
+
+function createFirstPagination () {
+
+  if (collectionCurrentPage == 1) {
+    return 0; 
+  }
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+      collectionCurrentPage = 1;
+      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
+    },
+    error: function(data) {
+      
+    }
+  });
+}
+
+function createLastLogPagination (tableid) {
+  var totalPages = Math.ceil(currentAmount / 10); 
+  var offset = (totalPages * 10) - 10; 
+  var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
+
+  if (currentPage == totalPages || totalPages == 0 ) {
+    return 0; 
+  }
+  if (tableid = "#logTableID") {
+    url = "/_admin/log?upto=4&size=10&offset="+offset; 
+  }
+
+  $.getJSON(url, function(data) {
+    $(currentTableID).dataTable().fnClearTable();
+
+    var i = 0; 
+    $.each(data.level, function() {
+      $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]); 
+      i++
+    });
+    currentPage = totalPages;  
+    $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
+  });
+
+}
+
+function createLastPagination () {
+  if (totalCollectionCount == collectionCurrentPage) {
+    return 0
+  }
+
+  $('#documentsTableID').dataTable().fnClearTable();
+  console.log(totalCollectionCount);
+  
+  var offset = totalCollectionCount * 10 - 10; 
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, cutByResolution(JSON.stringify(v))]);  
+      });
+      collectionCurrentPage = totalCollectionCount;
+      $('#documents_status').text("Showing page " + totalCollectionCount + " of " + totalCollectionCount); 
+    },
+    error: function(data) {
+    }
+  });
 }
