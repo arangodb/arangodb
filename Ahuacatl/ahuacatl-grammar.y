@@ -235,7 +235,7 @@ filter_statement:
 
 let_statement:
     T_LET variable_name {
-      if (!TRI_PushStackAql(context, $2) || !TRI_StartScopeContextAql(context)) {
+      if (!TRI_PushStackParseAql(context, $2) || !TRI_StartScopeContextAql(context)) {
         YYABORT;
       }
     } T_ASSIGN T_OPEN expression T_CLOSE {
@@ -243,7 +243,7 @@ let_statement:
 
       TRI_EndScopeContextAql(context);
 
-      node = TRI_CreateNodeAssignAql(context, TRI_PopStackAql(context), $6);
+      node = TRI_CreateNodeAssignAql(context, TRI_PopStackParseAql(context), $6);
       if (!node) {
         YYABORT;
       }
@@ -260,9 +260,9 @@ collect_statement:
         YYABORT;
       }
 
-      TRI_PushStackAql(context, node);
+      TRI_PushStackParseAql(context, node);
     } collect_list optional_into {
-      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackAql(context), $4);
+      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), $4);
       if (!node) {
         YYABORT;
       }
@@ -313,9 +313,9 @@ sort_statement:
         YYABORT;
       }
 
-      TRI_PushStackAql(context, node);
+      TRI_PushStackParseAql(context, node);
     } sort_list {
-      TRI_aql_node_t* list = TRI_PopStackAql(context);
+      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
       if (!node) {
         YYABORT;
@@ -416,7 +416,7 @@ expression:
   | T_STRING {
       TRI_aql_node_t* node;
 
-      if (!TRI_PushStackAql(context, $1)) {
+      if (!TRI_PushStackParseAql(context, $1)) {
         YYABORT;
       }
 
@@ -425,10 +425,10 @@ expression:
         YYABORT;
       }
 
-      TRI_PushStackAql(context, node);
+      TRI_PushStackParseAql(context, node);
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      TRI_aql_node_t* list = TRI_PopStackAql(context);
-      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackAql(context), list);
+      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
       if (!node) {
         YYABORT;
       }
@@ -631,9 +631,9 @@ list:
         YYABORT;
       }
 
-      TRI_PushStackAql(context, node);
+      TRI_PushStackParseAql(context, node);
     } optional_list_elements T_LIST_CLOSE {
-      $$ = TRI_PopStackAql(context);
+      $$ = TRI_PopStackParseAql(context);
     }
   ;
 
@@ -664,9 +664,9 @@ array:
         YYABORT;
       }
 
-      TRI_PushStackAql(context, node);
+      TRI_PushStackParseAql(context, node);
     } optional_array_elements T_DOC_CLOSE {
-      $$ = TRI_PopStackAql(context);
+      $$ = TRI_PopStackParseAql(context);
     }
   ;
 

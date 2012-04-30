@@ -33,7 +33,6 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
-#include <BasicsC/json.h>
 
 #ifdef __cplusplus
 extern "C" {
