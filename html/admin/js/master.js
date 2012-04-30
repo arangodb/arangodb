@@ -363,7 +363,7 @@ var logTable = $('#logTableID').dataTable({
       $('#nav3').text('-> New Document'); 
 
       newDocumentTable.fnClearTable(); 
-      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "key", value2html("clicktoedit"), "clicktoedit" ]);
+      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "key", value2html("clicktoedit"), JSON.stringify("click2edit")]);
       documentTableMakeEditable('#NewDocumentTableID');
       hideAllSubDivs();
       $('#collectionsView').hide();
@@ -378,6 +378,8 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
+      $('#documentEditSourceView').hide();
+      $('#documentEditTableView').show();
       var collectiondocID = location.hash.substr(14, location.hash.length); 
       collectionID = collectiondocID.split("/"); 
 
@@ -413,10 +415,10 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
             if (key == '_id' || key == '_rev') {
-              documentEditTable.fnAddData(["", key, val, val]);
+              documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
             }
             else {
-                documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), val]);
+              documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
             }
           });
           documentTableMakeEditable('#documentEditTableID');
@@ -644,7 +646,6 @@ var logTable = $('#logTableID').dataTable({
           collectionID = row_data[3]; 
         } 
         else {
-          //TODO
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
         
@@ -652,13 +653,13 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "PUT",
-        url: "/document/" + collectionID,
+        url: "/document/" + JSON.parse(collectionID),
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
           tableView = true;
-          var collID = collectionID.split("/");  
+          var collID = JSON.parse(collectionID).split("/");  
           window.location.href = "#showCollection?" + collID[0];  
           alert("done");
         },
@@ -687,6 +688,8 @@ var logTable = $('#logTableID').dataTable({
           tableView = true;
           var collID = collectionID.split("/");  
           window.location.href = "#showCollection?" + collID[0];  
+          var img = $('#toggleEditedDocButton').find('img'); 
+          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
           alert("done");
         },
         error: function(data) {
@@ -718,7 +721,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addEditedDocRowButton').live('click', function () {
     if (tableView == true) {
-      documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), 1337]);
+      documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("somevalue")]);
       documentTableMakeEditable('#documentEditTableID');
     }
     else {
@@ -793,7 +796,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addNewDocButton').live('click', function () {
     if (tableView == true) {
-      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), "editme" ]);
+      newDocumentTable.fnAddData(['<button id="deleteNewDocButton">delete</button>', "somevalue", value2html("editme"), JSON.stringify("editme") ]);
       documentTableMakeEditable('#NewDocumentTableID');
     }
     else {
@@ -806,13 +809,12 @@ var logTable = $('#logTableID').dataTable({
 
   $('#toggleEditedDocButton').live('click', function () {
     if (tableView == true) {
-      try {
         var content = documentEditTable.fnGetData();
         var result = {}; 
  
         for (row in content) {
           var row_data = content[row];
-          result[row_data[1]] = row_data[3];
+          result[row_data[1]] = JSON.parse(row_data[3]);
         }
         $('#documentEditSourceBox').val(JSON.stringify(result));  
         $('#documentEditTableView').toggle();
@@ -820,11 +822,6 @@ var logTable = $('#logTableID').dataTable({
         tableView = false; 
         var img = $(this).find('img'); 
         img.attr('src', '/_admin/html/media/icons/on_icon16.png');
-      }
-  
-      catch(e) {
-        alert(e); 
-      }
     }
     else {
       try {
@@ -834,10 +831,10 @@ var logTable = $('#logTableID').dataTable({
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
           if (key == '_id' || key == '_rev') {
-            documentEditTable.fnAddData(["", key, val, val]);
+            documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              documentEditTable.fnAddData(['<button id="deleteEditedDocButton">delete</button>',key, value2html(val), val]);
+            documentEditTable.fnAddData(['<button id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
   
@@ -965,10 +962,10 @@ var logTable = $('#logTableID').dataTable({
         newDocumentTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
           if (key == '_id' || key == '_rev') {
-            newDocumentTable.fnAddData(["", key, val, val]);
+            newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              newDocumentTable.fnAddData(['<button id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), val]);
+              newDocumentTable.fnAddData(['<button id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
         documentTableMakeEditable ('#NewDocumentTableID'); 
@@ -1400,8 +1397,25 @@ function drawCollectionsTable () {
        }
       else if (tempStatus == 3) {
         tempStatus = "loaded";
+        var alive; 
+        var size; 
+      
+        $.ajax({
+          type: "GET",
+          url: "/_api/collection/" + val.id + "/figures",
+          contentType: "application/json",
+          processData: false,
+          async: false,   
+          success: function(data) {
+            size = data.figures.alive.size / 1024; 
+            alive = data.figures.alive.count; 
+          },
+          error: function(data) {
+          }
+        });
+	
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus, "", ""]);
+        val.id, val.name, tempStatus, size + " kB", alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
@@ -1442,21 +1456,23 @@ function documentTableMakeEditable (tableID) {
   $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
     var aPos = documentEditTable.fnGetPosition(this);
     if (aPos[1] == 1) {
+      //return key column
       documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
       return value;
     }
     if (aPos[1] == 2) {
       //TODO
-      var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
-      console.log(oldContent);  
+      var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
       var test = getTypedValue(value);
       if (String(value) == String(oldContent)) {
         // no change
         return value2html(oldContent);
       }
       else {
-        // change
-        documentEditTable.fnUpdate(test, aPos[0], aPos[1] + 1); 
+        // change update hidden row
+       //MARKER 
+        documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1); 
+        // return visible row 
         return value2html(test);
       } 
     } 
@@ -1471,7 +1487,8 @@ function documentTableMakeEditable (tableID) {
       if (aPos[1] == 2) {
         var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
         if (typeof(oldContent) == 'object') {
-          return JSON.stringify(oldContent); 
+          //grep hidden row and paste in visible row
+          return value2html(oldContent);
         }
         else {
           return oldContent;  
@@ -1523,7 +1540,7 @@ function getTypedValue (value) {
       return test;
     }
     if (typeof(test) == 'object') {
-      // value is an object
+      // value is an object 
       return test;
     }
   }
@@ -1850,7 +1867,6 @@ function createLastPagination () {
   }
 
   $('#documentsTableID').dataTable().fnClearTable();
-  console.log(totalCollectionCount);
   
   var offset = totalCollectionCount * 10 - 10; 
   $.ajax({
