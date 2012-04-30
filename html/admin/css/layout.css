@@ -1,3 +1,15 @@
+#centerView .ui-state-default {
+  background-color: #e6e6e6;
+}
+
+#logView .ui-tabs-nav .ui-state-default {
+  background-color: white !important; 
+}
+
+#logView .ui-tabs-nav .ui-state-active {
+  background-color: #E4E9D2 !important; 
+}
+
 #logView .fg-toolbar{display: none;}
 #documentsView .fg-toolbar{display: none;}
 
@@ -429,7 +441,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button, #documentsToolbar button {
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #documentsToolbar button {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
