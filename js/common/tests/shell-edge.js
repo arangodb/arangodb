@@ -57,8 +57,8 @@ function collectionEdgeSuiteErrorHandling () {
       edges._drop(en);
       edge = edges._create(en, { waitForSync : false });
 
-      db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      internal.db._drop(vn);
+      vertex = internal.db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -123,8 +123,8 @@ function collectionEdgeSuite () {
       edges._drop(en);
       edge = edges._create(en, { waitForSync : false });
 
-      db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      internal.db._drop(vn);
+      vertex = internal.db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
