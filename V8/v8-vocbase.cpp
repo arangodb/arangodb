@@ -4388,7 +4388,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ///
 /// Works like @FN{ensureGeoIndex} but requires that the documents contain
 /// a valid geo definition. If @FA{ignore-null} is true, than documents with
-/// a null in @FA{location} or null in at least @FA{latitude} or
+/// a null in @FA{location} or at least one null in @FA{latitude} or
 /// @FA{longitude} are ignored.
 ////////////////////////////////////////////////////////////////////////////////
 
