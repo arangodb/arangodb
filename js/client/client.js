@@ -569,6 +569,44 @@ AvocadoDatabase.prototype._drop = function (id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns one index
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._index = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var requestResult = this._connection.GET("/_api/index/" + id);
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes one index
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._dropIndex = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var requestResult = this._connection.DELETE("/_api/index/" + id);
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_INDEX_NOT_FOUND.code) {
+    return false;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1073,6 +1111,153 @@ AvocadoCollection.prototype.drop = function () {
       }
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.getIndexes = function () {
+  var requestResult = this._database._connection.GET("/_api/index?collection=" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns one index
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.index = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var s = id.split("/");
+
+  if (s.length != 2) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+  else if (s[0] != this._id) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.message
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  var requestResult = this._database._connection.GET("/_api/index/" + id);
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes one index
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.dropIndex = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var s = id.split("/");
+
+  if (s.length != 2) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+  else if (s[0] != this._id) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.message
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  var requestResult = this._database._connection.DELETE("/_api/index/" + id);
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_INDEX_NOT_FOUND.code) {
+    return false;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an geo index
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+  var body;
+
+  if (typeof lon == "boolean") {
+    body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : false };
+  }
+  else if (lon == undefined) {
+    body = { type : "geo", fields : [ lat ], geoJson : false, constraint : false };
+  }
+  else {
+    body = { type : "geo", fields : [ lat, lon ], constraint : false };
+  }
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an geo constraint
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
+  var body;
+
+  // only two parameter
+  if (ignoreNull == undefined) {
+    ignoreNull = lon;
+
+    if (typeof ignoreNull != "boolean") {
+      throw "usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>) or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
+    }
+
+    body = { type : "geo", fields : [ lat ], geoJson : false, constraint : true, ignoreNull : ignoreNull };
+  }
+
+  // three parameter
+  else {
+    if (typeof lon == "boolean") {
+      body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : true, ignoreNull : ignoreNull };
+    }
+    else {
+      body = { type : "geo", fields : [ lat, lon ], constraint : true, ignoreNull : ignoreNull };
+    }
+  }
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

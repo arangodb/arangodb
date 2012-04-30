@@ -2387,9 +2387,10 @@ static bool FillIndex (TRI_sim_collection_t* collection,
         res = idx->insert(idx, *ptr);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("failed to insert document '%lu:%lu'",
+          LOG_WARNING("failed to insert document '%lu:%lu' for index '%lu'",
                       (unsigned long) collection->base.base._cid,
-                      (unsigned long) mptr->_did);
+                      (unsigned long) mptr->_did,
+                      (unsigned long) idx->_iid);
 
           return false;
         }
