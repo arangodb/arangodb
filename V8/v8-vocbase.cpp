@@ -389,7 +389,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     gtr->_data = ptr->data;
   }
 
-  //GeoIndex_CoordinatesFree(cors);
+  // GeoIndex_CoordinatesFree(cors);
 
   SortGeoCoordinates(tmp, gnd);
 
@@ -543,12 +543,21 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 
   if (type == 0) {
     idx = TRI_EnsureHashIndexSimCollection(sim, &attributes, unique, &created);
+
+    if (idx == 0) {
+      res = TRI_errno();
+    }
   }
   else if (type == 1) {
     idx = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, unique, &created);
+
+    if (idx == 0) {
+      res = TRI_errno();
+    }
   }
   else {
     LOG_ERROR("unknown index type %d", type);
+    res = TRI_ERROR_INTERNAL;
     idx = 0;
   }
 
@@ -1172,6 +1181,135 @@ static v8::Handle<v8::Value> CollectionVocBase (v8::Arguments const& argv, bool 
   }
 
   return scope.Close(edge ? TRI_WrapEdgesCollection(collection) : TRI_WrapCollection(collection));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index or constraint exists
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool constraint) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  TRI_index_t* idx = 0;
+  bool created;
+  int off = constraint ? 1 : 0;
+  bool ignoreNull = false;
+
+  // .............................................................................
+  // case: <location>
+  // .............................................................................
+
+  if (argv.Length() == 1 + off) {
+    v8::String::Utf8Value loc(argv[0]);
+
+    if (*loc == 0) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
+    }
+
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[1]);
+    }
+
+    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, false, constraint, ignoreNull, &created);
+  }
+
+  // .............................................................................
+  // case: <location>, <geoJson>
+  // .............................................................................
+
+  else if (argv.Length() == 2 + off && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
+    v8::String::Utf8Value loc(argv[0]);
+
+    if (*loc == 0) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
+    }
+
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[2]);
+    }
+
+    idx = TRI_EnsureGeoIndex1SimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
+  }
+
+  // .............................................................................
+  // case: <latitude>, <longitude>
+  // .............................................................................
+
+  else if (argv.Length() == 2 + off) {
+    v8::String::Utf8Value lat(argv[0]);
+    v8::String::Utf8Value lon(argv[1]);
+
+    if (*lat == 0) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<latitude> must be an attribute path")));
+    }
+
+    if (*lon == 0) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<longitude> must be an attribute path")));
+    }
+
+    if (constraint) {
+      ignoreNull = TRI_ObjectToBoolean(argv[2]);
+    }
+
+    idx = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon, constraint, ignoreNull, &created);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    ReleaseCollection(collection);
+
+    if (constraint) {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                              "usage: ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)")));
+    }
+    else {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                              "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+    }
+  }
+
+  if (idx == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "index could not be created")));
+  }  
+  
+  TRI_json_t* json = idx->json(idx, collection->_collection);
+
+  if (!json) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
+  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+  if (index->IsObject()) {
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+  }
+
+  ReleaseCollection(collection);
+  return scope.Close(index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1909,7 +2047,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
+  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX1 && idx->_type != TRI_IDX_TYPE_GEO_INDEX2) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
@@ -2015,7 +2153,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
+  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX1 && idx->_type != TRI_IDX_TYPE_GEO_INDEX2) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
@@ -4198,7 +4336,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// @FUN{ensureGeoIndex(@FA{location})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
 ///
 /// Creates a geo-spatial index on all documents using @FA{location} as path to
 /// the coordinates. The value of the attribute must be a list with at least two
@@ -4206,17 +4344,17 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// longitude (second value). All documents, which do not have the attribute
 /// path or with value that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
-/// is returned.
+/// In case that the index was successfully created, the index identifier is
+/// returned.
 ///
-/// @FUN{ensureGeoIndex(@FA{location}, @LIT{true})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location}, @LIT{true})}
 ///
 /// As above which the exception, that the order within the list is longitude
 /// followed by latitude. This corresponds to the format described in
 ///
 /// http://geojson.org/geojson-spec.html#positions
 ///
-/// @FUN{ensureGeoIndex(@FA{latitude}, @FA{longitude})}
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{latitude}, @FA{longitude})}
 ///
 /// Creates a geo-spatial index on all documents using @FA{latitude} and
 /// @FA{longitude} as paths the latitude and the longitude. The value of the
@@ -4224,130 +4362,54 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// double. All documents, which do not have the attribute paths or which values
 /// are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @EXAMPLES
 ///
 /// Create an geo index for a list attribute:
 ///
-/// @verbinclude admin3
+/// @verbinclude ensure-geo-index-list
 ///
 /// Create an geo index for a hash array attribute:
 ///
-/// @verbinclude admin4
+/// @verbinclude ensure-geo-index-array
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+  return EnsureGeoIndexVocbaseCol(argv, false);
+}
 
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @FA{ignore-null})}
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true}, @FA{ignore-null})}
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
+///
+/// Works like @FN{ensureGeoIndex} but requires that the documents contain
+/// a valid geo definition. If @FA{ignore-null} is true, then documents with
+/// a null in @FA{location} or at least one null in @FA{latitude} or
+/// @FA{longitude} are ignored.
+////////////////////////////////////////////////////////////////////////////////
 
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  TRI_doc_collection_t* doc = collection->_collection;
-
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
-  }
-
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
-  TRI_index_t* idx = 0;
-  bool created;
-
-  // .............................................................................
-  // case: <location>
-  // .............................................................................
-
-  if (argv.Length() == 1) {
-    v8::String::Utf8Value loc(argv[0]);
-
-    if (*loc == 0) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
-    }
-
-    idx = TRI_EnsureGeoIndexSimCollection(sim, *loc, false, &created);
-  }
-
-  // .............................................................................
-  // case: <location>, <geoJson>
-  // .............................................................................
-
-  else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
-    v8::String::Utf8Value loc(argv[0]);
-
-    if (*loc == 0) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
-    }
-
-    idx = TRI_EnsureGeoIndexSimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), &created);
-  }
-
-  // .............................................................................
-  // case: <latitude>, <longitude>
-  // .............................................................................
-
-  else if (argv.Length() == 2) {
-    v8::String::Utf8Value lat(argv[0]);
-    v8::String::Utf8Value lon(argv[1]);
-
-    if (*lat == 0) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<latitude> must be an attribute path")));
-    }
-
-    if (*lon == 0) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<longitude> must be an attribute path")));
-    }
-
-    idx = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon, &created);
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-      "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
-  }
-
-  TRI_json_t* json = idx->json(idx, collection->_collection);
-
-  if (!json) {
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-  }
-
-  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  
-  if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
-  }
-
-  ReleaseCollection(collection);
-  return scope.Close(index);
+static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments const& argv) {
+  return EnsureGeoIndexVocbaseCol(argv, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ///
-/// @FUN{ensureUniqueConstrain(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a hash index on all documents using attributes as paths to the
 /// fields. At least one attribute must be given. The value of this attribute
 /// must be a list. All documents, which do not have the attribute path or where
 /// one or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @EXAMPLES
@@ -4369,7 +4431,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 /// not have the attribute path or with one or more values that are not
 /// suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4378,7 +4440,6 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
   return EnsureHashSkipListIndex("ensureHashIndex", argv, false, 0);
 }
-  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a priority queue index exists
@@ -4389,7 +4450,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
 /// the fields. Currently only supports one attribute of the type double.
 /// All documents, which do not have the attribute path are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4562,7 +4623,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 /// All documents, which do not have the attribute path or 
 /// with ore or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4584,7 +4645,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments co
 /// All documents, which do not have the attribute path or 
 /// with ore or more values that are not suitable, are ignored.
 ///
-/// In case that the index was successfully created, the index indetifier
+/// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
 /// @verbinclude fluent14
@@ -4920,7 +4981,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.replace(@FA{document}, @FA{data})}
 ///
 /// Replaces an existing @FA{document}. The @FA{document} must be a document in
-/// the current collection. This document is than replaced with the
+/// the current collection. This document is then replaced with the
 /// @FA{data} given as second argument.
 ///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
@@ -5421,7 +5482,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// @FUN{db._create(@FA{collection-name})}
 ///
 /// Creates a new collection named @FA{collection-name}. If the collection name
-/// already exists, than an error is thrown. The default value for
+/// already exists, then an error is thrown. The default value for
 /// @LIT{waitForSync} is @LIT{false}.
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
@@ -5696,7 +5757,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// @FUN{edges._create(@FA{collection-name})}
 ///
 /// Creates a new collection named @FA{collection-name}. If the collection name
-/// already exists, than an error is thrown. The default value for
+/// already exists, then an error is thrown. The default value for
 /// @LIT{waitForSync} is @LIT{false}.
 ///
 /// @FUN{edges._create(@FA{collection-name}, @FA{properties})}
@@ -6171,6 +6232,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
+  v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> EnsurePriorityQueueIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensurePQIndex"));
@@ -6359,6 +6421,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
@@ -6401,6 +6464,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));

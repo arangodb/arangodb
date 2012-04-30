@@ -29,7 +29,20 @@
 /// @page IndexGeoTOC
 ///
 /// <ol>
-///  <li>MISSING</li>
+///  <li>@ref IndexGeoHttp
+///   <ol>
+///    <li>@ref IndexGeoHttpEnsureGeo "Creating a Geo Index/Constraint POST /_api/index"</li>
+///   </ol>
+///  </li>
+///  <li>@ref IndexGeoShell
+///   <ol>
+///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
+///    <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
+///    <li>@ref IndexGeoShellGeo "collection.geo"</li>
+///    <li>@ref IndexGeoShellNear "collection.near"</li>
+///    <li>@ref IndexGeoShellWithin "collection.within"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,6 +54,47 @@
 /// <hr>
 /// @copydoc IndexGeoTOC
 /// <hr>
+///
+/// AvocadoDB uses Hilbert curves to implement geo-spatial indexes. See this
+/// <a href="http://www.avocadodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
+/// for details.
+///
+/// A geo-spatial index assumes that the latitude is between -90 and
+/// 90 degree and the longitude is between -180 and 180 degree. A geo
+/// index will ignore all documents which do not fulfill these
+/// requirements.
+///
+/// A geo-spatial constraint makes the same assumptions, but documents
+/// not fulfilling these requirements are rejected.
+///
+/// @section IndexGeoHttp Accessing Geo Indexes via Http
+////////////////////////////////////////////////////////
+///
+/// @anchor IndexGeoHttpEnsureGeo
+/// @copydetails JSF_POST_api_index_geo
+/// <hr>
+///
+/// @section IndexGeoShell Accessing Geo Indexes from the Shell
+///////////////////////////////////////////////////////////////
+///
+/// @anchor IndexGeoShellEnsureGeoIndex
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
+/// <hr>
+///
+/// @anchor IndexGeoShellEnsureGeoConstraint
+/// @copydetails JS_EnsureGeoConstraintVocbaseCol
+/// <hr>
+///
+/// @anchor IndexGeoShellGeo
+/// @copydetails JSF_AvocadoCollection_prototype_geo
+/// <hr>
+///
+/// @anchor IndexGeoShellNear
+/// @copydetails JSF_AvocadoCollection_prototype_near
+/// <hr>
+///
+/// @anchor IndexGeoShellWithin
+/// @copydetails JSF_AvocadoCollection_prototype_within
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

@@ -1,0 +1,8 @@
+avocado> v = g.addVertex(1);
+Vertex(1)
+
+avocado> e = g.addEdge(v, v, 2, "knows");
+Edge(2)
+
+avocado> e.properties();
+{ "weight" : 10 }

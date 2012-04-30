@@ -1,0 +1,14 @@
+avocado> v1 = g.addVertex(1);
+Vertex(1)
+
+avocado> v2 = g.addVertex(); 
+Vertex(2)
+
+avocado> e = g.addEdge(v1, v2, "1->2");
+Edge("1->2")
+
+avocado> v1.edges();
+[  Edge("1->2") ]
+
+avocado> v2.edges();
+[  Edge("1->2") ]
