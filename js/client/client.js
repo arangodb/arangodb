@@ -1122,7 +1122,7 @@ AvocadoCollection.prototype.getIndexes = function () {
 
   TRI_CheckRequestResult(requestResult);
 
-  return requestResult;
+  return requestResult.indexes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
