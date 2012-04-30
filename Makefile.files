@@ -165,6 +165,7 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
+        Ahuacatl/ahuacatl-variable.c \
 	Ahuacatl/ast-codegen-js.c \
 	QL/ast-query.c \
 	QL/formatter.c \

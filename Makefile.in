@@ -346,6 +346,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
+	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	Ahuacatl/ast-codegen-js.$(OBJEXT) QL/ast-query.$(OBJEXT) \
 	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
@@ -779,6 +780,7 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
+        Ahuacatl/ahuacatl-variable.c \
 	Ahuacatl/ast-codegen-js.c \
 	QL/ast-query.c \
 	QL/formatter.c \
@@ -1693,6 +1695,8 @@ Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
@@ -1949,6 +1953,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-walker.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-variable.$(OBJEXT)
 	-rm -f Ahuacatl/ast-codegen-js.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerImpl.$(OBJEXT)
@@ -2187,6 +2192,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-walker.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-variable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-codegen-js.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerImpl.Po@am__quote@
