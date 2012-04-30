@@ -42,7 +42,7 @@
 
 static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
-  TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_subNodes._buffer[0];
+  TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_members._buffer[0];
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
     return node;
@@ -79,7 +79,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
 
 static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
-  TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_subNodes._buffer[0];
+  TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_members._buffer[0];
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
     return node;
@@ -110,8 +110,8 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
 
 static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const context,
                                                        TRI_aql_node_t* node) {
-  TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_subNodes._buffer[0];
-  TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_subNodes._buffer[1];
+  TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_members._buffer[0];
+  TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_members._buffer[1];
   bool isEligibleLhs;
   bool isEligibleRhs;
   bool lhsValue;
@@ -174,8 +174,8 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
 
 static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* const context,
                                                           TRI_aql_node_t* node) {
-  TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_subNodes._buffer[0];
-  TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_subNodes._buffer[1];
+  TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_members._buffer[0];
+  TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_members._buffer[1];
   bool isEligibleLhs;
   bool isEligibleRhs;
   double value;

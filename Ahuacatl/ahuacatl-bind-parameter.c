@@ -73,14 +73,14 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
 
       for (i = 0; i < n; ++i) {
         TRI_json_t* subJson;
-        TRI_aql_node_t* subNode;
+        TRI_aql_node_t* member;
 
         subJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
         assert(subJson);
 
-        subNode = CreateNodeFromJson(context, subJson);
-        if (subNode) {
-          TRI_PushBackVectorPointer(&node->_subNodes, (void*) subNode); 
+        member = CreateNodeFromJson(context, subJson);
+        if (member) {
+          TRI_PushBackVectorPointer(&node->_members, (void*) member); 
         }
         else {
           TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -99,7 +99,7 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
       for (i = 0; i < n; i += 2) {
         TRI_json_t* nameJson;
         TRI_json_t* valueJson;
-        TRI_aql_node_t* subNode;
+        TRI_aql_node_t* member;
         TRI_aql_node_t* valueNode;
         char* name;
 
@@ -120,9 +120,9 @@ static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
           return NULL;
         }
 
-        subNode = TRI_CreateNodeArrayElementAql(context, name, valueNode);
-        if (subNode) {
-          TRI_PushBackVectorPointer(&node->_subNodes, (void*) subNode); 
+        member = TRI_CreateNodeArrayElementAql(context, name, valueNode);
+        if (member) {
+          TRI_PushBackVectorPointer(&node->_members, (void*) member); 
         }
         else {
           TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
