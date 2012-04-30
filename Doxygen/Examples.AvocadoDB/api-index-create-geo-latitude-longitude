@@ -11,7 +11,8 @@ content-type: application/json
     "f"
   ],
   "id": "164647097/165564601",
-  "type": "geo",
+  "type": "geo2",
+  "constraint" : false,
   "isNewlyCreated": true,
   "error": false
 }

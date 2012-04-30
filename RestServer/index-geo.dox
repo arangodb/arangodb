@@ -29,6 +29,11 @@
 /// @page IndexGeoTOC
 ///
 /// <ol>
+///  <li>@ref IndexGeoHttp
+///   <ol>
+///    <li>@ref IndexGeoHttpEnsureGeo "Creating a Geo Index/Constraint POST /_api/index"</li>
+///   </ol>
+///  </li>
 ///  <li>@ref IndexGeoShell
 ///   <ol>
 ///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
@@ -37,8 +42,6 @@
 ///    <li>@ref IndexGeoShellNear "collection.near"</li>
 ///    <li>@ref IndexGeoShellWithin "collection.within"</li>
 ///   </ol>
-///  </li>
-///  <li>@ref IndexGeoHttp
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +65,14 @@
 /// requirements.
 ///
 /// A geo-spatial constraint makes the same assumptions, but documents
-/// not fulfill the requirements are rejected.
+/// not fulfilling these requirements are rejected.
+///
+/// @section IndexGeoHttp Accessing Geo Indexes via Http
+////////////////////////////////////////////////////////
+///
+/// @anchor IndexGeoHttpEnsureGeo
+/// @copydetails JSF_POST_api_index_geo
+/// <hr>
 ///
 /// @section IndexGeoShell Accessing Geo Indexes from the Shell
 ///////////////////////////////////////////////////////////////
@@ -85,9 +95,6 @@
 ///
 /// @anchor IndexGeoShellWithin
 /// @copydetails JSF_AvocadoCollection_prototype_within
-///
-/// @section IndexGeoHttp Accessing Geo Indexes via Http
-////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

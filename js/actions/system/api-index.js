@@ -154,6 +154,59 @@ function GET_api_index (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo index
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a geo-spatial index in the collection @FA{collection-identifier}, if
+/// it does not already exist. Expects an object containing the index details.
+///
+/// - @LIT{type}: must be equal to @LIT{"geo"}.
+///
+/// - @LIT{fields}: A list with one or two attribute paths. <br>
+///   <br>
+///   If it is a list with one attribute path @FA{location}, then a geo-spatial
+///   index on all documents is created using @FA{location} as path to the
+///   coordinates. The value of the attribute must be a list with at least two
+///   double values. The list must contain the latitude (first value) and the
+///   longitude (second value). All documents, which do not have the attribute
+///   path or with value that are not suitable, are ignored.<br>
+///   <br>
+///   If it is a list with two attribute paths @FA{latitude} and @FA{longitude},
+///   then a geo-spatial index on all documents is created using @FA{latitude}
+///   and @FA{longitude} as paths the latitude and the longitude. The value of
+///   the attribute @FA{latitude} and of the attribute @FA{longitude} must a
+///   double. All documents, which do not have the attribute paths or which
+///   values are not suitable, are ignored.
+///
+/// - @LIT{geoJson}: If a geo-spatial index on a @FA{location} is constructed
+///   and @LIT{geoJson} is @LIT{true}, then the order within the list is longitude
+///   followed by latitude. This corresponds to the format described in <br>
+///   <br>
+///   http://geojson.org/geojson-spec.html#positions
+///
+/// - @LIT{constraint}: If @LIT{constraint} is @LIT{true}, then a geo-spatial
+///   constraint instead of an index is created. 
+///
+/// - @LIT{ignoreNull}: If a geo-spatial constraint is created and
+///   @FA{ignoreNull} is true, then documents with a null in @FA{location} or at
+///   least one null in @FA{latitude} or @FA{longitude} are ignored.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// @EXAMPLES
+///
+/// Creating a geo index with a location attribute:
+///
+/// @verbinclude api-index-create-geo-location
+///
+/// Creating a geo index with latitude and longitude attributes:
+///
+/// @verbinclude api-index-create-geo-latitude-longitude
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index_geo (req, res, collection, body) {
@@ -320,14 +373,6 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// returned. It is possible to specify a name instead of an identifier.  
 ///
 /// @EXAMPLES
-///
-/// Creating a geo index with a location attribute:
-///
-/// @verbinclude api-index-create-geo-location
-///
-/// Creating a geo index with latitude and longitude attributes:
-///
-/// @verbinclude api-index-create-geo-latitude-longitude
 ///
 /// Creating an unique constraint:
 ///

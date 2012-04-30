@@ -226,7 +226,7 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& history)
+V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& history)
   : LineEditor(history), _context(context) {
 }
 
