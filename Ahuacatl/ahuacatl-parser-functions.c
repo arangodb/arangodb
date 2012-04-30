@@ -28,27 +28,6 @@
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    private macros
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut macro for signalling out of memory
-////////////////////////////////////////////////////////////////////////////////
-
-#define ABORT_OOM \
-  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
-  return NULL;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @} 
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -103,6 +82,46 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
            TRI_GetContextErrorAql(context->_query, line, column));
 
   TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push something on the stack
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_PushStackParseAql (TRI_aql_context_t* const context, 
+                            const void* const value) {
+  assert(context);
+
+  if (!value) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+    return NULL;
+  }
+
+  TRI_PushBackVectorPointer(&context->_stack, (void*) value);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop something from the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_PopStackParseAql (TRI_aql_context_t* const context) {
+  assert(context);
+  assert(context->_stack._length > 0);
+
+  return TRI_RemoveVectorPointer(&context->_stack, context->_stack._length - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief peek at the end of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
+  assert(context);
+  assert(context->_stack._length > 0);
+
+  return context->_stack._buffer[context->_stack._length - 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
