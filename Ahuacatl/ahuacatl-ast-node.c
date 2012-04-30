@@ -116,8 +116,6 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
   switch (type) {
     case AQL_NODE_UNDEFINED:
       return "undefined";
-    case AQL_NODE_MAIN:
-      return "main";
     case AQL_NODE_FOR:
       return "for";
     case AQL_NODE_LET:
@@ -204,16 +202,6 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
  
   assert(false);
   return "undefined";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST main node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_CreateNodeMainAql (TRI_aql_context_t* const context) {
-  CREATE_NODE(AQL_NODE_MAIN)
-
-  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

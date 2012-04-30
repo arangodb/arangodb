@@ -184,8 +184,6 @@ query:
       }
     } optional_statement_block_statements return_statement {
       // end the scope
-      TRI_AddStatementAql(context, $3);
-      
       $$ = (TRI_aql_node_t*) TRI_GetFirstStatementAql(context);
 
       TRI_EndScopeContextAql(context);
@@ -220,7 +218,9 @@ for_statement:
         ABORT_OOM
       }
 
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -233,7 +233,9 @@ filter_statement:
         ABORT_OOM
       }
 
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -254,7 +256,9 @@ let_statement:
         ABORT_OOM
       }
       
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -275,7 +279,9 @@ collect_statement:
         ABORT_OOM
       }
       
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -331,7 +337,9 @@ sort_statement:
         ABORT_OOM
       }
       
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -380,7 +388,9 @@ limit_statement:
         ABORT_OOM
       }
       
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -390,7 +400,9 @@ limit_statement:
         ABORT_OOM
       }
       
-      TRI_AddStatementAql(context, node);
+      if (!TRI_AddStatementAql(context, node)) {
+        ABORT_OOM
+      }
 
       $$ = node;
     }
@@ -400,6 +412,10 @@ return_statement:
     T_RETURN expression {
       TRI_aql_node_t* node = TRI_CreateNodeReturnAql(context, $2);
       if (!node) {
+        ABORT_OOM
+      }
+      
+      if (!TRI_AddStatementAql(context, node)) {
         ABORT_OOM
       }
 
