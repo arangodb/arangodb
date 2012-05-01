@@ -45,7 +45,7 @@ var actions = require("actions");
 /// @brief returns a result set from a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-function getCursorResult(cursor) {
+function getCursorResult (cursor) {
   var hasCount = cursor.hasCount();
   var count = cursor.count();
   var rows = cursor.getRows();
@@ -68,7 +68,7 @@ function getCursorResult(cursor) {
   };
 
   if (cursorId) {
-    result["_id"] = cursorId;
+    result["id"] = cursorId;
   }
     
   if (hasCount) {
@@ -82,7 +82,7 @@ function getCursorResult(cursor) {
 /// @brief create a cursor and return the first results
 ////////////////////////////////////////////////////////////////////////////////
 
-function postCursor(req, res) {
+function POST_api_cursor(req, res) {
   if (req.suffix.length != 0) {
     actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
@@ -126,9 +126,25 @@ function postCursor(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next results from an existing cursor
+///
+/// @REST{PUT /_api/cursor/@FA{cursor-identifier}}
+///
+/// If the cursor is still alive, returns an object with the following
+/// attributes.
+///
+/// - @LIT{id}: the @FA{cursor-identifier}
+/// - @LIT{result}: a list of documents for the current batch
+/// - @LIT{hasMore}: @LIT{false} if this was the last batch
+/// - @LIT{count}: if present the total number of elements
+///
+/// Note that even if @LIT{hasMore} returns @LIT{true}, the next call might
+/// still return no documents. If, however, @LIT{hasMore} is @LIT{false}, then
+/// the cursor is exhausted.
+///
+/// An @LIT{HTTP 404} is returned if the cursor no longer exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-function putCursor(req, res) {
+function PUT_api_cursor(req, res) {
   if (req.suffix.length != 1) {
     actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
@@ -137,6 +153,7 @@ function putCursor(req, res) {
   try {
     var cursorId = decodeURIComponent(req.suffix[0]); 
     var cursor = CURSOR(cursorId);
+
     if (!(cursor instanceof AvocadoCursor)) {
       actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
       return;
@@ -152,9 +169,13 @@ function putCursor(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispose an existing cursor
+///
+/// @REST{DELETE /_api/cursor/@FA{cursor-identifier}}
+///
+/// Deletes the cursor and frees the resources associated with it.
 ////////////////////////////////////////////////////////////////////////////////
 
-function deleteCursor(req, res) {
+function DELETE_api_cursor(req, res) {
   if (req.suffix.length != 1) {
     actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
@@ -163,13 +184,14 @@ function deleteCursor(req, res) {
   try {
     var cursorId = decodeURIComponent(req.suffix[0]);
     var cursor = CURSOR(cursorId);
+
     if (!(cursor instanceof AvocadoCursor)) {
       actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
       return;
     }
 
     cursor.dispose();
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "_id" : cursorId });                
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
   }
   catch (err) {
     actions.resultException(req, res, err);
@@ -191,15 +213,15 @@ actions.defineHttp({
   callback : function (req, res) {
     switch (req.requestType) {
       case (actions.POST) : 
-        postCursor(req, res); 
+        POST_api_cursor(req, res); 
         break;
 
       case (actions.PUT) :  
-        putCursor(req, res); 
+        PUT_api_cursor(req, res); 
         break;
 
       case (actions.DELETE) :  
-        deleteCursor(req, res); 
+        DELETE_api_cursor(req, res); 
         break;
 
       default:

@@ -29,22 +29,22 @@
 /// @page HttpSystemTOC
 ///
 /// <ol>
-///  <li>@ref HttpSystemLog</li>
-///  <li>@ref HttpSystemStatus</li>
+///  <li>@ref HttpSystemLog "GET /_admin/log"</li>
+///  <li>@ref HttpSystemStatus "GET /_system/status"</li>
 ///  <li>@ref HtppSystemUserManagement
 ///   <ol>
-///    <li>@ref HttpSystemUsers</li>
-///    <li>@ref HttpSystemUserGet</li>
-///    <li>@ref HttpSystemUserPost</li>
+///    <li>@ref HttpSystemUsers "GET /_admin/user-manager/users"</li>
+///    <li>@ref HttpSystemUserGet "GET /_admin/user-manager/user/user-name"</li>
+///    <li>@ref HttpSystemUserPost "POST /_admin/user-manager/user/user-name"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref HtppSystemSessionManagement
 ///   <ol>
-///    <li>@ref HttpSystemSessionGet</li>
-///    <li>@ref HttpSystemSessionPost</li>
-///    <li>@ref HttpSystemSessionLogin</li>
-///    <li>@ref HttpSystemSessionLogout</li>
-///    <li>@ref HttpSystemSessionPassword</li>
+///    <li>@ref HttpSystemSessionGet "POST /_admin/user-manager/session/sid"</li>
+///    <li>@ref HttpSystemSessionPost "POST /_admin/user-manager/session"</li>
+///    <li>@ref HttpSystemSessionLogin "PUT /_admin/user-manager/session/sid/login"</li>
+///    <li>@ref HttpSystemSessionLogout "PUT /_admin/user-manager/session/sid/logout"</li>
+///    <li>@ref HttpSystemSessionPassword "PUT /_admin/user-manager/session/sid/password"</li>
 ///   </ol>
 ///  </li>
 /// </ol>

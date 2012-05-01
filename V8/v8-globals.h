@@ -74,7 +74,6 @@ typedef struct TRI_v8_global_s {
       ErrorTempl(),
       GeneralCursorTempl(),
       QueryTempl(), // DEPRECATED
-      CursorTempl(), // DEPRECATED
       WhereTempl(), // DEPRECATED
       VocbaseColTempl(),
       VocbaseTempl(),
