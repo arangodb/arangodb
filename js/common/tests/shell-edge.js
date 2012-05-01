@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionEdgeSuiteErrorHandling () {
+function CollectionEdgeSuiteErrorHandling () {
   var ERRORS = require("internal").errors;
 
   var vn = "UnitTestsCollectionVertex";
@@ -101,7 +101,7 @@ function collectionEdgeSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionEdgeSuite () {
+function CollectionEdgeSuite () {
   var ERRORS = require("internal").errors;
 
   var vn = "UnitTestsCollectionVertex";
@@ -330,8 +330,8 @@ function collectionEdgeSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(collectionEdgeSuiteErrorHandling);
-jsunity.run(collectionEdgeSuite);
+jsunity.run(CollectionEdgeSuiteErrorHandling);
+jsunity.run(CollectionEdgeSuite);
 
 return jsunity.done();
 

@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionDocumentSuiteErrorHandling () {
+function CollectionDocumentSuiteErrorHandling () {
   var ERRORS = require("internal").errors;
 
   var cn = "UnitTestsCollectionBasics";
@@ -164,7 +164,7 @@ function collectionDocumentSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionDocumentSuite () {
+function CollectionDocumentSuite () {
   var ERRORS = require("internal").errors;
 
   var cn = "UnitTestsCollectionBasics";
@@ -353,7 +353,7 @@ function collectionDocumentSuite () {
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function databaseDocumentSuiteErrorHandling () {
+function DatabaseDocumentSuiteErrorHandling () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
 
@@ -425,7 +425,7 @@ function databaseDocumentSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function databaseDocumentSuite () {
+function DatabaseDocumentSuite () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;
@@ -602,11 +602,11 @@ function databaseDocumentSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(collectionDocumentSuiteErrorHandling);
-jsunity.run(collectionDocumentSuite);
+jsunity.run(CollectionDocumentSuiteErrorHandling);
+jsunity.run(CollectionDocumentSuite);
 
-jsunity.run(databaseDocumentSuiteErrorHandling);
-jsunity.run(databaseDocumentSuite);
+jsunity.run(DatabaseDocumentSuiteErrorHandling);
+jsunity.run(DatabaseDocumentSuite);
 
 return jsunity.done();
 
