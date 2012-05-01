@@ -48,7 +48,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @FUN{all()}
 ///
 /// Selects all documents of a collection. You can use @FN{toArray}, @FN{next},
-/// @FN{nextRef}, or @FN{hasNext} to access the result. The result can be
+/// or @FN{hasNext} to access the result. The result can be
 /// limited using the @FN{skip} and @FN{limit} operator.
 ///
 /// @EXAMPLES
@@ -243,7 +243,7 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 /// example. The example must be specified as paths and values. Allowed
 /// attribute types for searching are numbers, strings, and boolean values.
 ///
-/// You can use @FN{toArray}, @FN{next}, @FN{nextRef}, or @FN{hasNext} to access
+/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access
 /// the result. The result can be limited using the @FN{skip} and @FN{limit}
 /// operator.
 ///
@@ -592,26 +592,6 @@ SimpleQuery.prototype.next = function() {
   this.execute();
 
   return this._execution.next();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document reference
-///
-/// @FUN{nextRef()}
-///
-/// If the @FN{hasNext} operator returns @LIT{true}, then the underlying cursor
-/// of the simple query still has documents.  In this case the next document
-/// reference can be accessed using the @FN{nextRef} operator, which will
-/// advance the cursor.  If you use @FN{next} on an exhausted cursor, then
-/// @LIT{undefined} is returned.
-///
-/// @verbinclude simple6
-////////////////////////////////////////////////////////////////////////////////
-
-SimpleQuery.prototype.nextRef = function() {
-  this.execute();
-
-  return this._execution.nextRef();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1003,21 +983,6 @@ SimpleQueryArray.prototype.next = function() {
 
   if (this._current < this._documents.length) {
     return this._documents[this._current++];
-  }
-  else {
-    return undefined;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document reference
-////////////////////////////////////////////////////////////////////////////////
-
-SimpleQueryArray.prototype.nextRef = function() {
-  this.execute();
-
-  if (this._current < this._documents.length) {
-    return this._documents[this._current++]._id;
   }
   else {
     return undefined;

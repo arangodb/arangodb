@@ -58,6 +58,7 @@
 ///      <li>@ref RestEdge</li>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
+///      <li>@ref HttpCursor</li>
 ///      <li>@ref HttpSystem</li>
 ///   </ol>
 ///  </li>
