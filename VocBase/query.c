@@ -27,13 +27,13 @@
 
 #include "query.h"
 
-#include <BasicsC/logging.h>
+#include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include <BasicsC/strings.h>
-
-#include "VocBase/simple-collection.h"
-#include "VocBase/query-join-execute.h"
+#include "BasicsC/strings.h"
+#include "V8/v8-c-utils.h"
 #include "VocBase/query-cursor.h"
+#include "VocBase/query-join-execute.h"
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SELECT DOCUMENT

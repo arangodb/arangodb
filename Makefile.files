@@ -79,9 +79,10 @@ libavocado_a_SOURCES = \
 	UserManager/UsersHandler.cpp \
 	Utilities/LineEditor.cpp \
 	V8/JSLoader.cpp \
-	V8/v8-conv.cpp \
-	V8/v8-json.cpp \
 	V8/V8LineEditor.cpp \
+	V8/v8-conv.cpp \
+	V8/v8-execution.cpp \
+	V8/v8-json.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
 	Variant/VariantArray.cpp \

@@ -25,10 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/logging.h>
+#include "query-base.h"
 
+#include "BasicsC/logging.h"
 #include "VocBase/query-join.h"
-#include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
 #include "VocBase/query-locks.h"
 

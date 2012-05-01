@@ -37,6 +37,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-execution.h"
 #include "VocBase/query.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/general-cursor.h"
@@ -48,6 +49,12 @@
 
 using namespace std;
 using namespace triagens::basics;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -460,7 +467,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 
   if (argv.Length() == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...))")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...)")));
   }
   
   // .............................................................................
@@ -680,68 +687,6 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert v8 arguments to json_t values
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
-  }
-
-  if (parameter->IsNull()) {
-    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-  
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
-  }
-
-  if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
-  }
-
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-    if (listJson) {
-      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_PushBack2ListJson(listJson, result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-        }
-      }
-    }
-    return listJson;
-  }
-
-  if (parameter->IsObject()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-    if (arrayJson) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (uint32_t j = 0; j < names->Length(); ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-        }
-      }
-    }
-    return arrayJson;
-  }
-  
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2197,6 +2142,82 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a general cursor from a list
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                            "usage: GENERAL_CURSOR(<list>, <do-count>, <batch-size>)")));
+  }
+  
+  if (! argv[0]->IsArray()) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                            "<list> must be a list")));
+  }
+
+  // extract objects
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
+  TRI_json_t* json = TRI_JsonObject(array);
+
+  if (json == 0) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                                            "cannot convert <list> to JSON")));
+  }
+
+  // return number of total records in cursor?
+  bool doCount = false;
+
+  if (argv.Length() >= 2) {
+    doCount = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  // maximum number of results to return at once
+  uint32_t batchSize = 1000;
+
+  if (argv.Length() >= 3) {
+    double maxValue = TRI_ObjectToDouble(argv[2]);
+
+    if (maxValue >= 1.0) {
+      batchSize = (uint32_t) maxValue;
+    }
+  }
+  
+  // create a cursor
+  TRI_general_cursor_t* cursor = 0;
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
+
+  if (cursorResult != 0) {
+    cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+
+    if (cursor == 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+  }
+  else {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot create cursor")));
+  }
+
+  TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+  return scope.Close(WrapGeneralCursor(cursor));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2708,7 +2729,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   // bind parameters
   TRI_json_t* parameters = NULL;
   if (argv.Length() > 1) {
-    parameters = ConvertHelper(argv[1]);
+    parameters = TRI_JsonObject(argv[1]);
   }
 
   if (!TRI_BindQueryContextAql(context, parameters)) {
@@ -2749,7 +2770,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
-      TRI_json_t* json = ConvertHelper(result);
+      TRI_json_t* json = TRI_JsonObject(result);
       if (json) {
         TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
         if (cursorResult) {
@@ -2951,7 +2972,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
     if (jsonParameter == NULL) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
@@ -3037,7 +3058,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   else {
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
@@ -3151,7 +3172,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
 
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
@@ -3522,7 +3543,7 @@ static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int
 
   for (int j = startPos; j < endPos; ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
     if (jsonParameter == NULL) { // NOT the null json value! 
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
       return NULL;
@@ -6694,6 +6715,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   
   context->Global()->Set(v8::String::New("AHUACATL_PARSE"),
                          v8::FunctionTemplate::New(JS_ParseAhuacatl)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("CREATE_CURSOR"),
+                         v8::FunctionTemplate::New(JS_CreateCursor)->GetFunction(),
                          v8::ReadOnly);
   
   // .............................................................................
