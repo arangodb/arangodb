@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionSuiteErrorHandling () {
+function CollectionSuiteErrorHandling () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -124,7 +124,7 @@ function collectionSuiteErrorHandling () {
 /// @brief test suite: collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionSuite () {
+function CollectionSuite () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -559,7 +559,7 @@ function collectionSuite () {
 /// @brief test suite: collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionDbSuite () {
+function CollectionDbSuite () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -719,9 +719,9 @@ function collectionDbSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(collectionSuiteErrorHandling);
-jsunity.run(collectionSuite);
-jsunity.run(collectionDbSuite);
+jsunity.run(CollectionSuiteErrorHandling);
+jsunity.run(CollectionSuite);
+jsunity.run(CollectionDbSuite);
 
 return jsunity.done();
 

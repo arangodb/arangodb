@@ -39,14 +39,14 @@
 var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                collection methods
+// --SECTION--                                                      graph module
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
-function graphCreationSuite() {
+function GraphCreationSuite() {
 
   return {
 
@@ -98,7 +98,7 @@ function graphCreationSuite() {
 /// @brief test suite: Graph Basics
 ////////////////////////////////////////////////////////////////////////////////
 
-function graphBasicsSuite() {
+function GraphBasicsSuite() {
   var Graph = require("graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -316,7 +316,7 @@ function graphBasicsSuite() {
 /// @brief test suite: Vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-function vertexSuite() {
+function VertexSuite() {
   var Graph = require("graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -450,7 +450,7 @@ function vertexSuite() {
 /// @brief test suite: Edges
 ////////////////////////////////////////////////////////////////////////////////
 
-function edgeSuite() {
+function EdgeSuite() {
   var Graph = require("graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -553,14 +553,18 @@ function edgeSuite() {
   };
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              main
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(graphCreationSuite);
-jsunity.run(graphBasicsSuite);
-jsunity.run(vertexSuite);
-jsunity.run(edgeSuite);
+jsunity.run(GraphCreationSuite);
+jsunity.run(GraphBasicsSuite);
+jsunity.run(VertexSuite);
+jsunity.run(EdgeSuite);
 
 return jsunity.done();
 
