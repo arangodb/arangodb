@@ -108,7 +108,7 @@ uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value>);
 double TRI_ObjectToDouble (v8::Handle<v8::Value>);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a double
+/// @brief converts an V8 object to a double with error handling
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_ObjectToDouble (v8::Handle<v8::Value>, bool& error);
