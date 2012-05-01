@@ -196,19 +196,20 @@ am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/v8-conv.cpp V8/v8-json.cpp \
-	V8/V8LineEditor.cpp V8/v8-shell.cpp V8/v8-utils.cpp \
-	Variant/VariantArray.cpp Variant/VariantBlob.cpp \
-	Variant/VariantBoolean.cpp Variant/VariantDate.cpp \
-	Variant/VariantDatetime.cpp Variant/VariantDouble.cpp \
-	Variant/VariantFloat.cpp Variant/VariantInt16.cpp \
-	Variant/VariantInt32.cpp Variant/VariantInt64.cpp \
-	Variant/VariantInt8.cpp Variant/VariantMatrix2.cpp \
-	Variant/VariantNull.cpp Variant/VariantObject.cpp \
-	Variant/VariantString.cpp Variant/VariantUInt16.cpp \
-	Variant/VariantUInt32.cpp Variant/VariantUInt64.cpp \
-	Variant/VariantUInt8.cpp Variant/VariantVector.cpp \
-	MRuby/MRLineEditor.cpp MRuby/mr-utils.cpp
+	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
+	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
+	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
+	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
+	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
+	Variant/VariantInt16.cpp Variant/VariantInt32.cpp \
+	Variant/VariantInt64.cpp Variant/VariantInt8.cpp \
+	Variant/VariantMatrix2.cpp Variant/VariantNull.cpp \
+	Variant/VariantObject.cpp Variant/VariantString.cpp \
+	Variant/VariantUInt16.cpp Variant/VariantUInt32.cpp \
+	Variant/VariantUInt64.cpp Variant/VariantUInt8.cpp \
+	Variant/VariantVector.cpp MRuby/MRLineEditor.cpp \
+	MRuby/mr-utils.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLineEditor.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
@@ -258,11 +259,11 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
 	UserManager/UsersHandler.$(OBJEXT) \
 	Utilities/LineEditor.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
-	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
-	V8/V8LineEditor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
-	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
-	Variant/VariantBlob.$(OBJEXT) Variant/VariantBoolean.$(OBJEXT) \
-	Variant/VariantDate.$(OBJEXT) \
+	V8/V8LineEditor.$(OBJEXT) V8/v8-conv.$(OBJEXT) \
+	V8/v8-execution.$(OBJEXT) V8/v8-json.$(OBJEXT) \
+	V8/v8-shell.$(OBJEXT) V8/v8-utils.$(OBJEXT) \
+	Variant/VariantArray.$(OBJEXT) Variant/VariantBlob.$(OBJEXT) \
+	Variant/VariantBoolean.$(OBJEXT) Variant/VariantDate.$(OBJEXT) \
 	Variant/VariantDatetime.$(OBJEXT) \
 	Variant/VariantDouble.$(OBJEXT) Variant/VariantFloat.$(OBJEXT) \
 	Variant/VariantInt16.$(OBJEXT) Variant/VariantInt32.$(OBJEXT) \
@@ -714,19 +715,19 @@ libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/v8-conv.cpp V8/v8-json.cpp \
-	V8/V8LineEditor.cpp V8/v8-shell.cpp V8/v8-utils.cpp \
-	Variant/VariantArray.cpp Variant/VariantBlob.cpp \
-	Variant/VariantBoolean.cpp Variant/VariantDate.cpp \
-	Variant/VariantDatetime.cpp Variant/VariantDouble.cpp \
-	Variant/VariantFloat.cpp Variant/VariantInt16.cpp \
-	Variant/VariantInt32.cpp Variant/VariantInt64.cpp \
-	Variant/VariantInt8.cpp Variant/VariantMatrix2.cpp \
-	Variant/VariantNull.cpp Variant/VariantObject.cpp \
-	Variant/VariantString.cpp Variant/VariantUInt16.cpp \
-	Variant/VariantUInt32.cpp Variant/VariantUInt64.cpp \
-	Variant/VariantUInt8.cpp Variant/VariantVector.cpp \
-	$(am__append_4)
+	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
+	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
+	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
+	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
+	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
+	Variant/VariantInt16.cpp Variant/VariantInt32.cpp \
+	Variant/VariantInt64.cpp Variant/VariantInt8.cpp \
+	Variant/VariantMatrix2.cpp Variant/VariantNull.cpp \
+	Variant/VariantObject.cpp Variant/VariantString.cpp \
+	Variant/VariantUInt16.cpp Variant/VariantUInt32.cpp \
+	Variant/VariantUInt64.cpp Variant/VariantUInt8.cpp \
+	Variant/VariantVector.cpp $(am__append_4)
 
 ################################################################################
 ################################################################################
@@ -1337,10 +1338,12 @@ V8/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) V8/$(DEPDIR)
 	@: > V8/$(DEPDIR)/$(am__dirstamp)
 V8/JSLoader.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/V8LineEditor.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-execution.$(OBJEXT): V8/$(am__dirstamp) \
+	V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-shell.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-utils.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 Variant/$(am__dirstamp):
@@ -2107,6 +2110,7 @@ mostlyclean-compile:
 	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
+	-rm -f V8/v8-execution.$(OBJEXT)
 	-rm -f V8/v8-json.$(OBJEXT)
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
@@ -2345,6 +2349,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-execution.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
