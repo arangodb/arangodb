@@ -340,6 +340,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-cursor.c \
 	Doxygen/js/actions/system/api-edges.c \
 	Doxygen/js/actions/system/api-index.c \
+	Doxygen/js/actions/system/api-query.c \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \

@@ -42,14 +42,6 @@
 ///      <li>@ref OTWPSimpleQueriesWithin "PUT /_api/simple/within"</li>
 ///     </ol>
 ///    </li>
-///    <li>Queries and Cursors
-///     <ol>
-///      <li>@ref RestCursorPost "POST /_api/cursor"</li>
-///      <li>@ref RestCursorPut "PUT /_api/cursor/@FA{cursor-identifier}"</li>
-///      <li>@ref RestCursorDelete "DELETE /_api/cursor/@FA{cursor-identifier}"</li>
-///      <li>@ref RestQueryPost "POST /_api/query"</li>
-///     </ol>
-///    </li>
 ///    <li>@ref Key-Value
 ///     <ol>
 ///      <li>@ref Key-ValuePost "POST /_api/key/@FA{collection-name}/@FA{key}"</li>
