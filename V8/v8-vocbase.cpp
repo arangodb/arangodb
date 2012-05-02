@@ -1714,7 +1714,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   if (0 < total && 0 != limit) {
     TRI_barrier_t* barrier = 0;
 
-    // skip from the beginning
+    // skip from the beginning, limit from the beginning
     if (0 <= limit) {
       void** ptr = sim->_primaryIndex._table;
       void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
@@ -1740,29 +1740,34 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
       }
     }
 
-    // skip at the end
+    // skip from the beginning, limit from the end
     else {
       limit = -limit;
 
       void** beg = sim->_primaryIndex._table;
       void** ptr = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc - 1;
 
+      for (;  beg <= ptr && 0 < skip;  ++beg) {
+        if (*beg) {
+          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *beg;
+          
+          if (d->_deletion == 0) {
+            --skip;
+          }
+        }
+      }
+
       for (;  beg <= ptr && (TRI_voc_ssize_t) count < limit;  --ptr) {
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
           
           if (d->_deletion == 0) {
-            if (0 < skip) {
-              --skip;
+            if (barrier == 0) {
+              barrier = TRI_CreateBarrierElement(&doc->_barrierList);
             }
-            else {
-              if (barrier == 0) {
-                barrier = TRI_CreateBarrierElement(&doc->_barrierList);
-              }
             
-              documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
-              ++count;
-            }
+            documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
+            ++count;
           }
         }
       }

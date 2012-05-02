@@ -379,12 +379,12 @@ GeneralArrayCursor.prototype.execute = function () {
       end = this._skip + this._limit;
     }
     else {
-      start = this._documents.length + this._limit - this._skip;
-      end = this._documents.length - this._skip;
+      start = this._documents.length + this._limit;
+      end = this._documents.length;
     }
     
-    if (start < 0) {
-      start = 0;
+    if (start < this._skip) {
+      start = this._skip;
     }
     
     if (this._documents.length < end) {
