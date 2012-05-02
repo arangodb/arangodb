@@ -60,7 +60,7 @@ describe AvocadoDB do
 
       after do
 	AvocadoDB.drop_collection(@cn)
-    end
+      end
 
       it "returns either 201 for new or 200 for old indexes" do
 	cmd = api + "?collection=#{@cid}"

@@ -1,6 +1,0 @@
-HTTP/1.1 201 Created
-connection: Keep-Alive
-content-type: application/json
-server: triagens GmbH High-Performance HTTP Server
-
-{"result":[{"id":6,"name":"vlad","_id":"345055525:346890533"},{"id":25,"name":"Vladimir","_id":"345055525:550835661"}],"hasMore":false,"error":false,"code":201}

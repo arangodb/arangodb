@@ -1399,7 +1399,76 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
+/// @brief convert V8 object to TRI_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
+  if (parameter->IsBoolean()) {
+    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
+  }
+
+  if (parameter->IsNull()) {
+    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+  }
+  
+  if (parameter->IsNumber()) {
+    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
+  }
+
+  if (parameter->IsString()) {
+    v8::Handle<v8::String> stringParameter= parameter->ToString();
+    v8::String::Utf8Value str(stringParameter);
+    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
+  }
+
+  if (parameter->IsArray()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (listJson != 0) {
+      for (uint32_t j = 0;  j < arrayParameter->Length();  ++j) {
+        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
+        TRI_json_t* result = TRI_JsonObject(item);
+
+        if (result != 0) {
+          TRI_PushBack2ListJson(listJson, result);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+        }
+      }
+    }
+
+    return listJson;
+  }
+
+  if (parameter->IsObject()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (arrayJson != 0) {
+      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+
+      for (uint32_t j = 0;  j < names->Length();  ++j) {
+        v8::Handle<v8::Value> key = names->Get(j);
+        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
+        TRI_json_t* result = TRI_JsonObject(item);
+
+        if (result != 0) {
+          TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+        }
+      }
+    }
+
+    return arrayJson;
+  }
+  
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_doc_mptr_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
@@ -1447,22 +1516,14 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Convert a raw data document pointer into a master pointer
+/// @brief converts a TRI_shaped_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
-  TRI_doc_document_marker_t const* marker;
-  size_t markerSize = sizeof(TRI_doc_document_marker_t);
-  marker = (TRI_doc_document_marker_t const*) data;
-
-  header->_did = marker->_did;
-  header->_rid = marker->_rid;
-  header->_fid = 0; // should be datafile->_fid, but we do not have this info here
-  header->_deletion = 0;
-  header->_data = data;
-  header->_document._sid = marker->_shape;
-  header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((char*) marker) + markerSize;
+v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
+                                         TRI_shape_t const* shape,
+                                         char const* data,
+                                         size_t size) {
+  return JsonShapeData(shaper, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1677,17 +1738,6 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
   }
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
-                                         TRI_shape_t const* shape,
-                                         char const* data,
-                                         size_t size) {
-  return JsonShapeData(shaper, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

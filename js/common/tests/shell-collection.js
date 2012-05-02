@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionSuiteErrorHandling () {
+function CollectionSuiteErrorHandling () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -46,7 +46,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameUnderscore : function () {
       try {
-        db._create("_illegal");
+        internal.db._create("_illegal");
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -59,7 +59,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameEmpty : function () {
       try {
-        db._create("");
+        internal.db._create("");
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -72,7 +72,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameNumber : function () {
       try {
-        db._create("12345");
+        internal.db._create("12345");
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -85,7 +85,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameUnderscoreShortCut : function () {
       try {
-        db["_illegal"];
+        internal.db["_illegal"];
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -98,7 +98,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameEmptyShortCut : function () {
       try {
-        db[""];
+        internal.db[""];
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -111,7 +111,7 @@ function collectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameNumberShortCut : function () {
       try {
-        db["12345"];
+        internal.db["12345"];
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
@@ -124,7 +124,7 @@ function collectionSuiteErrorHandling () {
 /// @brief test suite: collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionSuite () {
+function CollectionSuite () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -136,20 +136,20 @@ function collectionSuite () {
     testReadingByName : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(c1._id, c2._id);
       assertEqual(c1.name(), c2.name());
       assertEqual(c1.status(), c2.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,20 +159,20 @@ function collectionSuite () {
     testReadingByIdentifier : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var c2 = db._collection(c1._id);
+      var c2 = internal.db._collection(c1._id);
 
       assertEqual(c1._id, c2._id);
       assertEqual(c1.name(), c2.name());
       assertEqual(c1.status(), c2.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,20 +182,20 @@ function collectionSuite () {
     testReadingByNameShortCut : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var c2 = db[cn];
+      var c2 = internal.db[cn];
 
       assertEqual(c1._id, c2._id);
       assertEqual(c1.name(), c2.name());
       assertEqual(c1.status(), c2.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,18 +205,18 @@ function collectionSuite () {
     testReadingAll : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var l = db._collections();
+      var l = internal.db._collections();
 
       assertNotEqual(0, l.length);
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,8 +226,8 @@ function collectionSuite () {
     testCreatingDefaults : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -237,7 +237,7 @@ function collectionSuite () {
 
       assertEqual(false, p.waitForSync);
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,8 +247,8 @@ function collectionSuite () {
     testCreatingProperties : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn, { waitForSync : true, journalSize : 1024 * 1024 });
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { waitForSync : true, journalSize : 1024 * 1024 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -266,7 +266,7 @@ function collectionSuite () {
         fail();
       }
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,8 +276,8 @@ function collectionSuite () {
     testDroppingNewBorn : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -287,7 +287,7 @@ function collectionSuite () {
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -299,8 +299,8 @@ function collectionSuite () {
     testDroppingLoaded : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
 
@@ -312,7 +312,7 @@ function collectionSuite () {
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -324,8 +324,8 @@ function collectionSuite () {
     testDroppingUnloaded : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
       c1.unload();
@@ -338,7 +338,7 @@ function collectionSuite () {
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -350,8 +350,8 @@ function collectionSuite () {
     testTruncatingNewBorn : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -362,7 +362,7 @@ function collectionSuite () {
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,8 +372,8 @@ function collectionSuite () {
     testTruncatingLoaded : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
 
@@ -386,7 +386,7 @@ function collectionSuite () {
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,8 +396,8 @@ function collectionSuite () {
     testTruncatingUnloaded : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
       c1.unload();
@@ -411,7 +411,7 @@ function collectionSuite () {
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,8 +421,8 @@ function collectionSuite () {
     testFigures : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.load();
 
@@ -479,7 +479,7 @@ function collectionSuite () {
       assertNotEqual(0, f.dead.size);
       assertEqual(2, f.dead.deletion);
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,9 +490,9 @@ function collectionSuite () {
       var cn = "example";
       var nn = "example2";
 
-      db._drop(cn);
-      db._drop(nn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      internal.db._drop(nn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
 
@@ -508,11 +508,11 @@ function collectionSuite () {
       assertEqual(nn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
 
-      db._drop(nn);
+      internal.db._drop(nn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,9 +523,9 @@ function collectionSuite () {
       var cn = "example";
       var nn = "example2";
 
-      db._drop(cn);
-      db._drop(nn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      internal.db._drop(nn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
       c1.unload();
@@ -542,11 +542,11 @@ function collectionSuite () {
       assertEqual(nn, c1.name());
       assertTypeOf("number", c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
 
-      db._drop(nn);
+      internal.db._drop(nn);
     }
   };
 }
@@ -559,7 +559,7 @@ function collectionSuite () {
 /// @brief test suite: collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionDbSuite () {
+function CollectionDbSuite () {
   var ERRORS = require("internal").errors;
 
   return {
@@ -571,18 +571,18 @@ function collectionDbSuite () {
     testDroppingNewBornDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -594,8 +594,8 @@ function collectionDbSuite () {
     testDroppingLoadedDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
 
@@ -603,11 +603,11 @@ function collectionDbSuite () {
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -619,8 +619,8 @@ function collectionDbSuite () {
     testDroppingUnloadedDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
       c1.unload();
@@ -629,11 +629,11 @@ function collectionDbSuite () {
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._drop(cn);
+      internal.db._drop(cn);
 
       assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
 
-      var c2 = db._collection(cn);
+      var c2 = internal.db._collection(cn);
 
       assertEqual(null, c2);
     },
@@ -645,19 +645,19 @@ function collectionDbSuite () {
     testTruncatingNewBornDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._truncate(cn);
+      internal.db._truncate(cn);
 
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,8 +667,8 @@ function collectionDbSuite () {
     testTruncatingLoadedDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
 
@@ -676,12 +676,12 @@ function collectionDbSuite () {
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._truncate(cn);
+      internal.db._truncate(cn);
 
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -691,8 +691,8 @@ function collectionDbSuite () {
     testTruncatingUnloadedDB : function () {
       var cn = "example";
 
-      db._drop(cn);
-      var c1 = db._create(cn);
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
 
       c1.save({ a : 1 });
       c1.unload();
@@ -701,12 +701,12 @@ function collectionDbSuite () {
       assertEqual(cn, c1.name());
       assertTypeOf("number", c1.status());
 
-      db._truncate(cn);
+      internal.db._truncate(cn);
 
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
-      db._drop(cn);
+      internal.db._drop(cn);
     }
   };
 }
@@ -719,9 +719,9 @@ function collectionDbSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(collectionSuiteErrorHandling);
-jsunity.run(collectionSuite);
-jsunity.run(collectionDbSuite);
+jsunity.run(CollectionSuiteErrorHandling);
+jsunity.run(CollectionSuite);
+jsunity.run(CollectionDbSuite);
 
 return jsunity.done();
 

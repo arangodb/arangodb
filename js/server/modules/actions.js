@@ -185,13 +185,15 @@ function DefineHttp (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GetErrorMessage (code) {
-  var error = internal.errors[code];
-
-  if (!error) {
-    return "";
+  for (var key in internal.errors) {
+    if (internal.errors.hasOwnProperty(key)) {
+      if (internal.errors[key].code == code) {
+        return internal.errors[key].message;
+      }
+    }
   }
 
-  return error.message;
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,7 +295,14 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultBad (req, res, code, msg, headers) {
-  ResultError(req, res, exports.HTTP_BAD, code, "" + msg, headers);
+  if (msg == null) {
+    msg = GetErrorMessage(code);
+  }
+  else {
+    msg = "" + msg;
+  }
+
+  ResultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

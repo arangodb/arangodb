@@ -1,6 +1,0 @@
-HTTP/1.1 400 Bad Request
-connection: Keep-Alive
-content-type: application/json
-server: triagens GmbH High-Performance HTTP Server
-
-{"error":true,"code":400,"errorNum":40304,"errorMessage":"Invalid query data"}

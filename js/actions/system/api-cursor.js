@@ -45,7 +45,7 @@ var actions = require("actions");
 /// @brief returns a result set from a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-function getCursorResult(cursor) {
+function getCursorResult (cursor) {
   var hasCount = cursor.hasCount();
   var count = cursor.count();
   var rows = cursor.getRows();
@@ -68,7 +68,7 @@ function getCursorResult(cursor) {
   };
 
   if (cursorId) {
-    result["_id"] = cursorId;
+    result["id"] = cursorId;
   }
     
   if (hasCount) {
@@ -80,23 +80,106 @@ function getCursorResult(cursor) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor and return the first results
+///
+/// @REST{POST /_api/cursor}
+///
+/// The query details include the query string plus optional query options and
+/// bind parameters. These values need to be passed in a JSON representation in
+/// the body of the POST request.
+///
+/// The following attributes can be used inside the JSON object:
+///
+/// - @LIT{query}: contains the query string to be executed (mandatory)
+///
+/// - @LIT{count}: boolean flag that indicates whether the number of documents
+///   found should be returned as "count" attribute in the result set (optional).
+///   Calculating the "count" attribute might have a performance penalty for
+///   some queries so this option is turned off by default.
+///
+/// - @LIT{batchSize}: maximum number of result documents to be transferred from
+///   the server to the client in one roundtrip (optional). If this attribute is
+///   not set, a server-controlled default value will be used.
+///
+/// - @LIT{bindVars}: key/value list of bind parameters (optional). 
+///
+/// If the result set can be created by the server, the server will respond with
+/// @LIT{HTTP 201}. The body of the response will contain a JSON object with the
+/// result set.
+///
+/// The JSON object has the following properties:
+///
+/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+///   in this case)
+///
+/// - @LIT{code}: the HTTP status code
+///
+/// - @LIT{result}: an array of result documents (might be empty if query has no results)
+///
+/// - @LIT{hasMore}: a boolean indicator whether there are more results
+///   available on the server
+///
+/// - @LIT{count}: the total number of result documents available (only
+///   available if the query was executed with the @LIT{count} attribute set.
+///
+/// - @LIT{id}: id of temporary cursor created on the server (optional, see above)
+///
+/// If the JSON representation is malformed or the query specification is
+/// missing from the request, the server will respond with @LIT{HTTP 400}.
+///
+/// The body of the response will contain a JSON object with additional error
+/// details. The object has the following attributes:
+///
+/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+///
+/// - @LIT{code}: the HTTP status code
+///
+/// - @LIT{errorNum}: the server error number
+///
+/// - @LIT{errorMessage}: a descriptive error message
+///
+/// If the query specification is complete, the server will process the query. If an
+/// error occurs during query processing, the server will respond with @LIT{HTTP 400}.
+/// Again, the body of the response will contain details about the error.
+///
+/// A list of query errors can be found @ref AvocadoErrors here.
+///
+/// @EXAMPLES
+///
+/// Executes a query and extract the result in a single go:
+///
+/// @verbinclude api-cursor-create-for-limit-return-single
+///
+/// Bad queries:
+///
+/// @verbinclude api-cursor-missing-body
+///
+/// @verbinclude api-cursor-unknown-collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function postCursor(req, res) {
+function POST_api_cursor(req, res) {
   if (req.suffix.length != 0) {
     actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
   }
 
-  try {
-    var json = JSON.parse(req.requestBody);
-      
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
-      return;
-    }
+  var json;
 
+  try {
+    json = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+      
+  if (! json || ! (json instanceof Object)) {
+    actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+    return;
+  }
+
+  try {
     var cursor;
+
     if (json.query != undefined) {
       cursor = AHUACATL_RUN(json.query, 
                             json.bindVars, 
@@ -104,12 +187,12 @@ function postCursor(req, res) {
                             (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
+      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
       return;
     }
    
+    // error occurred
     if (cursor instanceof AvocadoError) {
-      // error occurred
       actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
       return;
     }
@@ -117,6 +200,7 @@ function postCursor(req, res) {
     // this might dispose or persist the cursor
     var result = getCursorResult(cursor);
 
+    // return result to the client for first batch
     actions.resultOk(req, res, actions.HTTP_CREATED, result);
   }
   catch (err) {
@@ -126,19 +210,53 @@ function postCursor(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next results from an existing cursor
+///
+/// @REST{PUT /_api/cursor/@FA{cursor-identifier}}
+///
+/// If the cursor is still alive, returns an object with the following
+/// attributes.
+///
+/// - @LIT{id}: the @FA{cursor-identifier}
+/// - @LIT{result}: a list of documents for the current batch
+/// - @LIT{hasMore}: @LIT{false} if this was the last batch
+/// - @LIT{count}: if present the total number of elements
+///
+/// Note that even if @LIT{hasMore} returns @LIT{true}, the next call might
+/// still return no documents. If, however, @LIT{hasMore} is @LIT{false}, then
+/// the cursor is exhausted.  Once the @LIT{hasMore} attribute has a value of
+/// @LIT{false}, the client can stop.
+///
+/// The server will respond with @LIT{HTTP 200} in case of success. If the
+/// cursor identifier is ommitted or somehow invalid, the server will respond
+/// with @LIT{HTTP 404}.
+///
+/// @EXAMPLES
+///
+/// Valid request for next batch:
+///
+/// @verbinclude api-cursor-create-for-limit-return-cont
+///
+/// Missing identifier
+///
+/// @verbinclude api-cursor-missing-cursor-identifier
+///
+/// Unknown identifier
+///
+/// @verbinclude api-cursor-invalid-cursor-identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-function putCursor(req, res) {
+function PUT_api_cursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]); 
     var cursor = CURSOR(cursorId);
+
     if (!(cursor instanceof AvocadoCursor)) {
-      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     } 
 
@@ -152,24 +270,48 @@ function putCursor(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispose an existing cursor
+///
+/// @REST{DELETE /_api/cursor/@FA{cursor-identifier}}
+///
+/// Deletes the cursor and frees the resources associated with it. 
+///
+/// The cursor will automatically be destroyed on the server when the client has
+/// retrieved all documents from it. The client can also explicitly destroy the
+/// cursor at any earlier time using an HTTP DELETE request. The cursor id must
+/// be included as part of the URL.
+/// 
+/// In case the server is aware of the cursor, it will respond with @LIT{HTTP
+/// 202}. Otherwise, it will respond with @LIT{404}.
+/// 
+/// Cursors that have been explicitly destroyed must not be used afterwards. If
+/// a cursor is used after it has been destroyed, the server will respond with
+/// @LIT{HTTP 404} as well.
+///
+/// Note: the server will also destroy abandoned cursors automatically after a 
+/// certain server-controlled timeout to avoid resource leakage.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-cursor-delete
 ////////////////////////////////////////////////////////////////////////////////
 
-function deleteCursor(req, res) {
+function DELETE_api_cursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]);
     var cursor = CURSOR(cursorId);
-    if (!(cursor instanceof AvocadoCursor)) {
-      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+
+    if (! (cursor instanceof AvocadoCursor)) {
+      actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
     cursor.dispose();
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "_id" : cursorId });                
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
   }
   catch (err) {
     actions.resultException(req, res, err);
@@ -191,15 +333,15 @@ actions.defineHttp({
   callback : function (req, res) {
     switch (req.requestType) {
       case (actions.POST) : 
-        postCursor(req, res); 
+        POST_api_cursor(req, res); 
         break;
 
       case (actions.PUT) :  
-        putCursor(req, res); 
+        PUT_api_cursor(req, res); 
         break;
 
       case (actions.DELETE) :  
-        deleteCursor(req, res); 
+        DELETE_api_cursor(req, res); 
         break;
 
       default:
