@@ -233,7 +233,7 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
-//  TRI_DumpTreeAql(context->_first);
+  //TRI_DumpTreeAql(context->_first);
   return true;
 }
 

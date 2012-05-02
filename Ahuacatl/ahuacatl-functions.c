@@ -145,6 +145,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, 1, 1);
   REGISTER_FUNCTION("MIN", "MIN", true, true, 1, 256);
   REGISTER_FUNCTION("MAX", "MAX", true, true, 1, 256);
+  REGISTER_FUNCTION("SUM", "SUM", true, true, 1, 256);
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
