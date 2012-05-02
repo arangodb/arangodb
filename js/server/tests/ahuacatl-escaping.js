@@ -144,7 +144,7 @@ function ahuacatlEscapingTestSuite () {
 /// @brief test punctuation names escaping
 ////////////////////////////////////////////////////////////////////////////////
     
-    testPunctuationName1 : function () {
+    testPunctuationBackticks1 : function () {
       var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("FOR `brown_fox` IN [ 1, 2, 3 ] RETURN `brown_fox`", true);
       assertEqual(expected, actual);
@@ -154,11 +154,103 @@ function ahuacatlEscapingTestSuite () {
 /// @brief test punctuation names escaping
 ////////////////////////////////////////////////////////////////////////////////
     
-    testPunctuationName2 : function () {
+    testPunctuationBackticks2 : function () {
       var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("FOR `brown_fox__1234_` IN [ 1, 2, 3 ] RETURN `brown_fox__1234_`", true);
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks3 : function () {
+      var expected = [ 1, 2, 3 ];
+      var actual = getQueryResults("FOR `brown fox  1234_` IN [ 1, 2, 3 ] RETURN `brown fox  1234_`", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks4 : function () {
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults("FOR r IN [ { \"a\" : 1, \"b\" : 1 }, { \"a\" : 2, \"b\" : 2 }, { \"a\" : 1, \"b\" : 3 } ] FILTER r.`a` == 1 RETURN r.`b`", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks4 : function () {
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults("FOR r IN [ { \"a fox\" : 1, \"b fox\" : 1 }, { \"a fox\" : 2, \"b fox\" : 2 }, { \"a fox\" : 1, \"b fox\" : 3 } ] FILTER r.`a fox` == 1 RETURN r.`b fox`", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationDoubleQuotes1 : function () {
+      var expected = [ { '"a"' : 1 }, { '"a"' : '"b"' } ];
+      var actual = getQueryResults("FOR r IN [ { '\"a\"' : 1 }, { '\"a\"' : '\"b\"' } ] RETURN r", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationDoubleQuotes2 : function () {
+      var expected = [ { '"a fox"' : 1 }, { '"a fox "' : '"b fox"' } ];
+      var actual = getQueryResults("FOR r IN [ { '\"a fox\"' : 1 }, { '\"a fox \"' : '\"b fox\"' } ] RETURN r", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationSingleQuotes1 : function () {
+      var expected = [ { "'a'" : 1 }, { "'a'" : "'b'" } ];
+      var actual = getQueryResults("FOR r IN [ { \"'a'\" : 1 }, { \"'a'\" : \"'b'\" } ] RETURN r", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationSingleQuotes2 : function () {
+      var expected = [ { "'a fox'" : 1 }, { "'a fox'" : "'b fox'" } ];
+      var actual = getQueryResults("FOR r IN [ { \"'a fox'\" : 1 }, { \"'a fox'\" : \"'b fox'\" } ] RETURN r", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test UTF8 names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUtf8Names1 : function () {
+      var expected = [ "wälder", "hänsel", "grätel", "fraß", "kloß" ];
+      var actual = getQueryResults("FOR r IN [ { \"äöüÄÖÜß\" : \"wälder\" }, { \"äöüÄÖÜß\" : \"hänsel\" }, { \"äöüÄÖÜß\" : \"grätel\" }, { \"äöüÄÖÜß\" : \"fraß\" }, { \"äöüÄÖÜß\" : \"kloß\" } ] RETURN r.`äöüÄÖÜß`", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test UTF8 names escaping
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUtf8Names2 : function () {
+      var expected = [ "中央アメリカ", "熱帯", "亜熱帯" ];
+      var actual = getQueryResults("FOR r IN [ { \"アボカド\" : \"中央アメリカ\" }, { \"アボカド\" : \"熱帯\" }, { \"アボカド\" : \"亜熱帯\" } ] RETURN r.`アボカド`", true);
+      assertEqual(expected, actual);
+    },
+
+
 
   };
 }
