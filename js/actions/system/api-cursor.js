@@ -121,7 +121,7 @@ function getCursorResult (cursor) {
 /// - @LIT{count}: the total number of result documents available (only
 ///   available if the query was executed with the @LIT{count} attribute set.
 ///
-/// - @LIT{id}: id of temporary cursor created on the server (optional, see below)
+/// - @LIT{id}: id of temporary cursor created on the server (optional, see above)
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with @LIT{HTTP 400}.
@@ -145,19 +145,15 @@ function getCursorResult (cursor) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude cursor
+/// Executes a query and extract the result in a single go:
+///
+/// @verbinclude api-cursor-create-for-limit-return-single
 ///
 /// Bad queries:
 ///
-/// @verbinclude cursor4001
+/// @verbinclude api-cursor-missing-body
 ///
-/// @verbinclude cursor4002
-///
-/// @verbinclude cursor404
-/// 
-/// Valid query:
-///
-/// @verbinclude cursor201
+/// @verbinclude api-cursor-unknown-collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_cursor(req, res) {
@@ -166,15 +162,24 @@ function POST_api_cursor(req, res) {
     return;
   }
 
-  try {
-    var json = JSON.parse(req.requestBody);
-      
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
-      return;
-    }
+  var json;
 
+  try {
+    json = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+      
+  if (! json || ! (json instanceof Object)) {
+    actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+    return;
+  }
+
+  try {
     var cursor;
+
     if (json.query != undefined) {
       cursor = AHUACATL_RUN(json.query, 
                             json.bindVars, 
@@ -182,12 +187,12 @@ function POST_api_cursor(req, res) {
                             (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
+      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
       return;
     }
    
+    // error occurred
     if (cursor instanceof AvocadoError) {
-      // error occurred
       actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
       return;
     }
@@ -195,6 +200,7 @@ function POST_api_cursor(req, res) {
     // this might dispose or persist the cursor
     var result = getCursorResult(cursor);
 
+    // return result to the client for first batch
     actions.resultOk(req, res, actions.HTTP_CREATED, result);
   }
   catch (err) {
@@ -221,19 +227,27 @@ function POST_api_cursor(req, res) {
 /// @LIT{false}, the client can stop.
 ///
 /// The server will respond with @LIT{HTTP 200} in case of success. If the
-/// cursor id is ommitted or somehow invalid, the server will respond with
-/// @LIT{HTTP 404}.
+/// cursor identifier is ommitted or somehow invalid, the server will respond
+/// with @LIT{HTTP 404}.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude cursorputfail
+/// Valid request for next batch:
 ///
-/// @verbinclude cursorput3
+/// @verbinclude api-cursor-create-for-limit-return-cont
+///
+/// Missing identifier
+///
+/// @verbinclude api-cursor-missing-cursor-identifier
+///
+/// Unknown identifier
+///
+/// @verbinclude api-cursor-invalid-cursor-identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_cursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -242,7 +256,7 @@ function PUT_api_cursor(req, res) {
     var cursor = CURSOR(cursorId);
 
     if (!(cursor instanceof AvocadoCursor)) {
-      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     } 
 
@@ -278,12 +292,12 @@ function PUT_api_cursor(req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude cursordeletefail
+/// @verbinclude api-cursor-delete
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_cursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -291,8 +305,8 @@ function DELETE_api_cursor(req, res) {
     var cursorId = decodeURIComponent(req.suffix[0]);
     var cursor = CURSOR(cursorId);
 
-    if (!(cursor instanceof AvocadoCursor)) {
-      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+    if (! (cursor instanceof AvocadoCursor)) {
+      actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     }
 

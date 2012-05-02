@@ -374,6 +374,7 @@ WIKI = \
 	Graphs \
 	Home \
 	HttpCollection \
+	HttpCursor \
 	HttpIndex \
 	HttpInterface \
 	HttpSystem \
