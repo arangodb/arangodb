@@ -378,6 +378,7 @@ WIKI = \
 	HttpCursor \
 	HttpIndex \
 	HttpInterface \
+	HttpSimple \
 	HttpSystem \
 	IndexGeo \
 	IndexHash \

@@ -49,16 +49,14 @@
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>@ref Indexes
-///   @copydetails IndexesTOC
-///  </li>
 ///  <li>@ref OTWP
 ///   <ol>
 ///      <li>@ref RestDocument</li>
 ///      <li>@ref RestEdge</li>
+///      <li>@ref HttpCursor</li>
+///      <li>@ref HttpSimple</li>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
-///      <li>@ref HttpCursor</li>
 ///      <li>@ref HttpSystem</li>
 ///   </ol>
 ///  </li>
@@ -69,6 +67,9 @@
 ///      <li>@ref ShellCollection</li>
 ///      <li>@ref ShellIndex</li>
 ///   </ol>
+///  </li>
+///  <li>Indexes
+///   @copydetails IndexesTOC
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////

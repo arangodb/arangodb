@@ -44,30 +44,22 @@ var API = "_api/simple/";
 ///
 /// @REST{PUT /_api/simple/all}
 ///
-/// Returns all documents of a collections. The call expects a JSON hash array
+/// Returns all documents of a collections. The call expects an JSON object
 /// as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// @FA{skip} (optional)
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
 ///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
-/// To get all documents (NEVER DO THAT!)
-///
-/// @verbinclude api_simple1
-///
 /// Limit the amount of documents using
 ///
-/// @verbinclude api_simple2
+/// @verbinclude api-simple-all-skip-limit
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -75,17 +67,22 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
 
     var limit = body.limit;
     var skip = body.skip;
-    var name = body.collection;
 
     if (req.requestType != actions.PUT) {
       actions.resultUnsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -101,7 +98,7 @@ actions.defineHttp({
           result = result.limit(limit);
         }
 
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
       }
     }
   }
@@ -170,7 +167,11 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
 
     var limit = body.limit;
     var skip = body.skip;
@@ -287,7 +288,11 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
 
     var limit = body.limit;
     var skip = body.skip;
@@ -377,7 +382,11 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
 
     var limit = body.limit;
     var skip = body.skip;
