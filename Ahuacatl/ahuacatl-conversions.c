@@ -196,7 +196,7 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
       char* escapedString;
       size_t outLength;
 
-      if (TRI_AppendCharStringBuffer(buffer, '\'') != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -212,7 +212,7 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
 
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString); 
 
-      return (TRI_AppendCharStringBuffer(buffer, '\'') == TRI_ERROR_NO_ERROR);
+      return (TRI_AppendCharStringBuffer(buffer, '"') == TRI_ERROR_NO_ERROR);
     }
   }
 
