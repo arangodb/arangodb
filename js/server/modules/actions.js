@@ -197,6 +197,33 @@ function GetErrorMessage (code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the body as json
+////////////////////////////////////////////////////////////////////////////////
+
+function GetJsonBody (req, res, code) {
+  var body;
+
+  try {
+    body = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
+    return undefined;
+  }
+
+  if (! body || ! (body instanceof Object)) {
+    if (code == null) {
+      code = exports.ERROR_HTTP_CORRUPTED_JSON;
+    }
+
+    actions.resultBad(req, res, code, err);
+    return undefined;
+  }
+
+  return body;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ///
 /// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
@@ -346,6 +373,43 @@ function ResultUnsupported (req, res, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a result set from a cursor
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultCursor (req, res, cursor) {
+  var hasCount = cursor.hasCount();
+  var count = cursor.count();
+  var rows = cursor.getRows();
+
+  // must come after getRows()
+  var hasNext = cursor.hasNext();
+  var cursorId = null;
+   
+  if (hasNext) {
+    cursor.persist();
+    cursorId = cursor.id(); 
+  }
+  else {
+    cursor.dispose();
+  }
+
+  var result = { 
+    "result" : rows,
+    "hasMore" : hasNext
+  };
+
+  if (cursorId) {
+    result["id"] = cursorId;
+  }
+    
+  if (hasCount) {
+    result["count"] = count;
+  }
+
+  ResultOk(req, res, exports.HTTP_CREATED, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for unknown collection
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
@@ -439,6 +503,7 @@ function ResultException (req, res, err, headers) {
 // public functions
 exports.defineHttp              = DefineHttp;
 exports.getErrorMessage         = GetErrorMessage;
+exports.getJsonBody             = GetJsonBody;
 
 // standard HTTP responses
 exports.resultBad               = ResultBad;
@@ -448,6 +513,7 @@ exports.resultUnsupported       = ResultUnsupported;
 exports.resultError             = ResultError;
 
 // AvocadoDB specific responses
+exports.resultCursor            = ResultCursor;
 exports.collectionNotFound      = CollectionNotFound;
 exports.indexNotFound           = IndexNotFound;
 exports.resultException         = ResultException;

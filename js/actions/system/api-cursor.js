@@ -42,43 +42,6 @@ var actions = require("actions");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result set from a cursor
-////////////////////////////////////////////////////////////////////////////////
-
-function getCursorResult (cursor) {
-  var hasCount = cursor.hasCount();
-  var count = cursor.count();
-  var rows = cursor.getRows();
-
-  // must come after getRows()
-  var hasNext = cursor.hasNext();
-  var cursorId = null;
-   
-  if (hasNext) {
-    cursor.persist();
-    cursorId = cursor.id(); 
-  }
-  else {
-    cursor.dispose();
-  }
-
-  var result = { 
-    "result" : rows,
-    "hasMore" : hasNext
-  };
-
-  if (cursorId) {
-    result["id"] = cursorId;
-  }
-    
-  if (hasCount) {
-    result["count"] = count;
-  }
-
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor and return the first results
 ///
 /// @REST{POST /_api/cursor}
@@ -162,18 +125,9 @@ function POST_api_cursor(req, res) {
     return;
   }
 
-  var json;
+  var json = actions.getJsonBody(req, res);
 
-  try {
-    json = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
-    return;
-  }
-      
-  if (! json || ! (json instanceof Object)) {
-    actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+  if (json === undefined) {
     return;
   }
 
@@ -198,10 +152,7 @@ function POST_api_cursor(req, res) {
     }
 
     // this might dispose or persist the cursor
-    var result = getCursorResult(cursor);
-
-    // return result to the client for first batch
-    actions.resultOk(req, res, actions.HTTP_CREATED, result);
+    actions.resultCursor(req, res, cursor);
   }
   catch (err) {
     actions.resultException(req, res, err);
@@ -261,7 +212,7 @@ function PUT_api_cursor(req, res) {
     } 
 
     // note: this might dispose or persist the cursor
-    actions.resultOk(req, res, actions.HTTP_OK, getCursorResult(cursor));
+    actions.resultCursor(req, res, cursor);
   }
   catch (err) {
     actions.resultException(req, res, err);

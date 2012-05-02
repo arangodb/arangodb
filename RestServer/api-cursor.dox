@@ -36,13 +36,19 @@
 ///   </ol>
 ///  </li>
 ///  <li>@ref HttpCursorHttp
-///   <ol>
-///    <li>@ref HttpCursorPost "POST /_api/cursor"</li>
-///    <li>@ref HttpCursorPostQuery "POST /_api/query"</li>
-///    <li>@ref HttpCursorPut "PUT /_api/cursor/cursor-identifier"</li>
-///    <li>@ref HttpCursorDelete "DELETE /_api/cursor/cursor-identifier"</li>
-///   </ol>
+///   @copydetails HttpCursorCallsTOC
 ///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpCursorCallsTOC
+///
+/// <ol>
+///  <li>@ref HttpCursorPost "POST /_api/cursor"</li>
+///  <li>@ref HttpCursorPostQuery "POST /_api/query"</li>
+///  <li>@ref HttpCursorPut "PUT /_api/cursor/cursor-identifier"</li>
+///  <li>@ref HttpCursorDelete "DELETE /_api/cursor/cursor-identifier"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +129,7 @@
 ///
 /// @verbinclude api-cursor-create-for-limit-return-cont3
 ///
-/// @section HttpCursorHttp Accessing Cursors via Http
+/// @section HttpCursorHttp Accessing Cursors via HTTP
 //////////////////////////////////////////////////////
 ///
 /// @anchor HttpCursorPost

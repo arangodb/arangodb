@@ -38,6 +38,7 @@
 
 var jsunity = require("jsunity");
 var SQB = require("simple-query-basics");
+require("simple-query");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            basic skips and limits

@@ -130,6 +130,7 @@ endif
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
                @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js
 
@@ -191,6 +192,7 @@ unittests-shell-server-ahuacatl:
 SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
                @srcdir@/js/common/tests/shell-collection.js \
+               @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js
 
 .PHONY: unittests-shell-client
