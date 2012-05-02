@@ -2299,7 +2299,6 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 ////////////////////////////////////////////////////////////////////////////////
 
 try {
-
   if (typeof avocado !== 'undefined') {
 
     // default databases
@@ -2313,6 +2312,9 @@ try {
     // export to internal
     ModuleCache["/internal"].exports.db = db;
     ModuleCache["/internal"].exports.edges = db;
+
+    // load simple queries
+    require("simple-query");
 
     print(HELP);
   }

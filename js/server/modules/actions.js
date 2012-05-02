@@ -207,7 +207,7 @@ function GetJsonBody (req, res, code) {
     body = JSON.parse(req.requestBody || "{}") || {};
   }
   catch (err) {
-    actions.resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
+    ResultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
     return undefined;
   }
 
@@ -216,7 +216,7 @@ function GetJsonBody (req, res, code) {
       code = exports.ERROR_HTTP_CORRUPTED_JSON;
     }
 
-    actions.resultBad(req, res, code, err);
+    ResultBad(req, res, code, err);
     return undefined;
   }
 

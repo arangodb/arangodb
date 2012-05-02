@@ -99,5 +99,43 @@ describe AvocadoDB do
       end
     end
 
+################################################################################
+## geo query
+################################################################################
+
+    context "geo query:" do
+      before do
+	@cn = "UnitTestsCollectionGeo"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn, false)
+
+	cmd = api + "?collection=#{@cid}"
+	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
+        #doc = AvocadoDB.post(cmd, :body => body)
+
+	(0..10).each{|i|
+	  lat = 10 * (i - 5)
+
+	  (0..10).each{|j|
+	    lon = 10 * (j - 5)
+	    
+	    AvocadoDB.post("/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #[lon} ] }")
+	  }
+	}
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "get near documents with skip and limit" do
+	cmd = api + "/near"
+	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
+	doc = AvocadoDB.log_put("#{prefix}-near", cmd, :body => body)
+
+	puts doc
+      end
+    end
+
   end
 end
