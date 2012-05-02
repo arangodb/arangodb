@@ -62,7 +62,6 @@ extern "C" {
 typedef struct TRI_aql_scope_s {
   struct TRI_aql_scope_s* _parent; // parent scope
   TRI_associative_pointer_t _variables; // symbol table
-//  void* _node; // the start node of the scope
   void* _first;
   void* _last;
 }
@@ -202,7 +201,8 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const, const char*);
 
 char* TRI_RegisterStringAql (TRI_aql_context_t* const, 
                              const char* const,
-                             const size_t);
+                             const size_t, 
+                             const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable is defined in the current scope or above

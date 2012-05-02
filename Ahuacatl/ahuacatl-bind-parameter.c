@@ -36,109 +36,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a value node from a bind parameter
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
-                                           TRI_json_t* json) {
-  TRI_aql_node_t* node = NULL;
-
-  switch (json->_type) {
-    case TRI_JSON_UNUSED:
-      break;
-
-    case TRI_JSON_NULL:
-      node = TRI_CreateNodeValueNullAql(context);
-      break;
-    
-    case TRI_JSON_BOOLEAN:
-      node = TRI_CreateNodeValueBoolAql(context, json->_value._boolean); 
-      break;
-    
-    case TRI_JSON_NUMBER:
-      node = TRI_CreateNodeValueDoubleAql(context, json->_value._number); 
-      break;
-    
-    case TRI_JSON_STRING:
-      node = TRI_CreateNodeValueStringAql(context, json->_value._string.data);
-      break;
-    
-    case TRI_JSON_LIST: {
-      size_t i;
-      size_t n;
-
-      node = TRI_CreateNodeListAql(context);
-      n = json->_value._objects._length;
-
-      for (i = 0; i < n; ++i) {
-        TRI_json_t* subJson;
-        TRI_aql_node_t* member;
-
-        subJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-        assert(subJson);
-
-        member = CreateNodeFromJson(context, subJson);
-        if (member) {
-          TRI_PushBackVectorPointer(&node->_members, (void*) member); 
-        }
-        else {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
-        }
-      }
-      break;
-    }
-    case TRI_JSON_ARRAY: {
-      size_t i;
-      size_t n;
-
-      node = TRI_CreateNodeArrayAql(context);
-      n = json->_value._objects._length;
-
-      for (i = 0; i < n; i += 2) {
-        TRI_json_t* nameJson;
-        TRI_json_t* valueJson;
-        TRI_aql_node_t* member;
-        TRI_aql_node_t* valueNode;
-        char* name;
-
-        // json_t containing the array element name
-        nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-        assert(nameJson);
-
-        name = nameJson->_value._string.data;
-        assert(name);
-
-        // json_t containing the array element value
-        valueJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
-        assert(valueJson);
-
-        valueNode = CreateNodeFromJson(context, valueJson);
-        if (!valueNode) {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
-        }
-
-        member = TRI_CreateNodeArrayElementAql(context, name, valueNode);
-        if (member) {
-          TRI_PushBackVectorPointer(&node->_members, (void*) member); 
-        }
-        else {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
-        }
-      }
-      break;
-    }
-  }
-
-  if (!node) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-  }
-
-  return node;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a node is a bind parameter and convert it into a value node 
@@ -167,7 +64,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
      
   bind = (TRI_aql_bind_parameter_t*) TRI_LookupByKeyAssociativePointer(bindValues, name);
   if (bind) {
-    node = CreateNodeFromJson(context, bind->_value);
+    node = TRI_JsonNodeAql(context, bind->_value);
   }
   
   return node;

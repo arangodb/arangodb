@@ -946,7 +946,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     }
 
     ADD_MEMBER(parameters)
-    TRI_AQL_NODE_STRING(node) = function->_internalName;
+    TRI_AQL_NODE_DATA(node) = function;
   }
 
   return node;

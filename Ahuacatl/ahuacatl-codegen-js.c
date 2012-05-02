@@ -28,6 +28,7 @@
 #include <BasicsC/logging.h>
 
 #include "Ahuacatl/ahuacatl-codegen-js.h"
+#include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -106,11 +107,6 @@ static void AppendString (TRI_aql_codegen_js_t* const generator,
 static void AppendInt (TRI_aql_codegen_js_t* const generator, 
                        const int64_t value) {
   TRI_AppendInt64StringBuffer(GetBuffer(generator), value);
-}
-
-static void AppendDouble (TRI_aql_codegen_js_t* const generator, 
-                          const double value) {
-  TRI_AppendDoubleStringBuffer(GetBuffer(generator), value);
 }
 
 static void AppendQuoted (TRI_aql_codegen_js_t* const generator, 
@@ -298,38 +294,8 @@ static size_t HandleSortNode (TRI_aql_codegen_js_t* const generator,
 
 static void HandleValue (TRI_aql_codegen_js_t* const generator, 
                          const TRI_aql_node_t* const node) {
-  switch (node->_value._type) {
-    case AQL_TYPE_FAIL:
-      AppendString(generator, "fail");
-      break;
-    case AQL_TYPE_NULL:
-      AppendString(generator, "null");
-      break;
-    case AQL_TYPE_BOOL:
-      AppendString(generator, node->_value._value._bool ? "true" : "false");
-      break;
-    case AQL_TYPE_INT:
-      AppendInt(generator, node->_value._value._int);
-      break;
-    case AQL_TYPE_DOUBLE:
-      AppendDouble(generator, node->_value._value._double);
-      break;
-    case AQL_TYPE_STRING: {
-      char* escapedString;
-      size_t outLength;
-
-      AppendString(generator, "'");
-      escapedString = TRI_EscapeUtf8String(node->_value._value._string, strlen(node->_value._value._string), false, &outLength);
-      if (escapedString) {
-        AppendString(generator, escapedString);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString); 
-      }
-      else {
-        generator->_error = true;
-      }
-      AppendString(generator, "'");
-      break;
-    }
+  if (!TRI_ValueJavascriptAql(GetBuffer(generator), &node->_value, node->_value._type)) {
+    generator->_error = true;
   }
 }
 
@@ -360,12 +326,12 @@ static void HandleArray (TRI_aql_codegen_js_t* const generator,
     }
     DumpNode(generator, TRI_AQL_NODE_MEMBER(node, i));
   }
- AppendString(generator, " }");
-}
+  AppendString(generator, " }");
+} 
 
 static void HandleArrayElement (TRI_aql_codegen_js_t* const generator, 
                                 const TRI_aql_node_t* const node) {
-  AppendQuoted(generator, TRI_AQL_NODE_STRING(node));
+  TRI_ValueJavascriptAql(GetBuffer(generator), &node->_value, AQL_TYPE_STRING);
   AppendString(generator, " : ");
   DumpNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 }
@@ -601,7 +567,7 @@ static void HandleBinaryIn (TRI_aql_codegen_js_t* const generator,
 static void HandleFcall (TRI_aql_codegen_js_t* const generator,
                          const TRI_aql_node_t* const node) {
   AppendString(generator, "AHUACATL_FCALL(");
-  AppendString(generator, TRI_AQL_NODE_STRING(node));
+  AppendString(generator, TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
   AppendString(generator, ", ");
   DumpNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   AppendString(generator, ")");
@@ -927,11 +893,11 @@ static void DumpNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -939,11 +905,19 @@ static void DumpNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* con
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free memory associated with a code generator
+////////////////////////////////////////////////////////////////////////////////
+
 void TRI_FreeGeneratorAql (TRI_aql_codegen_js_t* const generator) {
   TRI_DestroyVectorPointer(&generator->_functions);
   TRI_DestroyStringBuffer(&generator->_buffer);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, generator);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a code generator
+////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void) {
   TRI_aql_codegen_js_t* generator;
@@ -962,6 +936,18 @@ TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void) {
   return generator;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @} 
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate Javascript code for the AST nodes recursively
@@ -986,7 +972,7 @@ TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const data) {
   TRI_AppendInt64StringBuffer(&generator->_buffer, (int64_t) funcIndex);
   TRI_AppendStringStringBuffer(&generator->_buffer, "({ });");
 
-//printf("GENERATED CODE:\n%s\n\n", generator->_buffer._buffer);
+  LOG_DEBUG("generated code: %s", generator->_buffer._buffer);
   return generator;
 }
 

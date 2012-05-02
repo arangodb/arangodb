@@ -683,68 +683,6 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert v8 arguments to json_t values
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
-  }
-
-  if (parameter->IsNull()) {
-    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-  
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
-  }
-
-  if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
-  }
-
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-    if (listJson) {
-      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_PushBack2ListJson(listJson, result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-        }
-      }
-    }
-    return listJson;
-  }
-
-  if (parameter->IsObject()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-    if (arrayJson) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (uint32_t j = 0; j < names->Length(); ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-        }
-      }
-    }
-    return arrayJson;
-  }
-  
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2708,7 +2646,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   // bind parameters
   TRI_json_t* parameters = NULL;
   if (argv.Length() > 1) {
-    parameters = ConvertHelper(argv[1]);
+    parameters = TRI_ObjectToJson(argv[1]);
   }
 
   if (!TRI_BindQueryContextAql(context, parameters)) {
@@ -2749,7 +2687,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(generator->_buffer._buffer), v8::String::New("query"));
       TRI_FreeGeneratorAql(generator);
 
-      TRI_json_t* json = ConvertHelper(result);
+      TRI_json_t* json = TRI_ObjectToJson(result);
       if (json) {
         TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
         if (cursorResult) {
@@ -2954,7 +2892,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
     if (jsonParameter == NULL) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
@@ -3040,7 +2978,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   else {
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
@@ -3154,7 +3092,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
 
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
       if (jsonParameter == NULL) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
@@ -3525,7 +3463,7 @@ static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int
 
   for (int j = startPos; j < endPos; ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
     if (jsonParameter == NULL) { // NOT the null json value! 
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
       return NULL;
