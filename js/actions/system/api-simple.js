@@ -51,7 +51,8 @@ var API = "_api/simple/";
 ///
 /// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip}
+///   is applied before the @LIT{limit} restriction. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -123,33 +124,21 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{latitude}: The latitude of the coordinate.
 ///
-/// @FA{latitude}
+/// - @LIT{longitude}: The longitude of the coordinate.
 ///
-/// The latitude of the coordinate.
+/// - @LIT{distance}: If given, the attribute key used to store the
+///   distance. (optional)
 ///
-/// @FA{longitude}
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// The longitude of the coordinate.
+/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
+///   applied before the @LIT{limit} restriction. (optional)
 ///
-/// @FA{distance} (optional)
-///
-/// If given, the attribute key used to store the distance.
-///
-/// @FA{skip} (optional)
-///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
-///
-/// @FA{geo} (optional)
-///
-/// If given, the identifier of the geo-index to use.
+/// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
 ///
 /// @EXAMPLES
 ///
@@ -185,7 +174,9 @@ actions.defineHttp({
       actions.unsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -218,7 +209,7 @@ actions.defineHttp({
           result = result.distance(distance);
         }
 
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
       }
     }
   }

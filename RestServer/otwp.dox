@@ -92,10 +92,6 @@
 /// @section OTWPSimpleQueries Simple Queries
 /////////////////////////////////////////////
 ///
-/// @anchor OTWPSimpleQueriesAll
-/// @copydetails JSA_PUT_api_simple_all
-/// <hr>
-///
 /// @anchor OTWPSimpleQueriesByExample
 /// @copydetails JSA_PUT_api_simple_by_example
 /// <hr>
