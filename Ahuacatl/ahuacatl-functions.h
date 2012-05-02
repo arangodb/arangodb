@@ -68,6 +68,13 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void);
 void TRI_FreeFunctionsAql (TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to a function by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t*, 
+                                        const char*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a function name is valid
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -77,7 +84,7 @@ bool TRI_IsValidFunctionAql (TRI_associative_pointer_t*, const char* const);
 /// @brief get internal function name for an external one
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetInternalNameFunctionAql (TRI_associative_pointer_t*, const char* const);
+const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a function name

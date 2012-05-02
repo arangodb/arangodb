@@ -271,6 +271,7 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
     // constant folding failed
     return false;
   }
+//  TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;
 }
@@ -294,8 +295,6 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   if (!TRI_AddBarrierCollectionsAql(context)) {
     return false;
   }
-
-  // TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;
 }
@@ -514,15 +513,22 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
 
 char* TRI_RegisterStringAql (TRI_aql_context_t* const context, 
                              const char* const value, 
-                             const size_t length) {
+                             const size_t length,
+                             const bool deescape) {
   char* copy;
-  size_t outLength;
 
   if (!value) {
     ABORT_OOM
   }
 
-  copy = TRI_UnescapeUtf8String(value, length, &outLength);
+  if (deescape) {
+    size_t outLength;
+    copy = TRI_UnescapeUtf8String(value, length, &outLength);
+  }
+  else {
+    copy = TRI_DuplicateString(value);
+  }
+
   if (!copy) {
     ABORT_OOM
   }
