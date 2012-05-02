@@ -157,6 +157,7 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-constant-folder.c \
         Ahuacatl/ahuacatl-context.c \
+        Ahuacatl/ahuacatl-conversions.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \

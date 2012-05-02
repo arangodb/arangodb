@@ -170,6 +170,20 @@ void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to a function by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t* functions,
+                                        const char* const internalName) {
+  TRI_aql_function_t* function;
+  
+  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) internalName);
+  assert(function);
+
+  return function;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a function name is valid
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -186,16 +200,7 @@ bool TRI_IsValidFunctionAql (TRI_associative_pointer_t* functions,
 /// @brief get internal function name for an external one
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetInternalNameFunctionAql (TRI_associative_pointer_t* functions,
-                                      const char* const externalName) {
-  TRI_aql_function_t* function;
-  
-  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, externalName);
-
-  if (!function) {
-    return NULL;
-  }
-
+const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const function) {
   return function->_internalName;
 }
 
@@ -233,6 +238,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
 
   function->_minArgs = minArgs; 
   function->_maxArgs = maxArgs; 
+  function->_isDeterministic = isDeterministic; 
 
   if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
     // function already registered
