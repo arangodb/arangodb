@@ -649,7 +649,7 @@ static void HandleLimit (TRI_aql_codegen_js_t* const generator,
   size_t r2 = NextRegister(generator);
   size_t funcIndex;
 
-  AppendString(generator, "result.push($);\n");
+  AppendString(generator, "result.push(AHUACATL_CLONE($));\n");
   CloseForLoops(generator);
   AppendString(generator, "result = AHUACATL_LIMIT(result, ");
   DumpNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
