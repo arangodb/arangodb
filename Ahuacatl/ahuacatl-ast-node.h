@@ -50,7 +50,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief indexes of variable subnodes and their meanings
+/// @brief indexes of node members and their meanings
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_AQL_IDX_FOR_VARIABLE                                              0
@@ -119,7 +119,7 @@ extern "C" {
 /// @brief access the nth subnode of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_AQL_NODE_SUBNODE(node, n) (TRI_aql_node_t*) node->_subNodes._buffer[n]
+#define TRI_AQL_NODE_MEMBER(node, n) (TRI_aql_node_t*) node->_members._buffer[n]
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -140,7 +140,6 @@ extern "C" {
 
 typedef enum {
   AQL_NODE_UNDEFINED = 0,
-  AQL_NODE_MAIN, 
   AQL_NODE_FOR,
   AQL_NODE_LET,
   AQL_NODE_FILTER,
@@ -204,7 +203,6 @@ TRI_aql_value_type_e;
 ////////////////////////////////////////////////////////////////////////////////
   
 typedef struct TRI_aql_value_s {
-  TRI_aql_value_type_e _type;
   union {
     int64_t _int;
     double _double;
@@ -212,6 +210,7 @@ typedef struct TRI_aql_value_s {
     char* _string;
     void* _data;
   } _value;
+  TRI_aql_value_type_e _type;
 } 
 TRI_aql_value_t;
 
@@ -220,10 +219,10 @@ TRI_aql_value_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_node_s {
+  TRI_vector_pointer_t _members;
+  struct TRI_aql_node_s* _next;
   TRI_aql_node_type_e _type;
   TRI_aql_value_t _value;
-  TRI_vector_pointer_t _subNodes;
-  struct TRI_aql_node_s* _next;
 }
 TRI_aql_node_t;
 
@@ -245,12 +244,6 @@ TRI_aql_node_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 const char* TRI_NodeNameAql (const TRI_aql_node_type_e);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST main node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_CreateNodeMainAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node

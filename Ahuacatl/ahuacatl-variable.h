@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, AST to JS code generator
+/// @brief Ahuacatl, variables
 ///
 /// @file
 ///
@@ -25,17 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_AST_CODEGEN_JS_H
-#define TRIAGENS_DURHAM_AHUACATL_AST_CODEGEN_JS_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_VARIABLE_H
+#define TRIAGENS_DURHAM_AHUACATL_VARIABLE_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
+#include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
-#include <BasicsC/conversions.h>
 #include <BasicsC/associative.h>
-
-#include "Ahuacatl/ahuacatl-ast-node.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,43 +48,39 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enumeration of scope types
+/// @brief a query variable
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  AQL_CODE_SCOPE_STANDALONE = 0,
-  AQL_CODE_SCOPE_RESULT     = 1,
-  AQL_CODE_SCOPE_COMPARE    = 2
+typedef struct TRI_aql_variable_s {
+  char* _name;
+  size_t _index;
 }
-TRI_aql_code_scope_type_e;
+TRI_aql_variable_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a function scope created by the code generator
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_codegen_scope_s {
-  TRI_aql_code_scope_type_e _type;
-  TRI_string_buffer_t* _buffer;
-  char* _funcName;
-  char* _variablePrefix;
-  size_t _forLoops;
-  size_t _indent;
-}
-TRI_aql_codegen_scope_t;
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the code generator
+/// @addtogroup Ahuacatl
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_codegen_s {
-  TRI_string_buffer_t _buffer;
-  TRI_vector_pointer_t _scopes;
-  size_t _funcIndex;
-  bool _error;
-  char* _funcName;
-  TRI_vector_pointer_t _strings;
-}
-TRI_aql_codegen_t;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a new variable
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_variable_t* TRI_CreateVariableAql (const char* const, const size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an existing variable
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeVariableAql (TRI_aql_variable_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -103,22 +96,22 @@ TRI_aql_codegen_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a code generator 
+/// @brief hash variable 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_codegen_t* TRI_CreateCodegenAql (void);
+uint64_t TRI_HashVariableAql (TRI_associative_pointer_t*, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the code generator 
+/// @brief comparison function used to determine variable equality
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeCodegenAql (TRI_aql_codegen_t* const);
+bool TRI_EqualVariableAql (TRI_associative_pointer_t*, void const*, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate Javascript code for the AST nodes recursively
+/// @brief checks if a variable name follows the required naming convention 
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (const void* const);
+bool TRI_IsValidVariableNameAql (const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

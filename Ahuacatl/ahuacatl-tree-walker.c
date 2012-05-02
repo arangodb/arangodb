@@ -48,17 +48,17 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_modify_tree_walker_t* const walker,
 
   while (node) {
     size_t i;
-    size_t n = node->_subNodes._length;
+    size_t n = node->_members._length;
 
-    // process subnodes first
+    // process members first
     for (i = 0; i < n; ++i) {
-      TRI_aql_node_t* subNode = (TRI_aql_node_t*) node->_subNodes._buffer[i];
+      TRI_aql_node_t* member = (TRI_aql_node_t*) node->_members._buffer[i];
 
-      if (!subNode) {
+      if (!member) {
         continue;
       }
 
-      node->_subNodes._buffer[i] = ModifyNode(walker, subNode);
+      node->_members._buffer[i] = ModifyNode(walker, member);
     }
     
     // the visit function might set it to NULL
@@ -158,21 +158,21 @@ static void ProcessNode (TRI_aql_const_tree_walker_t* const walker,
 
   while (node) {
     size_t i;
-    size_t n = node->_subNodes._length;
+    size_t n = node->_members._length;
 
     if (walker->preVisitFunc) {
       walker->preVisitFunc(walker->_data, node);
     }
 
-    // process subnodes first
+    // process members first
     for (i = 0; i < n; ++i) {
-      TRI_aql_node_t* subNode = (TRI_aql_node_t*) node->_subNodes._buffer[i];
+      TRI_aql_node_t* member = (TRI_aql_node_t*) node->_members._buffer[i];
 
-      if (!subNode) {
+      if (!member) {
         continue;
       }
 
-      ProcessNode(walker, subNode);
+      ProcessNode(walker, member);
     }
    
     if (walker->postVisitFunc) { 
