@@ -38,9 +38,33 @@ var actions = require("actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a query and return information about it
+///
+/// @REST{POST /_api/query}
+///
+/// To validate a query string without executing it, the query string can be 
+/// passed to the server via an HTTP POST request.
+///
+/// These query string needs to be passed in the attribute @LIT{query} of a 
+/// JSON object as the body of the POST request.
+///
+/// The server will respond with @LIT{HTTP 400} or @LIT{HTTP 500} in case of a
+/// malformed request or a general error.
+/// If the query contains a parse error, the server will respond with an
+/// @LIT{HTTP 404} error. 
+///
+/// The body of the response will contain the error details embedded in a JSON
+/// object.
+///
+/// @verbinclude querypostfail
+///
+/// If the query is valid, the server will respond with @LIT{HTTP 200} and return
+/// the names of the bind parameters it found in the query (if any) in the 
+/// @LIT{"bindVars"} attribute of the response. 
+///
+/// @verbinclude querypost
 ////////////////////////////////////////////////////////////////////////////////
 
-function postQuery(req, res) {
+function POST_api_query (req, res) {
   if (req.suffix.length != 0) {
     actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
@@ -84,7 +108,7 @@ actions.defineHttp({
   callback : function (req, res) {
     switch (req.requestType) {
       case (actions.POST) : 
-        postQuery(req, res); 
+        POST_api_query(req, res); 
         break;
 
       default:

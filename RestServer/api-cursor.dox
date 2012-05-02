@@ -21,7 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,8 +29,20 @@
 /// @page HttpCursorTOC
 ///
 /// <ol>
-///  <li>@ref HttpCursorPut "PUT /_api/cursor/cursor-identifier"</li>
-///  <li>@ref HttpCursorDelete "DELETE /_api/cursor/cursor-identifier"</li>
+///  <li>@ref HttpCursorResults
+///   <ol>
+///    <li>@ref HttpCursorResultsSingle</li>
+///    <li>@ref HttpCursorResultsCursor</li>
+///   </ol>
+///  </li>
+///  <li>@ref HttpCursorHttp
+///   <ol>
+///    <li>@ref HttpCursorPost "POST /_api/cursor"</li>
+///    <li>@ref HttpCursorPostQuery "POST /_api/query"</li>
+///    <li>@ref HttpCursorPut "PUT /_api/cursor/cursor-identifier"</li>
+///    <li>@ref HttpCursorDelete "DELETE /_api/cursor/cursor-identifier"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,6 +59,61 @@
 ///
 /// <hr>
 /// @copydoc HttpCursorTOC
+/// <hr>
+///
+/// To run a select query, the query details need to be shipped from the client
+/// to the server via a HTTP POST request. 
+///
+/// @section HttpCursorResults Retrieving query results
+///////////////////////////////////////////////////////
+///
+/// Select queries are executed on-the-fly on the server and the result set will
+/// be returned back to the client.
+///
+/// There are two ways the client can get the result set from the server:
+///
+/// - in a single roundtrip
+///
+/// - using a cursor
+///
+/// @subsection HttpCursorResultsSingle Single roundtrip
+////////////////////////////////////////////////////////
+///
+/// The server will only transfer a certain number of result documents back to
+/// the client in one roundtrip. This number is controllable by the client by
+/// setting the @LIT{batchSize} attribute when issueing the query.
+///
+/// If the complete result can be transferred to the client in one go, the client 
+/// does not need to issue any further request. The client can check whether
+/// it has retrieved the complete result set by checking the @LIT{hasMore} 
+/// attribute of the result set. If it is set to false, then the client has 
+/// fetched the complete result set from the server.
+///
+/// @subsection HttpCursorResultsCursor Using a Cursor
+//////////////////////////////////////////////////////
+///
+/// If the result set contains more documents than should be transferred in a
+/// single roundtrip (i.e. as set via the @LIT{batchSize} attribute), the server
+/// will return the first few documents and create a temporary cursor. The
+/// cursor id will also be returned to the client. The server will put the
+/// cursor id in the @LIT{id} attribute of the response object. Furthermore,
+/// the @LIT{hasMore} attribute of the response object will be set to
+/// @LIT{true}. This is an indication for the client that there are additional
+/// results to fetch from the server.
+///
+/// @EXAMPLES
+///
+/// @verbinclude cursorput1
+///
+/// @section HttpCursorHttp Accessing Cursors via Http
+//////////////////////////////////////////////////////
+///
+/// @anchor HttpCursorPost
+/// @copydetails JSF_POST_api_cursor
+/// <hr>
+///
+/// @anchor HttpCursorPostQuery
+/// @copydetails JSF_POST_api_query
 /// <hr>
 ///
 /// @anchor HttpCursorPut
