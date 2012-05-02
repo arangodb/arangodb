@@ -8,4 +8,5 @@ rspec --format d \
 	rest-read-document-spec.rb \
 	rest-update-document-spec.rb \
 	rest-delete-document-spec.rb \
-	rest-edge-spec.rb
+	rest-edge-spec.rb \
+        api-cursor-spec.rb

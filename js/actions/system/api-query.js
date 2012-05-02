@@ -41,27 +41,29 @@ var actions = require("actions");
 ///
 /// @REST{POST /_api/query}
 ///
-/// To validate a query string without executing it, the query string can be 
+/// To validate a query string without executing it, the query string can be
 /// passed to the server via an HTTP POST request.
 ///
-/// These query string needs to be passed in the attribute @LIT{query} of a 
-/// JSON object as the body of the POST request.
+/// These query string needs to be passed in the attribute @LIT{query} of a JSON
+/// object as the body of the POST request.
 ///
-/// The server will respond with @LIT{HTTP 400} or @LIT{HTTP 500} in case of a
-/// malformed request or a general error.
-/// If the query contains a parse error, the server will respond with an
-/// @LIT{HTTP 404} error. 
+/// If the query is valid, the server will respond with @LIT{HTTP 200} and
+/// return the names of the bind parameters it found in the query (if any) in
+/// the @LIT{"bindVars"} attribute of the response.
 ///
-/// The body of the response will contain the error details embedded in a JSON
-/// object.
+/// The server will respond with @LIT{HTTP 400} in case of a malformed request,
+/// or if the query contains a parse error. The body of the response will
+/// contain the error details embedded in a JSON object.
 ///
-/// @verbinclude querypostfail
+/// @EXAMPLES
 ///
-/// If the query is valid, the server will respond with @LIT{HTTP 200} and return
-/// the names of the bind parameters it found in the query (if any) in the 
-/// @LIT{"bindVars"} attribute of the response. 
+/// Valid query:
 ///
-/// @verbinclude querypost
+/// @verbinclude api-query-valid
+///
+/// Invalid query:
+///
+/// @verbinclude api-query-invalid
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_query (req, res) {
@@ -70,15 +72,24 @@ function POST_api_query (req, res) {
     return;
   }
 
-  try {
-    var json = JSON.parse(req.requestBody);
-      
-    if (!json || !(json instanceof Object) || json.query == undefined) {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
-      return;
-    }
+  var json;
 
+  try {
+    json = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+      
+  if (! json || ! (json instanceof Object)) {
+    actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+    return;
+  }
+
+  try {
     var result = AHUACATL_PARSE(json.query);
+
     if (result instanceof AvocadoError) {
       actions.resultBad(req, res, result.errorNum, result.errorMessage);
       return;

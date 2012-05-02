@@ -89,21 +89,39 @@
 /// attribute of the result set. If it is set to false, then the client has 
 /// fetched the complete result set from the server.
 ///
+/// @EXAMPLES
+///
+/// @verbinclude api-cursor-create-for-limit-return-single
+///
 /// @subsection HttpCursorResultsCursor Using a Cursor
 //////////////////////////////////////////////////////
 ///
 /// If the result set contains more documents than should be transferred in a
 /// single roundtrip (i.e. as set via the @LIT{batchSize} attribute), the server
 /// will return the first few documents and create a temporary cursor. The
-/// cursor id will also be returned to the client. The server will put the
-/// cursor id in the @LIT{id} attribute of the response object. Furthermore,
-/// the @LIT{hasMore} attribute of the response object will be set to
-/// @LIT{true}. This is an indication for the client that there are additional
-/// results to fetch from the server.
+/// cursor identifier will also be returned to the client. The server will put
+/// the cursor identifier in the @LIT{id} attribute of the response
+/// object. Furthermore, the @LIT{hasMore} attribute of the response object will
+/// be set to @LIT{true}. This is an indication for the client that there are
+/// additional results to fetch from the server.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude cursorput1
+/// Create and extract first batch:
+///
+/// @verbinclude api-cursor-create-for-limit-return
+///
+/// Extract next batch, still have more:
+///
+/// @verbinclude api-cursor-create-for-limit-return-cont
+///
+/// Extract next batch, done:
+///
+/// @verbinclude api-cursor-create-for-limit-return-cont2
+///
+/// Do not do this:
+///
+/// @verbinclude api-cursor-create-for-limit-return-cont3
 ///
 /// @section HttpCursorHttp Accessing Cursors via Http
 //////////////////////////////////////////////////////

@@ -962,6 +962,7 @@ WIKI = \
 	Graphs \
 	Home \
 	HttpCollection \
+	HttpCursor \
 	HttpIndex \
 	HttpInterface \
 	HttpSystem \
@@ -2939,7 +2940,6 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w.md; done
 
 .setup-directories:
 	@test -d js || mkdir js
