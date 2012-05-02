@@ -1884,11 +1884,11 @@ AvocadoQueryCursor.prototype.next = function () {
     this._hasNext = false;
     this._pos = 0;
     
-    if (this._hasMore && this.data._id) {
+    if (this._hasMore && this.data.id) {
       this._hasMore = false;
       
       // load more results      
-      var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
+      var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data.id),  "");
     
       TRI_CheckRequestResult(requestResult);
       
@@ -1935,16 +1935,16 @@ AvocadoQueryCursor.prototype.elements = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.dispose = function () {
-  if (!this.data._id) {
+  if (!this.data.id) {
     // client side only cursor
     return;
   }
 
-  var requestResult = this._database._connection.DELETE("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
+  var requestResult = this._database._connection.DELETE("/_api/cursor/"+ encodeURIComponent(this.data.id), "");
     
   TRI_CheckRequestResult(requestResult);
 
-  this.data._id = undefined;
+  this.data.id = undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1958,7 +1958,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.count = function () {
-  if (!this.data._id) {
+  if (!this.data.id) {
     throw "cursor has been disposed";
   }
 

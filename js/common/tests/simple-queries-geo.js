@@ -39,7 +39,7 @@ function aqlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function setUp () {
-    this.collection1 = db.UnitTestsGeoAttributes;
+    this.collection1 = internal.db.UnitTestsGeoAttributes;
 
     if (this.collection1.count() == 0) {
       for (var lat = -90;  lat <= 90;  lat += 5) {
@@ -50,7 +50,7 @@ function aqlGeoTestSuite () {
     }
 
     this.documents1 = this.collection1.T_toArray();
-    this.index1 = db.UnitTestsGeoAttributes.ensureGeoIndex("lat", "lon");
+    this.index1 = internal.db.UnitTestsGeoAttributes.ensureGeoIndex("lat", "lon");
   }
 
 ////////////////////////////////////////////////////////////////////////////////

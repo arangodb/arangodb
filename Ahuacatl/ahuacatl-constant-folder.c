@@ -29,7 +29,7 @@
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
-#include "V8/v8-c-utils.h"
+#include "V8/v8-execution.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

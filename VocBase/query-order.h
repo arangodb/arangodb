@@ -28,10 +28,10 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_ORDER_H
 #define TRIAGENS_DURHAM_VOC_BASE_ORDER_H 1
 
-#include "VocBase/vocbase.h"
-#include "VocBase/query-result.h"
+#include "V8/v8-execution.h"
 #include "VocBase/query-context.h"
-#include "V8/v8-c-utils.h"
+#include "VocBase/query-result.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {

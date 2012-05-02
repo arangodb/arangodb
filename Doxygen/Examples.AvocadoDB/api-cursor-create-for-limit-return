@@ -1,0 +1,25 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
+{ "query" : "FOR u IN users LIMIT 5 RETURN u", "count" : true, "batchSize" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "hasMore": true,
+  "error": false,
+  "id": 26011191,
+  "result": [
+    {
+      "n": 0,
+      "_rev": 25880119,
+      "_id": "23914039/25880119"
+    },
+    {
+      "n": 1,
+      "_rev": 25880119,
+      "_id": "23914039/25880119"
+    }
+  ],
+  "code": 201,
+  "count": 5
+}
