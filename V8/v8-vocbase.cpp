@@ -2831,6 +2831,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   // bind parameters
   TRI_json_t* parameters = 0;
+
   if (argv.Length() > 1) {
     parameters = TRI_JsonObject(argv[1]);
   }
@@ -2874,10 +2875,13 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       TRI_FreeGeneratorAql(generator);
 
       TRI_json_t* json = TRI_JsonObject(result);
+
       if (json) {
         TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
+
         if (cursorResult) {
           cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+
           if (!cursor) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -3079,6 +3083,7 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
     TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
     if (jsonParameter == 0) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
@@ -3165,6 +3170,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
       TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
       if (jsonParameter == 0) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
@@ -3279,6 +3285,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
       TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
       if (jsonParameter == 0) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
@@ -3650,6 +3657,7 @@ static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int
   for (int j = startPos; j < endPos; ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
     TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
     if (jsonParameter == 0) { // NOT the null json value! 
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
       return 0;

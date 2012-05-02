@@ -143,8 +143,10 @@ static void DumpNode (void* data, const TRI_aql_node_t* const node) {
     case AQL_NODE_PARAMETER:
     case AQL_NODE_ARRAY_ELEMENT:
     case AQL_NODE_ATTRIBUTE_ACCESS:
-    case AQL_NODE_FCALL:
       DumpString(state, node);
+      break;
+    case AQL_NODE_FCALL:
+      printf("name: %s\n", TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
       break;
 
     case AQL_NODE_SORT_ELEMENT:

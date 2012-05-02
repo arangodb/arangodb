@@ -1353,7 +1353,7 @@ YY_RULE_SETUP
 case 39:
 YY_RULE_SETUP
 { 
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext)); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_STRING; 
 }
 	YY_BREAK
@@ -1361,7 +1361,7 @@ case 40:
 /* rule 40 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_STRING;
 }
 	YY_BREAK
@@ -1369,7 +1369,7 @@ case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1377,14 +1377,14 @@ case 42:
 /* rule 42 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
 {  
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext)); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_NUMBER;
 }
 	YY_BREAK
@@ -1394,7 +1394,7 @@ YY_RULE_SETUP
 case 44:
 YY_RULE_SETUP
 {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1, false); 
   return T_PARAMETER;
 }
 	YY_BREAK

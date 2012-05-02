@@ -215,27 +215,27 @@
   * --------------------------------------------------------------------------- */
 
 ([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext)); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_STRING; 
 }
 
 `(\\.|[^\\`])*` {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_STRING;
 }
 
 \"(\\.|[^\\\"])*\" {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 
 '(\\.|[^\\'])*' {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 
 (0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext)); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_NUMBER;
 }
 
@@ -244,7 +244,7 @@
   * --------------------------------------------------------------------------- */
 
 @[a-zA-Z][a-zA-Z0-9_]* {
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1, false); 
   return T_PARAMETER;
 }
 

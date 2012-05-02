@@ -86,7 +86,7 @@ static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
   }
 
   return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
-}
+} 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds attributes to array

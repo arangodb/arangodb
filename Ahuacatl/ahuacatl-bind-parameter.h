@@ -37,6 +37,7 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus

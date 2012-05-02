@@ -26,6 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-constant-folder.h"
+#include "Ahuacatl/ahuacatl-conversions.h"
+#include "Ahuacatl/ahuacatl-functions.h"
+
+#include "V8/v8-execution.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -35,6 +39,119 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create code for a function call
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_string_buffer_t* FcallCode(const char* const name, 
+                                      const TRI_aql_node_t* const args) {
+  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  size_t i;
+  size_t n;
+
+  if (!buffer) {
+    return NULL;
+  }
+  
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){return ") != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return NULL;
+  }
+  
+  if (TRI_AppendStringStringBuffer(buffer, name) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return NULL;
+  }
+
+  if (TRI_AppendCharStringBuffer(buffer, '(') != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return NULL;
+  }
+
+  n = args->_members._length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* arg = (TRI_aql_node_t*) args->_members._buffer[i];
+    if (i > 0) {
+      if (TRI_AppendCharStringBuffer(buffer, ',') != TRI_ERROR_NO_ERROR) {
+        TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+        return NULL;
+      }
+    }
+
+    if (!TRI_NodeJavascriptAql(buffer, arg)) {
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      return NULL;
+    }
+  }
+
+  if (TRI_AppendStringStringBuffer(buffer, ");})") != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return NULL;
+  }
+
+  return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise a function call
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
+                                       TRI_aql_node_t* node) {
+  TRI_aql_node_t* args = (TRI_aql_node_t*) node->_members._buffer[0];
+  TRI_aql_function_t* function;
+  TRI_js_exec_context_t* execContext;
+  TRI_string_buffer_t* code;
+  TRI_json_t* json;
+  size_t i;
+  size_t n;
+
+  function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
+  assert(function);
+
+  // check if function is deterministic
+  if (!function->_isDeterministic) {
+    return node;
+  }
+
+  // check if function call arguments are deterministic
+  n = args->_members._length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* arg = (TRI_aql_node_t*) args->_members._buffer[i];
+
+    if (!arg || !TRI_IsConstantValueNodeAql(arg)) {
+      return node;
+    }
+  }
+ 
+  // all arguments are constants
+  code = FcallCode(function->_internalName, args);
+  if (!code) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+
+  execContext = TRI_CreateExecutionContext(code->_buffer);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
+
+  if (!execContext) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+
+  json = TRI_ExecuteResultContext(execContext);
+  if (!json) {
+    TRI_FreeExecutionContext(execContext);
+    return NULL;
+  }
+
+  node = TRI_JsonNodeAql(context, json);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return node;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise an arithmetic operation with one operand
@@ -53,7 +170,6 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
-
 
   assert(node->_type == AQL_NODE_OPERATOR_UNARY_PLUS ||
          node->_type == AQL_NODE_OPERATOR_UNARY_MINUS);
@@ -276,6 +392,8 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
     case AQL_NODE_OPERATOR_BINARY_DIV:
     case AQL_NODE_OPERATOR_BINARY_MOD:
       return OptimiseBinaryArithmeticOperation(context, node);
+    case AQL_NODE_FCALL:
+      return OptimiseFcall(context, node);
     default: 
       break;
   }

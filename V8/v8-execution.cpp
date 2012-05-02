@@ -678,6 +678,28 @@ bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a result context
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+  // convert back into a handle
+  v8::Persistent<v8::Function> func = ctx->_func;
+
+  // and execute the function
+  v8::Handle<v8::Value> args[] = { ctx->_arguments };
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+  
+  if (result.IsEmpty()) {
+    return NULL;
+  }
+
+  return TRI_ObjectToJson(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
