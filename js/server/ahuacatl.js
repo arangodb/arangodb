@@ -1392,6 +1392,38 @@ function AHUACATL_MIN () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sum of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_SUM () {
+  var result = null;
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  for (var i in value) {
+    var currentValue = value[i];
+    
+    if (AHUACATL_TYPEWEIGHT(currentValue) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+
+    if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+      throw "expecting number for sum";
+    }
+    
+    if (result === null) {
+      result = currentValue;
+    }
+    else {
+      result += currentValue;
+    }
+  }
+
+  return AHUACATL_NUMERIC_VALUE(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
