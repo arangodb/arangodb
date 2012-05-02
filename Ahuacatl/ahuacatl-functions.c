@@ -40,8 +40,8 @@
 /// @brief shorthand to register a query function and process the result
 ////////////////////////////////////////////////////////////////////////////////
 
-#define REGISTER_FUNCTION(internalName, externalName, deterministic, minArgs, maxArgs) \
-  result &= TRI_RegisterFunctionAql (functions, internalName, "AHUACATL_" externalName, deterministic, minArgs, maxArgs);
+#define REGISTER_FUNCTION(internalName, externalName, deterministic, group, minArgs, maxArgs) \
+  result &= TRI_RegisterFunctionAql (functions, internalName, "AHUACATL_" externalName, deterministic, group, minArgs, maxArgs);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -114,30 +114,37 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
                              NULL); 
 
   // cast functions
-  REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, 1, 1);
-  REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, 1, 1);
-  REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, 1, 1);
-  REGISTER_FUNCTION("TONULL", "CAST_NULL", true, 1, 1);
+  REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, false, 1, 1);
+  REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, false, 1, 1);
+  REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, false, 1, 1);
+  REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, 1, 1);
+
+  // string concat
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, 2, 256); 
 
   // type check functions
-  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, 1, 1);
-  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, 1, 1);
-  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, 1, 1);
-  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, 1, 1);
-  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, 1, 1);
-  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, 1, 1);
-  
-  // string concat
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, 2, 256); 
-  
-  // numeric functions
+  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, 1, 1);
+  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, 1, 1);
+  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, 1, 1);
+  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, 1, 1);
+  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, 1, 1);
+  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, 1, 1);
+
+  // numeric functions 
+  REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, 1, 1);
+  REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, 1, 1);
+  REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, 1, 1);
+  REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, 1, 1);
+  REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, 0, 0);
   
   // string functions
   
   // misc functions
-  REGISTER_FUNCTION("MERGE", "MERGE", true, 2, 256);
-  REGISTER_FUNCTION("UNION", "UNION", true, 2, 256);
-  REGISTER_FUNCTION("LENGTH", "LENGTH", true, 1, 1);
+  REGISTER_FUNCTION("MERGE", "MERGE", true, false, 2, 256);
+  REGISTER_FUNCTION("UNION", "UNION", true, false, 2, 256);
+  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, 1, 1);
+  REGISTER_FUNCTION("MIN", "MIN", true, true, 1, 256);
+  REGISTER_FUNCTION("MAX", "MAX", true, true, 1, 256);
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
@@ -212,6 +219,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
                               const char* const externalName, 
                               const char* const internalName, 
                               const bool isDeterministic,
+                              const bool isGroup,
                               const int minArgs, 
                               const int maxArgs) {
   TRI_aql_function_t* function;
@@ -236,9 +244,10 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     return false;
   }
 
+  function->_isDeterministic = isDeterministic; 
+  function->_isGroup = isGroup; 
   function->_minArgs = minArgs; 
   function->_maxArgs = maxArgs; 
-  function->_isDeterministic = isDeterministic; 
 
   if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
     // function already registered

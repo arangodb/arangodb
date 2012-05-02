@@ -54,7 +54,7 @@ static TRI_string_buffer_t* FcallCode(const char* const name,
     return NULL;
   }
   
-  if (TRI_AppendStringStringBuffer(buffer, "(function(){return ") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){return AHUACATL_FCALL(") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -64,7 +64,7 @@ static TRI_string_buffer_t* FcallCode(const char* const name,
     return NULL;
   }
 
-  if (TRI_AppendCharStringBuffer(buffer, '(') != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, ",[") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -85,7 +85,7 @@ static TRI_string_buffer_t* FcallCode(const char* const name,
     }
   }
 
-  if (TRI_AppendStringStringBuffer(buffer, ");})") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "]);})") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -143,6 +143,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   json = TRI_ExecuteResultContext(execContext);
   if (!json) {
     TRI_FreeExecutionContext(execContext);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
     return NULL;
   }
 
@@ -166,8 +167,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
   }
 
   if (!TRI_IsNumericValueNodeAql(operand)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
@@ -202,8 +202,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
   }
 
   if (!TRI_IsBooleanValueNodeAql(operand)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
   
@@ -240,14 +239,12 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
 
   if (isEligibleLhs && !TRI_IsBooleanValueNodeAql(lhs)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (isEligibleRhs && !TRI_IsBooleanValueNodeAql(rhs)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
@@ -304,20 +301,13 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
   
   if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
+
   
   if (isEligibleRhs && !TRI_IsNumericValueNodeAql(rhs)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return node;
-  }
-  
-  if (TRI_IsConstantValueNodeAql(rhs) && !TRI_IsNumericValueNodeAql(rhs)) {
-    // todo: fix error message
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
   
@@ -342,16 +332,14 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
-      // todo: fix error message
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
       return node;
     }
     value = TRI_GetNumericNodeValueAql(lhs) / TRI_GetNumericNodeValueAql(rhs);
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
-      // todo: fix error message
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
       return node;
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
