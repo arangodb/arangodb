@@ -55,42 +55,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash variable 
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashVariable (TRI_associative_pointer_t* array, 
-                              void const* element) {
-  TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
-
-  return TRI_FnvHashString(variable->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine variable equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualVariable (TRI_associative_pointer_t* array, 
-                           void const* key, 
-                           void const* element) {
-  TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
-
-  return TRI_EqualString(key, variable->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @} 
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -113,6 +77,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   }
 
   context->_vocbase = vocbase;
+  context->_variableIndex = 0;
   
   // actual bind parameter values
   TRI_InitAssociativePointer(&context->_parameterValues,
@@ -138,7 +103,6 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
   
-  TRI_InitVectorPointer(&context->_stack, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_nodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_strings, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
@@ -213,15 +177,12 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   while (i--) {
     TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
     if (node) {
-      TRI_DestroyVectorPointer(&node->_subNodes);
+      TRI_DestroyVectorPointer(&node->_members);
       // free node itself
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
     }
   }
   TRI_DestroyVectorPointer(&context->_nodes);
-
-  // free the stack
-  TRI_DestroyVectorPointer(&context->_stack);
 
   // free parameter names hash
   TRI_DestroyAssociativePointer(&context->_parameterNames);
@@ -268,6 +229,7 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
+//  TRI_DumpTreeAql(context->_first);
   return true;
 }
 
@@ -353,8 +315,8 @@ TRI_aql_scope_t* TRI_CreateScopeAql (void) {
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
-                             HashVariable,
-                             EqualVariable, 
+                             TRI_HashVariableAql,
+                             TRI_EqualVariableAql, 
                              0);
   
   scope->_first = NULL;
@@ -424,45 +386,6 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief push something on the stack
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_PushStackAql (TRI_aql_context_t* const context, 
-                       const void* const value) {
-  assert(context);
-
-  if (!value) {
-    ABORT_OOM
-  }
-
-  TRI_PushBackVectorPointer(&context->_stack, (void*) value);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pop something from the stack
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_PopStackAql (TRI_aql_context_t* const context) {
-  assert(context);
-  assert(context->_stack._length > 0);
-
-  return TRI_RemoveVectorPointer(&context->_stack, context->_stack._length - 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief peek at the end of the stack
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_PeekStackAql (TRI_aql_context_t* const context) {
-  assert(context);
-  assert(context->_stack._length > 0);
-
-  return context->_stack._buffer[context->_stack._length - 1];
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get first statement in the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -488,19 +411,20 @@ void* TRI_GetFirstStatementAql (TRI_aql_context_t* const context) {
 
 bool TRI_AddStatementAql (TRI_aql_context_t* const context, 
                           const void* const statement) {
-  TRI_aql_scope_t* scope;
-  size_t length;
 
+  TRI_aql_scope_t* scope;
+  size_t n;
+ 
   assert(context);
   assert(statement);
+        
+  n = context->_scopes._length;
+  assert(n > 0);
 
-  length = context->_scopes._length;
-
-  assert(length > 0);
-
-  scope = (TRI_aql_scope_t*) context->_scopes._buffer[length - 1];
+  scope = (TRI_aql_scope_t*) context->_scopes._buffer[n - 1];
+          
   if (!scope->_first) {
-    if (length == 1 && !context->_first) {
+    if (n == 1 && !context->_first) {
       // first ever statement on outermost scope
       context->_first = (void*) statement;
     }
@@ -510,11 +434,10 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
   }
   else {
     TRI_aql_node_t* node = (TRI_aql_node_t*) scope->_last;
-
     node->_next = (void*) statement;
     scope->_last = (void*) statement;
   }
-
+                  
   return true;
 }
 
@@ -524,9 +447,10 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
 
 TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
+  size_t n;
 
   assert(context);
-
+  n = context->_scopes._length;
   scope = TRI_CreateScopeAql();
   if (!scope) {
     ABORT_OOM
@@ -542,52 +466,16 @@ TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
 
 void TRI_EndScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
-  size_t length;
-//size_t i;
+  size_t n;
 
   assert(context);
 
-  length = context->_scopes._length;
-
-  assert(length > 0);
-
-  scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_scopes, length - 1);
-  
+  n = context->_scopes._length;
+  assert(n > 0);
+  scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_scopes, n - 1);
   assert(scope);
-/*
-for (i = 0; i < scope->_variables._nrAlloc; i++) {
-  if (scope->_variables._table[i]) {
-    printf("END VARIABLE IN SCOPE: %s\n", ((TRI_aql_variable_t*) scope->_variables._table[i])->_name);
-  }
-}
-*/
-  TRI_FreeScopeAql(scope);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move the contents of the outermost variable scope into the previous 
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExchangeScopeContextAql (TRI_aql_context_t* const context) {
-  TRI_aql_scope_t* scope;
-  size_t length;
-
-  assert(context);
-  
-  length = context->_scopes._length;
-
-  assert(length > 1);
-  
-  scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_scopes, length - 2);
-printf("EXCHANGING SCOPE\n");
-  if (!scope) {
-    // signal OOM
-    return false;
-  }
 
   TRI_FreeScopeAql(scope);
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,7 +494,7 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
     return false;
   }
 
-  variable = TRI_CreateVariableAql(name);
+  variable = TRI_CreateVariableAql(name, ++context->_variableIndex);
   if (!variable) {
     return false;
   }
@@ -618,41 +506,6 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
   assert(!TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a new variable
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) {
-  TRI_aql_variable_t* variable;
-
-  variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
-  if (!variable) {
-    return NULL;
-  }
-
-  variable->_name = TRI_DuplicateString(name);
-  if (!variable->_name) {
-    TRI_FreeVariableAql(variable);
-    return NULL;
-  }
-
-  return variable;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an existing variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
-  assert(variable);
-
-  if (variable->_name) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -708,27 +561,6 @@ bool TRI_VariableExistsAql (TRI_aql_context_t* const context,
   }
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a variable name follows the required naming convention 
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsValidVariableNameAql (const char* const name) {
-  assert(name);
-
-  if (strlen(name) == 0) {
-    // name must be at least one char long
-    return false;
-  }
-
-  if (*name == '_') {
-    // name must not start with an underscore
-    return false;
-  }
-
-  // everything else is allowed
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

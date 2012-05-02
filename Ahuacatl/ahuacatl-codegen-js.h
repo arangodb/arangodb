@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_AST_CODEGEN_JS_H
-#define TRIAGENS_DURHAM_AHUACATL_AST_CODEGEN_JS_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H
+#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
@@ -50,44 +50,29 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enumeration of scope types
-////////////////////////////////////////////////////////////////////////////////
-
 typedef enum {
-  AQL_CODE_SCOPE_STANDALONE = 0,
-  AQL_CODE_SCOPE_RESULT     = 1,
-  AQL_CODE_SCOPE_COMPARE    = 2
+  AQL_FUNCTION_STANDALONE, 
+  AQL_FUNCTION_COMPARE
 }
-TRI_aql_code_scope_type_e;
+TRI_aql_codegen_function_type_e; 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a function scope created by the code generator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_codegen_scope_s {
-  TRI_aql_code_scope_type_e _type;
-  TRI_string_buffer_t* _buffer;
-  char* _funcName;
-  char* _variablePrefix;
-  size_t _forLoops;
-  size_t _indent;
-}
-TRI_aql_codegen_scope_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the code generator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_codegen_s {
+typedef struct TRI_aql_codegen_function_s {
   TRI_string_buffer_t _buffer;
-  TRI_vector_pointer_t _scopes;
-  size_t _funcIndex;
-  bool _error;
-  char* _funcName;
-  TRI_vector_pointer_t _strings;
+  size_t _index;
+  size_t _forCount;
+  char* _prefix;
 }
-TRI_aql_codegen_t;
+
+TRI_aql_codegen_function_t;
+
+typedef struct TRI_aql_codegen_js_s {  
+  TRI_string_buffer_t _buffer;
+  TRI_vector_pointer_t _functions;
+  size_t _registerIndex;
+  size_t _functionIndex;
+  bool _error;
+}
+TRI_aql_codegen_js_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -102,23 +87,15 @@ TRI_aql_codegen_t;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a code generator 
-////////////////////////////////////////////////////////////////////////////////
+TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void);
 
-TRI_aql_codegen_t* TRI_CreateCodegenAql (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the code generator 
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCodegenAql (TRI_aql_codegen_t* const);
+void TRI_FreeGeneratorAql (TRI_aql_codegen_js_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (const void* const);
+TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
