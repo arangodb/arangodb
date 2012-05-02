@@ -106,7 +106,17 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLength : function () {
+    testLength1 : function () {
+      var expected = [ 0, 0, 0 ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ ] return q)) return LENGTH(quarters)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test length function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLength2 : function () {
       var expected = [ 4, 4, 4 ];
       var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] return q)) return LENGTH(quarters)", true);
       assertEqual(expected, actual);
@@ -116,10 +126,75 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testConcat : function () {
+    testConcat1 : function () {
       var expected = [ "theQuickBrownFoxJumps" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcat2 : function () {
+      var expected = [ "theQuickBrownアボカドJumps名称について" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', null, 'Brown', null, 'アボカド', 'Jumps', '名称について')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test floor function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFloor : function () {
+      var expected = [ -100, -3, -3, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 99 ];
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return FLOOR(r)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ceil function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCeil : function () {
+      var expected = [ -99, -3, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 100 ];
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return CEIL(r)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test abs function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAbs : function () {
+      var expected = [ 99.999, 3, 2.1, 2.01, 2, 1.99, 1.1, 1.01, 1, 0.9, 0.6, 0.5, 0.4, 0.1, 0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ];
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ABS(r)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test round function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRound : function () {
+      var expected = [ -100, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 100 ];
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rand function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRand : function () {
+      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] return RAND()", true);
+      for (var i in actual) {
+        if (!actual.hasOwnProperty(i)) {
+          continue;
+        }
+        var value = actual[i];
+        assertTrue(value >= 0.0 && value < 1.0);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +267,65 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMin1 : function () {
+      var expected = [ null, null ]; 
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MIN(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMin2 : function () {
+      var expected = [ 1, 1, 1, 1, 1, 1 ];
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MIN(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMin3 : function () {
+      var expected = [ 2, false, false, false, false, true, -1, '', 1 ];
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MIN(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMax1 : function () {
+      var expected = [ null, null ]; 
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MAX(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMax2 : function () {
+      var expected = [ 3, 3, 3, 3, 3, 3 ];
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MAX(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMax3 : function () {
+      var expected = [ '1', [ ], [ ], true, 0, 0, '0', '-1', [ ] ];
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MAX(u)", true);
+      assertEqual(expected, actual);
+    },
   };
 }
 

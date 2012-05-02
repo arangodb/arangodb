@@ -973,6 +973,7 @@ TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const data) {
   TRI_AppendStringStringBuffer(&generator->_buffer, "({ });");
 
   LOG_DEBUG("generated code: %s", generator->_buffer._buffer);
+  //printf("generated code: %s", generator->_buffer._buffer);
   return generator;
 }
 

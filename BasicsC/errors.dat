@@ -123,6 +123,11 @@ ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1523,"document attribute '%s' is assig
 ERROR_QUERY_VARIABLE_NAME_INVALID,1524,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_BIND_PARAMETERS_INVALID,1525,"invalid structure of bind parameters","Will be raised when the structure of bind parameters passed has an unexpected format."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1526,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
+ERROR_QUERY_TOO_MANY_COLLECTIONS,1527,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
+ERROR_QUERY_INVALID_LOGICAL_VALUE,1528,"invalid logical value","Will be raised when a non-boolean value is used in a logical operation."
+ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1529,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
+ERROR_QUERY_DIVISON_BY_ZERO,1530,"division by zero","Will be raised when there is an attempt to divide by zero."
+ERROR_QUERY_SCRIPT,1531,"runtime error","Will be raised when a runtime error is caused by the query."
 
 ################################################################################
 ## AvocadoDB cursor errors

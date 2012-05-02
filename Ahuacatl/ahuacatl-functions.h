@@ -52,6 +52,7 @@ typedef struct TRI_aql_function_s {
   int _minArgs;
   int _maxArgs;
   bool _isDeterministic;
+  bool _isGroup;
 }
 TRI_aql_function_t;
 
@@ -93,6 +94,7 @@ const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const);
 bool TRI_RegisterFunctionAql (TRI_associative_pointer_t*, 
                               const char* const, 
                               const char* const, 
+                              const bool,
                               const bool,
                               const int, 
                               const int);

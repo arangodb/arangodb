@@ -195,6 +195,18 @@ extern "C" {
 ///   unexpected format.
 /// - 1526: @CODE{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
+/// - 1527: @CODE{too many collections}
+///   Will be raised when the number of collections in a query is beyond the
+///   allowed value.
+/// - 1528: @CODE{invalid logical value}
+///   Will be raised when a non-boolean value is used in a logical operation.
+/// - 1529: @CODE{invalid arithmetic value}
+///   Will be raised when a non-numeric value is used in an arithmetic
+///   operation.
+/// - 1530: @CODE{division by zero}
+///   Will be raised when there is an attempt to divide by zero.
+/// - 1531: @CODE{runtime error}
+///   Will be raised when a runtime error is caused by the query.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1098,6 +1110,57 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            (1526)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1527: ERROR_QUERY_TOO_MANY_COLLECTIONS
+///
+/// too many collections
+///
+/// Will be raised when the number of collections in a query is beyond the
+/// allowed value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1527)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1528: ERROR_QUERY_INVALID_LOGICAL_VALUE
+///
+/// invalid logical value
+///
+/// Will be raised when a non-boolean value is used in a logical operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE                             (1528)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1529: ERROR_QUERY_INVALID_ARITHMETIC_VALUE
+///
+/// invalid arithmetic value
+///
+/// Will be raised when a non-numeric value is used in an arithmetic operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1529)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1530: ERROR_QUERY_DIVISON_BY_ZERO
+///
+/// division by zero
+///
+/// Will be raised when there is an attempt to divide by zero.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1530)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1531: ERROR_QUERY_SCRIPT
+///
+/// runtime error
+///
+/// Will be raised when a runtime error is caused by the query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_SCRIPT                                            (1531)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
