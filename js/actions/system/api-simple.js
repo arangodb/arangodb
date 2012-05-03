@@ -89,17 +89,22 @@ actions.defineHttp({
         actions.collectionNotFound(req, res, name);
       }
       else {
-        var result = collection.all();
+        try {
+          var result = collection.all();
 
-        if (skip != null) {
-          result = result.skip(skip);
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
-
-        if (limit != null) {
-          result = result.limit(limit);
+        catch (err) {
+          actions.resultException(req, res, err);
         }
-
-        actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
       }
     }
   }
@@ -114,8 +119,7 @@ actions.defineHttp({
 /// The default will find at most 100 documents near a given coordinate.  The
 /// returned list is sorted according to the distance, with the nearest document
 /// coming first. If there are near documents of equal distance, documents are
-/// chosen randomly from this set until the limit is reached. It is possible to
-/// change the limit using the @FA{limit} operator.
+/// chosen randomly from this set until the limit is reached.
 ///
 /// In order to use the @FN{near} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
@@ -136,19 +140,21 @@ actions.defineHttp({
 /// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
-///   applied before the @LIT{limit} restriction. (optional)
+///   applied before the @LIT{limit} restriction. The default is 100. (optional)
 ///
 /// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
 /// Without distance:
 ///
-/// @verbinclude api_simple3
+/// @verbinclude api-simple-near
 ///
 /// With distance:
 ///
-/// @verbinclude api_simple4
+/// @verbinclude api-simple-near-distance
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -188,28 +194,34 @@ actions.defineHttp({
         actions.badParameter(req, res, "longitude");
       }
       else {
-        var result;
+        try {
+          var result;
 
-        if (geo == null) {
-          result = collection.near(latitude, longitude);
+          if (geo == null) {
+            result = collection.near(latitude, longitude);
+          }
+          else {
+            result = collection.geo(geo).near(latitude, longitude);
+          }
+
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          if (distance != null) {
+            result = result.distance(distance);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
-        else {
-          result = collection.geo(geo).near(latitude, longitude);
+        catch (err) {
+          actions.resultException(req, res, err);
         }
 
-        if (skip != null) {
-          result = result.skip(skip);
-        }
-
-        if (limit != null) {
-          result = result.limit(limit);
-        }
-
-        if (distance != null) {
-          result = result.distance(distance);
-        }
-
-        actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
       }
     }
   }
