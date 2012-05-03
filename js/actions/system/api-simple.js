@@ -44,30 +44,23 @@ var API = "_api/simple/";
 ///
 /// @REST{PUT /_api/simple/all}
 ///
-/// Returns all documents of a collections. The call expects a JSON hash array
+/// Returns all documents of a collections. The call expects an JSON object
 /// as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// @FA{skip} (optional)
+/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip}
+///   is applied before the @LIT{limit} restriction. (optional)
 ///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
-/// To get all documents (NEVER DO THAT!)
-///
-/// @verbinclude api_simple1
-///
 /// Limit the amount of documents using
 ///
-/// @verbinclude api_simple2
+/// @verbinclude api-simple-all-skip-limit
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -75,33 +68,43 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
 
-    var limit = body.limit;
-    var skip = body.skip;
-    var name = body.collection;
+    if (body === undefined) {
+      return;
+    }
 
     if (req.requestType != actions.PUT) {
       actions.resultUnsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var limit = body.limit;
+      var skip = body.skip;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
       }
       else {
-        var result = collection.all();
+        try {
+          var result = collection.all();
 
-        if (skip != null) {
-          result = result.skip(skip);
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
-
-        if (limit != null) {
-          result = result.limit(limit);
+        catch (err) {
+          actions.resultException(req, res, err);
         }
-
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }
@@ -116,53 +119,42 @@ actions.defineHttp({
 /// The default will find at most 100 documents near a given coordinate.  The
 /// returned list is sorted according to the distance, with the nearest document
 /// coming first. If there are near documents of equal distance, documents are
-/// chosen randomly from this set until the limit is reached. It is possible to
-/// change the limit using the @FA{limit} operator.
+/// chosen randomly from this set until the limit is reached.
 ///
 /// In order to use the @FN{near} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
-/// the @FN{geo} operator to select a particular index.
+/// the @LIT{geo} field to select a particular index.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{latitude}: The latitude of the coordinate.
 ///
-/// @FA{latitude}
+/// - @LIT{longitude}: The longitude of the coordinate.
 ///
-/// The latitude of the coordinate.
+/// - @LIT{distance}: If given, the attribute key used to store the
+///   distance. (optional)
 ///
-/// @FA{longitude}
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// The longitude of the coordinate.
+/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
+///   applied before the @LIT{limit} restriction. The default is 100. (optional)
 ///
-/// @FA{distance} (optional)
+/// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
 ///
-/// If given, the attribute key used to store the distance.
-///
-/// @FA{skip} (optional)
-///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
-///
-/// @FA{geo} (optional)
-///
-/// If given, the identifier of the geo-index to use.
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
 /// Without distance:
 ///
-/// @verbinclude api_simple3
+/// @verbinclude api-simple-near
 ///
 /// With distance:
 ///
-/// @verbinclude api_simple4
+/// @verbinclude api-simple-near-distance
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -170,21 +162,27 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
 
-    var limit = body.limit;
-    var skip = body.skip;
-    var latitude = body.latitude;
-    var longitude = body.longitude;
-    var distance = body.distance;
-    var name = body.collection;
-    var geo = body.geo;
+    if (body === undefined) {
+      return;
+    }
 
     if (req.requestType != actions.PUT) {
       actions.unsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var limit = body.limit;
+      var skip = body.skip;
+      var latitude = body.latitude;
+      var longitude = body.longitude;
+      var distance = body.distance;
+      var name = body.collection;
+      var geo = body.geo;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -196,28 +194,33 @@ actions.defineHttp({
         actions.badParameter(req, res, "longitude");
       }
       else {
-        var result;
+        try {
+          var result;
 
-        if (geo == null) {
-          result = collection.near(latitude, longitude);
-        }
-        else {
-          result = collection.geo(geo).near(latitude, longitude);
-        }
+          if (geo == null) {
+            result = collection.near(latitude, longitude);
+          }
+          else {
+            result = collection.geo(geo).near(latitude, longitude);
+          }
 
-        if (skip != null) {
-          result = result.skip(skip);
-        }
+          if (skip != null) {
+            result = result.skip(skip);
+          }
 
-        if (limit != null) {
-          result = result.limit(limit);
-        }
+          if (limit != null) {
+            result = result.limit(limit);
+          }
 
-        if (distance != null) {
-          result = result.distance(distance);
-        }
+          if (distance != null) {
+            result = result.distance(distance);
+          }
 
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+        }
+        catch (err) {
+          actions.resultException(req, res, err);
+        }
       }
     }
   }
@@ -232,54 +235,41 @@ actions.defineHttp({
 /// This will find all documents with in a given radius around the coordinate
 /// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance.
 ///
-/// In order to use the @FN{within} operator, a geo index must be defined for the
-/// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
-/// the @FN{geo} operator to select a particular index.
+/// In order to use the @FN{within} operator, a geo index must be defined for
+/// the collection. This index also defines which attribute holds the
+/// coordinates for the document.  If you have more then one geo-spatial index,
+/// you can use the @LIT{geo} field to select a particular index.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{latitude}: The latitude of the coordinate.
 ///
-/// @FA{latitude}
+/// - @LIT{longitude}: The longitude of the coordinate.
 ///
-/// The latitude of the coordinate.
+/// - @LIT{radius}: The maximal radius.
 ///
-/// @FA{longitude}
+/// - @LIT{distance}: If given, the attribute key used to store the
+///   distance. (optional)
 ///
-/// The longitude of the coordinate.
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// @FA{radius}
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
 ///
-/// The maximal radius.
+/// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
 ///
-/// @FA{distance} (optional)
-///
-/// If given, the attribute key used to store the distance.
-///
-/// @FA{skip} (optional)
-///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
-///
-/// @FA{geo} (optional)
-///
-/// If given, the identifier of the geo-index to use.
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
 /// Without distance:
 ///
-/// @verbinclude api_simple5
+/// @verbinclude api-simple-within
 ///
 /// With distance:
 ///
-/// @verbinclude api_simple6
+/// @verbinclude api-simple-within-distance
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -287,22 +277,27 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
 
-    var limit = body.limit;
-    var skip = body.skip;
-    var latitude = body.latitude;
-    var longitude = body.longitude;
-    var distance = body.distance;
-    var radius = body.radius;
-    var name = body.collection;
-    var geo = body.geo;
+    if (body === undefined) {
+      return;
+    }
 
     if (req.requestType != actions.PUT) {
       actions.unsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var limit = body.limit;
+      var skip = body.skip;
+      var latitude = body.latitude;
+      var longitude = body.longitude;
+      var distance = body.distance;
+      var radius = body.radius;
+      var geo = body.geo;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -314,28 +309,33 @@ actions.defineHttp({
         actions.badParameter(req, res, "longitude");
       }
       else {
-        var result;
+        try {
+          var result;
 
-        if (geo == null) {
-          result = collection.within(latitude, longitude, radius);
+          if (geo == null) {
+            result = collection.within(latitude, longitude, radius);
+          }
+          else {
+            result = collection.geo(geo).within(latitude, longitude, radius);
+          }
+          
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+          
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+          
+          if (distance != null) {
+            result = result.distance(distance);
+          }
+          
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
-        else {
-          result = collection.geo(geo).within(latitude, longitude, radius);
+        catch (err) {
+          actions.resultException(req, res, err);
         }
-
-        if (skip != null) {
-          result = result.skip(skip);
-        }
-
-        if (limit != null) {
-          result = result.limit(limit);
-        }
-
-        if (distance != null) {
-          result = result.distance(distance);
-        }
-
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }
@@ -377,7 +377,11 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
 
     var limit = body.limit;
     var skip = body.skip;

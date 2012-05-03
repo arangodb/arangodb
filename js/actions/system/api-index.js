@@ -407,13 +407,9 @@ function POST_api_index (req, res) {
     return;
   }
 
-  var body;
+  var body = actions.getJsonBody(req, res);
 
-  try {
-    body = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+  if (body === undefined) {
     return;
   }
 

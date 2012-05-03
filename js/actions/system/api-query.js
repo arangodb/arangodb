@@ -72,18 +72,9 @@ function POST_api_query (req, res) {
     return;
   }
 
-  var json;
+  var json = actions.getJsonBody(req, res);
 
-  try {
-    json = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
-    return;
-  }
-      
-  if (! json || ! (json instanceof Object)) {
-    actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+  if (json === undefined) {
     return;
   }
 
