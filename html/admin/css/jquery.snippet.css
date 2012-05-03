@@ -1,0 +1,33 @@
+.snippet-wrap .snippet-num li {list-style:decimal-leading-zero outside none;}
+.snippet-no-num {    list-style-type: none; }
+
+.prettify {
+  font-size: 1.1em; 
+  height:8px;  
+  margin-left: -30px;
+  padding-bottom: 4px;      
+}
+
+#documentsView tr td {
+  height: 5px; 
+}
+
+.sh_number {
+  color: blue;  
+}
+
+.sh_symbol {
+  color: red; 
+}
+
+.sh_cbracket {
+  color: green;
+}
+
+.sh_keyword { 
+  color: #FF00BF;  
+}
+
+#deleteDoc {
+  margin-right: -10px; 
+}
