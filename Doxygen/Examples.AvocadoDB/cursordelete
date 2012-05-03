@@ -1,7 +1,0 @@
-DELETE /_api/cursor/551065926 HTTP/1.1
-
-
-HTTP/1.1 202 Accepted
-connection: Keep-Alive
-content-type: application/json
-server: triagens GmbH High-Performance HTTP Server

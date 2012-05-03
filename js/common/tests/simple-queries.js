@@ -38,7 +38,7 @@ function aqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function setUp () {
-    this.collection = db.UnitTestsCollection;
+    this.collection = internal.db.UnitTestsCollection;
 
     if (this.collection.count() == 0) {
       this.collection.save({ name: "one", age: 1 });

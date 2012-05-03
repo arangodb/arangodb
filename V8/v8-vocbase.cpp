@@ -37,6 +37,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-execution.h"
 #include "VocBase/query.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/general-cursor.h"
@@ -48,6 +49,12 @@
 
 using namespace std;
 using namespace triagens::basics;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -460,7 +467,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 
   if (argv.Length() == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...))")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...)")));
   }
   
   // .............................................................................
@@ -1074,7 +1081,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
 
-  if (collection == NULL) {
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "cannot create collection")));
   }
 
@@ -2142,6 +2149,10 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 // --SECTION--                                                   GENERAL CURSORS
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
@@ -2218,29 +2229,128 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a general cursor from a list
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: GENERAL_CURSOR(<list>, <do-count>, <batch-size>)")));
+  }
+  
+  if (! argv[0]->IsArray()) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "<list> must be a list")));
+  }
+
+  // extract objects
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
+  TRI_json_t* json = TRI_JsonObject(array);
+
+  if (json == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "cannot convert <list> to JSON")));
+  }
+
+  // return number of total records in cursor?
+  bool doCount = false;
+
+  if (argv.Length() >= 2) {
+    doCount = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  // maximum number of results to return at once
+  uint32_t batchSize = 1000;
+
+  if (argv.Length() >= 3) {
+    double maxValue = TRI_ObjectToDouble(argv[2]);
+
+    if (maxValue >= 1.0) {
+      batchSize = (uint32_t) maxValue;
+    }
+  }
+  
+  // create a cursor
+  TRI_general_cursor_t* cursor = 0;
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
+
+  if (cursorResult != 0) {
+    cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+
+    if (cursor == 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+  }
+  else {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "cannot create cursor")));
+  }
+
+  TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+  return scope.Close(WrapGeneralCursor(cursor));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a general cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: dispose()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: dispose()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
+
   if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
-  if (TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()))) {
-    if (!tryCatch.HasCaught()) {
-      return scope.Close(v8::True());
-    }
+  bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (found) {
+    return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2249,23 +2359,30 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
 
 static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: id()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
   
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-  if (id && !tryCatch.HasCaught()) {
+
+  if (id != 0) {
     return scope.Close(v8::Number::New((double) id));
   }
   
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2274,15 +2391,19 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: count()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
   
   TRI_general_cursor_t* cursor;
@@ -2295,7 +2416,9 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New(length));
   }
   
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2304,15 +2427,19 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: count()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
   bool result = false;
@@ -2333,9 +2460,12 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
 
     // exceptions must be caught in the following part because we hold an exclusive
     // lock that might otherwise not be freed
+    v8::TryCatch tryCatch;
+
     try {
       TRI_general_cursor_row_t row = cursor->next(cursor);
-      if (!row) {
+
+      if (row == 0) {
         value = v8::Undefined();
       }
       else {
@@ -2350,12 +2480,18 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     
     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
     
-    if (result && !tryCatch.HasCaught()) {
+    if (result && ! tryCatch.HasCaught()) {
       return scope.Close(value);
+    }
+
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2364,23 +2500,30 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: persist()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: persist()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
   bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-  if (result && !tryCatch.HasCaught()) {
+
+  if (result) {
     return scope.Close(v8::True());
   }
     
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2392,15 +2535,19 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
 
 static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: getRows()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: getRows()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
   bool result = false;  
@@ -2414,6 +2561,8 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
 
     // exceptions must be caught in the following part because we hold an exclusive
     // lock that might otherwise not be freed
+    v8::TryCatch tryCatch;
+
     try {
       uint32_t max = (uint32_t) cursor->getBatchSize(cursor);
 
@@ -2434,12 +2583,18 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
     
     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
 
-    if (result && !tryCatch.HasCaught()) {
+    if (result && ! tryCatch.HasCaught()) {
       return scope.Close(rows);
+    }
+
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2448,15 +2603,19 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
 
 static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: getBatchSize()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: getBatchSize()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
   
   TRI_general_cursor_t* cursor;
@@ -2470,7 +2629,9 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     return scope.Close(v8::Number::New(max));
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2479,17 +2640,21 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
 
 static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: hasCount()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: hasCount()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
 
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
+  }
+  
   TRI_general_cursor_t* cursor;
   
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2501,7 +2666,9 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
     return scope.Close(hasCount ? v8::True() : v8::False());
   }
   
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2513,12 +2680,17 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
   v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: hasNext()")));
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
   TRI_general_cursor_t* cursor;
@@ -2534,7 +2706,9 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
     return scope.Close(hasNext ? v8::True() : v8::False());
   }
   
-  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  return scope.Close(v8::ThrowException(
+                       CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                         "disposed or unknown cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2545,27 +2719,39 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: CURSOR(<cursor-id>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "usage: CURSOR(<cursor-identifier>)")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_INTERNAL,
+                                           "corrupted vocbase")));
   }
 
   // get the id
   v8::Handle<v8::Value> idArg = argv[0]->ToString();
-  if (!idArg->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <id>")));
+
+  if (! idArg->IsString()) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                           "expecting a string for <cursor-identifier>)")));
   }
+
   string idString = TRI_ObjectToString(idArg);
   uint64_t id = TRI_UInt64String(idString.c_str());
 
   TRI_general_cursor_t* cursor;
   
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                           "disposed or unknown cursor")));
   }
 
   return scope.Close(WrapGeneralCursor(cursor));
@@ -2644,9 +2830,10 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   // bind parameters
-  TRI_json_t* parameters = NULL;
+  TRI_json_t* parameters = 0;
+
   if (argv.Length() > 1) {
-    parameters = TRI_ObjectToJson(argv[1]);
+    parameters = TRI_JsonObject(argv[1]);
   }
 
   if (!TRI_BindQueryContextAql(context, parameters)) {
@@ -2687,11 +2874,14 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(generator->_buffer._buffer), v8::String::New("query"));
       TRI_FreeGeneratorAql(generator);
 
-      TRI_json_t* json = TRI_ObjectToJson(result);
+      TRI_json_t* json = TRI_JsonObject(result);
+
       if (json) {
         TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
+
         if (cursorResult) {
           cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+
           if (!cursor) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2892,8 +3082,9 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
-    if (jsonParameter == NULL) { // NOT the null json value! 
+    TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
+    if (jsonParameter == 0) { // NOT the null json value! 
       return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
     }
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
@@ -2969,7 +3160,7 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   
   if (argv.Length() == 1) {
     TRI_json_t* jsonParameter = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1);
-    if (jsonParameter == NULL) { // failure of some sort
+    if (jsonParameter == 0) { // failure of some sort
       return scope.Close(v8::ThrowException(v8::String::New("internal error in JS_WherePQConstAql")));       
     }
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
@@ -2978,8 +3169,9 @@ static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
   else {
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
-      if (jsonParameter == NULL) { // NOT the null json value! 
+      TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
+      if (jsonParameter == 0) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
       }
       TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
@@ -3048,7 +3240,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
   // ..........................................................................  
   if (haveOperators) {    
     if (argv.Length() > 2) {  
-      TRI_sl_operator_t* leftOp = NULL;
+      TRI_sl_operator_t* leftOp = 0;
       v8::Handle<v8::Value> leftParameter  = argv[1];
       v8::Handle<v8::Object> leftObject    = leftParameter->ToObject();
       leftOp  = TRI_UnwrapClass<TRI_sl_operator_t>(leftObject, WRP_SL_OPERATOR_TYPE);
@@ -3064,7 +3256,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
           TRI_FreeSLOperator(leftOp); 
           return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
         }
-        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, NULL, 2, NULL);
+        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, 0, 0, 0, 2, 0);
         leftOp = tempAndOperator;
       }  
       where = TRI_CreateQueryWhereSkiplistConstant(iid, leftOp);
@@ -3092,18 +3284,19 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
 
     for (int j = 1; j < argv.Length(); ++j) {  
       v8::Handle<v8::Value> parameter = argv[j];
-      TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
-      if (jsonParameter == NULL) { // NOT the null json value! 
+      TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
+      if (jsonParameter == 0) { // NOT the null json value! 
         return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
       }
       TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameterList, jsonParameter);
     }
-    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, NULL, 
-                                                     parameterList->_value._objects._length, NULL);
+    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,0, 0, parameterList, 0, 0, 
+                                                     parameterList->_value._objects._length, 0);
     where = TRI_CreateQueryWhereSkiplistConstant(iid, eqOperator);
   }
 
-  if (where == NULL) {
+  if (where == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("Error detected in where statement")));
   }  
   
@@ -3269,7 +3462,7 @@ static v8::Handle<v8::Value> JS_PQSelectAql (v8::Arguments const& argv) {
   // ...........................................................................
   TRI_qry_where_priorityqueue_const_t* pqWhere = (TRI_qry_where_priorityqueue_const_t*)(where);
   TRI_priorityqueue_index_t* idx               = (TRI_priorityqueue_index_t*)(TRI_LookupIndex(collection->_collection, pqWhere->_iid));
-  if (idx == NULL) {
+  if (idx == 0) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("invalid index in where statement")));
   }
@@ -3377,7 +3570,7 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   // ...........................................................................
   TRI_qry_where_skiplist_const_t* slWhere = (TRI_qry_where_skiplist_const_t*)(where);
   TRI_skiplist_index_t* idx               = (TRI_skiplist_index_t*)(TRI_LookupIndex(collection->_collection, slWhere->_iid));
-  if (idx == NULL) {
+  if (idx == 0) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("invalid index in where statement")));
   }
@@ -3456,17 +3649,18 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
 static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {
   TRI_json_t* result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   
-  if (result == NULL) {
+  if (result == 0) {
     v8::ThrowException(v8::String::New("out of memory"));
-    return NULL;
+    return 0;
   }
 
   for (int j = startPos; j < endPos; ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = TRI_ObjectToJson(parameter);
-    if (jsonParameter == NULL) { // NOT the null json value! 
+    TRI_json_t* jsonParameter = TRI_JsonObject(parameter);
+
+    if (jsonParameter == 0) { // NOT the null json value! 
       v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
-      return NULL;
+      return 0;
     }
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, jsonParameter);
   }
@@ -3484,7 +3678,7 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AND(<value 1>, <value 2>)")));
@@ -3520,7 +3714,7 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,
                                                                   CopySLOperator(leftOperator),
-                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(rightOperator),0, 0, 0, 2, 0));
   // ...........................................................................
   // Wrap it up for later use and return.
   // ...........................................................................
@@ -3534,7 +3728,7 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: OR(<value 1>, <value 2>)")));
@@ -3571,7 +3765,7 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   // ...........................................................................  
   logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,
                                                                   CopySLOperator(leftOperator),
-                                                                  CopySLOperator(rightOperator),NULL, NULL, NULL, 2, NULL));
+                                                                  CopySLOperator(rightOperator),0, 0, 0, 2, 0));
   
   return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
 }
@@ -3584,7 +3778,7 @@ static v8::Handle<v8::Value> JS_Operator_EQ (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: EQ(<value 1>, <value 2>,..., <value n>)")));
@@ -3598,15 +3792,15 @@ static v8::Handle<v8::Value> JS_Operator_EQ (v8::Arguments const& argv) {
   // ...........................................................................
   
   parameters = parametersToJson(argv,0,argv.Length());
-  if (parameters == NULL) {
+  if (parameters == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("unsupported type in EQ(...) parameter list")));
   }
 
   // ...........................................................................
   // Allocate the storage for a relation (EQ) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
-                                                    parameters->_value._objects._length, NULL));
+  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, 0, 0, parameters, 0, 0, 
+                                                    parameters->_value._objects._length, 0));
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
@@ -3618,7 +3812,7 @@ static v8::Handle<v8::Value> JS_Operator_GE (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: GE(<value 1>, <value 2>,..., <value n>)")));
@@ -3632,15 +3826,15 @@ static v8::Handle<v8::Value> JS_Operator_GE (v8::Arguments const& argv) {
   // ...........................................................................
   
   parameters = parametersToJson(argv,0,argv.Length());
-  if (parameters == NULL) {
+  if (parameters == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("unsupported type in GE(...) parameter list")));
   }
   
   // ...........................................................................
   // Allocate the storage for a relation (GE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
-                                                     parameters->_value._objects._length, NULL) );
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, 0, 0, parameters, 0, 0, 
+                                                     parameters->_value._objects._length, 0) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
@@ -3653,7 +3847,7 @@ static v8::Handle<v8::Value> JS_Operator_GT (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: GT(<value 1>, <value 2>,..., <value n>)")));
@@ -3667,15 +3861,15 @@ static v8::Handle<v8::Value> JS_Operator_GT (v8::Arguments const& argv) {
   // ...........................................................................
   
   parameters = parametersToJson(argv,0,argv.Length());
-  if (parameters == NULL) {
+  if (parameters == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("unsupported type in GT(...) parameter list")));
   }
   
   // ...........................................................................
   // Allocate the storage for a relation (GT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, NULL, 
-                                                    parameters->_value._objects._length, NULL) );
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, 0, 0, parameters, 0, 0, 
+                                                    parameters->_value._objects._length, 0) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
@@ -3688,7 +3882,7 @@ static v8::Handle<v8::Value> JS_Operator_LE (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: LE(<value 1>, <value 2>,..., <value n>)")));
@@ -3702,15 +3896,15 @@ static v8::Handle<v8::Value> JS_Operator_LE (v8::Arguments const& argv) {
   // ...........................................................................
   
   parameters = parametersToJson(argv,0,argv.Length());
-  if (parameters == NULL) {
+  if (parameters == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("unsupported type in LE(...) parameter list")));
   }
 
   // ...........................................................................
   // Allocate the storage for a relation (LE) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, NULL, 
-                                                     parameters->_value._objects._length, NULL) );  
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, 0, 0,parameters, 0, 0, 
+                                                     parameters->_value._objects._length, 0) );  
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
@@ -3723,7 +3917,7 @@ static v8::Handle<v8::Value> JS_Operator_LT (v8::Arguments const& argv) {
   
   // ...........................................................................
   // We expect a list of constant values in the order in which the skip list
-  // index has been defined. An unknown value can have a NULL
+  // index has been defined. An unknown value can have a 0
   // ...........................................................................  
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: LT(<value 1>, <value 2>,..., <value n>)")));
@@ -3737,15 +3931,15 @@ static v8::Handle<v8::Value> JS_Operator_LT (v8::Arguments const& argv) {
   // ...........................................................................
   
   parameters = parametersToJson(argv,0,argv.Length());
-  if (parameters == NULL) {
+  if (parameters == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("unsupported type in LT(...) parameter list")));
   }
   
   // ...........................................................................
   // Allocate the storage for a relation (LT) operator and assign it that type
   // ...........................................................................  
-  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, NULL, 
-                                                    parameters->_value._objects._length, NULL) );
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, 0,0,parameters, 0, 0, 
+                                                    parameters->_value._objects._length, 0) );
   
   return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
@@ -3821,15 +4015,15 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   
   TRI_AddPartSelectJoinX(join, 
                         JOIN_TYPE_PRIMARY, 
-                        NULL,
+                        0,
                         (char*) name.c_str(), 
                         (char*) "alias",
-                        NULL);
+                        0);
 
   // create the query
   TRI_query_t* query = TRI_CreateQuery(vocbase,
                                        select,
-                                       NULL,
+                                       0,
                                        join,
                                        skip,
                                        limit); 
@@ -3858,173 +4052,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   }
 
   return scope.Close(WrapCursor(cursor));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a cursor from a javascript object - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_rc_cursor_t* UnwrapCursor (v8::Handle<v8::Object> cursorObject) {
-  return TRI_UnwrapClass<TRI_rc_cursor_t>(cursorObject, WRP_RC_CURSOR_TYPE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next document - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_CountCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
-
-  if (cursor == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  
-  return scope.Close(v8::Number::New(cursor->_matchedDocuments));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next document - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
-
-  if (cursor == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  TRI_rc_result_t* next = cursor->next(cursor);
-
-  if (next == 0) {
-    return scope.Close(v8::Undefined());
-  }
-
-  v8::Handle<v8::Value> value;
-  bool ok;
-
-  TRI_qry_select_t* select = cursor->_select;
-  if (select) {
-    ok = select->toJavaScript(select, next, (void*) &value);
-  }
-  else {
-    TRI_DefineSelectExecutionContext(cursor->_selectContext, next);
-    ok = TRI_ExecuteExecutionContext(cursor->_selectContext, (void*) &value);
-  }
-
-  if (! ok) {
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
-    else {
-      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
-    }
-  }
-
-  return scope.Close(value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next document reference - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
-
-  if (cursor == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  TRI_rc_result_t* next = cursor->next(cursor);
-
-  if (next == 0) {
-    return scope.Close(v8::Undefined());
-  }
-
-  // always use the primary collection
-  TRI_voc_cid_t cid = cursor->_context->_primary->base._cid;
-  TRI_voc_did_t did = next->_primary->_did;
-  string ref = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did);
-
-  return scope.Close(v8::String::New(ref.c_str()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses the next document - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
-
-  if (cursor == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  TRI_rc_result_t* next = cursor->next(cursor);
-
-  if (next == 0) {
-    return scope.Close(v8::Undefined());
-  }
-
-  return scope.Close(v8::True());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
-
-  if (cursor == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  if (cursor->hasNext(cursor)) {
-    return scope.Close(v8::True());
-  }
-  else {
-    return scope.Close(v8::False());
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4467,7 +4494,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     
     v8::String::Utf8Value argumentString(argument);   
     char* cArgument = (char*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, argumentString.length() + 1, false));       
-    if (cArgument == NULL) {
+    if (cArgument == 0) {
       errorString = "insuffient memory to complete ensurePQIndex(...) command";
       ok = false;
       break;
@@ -4529,7 +4556,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 
   TRI_DestroyVector(&attributes);
 
-  if (idx == NULL) {
+  if (idx == 0) {
     ReleaseCollection(collection);
     return scope.Close(v8::String::New("Priority Queue index could not be created"));
   }  
@@ -5806,8 +5833,8 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
 
   TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
 
-  if (acc == NULL || acc->_shape == NULL) {
-    if (acc != NULL) {
+  if (acc == 0 || acc->_shape == 0) {
+    if (acc != 0) {
       TRI_FreeShapeAccessor(acc);
     }
 
@@ -5953,8 +5980,8 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
 
   // key not found
-  if (acc == NULL || acc->_shape == NULL) {
-    if (acc != NULL) {
+  if (acc == 0 || acc->_shape == 0) {
+    if (acc != 0) {
       TRI_FreeShapeAccessor(acc);
     }
 
@@ -6189,7 +6216,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
   v8::Handle<v8::String> NameFuncName = v8::Persistent<v8::String>::New(v8::String::New("name"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
-  v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
   v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
   v8::Handle<v8::String> PropertiesFuncName = v8::Persistent<v8::String>::New(v8::String::New("properties"));
@@ -6478,28 +6504,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 /* DEPRECATED START */
   
   // .............................................................................
-  // generate the cursor template - DEPRECATED
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoDeprecatedCursor"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
-
-  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextCursor));
-  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextCursor));
-  rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefCursor));
-  rt->Set(UseNextFuncName, v8::FunctionTemplate::New(JS_UseNextCursor));
-  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountCursor));
-
-  v8g->CursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoDeprecatedCursor"),
-                         ft->GetFunction());
-
-  // .............................................................................
   // generate the query template
   // .............................................................................
 
@@ -6635,6 +6639,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   
   context->Global()->Set(v8::String::New("AHUACATL_PARSE"),
                          v8::FunctionTemplate::New(JS_ParseAhuacatl)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("CREATE_CURSOR"),
+                         v8::FunctionTemplate::New(JS_CreateCursor)->GetFunction(),
                          v8::ReadOnly);
   
   // .............................................................................

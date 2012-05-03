@@ -570,6 +570,25 @@ bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert a raw data document pointer into a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
+  TRI_doc_document_marker_t const* marker;
+  size_t markerSize = sizeof(TRI_doc_document_marker_t);
+  marker = (TRI_doc_document_marker_t const*) data;
+
+  header->_did = marker->_did;
+  header->_rid = marker->_rid;
+  header->_fid = 0; // should be datafile->_fid, but we do not have this info here
+  header->_deletion = 0;
+  header->_data = data;
+  header->_document._sid = marker->_shape;
+  header->_document._data.length = marker->base._size - markerSize;
+  header->_document._data.data = ((char*) marker) + markerSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

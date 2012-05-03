@@ -1,0 +1,24 @@
+> curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "hasMore": true,
+  "error": false,
+  "id": 26011191,
+  "result": [
+    {
+      "n": 2,
+      "_rev": 25880119,
+      "_id": "23914039/25880119"
+    },
+    {
+      "n": 3,
+      "_rev": 25880119,
+      "_id": "23914039/25880119"
+    }
+  ],
+  "code": 200,
+  "count": 5
+}

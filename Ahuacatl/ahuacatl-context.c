@@ -229,7 +229,11 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
-//  TRI_DumpTreeAql(context->_first);
+  if (context->_error._code) {
+    return false;
+  }
+
+  //TRI_DumpTreeAql(context->_first);
   return true;
 }
 
@@ -257,6 +261,10 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
     // bind parameter injection failed
     return false;
   }
+  
+  if (context->_error._code) {
+    return false;
+  }
 
   return true;
 }
@@ -269,6 +277,10 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
   // do some basic optimisations in the AST
   if (!TRI_FoldConstantsAql(context, (TRI_aql_node_t*) context->_first)) {
     // constant folding failed
+    return false;
+  }
+
+  if (context->_error._code) {
     return false;
   }
 //  TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
@@ -293,6 +305,10 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   
   // add barriers for all collections used
   if (!TRI_AddBarrierCollectionsAql(context)) {
+    return false;
+  }
+  
+  if (context->_error._code) {
     return false;
   }
 
