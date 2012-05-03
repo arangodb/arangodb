@@ -41,6 +41,7 @@
 ///
 /// <ol>
 ///  <li>@ref HttpSimpleAll "POST /_api/simple/all"</li>
+///  <li>@ref HttpSimpleNear "POST /_api/simple/near"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -67,6 +68,10 @@
 ///
 /// @anchor HttpSimpleAll
 /// @copydetails JSA_PUT_api_simple_all
+/// <hr>
+///
+/// @anchor HttpSimpleNear
+/// @copydetails JSA_PUT_api_simple_near
 /// <hr>
 ////////////////////////////////////////////////////////////////////////////////
 

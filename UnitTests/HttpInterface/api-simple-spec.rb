@@ -119,7 +119,7 @@ describe AvocadoDB do
 	  (0..10).each{|j|
 	    lon = 10 * (j - 5)
 	    
-	    AvocadoDB.post("/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #[lon} ] }")
+	    AvocadoDB.post("/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
 	  }
 	}
       end
@@ -128,12 +128,54 @@ describe AvocadoDB do
 	AvocadoDB.drop_collection(@cn)
       end
 
-      it "get near documents with skip and limit" do
+      it "returns an error for near without index" do
+	cmd = api + "/near"
+	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
+	doc = AvocadoDB.log_put("#{prefix}-near-missing", cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1512)
+      end
+
+      it "returns documents near a point" do
+	cmd = "/_api/index?collection=#{@cid}"
+	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
 	cmd = api + "/near"
 	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
 	doc = AvocadoDB.log_put("#{prefix}-near", cmd, :body => body)
 
-	puts doc
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['hasMore'].should eq(false)
+	doc.parsed_response['result'].length.should eq(5)
+	doc.parsed_response['count'].should eq(5)
+      end
+
+      it "returns documents and distance near a point" do
+	cmd = "/_api/index?collection=#{@cid}"
+	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	cmd = api + "/near"
+	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"limit\" : 5, \"distance\" : \"distance\" }"
+	doc = AvocadoDB.log_put("#{prefix}-near-distance", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['hasMore'].should eq(false)
+	doc.parsed_response['result'].length.should eq(5)
+	doc.parsed_response['count'].should eq(5)
+
+	doc.parsed_response['result'].map{|i| i['distance'].floor.to_f}.should eq([0,1111949,1111949,1111949,1111949])
       end
     end
 

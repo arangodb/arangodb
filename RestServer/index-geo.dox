@@ -31,7 +31,8 @@
 /// <ol>
 ///  <li>@ref IndexGeoHttp
 ///   <ol>
-///    <li>@ref IndexGeoHttpEnsureGeo "Creating a Geo Index/Constraint POST /_api/index"</li>
+///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
+///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref IndexGeoShell
@@ -72,6 +73,10 @@
 ///
 /// @anchor IndexGeoHttpEnsureGeo
 /// @copydetails JSF_POST_api_index_geo
+/// <hr>
+///
+/// @anchor IndexGeoHttpNear
+/// @copydetails JSA_PUT_api_simple_near
 /// <hr>
 ///
 /// @section IndexGeoShell Accessing Geo Indexes from the Shell
