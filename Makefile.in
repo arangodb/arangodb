@@ -102,8 +102,10 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.cpp
 
 @ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/test_suite$(EXEEXT)
-@ENABLE_BOOST_TEST_FALSE@UnitTests_test_suite_DEPENDENCIES =
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/basics_suite$(EXEEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/geo_suite$(EXEEXT)
+@ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
+@ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
 
 ################################################################################
 ################################################################################
@@ -280,7 +282,7 @@ libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
-am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
@@ -290,7 +292,7 @@ am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
-@ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
+@ENABLE_BOOST_TEST_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
@@ -301,7 +303,13 @@ am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
-UnitTests_test_suite_OBJECTS = $(am_UnitTests_test_suite_OBJECTS)
+UnitTests_basics_suite_OBJECTS = $(am_UnitTests_basics_suite_OBJECTS)
+am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
+	UnitTests/Cambridge/georeg.cpp
+@ENABLE_BOOST_TEST_TRUE@am_UnitTests_geo_suite_OBJECTS =  \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.$(OBJEXT)
+UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
 am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
@@ -452,11 +460,12 @@ am__v_CXXLD_0 = @echo "  CXXLD " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
-	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocirb_SOURCES) \
-	$(avocsh_SOURCES)
+SOURCES = $(libavocado_a_SOURCES) $(UnitTests_basics_suite_SOURCES) \
+	$(UnitTests_geo_suite_SOURCES) $(avocado_SOURCES) \
+	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
 DIST_SOURCES = $(am__libavocado_a_SOURCES_DIST) \
-	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
+	$(am__UnitTests_basics_suite_SOURCES_DIST) \
+	$(am__UnitTests_geo_suite_SOURCES_DIST) $(avocado_SOURCES) \
 	$(avocimp_SOURCES) $(am__avocirb_SOURCES_DIST) \
 	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -1014,9 +1023,9 @@ VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
 CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
-@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
-@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
@@ -1027,6 +1036,12 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
+
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_SOURCES = \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.cpp
 
 
 ################################################################################
@@ -1539,9 +1554,24 @@ UnitTests/Jutland/StringBufferTest.$(OBJEXT):  \
 UnitTests/Jutland/StringUtilsTest.$(OBJEXT):  \
 	UnitTests/Jutland/$(am__dirstamp) \
 	UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
-UnitTests/test_suite$(EXEEXT): $(UnitTests_test_suite_OBJECTS) $(UnitTests_test_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
-	@rm -f UnitTests/test_suite$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_test_suite_OBJECTS) $(UnitTests_test_suite_LDADD) $(LIBS)
+UnitTests/basics_suite$(EXEEXT): $(UnitTests_basics_suite_OBJECTS) $(UnitTests_basics_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
+	@rm -f UnitTests/basics_suite$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_basics_suite_OBJECTS) $(UnitTests_basics_suite_LDADD) $(LIBS)
+UnitTests/Cambridge/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Cambridge
+	@: > UnitTests/Cambridge/$(am__dirstamp)
+UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Cambridge/$(DEPDIR)
+	@: > UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Cambridge/Runner.$(OBJEXT):  \
+	UnitTests/Cambridge/$(am__dirstamp) \
+	UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Cambridge/georeg.$(OBJEXT):  \
+	UnitTests/Cambridge/$(am__dirstamp) \
+	UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
+UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
+	@rm -f UnitTests/geo_suite$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_LDADD) $(LIBS)
 Admin/$(am__dirstamp):
 	@$(MKDIR_P) Admin
 	@: > Admin/$(am__dirstamp)
@@ -2106,6 +2136,8 @@ mostlyclean-compile:
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
 	-rm -f SkipLists/sl-operator.$(OBJEXT)
+	-rm -f UnitTests/Cambridge/Runner.$(OBJEXT)
+	-rm -f UnitTests/Cambridge/georeg.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
@@ -2349,6 +2381,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/sl-operator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/Runner.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/georeg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
@@ -2773,6 +2807,8 @@ distclean-generic:
 	-rm -f SkipLists/$(am__dirstamp)
 	-rm -f UnitTests/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/$(am__dirstamp)
+	-rm -f UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
+	-rm -f UnitTests/Cambridge/$(am__dirstamp)
 	-rm -f UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Jutland/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2803,7 +2839,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2851,7 +2887,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -3037,11 +3073,12 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_TRUE@	$(VALGRIND) @builddir@/UnitTests/test_suite --show_progress || test "$(FORCE)" == "1"
+@ENABLE_BOOST_TEST_TRUE@	$(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
+@ENABLE_BOOST_TEST_TRUE@	$(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/test_suite
+@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite
 
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
