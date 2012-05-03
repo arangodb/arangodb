@@ -318,6 +318,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Dispatcher/DispatcherThread.$(OBJEXT) Dispatcher/Job.$(OBJEXT) \
 	GeneralServer/GeneralFigures.$(OBJEXT) \
 	GeoIndex/GeoIndex.$(OBJEXT) HashIndex/hashindex.$(OBJEXT) \
+	HashIndex/hasharray.$(OBJEXT) \
 	HttpServer/ApplicationHttpServer.$(OBJEXT) \
 	HttpServer/ApplicationHttpServerImpl.$(OBJEXT) \
 	HttpServer/HttpCommTask.$(OBJEXT) \
@@ -753,6 +754,7 @@ avocado_SOURCES = \
 	GeneralServer/GeneralFigures.cpp \
 	GeoIndex/GeoIndex.c \
 	HashIndex/hashindex.c \
+	HashIndex/hasharray.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
@@ -1618,6 +1620,8 @@ HashIndex/$(DEPDIR)/$(am__dirstamp):
 	@: > HashIndex/$(DEPDIR)/$(am__dirstamp)
 HashIndex/hashindex.$(OBJEXT): HashIndex/$(am__dirstamp) \
 	HashIndex/$(DEPDIR)/$(am__dirstamp)
+HashIndex/hasharray.$(OBJEXT): HashIndex/$(am__dirstamp) \
+	HashIndex/$(DEPDIR)/$(am__dirstamp)
 HttpServer/$(am__dirstamp):
 	@$(MKDIR_P) HttpServer
 	@: > HttpServer/$(am__dirstamp)
@@ -2022,6 +2026,7 @@ mostlyclean-compile:
 	-rm -f Dispatcher/Job.$(OBJEXT)
 	-rm -f GeneralServer/GeneralFigures.$(OBJEXT)
 	-rm -f GeoIndex/GeoIndex.$(OBJEXT)
+	-rm -f HashIndex/hasharray.$(OBJEXT)
 	-rm -f HashIndex/hashindex.$(OBJEXT)
 	-rm -f HttpServer/ApplicationHttpServer.$(OBJEXT)
 	-rm -f HttpServer/ApplicationHttpServerImpl.$(OBJEXT)
@@ -2263,6 +2268,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Dispatcher/$(DEPDIR)/Job.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@GeneralServer/$(DEPDIR)/GeneralFigures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@GeoIndex/$(DEPDIR)/GeoIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@HashIndex/$(DEPDIR)/hasharray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HashIndex/$(DEPDIR)/hashindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HttpServer/$(DEPDIR)/ApplicationHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HttpServer/$(DEPDIR)/ApplicationHttpServerImpl.Po@am__quote@

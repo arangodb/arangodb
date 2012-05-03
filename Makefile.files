@@ -137,6 +137,7 @@ avocado_SOURCES = \
 	GeneralServer/GeneralFigures.cpp \
 	GeoIndex/GeoIndex.c \
 	HashIndex/hashindex.c \
+	HashIndex/hasharray.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
