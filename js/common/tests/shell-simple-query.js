@@ -38,6 +38,7 @@
 
 var jsunity = require("jsunity");
 var SQB = require("simple-query-basics");
+require("simple-query");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            basic skips and limits
@@ -159,22 +160,18 @@ function SimpleQueryArraySkipLimitSuite () {
 
       assertEqual(n, numbers.slice(1,8));
 
-      n = query.clone().skip(1).limit(-1).toArray();
-      print(numbers);
-      print(n);
+      n = query.clone().skip(2).limit(-9).toArray();
 
-      assertEqual(n, numbers.slice(3,9));
+      assertEqual(n, numbers.slice(2,10));
 
-      n = query.clone().limit(9).skip(1).limit(-1).toArray();
-      print(numbers);
-      print(n);
+      n = query.clone().limit(9).skip(1).limit(-9).toArray();
 
-      assertEqual(n, numbers.slice(3,9));
+      assertEqual(n, numbers.slice(1,9));
 
       n = query.clone().limit(-9).skip(1).limit(7).toArray();
 
-      assertEqual(n, numbers.slice(3,9));
-    },
+      assertEqual(n, numbers.slice(2,9));
+    }
   };
 }
 
@@ -293,7 +290,7 @@ function SimpleQuerySkipLimitSuite () {
 /// @brief test: skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimit : function () {
+    testSkipLimit : function () {
       var n = collection.all().skip(0).limit(10).toArray().map(num);
 
       assertEqual(n, numbers);
@@ -310,16 +307,14 @@ function SimpleQuerySkipLimitSuite () {
 
       assertEqual(n, numbers.slice(1,8));
 
-      n = collection.all().limit(9).skip(1).limit(-1).toArray().map(num);
-      print(numbers);
-      print(n);
+      n = collection.all().skip(2).limit(-9).toArray().map(num);
 
-      assertEqual(n, numbers.slice(3,9));
+      assertEqual(n, numbers.slice(2,10));
 
       n = collection.all().limit(-9).skip(1).limit(7).toArray().map(num);
 
-      assertEqual(n, numbers.slice(3,9));
-    },
+      assertEqual(n, numbers.slice(2,9));
+    }
   };
 }
 

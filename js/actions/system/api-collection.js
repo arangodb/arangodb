@@ -113,13 +113,9 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_collection (req, res) {
-  var body;
+  var body = actions.getJsonBody(req, res);
 
-  try {
-    body = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+  if (body === undefined) {
     return;
   }
 
@@ -513,13 +509,9 @@ function PUT_api_collection_truncate (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_properties (req, res, collection) {
-  var body;
+  var body = actions.getJsonBody(req, res);
 
-  try {
-    body = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+  if (body === undefined) {
     return;
   }
 
@@ -556,13 +548,9 @@ function PUT_api_collection_properties (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_rename (req, res, collection) {
-  var body;
+  var body = actions.getJsonBody(req, res);
 
-  try {
-    body = JSON.parse(req.requestBody || "{}") || {};
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+  if (body === undefined) {
     return;
   }
 

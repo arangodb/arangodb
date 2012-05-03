@@ -372,6 +372,8 @@ function AvocadoDatabase (connection) {
   this._collectionConstructor = AvocadoCollection;
 }
 
+ModuleCache["/internal"].exports.AvocadoDatabase = AvocadoDatabase;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,6 +804,8 @@ function AvocadoEdges (connection) {
 
 AvocadoEdges.prototype = new AvocadoDatabase();
 
+ModuleCache["/internal"].exports.AvocadoEdges = AvocadoEdges;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -878,6 +882,8 @@ function AvocadoCollection (database, data) {
     this._status = data.status;
   }
 }
+
+ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1352,22 +1358,6 @@ AvocadoCollection.prototype.count = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all documents from the collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.all = function () {
-  var data = {
-    collection : this._id
-  }  
-  
-  var requestResult = this._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
-
-  TRI_CheckRequestResult(requestResult);
-
-  return requestResult;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a single document from the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1557,6 +1547,8 @@ function AvocadoEdgesCollection (database, data) {
 }
 
 AvocadoEdgesCollection.prototype = new AvocadoCollection();
+
+ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1889,7 +1881,7 @@ AvocadoQueryCursor.prototype.next = function () {
       
       // load more results      
       var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data.id),  "");
-    
+
       TRI_CheckRequestResult(requestResult);
       
       this.data = requestResult;
@@ -2307,7 +2299,6 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 ////////////////////////////////////////////////////////////////////////////////
 
 try {
-
   if (typeof avocado !== 'undefined') {
 
     // default databases
@@ -2321,6 +2312,9 @@ try {
     // export to internal
     ModuleCache["/internal"].exports.db = db;
     ModuleCache["/internal"].exports.edges = db;
+
+    // load simple queries
+    require("simple-query");
 
     print(HELP);
   }
