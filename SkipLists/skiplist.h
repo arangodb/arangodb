@@ -247,7 +247,7 @@ void* TRI_EndNodeSkipList (TRI_skiplist_t*);
 /// @brief adds an element to the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertElementSkipList (TRI_skiplist_t*, void*, bool);
+int TRI_InsertElementSkipList (TRI_skiplist_t*, void*, bool);
 
 
 
@@ -255,7 +255,7 @@ bool TRI_InsertElementSkipList (TRI_skiplist_t*, void*, bool);
 /// @brief adds an element to the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertKeySkipList (TRI_skiplist_t*, void*, void*, bool);
+int TRI_InsertKeySkipList (TRI_skiplist_t*, void*, void*, bool);
 
 
 
@@ -295,7 +295,7 @@ void* TRI_PrevNodeSkipList(TRI_skiplist_t*, void*);
 /// @brief removes an element from the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveElementSkipList (TRI_skiplist_t*, void*, void*);
+int TRI_RemoveElementSkipList (TRI_skiplist_t*, void*, void*);
 
 
 
@@ -303,7 +303,7 @@ bool TRI_RemoveElementSkipList (TRI_skiplist_t*, void*, void*);
 /// @brief removes an element from the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveKeySkipList (TRI_skiplist_t*, void*, void*);
+int TRI_RemoveKeySkipList (TRI_skiplist_t*, void*, void*);
 
 
 
@@ -446,7 +446,7 @@ void* TRI_EndNodeSkipListMulti (TRI_skiplist_multi_t*);
 /// @brief adds an element to the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t*, void*, bool);
+int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t*, void*, bool);
 
 
 
@@ -454,7 +454,7 @@ bool TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t*, void*, bool);
 /// @brief adds an element to the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertKeySkipListMulti (TRI_skiplist_multi_t*, void*, void*, bool);
+int TRI_InsertKeySkipListMulti (TRI_skiplist_multi_t*, void*, void*, bool);
 
 
 
@@ -494,7 +494,7 @@ void* TRI_PrevNodeSkipListMulti (TRI_skiplist_multi_t*, void*);
 /// @brief removes an element from the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t*, void*, void*);
+int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t*, void*, void*);
 
 
 
@@ -502,7 +502,7 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t*, void*, void*);
 /// @brief removes an element from the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveKeySkipListMulti (TRI_skiplist_multi_t*, void*, void*);
+int TRI_RemoveKeySkipListMulti (TRI_skiplist_multi_t*, void*, void*);
 
 
 
