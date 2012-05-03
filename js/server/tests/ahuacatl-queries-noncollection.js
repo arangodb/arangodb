@@ -177,7 +177,7 @@ function ahuacatlQueryNonCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return values with let
+/// @brief return values from let
 ////////////////////////////////////////////////////////////////////////////////
 
     testNestedLet1 : function () {
@@ -193,6 +193,16 @@ function ahuacatlQueryNonCollectionTestSuite () {
     testNestedLet2 : function () {
       var expected = [ [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ] ];
       var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN quarters", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return asterisk
+////////////////////////////////////////////////////////////////////////////////
+
+    testAsterisk : function () {
+      var expected = [ { "r" : 2010, "x" : [ [ { "name" : "a" }, { "name" : "b" } ], [ { "name" : "c" }, { "name" : "d" } ] ] }, { "r" : 2011, "x" : [ [ { "name" : "a" }, { "name" : "b" } ], [ { "name" : "c" }, { "name" : "d" } ] ] }, { "r" : 2011, "x" : [ [ { "name" : "a" }, { "name" : "b" } ], [ { "name" : "c" }, { "name" : "d" } ] ] } ];
+      var actual = getQueryResults("FOR r IN [ 2010, 2011, 2011] LET x = ((FOR f IN [ { \"names\" : [ { \"name\" : \"a\" }, { \"name\" : \"b\" } ] }, { \"names\": [ { \"name\" : \"c\" }, { \"name\": \"d\" } ] } ] return f)) return { \"r\" : r, \"x\" : x[*].names }", false);
       assertEqual(expected, actual);
     },
 

@@ -123,6 +123,11 @@ ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1523,"document attribute '%s' is assig
 ERROR_QUERY_VARIABLE_NAME_INVALID,1524,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_BIND_PARAMETERS_INVALID,1525,"invalid structure of bind parameters","Will be raised when the structure of bind parameters passed has an unexpected format."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1526,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
+ERROR_QUERY_TOO_MANY_COLLECTIONS,1527,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
+ERROR_QUERY_INVALID_LOGICAL_VALUE,1528,"invalid logical value","Will be raised when a non-boolean value is used in a logical operation."
+ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1529,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
+ERROR_QUERY_DIVISON_BY_ZERO,1530,"division by zero","Will be raised when there is an attempt to divide by zero."
+ERROR_QUERY_SCRIPT,1531,"runtime error","Will be raised when a runtime error is caused by the query."
 
 ################################################################################
 ## AvocadoDB cursor errors
@@ -196,3 +201,16 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED,3100,"priority queue insert failure","Will be raised when an attempt to insert a document into a priority queue index fails for some reason."
 ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED,3110,"priority queue remove failure","Will be raised when an attempt to remove a document from a priority queue index fails for some reason."
 ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING,3111,"priority queue remove failure - item missing in index","Will be raised when an attempt to remove a document from a priority queue index fails when document can not be located within the index."
+
+ERROR_AVOCADO_INDEX_HASH_INSERT_ITEM_DUPLICATED,3312,"(non-unique) hash index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique hash index fails due to the fact that document is duplicated within that index."
+ERROR_AVOCADO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED,3313,"(non-unique) skiplist index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique skiplist index fails due to the fact that document is duplicated within that index."
+
+WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING,3200,"hash index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a hash index is caused by the document not having one or more attributes which are required by the hash index."
+WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING,3202,"hash index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the hash index."
+WARNING_AVOCADO_INDEX_HASH_REMOVE_ITEM_MISSING,3211,"hash index remove failure - item missing in index","Will be raised when an attempt to remove a document from a hash index fails when document can not be located within that index."
+
+
+WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING,3300,"skiplist index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a skiplist index is caused by in the document not having one or more attributes which are required by the hash index."
+WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING,3302,"skiplist index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the hash index."
+WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove failure - item missing in index","Will be raised when an attempt to remove a document from a skiplist index fails when document can not be located within that index."
+

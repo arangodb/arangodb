@@ -83,6 +83,7 @@ typedef struct TRI_aql_codegen_js_s {
   size_t _registerIndex;
   size_t _functionIndex;
   bool _error;
+  size_t _last;
 }
 TRI_aql_codegen_js_t;
 

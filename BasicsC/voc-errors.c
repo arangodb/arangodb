@@ -89,6 +89,11 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_BIND_PARAMETERS_INVALID, "invalid structure of bind parameters");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
+  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
+  REG_ERROR(ERROR_QUERY_INVALID_LOGICAL_VALUE, "invalid logical value");
+  REG_ERROR(ERROR_QUERY_INVALID_ARITHMETIC_VALUE, "invalid arithmetic value");
+  REG_ERROR(ERROR_QUERY_DIVISON_BY_ZERO, "division by zero");
+  REG_ERROR(ERROR_QUERY_SCRIPT, "runtime error");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
   REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER, "cannot create user");
@@ -128,6 +133,14 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED, "priority queue insert failure");
   REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED, "priority queue remove failure");
   REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING, "priority queue remove failure - item missing in index");
+  REG_ERROR(ERROR_AVOCADO_INDEX_HASH_INSERT_ITEM_DUPLICATED, "(non-unique) hash index insert failure - document duplicated in index");
+  REG_ERROR(ERROR_AVOCADO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED, "(non-unique) skiplist index insert failure - document duplicated in index");
+  REG_ERROR(WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING, "hash index insertion warning - attribute missing in document");
+  REG_ERROR(WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING, "hash index update warning - attribute missing in revised document");
+  REG_ERROR(WARNING_AVOCADO_INDEX_HASH_REMOVE_ITEM_MISSING, "hash index remove failure - item missing in index");
+  REG_ERROR(WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING, "skiplist index insertion warning - attribute missing in document");
+  REG_ERROR(WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING, "skiplist index update warning - attribute missing in revised document");
+  REG_ERROR(WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING, "skiplist index remove failure - item missing in index");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
