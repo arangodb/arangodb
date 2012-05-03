@@ -1,3 +1,9 @@
+
+
+button {
+  padding: 0; 
+}
+
 #logTableID_status, #warnLogTableID_status, #critLogTableID_status, #infoLogTableID_status, #debugLogTableID_status {
   vertical-align: -13px;
   padding-left: 5px;        
@@ -109,10 +115,10 @@ th {
   height:130px;
 }
 
-#newCollection_left  {
-  border-top: 1px dashed #7E9246;
-  border-left: 1px dashed #7E9246;
-  border-bottom: 1px dashed #7E9246;
+#newCollection_left, #editCollection_left {
+  border-top: 1px solid #7E9246;
+  border-left: 1px solid #7E9246;
+  border-bottom: 1px solid #7E9246;
   padding-top: 5px; 
   float:left;
   text-align:left;  
@@ -121,16 +127,31 @@ th {
   padding-left: 8px;  
 }
 
-#newCollection_right  {
-  border-top: 1px dashed #7E9246;
-  border-right: 1px dashed #7E9246;
-  border-bottom: 1px dashed #7E9246;
+#newCollection_right, #editCollection_right  {
+  border-top: 1px solid #7E9246;
+  border-right: 1px solid #7E9246;
+  border-bottom: 1px solid #7E9246;
   padding-top: 5px; 
   float:left;
   text-align:left;
   height:60px;  
   width:190px; 
 }
+
+#editCollectionView {
+  height: 250px;  
+}
+
+#editCollectionName {
+  height:20px; 
+}
+
+#editCollectionTable {
+  font-size: 0.8em;  
+  border-width: 1px; 
+  border-color: green;
+  border-style: solid;
+} 
 
 #newCollection_right form {
   padding-top: 10px;  

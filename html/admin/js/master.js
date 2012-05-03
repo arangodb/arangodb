@@ -143,7 +143,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"150px", "bSortable":false}, null, null, null, null, null ],
+    "aoColumns": [{"sWidth":"100px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -162,8 +162,8 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
+                  {"sClass":"writeable", "bSortable": false,  },
                   {"bVisible": false}], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -181,8 +181,8 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "170px"}, 
-                  {"sClass":"writeable", "bSortable": false }, 
+    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
                   {"sClass":"writeable", "bSortable": false },
                   {"bVisible": false}] 
   });
@@ -391,8 +391,6 @@ var logTable = $('#logTableID').dataTable({
       $('#nav1').attr('href', '#');
       $('#nav3').text('-> Edit:' + collectionID[1]); 
 
-      console.log("HEHEH"); 
-
       $.ajax({
         type: "GET",
         url: "/document/" + collectiondocID,
@@ -482,7 +480,8 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16)  == "#editCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
-      var collectionName;    
+      var collectionName;
+      var tmpStatus; 
  
       $.ajax({
         type: "GET",
@@ -492,6 +491,18 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           collectionName = data.name;
           $('#nav2').text('-> Edit: ' + collectionName);
+          $('#editCollectionName').text(data.name); 
+          $('#editCollectionID').text(data.id);
+
+          switch (data.status) {
+          case 1: tmpStatus = "new born collection"; break; 
+          case 2: tmpStatus = "unloaded"; break; 
+          case 3: tmpStatus = "loaded"; break; 
+          case 4: tmpStatus = "in the process of being unloaded"; break; 
+          case 5: tmpStatus = "deleted"; break; 
+          }
+
+          $('#editCollectionStatus').text(tmpStatus); 
         },
         error: function(data) {
         }
@@ -499,10 +510,9 @@ var logTable = $('#logTableID').dataTable({
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
-
-          hideAllSubDivs();
-          $('#collectionsView').hide();
-          $('#editCollectionView').show();
+      hideAllSubDivs();
+      $('#collectionsView').hide();
+      $('#editCollectionView').show();
 
     }
 
@@ -621,7 +631,6 @@ var logTable = $('#logTableID').dataTable({
           tableView = true;
           var collID = JSON.parse(collectionID).split("/");  
           window.location.href = "#showCollection?" + collID[0];  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -650,7 +659,6 @@ var logTable = $('#logTableID').dataTable({
           window.location.href = "#showCollection?" + collID[0];  
           var img = $('#toggleEditedDocButton').find('img'); 
           img.attr('src', '/_admin/html/media/icons/off_icon16.png');
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -714,7 +722,6 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           tableView = true;
           window.location.href = "#showCollection?" + collID;  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -741,7 +748,6 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           tableView = true;
           window.location.href = "#showCollection?" + collID;  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -811,7 +817,6 @@ var logTable = $('#logTableID').dataTable({
       }
  
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
 
@@ -1087,7 +1092,6 @@ var logTable = $('#logTableID').dataTable({
     var aData = documentsTable.fnGetData(aPos[0]);
     var row = $(this).closest("tr").get(0);
     var documentID = aData[1];
-    console.log(documentID);  
    
     if (this.id == "deleteDoc") { 
     try { 
@@ -1142,18 +1146,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveEditedCollection').live('click', function () {
-    var newColName; 
-    var currentid; 
-    var data = editCollectionTable.fnGetData(); 
-    
-    $.each(data, function(info, key) {
-      if (key[1] == 'name') {
-        newColName = key[2]; 
-      }
-      if (key[1] == 'id') {
-        currentid = key[2]; 
-      }
-    });
+    var newColName = $('#editCollectionName').val(); 
+    var currentid = $('#editCollectionID').text(); 
     
       $.ajax({
         type: "PUT",
