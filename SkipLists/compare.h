@@ -58,10 +58,68 @@ extern "C" {
 #endif
 
 
+static int IndexStaticCopyElementElement (TRI_skiplist_base_t* skiplist, void* left, void* right) {
+  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
+
+  LocalElement_t* leftElement  = (LocalElement_t*)(left);
+  LocalElement_t* rightElement = (LocalElement_t*)(right);
+
+  if (leftElement == NULL || rightElement == NULL) {
+    assert(0);
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  leftElement->numFields  = rightElement->numFields;
+  leftElement->data       = rightElement->data;
+  leftElement->collection = rightElement->collection;
+  leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * leftElement->numFields, false);
+  
+  if (leftElement->fields == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  memcpy(leftElement->fields, rightElement->fields, sizeof(TRI_shaped_json_t) * leftElement->numFields);
+  
+  return TRI_ERROR_NO_ERROR;  
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an element -- removing any allocated memory within the structure
+////////////////////////////////////////////////////////////////////////////////
+
+static void IndexStaticDestroyElement(TRI_skiplist_base_t* skiplist, void* element) {
+  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
+
+  // ...........................................................................
+  // Each 'field' in the hElement->fields is a TRI_shaped_json_t object, this
+  // structure has internal structure of its own -- which also has memory
+  // allocated -- HOWEVER we DO NOT deallocate this memory here since it 
+  // is actually part of the document structure. This memory should be deallocated
+  // when the document has been destroyed.
+  // ...........................................................................
+  
+  LocalElement_t* hElement = (LocalElement_t*)(element);
+  if (element != NULL) {
+    if (hElement->fields != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hElement->fields);
+    }  
+  }  
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper method for recursion for CompareShapedJsonShapedJson
 ////////////////////////////////////////////////////////////////////////////////
 
+
+// .............................................................................
+// left < right  return -1
+// left > right  return  1
+// left == right return  0
+// .............................................................................
 
 static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
   
@@ -89,8 +147,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
   
     case TRI_SHAPE_ILLEGAL: {
       switch (rightType) {
-        case TRI_SHAPE_ILLEGAL: 
-        {
+        case TRI_SHAPE_ILLEGAL: {
           return 0;
         }
         case TRI_SHAPE_NULL:
@@ -101,8 +158,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         case TRI_SHAPE_ARRAY:
         case TRI_SHAPE_LIST:
         case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
+        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: {
           return -1;
         }
       } // end of switch (rightType) 
@@ -351,7 +407,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         printf("%s:%u:type:%d\n",__FILE__,__LINE__,newShape->_type);
                          
        end oreste */
-      assert(false);
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: 
         case TRI_SHAPE_NULL:
@@ -367,6 +422,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         case TRI_SHAPE_ARRAY:
         {
+          
           assert(false);
           result = 0;
           return result;

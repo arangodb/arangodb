@@ -1077,8 +1077,8 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
           TRI_FreeShapeAccessor(acc);
         }
 
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement->fields);
-        return -1;
+        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
+        return TRI_WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING;
       }  
      
       // ..........................................................................
@@ -1087,9 +1087,9 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
 
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
         TRI_FreeShapeAccessor(acc);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement->fields);
+        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
 
-        return TRI_set_errno(TRI_ERROR_INTERNAL);
+        return TRI_ERROR_INTERNAL;
       }
       
       // ..........................................................................
@@ -1126,9 +1126,9 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
           TRI_FreeShapeAccessor(acc);
         }
 
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement->fields);
+        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
 
-        return -1;
+        return TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
       }  
       
       // ..........................................................................
@@ -1137,9 +1137,9 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
 
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
         TRI_FreeShapeAccessor(acc);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement->fields);
+        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
 
-        return TRI_set_errno(TRI_ERROR_INTERNAL);
+        return TRI_ERROR_INTERNAL;
       }
       
       // ..........................................................................
@@ -1153,7 +1153,7 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
   }
   
   else {
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -1186,7 +1186,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     
   hashElement.numFields = hashIndex->_paths._length;
   hashElement.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
-
+         
   if (hashElement.fields == NULL) {
     LOG_WARNING("out-of-memory in InsertHashIndex");
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1199,17 +1199,40 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // It is possible that this document does not have the necessary attributes
   // (keys) to participate in this index.
   // ............................................................................
+
   
-  if (res == -1) {
-    return TRI_ERROR_NO_ERROR;
-  }  
-  else if (res != TRI_ERROR_NO_ERROR) {
+  // ............................................................................
+  // If an error occurred in the called procedure HashIndexHelper, we must
+  // now exit -- and deallocate memory assigned to hashElement.
+  // ............................................................................
+  
+  if (res != TRI_ERROR_NO_ERROR) { // some sort of error occurred
+  
+    // ..........................................................................
+    // Deallocated the memory already allocated to hashElement.fields
+    // ..........................................................................
+      
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+
+    
+    // ..........................................................................
+    // It may happen that the document does not have the necessary attributes to 
+    // be included within the hash index, in this case do not report back an error.
+    // ..........................................................................
+    
+    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
+      return TRI_ERROR_NO_ERROR;
+    }
+    
     return res;
-  }    
+  }
+
+
   
   // ............................................................................
   // Fill the json field list from the document for unique hash index
   // ............................................................................
+  
   
   if (hashIndex->base._unique) {
     res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
@@ -1222,6 +1245,13 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   else {
     res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
   }
+
+  // ............................................................................
+  // Memory which has been allocated to hashElement.fields remains allocated
+  // contents of which are stored in the hash array.
+  // ............................................................................
+      
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1323,7 +1353,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   if (idx == NULL) {
     LOG_WARNING("internal error in RemoveHashIndex");
     return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
+  } 
 
   // ............................................................................
   // Allocate some memory for the HashIndexElement structure
@@ -1351,12 +1381,33 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // such cases.
   // ..........................................................................
   
-  if (res == -1) {
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
-  else if (res != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR) {
+  
+    // ........................................................................
+    // Deallocate memory allocated to hashElement.fields above
+    // ........................................................................
+    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+    
+    
+    // ........................................................................
+    // It may happen that the document does not have the necessary attributes
+    // to have particpated within the hash index. In this case, we do not
+    // report an error to the calling procedure.
+    // ........................................................................
+    
+    // ........................................................................
+    // -1 from the called procedure HashIndexHelper implies that we do not 
+    // propagate the error to the parent function. However for removal
+    // we advice the parent function. TODO: return a proper error code.
+    // ........................................................................
+    
+    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
+      return TRI_ERROR_NO_ERROR;
+    }
+    
     return res;
-  }    
+  }
   
   // ............................................................................
   // Attempt the removal for unique hash indexes
@@ -1373,6 +1424,12 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   else {
     res = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
   }
+  
+  // ............................................................................
+  // Deallocate memory allocated to hashElement.fields above
+  // ............................................................................
+    
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1429,6 +1486,8 @@ static int UpdateHashIndex (TRI_index_t* idx,
   
   if (hashIndex->base._unique) {
   
+    assert(oldDoc != NULL);
+
     res = HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc);
     
     if (res == TRI_ERROR_NO_ERROR) {
@@ -1448,13 +1507,26 @@ static int UpdateHashIndex (TRI_index_t* idx,
       res = HashIndex_remove(hashIndex->_hashIndex, &hashElement); 
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("could not remove old document from hash index in UpdateHashIndex");
+      
+        // ..........................................................................
+        // This error is common, when a document 'update' occurs, but fails
+        // due to the fact that a duplicate entry already exists, when the 'rollback'
+        // is applied, there is no document to remove -- so we get this error.
+        // ..........................................................................
+        
+        LOG_WARNING("could not remove existing document from hash index in UpdateHashIndex");
       }
     }    
 
+    // ..............................................................................
+    // Here we are assuming that the existing document could not be removed, because
+    // the doc did not have the correct attributes. TODO: do not make this assumption.
+    // ..............................................................................
+    
     else {
-      LOG_WARNING("existing document could not be removed");
+      LOG_WARNING("existing document was not removed from hash index in UpdateHashIndex");
     }
+
     
     // ............................................................................
     // Fill the json simple list from the document
@@ -1462,18 +1534,29 @@ static int UpdateHashIndex (TRI_index_t* idx,
 
     res = HashIndexHelper(hashIndex, &hashElement, newDoc, NULL);
 
-    if (res == -1) {
+
+    // ............................................................................
+    // Deal with any errors reported back.
+    // ............................................................................
+
+    if (res != TRI_ERROR_NO_ERROR) {
     
       // ..........................................................................
-      // probably fields do not match. For now just return internal error
+      // Deallocated memory given to hashElement.fields
       // ..........................................................................
-      return TRI_ERROR_INTERNAL;
+    
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
       
-    }
+      if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+        // ........................................................................
+        // probably fields do not match. 
+        // ........................................................................
+
+        return TRI_ERROR_NO_ERROR;
+      }
     
-    else if (res != TRI_ERROR_NO_ERROR) {
       return res;
-    }    
+    }
 
     // ............................................................................
     // Attempt to add the hash entry from the new doc
@@ -1511,12 +1594,12 @@ static int UpdateHashIndex (TRI_index_t* idx,
       res = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("could not remove old document from hash index in UpdateHashIndex");
+        LOG_WARNING("could not remove old document from (non-unique) hash index in UpdateHashIndex");
       }
     }    
 
     else {
-      LOG_WARNING("existing document could not be removed");
+      LOG_WARNING("existing document was not removed from (non-unique) hash index in UpdateHashIndex");
     }
     
     // ............................................................................
@@ -1525,25 +1608,35 @@ static int UpdateHashIndex (TRI_index_t* idx,
 
     res = HashIndexHelper(hashIndex, &hashElement, newDoc, NULL); 
 
-    if (res == -1) {
+    if (res != TRI_ERROR_NO_ERROR) {
 
-      // ..........................................................................
-      // probably fields do not match -- report internal error for now 
-      // ..........................................................................
-  
-      return TRI_ERROR_INTERNAL;
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      
+      if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+
+        // ........................................................................
+        // probably fields do not match -- report internal error for now 
+        // ........................................................................
+    
+        return TRI_ERROR_NO_ERROR;
+      }
+    
+      return res;
     }
     
-    else if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }    
-
     // ............................................................................
     // Attempt to add the hash entry from the new doc
     // ............................................................................
 
     res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
   }
+  
+  
+  // ............................................................................
+  // Deallocate memory given to hashElement.fields
+  // ............................................................................
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1615,7 +1708,14 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
   else {
     hashIndex->_hashIndex = MultiHashIndex_new();
   }  
-
+  
+  if (hashIndex->_hashIndex == NULL) {
+    TRI_DestroyVector(&hashIndex->_paths); 
+    TRI_DestroyVectorString(&hashIndex->base._fields); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+    return NULL;
+  }
+  
   return &hashIndex->base;
 }
 
@@ -1624,22 +1724,16 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashIndex (TRI_index_t* idx) {
-  TRI_hash_index_t* hash;
-  HashIndex* hashIndex;
+  TRI_hash_index_t* hashIndex;
 
   LOG_TRACE("destroying hash index");
   TRI_DestroyVectorString(&idx->_fields);
 
-  hash = (TRI_hash_index_t*) idx;
-  TRI_DestroyVector(&hash->_paths);
+  hashIndex = (TRI_hash_index_t*) idx;
 
-  hashIndex = hash->_hashIndex;
-  if (hashIndex->unique) {
-    HashIndex_free(hashIndex, hash->base._collection->_shaper);
-  }
-  else {
-    MultiHashIndex_free(hashIndex);
-  }
+  TRI_DestroyVector(&hashIndex->_paths);
+
+  HashIndex_free(hashIndex->_hashIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1680,12 +1774,12 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   size_t j;
   
   element.numFields = parameterList->_value._objects._length;
-  element.fields    = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t) * element.numFields, false);
+  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
 
   if (element.fields == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_WARNING("out-of-memory in LookupHashIndex");
-    return NULL;
+    return NULL; 
   }  
     
   hashIndex = (TRI_hash_index_t*) idx;
@@ -2455,14 +2549,11 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the skip list index
-////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
-// Warning: who ever calls this function is responsible for destroying
-// TRI_skiplist_iterator_t* results
+// Helper function for TRI_LookupSkiplistIndex
 // .............................................................................
+
 
 static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collection_t* collection) {
   TRI_json_t*                 jsonObject;
@@ -2506,18 +2597,65 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
         }
       }  
       else {
-        relationOperator->_numFields = 0;
+        relationOperator->_numFields = 0; // out of memory?
       }        
       break;
     }
   }
 }
 
+
+static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_sl_logical_operator_t*  logicalOperator;
+
+  if (slOperator == NULL) {
+    return;
+  }
+  
+  switch (slOperator->_type) {
+    case TRI_SL_AND_OPERATOR: 
+    case TRI_SL_NOT_OPERATOR:
+    case TRI_SL_OR_OPERATOR: {
+      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
+      UnFillLookupSLOperator(logicalOperator->_left);
+      UnFillLookupSLOperator(logicalOperator->_right);
+      break;
+    }
+    
+    case TRI_SL_EQ_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+    case TRI_SL_NE_OPERATOR: 
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: {
+      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+      if (relationOperator->_fields != NULL) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields); // don't require storage anymore
+        relationOperator->_fields = NULL;
+      }
+      relationOperator->_numFields = 0;
+      break;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attempts to locate an entry in the skip list index
+////////////////////////////////////////////////////////////////////////////////
+
+// .............................................................................
+// Warning: who ever calls this function is responsible for destroying
+// TRI_skiplist_iterator_t* results
+// .............................................................................
+
+
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
   TRI_skiplist_iterator_t* result;
   
   skiplistIndex = (TRI_skiplist_index_t*)(idx);
+  
   // .........................................................................
   // fill the relation operators which may be embedded in the slOperator with
   // additional information. Recall the slOperator is what information was
@@ -2533,6 +2671,12 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
     result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
   }
 
+  // .........................................................................
+  // we must deallocated any memory we allocated in FillLookupSLOperator
+  // .........................................................................
+  
+  UnFillLookupSLOperator(slOperator); 
+  
   return result;  
 }
 
@@ -2541,7 +2685,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
 /// @brief helper for skiplist methods
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex, 
+static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex, 
                                 SkiplistIndexElement* skiplistElement,
                                 const TRI_doc_mptr_t* document,
                                 const TRI_shaped_json_t* shapedDoc) {
@@ -2572,8 +2716,8 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
         if (acc != NULL) {
           TRI_FreeShapeAccessor(acc);
         }
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement->fields);
-        return false;
+        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
       }  
       
       
@@ -2582,8 +2726,9 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................    
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
         TRI_FreeShapeAccessor(acc);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement->fields);
-        return false;
+        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+        
+        return TRI_ERROR_INTERNAL;
       }
       
       
@@ -2619,8 +2764,8 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
         if (acc != NULL) {
           TRI_FreeShapeAccessor(acc);
         }
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement->fields);
-        return false;
+        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
       }  
       
       
@@ -2629,8 +2774,8 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................    
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
         TRI_FreeShapeAccessor(acc);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement->fields);
-        return false;
+        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+        return TRI_ERROR_INTERNAL;
       }
       
 
@@ -2644,10 +2789,10 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   }
   
   else {
-    return false;
+    return TRI_ERROR_INTERNAL;
   }
   
-  return true;
+  return TRI_ERROR_NO_ERROR;
   
 } // end of static function SkiplistIndexHelper
 
@@ -2662,7 +2807,6 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   SkiplistIndexElement skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
-  bool ok;
 
   
   // ............................................................................
@@ -2689,7 +2833,8 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
-  ok = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
+  
+  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
     
   
   // ............................................................................
@@ -2698,8 +2843,25 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // is ignored. So not really an error at all.
   // ............................................................................
   
-  if (!ok) {
-    return TRI_ERROR_NO_ERROR;
+  if (res != TRI_ERROR_NO_ERROR) {
+  
+    // ..........................................................................
+    // Deallocated the memory already allocated to skiplistElement.fields
+    // ..........................................................................
+      
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+    
+    
+    // ..........................................................................
+    // It may happen that the document does not have the necessary attributes to 
+    // be included within the hash index, in this case do not report back an error.
+    // ..........................................................................
+    
+    if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    return res;
   }    
   
 
@@ -2721,29 +2883,13 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   
   // ............................................................................
-  // Take the appropriate action which depends on what was returned by the insert
-  // method of the index.
+  // Memory which has been allocated to skiplistElement.fields remains allocated
+  // contents of which are stored in the hash array.
   // ............................................................................
+      
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
   
-  if (res == -1) {
-    LOG_WARNING("found duplicate entry in skiplist-index, should not happen");
-    return TRI_ERROR_INTERNAL;
-  }
-  else if (res == -2) {
-    LOG_WARNING("out-of-memory in skiplist-index");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  else if (res < 0) {
-    LOG_DEBUG("unknown error, ignoring entry");
-    return TRI_ERROR_INTERNAL;
-  }
-
-  
-  // ............................................................................
-  // Everything OK
-  // ............................................................................
-  
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 
@@ -2825,7 +2971,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   SkiplistIndexElement skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
-  bool result;
+  int res;
   
 
   // ............................................................................
@@ -2854,17 +3000,44 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ..........................................................................
   // Fill the json field list from the document
   // ..........................................................................
-  if (!SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL)) {
-    return TRI_ERROR_INTERNAL;
-  }    
-
+  
+  
+  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
+  
+  // ..........................................................................
+  // Error returned generally implies that the document never was part of the 
+  // skiplist index
+  // ..........................................................................
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+  
+    // ........................................................................
+    // Deallocate memory allocated to skiplistElement.fields above
+    // ........................................................................
+    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+    
+    
+    // ........................................................................
+    // It may happen that the document does not have the necessary attributes
+    // to have particpated within the hash index. In this case, we do not
+    // report an error to the calling procedure.
+    // ........................................................................
+    
+    if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    return res;  
+  }
+  
   
   // ............................................................................
   // Attempt the removal for unique skiplist indexes
   // ............................................................................
   
   if (skiplistIndex->base._unique) {
-    result = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
+    res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
   } 
   
   // ............................................................................
@@ -2872,11 +3045,16 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ............................................................................
   
   else {
-    result = MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
+    res = MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
   }
   
+  // ............................................................................
+  // Deallocate memory allocated to skiplistElement.fields above
+  // ............................................................................
+    
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
   
-  return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
+  return res;
 }
 
 
@@ -2931,8 +3109,9 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   
   if (skiplistIndex->base._unique) {
   
+    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, oldDoc);
       
-    if (SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, oldDoc)) {
+    if (res == TRI_ERROR_NO_ERROR) {
     
       // ............................................................................
       // We must fill the skiplistElement with the value of the document shape -- this
@@ -2945,27 +3124,70 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
       // ............................................................................
       // Remove the skiplist index entry and return.
       // ............................................................................
-      if (!SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement)) {
-        LOG_WARNING("could not remove old document from skiplist index in UpdateSkiplistIndex");
+      
+      res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
+      
+      if (res != TRI_ERROR_NO_ERROR) {
+      
+        // ..........................................................................
+        // This error is common, when a document 'update' occurs, but fails
+        // due to the fact that a duplicate entry already exists, when the 'rollback'
+        // is applied, there is no document to remove -- so we get this error.
+        // ..........................................................................
+        
+        LOG_WARNING("could not remove existing document from skiplist index in UpdateSkiplistIndex");
       }
       
     }    
 
+    // ..............................................................................
+    // Here we are assuming that the existing document could not be removed, because
+    // the doc did not have the correct attributes. TODO: do not make this assumption.
+    // ..............................................................................
 
+    else if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
+    }
+    
+    // ..............................................................................
+    // some other error
+    // ..............................................................................
+    
+    else {
+      LOG_WARNING("existing document was not removed from skiplist index in UpdateSkiplistIndex");
+    }
+    
+    
     // ............................................................................
     // Fill the json simple list from the document
     // ............................................................................
-    if (!SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL)) {
+    
+    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+    
       // ..........................................................................
-      // probably fields do not match  
+      // Deallocated memory given to skiplistElement.fields
       // ..........................................................................
-      return TRI_ERROR_INTERNAL;
+    
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+      
+      if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
+      
+        // ........................................................................
+        // probably fields do not match. 
+        // ........................................................................
+
+        return TRI_ERROR_NO_ERROR;
+      }
+    
+      return res;
     }    
 
 
     // ............................................................................
     // Attempt to add the skiplist entry from the new doc
     // ............................................................................
+    
     res = SkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
   }
 
@@ -2979,34 +3201,69 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     // ............................................................................
     // Fill in the fields with the values from oldDoc
     // ............................................................................    
+
+    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, oldDoc);
     
-    if (SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, oldDoc)) {
+    if (res == TRI_ERROR_NO_ERROR) {
+    
       // ............................................................................
       // We must fill the skiplistElement with the value of the document shape -- this
       // is necessary when we attempt to remove non-unique skiplist indexes.
       // ............................................................................
+      
       cnv.c = newDoc;
       skiplistElement.data = cnv.p;
+      
       
       // ............................................................................
       // Remove the skiplist index entry and return.
       // ............................................................................
       
-      if (!MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement)) {
-        LOG_WARNING("could not remove old document from hash index in UpdateHashIndex");
+      res = MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
+      
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_WARNING("could not remove old document from (non-unique) skiplist index  UpdateSkiplistIndex");
       }
       
     }    
 
+    else if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
+    }
+    
+    // ..............................................................................
+    // some other error
+    // ..............................................................................
+    
+    else {
+      LOG_WARNING("existing document was not removed from (non-unique) skiplist index in UpdateSkiplistIndex");
+    }
 
+
+    
     // ............................................................................
     // Fill the shaped json simple list from the document
     // ............................................................................
-    if (!SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL)) {
+    
+    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+    
       // ..........................................................................
-      // probably fields do not match  
+      // Deallocated memory given to skiplistElement.fields
       // ..........................................................................
-      return TRI_ERROR_INTERNAL;
+    
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+      
+      if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
+      
+        // ........................................................................
+        // probably fields do not match. 
+        // ........................................................................
+
+        return TRI_ERROR_NO_ERROR;
+      }
+    
+      return res;
     }    
 
 
@@ -3017,20 +3274,10 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     
   }
   
-  if (res == -1) {
-    LOG_WARNING("found duplicate entry in skiplist-index, should not happen");
-    return TRI_ERROR_INTERNAL;
-  }
-  else if (res == -2) {
-    LOG_WARNING("out-of-memory in skiplist-index");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  else if (res < 0) {
-    LOG_DEBUG("unknown error, ignoring entry");
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);  
+  
+  return res;
 }
   
 
@@ -3106,7 +3353,7 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
   sl = (TRI_skiplist_index_t*) idx;
   TRI_DestroyVector(&sl->_paths);
 
-  SkiplistIndexFree(sl->_skiplistIndex);
+  SkiplistIndex_free(sl->_skiplistIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3117,7 +3364,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
   if (idx == NULL) {
     return;
   }  
-
   TRI_DestroySkiplistIndex(idx);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
