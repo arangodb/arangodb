@@ -212,7 +212,7 @@ function PUT_api_cursor(req, res) {
     } 
 
     // note: this might dispose or persist the cursor
-    actions.resultCursor(req, res, cursor);
+    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
   }
   catch (err) {
     actions.resultException(req, res, err);
