@@ -534,14 +534,15 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test multiple collects
 ////////////////////////////////////////////////////////////////////////////////
-      
+      /*
     testCollectMultiple : function () {
-      /* TODO: must be fixed 
+      // fix this
       var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
       actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }", false);
+      print("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }");
       assertEqual(expected, actual);
-      */
     },
+    */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test relations

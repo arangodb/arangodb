@@ -1,9 +1,0 @@
-PUT /_api/cursor/551774098 HTTP/1.1
-
-
-HTTP/1.1 200 OK
-connection: Keep-Alive
-content-type: application/json
-server: triagens GmbH High-Performance HTTP Server
-
-{"result":[{"id":2,"name":"peter","_id":"345055525:346693925"}],"hasMore":false,"count":5,"error":false,"code":200}

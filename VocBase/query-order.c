@@ -25,9 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8/v8-c-utils.h"
+#include "query-order.h"
+
+#include "V8/v8-execution.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/query-order.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase

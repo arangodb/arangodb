@@ -87,14 +87,6 @@ function AHUACATL_FCALL(name, parameters) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the value of a bind parameter
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_GET_PARAMETER (name) {
-  throw "bind parameters not yet supported";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the numeric value or undefined if it is out of range
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1132,6 +1124,75 @@ function AHUACATL_IS_DOCUMENT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 numeric functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief integer closest to value, not greater than value
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NUMBER_FLOOR (value) {
+  if (!AHUACATL_IS_NUMBER(value)) {
+    throw "expecting number for floor";
+  }
+  
+  return Math.floor(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief integer closest to value and not less than value
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NUMBER_CEIL (value) {
+  if (!AHUACATL_IS_NUMBER(value)) {
+    throw "expecting number for ceil";
+  }
+  
+  return Math.ceil(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief integer closest to value 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NUMBER_ROUND (value) {
+  if (!AHUACATL_IS_NUMBER(value)) {
+    throw "expecting number for round";
+  }
+  
+  return Math.round(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief absolute value
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NUMBER_ABS (value) {
+  if (!AHUACATL_IS_NUMBER(value)) {
+    throw "expecting number for abs";
+  }
+  
+  return Math.abs(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a random value between 0 and 1
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NUMBER_RAND () {
+  return Math.random();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        high level query functions
 // -----------------------------------------------------------------------------
 
@@ -1278,6 +1339,88 @@ function AHUACATL_UNION () {
   }
 
   return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MAX () {
+  var result = null;
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  for (var i in value) {
+    var currentValue = value[i];
+    
+    if (AHUACATL_TYPEWEIGHT(currentValue) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+
+    if (result === null || AHUACATL_RELATIONAL_GREATER(currentValue, result)) {
+      result = currentValue;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MIN () {
+  var result = null;
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  for (var i in value) {
+    var currentValue = value[i];
+    
+    if (AHUACATL_TYPEWEIGHT(currentValue) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+    
+    if (result === null || AHUACATL_RELATIONAL_LESS(currentValue, result)) {
+      result = currentValue;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sum of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_SUM () {
+  var result = null;
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  for (var i in value) {
+    var currentValue = value[i];
+    
+    if (AHUACATL_TYPEWEIGHT(currentValue) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+
+    if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+      throw "expecting number for sum";
+    }
+    
+    if (result === null) {
+      result = currentValue;
+    }
+    else {
+      result += currentValue;
+    }
+  }
+
+  return AHUACATL_NUMERIC_VALUE(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

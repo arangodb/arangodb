@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H
 #define TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H 1
 
-#include "VocBase/query-result.h"
-#include "VocBase/query-join.h"
-#include "VocBase/query-data-feeder.h"
-#include "QL/optimize.h"
 #include "QL/ast-query.h"
-#include "V8/v8-c-utils.h"
+#include "QL/optimize.h"
+#include "V8/v8-execution.h"
+#include "VocBase/query-data-feeder.h"
+#include "VocBase/query-join.h"
+#include "VocBase/query-result.h"
 
 #ifdef __cplusplus
 extern "C" {

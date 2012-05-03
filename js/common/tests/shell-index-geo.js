@@ -46,7 +46,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: Creation
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoIndexCreationSuite() {
+function GeoIndexCreationSuite() {
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -57,8 +57,8 @@ function geoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +512,7 @@ function geoIndexCreationSuite() {
 /// @brief test suite: Simple Queries
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoIndexErrorHandlingSuite() {
+function GeoIndexErrorHandlingSuite() {
   var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
@@ -524,8 +524,8 @@ function geoIndexErrorHandlingSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -869,7 +869,7 @@ function geoIndexErrorHandlingSuite() {
 /// @brief test suite: Simple Queries
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoIndexSimpleQueriesSuite() {
+function GeoIndexSimpleQueriesSuite() {
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -880,8 +880,8 @@ function geoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   setUp : function () {
-    db._drop(cn);
-    collection = db._create(cn, { waitForSync : false });
+    internal.db._drop(cn);
+    collection = internal.db._create(cn, { waitForSync : false });
 
     try {
       for (var i = -90;  i <= 90;  i += 10) {
@@ -1149,9 +1149,9 @@ function geoIndexSimpleQueriesSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(geoIndexCreationSuite);
-jsunity.run(geoIndexErrorHandlingSuite);
-jsunity.run(geoIndexSimpleQueriesSuite);
+jsunity.run(GeoIndexCreationSuite);
+jsunity.run(GeoIndexErrorHandlingSuite);
+jsunity.run(GeoIndexSimpleQueriesSuite);
 
 return jsunity.done();
 

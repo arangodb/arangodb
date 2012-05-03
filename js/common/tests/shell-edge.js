@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionEdgeSuiteErrorHandling () {
+function CollectionEdgeSuiteErrorHandling () {
   var ERRORS = require("internal").errors;
 
   var vn = "UnitTestsCollectionVertex";
@@ -57,8 +57,8 @@ function collectionEdgeSuiteErrorHandling () {
       edges._drop(en);
       edge = edges._create(en, { waitForSync : false });
 
-      db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      internal.db._drop(vn);
+      vertex = internal.db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -101,7 +101,7 @@ function collectionEdgeSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function collectionEdgeSuite () {
+function CollectionEdgeSuite () {
   var ERRORS = require("internal").errors;
 
   var vn = "UnitTestsCollectionVertex";
@@ -123,8 +123,8 @@ function collectionEdgeSuite () {
       edges._drop(en);
       edge = edges._create(en, { waitForSync : false });
 
-      db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      internal.db._drop(vn);
+      vertex = internal.db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -330,8 +330,8 @@ function collectionEdgeSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(collectionEdgeSuiteErrorHandling);
-jsunity.run(collectionEdgeSuite);
+jsunity.run(CollectionEdgeSuiteErrorHandling);
+jsunity.run(CollectionEdgeSuite);
 
 return jsunity.done();
 
