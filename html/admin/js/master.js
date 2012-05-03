@@ -798,7 +798,8 @@ var logTable = $('#logTableID').dataTable({
     }
     else {
       try {
-        var boxContent = $('#documentEditSourceBox').val();  
+        var boxContent = $('#documentEditSourceBox').val(); 
+        boxContent = sexmann(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         documentEditTable.fnClearTable(); 
@@ -929,6 +930,7 @@ var logTable = $('#logTableID').dataTable({
     else {
       try {
         var boxContent = $('#NewDocumentSourceBox').val();  
+        boxContent = sexmann(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         newDocumentTable.fnClearTable(); 
@@ -1308,7 +1310,6 @@ var logTable = $('#logTableID').dataTable({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/unload",
         success: function () {
-          alert('Collection: ' + collectionID + ' unloaded');
           drawCollectionsTable();
         }, 
         error: function () {
@@ -1378,7 +1379,7 @@ function drawCollectionsTable () {
         });
 	
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus, size + " kB", alive]);
+        val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
@@ -1911,7 +1912,7 @@ function FormatJSON(oData, sIndent) {
                 sHTML += "null";
                 break;
             case "string":
-                sHTML += ("\"" + vValue + "\"");
+                sHTML += ("\"" + (vValue.replace(/"/g,"\\\"")) + "\"");
                 break;
             default:
                 sHTML += ("TYPEOF: " + typeof(vValue));
@@ -1941,4 +1942,92 @@ function RealTypeOf(v) {
     return "object";
   }
   return typeof(v);
-} 
+}
+
+function bytesToSize(bytes, precision) {  
+  var kilobyte = 1024;
+  var megabyte = kilobyte * 1024;
+  var gigabyte = megabyte * 1024;
+  var terabyte = gigabyte * 1024;
+   
+  if ((bytes >= 0) && (bytes < kilobyte)) {
+    return bytes + ' B';
+   } 
+   else if ((bytes >= kilobyte) && (bytes < megabyte)) {
+     return (bytes / kilobyte).toFixed(precision) + ' KB';
+   } 
+   else if ((bytes >= megabyte) && (bytes < gigabyte)) {
+     return (bytes / megabyte).toFixed(precision) + ' MB';
+   } 
+   else if ((bytes >= gigabyte) && (bytes < terabyte)) {
+     return (bytes / gigabyte).toFixed(precision) + ' GB';
+   } 
+   else if (bytes >= terabyte) {
+     return (bytes / terabyte).toFixed(precision) + ' TB';
+   }   
+   else {
+     return bytes + ' B';
+   }
+}
+
+function sexmann (value) {
+  var inString = false;
+  var length = value.length;
+  var position = 0;
+  var escaped = false;
+
+  var output = "";
+
+  while (position < length) {
+    var c = value.charAt(position++);
+
+    if (c === '\\') {
+      if (escaped) {
+        /* case: \ followed by \ */
+        output += '\\';
+        escaped = false;
+      } 
+      else {
+        /* case: single backslash */
+        escaped = true;
+      }
+    }
+    else if (c === '"') {
+      if (escaped) {
+        /* case: \ followed by " */
+        output += '\\"';
+        escaped = false;
+      } 
+      else {
+        output += '"';
+        inString = !inString;
+      }
+    } 
+    else {
+      if (inString) {
+        switch (c) {
+          case '\n':
+            output += '\\n';
+            break;
+          case '\t':
+            output += '\\t';
+            break;
+          case '\r':
+            output += '\\r';
+            break;
+          default:
+            output += c;
+            break;
+        }
+      } 
+      else {
+        if (c >= '!') {
+          output += c;
+        }
+      }
+    }
+  }
+
+  return output;
+}
+ 
