@@ -97,7 +97,7 @@ UnitTests/Jutland/Runner.cpp
 UnitTests/Philadelphia/Makefile.am
 UnitTests/Philadelphia/Makefile.py
 UnitTests/Philadelphia/Runner.cpp
-UnitTests/test_suite
+UnitTests/basics_suite
 .v8-build-*
 VC++
 /nbproject/private/
