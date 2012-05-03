@@ -210,7 +210,7 @@ static TRI_aql_codegen_function_t* CurrentFunction (TRI_aql_codegen_js_t* const 
 
   return function;
 }
-  
+
 static void IncreaseForCount (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_function_t* function = CurrentFunction(generator);
 
@@ -361,20 +361,24 @@ static void HandleReference (TRI_aql_codegen_js_t* const generator,
   AppendString(generator, "]");
 }
 
+static void HandleAttribute (TRI_aql_codegen_js_t* const generator,
+                             const TRI_aql_node_t* const node) {
+  AppendString(generator, "AHUACATL_DOCUMENT_MEMBER(");
+  AppendRegisterName(generator, generator->_last);
+  AppendString(generator, "[");
+  AppendRegisterName(generator, generator->_last + 1);
+  AppendString(generator, "], ");
+  AppendQuoted(generator, TRI_AQL_NODE_STRING(node));
+  AppendString(generator, ")");
+}
+
 static void HandleAttributeAccess (TRI_aql_codegen_js_t* const generator,
                                    const TRI_aql_node_t* const node) {
   AppendString(generator, "AHUACATL_DOCUMENT_MEMBER(");
   DumpNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  AppendString(generator, ", '");
-  AppendString(generator, TRI_AQL_NODE_STRING(node));
-  AppendString(generator, "')");
-}
-
-static void HandleAttribute (TRI_aql_codegen_js_t* const generator,
-                             const TRI_aql_node_t* const node) {
-  AppendString(generator, "AHUACATL_DOCUMENT_MEMBER(__e[_e], '");
-  AppendString(generator, TRI_AQL_NODE_STRING(node));
-  AppendString(generator, "')");
+  AppendString(generator, ", ");
+  AppendQuoted(generator, TRI_AQL_NODE_STRING(node));
+  AppendString(generator, ")");
 }
 
 static void HandleIndexed (TRI_aql_codegen_js_t* const generator,
@@ -392,8 +396,8 @@ static void HandleExpand (TRI_aql_codegen_js_t* const generator,
   size_t r2 = NextRegister(generator);
   size_t funcIndex;
 
+  generator->_last = r1;
   StartFunction(generator, AQL_FUNCTION_STANDALONE);
-
   AppendString(generator, "var result = [];\n");
   AppendString(generator, "var "); 
   AppendRegisterName(generator, r1);
@@ -718,7 +722,7 @@ static void HandleCollect (TRI_aql_codegen_js_t* const generator,
   }
   AppendString(generator, " };\n");
   groupFuncIndex = EndFunction(generator);
-        
+       
   AppendString(generator, "result.push(AHUACATL_CLONE($));\n");
   CloseForLoops(generator);
   AppendString(generator, "result = AHUACATL_GROUP(result, ");
@@ -726,7 +730,7 @@ static void HandleCollect (TRI_aql_codegen_js_t* const generator,
   AppendString(generator, ", ");
   AppendFuncName(generator, groupFuncIndex);
 
-  if (TRI_AQL_NODE_MEMBER(node, 1)) {
+  if (node->_members._length > 1) {
     TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 1);
     AppendString(generator, ", ");
     AppendQuoted(generator, TRI_AQL_NODE_STRING(nameNode));
@@ -793,11 +797,11 @@ static void DumpNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* con
       case AQL_NODE_REFERENCE: 
         HandleReference(generator, node);
         break;
-      case AQL_NODE_ATTRIBUTE_ACCESS:
-        HandleAttributeAccess(generator, node);
-        break;
       case AQL_NODE_ATTRIBUTE:
         HandleAttribute(generator, node);
+        break;
+      case AQL_NODE_ATTRIBUTE_ACCESS:
+        HandleAttributeAccess(generator, node);
         break;
       case AQL_NODE_INDEXED:
         HandleIndexed(generator, node);
@@ -973,6 +977,7 @@ TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const data) {
   TRI_AppendStringStringBuffer(&generator->_buffer, "({ });");
 
   LOG_DEBUG("generated code: %s", generator->_buffer._buffer);
+//  printf("generated code: %s", generator->_buffer._buffer);
   return generator;
 }
 

@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 
@@ -411,6 +412,11 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
 
   // duplicates are not a problem here, we simply ignore them
   TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
+  
+  if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+    return NULL;
+  }
 
   return node;
 }
