@@ -29,10 +29,36 @@
 /// @page OTWPTOC
 ///
 /// <ol>
-///  <li>Querying and Managing Documents
+///  <li>REST Interface
 ///   <ol>
 ///    <li>@ref RestDocument
-///     @copydetails RestDocumentCallsTOC
+///     @copydetails RestDocumentTOC
+///    </li>
+///    <li>@ref RestEdge
+///     @copydetails RestEdgeTOC
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Light-Weight HTTP for Queries
+///   <ol>
+///    <li>@ref HttpCursor
+///     @copydetails HttpCursorTOC
+///    </li>
+///    <li>@ref HttpSimple
+///     @copydetails HttpSimpleTOC
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Light-Weight HTTP for Administration
+///   <ol>
+///    <li>@ref HttpCollection
+///     @copydetails HttpCollectionTOC
+///    </li>
+///    <li>@ref HttpIndex
+///     @copydetails HttpIndexTOC
+///    </li>
+///    <li>@ref HttpSystem
+///     @copydetails HttpSystemTOC
 ///    </li>
 ///    <li>@ref OTWPSimpleQueries
 ///     <ol>
@@ -53,12 +79,6 @@
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>@ref HttpCollection
-///   @copydetails HttpCollectionCallsTOC
-///  </li>
-///  <li>@ref HttpIndex
-///   @copydetails HttpIndexCallsTOC
-///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,10 +91,6 @@
 ///
 /// @section OTWPSimpleQueries Simple Queries
 /////////////////////////////////////////////
-///
-/// @anchor OTWPSimpleQueriesAll
-/// @copydetails JSA_PUT_api_simple_all
-/// <hr>
 ///
 /// @anchor OTWPSimpleQueriesByExample
 /// @copydetails JSA_PUT_api_simple_by_example

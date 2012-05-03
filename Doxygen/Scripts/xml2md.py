@@ -115,6 +115,9 @@ replDict["e_listitem_3"] = "</li>"
 replDict["s_listitem_4"] = "<li>"
 replDict["e_listitem_4"] = "</li>"
 
+replDict["s_listitem_5"] = "<li>"
+replDict["e_listitem_5"] = "</li>"
+
 replDict["s_xrefsect"] = ""
 replDict["e_xrefsect"] = ""
 
@@ -196,6 +199,7 @@ gencDict["listitem_1"] = False
 gencDict["listitem_2"] = False
 gencDict["listitem_3"] = False
 gencDict["listitem_4"] = False
+gencDict["listitem_5"] = False
 
 gencDict["para"] = True
 

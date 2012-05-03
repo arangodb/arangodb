@@ -48,6 +48,7 @@ libavocado_a_SOURCES = \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
 	BasicsC/voc-errors.c \
+	GeoIndex/GeoIndex.c \
 	JsonParser/json-parser.c \
 	JsonParserX/InputParser.cpp \
 	JsonParserX/JsonParserX.cpp \
@@ -135,8 +136,8 @@ avocado_SOURCES = \
 	Dispatcher/DispatcherThread.cpp \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
-	GeoIndex/GeoIndex.c \
 	HashIndex/hashindex.c \
+	HashIndex/hasharray.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
@@ -378,6 +379,7 @@ WIKI = \
 	HttpCursor \
 	HttpIndex \
 	HttpInterface \
+	HttpSimple \
 	HttpSystem \
 	IndexGeo \
 	IndexHash \

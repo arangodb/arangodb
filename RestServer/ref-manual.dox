@@ -49,17 +49,27 @@
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>@ref Indexes
-///   @copydetails IndexesTOC
-///  </li>
 ///  <li>@ref OTWP
 ///   <ol>
+///    <li>REST Interface
+///     <ol>
 ///      <li>@ref RestDocument</li>
 ///      <li>@ref RestEdge</li>
+///     </ol>
+///    </li>
+///    <li>Light-Weight HTTP for Queries
+///     <ol>
+///      <li>@ref HttpCursor</li>
+///      <li>@ref HttpSimple</li>
+///     </ol>
+///    </li>
+///    <li>Light-Weight HTTP for Administration
+///     <ol>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
-///      <li>@ref HttpCursor</li>
 ///      <li>@ref HttpSystem</li>
+///     </ol>
+///    </li>
 ///   </ol>
 ///  </li>
 ///  <li>Shell Commands
@@ -69,6 +79,9 @@
 ///      <li>@ref ShellCollection</li>
 ///      <li>@ref ShellIndex</li>
 ///   </ol>
+///  </li>
+///  <li>Indexes
+///   @copydetails IndexesTOC
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////

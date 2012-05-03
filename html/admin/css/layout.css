@@ -1,3 +1,14 @@
+
+
+button {
+  padding: 0; 
+}
+
+#logTableID_status, #warnLogTableID_status, #critLogTableID_status, #infoLogTableID_status, #debugLogTableID_status {
+  vertical-align: -13px;
+  padding-left: 5px;        
+}
+
 html.busy, html.busy * {  
   cursor: wait !important;  
 }  
@@ -35,6 +46,7 @@ th {
 
 #logToolbar button, #documentsToolbar button {
   float:right;
+  margin-bottom: 10px;      
 }
 
 #logToolbar a, #documentsToolbar a {
@@ -94,8 +106,8 @@ th {
   color: #9EAF5A;
   font-weight: bold; 
   text-decoration: none;
-  border-top: 1px dashed #7E9246;
-  border-bottom: 1px dashed #7E9246;
+  border-top: 1px solid  #7E9246;
+  border-bottom: 1px solid #7E9246;
   padding-left: 7px; 
 }
 
@@ -103,10 +115,11 @@ th {
   height:130px;
 }
 
-#newCollection_left  {
-  border-top: 1px dashed #7E9246;
-  border-left: 1px dashed #7E9246;
-  border-bottom: 1px dashed #7E9246;
+#newCollection_left, #editCollection_left {
+  border-top: 1px solid #7E9246;
+  background-color: #E4E9D2;
+  border-left: 1px solid #7E9246;
+  border-bottom: 1px solid #7E9246;
   padding-top: 5px; 
   float:left;
   text-align:left;  
@@ -115,16 +128,33 @@ th {
   padding-left: 8px;  
 }
 
-#newCollection_right  {
-  border-top: 1px dashed #7E9246;
-  border-right: 1px dashed #7E9246;
-  border-bottom: 1px dashed #7E9246;
+#newCollection_right, #editCollection_right  {
+  border-top: 1px solid #7E9246;
+  background-color: #E4E9D2;
+  border-right: 1px solid #7E9246;
+  border-bottom: 1px solid #7E9246;
   padding-top: 5px; 
   float:left;
   text-align:left;
   height:60px;  
   width:190px; 
 }
+
+#editCollectionName {
+  height:20px;
+  resize: none; 
+}
+
+#editCollectionTable {
+  font-size: 0.8em;  
+  border-width: 1px; 
+  border-color: green;
+  border-style: solid;
+  background-color: #E4E9D2;
+  padding-left: 5px;
+  padding-bottom: 2px; 
+  padding-top: 2px;  
+} 
 
 #newCollection_right form {
   padding-top: 10px;  
@@ -248,7 +278,7 @@ th {
 
 #menue-right {
   padding-top:11px;
-  padding-right:10px;   
+  padding-right:14px;   
   height:40px; 
   width:auto; 
   float:right;
@@ -273,7 +303,7 @@ th {
 }
 #footerSlideContent {
 	width: 100%;
-        border-top: 1px dashed #7E9246;
+        border-top: 1px solid #7E9246;
 	height: 25px;
 	background: #F3F1EE;
 	color: #525252;
@@ -334,7 +364,7 @@ th {
   margin-top:5px;
   cursor: default;
   background-color: #E4E9D2;
-  border: 1px dashed #7E9246;
+  border: 1px solid #7E9246;
   -webkit-border-radius: 2px;
   -moz-border-radius: 2px;
   border-radius: 2px;
@@ -344,24 +374,22 @@ th {
   margin-left:10px;
 }
 
-.login-form input[type=text], .login-form input[type=password] {
+.login-form input[type=text], .login-form input[type=password], #editCollectionName {
 	line-height: 10px;
 	margin: 0px 0;
-	padding: 2px 15px;
-        border: 1px dashed #7E9246;
-	font-size: 10px;
+	padding: 2px 4px;
+        border: 1px solid #7E9246;
+	font-size: 12px;
 	-webkit-border-radius: 2px;
 	-moz-border-radius: 2px;
 	border-radius: 2px;
 
 }
 
-.login-form input[type=text],
-.login-form input[type=password],
-.js .login-form span {
+.login-form input[type=text], .login-form input[type=password], .js .login-form span, #editCollectionName{
 	color: #686868;
 	width: 170px;
-        border: 1px dashed #7E9246;
+        border: 1px solid #7E9246;
 }
 
 #logTableID_info {
@@ -417,6 +445,7 @@ th {
 ### CollectionView subView Buttons
 ##############################################################################
 */
+
 #collectionsView button.toolbar {
   border: medium none; 
   background-color: transparent;
@@ -425,10 +454,10 @@ th {
 }
 
 #collectionsView button a {
-  vertical-align:middle;
+  vertical-align:3px;
   text-align:center;
-  padding-bottom:8px; 
-  padding-left: 4px;  
+  padding-left: 4px; 
+  overflow: visible; 
 }
 
 #collectionsTableID_wrapper button {
@@ -437,9 +466,8 @@ th {
 }
 
 #subCenterView button a {
-  vertical-align:middle;
+  vertical-align:4px;
   text-align:center;
-  padding-bottom:8px; 
   padding-left: 4px;  
 }
 
