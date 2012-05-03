@@ -184,10 +184,11 @@ am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	BasicsC/strings.c BasicsC/structures.c \
 	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
 	BasicsC/terminal-utils.c BasicsC/threads-posix.c \
-	BasicsC/vector.c BasicsC/voc-errors.c JsonParser/json-parser.c \
-	JsonParserX/InputParser.cpp JsonParserX/JsonParserX.cpp \
-	JsonParserX/JsonParserXDriver.cpp JsonParserX/JsonScannerX.cpp \
-	Logger/Logger.cpp Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
+	BasicsC/vector.c BasicsC/voc-errors.c GeoIndex/GeoIndex.c \
+	JsonParser/json-parser.c JsonParserX/InputParser.cpp \
+	JsonParserX/JsonParserX.cpp JsonParserX/JsonParserXDriver.cpp \
+	JsonParserX/JsonScannerX.cpp Logger/Logger.cpp \
+	Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp Rest/HttpRequest.cpp Rest/HttpResponse.cpp \
@@ -240,7 +241,8 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
 	BasicsC/threads-posix.$(OBJEXT) BasicsC/vector.$(OBJEXT) \
-	BasicsC/voc-errors.$(OBJEXT) JsonParser/json-parser.$(OBJEXT) \
+	BasicsC/voc-errors.$(OBJEXT) GeoIndex/GeoIndex.$(OBJEXT) \
+	JsonParser/json-parser.$(OBJEXT) \
 	JsonParserX/InputParser.$(OBJEXT) \
 	JsonParserX/JsonParserX.$(OBJEXT) \
 	JsonParserX/JsonParserXDriver.$(OBJEXT) \
@@ -325,8 +327,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Dispatcher/DispatcherQueue.$(OBJEXT) \
 	Dispatcher/DispatcherThread.$(OBJEXT) Dispatcher/Job.$(OBJEXT) \
 	GeneralServer/GeneralFigures.$(OBJEXT) \
-	GeoIndex/GeoIndex.$(OBJEXT) HashIndex/hashindex.$(OBJEXT) \
-	HashIndex/hasharray.$(OBJEXT) \
+	HashIndex/hashindex.$(OBJEXT) HashIndex/hasharray.$(OBJEXT) \
 	HttpServer/ApplicationHttpServer.$(OBJEXT) \
 	HttpServer/ApplicationHttpServerImpl.$(OBJEXT) \
 	HttpServer/HttpCommTask.$(OBJEXT) \
@@ -713,10 +714,11 @@ libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
 	BasicsC/strings.c BasicsC/structures.c \
 	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
 	BasicsC/terminal-utils.c BasicsC/threads-posix.c \
-	BasicsC/vector.c BasicsC/voc-errors.c JsonParser/json-parser.c \
-	JsonParserX/InputParser.cpp JsonParserX/JsonParserX.cpp \
-	JsonParserX/JsonParserXDriver.cpp JsonParserX/JsonScannerX.cpp \
-	Logger/Logger.cpp Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
+	BasicsC/vector.c BasicsC/voc-errors.c GeoIndex/GeoIndex.c \
+	JsonParser/json-parser.c JsonParserX/InputParser.cpp \
+	JsonParserX/JsonParserX.cpp JsonParserX/JsonParserXDriver.cpp \
+	JsonParserX/JsonScannerX.cpp Logger/Logger.cpp \
+	Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp Rest/HttpRequest.cpp Rest/HttpResponse.cpp \
@@ -761,7 +763,6 @@ avocado_SOURCES = \
 	Dispatcher/DispatcherThread.cpp \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
-	GeoIndex/GeoIndex.c \
 	HashIndex/hashindex.c \
 	HashIndex/hasharray.c \
 	HttpServer/ApplicationHttpServer.cpp \
@@ -1245,6 +1246,14 @@ BasicsC/vector.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
+GeoIndex/$(am__dirstamp):
+	@$(MKDIR_P) GeoIndex
+	@: > GeoIndex/$(am__dirstamp)
+GeoIndex/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) GeoIndex/$(DEPDIR)
+	@: > GeoIndex/$(DEPDIR)/$(am__dirstamp)
+GeoIndex/GeoIndex.$(OBJEXT): GeoIndex/$(am__dirstamp) \
+	GeoIndex/$(DEPDIR)/$(am__dirstamp)
 JsonParser/$(am__dirstamp):
 	@$(MKDIR_P) JsonParser
 	@: > JsonParser/$(am__dirstamp)
@@ -1633,14 +1642,6 @@ GeneralServer/$(DEPDIR)/$(am__dirstamp):
 	@: > GeneralServer/$(DEPDIR)/$(am__dirstamp)
 GeneralServer/GeneralFigures.$(OBJEXT): GeneralServer/$(am__dirstamp) \
 	GeneralServer/$(DEPDIR)/$(am__dirstamp)
-GeoIndex/$(am__dirstamp):
-	@$(MKDIR_P) GeoIndex
-	@: > GeoIndex/$(am__dirstamp)
-GeoIndex/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) GeoIndex/$(DEPDIR)
-	@: > GeoIndex/$(DEPDIR)/$(am__dirstamp)
-GeoIndex/GeoIndex.$(OBJEXT): GeoIndex/$(am__dirstamp) \
-	GeoIndex/$(DEPDIR)/$(am__dirstamp)
 HashIndex/$(am__dirstamp):
 	@$(MKDIR_P) HashIndex
 	@: > HashIndex/$(am__dirstamp)
