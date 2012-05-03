@@ -236,7 +236,10 @@ AvocadoCollection.prototype.geo = function(loc, order) {
   }
 
   if (idx == null) {
-    throw "cannot find a suitable geo index";
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
   }
 
   return new SimpleQueryGeo(this, idx.id);
@@ -379,12 +382,12 @@ GeneralArrayCursor.prototype.execute = function () {
       end = this._skip + this._limit;
     }
     else {
-      start = this._documents.length + this._limit - this._skip;
-      end = this._documents.length - this._skip;
+      start = this._documents.length + this._limit;
+      end = this._documents.length;
     }
     
-    if (start < 0) {
-      start = 0;
+    if (start < this._skip) {
+      start = this._skip;
     }
     
     if (this._documents.length < end) {
@@ -648,7 +651,10 @@ SimpleQuery.prototype.skip = function (skip) {
   }
 
   if (skip < 0) {
-    throw "skip must be non-negative";
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorMessage = "skip must be non-negative";
+    throw err;
   }
 
   if (this._execution != null) {
@@ -1176,7 +1182,10 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
   }
     
   if (this._index == null) {
-    throw "a geo-index must be known";
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
   }
 }
 
@@ -1320,7 +1329,10 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
   }
     
   if (this._index == null) {
-    throw "a geo-index must be known";
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
   }
 }
 

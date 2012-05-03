@@ -70,10 +70,9 @@ shallowCopy = function (props) {
 
 function postGraph(req, res) {
   try {    
-    var json = JSON.parse(req.requestBody);
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
       
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "missing request body");
+    if (json === undefined) {
       return;
     }
     
@@ -216,13 +215,7 @@ function postVertex(req, res) {
     }
     var g = new graph.Graph(name);
 
-    var json = JSON.parse(req.requestBody);
-      
-    //if (!json || !(json instanceof Object)) {
-    //  actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "missing request body");
-    //  return;
-    //}
-    
+    var json = actions.getJsonBody(req, res);
     var id = undefined;
     
     if (json) {
@@ -355,10 +348,9 @@ function putVertex(req, res) {
       throw "no vertex found for: " + id;
     }
     
-    var json = JSON.parse(req.requestBody);
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
       
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "missing request body");
+    if (json === undefined) {
       return;
     }
 
@@ -499,10 +491,9 @@ function postEdge(req, res) {
     }
     var g = new graph.Graph(name);
 
-    var json = JSON.parse(req.requestBody);
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
       
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "missing request body");
+    if (json === undefined) {
       return;
     }
     
@@ -637,10 +628,9 @@ function putEdge(req, res) {
       throw "no edge found for: " + id;
     }
     
-    var json = JSON.parse(req.requestBody);
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
       
-    if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "missing request body");
+    if (json === undefined) {
       return;
     }
 
