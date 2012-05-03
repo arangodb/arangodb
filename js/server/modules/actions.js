@@ -376,7 +376,7 @@ function ResultUnsupported (req, res, headers) {
 /// @brief returns a result set from a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ResultCursor (req, res, cursor) {
+function ResultCursor (req, res, cursor, code) {
   var hasCount = cursor.hasCount();
   var count = cursor.count();
   var rows = cursor.getRows();
@@ -406,7 +406,11 @@ function ResultCursor (req, res, cursor) {
     result["count"] = count;
   }
 
-  ResultOk(req, res, exports.HTTP_CREATED, result);
+  if (code == null) {
+    code = exports.HTTP_CREATED;
+  }
+
+  ResultOk(req, res, code, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
