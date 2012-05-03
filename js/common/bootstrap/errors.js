@@ -116,5 +116,13 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED" : { "code" : 3100, "message" : "priority queue insert failure" }, 
   "ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED" : { "code" : 3110, "message" : "priority queue remove failure" }, 
   "ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING" : { "code" : 3111, "message" : "priority queue remove failure - item missing in index" }, 
+  "ERROR_AVOCADO_INDEX_HASH_INSERT_ITEM_DUPLICATED" : { "code" : 3312, "message" : "(non-unique) hash index insert failure - document duplicated in index" }, 
+  "ERROR_AVOCADO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED" : { "code" : 3313, "message" : "(non-unique) skiplist index insert failure - document duplicated in index" }, 
+  "WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 3200, "message" : "hash index insertion warning - attribute missing in document" }, 
+  "WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING" : { "code" : 3202, "message" : "hash index update warning - attribute missing in revised document" }, 
+  "WARNING_AVOCADO_INDEX_HASH_REMOVE_ITEM_MISSING" : { "code" : 3211, "message" : "hash index remove failure - item missing in index" }, 
+  "WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 3300, "message" : "skiplist index insertion warning - attribute missing in document" }, 
+  "WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING" : { "code" : 3302, "message" : "skiplist index update warning - attribute missing in revised document" }, 
+  "WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING" : { "code" : 3311, "message" : "skiplist index remove failure - item missing in index" }, 
 };
 

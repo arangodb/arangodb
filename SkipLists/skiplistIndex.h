@@ -128,14 +128,14 @@ void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const);
 /// @brief destroys a skip list index , but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIndexDestroy (SkiplistIndex*);
+void SkiplistIndex_destroy (SkiplistIndex*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIndexFree (SkiplistIndex*);
+void SkiplistIndex_free (SkiplistIndex*);
 
 
 
@@ -157,7 +157,7 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_
 
 int SkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 
-bool SkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
+int SkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
 
 bool SkiplistIndex_update (SkiplistIndex*, const SkiplistIndexElement*, const SkiplistIndexElement*);
 
@@ -177,7 +177,7 @@ TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*,
 
 int MultiSkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 
-bool MultiSkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
+int MultiSkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
 
 bool MultiSkiplistIndex_update (SkiplistIndex*, SkiplistIndexElement*, SkiplistIndexElement*);
 

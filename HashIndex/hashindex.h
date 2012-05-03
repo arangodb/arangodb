@@ -44,15 +44,14 @@
 #include <BasicsC/hashes.h>
 #include "ShapedJson/shaped-json.h"
 
+#include "hasharray.h"
+
 // ...............................................................................
 // Define the structure of a unique or non-unique hashindex
 // ...............................................................................
 
 typedef struct {
-  union {
-    TRI_associative_array_t* uniqueArray;
-    TRI_multi_array_t* nonUniqueArray;
-  } assocArray;   
+  TRI_hasharray_t* hashArray;   
   bool unique; 
 } HashIndex;
 
@@ -61,12 +60,15 @@ typedef struct {
   size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects the blob of data within will be hashed
   void*  data;               // master document pointer
+  void* collection;              
 } HashIndexElement;
 
 typedef struct {
   size_t _numElements;
   HashIndexElement* _elements; // simple list of elements
 } HashIndexElements;  
+
+
 
 
 //------------------------------------------------------------------------------
@@ -76,6 +78,9 @@ typedef struct {
 //------------------------------------------------------------------------------
 
 
+void HashIndex_destroy (HashIndex*);
+
+void HashIndex_free (HashIndex*);
 
 HashIndex* HashIndex_new (void);
 
@@ -96,6 +101,9 @@ int HashIndex_update (HashIndex*, const HashIndexElement*, const HashIndexElemen
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
+void MultiHashIndex_destroy (HashIndex*);
+
+void MultiHashIndex_free (HashIndex*);
 
 HashIndex* MultiHashIndex_new (void);
 
