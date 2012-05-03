@@ -143,6 +143,7 @@ PQIndex* PQueueIndex_new (void) {
   // ..........................................................................  
   
   idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndex), false);
+
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue index");
@@ -335,7 +336,6 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   // ...........................................................................
   
   ok = TRI_RemoveElementAssociativeArray(idx->_aa,item,NULL) && ok;
-
   
   if (!ok) {
     return TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED;
