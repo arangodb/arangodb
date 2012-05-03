@@ -13,11 +13,11 @@
 }
 
 .sh_number {
-  color: blue;  
+  color: #8c5c39;  
 }
 
 .sh_symbol {
-  color: red; 
+  color: blue;
 }
 
 .sh_cbracket {
@@ -25,9 +25,22 @@
 }
 
 .sh_keyword { 
-  color: #FF00BF;  
+  color: red;  
+}
+
+.sh_object {
+  color: red; 
+}
+
+.sh_array {
+  color: yellow;  
 }
 
 #deleteDoc {
   margin-right: -10px; 
 }
+
+//<form action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+//<input type="file" name="filename" />
+//<input type="submit" value="post!" />
+//</form>
