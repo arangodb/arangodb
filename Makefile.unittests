@@ -127,12 +127,14 @@ endif
 ## SHELL SERVER TESTS (BASICS)
 ################################################################################
 
-SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
+SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
                @srcdir@/js/common/tests/shell-collection.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js
+
+SHELL_SERVER = $(SHELL_COMMON)
 
 .PHONY: unittests-shell-server
 
@@ -189,11 +191,7 @@ unittests-shell-server-ahuacatl:
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
-               @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js \
-               @srcdir@/js/common/tests/shell-simple-query.js \
-               @srcdir@/js/common/tests/shell-index.js
+SHELL_CLIENT = $(SHELL_COMMON)
 
 .PHONY: unittests-shell-client
 

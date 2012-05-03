@@ -33,6 +33,7 @@
 ///   <ol>
 ///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
 ///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
+///    <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref IndexGeoShell
@@ -77,6 +78,10 @@
 ///
 /// @anchor IndexGeoHttpNear
 /// @copydetails JSA_PUT_api_simple_near
+/// <hr>
+///
+/// @anchor IndexGeoHttpWithin
+/// @copydetails JSA_PUT_api_simple_within
 /// <hr>
 ///
 /// @section IndexGeoShell Accessing Geo Indexes from the Shell
