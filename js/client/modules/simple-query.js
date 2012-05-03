@@ -146,36 +146,40 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryNear.prototype.execute = function () {
-  var result;
   var documents;
-  var distances;
-  var limit;
 
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
-      this._skip = 0;
+    var data = {
+      collection : this._collection._id,
+      latitude : this._latitude,
+      longitude : this._longitude
+    }  
+
+    if (this._limit != null) {
+      data.limit = this._limit;
     }
 
-    if (this._limit == null) {
-      limit = this._skip + 100;
-    }
-    else {
-      limit = this._skip + this._limit;
+    if (this._skip != null) {
+      data.skip = this._skip;
     }
 
-    result = this._collection.NEAR(this._index, this._latitude, this._longitude, limit);
-    documents = result.documents;
-    distances = result.distances;
-
+    if (this._index != null) {
+      data.geo = this._index;
+    }
+  
     if (this._distance != null) {
-      for (var i = this._skip;  i < documents.length;  ++i) {
-        documents[i][this._distance] = distances[i];
-      }
+      data.distance = this._distance;
     }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
 
-    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, null);
-    this._countQuery = result.documents.length - this._skip;
-    this._countTotal = result.documents.length;
+    TRI_CheckRequestResult(requestResult);
+
+    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
   }
 }
 
@@ -201,25 +205,41 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryWithin.prototype.execute = function () {
-  var result;
   var documents;
-  var distances;
-  var limit;
 
   if (this._execution == null) {
-    result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
-    documents = result.documents;
-    distances = result.distances;
+    var data = {
+      collection : this._collection._id,
+      latitude : this._latitude,
+      longitude : this._longitude,
+      radius : this._radius
+    }  
 
-    if (this._distance != null) {
-      for (var i = this._skip;  i < documents.length;  ++i) {
-        documents[i][this._distance] = distances[i];
-      }
+    if (this._limit != null) {
+      data.limit = this._limit;
     }
 
-    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, this._limit);
-    this._countQuery = result.documents.length - this._skip;
-    this._countTotal = result.documents.length;
+    if (this._skip != null) {
+      data.skip = this._skip;
+    }
+
+    if (this._index != null) {
+      data.geo = this._index;
+    }
+  
+    if (this._distance != null) {
+      data.distance = this._distance;
+    }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));
+
+    TRI_CheckRequestResult(requestResult);
+
+    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
   }
 }
 
