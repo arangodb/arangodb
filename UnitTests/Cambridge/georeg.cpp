@@ -36,13 +36,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* regression testing program for GeoIndex module     */
-/*  R.A.P. 2.0 4.12.2011                              */
+/*  R.A.P. 2.1  8.1.2012                              */
 
-#ifdef GEO_TRIAGENS
+#include <boost/test/unit_test.hpp>
+
 #include "GeoIndex/GeoIndex.h"
-#else
-#include "GeoIndex2.h"
-#endif
+#include "Basics/StringUtils.h"
+
+using namespace triagens::basics;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
 int errors;
 
@@ -67,73 +72,41 @@ int np4[4]={2838,5116,5180,9869};
 int hs4[4]={33972992,9770664,11661062,28398735};
 int hs5[4]={79685116,67516870,19274248,35037618};
 
-void icheck(int e, int a, int b)
-{
-    if(a==b) return;
-    errors++;
-    printf("Error %d, should be %d, was %d\n",e,a,b);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+static void MyFree (GeoIndex * gi) {
+    int x;
+    x=GeoIndex_INDEXVALID(gi);
+
+    BOOST_CHECK_EQUAL(x, 0);
+
+    GeoIndex_free(gi);
 }
 
-void pcheck(int e, char * a, char * b)
-{
-    if(a==b) return;
-    errors++;
-    if(b>a) printf("Error %d, pointer was %ld too high\n",e,(long)(b-a));
-    if(b<a) printf("Error %d, pointer was %ld too low \n",e,(long)(a-b));
-}
-
-void dcheck(int e, double a, double b, double bar)
-{
-    if(b<a-bar)
-    {
-        errors++;
-        printf("Error %d, should be %16.9f, was %16.9f\n",e,a,b);
-    }
-    if(b>a+bar)
-    {
-        errors++;
-        printf("Error %d, should be %16.9f, was %16.9f\n",e,a,b);
-    }
-}
-
-void gccheck(int e, GeoCoordinates * gc, int ct, char * bytes)
-{
+int GCCHECK (GeoCoordinates * gc, int ct, char const * bytes) {
     int i,good;
-    icheck(e,ct,gc->length);
+
     for(i=0;i<1000;i++) ix[i]=0;
-    for(i=0;i<gc->length;i++)
+    for(i=0;i<(int) gc->length;i++)
         *((char *)gc->coordinates[i].data)=1;
     for(i=0;i<25;i++)
         iy[i]='A'+ix[4*i]+2*ix[4*i+1]+4*ix[4*i+2]+8*ix[4*i+3];
     iy[25]=0;
     good=1;
     for(i=0;i<25;i++)  if(bytes[i]!=iy[i]) good=0;
-    if(good==0)
-    {
-        errors++;
-        printf("Error %d, should be %s, was %s\n",e+1,bytes,iy);
-    }
+
     GeoIndex_CoordinatesFree(gc);
+
+    return good;
 }
 
-void gicheck(int e, GeoIndex* gi)
-{
-    int r;
-    r=0;
-#ifdef DEBUG
-    r = GeoIndex_INDEXVALID(gi);
-#endif
-    if(r==0) return;
-    errors++;
-    printf("Error %d, Index invalidity code %d\n",e,r);
-}
-
-void gcmass(int e, GeoCoordinates * gc, int ct, int hash)
-{
+int GCMASS (GeoCoordinates * gc, int ct, int hash) {
     int i,j;
-    icheck(e,ct,gc->length);
+
     for(i=0;i<1000;i++) ix[i]=0;
-    for(i=0;i<gc->length;i++)
+    for(i=0;i<(int) gc->length;i++)
         (*((char *)gc->coordinates[i].data))++;
     j=0;
     for(i=0;i<1000;i++)
@@ -142,9 +115,60 @@ void gcmass(int e, GeoCoordinates * gc, int ct, int hash)
         j=j*7;
         j=j%123456791;
     }
-    icheck(e+1,hash,j);
     GeoIndex_CoordinatesFree(gc);
+
+    return hash == j ? 1 : 0;
 }
+
+double tolerance (double a, double b, double c) {
+  if (c == 0.0) {
+    return 0.00000001;
+  }
+  else {
+    if (a == 0.0) {
+      if (b == 0.0) {
+        return 0.001;
+      }
+      else {
+        return c / b * 100.0;
+      }
+    }
+    else {
+      return c / a * 100.0;
+    }
+  }
+}
+
+#define icheck(e, a, b)                                 \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_EQUAL((a), (b))
+
+#define pcheck(e, a, b)                                 \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_EQUAL((a), (b))
+
+#define dcheck(e, a, b, c)                              \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_CLOSE((a), (b), tolerance((a),(b),(c)))
+
+#define gccheck(e, gc, ct, bytes)                       \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_EQUAL((ct), (gc)->length);                \
+  BOOST_CHECK_EQUAL(GCCHECK((gc), (ct), (bytes)), 1)
+
+#ifdef DEBUG
+#define gicheck(e, gi) \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_EQUAL(GeoIndex_INDEXVALID((gi)), 0)
+#else
+#define gicheck(e, gi) /* do nothing */
+#endif
+
+#define gcmass(e, gc, ct, hash)                         \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
+  BOOST_CHECK_EQUAL((ct), (gc)->length);                \
+  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e + 1)));    \
+  BOOST_CHECK_EQUAL(GCMASS((gc), (ct), (hash)), 1)
 
 void coonum(GeoCoordinate * gc, int num)
 {
@@ -196,7 +220,42 @@ void coonum(GeoCoordinate * gc, int num)
     }
 }
 
-int main(int argc, char ** argv)
+void litnum(GeoCoordinate * gc, int num)
+{
+    coonum(gc,num);
+    gc->data=&ix[num%97];
+    return;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 setup / tear-down
+// -----------------------------------------------------------------------------
+
+struct GeoIndexSetup {
+  GeoIndexSetup () {
+    BOOST_TEST_MESSAGE("setup GeoIndex");
+  }
+
+  ~GeoIndexSetup () {
+    BOOST_TEST_MESSAGE("tear-down GeoIndex");
+  }
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_FIXTURE_TEST_SUITE(GeoIndexTest, GeoIndexSetup)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main test
+////////////////////////////////////////////////////////////////////////////////
+
+void runTest (int mode) 
 {
     GeoIndex * gi;
     GeoCoordinate gcp;
@@ -204,14 +263,7 @@ int main(int argc, char ** argv)
     GeoCoordinates * list1;
     double la,lo;
     double d1;
-    int i,j,r,mode;
-
-    if(argc!=2)
-    {
-        printf("usage georeg <n> to run test n\n");
-        exit(1);
-    }
-    mode=atoi(argv[1]);
+    int i,j,r;
 
     errors=0;
 
@@ -221,26 +273,26 @@ int main(int argc, char ** argv)
 /*   3 is Auckland  -36.916667 +174.783333         */
 /*   4 is Jo'burg   -26.166667  +28.033333         */
 
-        gcp1.latitude  =   51.5;
-        gcp1.longitude =   -0.166666;
-        gcp2.latitude  =   21.306111;
-        gcp2.longitude = -157.859722;
-        d1 = GeoIndex_distance(&gcp1, &gcp2);
-        dcheck(1,11624035.0, d1, 11000.0);
-        gcp3.latitude  = -36.916667;
-        gcp3.longitude = 174.783333;
-        d1 = GeoIndex_distance(&gcp1, &gcp3);
-        dcheck(2,18332948.0, d1, 18000.0);
-        gcp4.latitude  = -26.166667;
-        gcp4.longitude = +28.033333;
-        d1 = GeoIndex_distance(&gcp1, &gcp4);
-        dcheck(3,9059681.0, d1, 9000.0);
-        d1 = GeoIndex_distance(&gcp2, &gcp3);
-        dcheck(4,7076628.0, d1, 7000.0);
-        d1 = GeoIndex_distance(&gcp2, &gcp4);
-        dcheck(5,19194970.0, d1, 19000.0);
-        d1 = GeoIndex_distance(&gcp3, &gcp4);
-        dcheck(6,12177171.0, d1, 12000.0);
+    gcp1.latitude  =   51.5;
+    gcp1.longitude =   -0.166666;
+    gcp2.latitude  =   21.306111;
+    gcp2.longitude = -157.859722;
+    d1 = GeoIndex_distance(&gcp1, &gcp2);
+    dcheck(1,11624035.0, d1, 11000.0);
+    gcp3.latitude  = -36.916667;
+    gcp3.longitude = 174.783333;
+    d1 = GeoIndex_distance(&gcp1, &gcp3);
+    dcheck(2,18332948.0, d1, 18000.0);
+    gcp4.latitude  = -26.166667;
+    gcp4.longitude = +28.033333;
+    d1 = GeoIndex_distance(&gcp1, &gcp4);
+    dcheck(3,9059681.0, d1, 9000.0);
+    d1 = GeoIndex_distance(&gcp2, &gcp3);
+    dcheck(4,7076628.0, d1, 7000.0);
+    d1 = GeoIndex_distance(&gcp2, &gcp4);
+    dcheck(5,19194970.0, d1, 19000.0);
+    d1 = GeoIndex_distance(&gcp3, &gcp4);
+    dcheck(6,12177171.0, d1, 12000.0);
 
 /*               10 - 19                           */
 
@@ -268,8 +320,8 @@ int main(int argc, char ** argv)
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
     gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA"); 
     gicheck(14,gi);
-
-    GeoIndex_free(gi);
+/*GeoIndex_INDEXDUMP(gi,stdout);*/
+    MyFree(gi);
 
 /*               20 - 39                           */
 
@@ -312,7 +364,7 @@ int main(int argc, char ** argv)
     icheck(29,0,r);
 
     gicheck(30,gi);
-    GeoIndex_free(gi);
+    MyFree(gi);
 /*                                                 */
 /*              50 - 69                            */
 /*             =========                           */
@@ -391,7 +443,7 @@ int main(int argc, char ** argv)
 
     gicheck(66,gi);
    
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*              70 - 99                            */
@@ -520,7 +572,7 @@ int main(int argc, char ** argv)
     gccheck(97,list1,  7,"KPBAAAAAAAAAAAAAAAAAAAAAA"); 
 
     gicheck(98,gi);
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*             100 - 199                           */
@@ -593,7 +645,7 @@ int main(int argc, char ** argv)
     gccheck(150,list1,16,"AAAAAAAAAAAAMPAPPDAAAAAAA"); 
     gicheck(151,gi);
     
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*             200 - 299                           */
@@ -787,7 +839,7 @@ int main(int argc, char ** argv)
     gccheck(265,list1,  5,"ODAAAAAAAAAAAAAAAAAAAAAAA");
 
     gicheck(266,gi);
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*             300 - 399                           */
@@ -978,7 +1030,7 @@ int main(int argc, char ** argv)
 
     if(mode==2)
     {
-        printf("start of 5000000 x points within radius 127 Km (3 found)\n");
+        BOOST_TEST_MESSAGE("start of 5000000 x points within radius 127 Km (3 found)");
         for(i=0;i<10000;i++)
         {
             for(j=1;j<=500;j++)
@@ -988,12 +1040,12 @@ int main(int argc, char ** argv)
                 GeoIndex_CoordinatesFree(list1);
             }
         }
-        printf("End of timing test\n");
+        BOOST_TEST_MESSAGE("End of timing test");
     }
 
     if(mode==3)
     {
-        printf("start of 5000000 x points by count (2)\n");
+        BOOST_TEST_MESSAGE("start of 5000000 x points by count (2)");
         for(i=0;i<10000;i++)
         {
             for(j=1;j<=500;j++)
@@ -1003,12 +1055,12 @@ int main(int argc, char ** argv)
                 GeoIndex_CoordinatesFree(list1);
             }
         }
-        printf("End of timing test\n");
+        BOOST_TEST_MESSAGE("End of timing test");
     }
 
     gicheck(390,gi);
 
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*             400 - 499                           */
@@ -1036,14 +1088,13 @@ int main(int argc, char ** argv)
             if(lo>180) lo-=360.0;
         }
         list1 = GeoIndex_PointsWithinRadius(gi,&gcp,9800000.0);
-        for(j=0;j<list1->length;j++)  /* delete before freeing list1! */
+        for(j=0;j<(int) list1->length;j++)  /* delete before freeing list1! */
         {
             r=GeoIndex_remove(gi,list1->coordinates+j);
         }
         gcmass(400+5*i,list1, np[i], hs[i]);
     }
-
-    GeoIndex_free(gi);
+    MyFree(gi);
 
 /*                                                 */
 /*             500 - 599                           */
@@ -1075,9 +1126,9 @@ int main(int argc, char ** argv)
         }
     }
 
-    GeoIndex_free(gi);
+    MyFree(gi);
 /*                                                 */
-/*             600 - 610                           */
+/*             600 - 649                           */
 /*             =========                           */
 /*                                                 */
 
@@ -1105,8 +1156,49 @@ int main(int argc, char ** argv)
                 gcmass(605+4*(i/4541672),list1,i/1832703,hs5[i/4541672 - 1]);
             }
         }
-        GeoIndex_free(gi);
+        MyFree(gi);
     }
+/*                                                 */
+/*             650 - 699                           */
+/*             =========                           */
+/*                                                 */
+
+/* This set of tests puts in a few points, looks   */
+/* then puts in loads and deletes them again and   */
+/* looks again.  Testing deletion balancing        */
+ 
+    gi=GeoIndex_new();
+    for(i=1;i<13;i++)    /* put in points 1-12     */
+    {
+        litnum(&gcp,i);
+        r = GeoIndex_insert(gi,&gcp);
+        icheck(651,0,r);
+    }
+    litnum(&gcp,17);
+    list1 = GeoIndex_PointsWithinRadius(gi,&gcp,984000.0);
+    gccheck(652,list1,  5,"KCKAAAAAAAAAAAAAAAAAAAAAA");
+    litnum(&gcp,16);
+    list1 = GeoIndex_NearestCountPoints(gi,&gcp,4);
+    gccheck(654,list1,  4,"EBBBAAAAAAAAAAAAAAAAAAAAA");
+    for(i=100;i<80000;i++)   /* put in points 100-80000     */
+    {
+        litnum(&gcp,i);
+        r = GeoIndex_insert(gi,&gcp);
+        icheck(655,0,r);
+    }
+    for(i=100;i<80000;i++)   /* remove them again          */
+    {
+        litnum(&gcp,i);
+        r = GeoIndex_remove(gi,&gcp);
+        icheck(656,0,r);
+    }
+    litnum(&gcp,17);        /* see if it is all still OK   */
+    list1 = GeoIndex_PointsWithinRadius(gi,&gcp,984000.0);
+    gccheck(657,list1,  5,"KCKAAAAAAAAAAAAAAAAAAAAAA");
+    litnum(&gcp,16);
+    list1 = GeoIndex_NearestCountPoints(gi,&gcp,4);
+    gccheck(659,list1,  4,"EBBBAAAAAAAAAAAAAAAAAAAAA");
+    MyFree(gi);
 /*                                                 */
 /*             900 - 999                           */
 /*             =========                           */
@@ -1136,17 +1228,45 @@ int main(int argc, char ** argv)
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp,30000000.0);
     gcmass(901,list1, 49, 94065911);
 
-    GeoIndex_free(gi);
-
-    if(errors==0) {
-        printf("Georeg Regression Program succeeded\n");
-        return 0;
-    }
-    else {
-        printf("Georeg Regression Program failed with %d errors\n",
-            errors);
-        return 1;
-    }
+    MyFree(gi);
 }
 
-/* end of georeg.c  */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_geo1
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_geo1) {
+  runTest(1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_geo2
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_geo2) {
+  runTest(2);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_geo3
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_geo3) {
+  runTest(3);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_geo4
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_geo4) {
+  runTest(4);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_SUITE_END ()
+
+/* end of georeg.cpp  */
