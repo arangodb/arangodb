@@ -1289,7 +1289,6 @@ var logTable = $('#logTableID').dataTable({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/load",
         success: function () {
-          alert('Collection: ' + collectionID + ' loaded');
           drawCollectionsTable();
         }, 
         error: function (data) {
