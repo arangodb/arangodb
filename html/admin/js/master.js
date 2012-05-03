@@ -491,7 +491,7 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           collectionName = data.name;
           $('#nav2').text('-> Edit: ' + collectionName);
-          $('#editCollectionName').text(data.name); 
+          $('#editCollectionName').val(data.name); 
           $('#editCollectionID').text(data.id);
 
           switch (data.status) {
@@ -817,6 +817,7 @@ var logTable = $('#logTableID').dataTable({
       }
  
       catch(e) {
+        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
 
@@ -1758,7 +1759,7 @@ function cutByResolution (string) {
     userContent = 150; 
   }
   else if (userScreenSize > 1024 && userScreenSize < 1680) {
-    userContent = 250; 
+    userContent = 200; 
   }
   else if (userScreenSize > 1680) {
     userContent = 310; 
