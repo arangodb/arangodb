@@ -398,7 +398,6 @@ WIKI = \
 	OTWP \
 	Optimizer \
 	RefManual \
-	RestCursor \
 	RestDocument \
 	RestEdge \
 	RestSystem \
