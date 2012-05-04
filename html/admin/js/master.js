@@ -427,7 +427,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
-      
+       
       globalAjaxCursorChange();
       $.ajax({
         type: "GET",
@@ -456,7 +456,7 @@ var logTable = $('#logTableID').dataTable({
         data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
         contentType: "application/json",
         success: function(data) {
-          $.each(data, function(k, v) {
+          $.each(data.result, function(k, v) {
             documentsTable.fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
           });
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -1652,7 +1652,7 @@ function createPrevDocPagination() {
     data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
     contentType: "application/json",
     success: function(data) {
-      $.each(data, function(k, v) {
+      $.each(data.result, function(k, v) {
         $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -1679,7 +1679,7 @@ function createNextDocPagination () {
     data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
     contentType: "application/json",
     success: function(data) {
-      $.each(data, function(k, v) {
+      $.each(data.result, function(k, v) {
         $("#documentsTableID").dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -1788,7 +1788,7 @@ function createFirstPagination () {
     data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
     contentType: "application/json",
     success: function(data) {
-      $.each(data, function(k, v) {
+      $.each(data.result, function(k, v) {
         $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -1841,7 +1841,7 @@ function createLastPagination () {
     data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
     contentType: "application/json",
     success: function(data) {
-      $.each(data, function(k, v) {
+      $.each(data.result, function(k, v) {
         $('#documentsTableID').dataTable().fnAddData(['<button id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
