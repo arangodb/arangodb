@@ -380,6 +380,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   n = cors->length;
 
   if (n == 0) {
+    GeoIndex_CoordinatesFree(cors);
     return;
   }
 
@@ -2037,6 +2038,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   ReleaseCollection(collection);
+
   return scope.Close(result);
 }
 
