@@ -396,7 +396,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     gtr->_data = ptr->data;
   }
 
-  // GeoIndex_CoordinatesFree(cors);
+  GeoIndex_CoordinatesFree(cors);
 
   SortGeoCoordinates(tmp, gnd);
 
@@ -2780,7 +2780,15 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
-  return CreateErrorObject(TRI_GetErrorCodeAql(error), TRI_GetErrorMessageAql(error));
+  char* message = TRI_GetErrorMessageAql(error);
+
+  if (message) {
+    std::string str(message);
+    TRI_Free(TRI_CORE_MEM_ZONE, message);
+    return CreateErrorObject(TRI_GetErrorCodeAql(error), str);
+  }
+
+  return CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -58,7 +58,7 @@ function AHUACATL_CLONE (obj) {
     return obj;
   }
 
-  if (obj instanceof Array) {
+  if (Array.isArray(obj)) {
     var copy = [];
     var length = obj.length;
     for (var i = 0; i < length; ++i) {
@@ -107,7 +107,7 @@ function AHUACATL_TYPEWEIGHT (value) {
     return AHUACATL_TYPEWEIGHT_NULL;
   }
 
-  if (value instanceof Array) {
+  if (Array.isArray(value)) {
     return AHUACATL_TYPEWEIGHT_LIST;
   }
 
@@ -136,7 +136,7 @@ function AHUACATL_TYPEWEIGHT (value) {
 function AHUACATL_KEYS (value) {
   var keys = [];
   
-  if (value instanceof Array) {
+  if (Array.isArray(value)) {
     var i = 0;
     for (var k in value) {
       if (value.hasOwnProperty(k)) {

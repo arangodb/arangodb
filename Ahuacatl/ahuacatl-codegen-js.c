@@ -1649,12 +1649,16 @@ char* TRI_GenerateCodeAql (const void* const data) {
     return NULL;
   }
 
+  OutputString(&generator->_functionBuffer, "(function () {\n");
+
   resultRegister = CreateCode(generator, data);
 
   // append result
+  OutputString(&generator->_buffer, "return ");
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ";\n");
+  OutputString(&generator->_buffer, "})()");
 
   if (generator->_error) {
     FreeGenerator(generator);
@@ -1668,7 +1672,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
 
   if (code) {
     LOG_DEBUG("generated code: %s", code);
-//    printf("generated code: %s", code);
+  //  printf("generated code: %s", code);
   }
 
   return code;
