@@ -799,7 +799,7 @@ var logTable = $('#logTableID').dataTable({
     else {
       try {
         var boxContent = $('#documentEditSourceBox').val(); 
-        boxContent = sexmann(boxContent);
+        boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         documentEditTable.fnClearTable(); 
@@ -930,7 +930,7 @@ var logTable = $('#logTableID').dataTable({
     else {
       try {
         var boxContent = $('#NewDocumentSourceBox').val();  
-        boxContent = sexmann(boxContent);
+        boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         newDocumentTable.fnClearTable(); 
@@ -1970,7 +1970,7 @@ function bytesToSize(bytes, precision) {
    }
 }
 
-function sexmann (value) {
+function stateReplace (value) {
   var inString = false;
   var length = value.length;
   var position = 0;
@@ -2030,4 +2030,4 @@ function sexmann (value) {
 
   return output;
 }
- 
+
