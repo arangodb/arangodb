@@ -1164,7 +1164,9 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "<location> must be an attribute path")));
     }
 
     if (constraint) {
@@ -1183,7 +1185,9 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "<location> must be an attribute path")));
     }
 
     if (constraint) {
@@ -1203,12 +1207,16 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*lat == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<latitude> must be an attribute path")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "<latitude> must be an attribute path")));
     }
 
     if (*lon == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<longitude> must be an attribute path")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "<longitude> must be an attribute path")));
     }
 
     if (constraint) {
@@ -1226,18 +1234,23 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     ReleaseCollection(collection);
 
     if (constraint) {
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                                              "usage: ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "usage: ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) "\
+                            "or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)")));
     }
     else {
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                                              "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+      return scope.Close(v8::ThrowException(
+          CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                            "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
     }
   }
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "index could not be created")));
+    return scope.Close(v8::ThrowException(
+        CreateErrorObject(TRI_errno(),
+                          "index could not be created")));
   }  
   
   TRI_json_t* json = idx->json(idx, collection->_collection);
@@ -1997,7 +2010,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX1 && idx->_type != TRI_IDX_TYPE_GEO_INDEX2) {
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
@@ -2103,7 +2116,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX1 && idx->_type != TRI_IDX_TYPE_GEO_INDEX2) {
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
@@ -4304,6 +4317,93 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a cap constraint exists
+///
+/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size})}
+///
+/// Creates a size restriction aka cap for the collection of @FA{size}.  If the
+/// restriction is in place and the @FA{size} plus one document is added to the
+/// collection, then last recently created or updated document is removed.
+///
+/// Note that at most one cap constraint is allowed per collection.
+///
+/// Note that the collection should be empty. Otherwise the behavior is
+/// undefined, i. e., it is undefined which documents will be removed first.
+///
+/// Note that this does not imply any restriction of the number of revisions
+/// of documents.
+///
+/// @EXAMPLES
+///
+/// Restrict the number of document to at most 100 documents:
+///
+/// @verbinclude ensure-cap-constraint
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  TRI_index_t* idx = 0;
+  bool created;
+
+  if (argv.Length() == 1) {
+    size_t size = (size_t) TRI_ObjectToDouble(argv[0]);
+
+    if (size <= 0) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(
+        CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                          "<size> must be at least 1")));
+    }
+
+    idx = TRI_EnsureCapConstraintSimCollection(sim, size, &created);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    ReleaseCollection(collection);
+
+    return scope.Close(v8::ThrowException(
+      CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                        "ensureCapConstraint(<size>)")));
+  }
+
+  if (idx == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "index could not be created")));
+  }  
+  
+  TRI_json_t* json = idx->json(idx, collection->_collection);
+  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  
+  if (index->IsObject()) {
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+  }
+
+  ReleaseCollection(collection);
+  return scope.Close(index);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
 /// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
@@ -4602,8 +4702,6 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
   return EnsureHashSkipListIndex("ensureUniqueSkipList", argv, true, 1);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a multi skiplist index exists
@@ -6202,6 +6300,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
+  v8::Handle<v8::String> EnsureCapConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureCapConstraint"));
   v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
@@ -6390,6 +6489,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
@@ -6433,6 +6533,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));

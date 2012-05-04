@@ -78,6 +78,11 @@ static int DeleteShapedJson (TRI_doc_collection_t* doc,
                              TRI_doc_update_policy_e policy,
                              bool release);
 
+static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
+                                                      size_t size,
+                                                      TRI_idx_iid_t iid,
+                                                      bool* created);
+
 static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collection,
                                                  char const* location,
                                                  char const* latitude,
@@ -1473,35 +1478,71 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   }
 
   // extract the fields
-  fld = TRI_LookupArrayJson(json, "fields");
-
-  if (fld == NULL || fld->_type != TRI_JSON_LIST) {
-    LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list",
-              typeStr, (unsigned long) iid);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return false;
+  if (TRI_EqualString(typeStr, "cap")) {
+    fieldCount = 0;
+    fld = NULL;
   }
+  else {
+    fld = TRI_LookupArrayJson(json, "fields");
 
-  fieldCount = fld->_value._objects._length;
+    if (fld == NULL || fld->_type != TRI_JSON_LIST) {
+      LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list",
+                typeStr, (unsigned long) iid);
 
-  for (j = 0;  j < fieldCount;  ++j) {
-    TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      return false;
+    }
 
-    if (sub->_type != TRI_JSON_STRING) {
+    fieldCount = fld->_value._objects._length;
+
+    for (j = 0;  j < fieldCount;  ++j) {
+      TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
+      
+      if (sub->_type != TRI_JSON_STRING) {
         LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list of attribute paths", 
                   typeStr, (unsigned long) iid);
-
+        
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return false;
+      }
     }
+  }
+  
+  // ...........................................................................
+  // CAP CONSTRAINT
+  // ...........................................................................
+
+  if (TRI_EqualString(typeStr, "cap")) {
+    TRI_json_t* num;
+    size_t size;
+
+    num = TRI_LookupArrayJson(json, "size");
+
+    if (num == NULL || num->_type != TRI_JSON_NUMBER) {
+      LOG_ERROR("ignoring cap constraint %lu, 'size' missing", (unsigned long) iid);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      return false;
+    }
+
+    if (num->_value._number < 1.0) {
+      LOG_ERROR("ignoring cap constraint %lu, 'size' %f must be at least 1", (unsigned long) iid, num->_value._number);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      return false;
+    }
+
+    size = (size_t) num->_value._number; 
+
+    CreateCapConstraintSimCollection(doc, size, iid, NULL);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return true;
   }
   
   // ...........................................................................
   // GEO INDEX (list or attribute)
   // ...........................................................................
 
-  if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
+  else if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
     bool constraint;
     bool ignoreNull;
 
@@ -1534,7 +1575,15 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
         loc = TRI_AtVector(&fld->_value._objects, 0);
 
-        CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, constraint, ignoreNull, iid, NULL);
+        CreateGeoIndexSimCollection(doc,
+                                    loc->_value._string.data,
+                                    NULL, 
+                                    NULL, 
+                                    geoJson,
+                                    constraint,
+                                    ignoreNull,
+                                    iid,
+                                    NULL);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return true;
@@ -1556,7 +1605,15 @@ static bool OpenIndexIterator (char const* filename, void* data) {
         lat = TRI_AtVector(&fld->_value._objects, 0);
         lon = TRI_AtVector(&fld->_value._objects, 1);
 
-        CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, constraint, ignoreNull, iid, NULL);
+        CreateGeoIndexSimCollection(doc,
+                                    NULL,
+                                    lat->_value._string.data,
+                                    lon->_value._string.data,
+                                    false,
+                                    constraint,
+                                    ignoreNull, 
+                                    iid, 
+                                    NULL);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         return true;
@@ -2528,6 +2585,11 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
 
     if (idx->_iid == iid) {
       found = TRI_RemoveVectorPointer(&sim->_indexes, i);
+
+      if (found != NULL) {
+        found->removeIndex(found, &sim->base);
+      }
+
       break;
     }
   }
@@ -2693,6 +2755,113 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    CAP CONSTRAINT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a cap constraint to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
+                                                      size_t size,
+                                                      TRI_idx_iid_t iid,
+                                                      bool* created) {
+  TRI_index_t* idx;
+  bool ok;
+
+  // check if we already know a cap constraint
+  if (sim->base._capConstraint != NULL) {
+    TRI_set_errno(TRI_ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED);
+    return NULL;
+  }
+
+  // create a new index
+  idx = TRI_CreateCapConstraint(&sim->base, size);
+
+  if (iid) {
+    idx->_iid = iid;
+  }
+
+  // initialises the index with all existing documents
+  ok = FillIndex(sim, idx);
+
+  if (! ok) {
+    TRI_FreeCapConstraint(idx);
+    return NULL;
+  }
+  
+  // and store index
+  TRI_PushBackVectorPointer(&sim->_indexes, idx);
+  sim->base._capConstraint = (TRI_cap_constraint_t*) idx;
+
+  if (created != NULL) {
+    *created = true;
+  }
+
+  return idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a cap constraint exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
+                                                   size_t size,
+                                                   bool* created) {
+  TRI_index_t* idx;
+  int res;
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  idx = CreateCapConstraintSimCollection(sim, size, 0, created);
+
+  if (idx == NULL) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    return NULL;
+  }
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  res = TRI_SaveIndex(&sim->base, idx);
+
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
 // -----------------------------------------------------------------------------
 
@@ -2784,14 +2953,14 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeoIndex1(&sim->base, location, loc, geoJson, constraint, ignoreNull);
+    idx = TRI_CreateGeo1Index(&sim->base, location, loc, geoJson, constraint, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %d",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_CreateGeoIndex2(&sim->base, latitude, lat, longitude, lon, constraint, ignoreNull);
+    idx = TRI_CreateGeo2Index(&sim->base, latitude, lat, longitude, lon, constraint, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %d, %d",
               location,
@@ -3314,7 +3483,7 @@ TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
 
     idx = collection->_indexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_GEO_INDEX1) {
+    if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
       if (geo->_location != 0 && geo->_location == location && geo->_geoJson == geoJson && geo->_constraint == constraint) {
@@ -3347,7 +3516,7 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 
     idx = collection->_indexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_GEO_INDEX2) {
+    if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
       if (geo->_latitude != 0 && geo->_longitude != 0 && geo->_latitude == latitude && geo->_longitude == longitude && geo->_constraint == constraint) {

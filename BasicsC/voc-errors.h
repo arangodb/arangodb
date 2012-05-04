@@ -123,6 +123,8 @@ extern "C" {
 ///   Will be raised when a cross-collection is requested.
 /// - 1214: @CODE{illegal index handle}
 ///   Will be raised when a index handle is corrupt.
+/// - 1215: @CODE{cap constraint already defined}
+///   Will be raised when a cap constraint was already defined.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -855,6 +857,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD                                (1214)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1215: ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED
+///
+/// cap constraint already defined
+///
+/// Will be raised when a cap constraint was already defined.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED                  (1215)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL

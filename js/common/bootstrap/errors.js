@@ -56,6 +56,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_AVOCADO_INDEX_NOT_FOUND" : { "code" : 1212, "message" : "index not found" }, 
   "ERROR_AVOCADO_CROSS_COLLECTION_REQUEST" : { "code" : 1213, "message" : "cross collection request not allowed" }, 
   "ERROR_AVOCADO_INDEX_HANDLE_BAD" : { "code" : 1214, "message" : "illegal index handle" }, 
+  "ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED" : { "code" : 1215, "message" : "cap constraint already defined" }, 
   "ERROR_AVOCADO_DATAFILE_FULL"  : { "code" : 1300, "message" : "datafile full" }, 
   "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
   "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "parse error: %s" }, 

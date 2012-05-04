@@ -57,6 +57,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_AVOCADO_INDEX_NOT_FOUND\" : { \"code\" : 1212, \"message\" : \"index not found\" }, \n"
   "  \"ERROR_AVOCADO_CROSS_COLLECTION_REQUEST\" : { \"code\" : 1213, \"message\" : \"cross collection request not allowed\" }, \n"
   "  \"ERROR_AVOCADO_INDEX_HANDLE_BAD\" : { \"code\" : 1214, \"message\" : \"illegal index handle\" }, \n"
+  "  \"ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED\" : { \"code\" : 1215, \"message\" : \"cap constraint already defined\" }, \n"
   "  \"ERROR_AVOCADO_DATAFILE_FULL\"  : { \"code\" : 1300, \"message\" : \"datafile full\" }, \n"
   "  \"ERROR_QUERY_KILLED\"           : { \"code\" : 1500, \"message\" : \"query killed\" }, \n"
   "  \"ERROR_QUERY_PARSE\"            : { \"code\" : 1501, \"message\" : \"parse error: %s\" }, \n"
