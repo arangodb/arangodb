@@ -81,7 +81,8 @@ typedef enum {
   TRI_AQL_SCOPE_LET,
   TRI_AQL_SCOPE_FOR,
   TRI_AQL_SCOPE_FOR_NESTED,
-  TRI_AQL_SCOPE_FUNCTION
+  TRI_AQL_SCOPE_FUNCTION,
+  TRI_AQL_SCOPE_EXPAND
 }
 TRI_aql_codegen_scope_e;
 
@@ -115,6 +116,7 @@ TRI_aql_codegen_scope_t;
 
 typedef struct TRI_aql_codegen_js_s {  
   TRI_string_buffer_t _buffer;
+  TRI_string_buffer_t _functionBuffer;
   TRI_vector_pointer_t _functions;
   TRI_vector_pointer_t _scopes;
 
@@ -167,7 +169,7 @@ TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void);
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const);
+char* TRI_GenerateCodeAql (const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
