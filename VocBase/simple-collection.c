@@ -1505,7 +1505,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     bool constraint;
     bool ignoreNull;
 
-    bv = TRI_LookupArrayJson(json, "contraint");
+    bv = TRI_LookupArrayJson(json, "constraint");
     constraint = false;
     
     if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
