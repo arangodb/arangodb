@@ -36,10 +36,6 @@
   color: yellow;  
 }
 
-#deleteDoc {
-  margin-right: -10px; 
-}
-
 //<form action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
 //<input type="file" name="filename" />
 //<input type="submit" value="post!" />

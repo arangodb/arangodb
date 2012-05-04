@@ -143,7 +143,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"150px", "bSortable":false}, null, null, null, null, null ],
+    "aoColumns": [{"sWidth":"100px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -162,8 +162,8 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
+                  {"sClass":"writeable", "bSortable": false,  },
                   {"bVisible": false}], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -181,8 +181,8 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "170px"}, 
-                  {"sClass":"writeable", "bSortable": false }, 
+    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
                   {"sClass":"writeable", "bSortable": false },
                   {"bVisible": false}] 
   });
@@ -391,8 +391,6 @@ var logTable = $('#logTableID').dataTable({
       $('#nav1').attr('href', '#');
       $('#nav3').text('-> Edit:' + collectionID[1]); 
 
-      console.log("HEHEH"); 
-
       $.ajax({
         type: "GET",
         url: "/document/" + collectiondocID,
@@ -482,7 +480,8 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16)  == "#editCollection?") {
       var collectionID = location.hash.substr(16, location.hash.length); 
-      var collectionName;    
+      var collectionName;
+      var tmpStatus; 
  
       $.ajax({
         type: "GET",
@@ -492,6 +491,18 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           collectionName = data.name;
           $('#nav2').text('-> Edit: ' + collectionName);
+          $('#editCollectionName').val(data.name); 
+          $('#editCollectionID').text(data.id);
+
+          switch (data.status) {
+          case 1: tmpStatus = "new born collection"; break; 
+          case 2: tmpStatus = "unloaded"; break; 
+          case 3: tmpStatus = "loaded"; break; 
+          case 4: tmpStatus = "in the process of being unloaded"; break; 
+          case 5: tmpStatus = "deleted"; break; 
+          }
+
+          $('#editCollectionStatus').text(tmpStatus); 
         },
         error: function(data) {
         }
@@ -499,10 +510,9 @@ var logTable = $('#logTableID').dataTable({
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
-
-          hideAllSubDivs();
-          $('#collectionsView').hide();
-          $('#editCollectionView').show();
+      hideAllSubDivs();
+      $('#collectionsView').hide();
+      $('#editCollectionView').show();
 
     }
 
@@ -621,7 +631,6 @@ var logTable = $('#logTableID').dataTable({
           tableView = true;
           var collID = JSON.parse(collectionID).split("/");  
           window.location.href = "#showCollection?" + collID[0];  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -650,7 +659,6 @@ var logTable = $('#logTableID').dataTable({
           window.location.href = "#showCollection?" + collID[0];  
           var img = $('#toggleEditedDocButton').find('img'); 
           img.attr('src', '/_admin/html/media/icons/off_icon16.png');
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -714,7 +722,6 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           tableView = true;
           window.location.href = "#showCollection?" + collID;  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -741,7 +748,6 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           tableView = true;
           window.location.href = "#showCollection?" + collID;  
-          alert("done");
         },
         error: function(data) {
           alert(JSON.stringify(data)); 
@@ -792,7 +798,8 @@ var logTable = $('#logTableID').dataTable({
     }
     else {
       try {
-        var boxContent = $('#documentEditSourceBox').val();  
+        var boxContent = $('#documentEditSourceBox').val(); 
+        boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         documentEditTable.fnClearTable(); 
@@ -923,6 +930,7 @@ var logTable = $('#logTableID').dataTable({
     else {
       try {
         var boxContent = $('#NewDocumentSourceBox').val();  
+        boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         newDocumentTable.fnClearTable(); 
@@ -1087,7 +1095,6 @@ var logTable = $('#logTableID').dataTable({
     var aData = documentsTable.fnGetData(aPos[0]);
     var row = $(this).closest("tr").get(0);
     var documentID = aData[1];
-    console.log(documentID);  
    
     if (this.id == "deleteDoc") { 
     try { 
@@ -1142,18 +1149,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveEditedCollection').live('click', function () {
-    var newColName; 
-    var currentid; 
-    var data = editCollectionTable.fnGetData(); 
-    
-    $.each(data, function(info, key) {
-      if (key[1] == 'name') {
-        newColName = key[2]; 
-      }
-      if (key[1] == 'id') {
-        currentid = key[2]; 
-      }
-    });
+    var newColName = $('#editCollectionName').val(); 
+    var currentid = $('#editCollectionID').text(); 
     
       $.ajax({
         type: "PUT",
@@ -1294,7 +1291,6 @@ var logTable = $('#logTableID').dataTable({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/load",
         success: function () {
-          alert('Collection: ' + collectionID + ' loaded');
           drawCollectionsTable();
         }, 
         error: function (data) {
@@ -1314,7 +1310,6 @@ var logTable = $('#logTableID').dataTable({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/unload",
         success: function () {
-          alert('Collection: ' + collectionID + ' unloaded');
           drawCollectionsTable();
         }, 
         error: function () {
@@ -1384,7 +1379,7 @@ function drawCollectionsTable () {
         });
 	
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus, size + " kB", alive]);
+        val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
@@ -1764,7 +1759,7 @@ function cutByResolution (string) {
     userContent = 150; 
   }
   else if (userScreenSize > 1024 && userScreenSize < 1680) {
-    userContent = 250; 
+    userContent = 200; 
   }
   else if (userScreenSize > 1680) {
     userContent = 310; 
@@ -1917,7 +1912,7 @@ function FormatJSON(oData, sIndent) {
                 sHTML += "null";
                 break;
             case "string":
-                sHTML += ("\"" + vValue + "\"");
+                sHTML += ("\"" + (vValue.replace(/"/g,"\\\"")) + "\"");
                 break;
             default:
                 sHTML += ("TYPEOF: " + typeof(vValue));
@@ -1947,4 +1942,92 @@ function RealTypeOf(v) {
     return "object";
   }
   return typeof(v);
-} 
+}
+
+function bytesToSize(bytes, precision) {  
+  var kilobyte = 1024;
+  var megabyte = kilobyte * 1024;
+  var gigabyte = megabyte * 1024;
+  var terabyte = gigabyte * 1024;
+   
+  if ((bytes >= 0) && (bytes < kilobyte)) {
+    return bytes + ' B';
+   } 
+   else if ((bytes >= kilobyte) && (bytes < megabyte)) {
+     return (bytes / kilobyte).toFixed(precision) + ' KB';
+   } 
+   else if ((bytes >= megabyte) && (bytes < gigabyte)) {
+     return (bytes / megabyte).toFixed(precision) + ' MB';
+   } 
+   else if ((bytes >= gigabyte) && (bytes < terabyte)) {
+     return (bytes / gigabyte).toFixed(precision) + ' GB';
+   } 
+   else if (bytes >= terabyte) {
+     return (bytes / terabyte).toFixed(precision) + ' TB';
+   }   
+   else {
+     return bytes + ' B';
+   }
+}
+
+function stateReplace (value) {
+  var inString = false;
+  var length = value.length;
+  var position = 0;
+  var escaped = false;
+
+  var output = "";
+
+  while (position < length) {
+    var c = value.charAt(position++);
+
+    if (c === '\\') {
+      if (escaped) {
+        /* case: \ followed by \ */
+        output += '\\';
+        escaped = false;
+      } 
+      else {
+        /* case: single backslash */
+        escaped = true;
+      }
+    }
+    else if (c === '"') {
+      if (escaped) {
+        /* case: \ followed by " */
+        output += '\\"';
+        escaped = false;
+      } 
+      else {
+        output += '"';
+        inString = !inString;
+      }
+    } 
+    else {
+      if (inString) {
+        switch (c) {
+          case '\n':
+            output += '\\n';
+            break;
+          case '\t':
+            output += '\\t';
+            break;
+          case '\r':
+            output += '\\r';
+            break;
+          default:
+            output += c;
+            break;
+        }
+      } 
+      else {
+        if (c >= '!') {
+          output += c;
+        }
+      }
+    }
+  }
+
+  return output;
+}
+
