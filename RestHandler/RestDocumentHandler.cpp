@@ -291,19 +291,25 @@ bool RestDocumentHandler::createDocument () {
   else {
     int res = TRI_errno();
 
-    if (res == TRI_ERROR_AVOCADO_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
-    }
-    else if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
-      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
-    }
-    else {
-      generateError(HttpResponse::SERVER_ERROR,
-                    TRI_ERROR_INTERNAL,
-                    "cannot create, failed with: " + string(TRI_last_error()));
-    }
+    switch (res) {
+      case TRI_ERROR_AVOCADO_READ_ONLY:
+        generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
+        return false;
 
-    return false;
+      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+        return false;
+
+      case TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED:
+        generateError(HttpResponse::BAD, res, "geo constraint violated");
+        return false;
+
+      default:
+        generateError(HttpResponse::SERVER_ERROR,
+                      TRI_ERROR_INTERNAL,
+                      "cannot create, failed with: " + string(TRI_last_error()));
+        return false;
+    }
   }
 }
 
@@ -700,7 +706,7 @@ bool RestDocumentHandler::updateDocument () {
   TRI_voc_cid_t cid = _documentCollection->base._cid;
 
   TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
-  int en = mptr._did == 0 ? TRI_errno() : 0;
+  res = mptr._did == 0 ? TRI_errno() : 0;
 
   // .............................................................................
   // outside write transaction
@@ -715,7 +721,7 @@ bool RestDocumentHandler::updateDocument () {
     return true;
   }
   else {
-    switch (en) {
+    switch (res) {
       case TRI_ERROR_AVOCADO_READ_ONLY:
         generateError(HttpResponse::FORBIDDEN, 
                       TRI_ERROR_AVOCADO_READ_ONLY,
@@ -728,6 +734,10 @@ bool RestDocumentHandler::updateDocument () {
 
       case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
         generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+        return false;
+
+      case TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED:
+        generateError(HttpResponse::BAD, res, "geo constraint violated");
         return false;
 
       case TRI_ERROR_AVOCADO_CONFLICT:

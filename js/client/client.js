@@ -290,10 +290,12 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AvocadoError (error) {
-  this.error = error.error;
-  this.code = error.code;
-  this.errorNum = error.errorNum;
-  this.errorMessage = error.errorMessage;
+  if (error != null) {
+    this.error = error.error;
+    this.code = error.code;
+    this.errorNum = error.errorNum;
+    this.errorMessage = error.errorMessage;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

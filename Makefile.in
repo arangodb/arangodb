@@ -3057,7 +3057,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 	doxygen Doxygen/avocado.doxy > /dev/null
-	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
 ################################################################################
