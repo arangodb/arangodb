@@ -740,6 +740,80 @@ function AHUACATL_RELATIONAL_LESSEQUAL (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief perform comparison
+///
+/// returns -1 if the left operand is less than the right operand, 1 if it is
+/// greater, 0 if both operands are equal
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_RELATIONAL_CMP (lhs, rhs) {
+  var leftWeight = AHUACATL_TYPEWEIGHT(lhs);
+  var rightWeight = AHUACATL_TYPEWEIGHT(rhs);
+  
+  if (leftWeight < rightWeight) {
+    return -1;
+  }
+  if (leftWeight > rightWeight) {
+    return 1;
+  }
+
+  // lhs and rhs have the same type
+
+  if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
+    // arrays and objects
+    var l = AHUACATL_KEYS(lhs);
+    var r = AHUACATL_KEYS(rhs);
+    var numLeft = l.length;
+    var numRight = r.length;
+
+    for (var i = 0; i < numRight; ++i) {
+      if (i >= numLeft) {
+        // left operand does not have any more keys
+        return -1;
+      }
+      var key = l[i];
+      if (key < r[i]) {
+        // left key is less than right key
+        return 1;
+      } 
+      else if (key > r[i]) {
+        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
+        return -1
+      }
+      // keys are equal, now compare value
+      var result = AHUACATL_RELATIONAL_CMP(lhs[key], rhs[key]);
+      if (result !== 0) {
+        return result;
+      }
+    }
+    
+    if (numLeft > numRight) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
+  if (lhs < rhs) {
+    return -1;
+  }
+   
+  if (lhs > rhs) {
+    return 1;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform in list check 
 ///
 /// returns true if the left operand is contained in the right operand

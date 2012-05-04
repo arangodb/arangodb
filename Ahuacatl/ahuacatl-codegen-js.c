@@ -31,11 +31,8 @@
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
-
-#define REGISTER_PREFIX "r"
-#define FUNCTION_PREFIX "f"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Ahuacatl
@@ -43,7 +40,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash variable
+/// @brief prefix for register
+////////////////////////////////////////////////////////////////////////////////
+
+#define REGISTER_PREFIX "r"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prefix for functions
+////////////////////////////////////////////////////////////////////////////////
+
+#define FUNCTION_PREFIX "f"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_node_t* const node);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash a variable
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashVariable (TRI_associative_pointer_t* array, 
@@ -65,31 +89,25 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
   return TRI_EqualString(key, variable->_name);
 }
 
-static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_node_t* const node);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the next register number
+////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_aql_codegen_register_t IncRegister (TRI_aql_codegen_js_t* const generator) {
   return ++generator->_registerIndex;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the next function number
+////////////////////////////////////////////////////////////////////////////////
+
 static inline TRI_aql_codegen_register_t IncFunction (TRI_aql_codegen_js_t* const generator) {
   return ++generator->_functionIndex;
 }
 
-static inline bool OutputString (TRI_string_buffer_t* const buffer, const char* const value) {
-  if (!value) {
-    return false;
-  }
-
-  return (TRI_AppendStringStringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
-}
-
-static inline bool OutputChar (TRI_string_buffer_t* const buffer, const char value) {
-  return (TRI_AppendCharStringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
-}
-
-static inline bool OutputInt (TRI_string_buffer_t* const buffer, const int64_t value) {
-  return (TRI_AppendInt64StringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current scope
+////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_aql_codegen_scope_t* CurrentScope (TRI_aql_codegen_js_t* const generator) {
   size_t n = generator->_scopes._length;
@@ -98,7 +116,43 @@ static inline TRI_aql_codegen_scope_t* CurrentScope (TRI_aql_codegen_js_t* const
   return (TRI_aql_codegen_scope_t*) TRI_AtVectorPointer(&generator->_scopes, n - 1);
 }
 
-static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator, const char* const value) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a string to the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool OutputString (TRI_string_buffer_t* const buffer, 
+                                 const char* const value) {
+  if (!value) {
+    return false;
+  }
+
+  return (TRI_AppendStringStringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a single character to the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool OutputChar (TRI_string_buffer_t* const buffer, 
+                               const char value) {
+  return (TRI_AppendCharStringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append an integer value to the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool OutputInt (TRI_string_buffer_t* const buffer, 
+                              const int64_t value) {
+  return (TRI_AppendInt64StringBuffer(buffer, value) == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a string in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator, 
+                                const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (!OutputString(scope->_buffer, value)) {
@@ -106,7 +160,12 @@ static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator, const cha
   }
 }
 
-static inline void ScopeOutputInt (TRI_aql_codegen_js_t* const generator, const int64_t value) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print an integer in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutputInt (TRI_aql_codegen_js_t* const generator, 
+                                   const int64_t value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (!OutputInt(scope->_buffer, value)) {
@@ -114,7 +173,12 @@ static inline void ScopeOutputInt (TRI_aql_codegen_js_t* const generator, const 
   }
 }
 
-static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator, const char* const value) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print an escaped string in the current scope, enclosed by '
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator, 
+                                      const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (!OutputChar(scope->_buffer, '\'')) {
@@ -128,7 +192,12 @@ static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator, con
   }
 }
 
-static inline void ScopeOutputFunction (TRI_aql_codegen_js_t* const generator, const TRI_aql_codegen_register_t functionIndex) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a function name in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutputFunction (TRI_aql_codegen_js_t* const generator, 
+                                        const TRI_aql_codegen_register_t functionIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (!OutputString(scope->_buffer, FUNCTION_PREFIX)) {
@@ -139,7 +208,12 @@ static inline void ScopeOutputFunction (TRI_aql_codegen_js_t* const generator, c
   }
 }
 
-static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator, const TRI_aql_codegen_register_t registerIndex) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a register name in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator, 
+                                        const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (!OutputString(scope->_buffer, REGISTER_PREFIX)) {
@@ -150,12 +224,37 @@ static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator, c
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for indexed register access
+////////////////////////////////////////////////////////////////////////////////
+
+static void ScopeOutputIndexedName (TRI_aql_codegen_js_t* const generator,
+                                    const TRI_aql_codegen_register_t sourceRegister,
+                                    const char* const indexName) {
+  ScopeOutputRegister(generator, sourceRegister);
+  ScopeOutput(generator, "[");
+  ScopeOutputQuoted(generator, indexName);
+  ScopeOutput(generator, "]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a scope variable
+////////////////////////////////////////////////////////////////////////////////
+
 static void FreeVariable (TRI_aql_codegen_variable_t* const variable) {
+  assert(variable);
+  assert(variable->_name);
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
 }
 
-static TRI_aql_codegen_variable_t* CreateVariable (const char* const name, const TRI_aql_codegen_register_t registerIndex) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a scope variable
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_codegen_variable_t* CreateVariable (const char* const name, 
+                                                   const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_variable_t* variable;
   
   variable = (TRI_aql_codegen_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_variable_t), false);
@@ -174,21 +273,32 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name, const
   return variable;
 }
 
-static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator, const TRI_aql_codegen_scope_e type) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type for the next scope
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator, 
+                                              const TRI_aql_codegen_scope_e requestedType) {
   TRI_aql_codegen_scope_t* scope;
-  
-  if (type == TRI_AQL_SCOPE_MAIN || type == TRI_AQL_SCOPE_LET || type == TRI_AQL_SCOPE_FUNCTION || type == TRI_AQL_SCOPE_EXPAND) {
-    return type;
+ 
+  // we're only interested in TRI_AQL_SCOPE_FOR 
+  if (requestedType != TRI_AQL_SCOPE_FOR) {
+    return requestedType;
   }
   
   scope = CurrentScope(generator);
 
-  if (scope->_type == TRI_AQL_SCOPE_FOR || scope->_type == TRI_AQL_SCOPE_FOR_NESTED) {
+  // if we are in a TRI_AQL_SCOPE_FOR scope, we'll return TRI_AQL_SCOPE_FOR_NESTED 
+  if (scope->_type == TRI_AQL_SCOPE_FOR) {
     return TRI_AQL_SCOPE_FOR_NESTED;
   }
 
-  return type;
+  return requestedType;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a new scope and push it onto the stack
+////////////////////////////////////////////////////////////////////////////////
 
 static void StartScope (TRI_aql_codegen_js_t* const generator, 
                         TRI_string_buffer_t* const buffer,
@@ -217,6 +327,7 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   scope->_prefix = NULL;
   scope->_name = name;
 
+  // init symbol table
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer, 
@@ -224,12 +335,17 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
                              &EqualVariable,
                              NULL);
   
+  // push the scope on the stack
   TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
 
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, scope->_name);
   ScopeOutput(generator, ") */\n");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end the current scope and pop it from the stack
+////////////////////////////////////////////////////////////////////////////////
 
 static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
@@ -244,6 +360,7 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
   scope = (TRI_aql_codegen_scope_t*) TRI_RemoveVectorPointer(&generator->_scopes, n - 1); 
   assert(scope);
   
+  // free all variables in scope
   n = scope->_variables._nrAlloc;
   for (i = 0; i < n; ++i) {
     TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) scope->_variables._table[i];
@@ -251,10 +368,15 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
       FreeVariable(variable);
     }
   }
+  // free symbol table
   TRI_DestroyAssociativePointer(&scope->_variables); 
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);         
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a sort function
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* const generator, 
                                                       const TRI_aql_node_t* const node,
@@ -265,15 +387,18 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
   size_t i;
   size_t n;
 
+  // start a new scope first
   StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL, "sort");
   scope = CurrentScope(generator);
 
   ScopeOutput(generator, "function ");
   ScopeOutputFunction(generator, functionIndex);
   ScopeOutput(generator, " (l, r) {\n");
-  ScopeOutput(generator, "var lhs, rhs;\n");
+  ScopeOutput(generator, "var res, lhs, rhs;\n");
 
   list = TRI_AQL_NODE_MEMBER(node, 0);
+
+  // loop over sort criteria
   n = list->_members._length;
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* element = TRI_AQL_NODE_MEMBER(list, i);
@@ -289,19 +414,32 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
     ScopeOutput(generator, ";\n");
 
     scope->_prefix = NULL;
-    ScopeOutput(generator, "if (AHUACATL_RELATIONAL_LESS(lhs, rhs)) {\n");
-    ScopeOutput(generator, (elementIndex || TRI_AQL_NODE_BOOL(element)) ? "return -1;\n" : "return 1;\n");
-    ScopeOutput(generator, "}\n");
-    ScopeOutput(generator, "if (AHUACATL_RELATIONAL_GREATER(lhs, rhs)) {\n");
-    ScopeOutput(generator, (elementIndex || TRI_AQL_NODE_BOOL(element)) ? "return 1;\n" : "return -1;\n");
+    ScopeOutput(generator, "res = AHUACATL_RELATIONAL_CMP(lhs, rhs);\n");
+    ScopeOutput(generator, "if (res) {\n");
+    if (elementIndex || TRI_AQL_NODE_BOOL(element)) {
+      // ascending
+      ScopeOutput(generator, "return res;\n");
+    }
+    else {
+      // descending
+      ScopeOutput(generator, "return -res;\n");
+    }
     ScopeOutput(generator, "}\n");
   }
+
+  // return 0 if all elements are equal
   ScopeOutput(generator, "return 0;\n");
   ScopeOutput(generator, "}\n");
+
+  // finish scope
   EndScope(generator);
 
   return functionIndex;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a group function
+////////////////////////////////////////////////////////////////////////////////
   
 static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* const generator, 
                                                        const TRI_aql_node_t* const node) {
@@ -311,6 +449,7 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
   size_t i;
   size_t n;
 
+  // start a new scope first
   StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL, "group");
   scope = CurrentScope(generator);
   scope->_prefix = "g";
@@ -319,6 +458,8 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
   ScopeOutputFunction(generator, functionIndex);
   ScopeOutput(generator, " (g) {\n"); 
   ScopeOutput(generator, "return { ");
+
+  // loop over group criteria
   list = TRI_AQL_NODE_MEMBER(node, 0);
   n = list->_members._length;
   for (i = 0; i < n; ++i) {
@@ -333,24 +474,42 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
   }
   ScopeOutput(generator, " };\n");
   ScopeOutput(generator, "}\n");
+  
+  // finish scope
   EndScope(generator);
 
   return functionIndex;
 }
 
-static void InitList (TRI_aql_codegen_js_t* const generator, const TRI_aql_codegen_register_t resultRegister) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create code for an empty list (var x = [ ];)
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitList (TRI_aql_codegen_js_t* const generator, 
+                      const TRI_aql_codegen_register_t resultRegister) {
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = [ ];\n");
 }
 
-static void InitArray (TRI_aql_codegen_js_t* const generator, const TRI_aql_codegen_register_t resultRegister) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create code for an empty array (var x = { };)
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitArray (TRI_aql_codegen_js_t* const generator, 
+                       const TRI_aql_codegen_register_t resultRegister) {
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = { };\n");
 }
 
-static void EnterSymbol (TRI_aql_codegen_js_t* const generator, const char* const name, const TRI_aql_codegen_register_t registerIndex) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a variable into the symbol table
+////////////////////////////////////////////////////////////////////////////////
+
+static void EnterSymbol (TRI_aql_codegen_js_t* const generator, 
+                         const char* const name, 
+                         const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_variable_t* variable = CreateVariable(name, registerIndex);
 
@@ -360,26 +519,40 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator, const char* cons
   }
 
   if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {
+    // variable already exists in symbol table. this should never happen
     generator->_error = true;
   }
 }
 
-static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const generator, const char* const name) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a variable in the symbol table
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const generator, 
+                                                const char* const name) {
   size_t i = generator->_scopes._length;
 
+  // iterate from current scope to the top level scope
   while (i-- > 0) {
     TRI_aql_codegen_scope_t* scope = (TRI_aql_codegen_scope_t*) generator->_scopes._buffer[i];
     TRI_aql_codegen_variable_t* variable;
 
     variable = (TRI_aql_codegen_variable_t*) TRI_LookupByKeyAssociativePointer(&scope->_variables, name);
+    // variable found in scope
     if (variable) {
+      // return the variable register
       return variable->_register;
     }
   }
 
+  // variable not found. this should not happen
   generator->_error = true;
   return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add code for the property check (if (!var.hasOwnProperty()) continue)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ScopePropertyCheck (TRI_aql_codegen_js_t* const generator, 
                                 const TRI_aql_codegen_register_t listRegister,
@@ -393,6 +566,10 @@ static void ScopePropertyCheck (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "}\n");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a for loop
+////////////////////////////////////////////////////////////////////////////////
+
 static void StartFor (TRI_aql_codegen_js_t* const generator,
                       const TRI_aql_codegen_register_t sourceRegister,
                       const char* const variableName) {
@@ -401,7 +578,17 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t ownRegister = IncRegister(generator);
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_FOR, listRegister, keyRegister, ownRegister, scope->_resultRegister, variableName, "for");
+  // always start a new scope
+  StartScope(generator, 
+             scope->_buffer,  // inherit buffer from previous scope
+             TRI_AQL_SCOPE_FOR, 
+             listRegister, 
+             keyRegister, 
+             ownRegister, 
+             scope->_resultRegister, 
+             variableName, 
+             "for");
+
   if (variableName) {
     EnterSymbol(generator, variableName, ownRegister);
   }
@@ -411,7 +598,8 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " = AHUACATL_LIST(");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ");\n");
-        
+       
+  // for (var keyx in listx) 
   ScopeOutput(generator, "for (var "); 
   ScopeOutputRegister(generator, keyRegister);
   ScopeOutput(generator, " in ");
@@ -431,21 +619,43 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "];\n");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close for loops til the parent scope is reached
+///
+/// all for loops will be closed until another, non-for scope is reached
+////////////////////////////////////////////////////////////////////////////////
+
 static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
+  // we are closing at least one scope
   while (true) {
     TRI_aql_codegen_scope_e type = scope->_type;
     ScopeOutput(generator, "}\n");
     EndScope(generator);
 
+    // break if we reached the top level for loop
     if (type != TRI_AQL_SCOPE_FOR_NESTED) {
       break;
     }
 
+    // next iteration
     scope = CurrentScope(generator);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store scope symbols in a result variable
+///
+/// fetches all symbols from the current scope and all potentially available 
+/// parent for loops, pushes their values into a result register, and note the
+/// symbol names
+/// this function is called before a scope is closed and allows remembering
+/// which variables were active in a scope. it is necessary to call this
+/// function for language constructs like SORT, COLLECT etc. which close the
+/// current scope and open a new scope afterwards with the same variables as
+/// before
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator, 
                                          const TRI_aql_codegen_register_t rowRegister) {
@@ -454,10 +664,12 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
 
   TRI_InitVectorString(&variableNames, TRI_UNKNOWN_MEM_ZONE);
 
+  // start at current scope
   while (i-- > 0) {
     TRI_aql_codegen_scope_t* peek = (TRI_aql_codegen_scope_t*) generator->_scopes._buffer[i];
     size_t j, n;
 
+    // iterate over all variables in the scope
     n = peek->_variables._nrAlloc;
     for (j = 0; j < n; ++j) {
       TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) peek->_variables._table[j];
@@ -466,31 +678,48 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
         continue;
       }
 
+      // push all variable values into the rowRegister
       // row[name] = ...;
-      ScopeOutputRegister(generator, rowRegister);
-      ScopeOutput(generator, "[");
-      ScopeOutputQuoted(generator, variable->_name);
-      ScopeOutput(generator, "] = ");
+      ScopeOutputIndexedName(generator, rowRegister, variable->_name);
+      ScopeOutput(generator, " = ");
       ScopeOutputRegister(generator, variable->_register);
       ScopeOutput(generator, ";\n");
   
       TRI_PushBackVectorString(&variableNames, TRI_DuplicateString(variable->_name));
     }
 
+    // break if we reached the top level for loop
     if (peek->_type != TRI_AQL_SCOPE_FOR_NESTED) {
       break;
     }
+
+    // next scope
   }
 
   return variableNames;
 }
 
-static void RestoreSymbols (TRI_aql_codegen_js_t* const generator, TRI_vector_string_t* const variableNames) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief re-enter variables into the symbol table
+///
+/// re-enters all passed variables into the symbol table of the current scope
+/// and pop them the current scope's iterator register
+/// this function is after a scope is closed and StoreSymbols has been called.
+/// it allows using the same variables as in the previous scope.
+/// it is necessary to call this function for language constructs like SORT etc. 
+/// which close a scope and open a new scope afterwards with the same variables 
+/// as before
+////////////////////////////////////////////////////////////////////////////////
+
+static void RestoreSymbols (TRI_aql_codegen_js_t* const generator, 
+                            TRI_vector_string_t* const variableNames) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   size_t i, n;
 
+  // iterate over all variables passed
   n = variableNames->_length;
   for (i = 0; i < n; ++i) {
+    // create a new register for each variable
     TRI_aql_codegen_register_t registerIndex = IncRegister(generator);
     char* variableName = (char*) variableNames->_buffer[i];
 
@@ -499,18 +728,20 @@ static void RestoreSymbols (TRI_aql_codegen_js_t* const generator, TRI_vector_st
       EnterSymbol(generator, variableName, registerIndex);
     }
   
-    // unpack variables
+    // unpack variables from current scope's iterator register
     ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, registerIndex);
     ScopeOutput(generator, " = ");
-    ScopeOutputRegister(generator, scope->_ownRegister);
-    ScopeOutput(generator, "[");
-    ScopeOutputQuoted(generator, variableName);
-    ScopeOutput(generator, "];\n");
+    ScopeOutputIndexedName(generator, scope->_ownRegister, variableName);
+    ScopeOutput(generator, ";\n");
   }
   
   TRI_DestroyVectorString(variableNames);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a reference (the name of a variable)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessReference (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) { 
@@ -518,18 +749,22 @@ static void ProcessReference (TRI_aql_codegen_js_t* const generator,
   char* name = TRI_AQL_NODE_STRING(node);
 
   if (scope->_prefix) {
-    // sort function
+    // sort function, group function etc. - we are using a variable
     ScopeOutput(generator, scope->_prefix);
     ScopeOutput(generator, "[");
     ScopeOutputQuoted(generator, name);
     ScopeOutput(generator, "]");
   }
   else {
-    // regular scope
+    // regular scope, we are using a register
     TRI_aql_codegen_register_t registerIndex = LookupSymbol(generator, name);
     ScopeOutputRegister(generator, registerIndex);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a value literal
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessValue (TRI_aql_codegen_js_t* const generator, 
                           const TRI_aql_node_t* const node) {
@@ -537,6 +772,10 @@ static void ProcessValue (TRI_aql_codegen_js_t* const generator,
     generator->_error = true;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a list ([ ])
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessList (TRI_aql_codegen_js_t* const generator, 
                          const TRI_aql_node_t* const node) {
@@ -553,6 +792,10 @@ static void ProcessList (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " ]");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for an array ({ })
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessArray (TRI_aql_codegen_js_t* const generator, 
                           const TRI_aql_node_t* const node) {
   size_t i, n;
@@ -568,12 +811,20 @@ static void ProcessArray (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " }");
 } 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a single named array element
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessArrayElement (TRI_aql_codegen_js_t* const generator, 
                                 const TRI_aql_node_t* const node) {
   TRI_ValueJavascriptAql(CurrentScope(generator)->_buffer, &node->_value, AQL_TYPE_STRING);
   ScopeOutput(generator, " : ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for an attribute name in exapnd (e.g. users[*].name)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessAttribute (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
@@ -586,6 +837,10 @@ static void ProcessAttribute (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for an attribute name (e.g. users.name)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_DOCUMENT_MEMBER(");
@@ -594,6 +849,10 @@ static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(node));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for indexed access (e.g. users[0])
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
@@ -604,12 +863,20 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for collection access
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessCollection (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS('");
   ScopeOutput(generator, TRI_AQL_NODE_STRING(node));
   ScopeOutput(generator, "')");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for expand (e.g. users[*]....)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
@@ -652,12 +919,20 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for unary not (!value)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessUnaryNot (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_LOGICAL_NOT(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for unary minus (-value)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessUnaryMinus (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
@@ -666,12 +941,20 @@ static void ProcessUnaryMinus (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for unary plus (+value)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_UNARY_PLUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary and (a && b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
@@ -682,6 +965,10 @@ static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary or (a || b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_LOGICAL_OR(");
@@ -690,6 +977,10 @@ static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary plus (a + b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryPlus (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
@@ -700,6 +991,10 @@ static void ProcessBinaryPlus (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary minus (a - b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryMinus (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_ARITHMETIC_MINUS(");
@@ -708,6 +1003,10 @@ static void ProcessBinaryMinus (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary times (a * b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryTimes (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
@@ -718,6 +1017,10 @@ static void ProcessBinaryTimes (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary divide (a / b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryDivide (TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_ARITHMETIC_DIVIDE(");
@@ -726,6 +1029,10 @@ static void ProcessBinaryDivide (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary modulus (a % b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryModulus(TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
@@ -736,6 +1043,10 @@ static void ProcessBinaryModulus(TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary equality (a == b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryEqual (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_RELATIONAL_EQUAL(");
@@ -744,6 +1055,10 @@ static void ProcessBinaryEqual (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary inequality (a != b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryUnequal (TRI_aql_codegen_js_t* const generator,
                                   const TRI_aql_node_t* const node) {
@@ -754,6 +1069,10 @@ static void ProcessBinaryUnequal (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary less equal (a <= b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryLessEqual (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_RELATIONAL_LESSEQUAL(");
@@ -762,6 +1081,10 @@ static void ProcessBinaryLessEqual (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary less (a < b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryLess (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
@@ -772,6 +1095,10 @@ static void ProcessBinaryLess (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary greater equal (a >= b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryGreaterEqual (TRI_aql_codegen_js_t* const generator,
                                        const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_RELATIONAL_GREATEREQUAL(");
@@ -780,6 +1107,10 @@ static void ProcessBinaryGreaterEqual (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary greater (a > b)
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryGreater (TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
@@ -790,6 +1121,10 @@ static void ProcessBinaryGreater (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for binary in (a in b)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "AHUACATL_RELATIONAL_IN(");
@@ -799,10 +1134,18 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ")");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for subqueries (nested fors etc.)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessSubquery (TRI_aql_codegen_js_t* const generator, 
                              const TRI_aql_node_t* const node) {
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for function calls
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
@@ -812,6 +1155,10 @@ static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for for keyword
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessFor (TRI_aql_codegen_js_t* const generator, 
                         const TRI_aql_node_t* const node) {
@@ -828,6 +1175,10 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   StartFor(generator, sourceRegister, nameNode->_value._value._string);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for sort keyword
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessSort (TRI_aql_codegen_js_t* const generator, 
                          const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
@@ -839,7 +1190,8 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
 
   // var row = { };
   InitArray(generator, rowRegister);
-  
+ 
+  // save symbols 
   variableNames = StoreSymbols(generator, rowRegister);
 
   // result.push(row)
@@ -867,8 +1219,13 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
   StartFor(generator, sourceRegister, NULL);
 
+  // restore symbols
   RestoreSymbols(generator, &variableNames);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for collect keyword
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCollect (TRI_aql_codegen_js_t* const generator, 
                             const TRI_aql_node_t* const node) {
@@ -886,7 +1243,11 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   // var row = { };
   InitArray(generator, rowRegister);
   
+  // we are not interested in the variable names here, but
+  // StoreSymbols also generates code to save the current state in
+  // a rowRegister, and we need that
   variableNames = StoreSymbols(generator, rowRegister);
+  TRI_DestroyVectorString(&variableNames);
 
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
@@ -921,7 +1282,6 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   }
   ScopeOutput(generator, ");\n");
   
-  
   // start new for loop
   resultRegister = IncRegister(generator);
   scope = CurrentScope(generator);
@@ -929,7 +1289,6 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
   StartFor(generator, groupRegister, NULL);
   scope = CurrentScope(generator);
-
 
   // re-enter symbols for collect variables
   list = TRI_AQL_NODE_MEMBER(node, 0);
@@ -942,10 +1301,8 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     // var collect = temp['collect'];
     ScopeOutputRegister(generator, varRegister);
     ScopeOutput(generator, " = ");
-    ScopeOutputRegister(generator, scope->_ownRegister);
-    ScopeOutput(generator, "[");
-    ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(varNode));
-    ScopeOutput(generator, "];\n");
+    ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(varNode));
+    ScopeOutput(generator, ";\n");
     
     EnterSymbol(generator, TRI_AQL_NODE_STRING(varNode), varRegister);
   }
@@ -958,17 +1315,16 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     // var into = temp['into'];
     ScopeOutputRegister(generator, intoRegister);
     ScopeOutput(generator, " = ");
-    ScopeOutputRegister(generator, scope->_ownRegister);
-    ScopeOutput(generator, "[");
-    ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(nameNode));
-    ScopeOutput(generator, "];\n");
+    ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(nameNode));
+    ScopeOutput(generator, ";\n");
 
     EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode), intoRegister);
   }
-
-//  RestoreSymbols(generator, &variableNames);
-  TRI_DestroyVectorString(&variableNames);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for limit keyword
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessLimit (TRI_aql_codegen_js_t* const generator, 
                           const TRI_aql_node_t* const node) {
@@ -982,6 +1338,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   // var row = { };
   InitArray(generator, rowRegister);
 
+  // save symbols
   variableNames = StoreSymbols(generator, rowRegister);
 
   // result.push(row)
@@ -1012,8 +1369,13 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
   StartFor(generator, limitRegister, NULL);
 
+  // restore symbols
   RestoreSymbols(generator, &variableNames);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for return keyword
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessReturn (TRI_aql_codegen_js_t* const generator, 
                            const TRI_aql_node_t* const node) {
@@ -1037,6 +1399,10 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
   CloseLoops(generator);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for an assignment (used in COLLECT)
+////////////////////////////////////////////////////////////////////////////////
+
 static void ProcessAssign (TRI_aql_codegen_js_t* const generator, 
                            const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
@@ -1048,9 +1414,14 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
   StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_LET, 0, 0, 0, resultRegister, NULL, "let");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   EndScope(generator);
-  
+ 
+  // enter the new variable in the symbol table 
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for filter keyword
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessFilter (TRI_aql_codegen_js_t* const generator, 
                            const TRI_aql_node_t* const node) {
@@ -1060,6 +1431,12 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "continue;\n");
   ScopeOutput(generator, "}\n");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a node
+///
+/// this is a dispatcher function only
+////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* const data) {
   TRI_aql_node_t* node = (TRI_aql_node_t*) data;
@@ -1182,20 +1559,26 @@ static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* 
       }
     }
 
+    // now handle subnodes
     node = node->_next;
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create code for the AST starting at the specified node
+////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator, const void* const data) {
-  TRI_aql_codegen_register_t startRegister;
+TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator, 
+                                       const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_register_t startRegister = IncRegister(generator);
   TRI_aql_codegen_register_t resultRegister;
 
-  startRegister = IncRegister(generator);
+  assert(node);
+
   StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL, "main");
   InitList(generator, startRegister);
   
-  ProcessNode(generator, (TRI_aql_node_t*) data);
+  ProcessNode(generator, node);
   resultRegister = CurrentScope(generator)->_resultRegister;
 
   EndScope(generator);
