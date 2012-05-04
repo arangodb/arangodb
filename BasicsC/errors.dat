@@ -84,6 +84,7 @@ ERROR_AVOCADO_GEO_INDEX_VIOLATED,1211,"geo index violated","Will be raised when 
 ERROR_AVOCADO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_AVOCADO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
+ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined","Will be raised when a cap constraint was already defined."
 
 ################################################################################
 ## AvocadoDB storage errors

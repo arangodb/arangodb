@@ -72,11 +72,12 @@ typedef TRI_voc_tick_t TRI_idx_iid_t;
 
 typedef enum {
   TRI_IDX_TYPE_PRIMARY_INDEX,
-  TRI_IDX_TYPE_GEO_INDEX1,
-  TRI_IDX_TYPE_GEO_INDEX2,
+  TRI_IDX_TYPE_GEO1_INDEX,
+  TRI_IDX_TYPE_GEO2_INDEX,
   TRI_IDX_TYPE_HASH_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
-  TRI_IDX_TYPE_SKIPLIST_INDEX
+  TRI_IDX_TYPE_SKIPLIST_INDEX,
+  TRI_IDX_TYPE_CAP_CONSTRAINT
 }
 TRI_idx_type_e;
 
@@ -105,10 +106,12 @@ typedef struct TRI_index_s {
   bool _ignoreNull;
   TRI_vector_string_t _fields;
 
+  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s const*);
+  void (*removeIndex) (struct TRI_index_s*, struct TRI_doc_collection_s*);
+
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s const*);
 }
 TRI_index_t;
 
@@ -167,6 +170,17 @@ typedef struct TRI_skiplist_index_s {
   TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
 }
 TRI_skiplist_index_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_cap_constraint_s {
+  TRI_index_t base;
+
+  size_t _size;
+}
+TRI_cap_constraint_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -245,6 +259,42 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    CAP CONSTRAINT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
+                                      size_t size);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyCapConstraint (TRI_index_t* idx);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeCapConstraint (TRI_index_t* idx);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
 // -----------------------------------------------------------------------------
 
@@ -265,7 +315,7 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// first and latitude second.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s*,
                                   char const* locationName,
                                   TRI_shape_pid_t,
                                   bool geoJson,
@@ -276,7 +326,7 @@ TRI_index_t* TRI_CreateGeoIndex1 (struct TRI_doc_collection_s*,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s*,
                                   char const* latitudeName,
                                   TRI_shape_pid_t,
                                   char const* longitudeName,

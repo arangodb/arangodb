@@ -39,6 +39,12 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_cap_constraint_s;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -255,6 +261,8 @@ typedef struct TRI_doc_collection_s {
   TRI_shaper_t* _shaper;
   TRI_barrier_list_t _barrierList;
   TRI_associative_pointer_t _datafileInfo;
+
+  struct TRI_cap_constraint_s* _capConstraint;
 
   int (*beginRead) (struct TRI_doc_collection_s*);
   int (*endRead) (struct TRI_doc_collection_s*);
