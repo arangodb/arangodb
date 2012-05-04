@@ -141,7 +141,7 @@ double tolerance (double a, double b, double c) {
 
 #define icheck(e, a, b)                                 \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((a), (b))
+  BOOST_CHECK_EQUAL((long) (a), (long) (b))
 
 #define pcheck(e, a, b)                                 \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
@@ -153,7 +153,7 @@ double tolerance (double a, double b, double c) {
 
 #define gccheck(e, gc, ct, bytes)                       \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((ct), (gc)->length);                \
+  BOOST_CHECK_EQUAL((long) (ct),(long) (gc)->length);                \
   BOOST_CHECK_EQUAL(GCCHECK((gc), (ct), (bytes)), 1)
 
 #ifdef DEBUG
@@ -166,7 +166,7 @@ double tolerance (double a, double b, double c) {
 
 #define gcmass(e, gc, ct, hash)                         \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((ct), (gc)->length);                \
+  BOOST_CHECK_EQUAL((long) (ct), (long) (gc)->length);                \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e + 1)));    \
   BOOST_CHECK_EQUAL(GCMASS((gc), (ct), (hash)), 1)
 
