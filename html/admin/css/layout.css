@@ -40,6 +40,15 @@ th {
   font-size: 1.1em; 
 }
 
+#editCollectionView td {
+  font-size: 1.2em ;  
+}
+
+pre ul li span{
+  font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
+  font-size: 1em;
+}
+
 #documentsToolbar a {
   font-size: 0.8em !important; 
 }

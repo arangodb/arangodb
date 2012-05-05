@@ -380,6 +380,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   n = cors->length;
 
   if (n == 0) {
+    GeoIndex_CoordinatesFree(cors);
     return;
   }
 
@@ -396,7 +397,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     gtr->_data = ptr->data;
   }
 
-  // GeoIndex_CoordinatesFree(cors);
+  GeoIndex_CoordinatesFree(cors);
 
   SortGeoCoordinates(tmp, gnd);
 
@@ -2050,6 +2051,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   ReleaseCollection(collection);
+
   return scope.Close(result);
 }
 
@@ -2793,7 +2795,15 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
-  return CreateErrorObject(TRI_GetErrorCodeAql(error), TRI_GetErrorMessageAql(error));
+  char* message = TRI_GetErrorMessageAql(error);
+
+  if (message) {
+    std::string str(message);
+    TRI_Free(TRI_CORE_MEM_ZONE, message);
+    return CreateErrorObject(TRI_GetErrorCodeAql(error), str);
+  }
+
+  return CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2885,12 +2895,12 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   
   // generate code
   if (context->_first) {
-    TRI_aql_codegen_js_t* generator = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
+    char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
     
-    if (generator && !generator->_error) {
+    if (code) {
       v8::Handle<v8::Value> result;
-      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(generator->_buffer._buffer), v8::String::New("query"));
-      TRI_FreeGeneratorAql(generator);
+      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
       TRI_json_t* json = TRI_JsonObject(result);
 
@@ -2910,9 +2920,6 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
-    }
-    else if (generator) {
-      TRI_FreeGeneratorAql(generator);
     }
   }
 

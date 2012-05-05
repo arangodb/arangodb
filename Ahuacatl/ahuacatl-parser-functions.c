@@ -73,15 +73,23 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
                            const int line,
                            const int column) {
   char buffer[1024];
+  char* region = TRI_GetContextErrorAql(context->_query, line, column);
+
+  if (!region) {
+    // OOM
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return;
+  }
 
   snprintf(buffer, 
            sizeof(buffer), 
            "%d:%d %s near '%s'", 
            line,
            column,
-           message, 
-           TRI_GetContextErrorAql(context->_query, line, column));
+           message,
+           region);
 
+  TRI_Free(TRI_CORE_MEM_ZONE, region);
   TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
 }
 

@@ -785,6 +785,11 @@ GeoResults * GeoResultsCons(int alloc)
     GeoResults * gres;
     int * sa;
     double * dd;
+
+    if (alloc <= 0) {
+      return NULL;
+    }
+
     gres=malloc(sizeof(GeoResults));
     sa=malloc(alloc*sizeof(int));
     dd=malloc(alloc*sizeof(double));
@@ -939,7 +944,15 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
     GeoCoordinate  * gc;
     int i,j,slot;
     double mole;
-    ans = malloc(sizeof(GeoCoordinates));;
+
+    if (gr->pointsct == 0) {
+      free(gr->slot);
+      free(gr->snmd);
+      free(gr);
+      return NULL;
+    }
+
+    ans = malloc(sizeof(GeoCoordinates));
     gc  = malloc(gr->pointsct * sizeof(GeoCoordinate));
     if( (ans==NULL) || (gc==NULL) )
     {
@@ -970,6 +983,7 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
         j++;
     }
     ans->distances = gr->snmd;
+    /* gr->snmd must not be freed, it is handed over to ans */
     free(gr->slot);
     free(gr);
     return ans;
