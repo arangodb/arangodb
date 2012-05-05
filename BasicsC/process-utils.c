@@ -121,12 +121,69 @@ process_state_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts usec and sec into seconds
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_GETRUSAGE
+
+uint64_t TRI_MicrosecondsTv (struct timeval* tv) {
+  time_t sec = tv->tv_sec;
+  suseconds_t usec = tv->tv_usec;
+
+  while (usec < 0) {
+    usec += 1000000;
+    sec  -= 1;
+  }
+
+  return (sec * 1000000LL) + usec;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_LINUX_PROC
 
 TRI_process_info_t TRI_ProcessInfoSelf () {
   return TRI_ProcessInfo(TRI_CurrentProcessId());
 }
+
+#elif TRI_HAVE_GETRUSAGE
+
+TRI_process_info_t TRI_ProcessInfoSelf () {
+  TRI_process_info_t result;
+  struct rusage used;
+  int res;
+
+  memset(&result, 0, sizeof(result));
+  result._scClkTck = 1000000;
+
+  res = getrusage(RUSAGE_SELF, &used);
+
+  if (res == 0) {
+    result._minorPageFaults = used.ru_minflt;
+    result._majorPageFaults = used.ru_majflt;
+
+    result._systemTime = TRI_MicrosecondsTv(&used.ru_stime);
+    result._userTime = TRI_MicrosecondsTv(&used.ru_utime);
+
+    result._residentSize = used.ru_maxrss;
+  }
+
+  return result;
+}
+
+#else
+
+TRI_process_info_t TRI_ProcessInfoSelf () {
+  TRI_process_info_t result;
+
+  memset(&result, 0, sizeof(result));
+  return result;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -181,6 +238,8 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
   TRI_process_info_t result;
 
   memset(&result, 0, sizeof(result));
+  result._scClkTck = 1;
+
   return result;
 }
 
