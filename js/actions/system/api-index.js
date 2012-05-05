@@ -175,7 +175,7 @@ function GET_api_index (req, res) {
 ///
 /// Creating a cap collection
 ///
-/// @verbinclude api-index-create-cap-constraint
+/// @verbinclude api-index-create-new-cap-constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index_cap (req, res, collection, body) {
@@ -188,7 +188,12 @@ function POST_api_index_cap (req, res, collection, body) {
     var size = body.size;
     var index = collection.ensureCapConstraint(size);
 
-    actions.resultOk(req, res, actions.HTTP_OK, index);
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
   }
   catch (err) {
     actions.resultException(req, res, err);

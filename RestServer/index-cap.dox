@@ -31,7 +31,7 @@
 /// <ol>
 ///  <li>@ref IndexCapHttp
 ///   <ol>
-///    <li>@ref IndexCapHttpEnsureCap "POST /_api/index"</li>
+///    <li>@ref IndexCapHttpEnsureCapConstraint "POST /_api/index"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref IndexCapShell
@@ -59,13 +59,13 @@
 /// @section IndexCapHttp Accessing Cap Constraints via Http
 ////////////////////////////////////////////////////////////
 ///
-/// @anchor IndexCapHttpEnsureCap
+/// @anchor IndexCapHttpEnsureCapConstraint
 /// @copydetails JSF_POST_api_index_cap
 ///
 /// @section IndexCapShell Accessing Cap Constraints from the Shell
 ///////////////////////////////////////////////////////////////////
 ///
-/// @anchor IndexCapShellEnsureGeoIndex
+/// @anchor IndexCapShellEnsureCapConstraint
 /// @copydetails JS_EnsureCapConstraintVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
