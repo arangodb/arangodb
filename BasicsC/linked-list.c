@@ -285,6 +285,28 @@ void TRI_MoveToBackLinkedArray (TRI_linked_array_t* array, void const* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pops front entry from list
+////////////////////////////////////////////////////////////////////////////////
+
+void const* TRI_PopFrontLinkedArray (TRI_linked_array_t* array) {
+  TRI_linked_list_entry_t* found;
+  void const* data;
+
+  found = array->_list._begin;
+
+  if (found == NULL) {
+    return NULL;
+  }
+
+  data = found->_data;
+
+  TRI_RemoveElementAssociativePointer(&array->_array, found);
+  TRI_RemoveLinkedList(&array->_list, found);
+
+  return data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

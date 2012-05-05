@@ -386,7 +386,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
                                       size_t size) {
   TRI_cap_constraint_t* cap;
 
-  cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false);
+  cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
   
   cap->base._iid = TRI_NewTickVocBase();
   cap->base._type = TRI_IDX_TYPE_CAP_CONSTRAINT;
