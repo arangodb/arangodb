@@ -2561,6 +2561,7 @@ TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t ii
 
 bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   TRI_index_t* found;
+  bool removeResult;
   size_t n;
   size_t i;
 
@@ -2601,7 +2602,9 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   // .............................................................................
 
   if (found != NULL) {
-    return TRI_RemoveIndexFile(&sim->base, found);
+    removeResult = TRI_RemoveIndexFile(&sim->base, found);
+    TRI_FreeIndex(found);
+    return removeResult;
   }
   else {
     return false;
