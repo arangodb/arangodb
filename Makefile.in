@@ -199,8 +199,9 @@ am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	BasicsC/associative-multi.c BasicsC/associative.c \
 	BasicsC/conversions.c BasicsC/csv.c BasicsC/error.c \
 	BasicsC/files.c BasicsC/hashes.c BasicsC/init.c BasicsC/json.c \
-	BasicsC/locks-macos.c BasicsC/locks-posix.c BasicsC/logging.c \
-	BasicsC/memory.c BasicsC/process-utils.c BasicsC/random.c \
+	BasicsC/linked-list.c BasicsC/locks-macos.c \
+	BasicsC/locks-posix.c BasicsC/logging.c BasicsC/memory.c \
+	BasicsC/process-utils.c BasicsC/random.c \
 	BasicsC/socket-utils.c BasicsC/string-buffer.c \
 	BasicsC/strings.c BasicsC/structures.c \
 	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
@@ -253,11 +254,12 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	BasicsC/csv.$(OBJEXT) BasicsC/error.$(OBJEXT) \
 	BasicsC/files.$(OBJEXT) BasicsC/hashes.$(OBJEXT) \
 	BasicsC/init.$(OBJEXT) BasicsC/json.$(OBJEXT) \
-	BasicsC/locks-macos.$(OBJEXT) BasicsC/locks-posix.$(OBJEXT) \
-	BasicsC/logging.$(OBJEXT) BasicsC/memory.$(OBJEXT) \
-	BasicsC/process-utils.$(OBJEXT) BasicsC/random.$(OBJEXT) \
-	BasicsC/socket-utils.$(OBJEXT) BasicsC/string-buffer.$(OBJEXT) \
-	BasicsC/strings.$(OBJEXT) BasicsC/structures.$(OBJEXT) \
+	BasicsC/linked-list.$(OBJEXT) BasicsC/locks-macos.$(OBJEXT) \
+	BasicsC/locks-posix.$(OBJEXT) BasicsC/logging.$(OBJEXT) \
+	BasicsC/memory.$(OBJEXT) BasicsC/process-utils.$(OBJEXT) \
+	BasicsC/random.$(OBJEXT) BasicsC/socket-utils.$(OBJEXT) \
+	BasicsC/string-buffer.$(OBJEXT) BasicsC/strings.$(OBJEXT) \
+	BasicsC/structures.$(OBJEXT) \
 	BasicsC/system-functions.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
@@ -748,8 +750,9 @@ libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
 	BasicsC/associative-multi.c BasicsC/associative.c \
 	BasicsC/conversions.c BasicsC/csv.c BasicsC/error.c \
 	BasicsC/files.c BasicsC/hashes.c BasicsC/init.c BasicsC/json.c \
-	BasicsC/locks-macos.c BasicsC/locks-posix.c BasicsC/logging.c \
-	BasicsC/memory.c BasicsC/process-utils.c BasicsC/random.c \
+	BasicsC/linked-list.c BasicsC/locks-macos.c \
+	BasicsC/locks-posix.c BasicsC/logging.c BasicsC/memory.c \
+	BasicsC/process-utils.c BasicsC/random.c \
 	BasicsC/socket-utils.c BasicsC/string-buffer.c \
 	BasicsC/strings.c BasicsC/structures.c \
 	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
@@ -1249,6 +1252,8 @@ BasicsC/hashes.$(OBJEXT): BasicsC/$(am__dirstamp) \
 BasicsC/init.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/json.$(OBJEXT): BasicsC/$(am__dirstamp) \
+	BasicsC/$(DEPDIR)/$(am__dirstamp)
+BasicsC/linked-list.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/locks-macos.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -2074,6 +2079,7 @@ mostlyclean-compile:
 	-rm -f BasicsC/hashes.$(OBJEXT)
 	-rm -f BasicsC/init.$(OBJEXT)
 	-rm -f BasicsC/json.$(OBJEXT)
+	-rm -f BasicsC/linked-list.$(OBJEXT)
 	-rm -f BasicsC/locks-macos.$(OBJEXT)
 	-rm -f BasicsC/locks-posix.$(OBJEXT)
 	-rm -f BasicsC/logging.$(OBJEXT)
@@ -2318,6 +2324,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/hashes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/init.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/json.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/linked-list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/locks-macos.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/locks-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/logging.Po@am__quote@

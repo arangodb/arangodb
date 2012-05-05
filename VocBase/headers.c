@@ -89,8 +89,9 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     char* ptr;
 
     begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, NUMBER_HEADERS_PER_BLOCK * headers->_headerSize, false);
+
+    // out of memory
     if (!begin) {
-      // out of memory
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }

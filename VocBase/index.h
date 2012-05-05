@@ -31,6 +31,7 @@
 #include "VocBase/vocbase.h"
 
 #include "BasicsC/json.h"
+#include "BasicsC/linked-list.h"
 #include "ShapedJson/shaped-json.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
@@ -178,6 +179,7 @@ TRI_skiplist_index_t;
 typedef struct TRI_cap_constraint_s {
   TRI_index_t base;
 
+  TRI_linked_array_t _array;
   size_t _size;
 }
 TRI_cap_constraint_t;
