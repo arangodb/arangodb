@@ -18,6 +18,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
+	@test -d Doxygen/web || mkdir Doxygen/web
 	@touch $@
 
 Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
@@ -46,6 +47,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 	doxygen Doxygen/avocado.doxy > /dev/null
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
 ## wiki
@@ -55,7 +57,7 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
 ################################################################################
 ## CLEANUP

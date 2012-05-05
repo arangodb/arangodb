@@ -62,10 +62,7 @@
 ///    </li>
 ///    <li>@ref OTWPSimpleQueries
 ///     <ol>
-///      <li>@ref OTWPSimpleQueriesAll "PUT /_api/simple/all"</li>
 ///      <li>@ref OTWPSimpleQueriesByExample "PUT /_api/simple/by-example"</li>
-///      <li>@ref OTWPSimpleQueriesNear "PUT /_api/simple/near"</li>
-///      <li>@ref OTWPSimpleQueriesWithin "PUT /_api/simple/within"</li>
 ///     </ol>
 ///    </li>
 ///    <li>@ref Key-Value
@@ -94,14 +91,6 @@
 ///
 /// @anchor OTWPSimpleQueriesByExample
 /// @copydetails JSA_PUT_api_simple_by_example
-/// <hr>
-///
-/// @anchor OTWPSimpleQueriesNear
-/// @copydetails JSA_PUT_api_simple_near
-/// <hr>
-///
-/// @anchor OTWPSimpleQueriesWithin
-/// @copydetails JSA_PUT_api_simple_within
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////

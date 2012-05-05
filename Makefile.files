@@ -32,6 +32,7 @@ libavocado_a_SOURCES = \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
 	BasicsC/json.c \
+	BasicsC/linked-list.c \
 	BasicsC/locks-macos.c \
 	BasicsC/locks-posix.c \
 	BasicsC/logging.c \
@@ -381,6 +382,7 @@ WIKI = \
 	HttpInterface \
 	HttpSimple \
 	HttpSystem \
+	IndexCap \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \
@@ -398,7 +400,6 @@ WIKI = \
 	OTWP \
 	Optimizer \
 	RefManual \
-	RestCursor \
 	RestDocument \
 	RestEdge \
 	RestSystem \

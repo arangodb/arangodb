@@ -54,10 +54,7 @@
 /// This is an introduction to AvocadoDB's Http interface for indexes in
 /// general. There are special section for
 ///
-/// - @ref IndexGeo
-/// - @ref IndexSkiplist
-/// - @ref IndexHash
-/// - @ref IndexPrioQueue
+/// @copydoc IndexesTOC
 ///
 /// <hr>
 /// @copydoc HttpIndexTOC

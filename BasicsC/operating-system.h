@@ -47,7 +47,6 @@
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRLIMIT                  1
-#define TRI_HAVE_GETRUSAGE                  1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
 
@@ -84,12 +83,14 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
-#define TRI_HAVE_GETPPID                    1
-#define TRI_HAVE_GETTIMEOFDAY               1
-#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+
+#define TRI_HAVE_GETPPID                    1
+#define TRI_HAVE_GETRUSAGE                  1
+#define TRI_HAVE_GETTIMEOFDAY               1
+#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
@@ -144,12 +145,13 @@
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_UNISTD_H                   1
 
-#define TRI_HAVE_GETLINE                    1
-#define TRI_HAVE_GETTIMEOFDAY               1
-#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+
+#define TRI_HAVE_GETLINE                    1
+#define TRI_HAVE_GETTIMEOFDAY               1
+#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
@@ -214,14 +216,16 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
-#define TRI_HAVE_GETPPID                    1
-#define TRI_HAVE_GETLINE                    1
-#define TRI_HAVE_GETTIMEOFDAY               1
-#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+
+#define TRI_HAVE_GETLINE                    1
+#define TRI_HAVE_GETPPID                    1
+#define TRI_HAVE_GETRUSAGE                  1
+#define TRI_HAVE_GETTIMEOFDAY               1
+#define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1

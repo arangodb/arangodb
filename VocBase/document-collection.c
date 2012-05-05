@@ -445,6 +445,7 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
 void TRI_InitDocCollection (TRI_doc_collection_t* collection,
                             TRI_shaper_t* shaper) {
   collection->_shaper = shaper;
+  collection->_capConstraint = NULL;
 
   collection->createLock = CreateLock;
   collection->createJson = CreateJson;

@@ -1,0 +1,7 @@
+avocado> db.examples.ensureCapConstraint(10);
+{ "id" : "147879/934311", "type" : "cap", "size" : 10, "isNewlyCreated" : true }
+
+avocado> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+
+avocado> db.examples.count();
+10

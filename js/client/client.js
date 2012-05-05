@@ -290,10 +290,12 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AvocadoError (error) {
-  this.error = error.error;
-  this.code = error.code;
-  this.errorNum = error.errorNum;
-  this.errorMessage = error.errorMessage;
+  if (error != null) {
+    this.error = error.error;
+    this.code = error.code;
+    this.errorNum = error.errorNum;
+    this.errorMessage = error.errorMessage;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1120,6 +1122,14 @@ AvocadoCollection.prototype.drop = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all documents
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toArray = function () {
+  return this.all().toArray();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1205,6 +1215,22 @@ AvocadoCollection.prototype.dropIndex = function (id) {
   TRI_CheckRequestResult(requestResult);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.ensureCapConstraint = function (size) {
+  var body;
+
+  body = { type : "cap", size : size };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

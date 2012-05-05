@@ -153,6 +153,54 @@ function GET_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cap constraint
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a cap constraint for the collection @FA{collection-identifier}, if
+/// it does not already exist. Expects an object containing the index details.
+///
+/// - @LIT{type}: must be equal to @LIT{"cap"}.
+///
+/// - @LIT{size}: The maximal size of documents.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// @EXAMPLES
+///
+/// Creating a cap collection
+///
+/// @verbinclude api-index-create-new-cap-constraint
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_cap (req, res, collection, body) {
+  if (! body.hasOwnProperty("size")) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "expecting a size");
+  }
+
+  try {
+    var size = body.size;
+    var index = collection.ensureCapConstraint(size);
+
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo index
 ///
 /// @REST{POST /_api/index?collection=@FA{collection-identifier}}
@@ -413,7 +461,10 @@ function POST_api_index (req, res) {
     return;
   }
 
-  if (body.type == "geo") {
+  if (body.type == "cap") {
+    POST_api_index_cap(req, res, collection, body);
+  }
+  else if (body.type == "geo") {
     POST_api_index_geo(req, res, collection, body);
   }
   else if (body.type == "hash") {

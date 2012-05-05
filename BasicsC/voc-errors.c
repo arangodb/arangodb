@@ -62,6 +62,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_AVOCADO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_AVOCADO_INDEX_HANDLE_BAD, "illegal index handle");
+  REG_ERROR(ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");

@@ -82,7 +82,8 @@ TRI_barrier_t* TRI_CreateBarrierElement (TRI_barrier_list_t* container) {
   TRI_barrier_t* element;
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_t), false);
-  if (!element) {
+
+  if (element == NULL) {
     return NULL;
   }
 

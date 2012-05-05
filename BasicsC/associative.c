@@ -296,6 +296,7 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -344,6 +345,7 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -684,8 +686,8 @@ bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
-                                               void const* key) {
+void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
+                                         void const* key) {
   uint64_t hash;
   uint64_t i;
 
@@ -710,8 +712,8 @@ void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
-                                                   void const* element) {
+void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
+                                             void const* element) {
   uint64_t hash;
   uint64_t i;
 
@@ -745,6 +747,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
 
@@ -798,7 +801,8 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
-    return false;
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
 
   // compute the hash
@@ -1185,7 +1189,8 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
-    return false;
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
 
   // compute the hash
@@ -1237,7 +1242,8 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
-    return false;
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
 
   // compute the hash

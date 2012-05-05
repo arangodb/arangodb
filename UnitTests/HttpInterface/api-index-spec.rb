@@ -48,6 +48,101 @@ describe AvocadoDB do
     end
 
 ################################################################################
+## creating a cap constraint
+################################################################################
+
+    context "creating cap constraints:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "returns either 201 for new or 200 for old indexes" do
+	cmd = api + "?collection=#{@cid}"
+	body = "{ \"type\" : \"cap\", \"size\" : 10 }"
+        doc = AvocadoDB.log_post("#{prefix}-create-new-cap-constraint", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("cap")
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        doc = AvocadoDB.log_post("#{prefix}-create-old-cap-constraint", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("cap")
+	doc.parsed_response['isNewlyCreated'].should eq(false)
+      end
+    end
+
+################################################################################
+## creating a cap constraint and unloading
+################################################################################
+
+    context "cap constraints after unload/load:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "survives unload" do
+	cmd = api + "?collection=#{@cid}"
+	body = "{ \"type\" : \"cap\", \"size\" : 10 }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+
+	iid = doc.parsed_response['id']
+
+	cmd = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.put(cmd)
+
+	doc.code.should eq(200)
+
+	cmd = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.get(cmd)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd)
+	  doc.code.should eq(200)
+	end
+
+	cmd = api + "/#{iid}"
+        doc = AvocadoDB.get(cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+	doc.parsed_response['type'].should eq("cap")
+	doc.parsed_response['size'].should eq(10)
+      end
+    end
+
+################################################################################
 ## creating a geo index
 ################################################################################
 

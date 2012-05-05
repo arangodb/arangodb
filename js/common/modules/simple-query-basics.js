@@ -226,7 +226,12 @@ AvocadoCollection.prototype.geo = function(loc, order) {
   };
 
   if (order === undefined) {
-    idx = locateGeoIndex1(this, loc, false);
+    if (typeof loc === "object") {
+      idx = this.index(loc);
+    }
+    else {
+      idx = locateGeoIndex1(this, loc, false);
+    }
   }
   else if (typeof order === "boolean") {
     idx = locateGeoIndex1(this, loc, order);

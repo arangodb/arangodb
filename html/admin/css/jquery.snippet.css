@@ -29,15 +29,11 @@
 }
 
 .sh_object {
-  color: red; 
+  color: blue; 
 }
 
 .sh_array {
-  color: yellow;  
-}
-
-#deleteDoc {
-  margin-right: -10px; 
+  color: blue;  
 }
 
 //<form action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">

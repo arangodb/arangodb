@@ -61,7 +61,6 @@
 ///   <ol>
 ///    <li>@ref SimpleQueryHasNext "@FA{query}.hasNext()"</li>
 ///    <li>@ref SimpleQueryNext "@FA{query}.next()"</li>
-///    <li>@ref SimpleQueryNextRef "@FA{query}.nextRef()"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -175,10 +174,6 @@
 ///
 /// @anchor SimpleQueryNext
 /// @copydetails JSF_SimpleQuery_prototype_next
-/// <hr>
-///
-/// @anchor SimpleQueryNextRef
-/// @copydetails JSF_SimpleQuery_prototype_nextRef
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
