@@ -403,6 +403,32 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     if (res == TRI_ERROR_NO_ERROR) {
       mptr = *header;
 
+      // check cap constraint
+      if (sim->base._capConstraint != NULL) {
+        while (sim->base._capConstraint->_size < sim->base._capConstraint->_array._array._nrUsed) {
+          TRI_doc_mptr_t const* oldest;
+          int remRes;
+
+          oldest = TRI_PopFrontLinkedArray(&sim->base._capConstraint->_array);
+
+          if (oldest == NULL) {
+            LOG_WARNING("cap collection is empty, but collection '%ld' contains elements", 
+                        (unsigned long) sim->base.base._cid);
+            break;
+          }
+
+          LOG_DEBUG("removing document '%lu' because of cap constraint",
+                    (unsigned long) oldest->_did);
+
+          remRes = DeleteShapedJson(&sim->base, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
+
+          if (remRes != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("cannot cap collection: %s", TRI_last_error());
+            break;
+          }
+        }
+      }
+
       // release lock, header might be invalid after this
       if (release) {
         sim->base.endWrite(&sim->base);
