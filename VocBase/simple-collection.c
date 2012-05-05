@@ -1497,6 +1497,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
   if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
     iid = iis->_value._number;
+    TRI_UpdateTickVocBase(iid);
   }
   else {
     LOG_ERROR("ignoring index, index identifier could not be located");
@@ -2807,10 +2808,19 @@ static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
   TRI_index_t* idx;
   bool ok;
 
+  if (created != NULL) {
+    *created = false;
+  }
+
   // check if we already know a cap constraint
   if (sim->base._capConstraint != NULL) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED);
-    return NULL;
+    if (sim->base._capConstraint->_size == size) {
+      return &sim->base._capConstraint->base;
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED);
+      return NULL;
+    }
   }
 
   // create a new index
@@ -2881,9 +2891,14 @@ TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
 
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3793,9 +3808,14 @@ TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
 
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3830,9 +3850,14 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
 
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 
@@ -3870,9 +3895,14 @@ TRI_index_t* TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
 
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }                                                
 
 
@@ -3910,9 +3940,14 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
 
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }                                                
 
 
@@ -3950,9 +3985,14 @@ TRI_index_t* TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  res = TRI_SaveIndex(&sim->base, idx);
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
   
-  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }                                                
 
                                                 

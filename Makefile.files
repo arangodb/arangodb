@@ -382,6 +382,7 @@ WIKI = \
 	HttpInterface \
 	HttpSimple \
 	HttpSystem \
+	IndexCap \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \
