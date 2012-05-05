@@ -304,13 +304,13 @@ bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*, void cons
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*, void const* key);
+void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*, void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*, void const* element);
+void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*, void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array

@@ -27,16 +27,16 @@
 
 #include "index.h"
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/json.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/strings.h>
-#include <VocBase/simple-collection.h>
-
-#include "ShapedJson/shaped-json.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/json.h"
+#include "BasicsC/linked-list.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             INDEX
@@ -318,7 +318,7 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_doc_collection_t con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief describes a cap constraint as a json object
+/// @brief removes a cap constraint from collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveIndexCapConstraint (TRI_index_t* idx, TRI_doc_collection_t* collection) {
@@ -330,7 +330,11 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx, TRI_doc_collection_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  return TRI_ERROR_NO_ERROR;
+  TRI_cap_constraint_t* cap;
+
+  cap = (TRI_cap_constraint_t*) idx;
+
+  return TRI_AddLinkedArray(&cap->_array, doc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,6 +344,11 @@ static int InsertCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 static int UpdateCapConstraint (TRI_index_t* idx,
                                 const TRI_doc_mptr_t* newDoc, 
                                 const TRI_shaped_json_t* oldDoc) {
+  TRI_cap_constraint_t* cap;
+
+  cap = (TRI_cap_constraint_t*) idx;
+  TRI_MoveToBackLinkedArray(&cap->_array, newDoc);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -348,6 +357,11 @@ static int UpdateCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_cap_constraint_t* cap;
+
+  cap = (TRI_cap_constraint_t*) idx;
+  TRI_RemoveLinkedArray(&cap->_array, doc);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -385,6 +399,8 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
   cap->base.insert = InsertCapConstraint;
   cap->base.update = UpdateCapConstraint;
   cap->base.remove = RemoveCapConstraint;
+
+  TRI_InitLinkedArray(&cap->_array, TRI_UNKNOWN_MEM_ZONE);
 
   cap->_size = size;
   
