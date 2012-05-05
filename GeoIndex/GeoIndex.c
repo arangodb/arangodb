@@ -939,7 +939,7 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
     GeoCoordinate  * gc;
     int i,j,slot;
     double mole;
-    ans = malloc(sizeof(GeoCoordinates));;
+    ans = malloc(sizeof(GeoCoordinates));
     gc  = malloc(gr->pointsct * sizeof(GeoCoordinate));
     if( (ans==NULL) || (gc==NULL) )
     {

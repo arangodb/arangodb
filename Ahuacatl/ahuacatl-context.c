@@ -329,9 +329,9 @@ TRI_aql_scope_t* TRI_CreateScopeAql (void) {
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
-                             TRI_HashStringKeyAssociativePointer,
-                             TRI_HashVariableAql,
-                             TRI_EqualVariableAql, 
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_HashVariableAql,
+                             &TRI_EqualVariableAql, 
                              0);
   
   scope->_first = NULL;

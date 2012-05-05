@@ -63,10 +63,7 @@
 /// This is an introduction to AvocadoDB's interface for indexs in general.
 /// There are special sections for
 ///
-/// - @ref IndexGeo
-/// - @ref IndexSkiplist
-/// - @ref IndexHash
-/// - @ref IndexPrioQueue
+/// @copydoc IndexesTOC
 ///
 /// <hr>
 /// @copydoc ShellIndexTOC

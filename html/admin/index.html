@@ -19,7 +19,6 @@
     <script type="text/javascript" language="javascript" src="js/jquery.address-1.4.js"></script>
     <script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>
     <script type="text/javascript" language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.dataTables.editable.js"></script>
     <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
     <script type="text/javascript" language="javascript" src="js/master.js"></script>
     <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
@@ -121,6 +120,21 @@
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Save Collection</a>
         </button>
+        <br></br>
+          <table cellpadding="3" cellspacing="0" border="0" width="300px" id="editCollectionTable">
+            <tr> 
+              <td align="left"><b>Name:</b></td>
+              <td><input id="editCollectionName" type="text" placeholder="unknown" name="username"></td>
+            </tr>
+            <tr> 
+              <td align="left"><b>ID:</b></td>
+              <td id="editCollectionID">unknown</td>
+            </tr>
+            <tr> 
+              <td align="left"><b>Status:</b></td>
+              <td id="editCollectionStatus">unknown</td>
+            </tr>
+          </table>
       </div>
 
       <div id="documentsView" style="display: none">
@@ -365,7 +379,7 @@
             </div>
             
             <div id="footerCenter">
-              &copy; AvocadoDB 2012 <br></br>
+              AvocadoDB<br></br>
               <div id="footerCenterContent">
                 <a> Stay in touch: </a>
                 <a href="http://twitter.com/avocadodb">
@@ -379,7 +393,7 @@
                 <a href="http://avocadodb.org">
                   <img src="/_admin/html/media/icons/avocadodb32.png" width="32" height="32">
                   AvocadoDB.org
-                </a>
+                </a><br>
                 <a href="http://groups.google.com/group/avocadodb">
                   <img src="/_admin/html/media/icons/google.png" width="32" height="32">
                   GoogleGroup

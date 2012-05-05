@@ -29,10 +29,11 @@
 #define TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H 1
 
 #include <BasicsC/common.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/conversions.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/string-buffer.h>
 #include <BasicsC/vector.h>
-#include <BasicsC/conversions.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
@@ -51,66 +52,67 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function types
+/// @brief typedef for a variable or function register number
+////////////////////////////////////////////////////////////////////////////////
+
+typedef uint32_t TRI_aql_codegen_register_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scope types used by the code generator
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  AQL_FUNCTION_STANDALONE, 
-  AQL_FUNCTION_COMPARE
+  TRI_AQL_SCOPE_MAIN,
+  TRI_AQL_SCOPE_LET,
+  TRI_AQL_SCOPE_FOR,
+  TRI_AQL_SCOPE_FOR_NESTED,
+  TRI_AQL_SCOPE_FUNCTION,
+  TRI_AQL_SCOPE_EXPAND
 }
-TRI_aql_codegen_function_type_e; 
+TRI_aql_codegen_scope_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief code generator internal function struct
+/// @brief variable (name + register index) type used by code generator
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_codegen_function_s {
-  TRI_string_buffer_t _buffer;
-  size_t _index;
-  size_t _forCount;
-  char* _prefix;
+typedef struct TRI_aql_codegen_variable_s {
+  char* _name;
+  TRI_aql_codegen_register_t _register;
 }
-
-TRI_aql_codegen_function_t;
+TRI_aql_codegen_variable_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief code generator struct
+/// @brief code generator scope
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_aql_codegen_scope_s {
+  TRI_string_buffer_t* _buffer;
+  TRI_aql_codegen_scope_e _type;
+  TRI_aql_codegen_register_t _listRegister;
+  TRI_aql_codegen_register_t _keyRegister;
+  TRI_aql_codegen_register_t _ownRegister;
+  TRI_aql_codegen_register_t _resultRegister;
+  TRI_associative_pointer_t _variables;
+  const char* _variableName;
+  const char* _name;
+  char* _prefix; // prefix for variable names
+}
+TRI_aql_codegen_scope_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief code generator
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_js_s {  
   TRI_string_buffer_t _buffer;
-  TRI_vector_pointer_t _functions;
+  TRI_string_buffer_t _functionBuffer;
+  TRI_vector_pointer_t _scopes;
+
   size_t _registerIndex;
   size_t _functionIndex;
   bool _error;
-  size_t _last;
 }
 TRI_aql_codegen_js_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free memory associated with a code generator
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeGeneratorAql (TRI_aql_codegen_js_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a code generator
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -129,7 +131,7 @@ TRI_aql_codegen_js_t* TRI_CreateGeneratorAql (void);
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_codegen_js_t* TRI_GenerateCodeAql (const void* const);
+char* TRI_GenerateCodeAql (const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -201,7 +201,7 @@ actions.defineHttp({
             result = collection.near(latitude, longitude);
           }
           else {
-            result = collection.geo(geo).near(latitude, longitude);
+            result = collection.geo({ id : geo }).near(latitude, longitude);
           }
 
           if (skip != null) {
@@ -316,7 +316,7 @@ actions.defineHttp({
             result = collection.within(latitude, longitude, radius);
           }
           else {
-            result = collection.geo(geo).within(latitude, longitude, radius);
+            result = collection.geo({ id : geo }).within(latitude, longitude, radius);
           }
           
           if (skip != null) {
