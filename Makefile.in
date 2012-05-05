@@ -1095,7 +1095,8 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-collection.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
-               @srcdir@/js/common/tests/shell-index-geo.js
+               @srcdir@/js/common/tests/shell-index-geo.js \
+               @srcdir@/js/common/tests/shell-cap-constraint.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
