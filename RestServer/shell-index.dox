@@ -67,6 +67,7 @@
 /// - @ref IndexSkiplist
 /// - @ref IndexHash
 /// - @ref IndexPrioQueue
+/// - @ref IndexCap
 ///
 /// <hr>
 /// @copydoc ShellIndexTOC

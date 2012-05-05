@@ -521,6 +521,10 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       // no need to lock as we are scanning
       res = TRI_LoadParameterInfoCollection(file, &info);
 
+      if (res == TRI_ERROR_NO_ERROR) {
+        TRI_UpdateTickVocBase(info._cid);
+      }
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
       }

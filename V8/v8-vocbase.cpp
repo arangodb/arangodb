@@ -4329,8 +4329,9 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// @FUN{@FA{collection}.ensureCapConstraint(@FA{size})}
 ///
 /// Creates a size restriction aka cap for the collection of @FA{size}.  If the
-/// restriction is in place and the @FA{size} plus one document is added to the
-/// collection, then last recently created or updated document is removed.
+/// restriction is in place and the (@FA{size} plus one) document is added to
+/// the collection, then the least recently created or updated document is
+/// removed.
 ///
 /// Note that at most one cap constraint is allowed per collection.
 ///
@@ -4342,7 +4343,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ///
 /// @EXAMPLES
 ///
-/// Restrict the number of document to at most 100 documents:
+/// Restrict the number of document to at most 10 documents:
 ///
 /// @verbinclude ensure-cap-constraint
 ////////////////////////////////////////////////////////////////////////////////
