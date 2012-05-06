@@ -90,18 +90,25 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var parameters = [ ];
+    var parameters = [];
 
     // the actual example is passed in the first argument
-    for (var i in this._example[0]) {
-      if (this._example[0].hasOwnProperty(i)) {
+    if (this._example.length == 1) {
+      for (var i in this._example[0]) {
+        if (this._example[0].hasOwnProperty(i)) {
 
-        // attribute name
-        parameters.push(i);
+          // attribute name
+          parameters.push(i);
 
-        // attribute value
-        parameters.push(this._example[0][i]);
+          // attribute value
+          parameters.push(this._example[0][i]);
+        }
       }
+    }
+
+    // the arguments are passed
+    else {
+      parameters = this._example;
     }
 
     var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);

@@ -41,7 +41,7 @@ var SQB = require("simple-query-basics");
 require("simple-query");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic skips and limits
+// --SECTION--                                  basic skips and limits for array
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,14 +176,14 @@ function SimpleQueryArraySkipLimitSuite () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic skips and limits
+// --SECTION--                                    basic skips and limits for all
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: skip and limit with a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQuerySkipLimitSuite () {
+function SimpleQueryAllSkipLimitSuite () {
   var cn = "UnitTestsCollectionSkipLimit";
   var collection = null;
   var numbers = null;
@@ -195,30 +195,30 @@ function SimpleQuerySkipLimitSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-  setUp : function () {
-    internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
 
-    for (var i = 0;  i < 10;  ++i) {
-      collection.save({ n : i });
-    }
+      for (var i = 0;  i < 10;  ++i) {
+        collection.save({ n : i });
+      }
 
-    numbers = collection.all().toArray().map(num);
-  },
+      numbers = collection.all().toArray().map(num);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  tearDown : function () {
-    collection.drop();
-  },
+    tearDown : function () {
+      collection.drop();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: skip
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkip : function () {
+    testAllSkip : function () {
       var n = collection.all().skip(0).toArray().map(num);
 
       assertEqual(n, numbers);
@@ -256,7 +256,7 @@ function SimpleQuerySkipLimitSuite () {
 /// @brief test: limit
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimit : function () {
+    testAllLimit : function () {
       var n = collection.all().limit(10).toArray().map(num);
 
       assertEqual(n, numbers);
@@ -290,7 +290,7 @@ function SimpleQuerySkipLimitSuite () {
 /// @brief test: skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipLimit : function () {
+    testAllSkipLimit : function () {
       var n = collection.all().skip(0).limit(10).toArray().map(num);
 
       assertEqual(n, numbers);
@@ -319,6 +319,100 @@ function SimpleQuerySkipLimitSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         basic tests for byExample
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: skip and limit with a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryByExampleSuite () {
+  var cn = "UnitTestsCollectionByExample";
+  var collection = null;
+  var id = function(d) { return d._id; };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleObject : function () {
+      var d1 = collection.save({ i : 1 });
+      var d2 = collection.save({ i : 1, a : { j : 1 } });
+      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
+      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
+      var d5 = collection.save({ i : 2 });
+      var d6 = collection.save({ i : 2, a : 2 });
+      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      var s;
+
+      s = collection.byExample({ i : 1 }).toArray().map(id).sort();
+      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
+
+      s = collection.byExample({ i : 2 }).toArray().map(id).sort();
+      assertEqual([d5._id, d6._id, d7._id].sort(), s);
+
+      s = collection.byExample({ a : { j : 1 } }).toArray().map(id).sort();
+      assertEqual([d2._id], s);
+
+      s = collection.byExample({ "a.j" : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      s = collection.byExample({ i : 2, "a.k" : 2 }).toArray().map(id).sort();
+      assertEqual([d7._id], s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleList : function () {
+      var d1 = collection.save({ i : 1 });
+      var d2 = collection.save({ i : 1, a : { j : 1 } });
+      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
+      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
+      var d5 = collection.save({ i : 2 });
+      var d6 = collection.save({ i : 2, a : 2 });
+      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      var s;
+
+      s = collection.byExample("i", 1).toArray().map(id).sort();
+      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
+
+      s = collection.byExample("i", 2).toArray().map(id).sort();
+      assertEqual([d5._id, d6._id, d7._id].sort(), s);
+
+      s = collection.byExample("a", { j : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id], s);
+
+      s = collection.byExample("a.j", 1).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      s = collection.byExample("i", 2, "a.k", 2).toArray().map(id).sort();
+      assertEqual([d7._id], s);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -327,7 +421,8 @@ function SimpleQuerySkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(SimpleQueryArraySkipLimitSuite);
-jsunity.run(SimpleQuerySkipLimitSuite);
+jsunity.run(SimpleQueryAllSkipLimitSuite);
+jsunity.run(SimpleQueryByExampleSuite);
 
 return jsunity.done();
 

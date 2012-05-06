@@ -351,6 +351,83 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
+/// - @LIT{collection}: The identifier or name of the collection to query.
+///
+/// - @LIT{example}: The example.
+///
+/// - @LIT{skip}: The documents to skip in the query. (optional)
+///
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api_simple7
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "by-example",
+  context : "api",
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    if (req.requestType != actions.PUT) {
+      actions.unsupported(req, res);
+    }
+    else {
+      var limit = body.limit;
+      var skip = body.skip;
+      var name = body.collection;
+      var example = body.example;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
+
+      if (collection == null) {
+        actions.collectionNotFound(req, res, name);
+      }
+      else if (typeof example !== "object") {
+        actions.badParameter(req, res, "example");
+      }
+      else {
+        try {
+          var result = collection.byExample.apply(collection.byExample, example);
+
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+        }
+        catch (err) {
+          actions.resultException(req, res, err);
+        }
+      }
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_first_example
+/// @brief returns all documents of a collection matching a given example
+///
+/// @REST{PUT /_api/simple/by-example}
+///
+/// This will find all documents matching a given example.
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
 /// @FA{collection}
 ///
 /// The identifier or name of the collection to query.
@@ -373,7 +450,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "by-example",
+  url : API + "first-example",
   context : "api",
 
   callback : function (req, res) {
