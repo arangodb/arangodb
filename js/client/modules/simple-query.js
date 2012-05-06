@@ -98,29 +98,28 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
-      this._skip = 0;
+    var data = {
+      collection : this._collection._id,
+      example : this._example
+    }  
+
+    if (this._limit != null) {
+      data.limit = this._limit;
     }
 
-    var parameters = [ ];
-
-    // the actual example is passed in the first argument
-    for (var i in this._example[0]) {
-      if (this._example[0].hasOwnProperty(i)) {
-
-        // attribute name
-        parameters.push(i);
-
-        // attribute value
-        parameters.push(this._example[0][i]);
-      }
+    if (this._skip != null) {
+      data.skip = this._skip;
     }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
 
-    var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);
+    TRI_CheckRequestResult(requestResult);
 
-    this._execution = new SQ.GeneralArrayCursor(documents, this._skip, this._limit);
-    this._countQuery = documents.length;
-    this._countTotal = documents.length;
+    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
   }
 }
 

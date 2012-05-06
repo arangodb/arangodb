@@ -60,11 +60,6 @@
 ///    <li>@ref HttpSystem
 ///     @copydetails HttpSystemTOC
 ///    </li>
-///    <li>@ref OTWPSimpleQueries
-///     <ol>
-///      <li>@ref OTWPSimpleQueriesByExample "PUT /_api/simple/by-example"</li>
-///     </ol>
-///    </li>
 ///    <li>@ref Key-Value
 ///     <ol>
 ///      <li>@ref Key-ValuePost "POST /_api/key/@FA{collection-name}/@FA{key}"</li>

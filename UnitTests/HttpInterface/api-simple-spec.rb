@@ -109,10 +109,6 @@ describe AvocadoDB do
 	AvocadoDB.drop_collection(@cn)
 	@cid = AvocadoDB.create_collection(@cn, false)
 
-	cmd = api + "?collection=#{@cid}"
-	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
-        #doc = AvocadoDB.post(cmd, :body => body)
-
 	(0..10).each{|i|
 	  lat = 10 * (i - 5)
 
@@ -189,10 +185,6 @@ describe AvocadoDB do
 	AvocadoDB.drop_collection(@cn)
 	@cid = AvocadoDB.create_collection(@cn, false)
 
-	cmd = api + "?collection=#{@cid}"
-	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
-        #doc = AvocadoDB.post(cmd, :body => body)
-
 	(0..10).each{|i|
 	  lat = 10 * (i - 5)
 
@@ -256,6 +248,60 @@ describe AvocadoDB do
 	doc.parsed_response['count'].should eq(5)
 
 	doc.parsed_response['result'].map{|i| i['distance'].floor.to_f}.should eq([0,1111949,1111949,1111949,1111949])
+      end
+    end
+
+################################################################################
+## by-example query
+################################################################################
+
+    context "by-example query:" do
+      before do
+	@cn = "UnitTestsCollectionByExample"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn, false)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "finds the examples" do
+	body = "{ \"i\" : 1 }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	puts doc
+	doc.code.should eq(201)
+	d1 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1 } }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d2 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1, \"k\" : 1 } }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d3 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 1, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d4 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 2 }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d5 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 2, \"a\" : 2 }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d6 = doc.parsed_response['_id']
+
+	body = "{ \"i\" : 2, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
+	doc = AvocadoDB.post("/document?collection=#{@cid}", :body => body)
+	doc.code.should eq(201)
+	d7 = doc.parsed_response['_id']
       end
     end
 
