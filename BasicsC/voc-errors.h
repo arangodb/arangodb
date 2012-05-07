@@ -130,7 +130,7 @@ extern "C" {
 /// - 1500: @CODE{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
-/// - 1501: @CODE{parse error: \%s}
+/// - 1501: @CODE{\%s}
 ///   Will be raised when query is parsed and is found to be syntactially
 ///   invalid.
 /// - 1502: @CODE{query is empty}
@@ -180,7 +180,7 @@ extern "C" {
 ///   is out of the allowed range.
 /// - 1518: @CODE{usage of unknown function '\%s'}
 ///   Will be raised when an undefined function is called.
-/// - 1520: @CODE{runtime error in query}
+/// - 1520: @CODE{runtime error '\%s'}
 ///   Will be raised when a Javascript runtime error occurs while executing a
 ///   query.
 /// - 1521: @CODE{limit value '\%s' is out of range}
@@ -891,7 +891,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1501: ERROR_QUERY_PARSE
 ///
-/// parse error: %s
+/// %s
 ///
 /// Will be raised when query is parsed and is found to be syntactially invalid.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1083,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1520: ERROR_QUERY_RUNTIME_ERROR
 ///
-/// runtime error in query
+/// runtime error '%s'
 ///
 /// Will be raised when a Javascript runtime error occurs while executing a
 /// query.

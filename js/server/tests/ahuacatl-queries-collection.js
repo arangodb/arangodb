@@ -532,19 +532,6 @@ function ahuacatlQueryCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test multiple collects
-////////////////////////////////////////////////////////////////////////////////
-      /*
-    testCollectMultiple : function () {
-      // fix this
-      var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
-      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }", false);
-      print("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }");
-      assertEqual(expected, actual);
-    },
-    */
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test relations
 ////////////////////////////////////////////////////////////////////////////////
       
@@ -555,14 +542,14 @@ function ahuacatlQueryCollectionTestSuite () {
       assertEqual(expected, actual);
     },
 
-  /*    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test relations
 ////////////////////////////////////////////////////////////////////////////////
-    testRelations2 : function () {
-      var expected = [ { "friends" : [102, 106, 108], "name" : "Abigail" }, { "friends" : [100, 108], "name" : "Michael" }, { "friends" : [100, 203], "name" : "Sophia" }, { "friends" : [203, 205], "name" : "Mariah" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" SORT r.from RETURN r)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].to }", false);
+    testRelations2 : function () {
+      var expected = [ { "friends" : [102, 106, 108], "name" : "Abigail" }, { "friends" : [100, 104], "name" : "Alexander" }, { "friends" : [109, 203], "name" : "Isabella" }, { "friends" : [109, 208], "name" : "John" } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" SORT r.to RETURN r)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].to }", false);
       assertEqual(expected, actual);
     },
 
@@ -571,9 +558,9 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRelations3 : function () {
-      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["John", "Madison"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
+      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["John", "Michael"], "name" : "Alexander" }, { "friends" : ["Diego", "Madison"], "name" : "Isabella" }, { "friends" : ["Diego", "Mary"], "name" : "John" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2.name)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2.name)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f }", false);
       assertEqual(expected, actual);
     },
 
@@ -582,9 +569,9 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRelations4 : function () {
-      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["Madison", "John"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
+      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["John", "Michael"], "name" : "Alexander" }, { "friends" : ["Diego", "Madison"], "name" : "Isabella" }, { "friends" : ["Diego", "Mary"], "name" : "John" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].name }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].name }", false);
       assertEqual(expected, actual);
     },
 
@@ -593,12 +580,11 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
       
     testRelations5 : function () {
-      var expected = [ { "friendIds" : [ 106, 102, 100 ], "friendNames" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friendIds" : [ 108, 100 ], "friendName" : ["Jim", "John"], "name" : "Michael" }, { "friendIds" : [ 203, 100 ], "friendNames" : ["Madison", "John"], "name" : "Sophia" }, { "friendIds" : [ 205, 203 ], "friendNames" : ["Eva", "Madison"], "name" : "Mariah" } ];
+      var expected = [ { "friendIds" : [106, 102, 108], "friendNames" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friendIds" : [100, 104], "friendNames" : ["John", "Michael"], "name" : "Alexander" }, { "friendIds" : [109, 203], "friendNames" : ["Diego", "Madison"], "name" : "Isabella" }, { "friendIds" : [109, 208], "friendNames" : ["Diego", "Mary"], "name" : "John" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }", false);
       assertEqual(expected, actual);
     }
-*/
 
   };
 }
