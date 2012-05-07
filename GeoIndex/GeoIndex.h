@@ -28,14 +28,7 @@
 /* GeoIndex.h - header file for GeoIndex algorithms  */
 /* Version 2.1   8.1.2012   R. A. Parker             */
 
-#ifdef GEO_STANDALONE
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#else
 #include "BasicsC/common.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
