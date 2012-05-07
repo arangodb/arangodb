@@ -1851,7 +1851,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: document(<path1>, <value1>, ...)")));
+                                           "usage: byExample(<path1>, <value1>, ...)")));
   }
 
   size_t n = argv.Length() / 2;

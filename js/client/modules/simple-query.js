@@ -128,6 +128,61 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// Returns the first documents of a collection that match the specified example
+/// or @LIT{null}. The example must be specified as paths and
+/// values. Allowed attribute types for searching are numbers, strings, and
+/// boolean values.
+///
+/// @EXAMPLES
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.firstExample = function () {
+
+  // create a REAL array, otherwise JSON.stringify will fail
+  var example = [];
+
+  for (var i = 0;  i < arguments.length;  ++i) {
+    example.push(arguments[i]);
+  }
+
+  var data = {
+    collection : this._id,
+    example : example
+  }  
+
+  var requestResult = this._database._connection.PUT("/_api/simple/first-example", JSON.stringify(data));
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+    return null;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult.document;
+}
+
+AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 SIMPLE QUERY NEAR
 // -----------------------------------------------------------------------------
 

@@ -277,39 +277,18 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.byExample = function () {
-  return new SimpleQueryByExample(this, arguments);
+
+  // create a REAL array, otherwise JSON.stringify will fail
+  var example = [];
+
+  for (var i = 0;  i < arguments.length;  ++i) {
+    example.push(arguments[i]);
+  }
+
+  return new SimpleQueryByExample(this, example);
 }
 
 AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExample;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Returns the first documents of a collection that match the specified example
-/// or @LIT{null}. The example must be specified as paths and
-/// values. Allowed attribute types for searching are numbers, strings, and
-/// boolean values.
-///
-/// @EXAMPLES
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.firstExample = function () {
-  var cursor = new SimpleQueryByExample(this, arguments);
-  var result = null;
-
-  if (cursor.hasNext()) {
-    result = cursor.next();
-  }
-
-  cursor.dispose();
-
-  return result;
-}
-
-AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
