@@ -1037,12 +1037,12 @@ var logTable = $('#logTableID').dataTable({
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
-    var client = "client:" + data;
+    var client = "avocadodb:" + data;
  
-    $('#avocshWindow').append('<a>' + client + '</a>');
+    $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
   
     try {
-      var server = "server:" + eval(data); 
+      var server = "" + JSON.stringify(eval(data)); 
       $('#avocshWindow').append('<p class="avocshSuccess">' + server + '</p>');
     }
     catch(e) {
@@ -1356,7 +1356,7 @@ function drawCollectionsTable () {
       }
       else if (tempStatus == 2) {
         tempStatus = "unloaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img>', 
         val.id, val.name, tempStatus, "", ""]);
        }
       else if (tempStatus == 3) {
