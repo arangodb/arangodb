@@ -28,6 +28,14 @@ html.busy, html.busy * {
 #logView .fg-toolbar{display: none;}
 #documentsView .fg-toolbar{display: none;}
 
+#documentsView button, #documentEditView button, #newDocumentTableView button {
+  padding-left:11px; 
+}
+
+#documentsView td button, #documentEditView td button, #newDocumentTableView td button {
+  padding: 0; 
+}
+
 html {
   font-family: Verdana,Arial,sans-serif; 
   font-size: 1em;
@@ -37,7 +45,15 @@ tr {
   font-size: 0.8em; 
 }
 th {
-  font-size: 1.1em; 
+  font-size: 1.2em;
+  height:30px;  
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+  text-shadow: 0 1px 0 #fff;
+}
+td {
+  height:30px;    
 }
 
 #editCollectionView td {
@@ -110,7 +126,6 @@ pre ul li span{
   height:30px;
   line-height: 30px;
   vertical-align: middle;
-  //background-color: #7E9246; 
   background-color: #F3F1EE; 
   color: #9EAF5A;
   font-weight: bold; 
@@ -118,6 +133,9 @@ pre ul li span{
   border-top: 1px solid  #7E9246;
   border-bottom: 1px solid #7E9246;
   padding-left: 7px; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 #createCollectionView {
@@ -197,25 +215,46 @@ pre ul li span{
 #refreshLogButton {
   margin-top: 6px; 
 }
+
 #logSearchField {
   font-size: 0.8em;
   height:20px;  
 }
 
+#submitQuery {
+  height:34px !important;
+  width: 100px !important;
+  float:right; 
+  margin-top: -11px !important;     
+}
+
 #queryContent {
   width: 100%;
+  resize: none; 
 }
 
 #avocshWindow {
   background-color: white;  
   height: 300px; 
   overflow-y: auto; 
-  width:100%; 
+  width:100%;
+}
+
+
+#avocshWindow p {
+  margin-top: 10px; 
+  padding-left: 20px; 
+  padding-right: 20px; 
+}
+
+#avocshWindow a {
+  margin-top: 10px; 
+  padding-left: 10px; 
+  padding-right: 10px; 
 }
 
 #avocshContent {
-  width: 100%;
-  text-align:center;   
+  width: 90%;
   height: 40px; 
 } 
 
@@ -227,6 +266,11 @@ pre ul li span{
 .avocshError {
   background-color: red;  
   color: white; 
+}
+
+#submitAvoc { 
+  height: 40px !important; 
+  width: 10% !important;   
 }
 
 #centerView {
@@ -412,6 +456,9 @@ pre ul li span{
 .fg-toolbar {
   font-size: 0.7em; 
   border: 1px solid #D3D3D3 !important; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 /*
@@ -421,17 +468,14 @@ pre ul li span{
 */
 #menue button.minimal{
   background: #e3e3e3;
+  padding: 9px 0 8px; 
   border: 1px solid #bbb;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  border-radius: 3px;
   -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
   -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
   box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 0.7em Verdana,Arial,sans-serif;
   line-height: 1;
-  padding: 8px 0 9px;
   text-align: center;
   text-shadow: 0 1px 0 #fff;
   width: 80px;
@@ -460,6 +504,7 @@ pre ul li span{
   background-color: transparent;
   font: 12px "helvetica neue", helvetica, arial, sans-serif;
   width: auto;
+  padding-left:11px;
 }
 
 #collectionsView button a {

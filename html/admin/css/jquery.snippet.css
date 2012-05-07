@@ -21,11 +21,15 @@
 }
 
 .sh_cbracket {
-  color: green;
+  color: #C7A317;
 }
 
 .sh_keyword { 
-  color: red;  
+  color: #4E387E;  
+}
+
+.sh_string {
+  color: green;
 }
 
 .sh_object {
