@@ -42,11 +42,13 @@
 
 static TRI_aql_node_t* ModifyNode (TRI_aql_modify_tree_walker_t* const walker,
                                    TRI_aql_node_t* node) {
-  TRI_aql_node_t* result = NULL;
+  TRI_aql_node_t* first = NULL;
+  TRI_aql_node_t* last  = NULL;
 
   assert(walker);
 
   while (node) {
+    TRI_aql_node_t* old;
     size_t i;
     size_t n = node->_members._length;
 
@@ -60,19 +62,38 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_modify_tree_walker_t* const walker,
 
       node->_members._buffer[i] = ModifyNode(walker, member);
     }
+
+    // keep old node pointer
+    old = node;
     
     // the visit function might set it to NULL
     node = walker->visitFunc(walker->_data, node);
-    if (!result) {
-      result = node;
+    if (!first) {
+      // first remaining node in chain
+      first = node;
+    }
+
+    if (last) {
+      // keep node chaining intact
+      last->_next = node;
     }
 
     if (node) {
+      last = node;
+    }
+
+    // determine next next in chain
+    if (node == old) { 
+      // node did not change
       node = node->_next;
+    }
+    else if (node != old && old != NULL) {
+      // node changed
+      node = old->_next;
     }
   }
   
-  return result;
+  return first;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
