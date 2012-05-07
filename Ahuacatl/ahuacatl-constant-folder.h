@@ -31,6 +31,7 @@
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/hashes.h>
+#include <BasicsC/logging.h>
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
