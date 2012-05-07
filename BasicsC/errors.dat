@@ -99,7 +99,7 @@ ERROR_AVOCADO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafi
 ################################################################################
 
 ERROR_QUERY_KILLED,1500,"query killed","Will be raised when a running query is killed by an explicit admin command."
-ERROR_QUERY_PARSE,1501,"parse error: %s","Will be raised when query is parsed and is found to be syntactially invalid."
+ERROR_QUERY_PARSE,1501,"%s","Will be raised when query is parsed and is found to be syntactially invalid."
 ERROR_QUERY_EMPTY,1502,"query is empty","Will be raised when an empty query is specified."
 ERROR_QUERY_SPECIFICATION_INVALID,1503,"query specification invalid","Will be raised when a query is sent to the server with an incomplete or invalid query specification structure."
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number '%s' is out of range","Will be raised when a numeric value inside a query is out of the allowed value range."
@@ -117,7 +117,7 @@ ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1515,"bind parameter '%s' was not declared
 ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID,1516,"invalid value for bind parameter '%s'","Will be raised when an invalid value is specified for one of the bind parameters."
 ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE,1517,"bind parameter number '%s' out of range","Will be specified when the numeric index for a bind parameter of type @n is out of the allowed range."
 ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1518,"usage of unknown function '%s'","Will be raised when an undefined function is called."
-ERROR_QUERY_RUNTIME_ERROR,1520,"runtime error in query","Will be raised when a Javascript runtime error occurs while executing a query."
+ERROR_QUERY_RUNTIME_ERROR,1520,"runtime error '%s'","Will be raised when a Javascript runtime error occurs while executing a query."
 ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE,1521,"limit value '%s' is out of range","Will be raised when a limit value in the query is outside the allowed range (e. g. when passing a negative skip value)."
 ERROR_QUERY_VARIABLE_REDECLARED,1522,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1523,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
