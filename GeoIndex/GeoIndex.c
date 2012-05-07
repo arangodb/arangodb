@@ -362,20 +362,31 @@ GeoIndex * GeoIndex_new(void)
     int i,j;
     double lat, lon, x, y, z;
 
-    gix = malloc(sizeof(GeoIx));
-    if(gix==NULL) return (GeoIndex *) gix;
+    gix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false);
+
+    if(gix == NULL) {
+      return (GeoIndex *) gix;
+    }
+
 /* try to allocate all the things we need  */
-    gix->pots       = malloc(GEOPOTSTART*sizeof(GeoPot));
-    gix->gc         = malloc(GEOSLOTSTART*sizeof(GeoCoordinate));
+    gix->pots       = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART*sizeof(GeoPot), false);
+    gix->gc         = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART*sizeof(GeoCoordinate), false);
 
 /* if any of them fail, free the ones that succeeded  */
 /* and then return the NULL pointer for our user      */
     if ( ( gix->pots      == NULL) ||
          ( gix->gc         == NULL) )
     {
-        if ( gix->pots       != NULL) free(gix->pots);
-        if ( gix->gc         != NULL) free(gix->gc);
-        free(gix);
+        if ( gix->pots       != NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->pots);
+        }
+
+        if ( gix->gc         != NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gc);
+        }
+
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
+
         return NULL;
     }
 
@@ -555,10 +566,15 @@ GeoIndex * GeoIndex_new(void)
 void GeoIndex_free(GeoIndex * gi)
 {
     GeoIx * gix;
+
+    if (gi == NULL) {
+      return;
+    }
+
     gix = (GeoIx *) gi;
-    free(gix->gc);
-    free(gix->pots);
-    free(gix);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->pots);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
 }
 /* =================================================== */
 /*        GeoMkHilbert   routine                       */
@@ -785,16 +801,30 @@ GeoResults * GeoResultsCons(int alloc)
     GeoResults * gres;
     int * sa;
     double * dd;
-    gres=malloc(sizeof(GeoResults));
-    sa=malloc(alloc*sizeof(int));
-    dd=malloc(alloc*sizeof(double));
+
+    if (alloc <= 0) {
+      return NULL;
+    }
+
+    gres = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults), false);
+    sa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(int), false);
+    dd = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(double), false);
     if( (gres==NULL) ||
          (sa==NULL)  ||
          (dd==NULL)   )
     {
-        if(gres!=NULL) free(gres);
-        if(sa!=NULL)   free(sa);
-        if(dd!=NULL)   free(dd);
+        if(gres!=NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres);
+        }
+
+        if(sa!=NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, sa);
+        }
+
+        if(dd!=NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, dd);
+        }
+
         return NULL;
     }
     gres->pointsct = 0;
@@ -939,15 +969,28 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
     GeoCoordinate  * gc;
     int i,j,slot;
     double mole;
-    ans = malloc(sizeof(GeoCoordinates));
-    gc  = malloc(gr->pointsct * sizeof(GeoCoordinate));
+
+    if (gr->pointsct == 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->snmd);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr);
+      return NULL;
+    }
+
+    ans = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates), false);
+    gc  = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate), false);
+
     if( (ans==NULL) || (gc==NULL) )
     {
-        if(ans!=NULL) free(ans);
-        if(gc!=NULL) free(gc);
-        free(gr->slot);
-        free(gr->snmd);
-        free(gr);
+        if(ans!=NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, ans);
+        }
+        if(gc!=NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, gc);
+        }
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->snmd);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr);
         return NULL;
     }
     ans->length = gr->pointsct;
@@ -970,8 +1013,10 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
         j++;
     }
     ans->distances = gr->snmd;
-    free(gr->slot);
-    free(gr);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr);
+
     return ans;
 }
 /* =================================================== */
@@ -1076,9 +1121,9 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
                 r = GeoResultsGrow(gres);
                 if(r==-1)
                 {
-                    free(gres->snmd);
-                    free(gres->slot);
-                    free(gres);
+                    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres->snmd);
+                    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres->slot);
+                    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres);
                     return NULL;
                 }
                 gres->slot[gres->pointsct]=slot;
@@ -2041,9 +2086,9 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 /* =================================================== */
 void GeoIndex_CoordinatesFree(GeoCoordinates * clist)
 {
-    free(clist->coordinates);
-    free(clist->distances);
-    free(clist);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist->coordinates);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist->distances);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist);
 }
 /* =================================================== */
 /*            GeoIndex_hint does nothing!              */
