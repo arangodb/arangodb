@@ -1039,7 +1039,7 @@ var logTable = $('#logTableID').dataTable({
     var data = $('#avocshContent').val();
     var client = "client:" + data;
  
-    $('#avocshWindow').append('<p>' + client + '</p>');
+    $('#avocshWindow').append('<a>' + client + '</a>');
   
     try {
       var server = "server:" + eval(data); 

@@ -1216,6 +1216,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   resultRegister = IncRegister(generator);
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
+  
   InitList(generator, resultRegister);
   StartFor(generator, sourceRegister, NULL);
 
@@ -1407,14 +1408,22 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  TRI_aql_codegen_register_t lastResultRegister;
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   
   InitList(generator, resultRegister);
 
   StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_LET, 0, 0, 0, resultRegister, NULL, "let");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+
+  lastResultRegister = CurrentScope(generator)->_resultRegister;
   EndScope(generator);
- 
+
+  if (lastResultRegister > 0) {
+    // result register was modified inside the scope, e.g. due to a SORT
+    resultRegister = lastResultRegister;
+  }
+
   // enter the new variable in the symbol table 
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -1658,6 +1667,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ";\n");
+
   OutputString(&generator->_buffer, "})()");
 
   if (generator->_error) {
@@ -1671,8 +1681,8 @@ char* TRI_GenerateCodeAql (const void* const data) {
   FreeGenerator(generator);
 
   if (code) {
-    LOG_DEBUG("generated code: %s", code);
-  //  printf("generated code: %s", code);
+    LOG_TRACE("generated code: %s", code);
+    // printf("generated code: %s", code);
   }
 
   return code;
