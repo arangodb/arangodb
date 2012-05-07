@@ -555,6 +555,11 @@ GeoIndex * GeoIndex_new(void)
 void GeoIndex_free(GeoIndex * gi)
 {
     GeoIx * gix;
+
+    if (gi == NULL) {
+      return;
+    }
+
     gix = (GeoIx *) gi;
     free(gix->gc);
     free(gix->pots);
@@ -785,6 +790,11 @@ GeoResults * GeoResultsCons(int alloc)
     GeoResults * gres;
     int * sa;
     double * dd;
+
+    if (alloc <= 0) {
+      return NULL;
+    }
+
     gres=malloc(sizeof(GeoResults));
     sa=malloc(alloc*sizeof(int));
     dd=malloc(alloc*sizeof(double));
@@ -939,8 +949,17 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
     GeoCoordinate  * gc;
     int i,j,slot;
     double mole;
+
+    if (gr->pointsct == 0) {
+      free(gr->slot);
+      free(gr->snmd);
+      free(gr);
+      return NULL;
+    }
+
     ans = malloc(sizeof(GeoCoordinates));
     gc  = malloc(gr->pointsct * sizeof(GeoCoordinate));
+
     if( (ans==NULL) || (gc==NULL) )
     {
         if(ans!=NULL) free(ans);
