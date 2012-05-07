@@ -378,6 +378,12 @@ function SimpleQueryByExampleSuite () {
 
       s = collection.byExample({ i : 2, "a.k" : 2 }).toArray().map(id).sort();
       assertEqual([d7._id], s);
+
+      s = collection.firstExample({ "i" : 2, "a.k" : 2 });
+      assertEqual(d7._id, s._id);
+
+      s = collection.firstExample({ "i" : 2, "a.k" : 27 });
+      assertEqual(null, s);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,6 +414,12 @@ function SimpleQueryByExampleSuite () {
 
       s = collection.byExample("i", 2, "a.k", 2).toArray().map(id).sort();
       assertEqual([d7._id], s);
+
+      s = collection.firstExample("i", 2, "a.k", 2);
+      assertEqual(d7._id, s._id);
+
+      s = collection.firstExample("i", 2, "a.k", 27);
+      assertEqual(null, s);
     }
   };
 }

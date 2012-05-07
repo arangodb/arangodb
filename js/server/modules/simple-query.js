@@ -142,11 +142,19 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 /// values. Allowed attribute types for searching are numbers, strings, and
 /// boolean values.
 ///
+/// @FUN{@FA{collection}.firstExample(@FA{example})}
+///
+/// As alternative you can supply an example as single argument. Note that an
+/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
+/// as attribute.
+///
 /// @EXAMPLES
+///
+/// @verbinclude shell-simple-query-first-example
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.firstExample = function () {
-  var cursor = new SimpleQueryByExample(this, arguments);
+  var cursor = new SQ.SimpleQueryByExample(this, arguments);
   var result = null;
 
   if (cursor.hasNext()) {

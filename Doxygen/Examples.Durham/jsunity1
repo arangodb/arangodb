@@ -1,7 +1,10 @@
 function aqlTestSuite () {
-  function testSizeOfTestCollection () {
-    assertEqual(5, 5);
-  }
+  return {
+    testSizeOfTestCollection : function () {
+      assertEqual(5, 5);
+  };
 }
 
 jsUnity.run(aqlTestSuite);
+
+return jsunity.done();
