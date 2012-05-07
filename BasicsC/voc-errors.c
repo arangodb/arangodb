@@ -65,7 +65,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
-  REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
+  REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SPECIFICATION_INVALID, "query specification invalid");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number '%s' is out of range");
@@ -83,7 +83,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID, "invalid value for bind parameter '%s'");
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE, "bind parameter number '%s' out of range");
   REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s'");
-  REG_ERROR(ERROR_QUERY_RUNTIME_ERROR, "runtime error in query");
+  REG_ERROR(ERROR_QUERY_RUNTIME_ERROR, "runtime error '%s'");
   REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
