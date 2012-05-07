@@ -22,7 +22,9 @@ html.busy, html.busy * {
 }
 
 #logView .ui-tabs-nav .ui-state-active {
-  background-color: #E4E9D2 !important; 
+  //background-color: #E4E9D2 !important; 
+  background-color: #E6E6E6 !important;
+  border-bottom: solid 2px #E6E6E6 !important;
 }
 
 #logView .fg-toolbar{display: none;}
@@ -60,6 +62,11 @@ td {
   font-size: 1.2em ;  
 }
 
+.nofunction {
+  padding-left: 4px;
+  padding-right: 1px;   
+}
+
 pre ul li span{
   font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
   font-size: 1em;
@@ -87,6 +94,9 @@ pre ul li span{
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
   background: url("images/ui-bg_flat_75_e6e6e6_40x100.png") repeat-x scroll 50% 50% #E6E6E6;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 .dataTables_info{
@@ -198,7 +208,8 @@ pre ul li span{
 
 .ui-tabs-nav {
   font-size: 0.8em !important; 
-  height: 35px;  
+  height: 35px; 
+  //border-bottom: 0px !important;  
 }
 
 .ui-tabs, .ui-tabs-panel {
@@ -209,6 +220,14 @@ pre ul li span{
   background: #F3F1EE;
   border: 0; 
 }
+
+#tabs th{
+  border-top: none;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important; 
+}
+
 #tab_right {
   margin-top: -18px;  
 }
@@ -228,7 +247,12 @@ pre ul li span{
   margin-top: -11px !important;     
 }
 
+#queryOutput {
+  font-family: "courier"; 
+}
+
 #queryContent {
+  font-family: "courier";
   width: 100%;
   resize: none; 
 }
@@ -243,29 +267,36 @@ pre ul li span{
 
 #avocshWindow p {
   margin-top: 10px; 
-  padding-left: 20px; 
-  padding-right: 20px; 
+  padding-left: 30px; 
+  padding-right: 30px; 
 }
 
-#avocshWindow a {
-  margin-top: 10px; 
+#avocshWindow b {
   padding-left: 10px; 
   padding-right: 10px; 
 }
 
 #avocshContent {
+  font-family: "courier";
   width: 90%;
-  height: 40px; 
+  height: 40px;
+  background-color: white;  
 } 
 
 .avocshSuccess {
-  background-color: #9EAF5A;
-  color: black;  
+  font-family: "courier";
+  background-color: #e4e9d2;
+  color: #335127; 
 }
 
 .avocshError {
-  background-color: red;  
-  color: white; 
+  font-family: "courier";
+  background-color: #FFD8D8;  
+  color: red; 
+}
+
+.avocshClient {
+  font-family: "courier";
 }
 
 #submitAvoc { 
