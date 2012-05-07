@@ -5,7 +5,7 @@
 %option bison-locations
 %option bison-bridge
 %option yylineno
-%option noyywrap nounput batch debug
+%option noyywrap nounput batch
 
 %{
 #include <BasicsC/common.h>
