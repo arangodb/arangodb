@@ -4112,6 +4112,14 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
+///
+/// @FUN{@FA{collection}.count()}
+///
+/// Returns the number of living documents in the collection.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-collection-count
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {

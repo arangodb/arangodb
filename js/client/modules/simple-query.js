@@ -138,15 +138,6 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Returns the first documents of a collection that match the specified example
-/// or @LIT{null}. The example must be specified as paths and
-/// values. Allowed attribute types for searching are numbers, strings, and
-/// boolean values.
-///
-/// @EXAMPLES
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.firstExample = function () {
