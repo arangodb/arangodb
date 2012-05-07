@@ -1667,6 +1667,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ";\n");
+
   OutputString(&generator->_buffer, "})()");
 
   if (generator->_error) {
@@ -1681,7 +1682,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
 
   if (code) {
     LOG_TRACE("generated code: %s", code);
-//    printf("generated code: %s", code);
+    // printf("generated code: %s", code);
   }
 
   return code;

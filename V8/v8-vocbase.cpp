@@ -279,7 +279,13 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  string msg = TRI_errno_string(errorNumber) + string(": ") + message;
+  string msg;
+  if (message.size()) {
+    msg = message;
+  }
+  else {
+    msg = TRI_errno_string(errorNumber) + string(": ") + message;
+  }
   v8::Handle<v8::String> errorMessage = v8::String::New(msg.c_str());
 
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
@@ -287,6 +293,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+
   errorObject->SetPrototype(proto);
 
   return errorObject;
@@ -2928,6 +2935,13 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   if (cursor) {
     TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
     return scope.Close(WrapGeneralCursor(cursor));
+  }
+
+  if (tryCatch.HasCaught()) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_RUNTIME_ERROR, TRI_ObjectToString(tryCatch.Exception()).c_str());
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+
+    return scope.Close(errorObject);
   }
 
   return scope.Close(v8::ThrowException(v8::String::New("cannot create cursor")));
@@ -6384,21 +6398,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
     v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
   }
 
-  // .............................................................................
-  // generate the query error template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoError"));
-
-  rt = ft->InstanceTemplate();
-
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoError"),
-                         ft->GetFunction());
-  
   // .............................................................................
   // generate the TRI_vocbase_t template
   // .............................................................................
