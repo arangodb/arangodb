@@ -31,7 +31,7 @@
 
 #include "V8/v8-execution.h"
 
-#undef RANGE_OPTIMIZER 
+#undef RANGE_OPTIMIZER
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -660,7 +660,10 @@ TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
   TRI_aql_modify_tree_walker_t* walker;
  
 #ifdef RANGE_OPTIMIZER  
-  TRI_InitOptimizerAql(context);
+  if (!TRI_InitOptimizerAql(context)) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
 #endif
      
   walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);
