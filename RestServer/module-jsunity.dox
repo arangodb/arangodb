@@ -1,0 +1,64 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "internal"
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page jsUnity Using jsUnity and node-jscoverage
+///
+/// The AvocadoDB contains a wrapper for 
+/// <a href="http://jsunity.com/">jsUnity</a>, a lightyweight universal
+/// JavAScript unit testing framework.
+///
+/// @section jsUnityRunningTest Running jsUnity Tests
+/////////////////////////////////////////////////////
+///
+/// Assume that you have a test file containing
+///
+/// @verbinclude jsunity1
+///
+/// Then you can run the test suite using @FN{jsunity.runTest}
+///
+/// @verbinclude jsunity2
+///
+/// @section jsUnityRunningCoverage Running jsUnity Tests with Coverage
+///////////////////////////////////////////////////////////////////////
+///
+/// You can use the coverage tool 
+/// <a href="https://github.com/visionmedia/node-jscoverage">@LIT{node-jscoverage}</a>.
+///
+/// Assume that your file live in a directory called @LIT{lib}. Use
+///
+/// @CODE{node-jscoverage lib lib-cov}
+///
+/// to create a copy of the JavaScript files with coverage information.  Start
+/// the AvocadoDB with these files and use @FN{jsunity.runCoverage} instead of
+/// @FN{jsunity.runTest}.
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

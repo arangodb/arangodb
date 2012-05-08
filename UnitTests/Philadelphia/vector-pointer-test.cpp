@@ -480,6 +480,14 @@ BOOST_AUTO_TEST_CASE (tst_insert) {
 
   void* r = 0;
 
+  // ...........................................................................
+  // this test needs to be altered slightly e.g.
+  // TRI_InsertVectorPointer(&v1, &a, 100);
+  // TRI_InsertVectorPointer(&v1, &a, 20);
+  // TRI_InsertVectorPointer(&v1, &a, 200);
+  // ...........................................................................
+
+  
   TRI_InsertVectorPointer(&v1, &a, 0);
   BOOST_CHECK_EQUAL((size_t) 1, v1._length);
   BOOST_CHECK_EQUAL(&a, TRI_AtVectorPointer(&v1, 0));

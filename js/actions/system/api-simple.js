@@ -351,25 +351,29 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// @FA{collection}
+/// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// The identifier or name of the collection to query.
+/// - @LIT{example}: The example.
 ///
-/// @FA{example}
+/// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
-/// The example.
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
 ///
-/// @FA{skip} (optional)
-///
-/// The documents to skip in the query.
-///
-/// @FA{limit} (optional)
-///
-/// The maximal amount of documents to return.
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api_simple7
+/// Matching an attribute:
+///
+/// @verbinclude api-simple-by-example1
+///
+/// Matching an attribute which is a sub-document:
+///
+/// @verbinclude api-simple-by-example2
+///
+/// Matching an attribute within a sub-document:
+///
+/// @verbinclude api-simple-by-example3
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -383,16 +387,18 @@ actions.defineHttp({
       return;
     }
 
-    var limit = body.limit;
-    var skip = body.skip;
-    var name = body.collection;
-    var example = body.example;
-
     if (req.requestType != actions.PUT) {
       actions.unsupported(req, res);
     }
     else {
-      collection = internal.db._collection(name);
+      var limit = body.limit;
+      var skip = body.skip;
+      var name = body.collection;
+      var example = body.example;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -401,17 +407,95 @@ actions.defineHttp({
         actions.badParameter(req, res, "example");
       }
       else {
-        var result = collection.byExample(example);
+        try {
+          var result = collection.byExample.apply(collection, example);
 
-        if (skip != null) {
-          result = result.skip(skip);
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
-
-        if (limit != null) {
-          result = result.limit(limit);
+        catch (err) {
+          actions.resultException(req, res, err);
         }
+      }
+    }
+  }
+});
 
-        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_first_example
+/// @brief returns one document of a collection matching a given example
+///
+/// @REST{PUT /_api/simple/first-example}
+///
+/// This will return the first document matching a given example.
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The identifier or name of the collection to query.
+///
+/// - @LIT{example}: The example.
+///
+/// - @LIT{skip}: The documents to skip in the query. (optional)
+///
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+///
+/// Returns a result containing the document or @LIT{HTTP 404} if no
+/// document matched the example.
+///
+/// @EXAMPLES
+///
+/// If a matching document was found:
+///
+/// @verbinclude api-simple-first-example
+///
+/// If no document was found:
+///
+/// @verbinclude api-simple-first-example-not-found
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "first-example",
+  context : "api",
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    if (req.requestType != actions.PUT) {
+      actions.unsupported(req, res);
+    }
+    else {
+      var example = body.example;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
+
+      if (collection == null) {
+        actions.collectionNotFound(req, res, name);
+      }
+      else if (typeof example !== "object") {
+        actions.badParameter(req, res, "example");
+      }
+      else {
+        var result = collection.byExample.apply(collection, example).limit(1);
+
+        if (result.hasNext()) {
+          actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
+        }
+        else {
+          actions.resultNotFound(req, res, "no match");
+        }
       }
     }
   }

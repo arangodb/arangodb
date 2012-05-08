@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, constant folding
+/// @brief utility functions for json objects
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,23 +22,14 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H
-#define TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H 1
+#ifndef TRIAGENS_BASICS_C_JSON_UTILITIES_H
+#define TRIAGENS_BASICS_C_JSON_UTILITIES_H 1
 
 #include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
+#include <BasicsC/json.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,75 +40,38 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief access type
+/// @brief compare two json values
+///
+/// the values are first compared by their types, and only by their values if
+/// the types are the same
+/// returns -1 if lhs is smaller than rhs, 0 if lhs == rhs, and 1 if rhs is
+/// greater than lhs
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  TRI_AQL_RANGE_LOWER_EXCLUDED,
-  TRI_AQL_RANGE_LOWER_INCLUDED,
-  TRI_AQL_RANGE_UPPER_EXCLUDED,
-  TRI_AQL_RANGE_UPPER_INCLUDED
-}
-TRI_aql_range_e;
-
-typedef enum {
-  TRI_AQL_ACCESS_ALL = 0,
-  TRI_AQL_ACCESS_IMPOSSIBLE,
-  TRI_AQL_ACCESS_EXACT,
-  TRI_AQL_ACCESS_LIST,
-  TRI_AQL_ACCESS_SINGLE_RANGE,
-  TRI_AQL_ACCESS_DOUBLE_RANGE,
-}
-TRI_aql_access_e;
-
-typedef struct TRI_aql_range_s {
-  TRI_json_t* _value;
-  TRI_aql_range_e _type;
-}
-TRI_aql_range_t;
-
+int TRI_CompareValuesJson (const TRI_json_t* const, const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute access container used during optimisation
+/// @brief check if two json values are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_field_access_s {
-  char* _fieldName;
-  TRI_aql_access_e _type;
-  union {
-    TRI_json_t* _value;
-    TRI_aql_range_t _singleRange;
-    struct {
-      TRI_aql_range_t _lower;
-      TRI_aql_range_t _upper;
-    }
-    _between;
-  } 
-  _value;
-}
-TRI_aql_field_access_t;
-  
-
-
-typedef struct TRI_aql_field_name_s {
-  const char* _variable;
-  TRI_string_buffer_t _name;
-}
-TRI_aql_field_name_t;
-  
-
+bool TRI_CheckSameValueJson (const TRI_json_t* const, const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fold constants recursively
+/// @brief checks if a json value is contained in a json list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const, 
-                                      TRI_aql_node_t*);
+bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sorts a json list in place
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_SortListJson (TRI_json_t* const list);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

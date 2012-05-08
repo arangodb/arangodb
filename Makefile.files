@@ -32,6 +32,7 @@ libavocado_a_SOURCES = \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
 	BasicsC/json.c \
+	BasicsC/json-utilities.c \
 	BasicsC/linked-list.c \
 	BasicsC/locks-macos.c \
 	BasicsC/locks-posix.c \
@@ -409,6 +410,8 @@ WIKI = \
 	ShellIndex \
 	SimpleQueries \
 	UserManualServer \
+	UserManualServerBasics \
+	UserManualServerStartStop \
 	UserManualShell \
 	UserManualShellStartStop  \
 	jsUnity
