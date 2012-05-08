@@ -90,18 +90,25 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var parameters = [ ];
+    var parameters = [];
 
     // the actual example is passed in the first argument
-    for (var i in this._example[0]) {
-      if (this._example[0].hasOwnProperty(i)) {
+    if (this._example.length == 1) {
+      for (var i in this._example[0]) {
+        if (this._example[0].hasOwnProperty(i)) {
 
-        // attribute name
-        parameters.push(i);
+          // attribute name
+          parameters.push(i);
 
-        // attribute value
-        parameters.push(this._example[0][i]);
+          // attribute value
+          parameters.push(this._example[0][i]);
+        }
       }
+    }
+
+    // the arguments are passed
+    else {
+      parameters = this._example;
     }
 
     var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);
@@ -111,6 +118,55 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
     this._countTotal = documents.length;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// Returns the first documents of a collection that match the specified example
+/// or @LIT{null}. The example must be specified as paths and
+/// values. Allowed attribute types for searching are numbers, strings, and
+/// boolean values.
+///
+/// @FUN{@FA{collection}.firstExample(@FA{example})}
+///
+/// As alternative you can supply an example as single argument. Note that an
+/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
+/// as attribute.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-simple-query-first-example
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.firstExample = function () {
+  var cursor = new SQ.SimpleQueryByExample(this, arguments);
+  var result = null;
+
+  if (cursor.hasNext()) {
+    result = cursor.next();
+  }
+
+  cursor.dispose();
+
+  return result;
+}
+
+AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

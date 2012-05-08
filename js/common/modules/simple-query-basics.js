@@ -47,9 +47,9 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///
 /// @FUN{all()}
 ///
-/// Selects all documents of a collection. You can use @FN{toArray}, @FN{next},
-/// or @FN{hasNext} to access the result. The result can be limited using the
-/// @FN{skip} and @FN{limit} operator.
+/// Selects all documents of a collection and returns a cursor. You can use
+/// @FN{toArray}, @FN{next}, or @FN{hasNext} to access the result. The result
+/// can be limited using the @FN{skip} and @FN{limit} operator.
 ///
 /// @EXAMPLES
 ///
@@ -257,13 +257,19 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 ///
 /// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
 ///
-/// Selects all documents of a collection that match the specified
-/// example. The example must be specified as paths and values. Allowed
+/// Selects all documents of a collection that match the specified example and
+/// returns a cursor. The example must be specified as paths and values. Allowed
 /// attribute types for searching are numbers, strings, and boolean values.
 ///
 /// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access
 /// the result. The result can be limited using the @FN{skip} and @FN{limit}
 /// operator.
+///
+/// @FUN{@FA{collection}.byExample(@FA{example})}
+///
+/// As alternative you can supply an example as single argument. Note that an
+/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
+/// as attribute.
 ///
 /// @EXAMPLES
 ///
@@ -277,39 +283,18 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.byExample = function () {
-  return new SimpleQueryByExample(this, arguments);
+
+  // create a REAL array, otherwise JSON.stringify will fail
+  var example = [];
+
+  for (var i = 0;  i < arguments.length;  ++i) {
+    example.push(arguments[i]);
+  }
+
+  return new SimpleQueryByExample(this, example);
 }
 
 AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExample;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Returns the first documents of a collection that match the specified example
-/// or @LIT{null}. The example must be specified as paths and
-/// values. Allowed attribute types for searching are numbers, strings, and
-/// boolean values.
-///
-/// @EXAMPLES
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.firstExample = function () {
-  var cursor = new SimpleQueryByExample(this, arguments);
-  var result = null;
-
-  if (cursor.hasNext()) {
-    result = cursor.next();
-  }
-
-  cursor.dispose();
-
-  return result;
-}
-
-AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

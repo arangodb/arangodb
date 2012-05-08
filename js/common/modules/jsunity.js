@@ -36,37 +36,6 @@ var DURATION = 0;
 internal.loadFile("jsunity/jsunity");
 jsUnity.log = console;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page jsUnity Using jsUnity and node-jscoverage
-///
-/// The AvocadoDB contains a wrapper for 
-/// <a href="http://jsunity.com/">jsUnity</a>, a lightyweight universal
-/// JavAScript unit testing framework.
-///
-/// @section jsUnityRunningTest Running jsUnity Tests
-///
-/// Assume that you have a test file containing
-///
-/// @verbinclude jsunity1
-///
-/// Then you can run the test suite using @FN{jsunity.runTest}
-///
-/// @verbinclude jsunity2
-///
-/// @section jsUnityRunningCoverage Running jsUnity Tests with Coverage
-///
-/// You can use the coverage tool 
-/// <a href="https://github.com/visionmedia/node-jscoverage">@LIT{node-jscoverage}</a>.
-///
-/// Assume that your file live in a directory called @LIT{lib}. Use
-///
-/// @CODE{node-jscoverage lib lib-cov}
-///
-/// to create a copy of the JavaScript files with coverage information.  Start
-/// the AvocadoDB with these files and use @FN{jsunity.runCoverage} instead of
-/// @FN{jsunity.runTest}.
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------

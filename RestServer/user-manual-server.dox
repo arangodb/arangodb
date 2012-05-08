@@ -33,12 +33,6 @@
 ///   <ol>
 ///    <li>@ref UserManualServerStartStop
 ///    </li>
-///    <li>AvocadoScript
-///     <ol>
-///      <li>@ref SimpleQueries
-///      </li>
-///     </ol>
-///    </li>
 ///    <li>Avocado Query Language
 ///     <ol>
 ///      <li>@ref AQLBasics
@@ -49,58 +43,23 @@
 ///      </li>
 ///     </ol>
 ///    </li>
-///    <li>@ref AvocadoScript
-///     <ol>
-///      <li>GeoCoordinates
-///      </li>
-///     </ol>
-///    </li>
-///    <li>Vertices, Edges, and Graphs
-///     <ol>
-///      <li>@ref Graphs
-///      </li>
-///      <li>@ref JSModuleGraph
-///      </li>
-///     </ol>
-///    </li>
 ///    <li>@ref AvocadoErrors
-///    </li>
-///   </ol>
-///  </li>
-///  <li>Client Communication
-///   <ol>
-///    <li>@ref HttpInterface
-///     <ol>
-///      <li>@ref RestDocument
-///      </li>
-///     </ol>
-///    </li>
-///   </ol>
-///  </li>
-///  <li>@ref DBAdmin
-///   <ol>
-///    <li>@ref DBAdminDurability
-///    </li>
-///    <li>@ref DBAdminIndex
-///     <ol>
-///      <li>@ref DBAdminIndexGeo
-///     </ol>
 ///    </li>
 ///   </ol>
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ol>
+///    <li>@ref DBAdmin
+///     <ol>
+///      <li>@ref DBAdminDurability
+///      </li>
+///     </ol>
+///    </li>
 ///    <li>Actions
 ///     <ol>
 ///      <li>@ref Actions
 ///      </li>
 ///      <li>@ref DefineAction
-///      </li>
-///     </ol>
-///    </li>
-///    <li>@ref HttpInterface
-///     <ol>
-///      <li>@ref RestSystem
 ///      </li>
 ///     </ol>
 ///    </li>
@@ -128,20 +87,21 @@
 /// @page UserManualServerStartStopTOC
 ///
 /// <ol>
-///  <li>@ref UserManualServerStartStopHttp "Starting the HTTP Server"</li>
-///  <li>@ref UserManualServerStartStopDebug "Starting the Debug Shell"</li>
-///  <li>@ref UserManualServerStartStopOptions "Frequently Used Options"</li>
+///  <li>@ref UserManualServerStartStopHttp</li>
+///  <li>@ref UserManualServerStartStopDebug</li>
+///  <li>@ref UserManualServerStartStopOptions</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualServerStartStop Starting the AvocadoDB
 ///
-/// The AvocadoDB has two mode of operation: as server, where it will answer to
-/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly. Using the debug shell allows you to issue all
-/// commands normally available in actions and transactions, see @ref
-/// AvocadoScript.
+/// The AvocadoDB has two modes of operation: as server, where it will answer to
+/// client requests and an emergency console, where you can access the database
+/// directly. The latter should - as the name suggests - only be used in case of
+/// an emergency, for example, a corrupted collection. Using the emergency
+/// console allows you to issue all commands normally available in actions and
+/// transactions.
 ///
 /// You should never start more than one server for the same database,
 /// independent from the mode of operation.
@@ -151,6 +111,7 @@
 /// <hr>
 ///
 /// @section UserManualServerStartStopHttp Starting the HTTP Server
+///////////////////////////////////////////////////////////////////
 ///
 /// The following command starts the AvocadoDB in server mode. You will be able
 /// to access the server using HTTP request on port 8529. See below for a list
@@ -158,14 +119,16 @@
 ///
 /// @verbinclude option-database-directory
 ///
-/// @section UserManualServerStartStopDebug Starting the Debug Shell
+/// @section UserManualServerStartStopDebug Starting the Emergency Console
+//////////////////////////////////////////////////////////////////////////
 ///
-/// The following command starts a debug shell. See below for a list of
+/// The following command starts a emergency console. See below for a list of
 /// frequently used options, see @ref CommandLine "here" for a complete list.
 ///
 /// @verbinclude start1
 ///
 /// @section UserManualServerStartStopOptions Frequently Used Options
+/////////////////////////////////////////////////////////////////////
 ///
 /// The following command-line options are frequently used. For a full
 /// list of options see @ref CommandLine "here".
@@ -198,11 +161,6 @@
 /// <ol>
 ///  <li>@ref DBAdminDurability
 ///  </li>
-///  <li>@ref DBAdminIndex
-///   <ol>
-///    <li>@ref DBAdminIndexGeo
-///   </ol>
-///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,8 +172,10 @@
 /// <hr>
 ///
 /// @section DBAdminDurability Durability
+/////////////////////////////////////////
 ///
 /// @subsection DBAdminDurability1 Mostly Memory/Durability
+///////////////////////////////////////////////////////////
 ///
 /// Database documents are stored in the memory-memory-mapped files are used to
 /// store them. The operating system has the advantageous option to decide
@@ -224,6 +184,7 @@
 /// documents securely at once (durability).
 ///
 /// @subsection DBAdminDurability2 AppendOnly/MVCC
+//////////////////////////////////////////////////
 /// 
 /// Instead of overwriting existing documents, a completely new version of the
 /// document is generated. The two benefits are:
@@ -237,18 +198,9 @@
 /// processes.
 ///
 /// @subsection DBAdminDurability3 Configuration
+////////////////////////////////////////////////
 ///
 /// @copydetails JS_PropertiesVocbaseCol
-///
-/// @section DBAdminIndex Index Management
-///
-/// @subsection DBAdminIndexHash Hash Indexes
-///
-/// copydetails JS_EnsureHashIndexVocbaseCol
-///
-/// @subsection DBAdminIndexGeo Geo Indexes
-///
-/// copydetails JS_EnsureGeoIndexVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
