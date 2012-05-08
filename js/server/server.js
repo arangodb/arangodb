@@ -418,6 +418,11 @@ AvocadoEdgesCollection.STATUS_DELETED = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
+///
+/// @FUN{@FA{collection}.toArray()}
+///
+/// Converts the collection into an array of documents. Never use this call
+/// in a production environment.
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.toArray = function() {

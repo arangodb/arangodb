@@ -31,36 +31,39 @@
 /// <ol>
 ///  <li>@ref SimpleQueriesQueries
 ///   <ol>
-///    <li>@ref SimpleQueryDocument "db.@FA{collection}.document(@FA{document-reference})"</li>
-///    <li>@ref SimpleQueryAll "db.@FA{collection}.all()"</li>
-///    <li>@ref SimpleQueryByExample "db.@FA{collection}.byExample()"</li>
-///    <li>@ref SimpleQueryCount "@FA{query}.count()"</li>
+///    <li>@ref SimpleQueryDocument "collection.document(document-reference)"</li>
+///    <li>@ref SimpleQueryAll "collection.all()"</li>
+///    <li>@ref SimpleQueryByExample "collection.byExample(example)"</li>
+///    <li>@ref SimpleQueryFirstExample "collection.firstExample(example)"</li>
+///    <li>@ref SimpleQueryCollectionCount "collection.count()"</li>
+///    <li>@ref SimpleQueryToArray "collection.toArray()"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref SimpleQueriesGeoQueries
 ///   <ol>
-///    <li>@ref SimpleQueryNear "db.@FA{collection}.near()"</li>
-///    <li>@ref SimpleQueryWithin "db.@FA{collection}.within()"</li>
-///    <li>@ref SimpleQueryGeo "db.@FA{collection}.geo()"</li>
+///    <li>@ref SimpleQueryNear "collection.near(latitude, longitude)"</li>
+///    <li>@ref SimpleQueryWithin "collection.within(latitude, longitude)"</li>
+///    <li>@ref SimpleQueryGeo "collection.geo(location)"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref SimpleQueriesEdgesQueries
 ///   <ol>
-///    <li>@ref SimpleQueryEdges "edges.@FA{collection}.edges()"</li>
-///    <li>@ref SimpleQueryInEdges "edges.@FA{collection}.inEdges()"</li>
-///    <li>@ref SimpleQueryOutEdges "edges.@FA{collection}.outEdges()"</li>
+///    <li>@ref SimpleQueryEdges "edges-collection.edges(vertex)"</li>
+///    <li>@ref SimpleQueryInEdges "edges-collection.inEdges(vertex)"</li>
+///    <li>@ref SimpleQueryOutEdges "edges-collection.outEdges(vertex)"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref SimpleQueriesPagination
 ///   <ol>
-///    <li>@ref SimpleQueryLimit "@FA{query}.limit(@FA{limit})"</li>
-///    <li>@ref SimpleQuerySkip "@FA{query}.skip(@FA{skip})"</li>
+///    <li>@ref SimpleQueryLimit "query.limit(limit)"</li>
+///    <li>@ref SimpleQuerySkip "query.skip(skip)"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref SimpleQueriesSequentialAccess
 ///   <ol>
-///    <li>@ref SimpleQueryHasNext "@FA{query}.hasNext()"</li>
-///    <li>@ref SimpleQueryNext "@FA{query}.next()"</li>
+///    <li>@ref SimpleQueryHasNext "query.hasNext()"</li>
+///    <li>@ref SimpleQueryNext "query.next()"</li>
+///    <li>@ref SimpleQueryCount "query.count()"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -72,17 +75,20 @@
 /// Simple queries can be used if the query condition is straight forward
 /// simple, i. e., a document reference, all documents, a query-by-example, or a
 /// simple geo query. In a simple query you can specify exactly one collection
-/// and one condition. The result can then be sorted and result can be split
-/// into pages.
+/// and one condition.
 ///
 /// <hr>
 /// @copydoc SimpleQueriesTOC
 /// <hr>
 ///
+/// If a query returns a cursor, then you can use @FN{hasNext} and @FN{next} to
+/// iterate over the result set or @FN{toArray} to convert it to an array.
+///
 /// @section SimpleQueriesQueries Queries
 /////////////////////////////////////////
 ///
 /// @anchor SimpleQueryDocument
+/// @copydetails JS_DocumentVocbaseCol
 /// <hr>
 ///
 /// @anchor SimpleQueryAll
@@ -93,8 +99,16 @@
 /// @copydetails JSF_AvocadoCollection_prototype_byExample
 /// <hr>
 ///
-/// @anchor SimpleQueryCount
-/// @copydetails JSF_SimpleQuery_prototype_count
+/// @anchor SimpleQueryFirstExample
+/// @copydetails JSF_AvocadoCollection_prototype_firstExample
+/// <hr>
+///
+/// @anchor SimpleQueryCollectionCount
+/// @copydetails JS_CountVocbaseCol
+/// <hr>
+///
+/// @anchor SimpleQueryToArray
+/// @copydetails JSF_AvocadoCollection_prototype_toArray
 ///
 /// @section SimpleQueriesGeoQueries Geo Queries
 ////////////////////////////////////////////////
@@ -148,7 +162,7 @@
 /// If, for example, you display the result of a user search, then you are in
 /// general not interested in the completed result set, but only the first 10 or
 /// so documents. Or maybe the next 10 documents for the second page. In this
-/// case, you can the @FN{skip} and @FN{limit} operators. These operators works
+/// case, you can the @FN{skip} and @FN{limit} operators. These operators work
 /// like LIMIT in MySQL.
 ///
 /// @FN{skip} used together with @FN{limit} can be used to implement pagination.
@@ -174,6 +188,10 @@
 ///
 /// @anchor SimpleQueryNext
 /// @copydetails JSF_SimpleQuery_prototype_next
+/// <hr>
+///
+/// @anchor SimpleQueryCount
+/// @copydetails JSF_SimpleQuery_prototype_count
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

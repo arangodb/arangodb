@@ -60,20 +60,16 @@
 ///    <li>@ref HttpSystem
 ///     @copydetails HttpSystemTOC
 ///    </li>
-///    <li>@ref OTWPSimpleQueries
-///     <ol>
-///      <li>@ref OTWPSimpleQueriesByExample "PUT /_api/simple/by-example"</li>
-///     </ol>
 ///    </li>
-///    <li>@ref Key-Value
-///     <ol>
-///      <li>@ref Key-ValuePost "POST /_api/key/@FA{collection-name}/@FA{key}"</li>
-///      <li>@ref Key-ValuePut "PUT /_api/key/@FA{collection-name}/@FA{key}"</li>
-///      <li>@ref Key-ValueGet "GET /_api/key/@FA{collection-name}/@FA{key}"</li>
-///      <li>@ref Key-ValueDelete "DELETE /_api/key/@FA{collection-name}/@FA{key}"</li>
-///      <li>@ref Key-ValueSearch "GET /_api/keys/@FA{collection-name}/@FA{prefix}"</li>
-///     </ol>
-///    </li>
+///   </ol>
+///  </li>
+///  <li>@ref Key-Value (Under Construction)
+///   <ol>
+///    <li>@ref Key-ValuePost "POST /_api/key/collection-name/key"</li>
+///    <li>@ref Key-ValuePut "PUT /_api/key/collection-name/key"</li>
+///    <li>@ref Key-ValueGet "GET /_api/key/collection-name/key"</li>
+///    <li>@ref Key-ValueDelete "DELETE /_api/key/collection-name/key"</li>
+///    <li>@ref Key-ValueSearch "GET /_api/keys/collection-name/prefix"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -85,14 +81,6 @@
 /// <hr>
 /// @copydoc OTWPTOC
 /// <hr>
-///
-/// @section OTWPSimpleQueries Simple Queries
-/////////////////////////////////////////////
-///
-/// @anchor OTWPSimpleQueriesByExample
-/// @copydetails JSA_PUT_api_simple_by_example
-/// <hr>
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
