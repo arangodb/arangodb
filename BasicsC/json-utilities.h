@@ -68,6 +68,37 @@ bool TRI_CheckSameValueJson (const TRI_json_t* const, const TRI_json_t* const);
 bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief uniquify a sorted json list into a new list
+///
+/// it is a prerequisite that the input list is already sorted. 
+/// otherwise the result is unpredictable.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the union of two sorted json lists into a new list
+///
+/// the result list can be made unique or non-unique. it is a prerequisite that
+/// both input lists are already sorted. otherwise the result is unpredictable.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const, 
+                                   const TRI_json_t* const,
+                                   const bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the intersection of two sorted json lists into a new list
+///
+/// the result list can be made unique or non-unique. it is a prerequisite that
+/// both input lists are already sorted. otherwise the result is unpredictable.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const, 
+                                    const TRI_json_t* const,
+                                    const bool);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a json list in place
 ////////////////////////////////////////////////////////////////////////////////
 
