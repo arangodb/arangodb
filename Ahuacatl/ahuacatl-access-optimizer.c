@@ -126,9 +126,6 @@ static void FreeAccess (TRI_aql_context_t* const context,
                         TRI_aql_field_access_t* const fieldAccess) {
   assert(fieldAccess);
 
-  // remove from hash first
-  TRI_RemoveKeyAssociativePointer(&context->_ranges, fieldAccess->_fieldName);
-
   FreeAccessMembers(fieldAccess);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fieldName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
@@ -300,7 +297,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
 
     FreeAccessMembers(lhs);
-    FreeAccessMembers(rhs);
+    FreeAccess(context, rhs);
 
     if (merged->_value._objects._length > 0) {
       // merged list is not empty
@@ -308,6 +305,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
     else {
       // merged list is empty
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, merged);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
     }
 
@@ -341,7 +339,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
 
     FreeAccessMembers(lhs);
-    FreeAccessMembers(rhs);
+    FreeAccess(context, rhs);
 
     if (listInRange->_value._objects._length > 0) {
       // merged list is not empty
@@ -349,6 +347,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
     else {
       // merged list is empty
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, listInRange);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
     }
 
@@ -373,7 +372,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
 
     FreeAccessMembers(lhs);
-    FreeAccessMembers(rhs);
+    FreeAccess(context, rhs);
 
     if (listInRange->_value._objects._length > 0) {
       // merged list is not empty
@@ -381,6 +380,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     }
     else {
       // merged list is empty
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, listInRange);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
     }
 
@@ -929,7 +929,7 @@ static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
     }
 
     FreeAccessMembers(lhs);
-    FreeAccessMembers(rhs);
+    FreeAccess(context, rhs);
 
     if (merged->_value._objects._length > 0) {
       // merged list is not empty
@@ -937,6 +937,7 @@ static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
     }
     else {
       // merged list is empty
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, merged);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
     }
 
@@ -1081,8 +1082,10 @@ static TRI_aql_field_access_t* MergeAccess (TRI_aql_context_t* const context,
                                             const TRI_aql_logical_e logicalType, 
                                             TRI_aql_field_access_t* lhs,
                                             TRI_aql_field_access_t* rhs) {
+  assert(context);
   assert(lhs);
   assert(rhs);
+  assert(logicalType == TRI_AQL_LOGICAL_AND || logicalType == TRI_AQL_LOGICAL_OR);
 
   assert(lhs->_fieldName != NULL);
   assert(rhs->_fieldName != NULL);
@@ -1146,6 +1149,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   TRI_aql_field_access_t* fieldAccess;
   TRI_json_t* value;
 
+  assert(context);
   assert(field);
   assert(field->_name._buffer);
   assert(node);
@@ -1232,6 +1236,9 @@ static void NoteAttributeAccess (TRI_aql_context_t* const context,
                                  const TRI_aql_node_t* const node) {
   TRI_aql_field_access_t* previous;
   TRI_aql_field_access_t* fieldAccess;
+  
+  assert(logicalType == TRI_AQL_LOGICAL_AND || logicalType == TRI_AQL_LOGICAL_OR);
+  assert(node);
 
   if (!field || !field->_name._buffer) {
     return;
@@ -1245,12 +1252,16 @@ static void NoteAttributeAccess (TRI_aql_context_t* const context,
   }
 
   // look up previous range first
-  previous = (TRI_aql_field_access_t*) TRI_LookupByKeyAssociativePointer(&context->_ranges, fieldAccess->_fieldName);
+  previous = (TRI_aql_field_access_t*) TRI_LookupByKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName);
   if (previous) {
+    TRI_aql_field_access_t* merged;
     // previous range exists, now merge new access type with previous one
+    
+    // remove from hash first
+    TRI_RemoveKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName);
 
     // MergeAccess() will free previous and/or fieldAccess
-    TRI_aql_field_access_t* merged = MergeAccess(context, logicalType, fieldAccess, previous);
+    merged = MergeAccess(context, logicalType, fieldAccess, previous);
     
     if (!merged) {
       // OOM
@@ -1258,11 +1269,11 @@ static void NoteAttributeAccess (TRI_aql_context_t* const context,
       return;
     }
 
-    TRI_InsertKeyAssociativePointer(&context->_ranges, merged->_fieldName, merged, true);
+    TRI_InsertKeyAssociativePointer(context->_ranges, merged->_fieldName, merged, true);
   }
   else {
     // no previous access exists, no need to merge
-    TRI_InsertKeyAssociativePointer(&context->_ranges, fieldAccess->_fieldName, fieldAccess, false);
+    TRI_InsertKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName, fieldAccess, false);
   }
 }
 
@@ -1273,6 +1284,9 @@ static void NoteAttributeAccess (TRI_aql_context_t* const context,
 
 static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const node) {
+  assert(context);
+  assert(node);
+
   if (node->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
     TRI_aql_attribute_name_t* field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(node, 0));
 
@@ -1310,6 +1324,70 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init the optimizer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_InitOptimizerAql (TRI_aql_context_t* const context) {
+  assert(context);
+  assert(context->_ranges == NULL);
+
+  context->_ranges = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false);
+  if (!context->_ranges) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return false;
+  }
+
+  TRI_InitAssociativePointer(context->_ranges,
+                             TRI_UNKNOWN_MEM_ZONE, 
+                             &TRI_HashStringKeyAssociativePointer, 
+                             &HashFieldAccess,
+                             &EqualFieldAccess,
+                             NULL);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown the optimizer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeOptimizerAql (TRI_aql_context_t* const context) {
+  assert(context);
+
+  if (context->_ranges) {
+    size_t i, n;
+
+    // free all remaining access elements
+    n = context->_ranges->_nrAlloc;
+    for (i = 0; i < n; ++i) {
+      TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) context->_ranges->_table[i];
+      if (!fieldAccess) {
+        continue;
+      }
+
+      FreeAccess(context, fieldAccess);
+    }
+
+    // free hash array
+    TRI_FreeAssociativePointer(TRI_UNKNOWN_MEM_ZONE, context->_ranges);
+    context->_ranges = NULL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -1324,9 +1402,11 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 
 void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
   size_t i; 
+  
+  assert(context);
    
-  for (i = 0; i < context->_ranges._nrAlloc; ++i) {
-    TRI_aql_field_access_t* fieldAccess = context->_ranges._table[i]; 
+  for (i = 0; i < context->_ranges->_nrAlloc; ++i) {
+    TRI_aql_field_access_t* fieldAccess = context->_ranges->_table[i]; 
 
     if (!fieldAccess) {
       continue;
@@ -1340,6 +1420,7 @@ void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
       TRI_StringifyJson(&b, fieldAccess->_value._value);
 
       printf("- VALUE: %s\n", b._buffer);
+      TRI_DestroyStringBuffer(&b);
     }
     else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
       TRI_string_buffer_t b;
@@ -1347,6 +1428,7 @@ void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
       TRI_StringifyJson(&b, fieldAccess->_value._singleRange._value);
 
       printf("- VALUE: %s\n", b._buffer);
+      TRI_DestroyStringBuffer(&b);
     }
     else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
       TRI_string_buffer_t b;
@@ -1356,24 +1438,11 @@ void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
       TRI_StringifyJson(&b, fieldAccess->_value._between._upper._value);
 
       printf("- VALUE: %s\n", b._buffer);
+      TRI_DestroyStringBuffer(&b);
     }
   }
 }
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init the optimizer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitOptimizerAql (TRI_aql_context_t* const context) {
-  // TODO: must free
-  TRI_InitAssociativePointer(&context->_ranges,
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             &TRI_HashStringKeyAssociativePointer, 
-                             &HashFieldAccess,
-                             &EqualFieldAccess,
-                             NULL);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect a condition and note all accesses found for it
 ////////////////////////////////////////////////////////////////////////////////
