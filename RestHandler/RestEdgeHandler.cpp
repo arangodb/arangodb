@@ -84,6 +84,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// If you request such an edge, the returned document will also contain the
 /// attributes @LIT{_from} and @LIT{_to}.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// Create an edge:
