@@ -209,6 +209,9 @@ pre ul li span{
 .ui-tabs-nav {
   font-size: 0.8em !important; 
   height: 35px; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
   //border-bottom: 0px !important;  
 }
 

@@ -136,6 +136,7 @@ else {
 ///////////////////////////////////////////////////////////////////////////////
 
 var collectionTable = $('#collectionsTableID').dataTable({
+    "aaSorting": [[ 2, "desc" ]],
     "bPaginate": false, 
     "bFilter": false,
     "bLengthChange": false, 
@@ -152,7 +153,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
 var documentEditTable = $('#documentEditTableID').dataTable({
-    "aaSorting": [],
+    "aaSorting": [[ 1, "desc" ]],
     "bFilter": false,
     "bPaginate":false,
     "bSortable": false,
@@ -2030,4 +2031,3 @@ function stateReplace (value) {
 
   return output;
 }
-
