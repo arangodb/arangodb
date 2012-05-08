@@ -345,6 +345,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/HttpsServerImpl.$(OBJEXT) \
 	PriorityQueue/pqueueindex.$(OBJEXT) \
 	PriorityQueue/priorityqueue.$(OBJEXT) \
+	Ahuacatl/ahuacatl-access-optimizer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
 	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
 	Ahuacatl/ahuacatl-codegen-js.$(OBJEXT) \
@@ -783,6 +784,7 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-access-optimizer.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
 	Ahuacatl/ahuacatl-codegen-js.c \
@@ -1721,6 +1723,8 @@ Ahuacatl/$(am__dirstamp):
 Ahuacatl/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
 	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-access-optimizer.$(OBJEXT):  \
+	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1995,6 +1999,7 @@ mostlyclean-compile:
 	-rm -f Admin/RestAdminLogHandler.$(OBJEXT)
 	-rm -f Admin/RestBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestVersionHandler.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-access-optimizer.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-ast-node.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-codegen-js.$(OBJEXT)
@@ -2241,6 +2246,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-access-optimizer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-ast-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-bind-parameter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-codegen-js.Po@am__quote@
