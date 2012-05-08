@@ -62,11 +62,6 @@ td {
   font-size: 1.2em ;  
 }
 
-.nofunction {
-  padding-left: 4px;
-  padding-right: 1px;   
-}
-
 pre ul li span{
   font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
   font-size: 1em;
@@ -84,7 +79,26 @@ pre ul li span{
 #logToolbar a, #documentsToolbar a {
   font-size: 0.85em;  
 }
-#logToolbar, #documentsToolbar{
+
+.toolbar_primary {
+  background-color: #e4e9d2;
+}
+
+.toolbar_secondary {
+  background-color: white; 
+}
+
+.toolbar_left {
+  float:left; 
+  width:30%; 
+}
+
+.toolbar_right {
+  float:right; 
+  width:70%; 
+}
+
+#logToolbar, #documentsToolbar, .customToolbar{
   height:24px; 
   border: 1px solid #AAAAAA;
   padding-left: 3px; 
