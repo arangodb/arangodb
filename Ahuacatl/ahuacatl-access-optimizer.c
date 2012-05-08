@@ -966,8 +966,6 @@ static TRI_aql_field_access_t* MergeOrRangeSingle (TRI_aql_context_t* const cont
   assert(lhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE);
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
-    TRI_json_t* lhsValue;
-    TRI_json_t* rhsValue;
     TRI_aql_range_e lhsType;
     TRI_aql_range_e rhsType;
     int compareResult;
@@ -982,8 +980,6 @@ static TRI_aql_field_access_t* MergeOrRangeSingle (TRI_aql_context_t* const cont
     compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value);
     lhsType = lhs->_value._singleRange._type;
     rhsType = rhs->_value._singleRange._type;
-    lhsValue = lhs->_value._singleRange._value;
-    rhsValue = rhs->_value._singleRange._value;
 
     // check if ranges overlap
     if ((lhsType == TRI_AQL_RANGE_LOWER_EXCLUDED && rhsType == TRI_AQL_RANGE_LOWER_EXCLUDED) ||
