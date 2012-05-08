@@ -29,7 +29,16 @@
 /// @page IndexHashTOC
 ///
 /// <ol>
-///  <li>MISSING</li>
+///  <li>@ref IndexHashHttp
+///   <ol>
+///    <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
+///   </ol>
+///  </li>
+///  <li>@ref IndexHashShell
+///   <ol>
+///    <li>@ref IndexHashShellEnsureCapConstraint "collection.ensureUniqueConstraint"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,6 +50,23 @@
 /// <hr>
 /// @copydoc IndexHashTOC
 /// <hr>
+///
+/// It is possible to define a hash index on one or more attributes (or paths)
+/// of a documents. This hash is then used in queries to locate documents in
+/// O(1) operations. If the hash is unique, then no two documents are allowed
+/// to have the same set of attribute values.
+///
+/// @section IndexHashHttp Accessing Hash Indexes via Http
+//////////////////////////////////////////////////////////
+///
+/// @anchor IndexHashHttpEnsureUniqueConstraint
+/// @copydetails JSF_POST_api_index_hash
+///
+/// @section IndexHashShell Accessing hash Indexes from the Shell
+/////////////////////////////////////////////////////////////////
+///
+/// @anchor IndexHashShellEnsureCapConstraint
+/// @copydetails JS_EnsureUniqueConstraintVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

@@ -1244,19 +1244,24 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
           TRI_FreeShapeAccessor(acc);
         }
 
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING;
-      }  
+        shapedObject._sid = hashIndex->base._collection->_shaper->_sidNull;
+        shapedObject._data.length = 0;
+        shapedObject._data.data = NULL;
+      }
+      else {
      
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
+        // ..........................................................................
+        // Extract the field
+        // ..........................................................................    
 
-      if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
+        if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
+          TRI_FreeShapeAccessor(acc);
+          // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
+
+          return TRI_ERROR_INTERNAL;
+        }
+
         TRI_FreeShapeAccessor(acc);
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
-        return TRI_ERROR_INTERNAL;
       }
       
       // ..........................................................................
@@ -1264,8 +1269,7 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
       // ..........................................................................    
 
       hashElement->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
+    }
   }
   
   else if (document != NULL) {
@@ -1293,20 +1297,24 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
           TRI_FreeShapeAccessor(acc);
         }
 
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
-        return TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+        shapedObject._sid = hashIndex->base._collection->_shaper->_sidNull;
+        shapedObject._data.length = 0;
+        shapedObject._data.data = NULL;
       }  
+      else {
       
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
+        // ..........................................................................
+        // Extract the field
+        // ..........................................................................    
 
-      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+        if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+          TRI_FreeShapeAccessor(acc);
+          // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
+
+          return TRI_ERROR_INTERNAL;
+        }
+
         TRI_FreeShapeAccessor(acc);
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
-        return TRI_ERROR_INTERNAL;
       }
       
       // ..........................................................................
@@ -1314,9 +1322,7 @@ static int HashIndexHelper (const TRI_hash_index_t* hashIndex,
       // ..........................................................................    
 
       hashElement->fields[j] = shapedObject;
-
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
+    }
   }
   
   else {
