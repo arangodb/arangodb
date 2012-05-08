@@ -4508,9 +4508,10 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 /// ... as attribute paths. At least one attribute path must be given.
 ///
 /// When a unique constraint is in effect for a collection, then all documents
-/// which contain the given fields must be different in these fields. Creating a
-/// new document or updating a document will fail, if the uniqueness is
-/// violated.
+/// which contain the given attributes must differ in the attribute
+/// values. Creating a new document or updating a document will fail, if the
+/// uniqueness is violated. If any attribute value is null for a document, this
+/// document is ignored by the index.
 ///
 /// In case that the index was successfully created, the index identifier is
 /// returned.
@@ -4520,7 +4521,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude admin5
+/// @verbinclude shell-index-create-unique-constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
