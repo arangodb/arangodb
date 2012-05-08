@@ -288,6 +288,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
+	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
@@ -300,6 +301,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-utilities-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
@@ -1048,6 +1050,7 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-utilities-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
@@ -1553,6 +1556,9 @@ UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/json-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/json-utilities-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/hashes-test.$(OBJEXT):  \
@@ -2174,6 +2180,7 @@ mostlyclean-compile:
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/hashes-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/json-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/json-utilities-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
@@ -2423,6 +2430,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-utilities-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
