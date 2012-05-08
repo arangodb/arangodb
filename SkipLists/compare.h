@@ -469,7 +469,22 @@ static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI
   }
     
   result = CompareShapeTypes (left, right, leftShaper, rightShaper);
-
+  
+  
+  // ............................................................................
+  // In the above function CompareShaeTypes we use strcmp which may return
+  // an integer greater than 1 or less than -1. From this function we only
+  // need to know whether we have equality (0), less than (-1)  or greater than (1)
+  // ............................................................................
+  
+  if (result < 0) { 
+    result = -1; 
+  }
+  else if (result > 0) { 
+    result = 1; 
+  }
+  
+  
   return result;
   
 }  // end of function CompareShapedJsonShapedJson
@@ -718,7 +733,16 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
   for (j = 0; j < hLeftElement->numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
     if (compareResult != 0) {
+    
+      // ......................................................................
+      // The function CompareShaedJsonShapedJson can only return 0, -1, or 1
+      // that is, TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL (0)
+      // TRI_SKIPLIST_COMPARE_STRICTLY_LESS (-1)
+      // TRI_SKIPLIST_COMPARE_STRICTLY_GREATER (1)
+      // ......................................................................
+      
       return compareResult;
+      
     }
   }
   
