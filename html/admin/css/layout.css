@@ -38,6 +38,13 @@ html.busy, html.busy * {
   padding: 0; 
 }
 
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: normal; 
+  font-; 
+  font-family: Verdana, Arial, sans-serif; 
+}
+
 html {
   font-family: Verdana,Arial,sans-serif; 
   font-size: 1em;
