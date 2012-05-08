@@ -1851,7 +1851,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: document(<path1>, <value1>, ...)")));
+                                           "usage: byExample(<path1>, <value1>, ...)")));
   }
 
   size_t n = argv.Length() / 2;
@@ -4112,6 +4112,14 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
+///
+/// @FUN{@FA{collection}.count()}
+///
+/// Returns the number of living documents in the collection.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-collection-count
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {

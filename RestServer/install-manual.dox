@@ -29,10 +29,8 @@
 /// @page InstallManual AvocadoDB Installation Manual
 ///
 /// <ol>
-///  <li>@ref Installing
-///  <li>
-///  <li>@ref Compiling
-///  </li>
+///  <li>@ref Installing</li>
+///  <li>@ref Compiling</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -56,7 +54,7 @@
 /// @page Installing Installing the AvocadoDB
 ///
 /// <hr>
-/// @copydoc CompilingTOC
+/// @copydoc InstallingTOC
 /// <hr>
 ///
 /// @section MacOSX

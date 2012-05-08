@@ -52,7 +52,7 @@
 /// @page HttpIndex HTTP Interface for Indexes
 ///
 /// This is an introduction to AvocadoDB's Http interface for indexes in
-/// general. There are special section for
+/// general. There are special sections for
 ///
 /// @copydoc IndexesTOC
 ///

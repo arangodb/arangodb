@@ -11,6 +11,6 @@ MANUAL_DST="fceller@www.avocadodb.org:/srv/www/www.avocadodb.org/avoc/manuals"
 publish:
 	(cd Doxygen/wiki && git checkout --force && git pull)
 	$(MAKE) wiki
-	(cd Doxygen/wiki && git commit -m "`date`" -a; git push)
+	(cd Doxygen/wiki && git add *.md; git commit -m "`date`" -a; git push)
 	@for w in $(WIKI); do scp Doxygen/html/$$w.html $(MANUAL_DST); done
 
