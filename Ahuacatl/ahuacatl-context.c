@@ -468,10 +468,8 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
 
 TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
-  size_t n;
 
   assert(context);
-  n = context->_scopes._length;
   scope = TRI_CreateScopeAql();
   if (!scope) {
     ABORT_OOM

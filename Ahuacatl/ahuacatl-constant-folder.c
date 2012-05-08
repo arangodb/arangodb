@@ -453,6 +453,10 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
     func = "IN";
   }
+  else {
+    // not what we expected, however, simply continue
+    return node;
+  }
   
   code = RelationCode(func, lhs, rhs); 
   if (!code) {
