@@ -11,13 +11,13 @@ var globalCollectionName;
 var globalCollectionID;
 var globalCollectionRev;
   
+var open = false;
 $(document).ready(function() {       
 
 showCursor();
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
-var open = false;
 var tableView = true;
 var sid = ($.cookie("sid")); 
 var currentUser; 
@@ -95,6 +95,10 @@ $("#tabs").tabs({
   }    
 });
 
+///////////////////////////////////////////////////////////////////////////////
+/// disable grey'd out buttons
+///////////////////////////////////////////////////////////////////////////////
+  $(".nofunction").attr("disabled", "true");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// checks for a login user cookie, creates new sessions if null  
@@ -548,16 +552,24 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#configView').show();
-      createnav ("Config"); 
+      createnav ("Configuration"); 
+      var switcher = "primary"; 
       var content={"Menue":{"Haha":"wert1", "ahha":"wert2"}, "Favoriten":{"top10":"content"},"Test":{"testing":"hallo 123 test"}}; 
-      $("#configView").empty();
+      $("#configContent").empty();
 
       $.each(content, function(data) {
-        $('#configView').append('<h1>' + data + '</h1>');
+        $('#configContent').append('<div class="customToolbar"><b>' + data + '</b></div>');
         $.each(content[data], function(key, val) {
-          $('#configView').append('<a>' + key + ":" + val + '</a><br>');
+          if (switcher == "primary") {
+            $('#configContent').append('<a class="toolbar_left toolbar_primary">' + key + '</a><a class="toolbar_right toolbar_primary">' + val + '</a><br>');
+          switcher = "secondary"; 
+          }
+          else if (switcher == "secondary") {
+            $('#configContent').append('<a class="toolbar_left toolbar_secondary">' + key + '</a><a class="toolbar_right toolbar_secondary">' + val + '</a><br>');
+          switcher = "primary"; 
+          }
         });         
-        //$('#configView').append('<a>' + menues + '</a><br>');
+        //$('#configContent').append('<a>' + menues + '</a><br>');
       }); 
 
     }
@@ -1357,7 +1369,7 @@ function drawCollectionsTable () {
       }
       else if (tempStatus == 2) {
         tempStatus = "unloaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img>', 
+        items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
       else if (tempStatus == 3) {
@@ -1379,7 +1391,7 @@ function drawCollectionsTable () {
           }
         });
 	
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button clas="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
       else if (tempStatus == 4) {
@@ -1745,7 +1757,7 @@ function createNextPagination(checked) {
 }
     
 function showCursor() {
-  $(':button').mouseover(function () {
+  $('.enabled').mouseover(function () {
     $(this).css('cursor', 'pointer');
   });
 }
