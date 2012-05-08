@@ -260,6 +260,218 @@ bool TRI_CheckInListJson (const TRI_json_t* const search,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief uniquify a sorted json list into a new list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
+  TRI_json_t* last = NULL;
+  TRI_json_t* result;
+  size_t i, n;
+
+  assert(list);
+  assert(list->_type == TRI_JSON_LIST);
+  
+  // create result list
+  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (!result) {
+    return NULL;
+  }
+
+  n = list->_value._objects._length;
+  for (i = 0; i < n; ++i) {
+    TRI_json_t* p = TRI_AtVector(&list->_value._objects, i);
+ 
+    // don't push value if it is the same as the last value
+    if (!last || TRI_CompareValuesJson(p, last) > 0) {
+      TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p);
+      // remember last element
+      last = p;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the union of two sorted json lists into a new list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1, 
+                                   const TRI_json_t* const list2,
+                                   const bool unique) {
+  TRI_json_t* last = NULL;
+  TRI_json_t* result;
+  size_t i1, i2;
+  size_t n1, n2;
+
+  assert(list1);
+  assert(list1->_type == TRI_JSON_LIST);
+  assert(list2);
+  assert(list2->_type == TRI_JSON_LIST);
+  
+  n1 = list1->_value._objects._length;
+  n2 = list2->_value._objects._length;
+
+  // special cases for empty lists
+  if (n1 == 0 && !unique) {
+    return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) list2);
+  }
+
+  if (n2 == 0 && !unique) {
+    return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) list1);
+  }
+
+  // create result list
+  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (!result) {
+    return NULL;
+  }
+
+  // reset positions
+  i1 = 0;
+  i2 = 0;
+
+  // iterate over lists
+  while (true) {
+    // pointers to elements in both lists
+    TRI_json_t* p1;
+    TRI_json_t* p2;
+
+    if (i1 < n1 && i2 < n2) {
+      int compareResult;
+
+      // both lists not yet exhausted
+      p1 = TRI_AtVector(&list1->_value._objects, i1);
+      p2 = TRI_AtVector(&list2->_value._objects, i2);
+      compareResult = TRI_CompareValuesJson(p1, p2);
+
+      if (compareResult < 0) {
+        // left element is smaller
+        if (!unique || !last || TRI_CompareValuesJson(p1, last) > 0) {
+          TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
+          last = p1;
+        }
+        ++i1;
+      } 
+      else if (compareResult > 0) {
+        // right element is smaller
+        if (!unique || !last || TRI_CompareValuesJson(p2, last) > 0) {
+          TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
+          last = p2;
+        }
+        ++i2;
+      }
+      else {
+        // both elements are equal
+        if (!unique || !last || TRI_CompareValuesJson(p1, last) > 0) {
+          TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
+          last = p1;
+          if (!unique) {
+            TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
+          }
+        }
+        ++i1;
+        ++i2;
+      }
+    }
+    else if (i1 < n1 && i2 >= n2) {
+      // only right list is exhausted
+      p1 = TRI_AtVector(&list1->_value._objects, i1);
+
+      if (!unique || !last || TRI_CompareValuesJson(p1, last) > 0) {
+        TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
+        last = p1;
+      }
+      ++i1;
+    }
+    else if (i1 >= n1 && i2 < n2) {
+      // only left list is exhausted
+      p2 = TRI_AtVector(&list1->_value._objects, i2);
+
+      if (!unique || !last || TRI_CompareValuesJson(p2, last) > 0) {
+        TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
+        last = p2;
+      }
+      ++i2;
+    }
+    else {
+      // both lists exhausted, stop!
+      break;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the intersection of two sorted json lists into a new list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1, 
+                                    const TRI_json_t* const list2,
+                                    const bool unique) {
+  TRI_json_t* last = NULL;
+  TRI_json_t* result;
+  size_t i1, i2;
+  size_t n1, n2;
+
+  assert(list1);
+  assert(list1->_type == TRI_JSON_LIST);
+  assert(list2);
+  assert(list2->_type == TRI_JSON_LIST);
+  
+  // create result list
+  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (!result) {
+    return NULL;
+  }
+  
+  n1 = list1->_value._objects._length;
+  n2 = list2->_value._objects._length;
+
+  // special case for empty lists
+  if (n1 == 0 || n2 == 0) {
+    return result; 
+  }
+
+  // reset positions
+  i1 = 0;
+  i2 = 0;
+
+  // iterate over lists
+  while (i1 < n1 && i2 < n2) {
+    // pointers to elements in both lists
+    TRI_json_t* p1 = TRI_AtVector(&list1->_value._objects, i1);
+    TRI_json_t* p2 = TRI_AtVector(&list2->_value._objects, i2);
+
+    int compareResult = TRI_CompareValuesJson(p1, p2);
+
+    if (compareResult < 0) {
+      // left element is smaller
+      ++i1;
+    }
+    else if (compareResult > 0) {
+      // right element is smaller
+      ++i2;
+    }
+    else {
+      // both elements are equal
+      if (!unique || !last || TRI_CompareValuesJson(p1, last) > 0) {
+        TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
+        last = p1;
+        if (!unique) {
+          TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
+        }
+      }
+      ++i1;
+      ++i2;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a json list in place
 ////////////////////////////////////////////////////////////////////////////////
 
