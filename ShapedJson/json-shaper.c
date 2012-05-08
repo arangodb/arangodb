@@ -74,6 +74,8 @@ typedef struct array_shaper_s {
 
   TRI_associative_pointer_t _shapeDictionary;
   TRI_vector_pointer_t _shapes;
+  
+  // todo: add attribute weight structure
 }
 array_shaper_t;
 
@@ -376,6 +378,12 @@ static char const* LookupAttributeIdArrayShaper (TRI_shaper_t* shaper, TRI_shape
   return NULL;
 }
 
+static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
+  // todo: add support for an attribute weight
+  assert(0);
+  return -1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +522,8 @@ TRI_shaper_t* TRI_CreateArrayShaper () {
   shaper->base.lookupAttributeId = LookupAttributeIdArrayShaper;
   shaper->base.findShape = FindShapeShape;
   shaper->base.lookupShapeId = LookupShapeId;
-
+  shaper->base.lookupAttributeWeight = LookupAttributeWeight;
+  
   // handle basics
   ok = TRI_InsertBasicTypesShaper(&shaper->base);
 
