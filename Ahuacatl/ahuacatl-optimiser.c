@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, constant folding
+/// @brief Ahuacatl, optimiser
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-constant-folder.h"
+#include "Ahuacatl/ahuacatl-optimiser.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
@@ -34,8 +34,28 @@
 #undef RANGE_OPTIMIZER  
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                          forwards
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* ModifyNode (void*, TRI_aql_node_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create javascript function code for a relational operation
@@ -260,7 +280,6 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
 static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
                                        TRI_aql_node_t* node) {
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
-  bool result;
    
   if (!expression) {
     return node;
@@ -268,18 +287,36 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
 #ifdef RANGE_OPTIMIZER  
-    TRI_vector_pointer_t* ranges = TRI_InspectConditionAql(context, expression, NULL);
-
+    TRI_vector_pointer_t* ranges;
+    bool changed = false;
+   
+    ranges = TRI_OptimiseRangesAql(context, expression, &changed, NULL);
+    
     if (ranges) {
       TRI_DumpRangesAql(ranges);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, ranges);
+      TRI_FreeRangesAql(ranges);
+    }
+    
+    if (changed) {
+      // expression code was changed, re-optimise it
+      node->_members._buffer[0] = ModifyNode((void*) context, expression);
+      expression = TRI_AQL_NODE_MEMBER(node, 0);
+
+      // try again if it is constant
+      if (TRI_IsConstantValueNodeAql(expression)) {
+        if (TRI_GetBooleanNodeValueAql(expression)) {
+          // filter expression is always true => remove it
+          LOG_TRACE("optimised away constant filter");
+
+          return NULL;
+        }
+      }
     }
 #endif
     return node;
   }
 
-  result = TRI_GetBooleanNodeValueAql(expression);
-  if (result) {
+  if (TRI_GetBooleanNodeValueAql(expression)) {
     // filter expression is always true => remove it
     LOG_TRACE("optimised away constant filter");
 
@@ -661,11 +698,11 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fold constants recursively
+/// @brief optimise the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
-                                      TRI_aql_node_t* node) {
+TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const context,
+                                 TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
  
   walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);

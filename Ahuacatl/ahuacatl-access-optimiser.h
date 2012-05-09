@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, access optimizer
+/// @brief Ahuacatl, access optimiser
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMIZER_H
-#define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMIZER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H
+#define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
@@ -144,18 +144,25 @@ TRI_aql_attribute_name_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a range vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeRangesAql (TRI_vector_pointer_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump ranges found for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DumpRangesAql (const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect a condition and note all accesses found for it
+/// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_InspectConditionAql (TRI_aql_context_t* const,  
-                                               TRI_aql_node_t*,
-                                               const TRI_vector_pointer_t* const);
+TRI_vector_pointer_t* TRI_OptimiseRangesAql (TRI_aql_context_t* const,  
+                                             TRI_aql_node_t*,
+                                             bool*,
+                                             const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
