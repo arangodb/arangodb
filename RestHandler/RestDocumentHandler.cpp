@@ -184,9 +184,12 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// @REST{POST /document?collection=@FA{collection-name}&createCollection=@FA{create}}
 ///
 /// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
-/// used. If @FA{createCollection} is true, then the collection is created if it does not
-/// exists.
+/// used. If @FA{createCollection} is true, then the collection is created if it
+/// does not exists.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// Create a document given a collection identifier @LIT{161039} for the collection
@@ -367,6 +370,9 @@ bool RestDocumentHandler::readDocument () {
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// Use a document handle:
@@ -474,6 +480,9 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// Instead of a @FA{collection-identifier}, a collection name can be given.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// @verbinclude rest_read-document-all
@@ -577,6 +586,9 @@ bool RestDocumentHandler::readAllDocuments () {
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// @verbinclude rest_read-document-head
@@ -634,6 +646,9 @@ bool RestDocumentHandler::checkDocument () {
 /// header. You must never supply both the "ETag" header and the @LIT{rev}
 /// parameter.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// Using document handle:
@@ -785,6 +800,9 @@ bool RestDocumentHandler::updateDocument () {
 /// "If-Match" header. You must never supply both the "If-Match" header and the
 /// @LIT{rev} parameter.
 ///
+/// @note If you are implementing a client api then you should use the path
+/// @LIT{/_api/document}.
+/// 
 /// @EXAMPLES
 ///
 /// Using document handle:

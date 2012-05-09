@@ -78,7 +78,6 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   }
 
   context->_vocbase = vocbase;
-  context->_ranges = NULL;
 
   context->_variableIndex = 0;
   
@@ -163,9 +162,6 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
     TRI_EndScopeContextAql(context);
   }
   TRI_DestroyVectorPointer(&context->_scopes);
-
-  // free range optimizer
-  TRI_FreeOptimizerAql(context);
 
   // free all strings registered
   i = context->_strings._length;
