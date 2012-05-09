@@ -1356,7 +1356,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
   TRI_index_t* idx;
   TRI_qry_where_hash_const_t* where;
   TRI_sim_collection_t* collection; 
-  HashIndexElements* hashElements;
+  TRI_hash_index_elements_t* hashElements;
   TRI_doc_mptr_t* wtr; 
   TRI_doc_mptr_t* doc;
   size_t j;
@@ -1394,7 +1394,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
   }  
 
   if (ok) {
-    hashElements = TRI_LookupHashIndex(idx,where->_parameters);
+    hashElements = TRI_LookupJsonHashIndex(idx,where->_parameters);
     ok = (hashElements != NULL);
   }
   

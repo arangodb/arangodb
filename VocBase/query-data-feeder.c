@@ -592,7 +592,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameters, doc);
       }
     }
-    state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
+    state->_hashElements = TRI_LookupJsonHashIndex(state->_index, parameters);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
@@ -629,7 +629,7 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
                                     feeder->_level, 
                                     true);
     if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
-      state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
+      state->_hashElements = TRI_LookupJsonHashIndex(state->_index, parameters);
     }
  
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);

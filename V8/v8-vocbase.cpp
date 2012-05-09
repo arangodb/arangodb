@@ -436,6 +436,58 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts argument strings to TRI_vector_pointer_t
+////////////////////////////////////////////////////////////////////////////////
+
+int VectorPointerFromArguments (v8::Arguments const& argv,
+                                TRI_vector_pointer_t* result,
+                                size_t start,
+                                size_t end,
+                                string& error) {
+
+  // ...........................................................................
+  // convert the arguments into a "C" string and stuff them into a vector
+  // ...........................................................................
+    
+  for (int j = start;  j < argv.Length();  ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    if (! argument->IsString() ) {
+      error = "invalid parameter";
+
+      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
+      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+    }
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+
+    TRI_PushBackVectorPointer(result, cArgument);
+  }
+  
+  // .............................................................................
+  // check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0;  j < result->_length;  ++j) {  
+    char* left = (char*) result->_buffer[j];
+
+    for (size_t k = j + 1;  k < result->_length;  ++k) {
+      char* right = (char*) result->_buffer[k];
+
+      if (TRI_EqualString(left, right)) {
+        error = "duplicate parameters";
+
+        TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
+        return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+      }   
+    }
+  }    
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure a hash or skip-list index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -482,7 +534,6 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   // Return string when there is an error of some sort.
   // .............................................................................
 
-  int res = TRI_ERROR_NO_ERROR;
   string errorString;
   
   // .............................................................................
@@ -490,60 +541,18 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   // which will be used by the hash index.
   // .............................................................................
   
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes, TRI_UNKNOWN_MEM_ZONE, sizeof(char*));
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
   
-  for (int j = 0; j < argv.Length(); ++j) {
-    v8::Handle<v8::Value> argument = argv[j];
+  int res = VectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
-    if (! argument->IsString() ) {
-      res = TRI_ERROR_ILLEGAL_OPTION;
-      errorString = "invalid parameter passed to " + cmd + "(...)";
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
-
-    TRI_PushBackVector(&attributes, &cArgument);
-  }
-  
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-
-      if (TRI_EqualString(left, right)) {
-        res = TRI_ERROR_ILLEGAL_OPTION;
-        errorString = "duplicate parameters sent to " + cmd + "(...)";
-        break;
-      }   
-    }
-  }    
-  
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
   // (or index retrieval).
   // .............................................................................
   
   if (res != TRI_ERROR_NO_ERROR) {
-
-    // Remove the memory allocated to the list of attributes used for the hash index
-    for (size_t j = 0;  j < attributes._length;  ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, cArgument);
-    }    
-
-    TRI_DestroyVector(&attributes);
+    TRI_DestroyVectorPointer(&attributes);
 
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(res, errorString)));
@@ -577,15 +586,11 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   }
 
   // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
+  // remove the memory allocated to the list of attributes used for the hash index
   // .............................................................................   
 
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
-  }    
-
-  TRI_DestroyVector(&attributes);
+  TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
+  TRI_DestroyVectorPointer(&attributes);
 
   if (idx == 0) {
     ReleaseCollection(collection);
@@ -593,7 +598,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   }  
   
   // .............................................................................
-  // Return the newly assigned index identifier
+  // return the newly assigned index identifier
   // .............................................................................
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
@@ -1856,9 +1861,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   size_t n = argv.Length() / 2;
   TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
-  // TODO FIXME: memory allocation might fail
   TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
-  // TODO FIXME: memory allocation might fail
   
   for (size_t i = 0;  i < n;  ++i) {
     v8::Handle<v8::Value> key = argv[2 * i];
@@ -1933,6 +1936,135 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   ReleaseCollection(collection);
   return scope.Close(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example using a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+
+static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the collection
+  v8::Handle<v8::Object> operand = argv.Holder();
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  TRI_shaper_t* shaper = sim->base._shaper;
+
+  // extract example
+  if (argv.Length() == 0 || (argv.Length() % 2 == 1)) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: byExample(<path1>, <value1>, ...)")));
+  }
+
+  size_t n = argv.Length() / 2;
+
+  TRI_vector_t paths;
+  TRI_InitVector(&paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
+
+  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
+  
+  for (size_t i = 0;  i < n;  ++i) {
+    v8::Handle<v8::Value> key = argv[2 * i];
+    v8::Handle<v8::Value> val = argv[2 * i + 1];
+
+    v8::String::Utf8Value keyStr(key);
+
+    TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, *keyStr);
+    TRI_PushBackVector(&paths, &pid);
+
+    values[i] = TRI_ShapedJsonV8Object(val, shaper);
+
+    if (*keyStr == 0 || values[i] == 0) {
+      for (size_t j = 0;  j < i;  ++j) {
+        TRI_FreeShapedJson(shaper, values[i]);
+      }
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
+      TRI_DestroyVector(&paths);
+
+      ReleaseCollection(collection);
+
+      if (*keyStr == 0) {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "cannot convert attribute name to UTF8")));
+      }
+      else {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "cannot convert value to JSON")));
+      }
+
+      assert(false);
+    }
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  // find a suitable hash index
+  idx = TRI_LookupHashIndexSimCollection(collection, &paths, true);
+  
+  if (idx != NULL) {
+
+  // find documents by example
+  TRI_vector_t filtered = TRI_SelectByExample(sim, n,  pids, values);
+
+  // convert to list of shaped jsons
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  if (0 < filtered._length) {
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+
+    for (size_t j = 0;  j < filtered._length;  ++j) {
+      TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
+
+      result->Set(j, document);
+    }
+  }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  // free
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_FreeShapedJson(shaper, values[j]);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
+
+  ReleaseCollection(collection);
+  return scope.Close(result);
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all edges for a set of vertices
@@ -4513,11 +4645,11 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 /// uniqueness is violated. If any attribute value is null for a document, this
 /// document is ignored by the index.
 ///
-/// In case that the index was successfully created, the index identifier is
-/// returned.
-///
 /// Note that non-existing attribute paths in a document are treat as if the
 /// value were @LIT{null}.
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
 ///
 /// @EXAMPLES
 ///
@@ -4525,7 +4657,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
-  return EnsureHashSkipListIndex("ensureUniqueConstrain", argv, true, 0);
+  return EnsureHashSkipListIndex("ensureUniqueConstraint", argv, true, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4533,15 +4665,18 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 ///
 /// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
-/// Creates a non-unique hash index on all documents using attributes as paths
-/// to the fields. At least one attribute must be given. All documents, which do
-/// not have the attribute path or with one or more values that are not
-/// suitable, are ignored.
+/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
+/// ... as attribute paths. At least one attribute path must be given.
+///
+/// Note that non-existing attribute paths in a document are treat as if the
+/// value were @LIT{null}.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// @EXAMPLES
+///
+/// @verbinclude shell-index-create-hash-index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
@@ -4616,69 +4751,21 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // which will be used by the priority queue index.
   // .............................................................................
   
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes, TRI_UNKNOWN_MEM_ZONE, sizeof(char*));
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
   
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-  
-    v8::Handle<v8::Value> argument = argv[j];
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensurePQIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, argumentString.length() + 1, false));       
-    if (cArgument == 0) {
-      errorString = "insuffient memory to complete ensurePQIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    memcpy(cArgument, *argumentString, argumentString.length());
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
-
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-      if (strcmp(left,right) == 0) {
-        errorString = "duplicate parameters sent to ensurePQIndex(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
+  int res = VectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
   
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
   // (or index retrieval).
   // .............................................................................
   
-  if (!ok) {
-    // ...........................................................................
-    // Remove the memory allocated to the list of attributes used for the hash index
-    // ...........................................................................   
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
-    }    
-    TRI_DestroyVector(&attributes);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorPointer(&attributes);
 
     ReleaseCollection(collection);
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, errorString)));
   }  
   
   // .............................................................................
@@ -4691,12 +4778,8 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Remove the memory allocated to the list of attributes used for the hash index
   // .............................................................................   
 
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cArgument);
-  }    
-
-  TRI_DestroyVector(&attributes);
+  TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
+  TRI_DestroyVectorPointer(&attributes);
 
   if (idx == 0) {
     ReleaseCollection(collection);
