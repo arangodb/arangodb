@@ -37,41 +37,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash a field name
+/// @brief create a vector with an attribute access struct in it
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashFieldAccess (TRI_associative_pointer_t* array, 
-                               void const* element) {
-  TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) element;
+static TRI_vector_pointer_t* Vectorize (TRI_aql_context_t* const context,
+                                        TRI_aql_field_access_t* fieldAccess) {
+  TRI_vector_pointer_t* vector;
 
-  return TRI_FnvHashString(fieldAccess->_fieldName);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine field name equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualFieldAccess (TRI_associative_pointer_t* array, 
-                              void const* key, 
-                              void const* element) {
-  TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) element;
-
-  return TRI_EqualString(key, fieldAccess->_fieldName);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the logical type for a sub operation
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_aql_logical_e SubOperator (const TRI_aql_logical_e preferredType,
-                                             const TRI_aql_logical_e parentType) {
-  if (parentType == TRI_AQL_LOGICAL_NOT) {
-    // logical NOT is sticky
-    return parentType;
+  assert(context);
+  if (!fieldAccess) {
+    return NULL;
   }
 
-  // all other operators are not
-  return preferredType;
+  vector = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+  if (!vector) {
+    // OOM
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return NULL;
+  }
+
+  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorPointer(vector, fieldAccess);
+
+  return vector;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,25 +134,7 @@ static void FreeAccess (TRI_aql_context_t* const context,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two access structures using a logical NOT
-///
-/// this always returns the all items range because we cannot evaluate the
-/// negated condition
-////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_field_access_t* MergeNot (TRI_aql_context_t* const context,
-                                         TRI_aql_field_access_t* lhs,
-                                         TRI_aql_field_access_t* rhs) {
-  // always returns all
-  FreeAccess(context, rhs);
-  FreeAccessMembers(lhs);
-
-  lhs->_type = TRI_AQL_ACCESS_ALL;
-
-  return lhs;
-}
-  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two access structures using a logical AND
 ///
@@ -1105,27 +1075,19 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two access structures using either logical AND or OR
+/// @brief free access structure with its members and the pointer
+///
+/// TODO: fix docs
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_field_access_t* MergeAccess (TRI_aql_context_t* const context,
-                                            const TRI_aql_logical_e logicalType, 
-                                            TRI_aql_field_access_t* lhs,
-                                            TRI_aql_field_access_t* rhs) {
-  assert(context);
-  assert(lhs);
-  assert(rhs);
-  assert(logicalType == TRI_AQL_LOGICAL_AND || 
-         logicalType == TRI_AQL_LOGICAL_OR ||
-         logicalType == TRI_AQL_LOGICAL_NOT);
-
+static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const context,
+                                                        TRI_aql_field_access_t* lhs,
+                                                        TRI_aql_field_access_t* rhs) {
+  assert(context); 
+  assert(lhs); 
+  assert(rhs); 
   assert(lhs->_fieldName != NULL);
   assert(rhs->_fieldName != NULL);
-
-  if (logicalType == TRI_AQL_LOGICAL_NOT) {
-    // logical NOT is simple. we simply turn everything into an all range
-    return MergeNot(context, lhs, rhs);
-  }
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1136,43 +1098,174 @@ static TRI_aql_field_access_t* MergeAccess (TRI_aql_context_t* const context,
 
   assert(lhs->_type <= rhs->_type);
 
-  if (logicalType == TRI_AQL_LOGICAL_AND) {
-    // logical AND
-    switch (lhs->_type) {
-      case TRI_AQL_ACCESS_IMPOSSIBLE:
-        return MergeAndImpossible(context, lhs, rhs);
-      case TRI_AQL_ACCESS_ALL:
-        return MergeAndAll(context, lhs, rhs);
-      case TRI_AQL_ACCESS_EXACT:
-        return MergeAndExact(context, lhs, rhs);
-      case TRI_AQL_ACCESS_LIST:
-        return MergeAndList(context, lhs, rhs);
-      case TRI_AQL_ACCESS_RANGE_SINGLE:
-        return MergeAndRangeSingle(context, lhs, rhs);
-      case TRI_AQL_ACCESS_RANGE_DOUBLE:
-        return MergeAndRangeDouble(context, lhs, rhs);
-    }
-  }
-  else {
-    // logical OR
-    switch (lhs->_type) {
-      case TRI_AQL_ACCESS_IMPOSSIBLE:
-        return MergeOrImpossible(context, lhs, rhs);
-      case TRI_AQL_ACCESS_ALL:
-        return MergeOrAll(context, lhs, rhs);
-      case TRI_AQL_ACCESS_EXACT:
-        return MergeOrExact(context, lhs, rhs);
-      case TRI_AQL_ACCESS_LIST:
-        return MergeOrList(context, lhs, rhs);
-      case TRI_AQL_ACCESS_RANGE_SINGLE:
-        return MergeOrRangeSingle(context, lhs, rhs);
-      case TRI_AQL_ACCESS_RANGE_DOUBLE:
-        return MergeOrRangeDouble(context, lhs, rhs);
-    }
+  switch (lhs->_type) {
+    case TRI_AQL_ACCESS_IMPOSSIBLE:
+      return MergeAndImpossible(context, lhs, rhs);
+    case TRI_AQL_ACCESS_ALL:
+      return MergeAndAll(context, lhs, rhs);
+    case TRI_AQL_ACCESS_EXACT:
+      return MergeAndExact(context, lhs, rhs);
+    case TRI_AQL_ACCESS_LIST:
+      return MergeAndList(context, lhs, rhs);
+    case TRI_AQL_ACCESS_RANGE_SINGLE:
+      return MergeAndRangeSingle(context, lhs, rhs);
+    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+      return MergeAndRangeDouble(context, lhs, rhs);
   }
 
   assert(false);
   return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free access structure with its members and the pointer
+///
+/// TODO: fix docs
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const context,
+                                                       TRI_aql_field_access_t* lhs,
+                                                       TRI_aql_field_access_t* rhs) {
+  assert(context); 
+  assert(lhs); 
+  assert(rhs); 
+  assert(lhs->_fieldName != NULL);
+  assert(rhs->_fieldName != NULL);
+
+  if (lhs->_type > rhs->_type) {
+    // swap operands so they are always sorted
+    TRI_aql_field_access_t* tmp = lhs;
+    lhs = rhs;
+    rhs = tmp;
+  }
+
+  assert(lhs->_type <= rhs->_type);
+    
+  switch (lhs->_type) {
+    case TRI_AQL_ACCESS_IMPOSSIBLE:
+      return MergeOrImpossible(context, lhs, rhs);
+    case TRI_AQL_ACCESS_ALL:
+      return MergeOrAll(context, lhs, rhs);
+    case TRI_AQL_ACCESS_EXACT:
+      return MergeOrExact(context, lhs, rhs);
+    case TRI_AQL_ACCESS_LIST:
+      return MergeOrList(context, lhs, rhs);
+    case TRI_AQL_ACCESS_RANGE_SINGLE:
+      return MergeOrRangeSingle(context, lhs, rhs);
+    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+      return MergeOrRangeDouble(context, lhs, rhs);
+  }
+
+  assert(false);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process a logical NOT
+///
+/// TODO: fix docs
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_pointer_t* MakeAllVector (TRI_aql_context_t* const context,
+                                            TRI_vector_pointer_t* const fieldAccesses) {
+  size_t i, n;
+
+  if (!fieldAccesses) {
+    return NULL;
+  }
+
+  n = fieldAccesses->_length;
+  for (i = 0; i < n; ++i) {
+    // turn all field access values into an all items access
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
+
+    // modify the element in place
+    FreeAccessMembers(fieldAccess);
+    fieldAccess->_type = TRI_AQL_ACCESS_ALL;
+  }
+
+  return fieldAccesses;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process a logical OR
+///
+/// TODO: fix docs
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
+                                           const TRI_aql_logical_e logicalType,
+                                           TRI_vector_pointer_t* const lhs,
+                                           TRI_vector_pointer_t* const rhs) {
+  TRI_vector_pointer_t* result;
+  size_t i, n;
+
+  assert(context);
+  assert(logicalType == TRI_AQL_LOGICAL_AND || logicalType == TRI_AQL_LOGICAL_OR);
+
+  // if one of the vectors is empty, simply return the other one
+  if (!lhs) {
+    return rhs;
+  }
+
+  if (!rhs) {
+    return lhs;
+  }
+
+  // both vectors are non empty
+
+  result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+  if (!result) {
+    // OOM
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return NULL;
+  }
+  
+  TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);
+
+  // copy elements from lhs into result vector
+  n = lhs->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(lhs, i);
+    TRI_PushBackVectorPointer(result, fieldAccess);
+  }
+  // can now free lhs vector
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, lhs);
+  
+  // copy elements from rhs into result vector
+  n = rhs->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(rhs, i);
+    size_t j, len;
+    bool found = false;
+
+    // check if element is in result vector already
+    len = result->_length;
+    for (j = 0; j < len; ++j) {
+      TRI_aql_field_access_t* compareAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, j);
+
+      if (TRI_EqualString(fieldAccess->_fieldName, compareAccess->_fieldName)) {
+        // found the element
+        if (logicalType == TRI_AQL_LOGICAL_AND) {
+          result->_buffer[i] = MergeAttributeAccessAnd(context, fieldAccess, compareAccess);
+        }
+        else {
+          result->_buffer[i] = MergeAttributeAccessOr(context, fieldAccess, compareAccess);
+        }
+        
+        found = true;
+        break;
+      } 
+    }
+
+    if (!found) {
+      TRI_PushBackVectorPointer(result, fieldAccess);
+    }
+  }
+  // can now free rhs vector
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, rhs);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1215,6 +1308,10 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     // create an exact value access
     fieldAccess->_type = TRI_AQL_ACCESS_EXACT; 
     fieldAccess->_value._value = value;
+  } 
+  else if (operator == AQL_NODE_OPERATOR_BINARY_NE) {
+    // create an all items access
+    fieldAccess->_type = TRI_AQL_ACCESS_ALL;
   } 
   else if (operator == AQL_NODE_OPERATOR_BINARY_LT) { 
     // create a single range access
@@ -1264,57 +1361,32 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an access structure for the given node and operator,
 /// merge it with potential others already found for the same variable
+///
+/// TODO fix docs
 ////////////////////////////////////////////////////////////////////////////////
 
-static void NoteAttributeAccess (TRI_aql_context_t* const context,
-                                 const TRI_aql_logical_e logicalType,
-                                 const TRI_aql_attribute_name_t* const field,
-                                 const TRI_aql_node_type_e operator,
-                                 const TRI_aql_node_t* const node) {
-  TRI_aql_field_access_t* previous;
+static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const context,
+                                                   const TRI_aql_attribute_name_t* const field,
+                                                   const TRI_aql_node_type_e operator,
+                                                   const TRI_aql_node_t* const node) {
   TRI_aql_field_access_t* fieldAccess;
   
   assert(context);
-  assert(logicalType == TRI_AQL_LOGICAL_AND || 
-         logicalType == TRI_AQL_LOGICAL_OR ||
-         logicalType == TRI_AQL_LOGICAL_NOT);
   assert(node);
 
   if (!field || !field->_name._buffer) {
-    return;
+    // this is ok if the node type is not supported
+    return NULL;
   }
     
   fieldAccess = CreateAccessForNode(context, field, operator, node);
   if (!fieldAccess) { 
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return;
+    return NULL;
   }
 
-  // look up previous range first
-  previous = (TRI_aql_field_access_t*) TRI_LookupByKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName);
-  if (previous) {
-    TRI_aql_field_access_t* merged;
-    // previous range exists, now merge new access type with previous one
-    
-    // remove from hash first
-    TRI_RemoveKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName);
-
-    // MergeAccess() will free previous and/or fieldAccess
-    merged = MergeAccess(context, logicalType, fieldAccess, previous);
-    
-    if (!merged) {
-      // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      return;
-    }
-
-    TRI_InsertKeyAssociativePointer(context->_ranges, merged->_fieldName, merged, true);
-  }
-  else {
-    // no previous access exists, no need to merge
-    TRI_InsertKeyAssociativePointer(context->_ranges, fieldAccess->_fieldName, fieldAccess, false);
-  }
+  return fieldAccess;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1360,67 +1432,85 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief inspect a condition node
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init the optimizer
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_InitOptimizerAql (TRI_aql_context_t* const context) {
+static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
+                                          TRI_aql_node_t* node) {
   assert(context);
-  assert(context->_ranges == NULL);
+  assert(node);
 
-  context->_ranges = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false);
-  if (!context->_ranges) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return false;
+  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
+    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
+    
+    assert(lhs);
+    
+    return MakeAllVector(context, ProcessNode(context, lhs));
   }
 
-  TRI_InitAssociativePointer(context->_ranges,
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             &TRI_HashStringKeyAssociativePointer, 
-                             &HashFieldAccess,
-                             &EqualFieldAccess,
-                             NULL);
+  if (node->_type == AQL_NODE_OPERATOR_BINARY_OR) {
+    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
+    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
 
-  return true;
-}
+    assert(lhs);
+    assert(rhs);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the optimizer
-////////////////////////////////////////////////////////////////////////////////
+    // recurse into next level
+    return MergeVectors(context, 
+                        TRI_AQL_LOGICAL_OR, 
+                        ProcessNode(context, lhs), 
+                        ProcessNode(context, rhs));
+  }
 
-void TRI_FreeOptimizerAql (TRI_aql_context_t* const context) {
-  assert(context);
+  if (node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
+    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
+    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
+    
+    assert(lhs);
+    assert(rhs);
 
-  if (context->_ranges) {
-    size_t i, n;
+    // recurse into next level
+    return MergeVectors(context, 
+                        TRI_AQL_LOGICAL_AND,
+                        ProcessNode(context, lhs), 
+                        ProcessNode(context, rhs));
+  }
 
-    // free all remaining access elements
-    n = context->_ranges->_nrAlloc;
-    for (i = 0; i < n; ++i) {
-      TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) context->_ranges->_table[i];
-      if (!fieldAccess) {
-        continue;
+  if (node->_type == AQL_NODE_OPERATOR_BINARY_EQ ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_NE ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_LT ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_LE ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_GT ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_GE ||
+      node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
+    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
+    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
+
+    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
+      TRI_aql_attribute_name_t* field = GetAttributeName(context, lhs);
+
+      if (field) {
+        TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, node->_type, rhs);
+        TRI_DestroyStringBuffer(&field->_name);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
+        
+        return Vectorize(context, attributeAccess);
       }
-
-      FreeAccess(context, fieldAccess);
     }
+    else if (rhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
+      TRI_aql_attribute_name_t* field = GetAttributeName(context, rhs);
 
-    // free hash array
-    TRI_FreeAssociativePointer(TRI_UNKNOWN_MEM_ZONE, context->_ranges);
-    context->_ranges = NULL;
+      if (field) {
+        TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, node->_type, lhs);
+        TRI_DestroyStringBuffer(&field->_name);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
+
+        return Vectorize(context, attributeAccess);
+      }
+    }
   }
+
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1440,17 +1530,14 @@ void TRI_FreeOptimizerAql (TRI_aql_context_t* const context) {
 /// @brief dump ranges found for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
-  size_t i; 
+void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
+  size_t i, n; 
   
-  assert(context);
+  assert(ranges);
    
-  for (i = 0; i < context->_ranges->_nrAlloc; ++i) {
-    TRI_aql_field_access_t* fieldAccess = context->_ranges->_table[i]; 
-
-    if (!fieldAccess) {
-      continue;
-    }
+  n = ranges->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = TRI_AtVectorPointer(ranges, i);
 
     printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fieldName);
     printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
@@ -1482,89 +1569,17 @@ void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
     }
   }
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect a condition and note all accesses found for it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InspectConditionAql (TRI_aql_context_t* const context,
-                              const TRI_aql_logical_e logicalType,
-                              TRI_aql_node_t* node) {
-  assert(context);
-  assert(logicalType == TRI_AQL_LOGICAL_AND ||
-         logicalType == TRI_AQL_LOGICAL_OR ||
-         logicalType == TRI_AQL_LOGICAL_NOT);
-
-  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    
-    assert(lhs);
-    
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_NOT, lhs);
-    return;
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_OR) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-    TRI_aql_logical_e nextOperator;
-
-    assert(lhs);
-    assert(rhs);
-
-    // recurse into next level
-    nextOperator = SubOperator(TRI_AQL_LOGICAL_OR, logicalType);
-    TRI_InspectConditionAql(context, nextOperator, lhs);
-    TRI_InspectConditionAql(context, nextOperator, rhs);
-    return;
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-    TRI_aql_logical_e nextOperator;
-    
-    assert(lhs);
-    assert(rhs);
-
-    // recurse into next level
-    nextOperator = SubOperator(TRI_AQL_LOGICAL_AND, logicalType);
-    TRI_InspectConditionAql(context, nextOperator, lhs);
-    TRI_InspectConditionAql(context, nextOperator, rhs);
-    return;
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_EQ ||
-//      node->_type == AQL_NODE_OPERATOR_BINARY_NE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-
-    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
-      TRI_aql_attribute_name_t* field = GetAttributeName(context, lhs);
-
-      if (field) {
-        NoteAttributeAccess(context, logicalType, field, node->_type, rhs);
-        TRI_DestroyStringBuffer(&field->_name);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
-      }
-    }
-    else if (rhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
-      TRI_aql_attribute_name_t* field = GetAttributeName(context, rhs);
-
-      if (field) {
-        NoteAttributeAccess(context, logicalType, field, node->_type, lhs);
-        TRI_DestroyStringBuffer(&field->_name);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
-      }
-    }
-  }
+TRI_vector_pointer_t* TRI_InspectConditionAql (TRI_aql_context_t* const context,
+                                               TRI_aql_node_t* node,
+                                               const TRI_vector_pointer_t* const parentRestrictions) {
+  return ProcessNode(context, node);
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
