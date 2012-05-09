@@ -632,3 +632,7 @@ pre ul li span{
     color: #222;
     cursor: pointer; 
 }
+
+#uploadFile {
+  float:right; 
+}

@@ -39,8 +39,3 @@
 .sh_array {
   color: blue;  
 }
-
-//<form action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
-//<input type="file" name="filename" />
-//<input type="submit" value="post!" />
-//</form>
