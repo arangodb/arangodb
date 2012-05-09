@@ -43,6 +43,12 @@
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, r); \
   }
 
+#define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+#define FREE_BUFFER  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, sb);
+#define STRINGIFY    TRI_StringifyJson(sb, json);
+#define STRING_VALUE sb->_buffer
+#define FREE_JSON    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -263,6 +269,155 @@ BOOST_AUTO_TEST_CASE (tst_check_in_list_empty) {
   JSON_CHECK(false, TRI_CheckInListJson, "{}", "[]");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists union
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_unionize_lists_empty) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  json = TRI_UnionizeListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists intersection
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_intersect_lists_empty1) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+  
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  json = TRI_IntersectListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists intersection
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_intersect_lists_empty2) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+  
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[1]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  json = TRI_IntersectListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists intersection
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_intersect_lists_empty3) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+  
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[0]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[]");
+  json = TRI_IntersectListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists intersection
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_intersect_lists_values1) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+  
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[0,1,2,3]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[2,3,4]");
+  json = TRI_IntersectListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[2,3]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lists intersection
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_intersect_lists_values2) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+  TRI_json_t* list1; 
+  TRI_json_t* list2;
+  
+  list1 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[null,false,true,0,1,2,3,99,99.5,\"fox\",\"zoo\"]");
+  list2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[false,2,99,99.2,\"Fox\",\"zoo\"]");
+  json = TRI_IntersectListsJson(list1, list2, true);
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("[false,2,99,\"zoo\"]", STRING_VALUE); 
+ 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list1); 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list2);
+
+  FREE_JSON
+  FREE_BUFFER
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
