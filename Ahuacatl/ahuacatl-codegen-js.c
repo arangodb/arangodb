@@ -1190,17 +1190,32 @@ static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFor (TRI_aql_codegen_js_t* const generator, 
                         const TRI_aql_node_t* const node) {
-  TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
   TRI_aql_node_t* nameNode;
-
-  ScopeOutput(generator, "var ");
-  ScopeOutputRegister(generator, sourceRegister);
-  ScopeOutput(generator, " = ");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ";\n");
-
+  
   nameNode = TRI_AQL_NODE_MEMBER(node, 0);
-  StartFor(generator, sourceRegister, nameNode->_value._value._string);
+
+  if (((TRI_aql_node_t*) TRI_AQL_NODE_MEMBER(node, 1))->_type != AQL_NODE_SUBQUERY) {
+    TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
+
+    ScopeOutput(generator, "var ");
+    ScopeOutputRegister(generator, sourceRegister);
+    ScopeOutput(generator, " = ");
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+    ScopeOutput(generator, ";\n");
+  
+    StartFor(generator, sourceRegister, nameNode->_value._value._string);
+  }
+  else {
+    TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+    TRI_aql_codegen_register_t sourceRegister;
+
+    InitList(generator, resultRegister); 
+    
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+    sourceRegister = CurrentScope(generator)->_resultRegister;
+    CurrentScope(generator)->_resultRegister = resultRegister;
+    StartFor(generator, sourceRegister, nameNode->_value._value._string);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
