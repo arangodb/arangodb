@@ -38,6 +38,21 @@ html.busy, html.busy * {
   padding: 0; 
 }
 
+.highlighted {
+  color: #9EAF5A !important; 
+  text-decoration:none !important;   
+}
+
+.nonhighlighted {
+  color: #797979 !important; 
+  text-decoration:none !important;   
+}
+
+.arrowbg {
+  padding-right: 2.2em;
+  background: url("../media/icons/arrow.png") no-repeat scroll 100% 50% transparent;
+}
+
 .snippet-no-num {
   font-size: 1em;
   font-weight: normal; 
@@ -616,4 +631,8 @@ pre ul li span{
     box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
     cursor: pointer; 
+}
+
+#uploadFile {
+  float:right; 
 }

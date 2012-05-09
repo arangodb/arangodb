@@ -23,8 +23,8 @@
       <script type="text/javascript" language="javascript" src="js/jsunity.js"></script>
       <script type="text/javascript" language="javascript" src="js/test.js"></script>
     <style>
-      a:link {color: #9EAF5A; text-decoration: none;}  
-      a:visited {color: #9EAF5A; text-decoration: none;}
+      a:link {color: #797979; text-decoration: none;}  
+      a:visited {color: #797979; text-decoration: none;}
     </style>
 
   </head>
@@ -51,10 +51,10 @@
 
     </div>
     <div id="brotkruemelnavi" class="ui-layout-south">
-      <a id="nav1"></a>
-      <a id="nav2"></a>
-      <a id="nav3"></a>
-      <a id="nav4"></a>
+      <a id="nav1" class="nonhighlighted"></a>
+      <a id="nav2" class="nonhighlighted"></a>
+      <a id="nav3" class="nonhighlighted"></a>
+      <a id="nav4" class="nonhighlighted"></a>
     </div>
   </div>
   
@@ -137,6 +137,12 @@
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Add Document</a>
         </button>
+
+       <form id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+         <input type="submit" value="Import" />
+         <input type="file" name="filename" />
+       </form>
+ 
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
           <thead>
             <tr>

@@ -13,8 +13,8 @@ var globalCollectionRev;
   
 var open = false;
 $(document).ready(function() {       
-
 showCursor();
+
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
@@ -323,6 +323,7 @@ var logTable = $('#logTableID').dataTable({
       $('#centerView').show();
       $('#collectionsView').show(); 
       createnav("Collections"); 
+      highlightNav("#nav1");
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -344,8 +345,9 @@ var logTable = $('#logTableID').dataTable({
         processData: false, 
         success: function(data) {
           collectionName = data.name;
-          $('#nav2').text('-> ' + collectionName);
+          $('#nav2').text(collectionName);
           $('#nav2').attr('href', '#showCollection?' +collID[0]);
+          $('#nav1').attr('class', 'arrowbg');
         },
         error: function(data) {
         }
@@ -353,7 +355,9 @@ var logTable = $('#logTableID').dataTable({
 
       $('#nav1').text('Collections'); 
       $('#nav1').attr('href', '#');
-      $('#nav3').text('-> New Document'); 
+      $('#nav2').attr('class', 'arrowbg');
+      $('#nav3').text('new document'); 
+      highlightNav("#nav3");
 
       newDocumentTable.fnClearTable(); 
       documentTableMakeEditable('#NewDocumentTableID');
@@ -385,7 +389,7 @@ var logTable = $('#logTableID').dataTable({
         processData: false, 
         success: function(data) {
           collectionName = data.name;
-          $('#nav2').text('-> ' + collectionName);
+          $('#nav2').text(collectionName);
           $('#nav2').attr('href', '#showCollection?' +collectionID[0]);
         },
         error: function(data) {
@@ -394,7 +398,9 @@ var logTable = $('#logTableID').dataTable({
  
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
-      $('#nav3').text('-> Edit:' + collectionID[1]); 
+      $('#nav1').attr('class', 'arrowbg');
+      $('#nav2').attr('class', 'arrowbg');
+      $('#nav3').text('Edit document:' + collectionID[1]); 
 
       $.ajax({
         type: "GET",
@@ -445,7 +451,7 @@ var logTable = $('#logTableID').dataTable({
           globalCollectionName = data.name;
           test = data.name; 
           collectionCount = data.count; 
-          $('#nav2').text('-> ' + globalCollectionName);
+          $('#nav2').text(globalCollectionName);
         },
         error: function(data) {
         }
@@ -455,6 +461,10 @@ var logTable = $('#logTableID').dataTable({
       $('#nav1').attr('href', '#');
       $('#nav2').attr('href', null);
       $('#nav3').text(''); 
+      highlightNav("#nav2");
+      $("#nav3").removeClass("arrowbg");
+      $("#nav2").removeClass("arrowbg");
+      $("#nav1").addClass("arrowbg");
 
       $.ajax({
         type: 'PUT',
@@ -497,7 +507,7 @@ var logTable = $('#logTableID').dataTable({
         processData: false, 
         success: function(data) {
           collectionName = data.name;
-          $('#nav2').text('-> Edit: ' + collectionName);
+          $('#nav2').text('Edit: ' + collectionName);
           $('#editCollectionName').val(data.name); 
           $('#editCollectionID').text(data.id);
 
@@ -517,6 +527,7 @@ var logTable = $('#logTableID').dataTable({
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
+      $('#nav1').attr('class', 'arrowbg');
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#editCollectionView').show();
@@ -605,7 +616,8 @@ var logTable = $('#logTableID').dataTable({
     else if (location.hash == "#createCollection") {
       $('#nav1').attr('href', '#'); 
       $('#nav1').text('Collections');
-      $('#nav2').text(': Create new collection');
+      $('#nav2').text('Create new collection');
+      $('#nav1').attr('class', 'arrowbg'); 
 
       hideAllSubDivs();
       $('#collectionsView').hide();
@@ -1120,6 +1132,7 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         url: "/document/" + documentID 
       });
+      location.reload(); 
     }
 
     catch(e) {
@@ -1565,8 +1578,11 @@ function value2html (value) {
 
 function createnav (menue) {
   $('#nav1').text(menue);
+  $('#nav1').attr('class', ''); 
   $('#nav2').text('');
+  $('#nav2').attr('class', ''); 
   $('#nav3').text('');
+  $('#nav3').attr('class', ''); 
   $('#nav4').text('');
 
   if (menue == "Collections") {
@@ -2046,4 +2062,12 @@ function stateReplace (value) {
   }
 
   return output;
+}
+
+function highlightNav (string) {
+  $("#nav1").removeClass("nonhighlighted");
+  $("#nav2").removeClass("nonhighlighted");
+  $("#nav3").removeClass("nonhighlighted");
+  $("#nav4").removeClass("nonhighlighted");
+  $(string).addClass("highlighted");
 }
