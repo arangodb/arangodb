@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-optimiser.h"
+#include "Ahuacatl/ahuacatl-codegen-js.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
@@ -56,6 +57,169 @@ static TRI_aql_node_t* ModifyNode (void*, TRI_aql_node_t*);
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current optimiser scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_aql_optimiser_scope_t* CurrentScope (const TRI_vector_pointer_t* const scopes) {
+  size_t n = scopes->_length;
+
+  assert(n > 0);
+
+  return TRI_AtVectorPointer(scopes, n - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief backwards-patch for loops with the range access data we found
+////////////////////////////////////////////////////////////////////////////////
+
+static void PatchForLoops (TRI_aql_context_t* const context) {
+  TRI_aql_optimiser_scope_t* currentScope = CurrentScope(&context->_optimiser._scopes);
+  size_t n;
+
+  if (!currentScope->_ranges) {
+    return;
+  }
+
+  n = context->_optimiser._scopes._length;
+  while (n-- > 0) {
+    TRI_aql_optimiser_scope_t* scope = (TRI_aql_optimiser_scope_t*) TRI_AtVectorPointer(&context->_optimiser._scopes, n);
+    char* prefix;
+    size_t j, len;
+
+    // reached the top level
+    if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+      break;
+    }
+    
+    // we're only interested in for loops
+    if (scope->_type != TRI_AQL_SCOPE_FOR && scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
+      continue;
+    }
+
+    // irrelevant for loop
+    if (!scope->_variableName || !scope->_node) {
+      continue;
+    } 
+    
+    // we found a for loop, inspect it
+    prefix = TRI_Concatenate2String(scope->_variableName, ".");
+
+    if (!prefix) {
+      // OOM
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return;
+    }
+
+    len = scope->_ranges->_length;
+    for (j = 0; j < len; ++j) {
+      TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(scope->_ranges, j);
+      TRI_aql_field_access_t* previous;
+      int compareResult;
+
+      // check if the range's variable name is the same as the for variable's name
+      if (!TRI_IsPrefixString(fieldAccess->_fieldName, prefix)) { 
+        // names don't match
+        continue;
+      }
+
+      // names match
+
+      // check if current or previous range are better
+      previous = (TRI_aql_field_access_t*) scope->_node->_value._value._data; 
+      compareResult = TRI_PickAccessAql(previous, fieldAccess);
+      
+      if (compareResult == 1) {
+        // clone access and copy it into node
+        if (previous) {
+          TRI_FreeAccessAql(previous);
+        }
+        scope->_node->_value._value._data = (void*) TRI_CloneAccessAql(context, fieldAccess);
+      }
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+    // TODO: we could bubble up some of the filters to higher level loops, but
+    // we would need to find out which ones can safely be moved there first
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start an optimiser scope
+////////////////////////////////////////////////////////////////////////////////
+
+static void StartScope (TRI_aql_context_t* const context, 
+                        const TRI_aql_codegen_scope_e requestedType,
+                        const TRI_aql_node_t* const node,
+                        const char* const variableName) {
+  TRI_aql_optimiser_scope_t* scope; 
+  TRI_aql_codegen_scope_e type = requestedType;
+
+  if (requestedType == TRI_AQL_SCOPE_FOR) {
+    TRI_aql_codegen_scope_e previousType = CurrentScope(&context->_optimiser._scopes)->_type;
+
+    if (previousType == TRI_AQL_SCOPE_FOR || previousType == TRI_AQL_SCOPE_FOR_NESTED) {
+      type = TRI_AQL_SCOPE_FOR_NESTED;
+    }
+  }
+
+  scope = (TRI_aql_optimiser_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_optimiser_scope_t), false);
+  if (!scope) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return;
+  }
+
+  scope->_type = type;
+  scope->_ranges = NULL;
+  scope->_node = NULL;
+  scope->_variableName = NULL;
+
+  if (variableName != NULL) {
+    scope->_variableName = TRI_DuplicateString(variableName);
+    if (!scope->_variableName) {
+      // OOM
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return;
+    }
+  }
+  
+  if (type == TRI_AQL_SCOPE_FOR || type == TRI_AQL_SCOPE_FOR_NESTED) {
+    // store the node pointer for later for loop patching
+    scope->_node = (TRI_aql_node_t*) node;
+  }
+
+  if (context->_optimiser._scopes._length > 0) {
+    // copy ranges of parent scope into current one
+    scope->_ranges = TRI_CloneRangesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
+  }
+   
+  TRI_PushBackVectorPointer(&context->_optimiser._scopes, scope);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end an optimiser scope
+////////////////////////////////////////////////////////////////////////////////
+
+static void EndScope (TRI_aql_context_t* const context) {
+  TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
+
+  // we are closing at least one scope
+  while (true) {
+    TRI_aql_codegen_scope_e type = scope->_type;
+
+    TRI_RemoveVectorPointer(&context->_optimiser._scopes, context->_optimiser._scopes._length - 1);
+
+    // break if we reached the top level for loop
+    if (type != TRI_AQL_SCOPE_FOR_NESTED) {
+      break;
+    }
+  
+
+    // next iteration
+    scope = CurrentScope(&context->_optimiser._scopes);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create javascript function code for a relational operation
@@ -287,14 +451,14 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
 #ifdef RANGE_OPTIMIZER  
+    TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
     TRI_vector_pointer_t* ranges;
     bool changed = false;
-   
-    ranges = TRI_OptimiseRangesAql(context, expression, &changed, NULL);
+
+    ranges = TRI_OptimiseRangesAql(context, expression, &changed, scope->_ranges);
     
     if (ranges) {
-      TRI_DumpRangesAql(ranges);
-      TRI_FreeRangesAql(ranges);
+      scope->_ranges = ranges;
     }
     
     if (changed) {
@@ -609,51 +773,13 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mark a for node
+/// @brief optimise nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* MarkFor (TRI_aql_context_t* const context,
-                                TRI_aql_node_t* node) {
-#ifdef RANGE_OPTIMIZER  
-  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
-  TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
+static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context, 
+                                     TRI_aql_node_t* node) {
+  assert(node);
 
-  if (!nameNode || !expressionNode) {
-    return node;
-  }
-
-  if (expressionNode->_type == AQL_NODE_COLLECTION) {
-    char* varName = TRI_AQL_NODE_STRING(nameNode);
-    char* collectionName = TRI_AQL_NODE_STRING(expressionNode);
-
-    if (!varName || !collectionName) {
-      return node;
-    }
-  }
-#endif
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fold constants in a node
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
-
-  if (!node) {
-    return NULL;
-  }
-/*
-  // scope handling
-  switch (node->_type) {
-    case AQL_NODE_FOR:
-    case AQL_NODE_RETURN:
-    case AQL_NODE_ASSIGN:
-    case AQL_NODE_SUBQUERY:
-  }
-*/
   // node optimisations
   switch (node->_type) {
     case AQL_NODE_OPERATOR_UNARY_PLUS:
@@ -684,13 +810,57 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
       return OptimiseFilter(context, node);
     case AQL_NODE_FCALL:
       return OptimiseFcall(context, node);
-    case AQL_NODE_FOR:
-      return MarkFor(context, node);
     default: 
       break;
   }
 
   return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise nodes recursively
+///
+/// this is the callback function used by the tree walker
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
+  TRI_aql_node_t* result = node;
+
+#ifdef RANGE_OPTIMIZER  
+  if (node) {
+    // scope handling
+    if (node->_type == AQL_NODE_FOR) {
+      TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+      StartScope(context, TRI_AQL_SCOPE_FOR, node, TRI_AQL_NODE_STRING(nameNode));
+    }
+    else if (node->_type == AQL_NODE_SUBQUERY) {
+      StartScope(context, TRI_AQL_SCOPE_FUNCTION, NULL, NULL);
+    }
+    else if (node->_type == AQL_NODE_ASSIGN) {
+      StartScope(context, TRI_AQL_SCOPE_LET, NULL, NULL);
+    }
+#endif
+
+    result = OptimiseNode(context, node);
+
+#ifdef RANGE_OPTIMIZER  
+    // scope handling
+    if (node->_type == AQL_NODE_RETURN) {
+      PatchForLoops(context);
+      EndScope(context);
+    }  
+    else if (node->_type == AQL_NODE_SUBQUERY) {
+      EndScope(context);
+    }
+    else if (node->_type == AQL_NODE_LET) {
+      EndScope(context);
+    }
+  }
+#endif
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -720,7 +890,15 @@ TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const context,
     return node;
   }
 
+#ifdef RANGE_OPTIMIZER  
+  StartScope(context, TRI_AQL_SCOPE_MAIN, NULL, NULL);
+#endif
+
   node = TRI_ModifyWalkTreeAql(walker, node); 
+  
+#ifdef RANGE_OPTIMIZER  
+  EndScope(context);
+#endif
 
   TRI_FreeModifyTreeWalkerAql(walker);
 
