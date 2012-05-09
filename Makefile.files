@@ -32,6 +32,7 @@ libavocado_a_SOURCES = \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
 	BasicsC/json.c \
+	BasicsC/json-utilities.c \
 	BasicsC/linked-list.c \
 	BasicsC/locks-macos.c \
 	BasicsC/locks-posix.c \
@@ -154,6 +155,7 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-access-optimizer.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
 	Ahuacatl/ahuacatl-codegen-js.c \

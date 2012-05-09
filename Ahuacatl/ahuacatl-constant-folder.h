@@ -29,13 +29,15 @@
 #define TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H 1
 
 #include <BasicsC/common.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/json-utilities.h>
+#include <BasicsC/logging.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/string-buffer.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/logging.h>
 #include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
 
+#include "Ahuacatl/ahuacatl-access-optimizer.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
@@ -51,66 +53,6 @@ extern "C" {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief access type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_AQL_RANGE_LOWER_EXCLUDED,
-  TRI_AQL_RANGE_LOWER_INCLUDED,
-  TRI_AQL_RANGE_UPPER_EXCLUDED,
-  TRI_AQL_RANGE_UPPER_INCLUDED
-}
-TRI_aql_range_e;
-
-typedef enum {
-  TRI_AQL_ACCESS_ALL = 0,
-  TRI_AQL_ACCESS_IMPOSSIBLE,
-  TRI_AQL_ACCESS_EXACT,
-  TRI_AQL_ACCESS_LIST,
-  TRI_AQL_ACCESS_SINGLE_RANGE,
-  TRI_AQL_ACCESS_DOUBLE_RANGE,
-}
-TRI_aql_access_e;
-
-typedef struct TRI_aql_range_s {
-  TRI_json_t* _value;
-  TRI_aql_range_e _type;
-}
-TRI_aql_range_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute access container used during optimisation
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_field_access_s {
-  char* _fieldName;
-  TRI_aql_access_e _type;
-  union {
-    TRI_json_t* _exactValue;
-    TRI_json_t* _list;
-    TRI_aql_range_t _singleRange;
-    struct {
-      TRI_aql_range_t _lower;
-      TRI_aql_range_t _upper;
-    }
-    _between;
-  } 
-  _value;
-}
-TRI_aql_field_access_t;
-  
-
-
-typedef struct TRI_aql_field_name_s {
-  const char* _variable;
-  TRI_string_buffer_t _name;
-}
-TRI_aql_field_name_t;
-  
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fold constants recursively
