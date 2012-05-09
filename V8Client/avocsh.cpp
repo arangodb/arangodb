@@ -1227,20 +1227,26 @@ int main (int argc, char* argv[]) {
   
   
   // http://www.network-science.de/ascii/   Font: ogre
-  if (noColors) {
-    printf("                        "      "    _         \n");
-    printf("   __ ___   _____   ___ "      "___| |__      \n");
-    printf("  / _` \\ \\ / / _ \\ / __"    "/ __| '_ \\   \n");
-    printf(" | (_| |\\ V / (_) | (__"      "\\__ \\ | | | \n");
-    printf("  \\__,_| \\_/ \\___/ \\___"   "|___/_| |_|   \n\n");        
+  {
+    char const* g = DEF_GREEN;
+    char const* r = DEF_RED;
+    char const* z = DEF_RESET;
+
+    if (noColors) {
+      g = "";
+      r = "";
+      z = "";
+    }
+
+    printf("%s                                  %s     _     %s\n", g, r, z);
+    printf("%s  __ _ _ __ __ _ _ __   __ _  ___ %s ___| |__  %s\n", g, r, z);
+    printf("%s / _` | '__/ _` | '_ \\ / _` |/ _ \\%s/ __| '_ \\ %s\n", g, r, z);
+    printf("%s| (_| | | | (_| | | | | (_| | (_) %s\\__ \\ | | |%s\n", g, r, z);
+    printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
+    printf("%s                       |___/      %s           %s\n", g, r, z);
   }
-  else {
-    printf(        "                        "      "\x1b[31m    _         \x1b[0m\n");
-    printf("\x1b[32m   __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
-    printf("\x1b[32m  / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
-    printf("\x1b[32m | (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
-    printf("\x1b[32m  \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");    
-  }
+
+  printf("\n");
   printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
