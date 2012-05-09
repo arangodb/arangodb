@@ -349,7 +349,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (TRI_query_instance_t* cons
 typedef struct TRI_data_feeder_hash_lookup_s {
   bool _isEmpty;
   TRI_index_t* _index;
-  HashIndexElements* _hashElements;
+  TRI_hash_index_elements_t* _hashElements;
   TRI_js_exec_context_t _context;
   size_t _position;
 }

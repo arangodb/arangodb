@@ -1,0 +1,11 @@
+avocado> db.test.ensureHashIndex("a");
+{ "id" : "4873815/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
+
+avocado> db.test.save({ a : 1 });
+{ "_id" : "4873815/6381143", "_rev" : 6381143 }
+
+avocado> db.test.save({ a : 1 });
+{ "_id" : "4873815/6446679", "_rev" : 6446679 }
+
+avocado> db.test.save({ a : null });
+{ "_id" : "4873815/6708823", "_rev" : 6708823 }

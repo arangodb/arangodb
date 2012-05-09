@@ -1384,7 +1384,7 @@ static void RemoveIndexHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash indexes a document
+/// @brief inserts a a document to a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
@@ -1423,19 +1423,21 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   
   if (res != TRI_ERROR_NO_ERROR) {
   
-    // Deallocated the memory already allocated to hashElement.fields
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-
     // .............................................................................
     // It may happen that the document does not have the necessary attributes to 
     // be included within the hash index, in this case do not report back an error.
     // .............................................................................
     
     if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
-      return TRI_ERROR_NO_ERROR;
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        return TRI_ERROR_NO_ERROR;
+      }
     }
-    
-    return res;
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      return res;
+    }
   }
   
   // .............................................................................
@@ -1500,10 +1502,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // .............................................................................
   
   if (res != TRI_ERROR_NO_ERROR) {
-  
-    // Deallocate memory allocated to hashElement.fields above
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-    
+   
     // .............................................................................
     // It may happen that the document does not have the necessary attributes to
     // have particpated within the hash index. In this case, we do not report an
@@ -1516,10 +1515,15 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // .............................................................................
     
     if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
-      return TRI_ERROR_NO_ERROR;
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        return TRI_ERROR_NO_ERROR;
+      }
     }
-    
-    return res;
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      return res;
+    }
   }
   
   // .............................................................................
@@ -1637,15 +1641,17 @@ static int UpdateHashIndex (TRI_index_t* idx,
 
   if (res != TRI_ERROR_NO_ERROR) {
     
-      // Deallocated memory given to hashElement.fields
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-      
-      // probably fields do not match. 
-      if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+    // probably fields do not match. 
+    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
       }
-    
+    }
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
       return res;
+    }
   }
 
   // ............................................................................
@@ -1788,20 +1794,20 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the hash index
+/// @brief locates entries in the hash index given a JSON list
 ///
 /// @warning who ever calls this function is responsible for destroying
-/// HashIndexElements* results
+/// TRI_hash_index_elements_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndexElements* TRI_LookupHashIndex (TRI_index_t* idx, TRI_json_t* parameterList) {
+TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t* values) {
   TRI_hash_index_t* hashIndex;
-  HashIndexElements* result;
-  HashIndexElement  element;
-  TRI_shaper_t*     shaper;
+  TRI_hash_index_elements_t* result;
+  HashIndexElement element;
+  TRI_shaper_t* shaper;
   size_t j;
   
-  element.numFields = parameterList->_value._objects._length;
+  element.numFields = values->_value._objects._length;
   element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
 
   if (element.fields == NULL) {
@@ -1814,7 +1820,7 @@ HashIndexElements* TRI_LookupHashIndex (TRI_index_t* idx, TRI_json_t* parameterL
   shaper = hashIndex->base._collection->_shaper;
     
   for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
+    TRI_json_t* jsonObject = (TRI_json_t*) (TRI_AtVector(&(values->_value._objects), j));
     TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
 
     element.fields[j] = *shapedObject;
@@ -1834,6 +1840,30 @@ HashIndexElements* TRI_LookupHashIndex (TRI_index_t* idx, TRI_json_t* parameterL
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
   
+  return result;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t* values) {
+  TRI_hash_index_t* hashIndex;
+  TRI_hash_index_elements_t* result;
+  HashIndexElement element;
+  
+  hashIndex = (TRI_hash_index_t*) idx;
+
+  element.numFields = hashIndex->_paths._length;
+  element.fields = values;
+
+  if (hashIndex->base._unique) {
+    result = HashIndex_find(hashIndex->_hashIndex, &element);
+  }
+  else {
+    result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
+  }
+
   return result;  
 }
 

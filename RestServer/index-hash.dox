@@ -36,7 +36,8 @@
 ///  </li>
 ///  <li>@ref IndexHashShell
 ///   <ol>
-///    <li>@ref IndexHashShellEnsureCapConstraint "collection.ensureUniqueConstraint"</li>
+///    <li>@ref IndexHashShellEnsureUniqueConstraint "collection.ensureUniqueConstraint"</li>
+///    <li>@ref IndexHashShellEnsureHashIndex "collection.ensureHashIndex"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -65,8 +66,12 @@
 /// @section IndexHashShell Accessing hash Indexes from the Shell
 /////////////////////////////////////////////////////////////////
 ///
-/// @anchor IndexHashShellEnsureCapConstraint
+/// @anchor IndexHashShellEnsureUniqueConstraint
 /// @copydetails JS_EnsureUniqueConstraintVocbaseCol
+/// <hr>
+///
+/// @anchor IndexHashShellEnsureHashIndex
+/// @copydetails JS_EnsureHashIndexVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
