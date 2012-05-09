@@ -645,7 +645,16 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
   if (!node) {
     return NULL;
   }
-
+/*
+  // scope handling
+  switch (node->_type) {
+    case AQL_NODE_FOR:
+    case AQL_NODE_RETURN:
+    case AQL_NODE_ASSIGN:
+    case AQL_NODE_SUBQUERY:
+  }
+*/
+  // node optimisations
   switch (node->_type) {
     case AQL_NODE_OPERATOR_UNARY_PLUS:
     case AQL_NODE_OPERATOR_UNARY_MINUS:
