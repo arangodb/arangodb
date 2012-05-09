@@ -31,7 +31,7 @@
 
 #include "V8/v8-execution.h"
 
-#undef RANGE_OPTIMIZER
+#undef RANGE_OPTIMIZER 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
