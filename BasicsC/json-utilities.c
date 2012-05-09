@@ -260,6 +260,58 @@ bool TRI_CheckInListJson (const TRI_json_t* const search,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the elements of a list that are between the specified bounds
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const list,
+                                 const TRI_json_t* const lower,
+                                 const bool includeLower,
+                                 const TRI_json_t* const upper,
+                                 const bool includeUpper) {
+  TRI_json_t* result;
+  size_t i, n;
+
+  assert(list);
+  assert(list->_type == TRI_JSON_LIST);
+  assert(lower || upper);
+  
+  // create result list
+  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (!result) {
+    return NULL;
+  }
+
+  n = list->_value._objects._length;
+  for (i = 0; i < n; ++i) {
+    TRI_json_t* p = TRI_AtVector(&list->_value._objects, i);
+
+    if (lower) {
+      // lower bound is set
+      int compareResult = TRI_CompareValuesJson(lower, p);
+      if (compareResult > 0 || (compareResult == 0 && !includeLower)) {
+        // element is bigger than lower bound
+        continue;
+      }
+    }
+
+    if (upper) {
+      // upper bound is set
+      int compareResult = TRI_CompareValuesJson(p, upper);
+      if (compareResult > 0 || (compareResult == 0 && !includeUpper)) {
+        // element is smaller than upper bound
+        continue;
+      }
+    }
+
+    // element is between lower and upper bound
+
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -386,7 +438,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
     }
     else if (i1 >= n1 && i2 < n2) {
       // only left list is exhausted
-      p2 = TRI_AtVector(&list1->_value._objects, i2);
+      p2 = TRI_AtVector(&list2->_value._objects, i2);
 
       if (!unique || !last || TRI_CompareValuesJson(p2, last) > 0) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
