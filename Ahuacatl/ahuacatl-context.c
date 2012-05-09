@@ -110,6 +110,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
+  TRI_InitVectorPointer(&context->_optimiser._scopes, TRI_UNKNOWN_MEM_ZONE);
+
   TRI_InitErrorAql(&context->_error);
 
   context->_query = NULL;
@@ -162,6 +164,9 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
     TRI_EndScopeContextAql(context);
   }
   TRI_DestroyVectorPointer(&context->_scopes);
+  
+  // free scopes allocated by optimiser
+  TRI_DestroyVectorPointer(&context->_optimiser._scopes);
 
   // free all strings registered
   i = context->_strings._length;
@@ -284,7 +289,8 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
   if (context->_error._code) {
     return false;
   }
-  //TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
+
+  // TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;
 }

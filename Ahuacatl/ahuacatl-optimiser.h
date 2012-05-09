@@ -39,11 +39,37 @@
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-codegen-js.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scope type used during optimisation
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_aql_optimiser_scope_s {
+  char* _variableName;
+  TRI_aql_node_t* _node;
+  TRI_vector_pointer_t* _ranges;
+  TRI_aql_codegen_scope_e _type;
+}
+TRI_aql_optimiser_scope_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
