@@ -337,6 +337,39 @@ function POST_api_index_geo (req, res, collection, body) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash index
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a hash index for the collection @FA{collection-identifier}, if it
+/// does not already exist. The call expects an object containing the index
+/// details.
+///
+/// - @LIT{type}: must be equal to @LIT{"hash"}.
+///
+/// - @LIT{fields}: A list of attribute paths.
+///
+/// - @LIT{unique}: If @LIT{true}, then create a unique index.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// If the collection already contains documents and you try to create a unique
+/// hash index in such a way that there are documents violating the uniqueness,
+/// then a @LIT{HTTP 400} is returned.
+///
+/// @EXAMPLES
+///
+/// Creating an unique constraint:
+///
+/// @verbinclude api-index-create-new-unique-constraint
+///
+/// Creating a hash index:
+///
+/// @verbinclude api-index-create-new-hash-index
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index_hash (req, res, collection, body) {

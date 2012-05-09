@@ -642,8 +642,12 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(factory);
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    factory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     if (shareAdminPort) {
       _applicationAdminServer->addHandlers(factory, "/_admin");
@@ -681,6 +685,10 @@ int AvocadoServer::startupServer () {
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    adminFactory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
     adminFactory->addPrefixHandler("/", 
                                    RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
                                    (void*) &handlerDataAdmin);
