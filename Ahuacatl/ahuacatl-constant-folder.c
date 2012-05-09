@@ -31,7 +31,7 @@
 
 #include "V8/v8-execution.h"
 
-#undef RANGE_OPTIMIZER 
+#undef RANGE_OPTIMIZER  
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -268,7 +268,12 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
 #ifdef RANGE_OPTIMIZER  
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_AND, expression);
+    TRI_vector_pointer_t* ranges = TRI_InspectConditionAql(context, expression, NULL);
+
+    if (ranges) {
+      TRI_DumpRangesAql(ranges);
+      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, ranges);
+    }
 #endif
     return node;
   }
@@ -663,13 +668,6 @@ TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
                                       TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
  
-#ifdef RANGE_OPTIMIZER  
-  if (!TRI_InitOptimizerAql(context)) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return node;
-  }
-#endif
-     
   walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);
   if (!walker) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -679,10 +677,6 @@ TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
   node = TRI_ModifyWalkTreeAql(walker, node); 
 
   TRI_FreeModifyTreeWalkerAql(walker);
-
-#ifdef RANGE_OPTIMIZER  
-  TRI_DumpRangesAql(context);
-#endif
 
   return node;
 }

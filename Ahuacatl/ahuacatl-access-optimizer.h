@@ -59,8 +59,7 @@ extern "C" {
                               
 typedef enum {
   TRI_AQL_LOGICAL_AND,
-  TRI_AQL_LOGICAL_OR,
-  TRI_AQL_LOGICAL_NOT
+  TRI_AQL_LOGICAL_OR
 }
 TRI_aql_logical_e;
 
@@ -136,31 +135,6 @@ TRI_aql_attribute_name_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init the optimizer
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_InitOptimizerAql (TRI_aql_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the optimizer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeOptimizerAql (TRI_aql_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -173,15 +147,15 @@ void TRI_FreeOptimizerAql (TRI_aql_context_t* const);
 /// @brief dump ranges found for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpRangesAql (TRI_aql_context_t* const);
+void TRI_DumpRangesAql (const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect a condition and note all accesses found for it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InspectConditionAql (TRI_aql_context_t* const,  
-                              const TRI_aql_logical_e,
-                              TRI_aql_node_t*);
+TRI_vector_pointer_t* TRI_InspectConditionAql (TRI_aql_context_t* const,  
+                                               TRI_aql_node_t*,
+                                               const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
