@@ -2930,19 +2930,21 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     }
   }
 
-  TRI_FreeContextAql(context);
-
   if (cursor) {
     TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+    TRI_FreeContextAql(context);
     return scope.Close(WrapGeneralCursor(cursor));
   }
 
   if (tryCatch.HasCaught()) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_RUNTIME_ERROR, TRI_ObjectToString(tryCatch.Exception()).c_str());
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeContextAql(context);
 
     return scope.Close(errorObject);
   }
+
+  TRI_FreeContextAql(context);
 
   return scope.Close(v8::ThrowException(v8::String::New("cannot create cursor")));
 }
