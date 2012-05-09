@@ -141,6 +141,8 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
   size_t currentLine = 1;
   size_t currentColumn = 1;
   const char* p = query;
+  char* temp;
+  char* result;
   size_t offset;
   char c;
  
@@ -169,7 +171,16 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
     return TRI_DuplicateString2(query + offset, strlen(query) - offset);
   }
 
-  return TRI_Concatenate2String(TRI_DuplicateString2(query + offset, SNIPPET_LENGTH), SNIPPET_SUFFIX);
+  temp = TRI_DuplicateString2(query + offset, SNIPPET_LENGTH);
+  if (!temp) {
+    // out of memory
+    return NULL;
+  }
+
+  result = TRI_Concatenate2String(temp, SNIPPET_SUFFIX);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, temp);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
