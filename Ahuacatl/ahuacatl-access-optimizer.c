@@ -60,6 +60,21 @@ static bool EqualFieldAccess (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logical type for a sub operation
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_aql_logical_e SubOperator (const TRI_aql_logical_e preferredType,
+                                             const TRI_aql_logical_e parentType) {
+  if (parentType == TRI_AQL_LOGICAL_NOT) {
+    // logical NOT is sticky
+    return parentType;
+  }
+
+  // all other operators are not
+  return preferredType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an access type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,6 +144,25 @@ static void FreeAccess (TRI_aql_context_t* const context,
   FreeAccessMembers(fieldAccess);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fieldName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two access structures using a logical NOT
+///
+/// this always returns the all items range because we cannot evaluate the
+/// negated condition
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_field_access_t* MergeNot (TRI_aql_context_t* const context,
+                                         TRI_aql_field_access_t* lhs,
+                                         TRI_aql_field_access_t* rhs) {
+  // always returns all
+  FreeAccess(context, rhs);
+  FreeAccessMembers(lhs);
+
+  lhs->_type = TRI_AQL_ACCESS_ALL;
+
+  return lhs;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -1081,10 +1115,17 @@ static TRI_aql_field_access_t* MergeAccess (TRI_aql_context_t* const context,
   assert(context);
   assert(lhs);
   assert(rhs);
-  assert(logicalType == TRI_AQL_LOGICAL_AND || logicalType == TRI_AQL_LOGICAL_OR);
+  assert(logicalType == TRI_AQL_LOGICAL_AND || 
+         logicalType == TRI_AQL_LOGICAL_OR ||
+         logicalType == TRI_AQL_LOGICAL_NOT);
 
   assert(lhs->_fieldName != NULL);
   assert(rhs->_fieldName != NULL);
+
+  if (logicalType == TRI_AQL_LOGICAL_NOT) {
+    // logical NOT is simple. we simply turn everything into an all range
+    return MergeNot(context, lhs, rhs);
+  }
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1233,7 +1274,10 @@ static void NoteAttributeAccess (TRI_aql_context_t* const context,
   TRI_aql_field_access_t* previous;
   TRI_aql_field_access_t* fieldAccess;
   
-  assert(logicalType == TRI_AQL_LOGICAL_AND || logicalType == TRI_AQL_LOGICAL_OR);
+  assert(context);
+  assert(logicalType == TRI_AQL_LOGICAL_AND || 
+         logicalType == TRI_AQL_LOGICAL_OR ||
+         logicalType == TRI_AQL_LOGICAL_NOT);
   assert(node);
 
   if (!field || !field->_name._buffer) {
@@ -1444,28 +1488,50 @@ void TRI_DumpRangesAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InspectConditionAql (TRI_aql_context_t* const context,
-                              const TRI_aql_logical_e type,
+                              const TRI_aql_logical_e logicalType,
                               TRI_aql_node_t* node) {
+  assert(context);
+  assert(logicalType == TRI_AQL_LOGICAL_AND ||
+         logicalType == TRI_AQL_LOGICAL_OR ||
+         logicalType == TRI_AQL_LOGICAL_NOT);
+
   if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
+    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
+    
+    assert(lhs);
+    
+    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_NOT, lhs);
     return;
   }
 
   if (node->_type == AQL_NODE_OPERATOR_BINARY_OR) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
+    TRI_aql_logical_e nextOperator;
+
+    assert(lhs);
+    assert(rhs);
 
     // recurse into next level
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_OR, lhs);
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_OR, rhs);
+    nextOperator = SubOperator(TRI_AQL_LOGICAL_OR, logicalType);
+    TRI_InspectConditionAql(context, nextOperator, lhs);
+    TRI_InspectConditionAql(context, nextOperator, rhs);
+    return;
   }
 
   if (node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
+    TRI_aql_logical_e nextOperator;
+    
+    assert(lhs);
+    assert(rhs);
 
     // recurse into next level
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_AND, lhs);
-    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_AND, rhs);
+    nextOperator = SubOperator(TRI_AQL_LOGICAL_AND, logicalType);
+    TRI_InspectConditionAql(context, nextOperator, lhs);
+    TRI_InspectConditionAql(context, nextOperator, rhs);
+    return;
   }
 
   if (node->_type == AQL_NODE_OPERATOR_BINARY_EQ ||
@@ -1482,7 +1548,7 @@ void TRI_InspectConditionAql (TRI_aql_context_t* const context,
       TRI_aql_attribute_name_t* field = GetAttributeName(context, lhs);
 
       if (field) {
-        NoteAttributeAccess(context, type, field, node->_type, rhs);
+        NoteAttributeAccess(context, logicalType, field, node->_type, rhs);
         TRI_DestroyStringBuffer(&field->_name);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
       }
@@ -1491,7 +1557,7 @@ void TRI_InspectConditionAql (TRI_aql_context_t* const context,
       TRI_aql_attribute_name_t* field = GetAttributeName(context, rhs);
 
       if (field) {
-        NoteAttributeAccess(context, type, field, node->_type, lhs);
+        NoteAttributeAccess(context, logicalType, field, node->_type, lhs);
         TRI_DestroyStringBuffer(&field->_name);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
       }

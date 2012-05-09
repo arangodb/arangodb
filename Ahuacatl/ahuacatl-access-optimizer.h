@@ -59,7 +59,8 @@ extern "C" {
                               
 typedef enum {
   TRI_AQL_LOGICAL_AND,
-  TRI_AQL_LOGICAL_OR
+  TRI_AQL_LOGICAL_OR,
+  TRI_AQL_LOGICAL_NOT
 }
 TRI_aql_logical_e;
 
