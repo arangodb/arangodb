@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, constant folding
+/// @brief Ahuacatl, optimiser
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H
-#define TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
+#define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
@@ -37,7 +37,7 @@
 #include <BasicsC/string-buffer.h>
 #include <BasicsC/vector.h>
 
-#include "Ahuacatl/ahuacatl-access-optimizer.h"
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
@@ -55,11 +55,11 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fold constants recursively
+/// @brief optimise the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const, 
-                                      TRI_aql_node_t*);
+TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const, 
+                                 TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
