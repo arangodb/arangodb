@@ -4504,17 +4504,24 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 ///
 /// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
-/// Creates a hash index on all documents using attributes as paths to the
-/// fields. At least one attribute must be given. The value of this attribute
-/// must be a list. All documents, which do not have the attribute path or where
-/// one or more values that are not suitable, are ignored.
+/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
+/// ... as attribute paths. At least one attribute path must be given.
 ///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
+/// When a unique constraint is in effect for a collection, then all documents
+/// which contain the given attributes must differ in the attribute
+/// values. Creating a new document or updating a document will fail, if the
+/// uniqueness is violated. If any attribute value is null for a document, this
+/// document is ignored by the index.
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// Note that non-existing attribute paths in a document are treat as if the
+/// value were @LIT{null}.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude admin5
+/// @verbinclude shell-index-create-unique-constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
