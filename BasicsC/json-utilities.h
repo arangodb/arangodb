@@ -68,6 +68,24 @@ bool TRI_CheckSameValueJson (const TRI_json_t* const, const TRI_json_t* const);
 bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the elements of a list that are between the specified bounds
+///
+/// lower and upper are the bounds values. if both lower and upper have a value,
+/// then each list element is checked against the range (lower ... uppper).
+/// if either lower or upper are null, then the comparison is done as either
+/// (-inf ... upper) or (lower ... +inf). 
+///
+/// using the boolean flags includeLower and includeUpper it can be specified
+/// whether the bounds values are part of the range (true) or not (false)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const,
+                                 const TRI_json_t* const,
+                                 const bool,
+                                 const TRI_json_t* const,
+                                 const bool);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new list
 ///
 /// it is a prerequisite that the input list is already sorted. 

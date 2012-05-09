@@ -31,613 +31,11 @@
 
 #include "V8/v8-execution.h"
 
+#undef RANGE_OPTIMIZER
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash a variable
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashFieldAccess (TRI_associative_pointer_t* array, 
-                               void const* element) {
-  TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) element;
-
-  return TRI_FnvHashString(fieldAccess->_fieldName);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine variable equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualFieldAccess (TRI_associative_pointer_t* array, 
-                              void const* key, 
-                              void const* element) {
-  TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) element;
-
-  return TRI_EqualString(key, fieldAccess->_fieldName);
-}
-
-#ifdef RANGE_OPTIMIZER
-static char* AccessName (const TRI_aql_access_e type) {
-  switch (type) {
-    case TRI_AQL_ACCESS_ALL: 
-      return "all";
-    case TRI_AQL_ACCESS_IMPOSSIBLE: 
-      return "impossible";
-    case TRI_AQL_ACCESS_EXACT: 
-      return "exact";
-    case TRI_AQL_ACCESS_LIST: 
-      return "list";
-    case TRI_AQL_ACCESS_SINGLE_RANGE: 
-      return "single range";
-    case TRI_AQL_ACCESS_DOUBLE_RANGE: 
-      return "double range";
-    default:
-      return "unknown";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free access member data
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
-  assert(fieldAccess);
-
-  switch (fieldAccess->_type) {
-    case TRI_AQL_ACCESS_EXACT:
-    case TRI_AQL_ACCESS_LIST:
-      if (fieldAccess->_value._value) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._value);
-      }
-      break;
-    case TRI_AQL_ACCESS_SINGLE_RANGE:
-      if (fieldAccess->_value._singleRange._value) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._singleRange._value);
-      }
-      break;
-    case TRI_AQL_ACCESS_DOUBLE_RANGE:
-      if (fieldAccess->_value._between._lower._value) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._between._lower._value);
-      }
-      if (fieldAccess->_value._between._upper._value) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._between._upper._value);
-      }
-      break;
-
-    case TRI_AQL_ACCESS_ALL:
-    case TRI_AQL_ACCESS_IMPOSSIBLE:
-    default: {
-      // nada
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free access structure with its members
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeAccess (TRI_aql_field_access_t* const fieldAccess) {
-  assert(fieldAccess);
-
-  FreeAccessMembers(fieldAccess);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fieldName);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
-}
-
-static TRI_aql_field_access_t* MergeAccess (TRI_aql_context_t* const context,
-                                            TRI_aql_field_access_t* lhs,
-                                            TRI_aql_field_access_t* rhs) {
-  assert(lhs);
-  assert(rhs);
-
-  assert(lhs->_fieldName != NULL);
-  assert(rhs->_fieldName != NULL);
-
-  if (lhs->_type > rhs->_type) {
-    // swap operands so they are always sorted
-    TRI_aql_field_access_t* tmp = lhs;
-    lhs = rhs;
-    rhs = tmp;
-  }
-  
-  if (lhs->_type == TRI_AQL_ACCESS_IMPOSSIBLE) {
-    // impossible merged with anything just returns impossible
-    FreeAccess(rhs);
-
-    return lhs;
-  }
-
-  if (lhs->_type == TRI_AQL_ACCESS_ALL) {
-    // all merged with anything just returns the other side
-    FreeAccess(lhs);
-
-    return rhs;
-  }
-  
-
-  if (lhs->_type == TRI_AQL_ACCESS_EXACT) {
-    if (rhs->_type == TRI_AQL_ACCESS_EXACT) {
-      // check if values are identical
-      bool isSame = TRI_CheckSameValueJson(lhs->_value._value, rhs->_value._value);
-
-      FreeAccess(rhs);
-
-      if (!isSame) {
-        // lhs and rhs values are non-identical, return impossible
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-      }
-      return lhs;
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_LIST) {
-      // check if lhs is contained in rhs list
-      bool inList = TRI_CheckInListJson(lhs->_value._value, rhs->_value._value);
-
-      FreeAccess(rhs);
-
-      if (!inList) {
-        // lhs value is not in rhs list, return impossible
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-      }
-
-      return lhs;
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_SINGLE_RANGE) {
-      // check if value is in range
-      int result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._singleRange._value);
-      
-      bool contained = ((rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
-                        (rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0) ||
-                        (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
-                        (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
-
-      if (!contained) {
-        // lhs value is not contained in rhs range, return impossible
-        FreeAccess(rhs);
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-        return lhs;
-      }
-
-      // lhs value is contained in rhs range, simply return rhs
-      FreeAccess(lhs);
-
-      return rhs;
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_DOUBLE_RANGE) {
-      // check if value is in range
-      int result;
-      bool contained;
-      
-      // compare lower end
-      result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._lower._value);
-      
-      contained = ((rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
-                   (rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0));
-
-      if (!contained) {
-        // lhs value is not contained in rhs range, return impossible
-        FreeAccess(rhs);
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-        return lhs;
-      }
- 
-      // compare upper end     
-      result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._upper._value);
-      
-      contained = ((rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
-                   (rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
-      
-      if (!contained) {
-        // lhs value is not contained in rhs range, return impossible
-        FreeAccess(rhs);
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-        return lhs;
-      }
-
-      // lhs value is contained in rhs range, return rhs
-      FreeAccess(lhs);
-
-      return rhs;
-    }
-  }
-
-  if (lhs->_type == TRI_AQL_ACCESS_LIST) {
-    if (rhs->_type == TRI_AQL_ACCESS_LIST) {
-      // make a list of both
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_SINGLE_RANGE) {
-      // check if value in range
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_DOUBLE_RANGE) {
-      // check if value in range
-    }
-  }
-  
-  if (lhs->_type == TRI_AQL_ACCESS_SINGLE_RANGE) {
-    if (rhs->_type == TRI_AQL_ACCESS_SINGLE_RANGE) {
-      TRI_json_t* lhsValue;
-      TRI_json_t* rhsValue;
-      TRI_aql_range_e lhsType;
-      TRI_aql_range_e rhsType;
-      int result;
-
-      if (lhs->_value._singleRange._type > rhs->_value._singleRange._type) {
-        // swap operands so they are always sorted
-        TRI_aql_field_access_t* tmp = lhs;
-        lhs = rhs;
-        rhs = tmp;
-      }
-
-      result = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value);
-      lhsType = lhs->_value._singleRange._type;
-      rhsType = rhs->_value._singleRange._type;
-      lhsValue = lhs->_value._singleRange._value;
-      rhsValue = rhs->_value._singleRange._value;
-
-      // check if ranges overlap
-      if ((lhsType == TRI_AQL_RANGE_LOWER_EXCLUDED && rhsType == TRI_AQL_RANGE_LOWER_EXCLUDED) ||
-          (lhsType == TRI_AQL_RANGE_LOWER_INCLUDED && rhsType == TRI_AQL_RANGE_LOWER_INCLUDED)) {
-        // > && >
-        // >= && >=
-        if (result > 0) {
-          // lhs > rhs
-          FreeAccess(rhs);
-
-          return lhs;
-        }
-        else {
-          FreeAccess(lhs);
-
-          return rhs;
-        }
-      }
-      else if ((lhsType == TRI_AQL_RANGE_UPPER_EXCLUDED && rhsType == TRI_AQL_RANGE_UPPER_EXCLUDED) ||
-               (lhsType == TRI_AQL_RANGE_UPPER_INCLUDED && rhsType == TRI_AQL_RANGE_UPPER_INCLUDED)) {
-        // < && <
-        // <= && <=
-        if (result > 0) {
-          // lhs > rhs
-          FreeAccess(lhs);
-
-          return rhs;
-        }
-        else {
-          FreeAccess(rhs);
-
-          return lhs;
-        }
-      }
-      else if (lhsType == TRI_AQL_RANGE_LOWER_EXCLUDED && rhsType == TRI_AQL_RANGE_LOWER_INCLUDED) {
-        // > && >=
-        if (result >= 0) {
-          // lhs > rhs
-          FreeAccess(rhs);
-
-          return lhs;
-        } 
-        else {
-          FreeAccess(lhs);
-
-          return rhs;
-        }
-      }
-      else if (lhsType == TRI_AQL_RANGE_LOWER_EXCLUDED && rhsType == TRI_AQL_RANGE_UPPER_EXCLUDED) {
-        // > && <
-        if (result < 0) {
-          // save pointers
-          lhsValue = lhs->_value._singleRange._value;
-          rhsValue = rhs->_value._singleRange._value;
-          rhs->_value._singleRange._value = NULL;
-          FreeAccess(rhs); 
-
-          lhs->_type = TRI_AQL_ACCESS_DOUBLE_RANGE;
-          lhs->_value._between._lower._type = lhsType;
-          lhs->_value._between._lower._value = lhsValue;
-          lhs->_value._between._upper._type = rhsType;
-          lhs->_value._between._upper._value = rhsValue;
-
-          return lhs;
-        }
-        else {
-          FreeAccess(rhs);
-          FreeAccessMembers(lhs);
-          lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-          return lhs;
-        }
-      }
-      else if ((lhsType == TRI_AQL_RANGE_LOWER_EXCLUDED && rhsType == TRI_AQL_RANGE_UPPER_INCLUDED) ||
-               (lhsType == TRI_AQL_RANGE_LOWER_INCLUDED && rhsType == TRI_AQL_RANGE_UPPER_EXCLUDED)) {
-        // > && <=
-        // >= && <
-        if (result < 0) {
-          // save pointers
-          lhsValue = lhs->_value._singleRange._value;
-          rhsValue = rhs->_value._singleRange._value;
-          rhs->_value._singleRange._value = NULL;
-          FreeAccess(rhs); 
-
-          lhs->_type = TRI_AQL_ACCESS_DOUBLE_RANGE;
-          lhs->_value._between._lower._type = lhsType;
-          lhs->_value._between._lower._value = lhsValue;
-          lhs->_value._between._upper._type = rhsType;
-          lhs->_value._between._upper._value = rhsValue;
-
-          return lhs;
-        }
-        else {
-          FreeAccess(rhs);
-          FreeAccessMembers(lhs);
-          lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-          return lhs;
-        }
-      }
-      else if (lhsType == TRI_AQL_RANGE_LOWER_INCLUDED && rhsType == TRI_AQL_RANGE_UPPER_INCLUDED) {
-        // >= && <=
-        if (result < 0) {
-          // save pointers
-          lhsValue = lhs->_value._singleRange._value;
-          rhsValue = rhs->_value._singleRange._value;
-          rhs->_value._singleRange._value = NULL;
-          FreeAccess(rhs); 
-
-          lhs->_type = TRI_AQL_ACCESS_DOUBLE_RANGE;
-          lhs->_value._between._lower._type = lhsType;
-          lhs->_value._between._lower._value = lhsValue;
-          lhs->_value._between._upper._type = rhsType;
-          lhs->_value._between._upper._value = rhsValue;
-
-          return lhs;
-        }
-        else if (result == 0) {
-          FreeAccess(rhs);
-
-          // save pointer
-          lhsValue = lhs->_value._singleRange._value;
-          lhs->_type = TRI_AQL_ACCESS_EXACT;
-          lhs->_value._value = lhsValue;
-          return lhs;
-        }
-        else {
-          FreeAccess(rhs);
-          FreeAccessMembers(lhs);
-          lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-
-          return lhs;
-        }
-      }
-      else if (lhsType == TRI_AQL_RANGE_UPPER_EXCLUDED && rhsType == TRI_AQL_RANGE_UPPER_INCLUDED) {
-        // < && <=
-        if (result <= 0) {
-          FreeAccess(rhs);
-
-          return lhs;
-        }
-        else {
-          FreeAccess(lhs);
-
-          return rhs;
-        }
-      }
-    }
-    else if (rhs->_type == TRI_AQL_ACCESS_DOUBLE_RANGE) {
-      // check if value in range
-    }
-  }
-  
-  if (lhs->_type == TRI_AQL_ACCESS_DOUBLE_RANGE) {
-  }
-
-  return NULL;
-}
-
-
-static TRI_aql_field_access_t* CreateAccess (TRI_aql_context_t* const context,
-                                             const TRI_aql_field_name_t* const field, 
-                                             const TRI_aql_node_type_e operator,
-                                             const TRI_aql_node_t* const node) {
-  TRI_aql_field_access_t* fieldAccess;
-  TRI_json_t* value;
-
-  value = TRI_NodeJsonAql(context, node);
-  if (!value) {
-    return NULL;
-  }  
-
-  fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
-  if (fieldAccess == NULL) {
-    return NULL;
-  }
-
-  fieldAccess->_fieldName = TRI_DuplicateString(field->_name._buffer);
-  if (fieldAccess->_fieldName == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
-    return NULL;
-  }
-
-  if (operator == AQL_NODE_OPERATOR_BINARY_EQ) {
-    fieldAccess->_type = TRI_AQL_ACCESS_EXACT; 
-    fieldAccess->_value._value = value;
-  } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_LT) { 
-    fieldAccess->_type = TRI_AQL_ACCESS_SINGLE_RANGE;
-    fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_EXCLUDED;
-    fieldAccess->_value._singleRange._value = value;
-  } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_LE) { 
-    fieldAccess->_type = TRI_AQL_ACCESS_SINGLE_RANGE;
-    fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_INCLUDED;
-    fieldAccess->_value._singleRange._value = value;
-  } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_GT) { 
-    fieldAccess->_type = TRI_AQL_ACCESS_SINGLE_RANGE;
-    fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_EXCLUDED;
-    fieldAccess->_value._singleRange._value = value;
-  } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_GE) { 
-    fieldAccess->_type = TRI_AQL_ACCESS_SINGLE_RANGE;
-    fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_INCLUDED;
-    fieldAccess->_value._singleRange._value = value;
-  }
-  else if (operator == AQL_NODE_OPERATOR_BINARY_IN) { 
-    fieldAccess->_type = TRI_AQL_ACCESS_LIST;
-    fieldAccess->_value._value = value;
-    TRI_SortListJson(fieldAccess->_value._value);
-  }
-  else {
-    assert(false);
-  }
-  
-  return fieldAccess;
-}
-
-static void CreateFieldAccess (TRI_aql_context_t* const context,
-                               const TRI_aql_field_name_t* const field,
-                               const TRI_aql_node_type_e operator,
-                               const TRI_aql_node_t* const node) {
-  TRI_aql_field_access_t* previous;
-  TRI_aql_field_access_t* fieldAccess;
-
-  if (!field || !field->_name._buffer) {
-    return;
-  }
-    
-  fieldAccess = CreateAccess(context, field, operator, node);
-  if (!fieldAccess) { 
-    // TODO: mark failure
-    return;
-  }
-
-  previous = (TRI_aql_field_access_t*) TRI_LookupByKeyAssociativePointer(&context->_ranges, field->_name._buffer);
-  if (previous) {
-    printf("ENTER MERGE\n");
-    TRI_aql_field_access_t* merged = MergeAccess(context, fieldAccess, previous);
-    printf("LEAVE MERGE\n");
-
-    // TODO:
-    // free previous
-    // free fieldAccess
-    if (merged) {
-      TRI_InsertKeyAssociativePointer(&context->_ranges, merged->_fieldName, merged, true);
-    printf("MERGE1\n");
-    }
-
-    // previous access exists, must merge
-    // merge(previous, new)
-    // TRI_InsertKeyAssociativePointer(&context
-  }
-  else {
-    // no previous access exists, no need to merge
-    TRI_InsertKeyAssociativePointer(&context->_ranges, fieldAccess->_fieldName, fieldAccess, false);
-    printf("INSERT1\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_field_name_t* GetFieldName (TRI_aql_context_t* const context,
-                                           const TRI_aql_node_t* const node) {
-  if (node->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
-    TRI_aql_field_name_t* field = GetFieldName(context, TRI_AQL_NODE_MEMBER(node, 0));
-
-    if (!field) {
-      return NULL;
-    }
-
-    TRI_AppendCharStringBuffer(&field->_name, '.');
-    TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
-    return field;
-  }
-  else if (node->_type == AQL_NODE_REFERENCE) {
-    TRI_aql_field_name_t* field;
-    
-    field = (TRI_aql_field_name_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_name_t), false);
-
-    if (!field) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      return NULL;
-    }
-
-    field->_variable = TRI_AQL_NODE_STRING(node);
-    TRI_InitStringBuffer(&field->_name, TRI_UNKNOWN_MEM_ZONE);
-    TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
-
-    return field;
-  }
-
-  return NULL;
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect a filter expression
-////////////////////////////////////////////////////////////////////////////////
-
-static void InspectFilter (TRI_aql_context_t* const context,
-                           TRI_aql_node_t* node) {
-      printf("ITERATION SOMETHING %s\n", TRI_NodeNameAql(node->_type));
-  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
-    return;
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_OR) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-
-    InspectFilter(context, lhs);
-    InspectFilter(context, rhs);
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-
-    InspectFilter(context, lhs);
-    InspectFilter(context, rhs);
-  }
-
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_EQ ||
-//      node->_type == AQL_NODE_OPERATOR_BINARY_NE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
-    TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
-    TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
-
-    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
-      TRI_aql_field_name_t* field = GetFieldName(context, lhs);
-
-      if (field) {
-        CreateFieldAccess(context, field, node->_type, rhs);
-        TRI_DestroyStringBuffer(&field->_name);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
-      }
-    }
-    else if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
-      TRI_aql_field_name_t* field = GetFieldName(context, rhs);
-
-      if (field) {
-        CreateFieldAccess(context, field, node->_type, lhs);
-        TRI_DestroyStringBuffer(&field->_name);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
-      }
-    }
-  }
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create javascript function code for a relational operation
@@ -861,7 +259,6 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
 
 static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
                                        TRI_aql_node_t* node) {
-#ifdef RANGE_OPTIMIZER  
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
   bool result;
    
@@ -870,7 +267,9 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
   }
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
-    InspectFilter(context, expression);
+#ifdef RANGE_OPTIMIZER  
+    TRI_InspectConditionAql(context, TRI_AQL_LOGICAL_AND, expression);
+#endif
     return node;
   }
 
@@ -881,7 +280,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
 
     return NULL;
   }
-#endif
+
   return node;
 }
 
@@ -1054,6 +453,10 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
     func = "IN";
   }
+  else {
+    // not what we expected, however, simply continue
+    return node;
+  }
   
   code = RelationCode(func, lhs, rhs); 
   if (!code) {
@@ -1190,7 +593,6 @@ static TRI_aql_node_t* MarkFor (TRI_aql_context_t* const context,
   return node;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fold constants in a node
 ////////////////////////////////////////////////////////////////////////////////
@@ -1260,15 +662,14 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
 TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
                                       TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
-  
-  // todo: must free
-  TRI_InitAssociativePointer(&context->_ranges,
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             &TRI_HashStringKeyAssociativePointer, 
-                             &HashFieldAccess,
-                             &EqualFieldAccess,
-                             NULL);
-
+ 
+#ifdef RANGE_OPTIMIZER  
+  if (!TRI_InitOptimizerAql(context)) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+#endif
+     
   walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);
   if (!walker) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -1279,41 +680,8 @@ TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
 
   TRI_FreeModifyTreeWalkerAql(walker);
 
-#ifdef RANGE_OPTIMIZER
-  size_t i;  
-  for (i = 0; i < context->_ranges._nrAlloc; ++i) {
-    TRI_aql_field_access_t* fieldAccess = context->_ranges._table[i]; 
-
-    if (!fieldAccess) {
-      continue;
-    }
-
-    printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fieldName);
-    printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
-    if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT || fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-      TRI_string_buffer_t b;
-      TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-      TRI_StringifyJson(&b, fieldAccess->_value._value);
-
-      printf("- VALUE: %s\n", b._buffer);
-    }
-    else if (fieldAccess->_type == TRI_AQL_ACCESS_SINGLE_RANGE) {
-      TRI_string_buffer_t b;
-      TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-      TRI_StringifyJson(&b, fieldAccess->_value._singleRange._value);
-
-      printf("- VALUE: %s\n", b._buffer);
-    }
-    else if (fieldAccess->_type == TRI_AQL_ACCESS_DOUBLE_RANGE) {
-      TRI_string_buffer_t b;
-      TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-      TRI_StringifyJson(&b, fieldAccess->_value._between._lower._value);
-      TRI_AppendStringStringBuffer(&b, ", ");
-      TRI_StringifyJson(&b, fieldAccess->_value._between._upper._value);
-
-      printf("- VALUE: %s\n", b._buffer);
-    }
-  }
+#ifdef RANGE_OPTIMIZER  
+  TRI_DumpRangesAql(context);
 #endif
 
   return node;
