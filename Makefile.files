@@ -235,7 +235,6 @@ avocado_SOURCES = \
 	VocBase/query-order.c \
 	VocBase/query-parse.c \
 	VocBase/query-result.c \
-	VocBase/query.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \

@@ -167,78 +167,6 @@ bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines documents in a join/where - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t context,
-                                      const TRI_select_join_t* join,
-                                      const size_t level,
-                                      const bool isJoin) {
-  js_exec_context_t* ctx;
-  TRI_doc_mptr_t* document;
-  
-  ctx = (js_exec_context_t*) context;
-
-  for (size_t i = 0; i <= level; i++) {
-    TRI_join_part_t* part = (TRI_join_part_t*) join->_parts._buffer[i];
-
-    if (part->_type != JOIN_TYPE_LIST || (isJoin && (level == i))) {
-      // part is a single-document container
-      document = (TRI_doc_mptr_t*) part->_singleDocument;
-      if (!document) {
-        ctx->_arguments->Set(v8::String::New(part->_alias), v8::Null());
-      } 
-      else {
-        v8::Handle<v8::Value> result;
-        bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
-        if (!ok) {
-          return false;
-        }
-        ctx->_arguments->Set(v8::String::New(part->_alias), result);
-      }
-
-      if (part->_extraData._size) {
-        // make extra values available
-        ctx->_arguments->Set(v8::String::New(part->_extraData._alias), v8::Number::New(*((double*) part->_extraData._singleValue)));
-      }
-    }
-    else {
-      // part is a multi-document container
-      v8::Handle<v8::Array> array = v8::Array::New();
-      size_t pos = 0;
-      for (size_t n = 0; n < part->_listDocuments._length; n++) {
-        document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[n];
-        if (document) {
-          v8::Handle<v8::Value> result;
-          bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
-          if (!ok) {
-            return false;
-          }
-          array->Set(pos++, result);
-        }
-      }
-      ctx->_arguments->Set(v8::String::New(part->_alias), array);
-      
-      if (part->_extraData._size) {
-        // make extra values available
-        v8::Handle<v8::Array> array = v8::Array::New();
-        uint32_t pos = 0;
-        for (size_t n = 0; n < part->_extraData._listValues._length; n++) {
-          double* data = (double*) part->_extraData._listValues._buffer[n];
-          if (data) {
-            v8::Handle<v8::Value> result;
-            array->Set(pos++, v8::Number::New(*data));
-          }
-        }
-        ctx->_arguments->Set(v8::String::New(part->_extraData._alias), array);
-      }
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief defines documents in a join/where
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -533,30 +461,6 @@ bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t context, void* storage) 
   }
 
   * (v8::Handle<v8::Value>*) storage = result;
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an execution context for a condition - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteConditionExecutionContextX (TRI_js_exec_context_t context, bool* r) {
-  js_exec_context_t* ctx;
-
-  ctx = (js_exec_context_t*) context;
-
-  // convert back into a handle
-  v8::Persistent<v8::Function> func = ctx->_func;
-
-  // and execute the function
-  v8::Handle<v8::Value> args[] = { ctx->_arguments };
-  v8::Handle<v8::Value> result = func->Call(func, 1, args);
-  
-  if (result.IsEmpty()) {
-    return false;
-  }
-
-  *r = TRI_ObjectToBoolean(result);
   return true;
 }
 
