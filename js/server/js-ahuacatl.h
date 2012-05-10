@@ -173,7 +173,7 @@ static string JS_server_ahuacatl =
   "    throw \"expecting list or document for index access\";\n"
   "  }\n"
   "\n"
-  "  var result = value[attributeName];\n"
+  "  var result = value[index];\n"
   "\n"
   "  if (AHUACATL_TYPEWEIGHT(result) === AHUACATL_TYPEWEIGHT_NULL) {\n"
   "    return null;\n"

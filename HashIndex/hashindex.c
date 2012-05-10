@@ -130,9 +130,9 @@ int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
 /// @brief Locates an entry within the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
+TRI_hash_index_elements_t* HashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
   HashIndexElement* result;
-  HashIndexElements* results;
+  TRI_hash_index_elements_t* results;
 
   
   // .............................................................................
@@ -140,7 +140,7 @@ HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* elemen
   // some sort of error.
   // .............................................................................
   
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElements), false);
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hash_index_elements_t), false);
 
   if (results == NULL) {
     return NULL;
@@ -297,12 +297,12 @@ int MultiHashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
 // Locates an entry within the associative array
 // ...............................................................................
 
-HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
+TRI_hash_index_elements_t* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
   TRI_vector_pointer_t result;
-  HashIndexElements* results;
+  TRI_hash_index_elements_t* results;
   size_t j;
   
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElements), false);
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hash_index_elements_t), false);
   if (results == NULL) {
     return NULL;
   }

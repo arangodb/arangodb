@@ -172,7 +172,7 @@ function AHUACATL_GET_INDEX (value, index) {
     throw "expecting list or document for index access";
   }
 
-  var result = value[attributeName];
+  var result = value[index];
 
   if (AHUACATL_TYPEWEIGHT(result) === AHUACATL_TYPEWEIGHT_NULL) {
     return null;

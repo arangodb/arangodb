@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief select result definitions
+/// @brief V8 utility functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,41 +21,39 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_RESULT_H
-#define TRIAGENS_DURHAM_VOCBASE_RESULT_H 1
+#ifndef TRIAGENS_V8_V8_C_CONV_H
+#define TRIAGENS_V8_V8_C_CONV_H 1
+
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              CONVERSION FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup V8Utils
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for number of rows in a select result
+/// @brief converts a TRI_doc_mptr_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef uint32_t TRI_select_size_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Typedef for the data contained in the document index
-/// (@ref TRI_select_result_index_t)
-////////////////////////////////////////////////////////////////////////////////
-
-typedef void* TRI_sr_index_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Typedef for the result data contained in the document index
-/// (@ref TRI_select_result_documents_t)
-////////////////////////////////////////////////////////////////////////////////
-
-typedef void* TRI_sr_documents_t;
+bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
+                                TRI_doc_mptr_t const* document,
+                                void* storage);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -71,4 +69,3 @@ typedef void* TRI_sr_documents_t;
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

@@ -1,10 +1,8 @@
+/* A Bison parser, made by GNU Bison 2.5.  */
 
-/* A Bison parser, made by GNU Bison 2.4.1.  */
-
-/* Skeleton implementation for Bison's Yacc-like parsers in C
+/* Bison implementation for Yacc-like parsers in C
    
-      Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
-   Free Software Foundation, Inc.
+      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -46,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "2.4.1"
+#define YYBISON_VERSION "2.5"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -75,7 +73,7 @@
 
 /* Copy the first part of user declarations.  */
 
-/* Line 189 of yacc.c  */
+/* Line 268 of yacc.c  */
 #line 10 "Ahuacatl/ahuacatl-grammar.y"
 
 #include <stdio.h>
@@ -92,8 +90,8 @@
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 
 
-/* Line 189 of yacc.c  */
-#line 97 "Ahuacatl/ahuacatl-grammar.c"
+/* Line 268 of yacc.c  */
+#line 95 "Ahuacatl/ahuacatl-grammar.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -177,7 +175,7 @@
 typedef union YYSTYPE
 {
 
-/* Line 214 of yacc.c  */
+/* Line 293 of yacc.c  */
 #line 25 "Ahuacatl/ahuacatl-grammar.y"
 
   TRI_aql_node_t* node;
@@ -187,8 +185,8 @@ typedef union YYSTYPE
 
 
 
-/* Line 214 of yacc.c  */
-#line 192 "Ahuacatl/ahuacatl-grammar.c"
+/* Line 293 of yacc.c  */
+#line 190 "Ahuacatl/ahuacatl-grammar.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -211,7 +209,7 @@ typedef struct YYLTYPE
 
 /* Copy the second part of user declarations.  */
 
-/* Line 264 of yacc.c  */
+/* Line 343 of yacc.c  */
 #line 32 "Ahuacatl/ahuacatl-grammar.y"
 
 
@@ -240,8 +238,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 #define scanner context->_parser->_scanner
 
 
-/* Line 264 of yacc.c  */
-#line 245 "Ahuacatl/ahuacatl-grammar.c"
+/* Line 343 of yacc.c  */
+#line 243 "Ahuacatl/ahuacatl-grammar.c"
 
 #ifdef short
 # undef short
@@ -291,7 +289,7 @@ typedef short int yytype_int16;
 #define YYSIZE_MAXIMUM ((YYSIZE_T) -1)
 
 #ifndef YY_
-# if YYENABLE_NLS
+# if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
 #   include <libintl.h> /* INFRINGES ON USER NAME SPACE */
 #   define YY_(msgid) dgettext ("bison-runtime", msgid)
@@ -344,11 +342,11 @@ YYID (yyi)
 #    define alloca _alloca
 #   else
 #    define YYSTACK_ALLOC alloca
-#    if ! defined _ALLOCA_H && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-#     ifndef _STDLIB_H
-#      define _STDLIB_H 1
+#     ifndef EXIT_SUCCESS
+#      define EXIT_SUCCESS 0
 #     endif
 #    endif
 #   endif
@@ -371,24 +369,24 @@ YYID (yyi)
 #  ifndef YYSTACK_ALLOC_MAXIMUM
 #   define YYSTACK_ALLOC_MAXIMUM YYSIZE_MAXIMUM
 #  endif
-#  if (defined __cplusplus && ! defined _STDLIB_H \
+#  if (defined __cplusplus && ! defined EXIT_SUCCESS \
        && ! ((defined YYMALLOC || defined malloc) \
 	     && (defined YYFREE || defined free)))
 #   include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-#   ifndef _STDLIB_H
-#    define _STDLIB_H 1
+#   ifndef EXIT_SUCCESS
+#    define EXIT_SUCCESS 0
 #   endif
 #  endif
 #  ifndef YYMALLOC
 #   define YYMALLOC malloc
-#   if ! defined malloc && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#   if ! defined malloc && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
 #  ifndef YYFREE
 #   define YYFREE free
-#   if ! defined free && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#   if ! defined free && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 void free (void *); /* INFRINGES ON USER NAME SPACE */
 #   endif
@@ -419,23 +417,7 @@ union yyalloc
      ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE) + sizeof (YYLTYPE)) \
       + 2 * YYSTACK_GAP_MAXIMUM)
 
-/* Copy COUNT objects from FROM to TO.  The source and destination do
-   not overlap.  */
-# ifndef YYCOPY
-#  if defined __GNUC__ && 1 < __GNUC__
-#   define YYCOPY(To, From, Count) \
-      __builtin_memcpy (To, From, (Count) * sizeof (*(From)))
-#  else
-#   define YYCOPY(To, From, Count)		\
-      do					\
-	{					\
-	  YYSIZE_T yyi;				\
-	  for (yyi = 0; yyi < (Count); yyi++)	\
-	    (To)[yyi] = (From)[yyi];		\
-	}					\
-      while (YYID (0))
-#  endif
-# endif
+# define YYCOPY_NEEDED 1
 
 /* Relocate STACK from its old location to the new one.  The
    local variables YYSIZE and YYSTACKSIZE give the old and new number of
@@ -455,19 +437,39 @@ union yyalloc
 
 #endif
 
+#if defined YYCOPY_NEEDED && YYCOPY_NEEDED
+/* Copy COUNT objects from FROM to TO.  The source and destination do
+   not overlap.  */
+# ifndef YYCOPY
+#  if defined __GNUC__ && 1 < __GNUC__
+#   define YYCOPY(To, From, Count) \
+      __builtin_memcpy (To, From, (Count) * sizeof (*(From)))
+#  else
+#   define YYCOPY(To, From, Count)		\
+      do					\
+	{					\
+	  YYSIZE_T yyi;				\
+	  for (yyi = 0; yyi < (Count); yyi++)	\
+	    (To)[yyi] = (From)[yyi];		\
+	}					\
+      while (YYID (0))
+#  endif
+# endif
+#endif /* !YYCOPY_NEEDED */
+
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  3
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   367
+#define YYLAST   341
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  52
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  46
+#define YYNNTS  45
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  101
+#define YYNRULES  100
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  164
+#define YYNSTATES  161
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
@@ -518,67 +520,66 @@ static const yytype_uint8 yytranslate[] =
 static const yytype_uint16 yyprhs[] =
 {
        0,     0,     3,     4,     8,     9,    12,    14,    16,    18,
-      20,    22,    24,    29,    32,    33,    41,    42,    47,    49,
-      53,    57,    59,    60,    63,    64,    68,    70,    74,    77,
-      78,    80,    82,    85,    90,    93,    97,   101,   103,   105,
-     107,   108,   114,   116,   118,   120,   123,   126,   129,   133,
+      20,    22,    24,    29,    32,    37,    38,    43,    45,    49,
+      53,    55,    56,    59,    60,    64,    66,    70,    73,    74,
+      76,    78,    81,    86,    89,    93,    97,    99,   101,   103,
+     104,   110,   112,   114,   116,   119,   122,   125,   129,   133,
      137,   141,   145,   149,   153,   157,   161,   165,   169,   173,
-     177,   181,   185,   191,   192,   194,   196,   200,   202,   204,
-     205,   210,   211,   213,   215,   219,   220,   225,   226,   228,
-     230,   234,   238,   240,   245,   252,   256,   258,   263,   267,
-     269,   271,   273,   275,   277,   279,   281,   283,   285,   287,
-     289,   291
+     177,   181,   187,   188,   190,   192,   196,   198,   200,   201,
+     206,   207,   209,   211,   215,   216,   221,   222,   224,   226,
+     230,   234,   236,   241,   248,   252,   254,   259,   263,   265,
+     267,   269,   271,   273,   275,   277,   279,   281,   283,   285,
+     287
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
 static const yytype_int8 yyrhs[] =
 {
-      53,     0,    -1,    -1,    54,    55,    72,    -1,    -1,    55,
-      56,    -1,    57,    -1,    59,    -1,    58,    -1,    61,    -1,
-      66,    -1,    71,    -1,     3,    96,    12,    73,    -1,     5,
-      73,    -1,    -1,     4,    96,    60,    21,    39,    73,    40,
-      -1,    -1,     7,    62,    63,    65,    -1,    64,    -1,    63,
-      38,    64,    -1,    96,    21,    73,    -1,    73,    -1,    -1,
-      13,    96,    -1,    -1,     8,    67,    68,    -1,    69,    -1,
-      68,    38,    69,    -1,    73,    70,    -1,    -1,    10,    -1,
-      11,    -1,     9,    97,    -1,     9,    97,    38,    97,    -1,
-       6,    73,    -1,    39,    73,    40,    -1,    39,    53,    40,
-      -1,    75,    -1,    76,    -1,    77,    -1,    -1,    17,    74,
-      39,    78,    40,    -1,    80,    -1,    92,    -1,    90,    -1,
-      31,    73,    -1,    32,    73,    -1,    22,    73,    -1,    73,
-      24,    73,    -1,    73,    23,    73,    -1,    73,    31,    73,
-      -1,    73,    32,    73,    -1,    73,    33,    73,    -1,    73,
-      34,    73,    -1,    73,    35,    73,    -1,    73,    25,    73,
-      -1,    73,    26,    73,    -1,    73,    27,    73,    -1,    73,
-      28,    73,    -1,    73,    29,    73,    -1,    73,    30,    73,
-      -1,    73,    12,    73,    -1,    73,    36,    73,    37,    73,
-      -1,    -1,    79,    -1,    73,    -1,    79,    38,    73,    -1,
-      81,    -1,    85,    -1,    -1,    43,    82,    83,    44,    -1,
-      -1,    84,    -1,    73,    -1,    84,    38,    73,    -1,    -1,
-      41,    86,    87,    42,    -1,    -1,    88,    -1,    89,    -1,
-      88,    38,    89,    -1,    95,    37,    73,    -1,    17,    -1,
-      90,    43,    73,    44,    -1,    90,    43,    33,    44,    50,
-      91,    -1,    90,    50,    17,    -1,    17,    -1,    91,    43,
-      73,    44,    -1,    91,    50,    17,    -1,    93,    -1,    94,
-      -1,    18,    -1,    19,    -1,    14,    -1,    15,    -1,    16,
-      -1,    20,    -1,    17,    -1,    18,    -1,    17,    -1,    19,
-      -1,    51,    19,    -1
+      53,     0,    -1,    -1,    54,    55,    71,    -1,    -1,    55,
+      56,    -1,    57,    -1,    59,    -1,    58,    -1,    60,    -1,
+      65,    -1,    70,    -1,     3,    95,    12,    72,    -1,     5,
+      72,    -1,     4,    95,    21,    72,    -1,    -1,     7,    61,
+      62,    64,    -1,    63,    -1,    62,    38,    63,    -1,    95,
+      21,    72,    -1,    72,    -1,    -1,    13,    95,    -1,    -1,
+       8,    66,    67,    -1,    68,    -1,    67,    38,    68,    -1,
+      72,    69,    -1,    -1,    10,    -1,    11,    -1,     9,    96,
+      -1,     9,    96,    38,    96,    -1,     6,    72,    -1,    39,
+      72,    40,    -1,    39,    53,    40,    -1,    74,    -1,    75,
+      -1,    76,    -1,    -1,    17,    73,    39,    77,    40,    -1,
+      79,    -1,    91,    -1,    89,    -1,    31,    72,    -1,    32,
+      72,    -1,    22,    72,    -1,    72,    24,    72,    -1,    72,
+      23,    72,    -1,    72,    31,    72,    -1,    72,    32,    72,
+      -1,    72,    33,    72,    -1,    72,    34,    72,    -1,    72,
+      35,    72,    -1,    72,    25,    72,    -1,    72,    26,    72,
+      -1,    72,    27,    72,    -1,    72,    28,    72,    -1,    72,
+      29,    72,    -1,    72,    30,    72,    -1,    72,    12,    72,
+      -1,    72,    36,    72,    37,    72,    -1,    -1,    78,    -1,
+      72,    -1,    78,    38,    72,    -1,    80,    -1,    84,    -1,
+      -1,    43,    81,    82,    44,    -1,    -1,    83,    -1,    72,
+      -1,    83,    38,    72,    -1,    -1,    41,    85,    86,    42,
+      -1,    -1,    87,    -1,    88,    -1,    87,    38,    88,    -1,
+      94,    37,    72,    -1,    17,    -1,    89,    43,    72,    44,
+      -1,    89,    43,    33,    44,    50,    90,    -1,    89,    50,
+      17,    -1,    17,    -1,    90,    43,    72,    44,    -1,    90,
+      50,    17,    -1,    92,    -1,    93,    -1,    18,    -1,    19,
+      -1,    14,    -1,    15,    -1,    16,    -1,    20,    -1,    17,
+      -1,    18,    -1,    17,    -1,    19,    -1,    51,    19,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
        0,   180,   180,   180,   194,   196,   201,   203,   205,   207,
-     209,   211,   215,   230,   245,   245,   268,   268,   291,   293,
-     298,   308,   316,   319,   325,   325,   349,   354,   362,   373,
-     376,   379,   385,   397,   412,   428,   431,   439,   442,   445,
-     448,   448,   470,   473,   476,   482,   490,   498,   509,   517,
-     525,   533,   541,   549,   557,   565,   573,   581,   589,   597,
-     605,   613,   624,   635,   637,   642,   645,   651,   654,   660,
-     660,   673,   675,   680,   685,   693,   693,   706,   708,   713,
-     715,   720,   728,   745,   752,   759,   769,   776,   783,   793,
-     796,   802,   810,   824,   832,   840,   851,   862,   869,   878,
-     884,   891
+     209,   211,   215,   230,   245,   260,   260,   283,   285,   290,
+     300,   308,   311,   317,   317,   341,   346,   354,   365,   368,
+     371,   377,   389,   404,   420,   423,   451,   454,   457,   460,
+     460,   482,   485,   488,   494,   502,   510,   521,   529,   537,
+     545,   553,   561,   569,   577,   585,   593,   601,   609,   617,
+     625,   636,   647,   649,   654,   657,   663,   666,   672,   672,
+     685,   687,   692,   697,   705,   705,   718,   720,   725,   727,
+     732,   740,   757,   764,   771,   781,   788,   795,   805,   808,
+     814,   822,   836,   844,   852,   863,   874,   881,   890,   896,
+     903
 };
 #endif
 
@@ -602,13 +603,13 @@ static const char *const yytname[] =
   "FUNCCALL", "REFERENCE", "INDEXED", "'.'", "'-'", "$accept", "query",
   "$@1", "optional_statement_block_statements",
   "statement_block_statement", "for_statement", "filter_statement",
-  "let_statement", "$@2", "collect_statement", "$@3", "collect_list",
-  "collect_element", "optional_into", "sort_statement", "$@4", "sort_list",
+  "let_statement", "collect_statement", "$@2", "collect_list",
+  "collect_element", "optional_into", "sort_statement", "$@3", "sort_list",
   "sort_element", "sort_direction", "limit_statement", "return_statement",
-  "expression", "$@5", "operator_unary", "operator_binary",
+  "expression", "$@4", "operator_unary", "operator_binary",
   "operator_ternary", "optional_function_call_arguments",
-  "function_arguments_list", "compound_type", "list", "$@6",
-  "optional_list_elements", "list_elements_list", "array", "$@7",
+  "function_arguments_list", "compound_type", "list", "$@5",
+  "optional_list_elements", "list_elements_list", "array", "$@6",
   "optional_array_elements", "array_elements_list", "array_element",
   "reference", "expansion", "atomic_value", "value_literal",
   "bind_parameter", "array_element_name", "variable_name", "signed_number", 0
@@ -633,66 +634,66 @@ static const yytype_uint16 yytoknum[] =
 static const yytype_uint8 yyr1[] =
 {
        0,    52,    54,    53,    55,    55,    56,    56,    56,    56,
-      56,    56,    57,    58,    60,    59,    62,    61,    63,    63,
-      64,    64,    65,    65,    67,    66,    68,    68,    69,    70,
-      70,    70,    71,    71,    72,    73,    73,    73,    73,    73,
-      74,    73,    73,    73,    73,    75,    75,    75,    76,    76,
-      76,    76,    76,    76,    76,    76,    76,    76,    76,    76,
-      76,    76,    77,    78,    78,    79,    79,    80,    80,    82,
-      81,    83,    83,    84,    84,    86,    85,    87,    87,    88,
-      88,    89,    90,    90,    90,    90,    91,    91,    91,    92,
-      92,    93,    93,    93,    93,    93,    94,    95,    95,    96,
-      97,    97
+      56,    56,    57,    58,    59,    61,    60,    62,    62,    63,
+      63,    64,    64,    66,    65,    67,    67,    68,    69,    69,
+      69,    70,    70,    71,    72,    72,    72,    72,    72,    73,
+      72,    72,    72,    72,    74,    74,    74,    75,    75,    75,
+      75,    75,    75,    75,    75,    75,    75,    75,    75,    75,
+      75,    76,    77,    77,    78,    78,    79,    79,    81,    80,
+      82,    82,    83,    83,    85,    84,    86,    86,    87,    87,
+      88,    89,    89,    89,    89,    90,    90,    90,    91,    91,
+      92,    92,    92,    92,    92,    93,    94,    94,    95,    96,
+      96
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
        0,     2,     0,     3,     0,     2,     1,     1,     1,     1,
-       1,     1,     4,     2,     0,     7,     0,     4,     1,     3,
-       3,     1,     0,     2,     0,     3,     1,     3,     2,     0,
-       1,     1,     2,     4,     2,     3,     3,     1,     1,     1,
-       0,     5,     1,     1,     1,     2,     2,     2,     3,     3,
+       1,     1,     4,     2,     4,     0,     4,     1,     3,     3,
+       1,     0,     2,     0,     3,     1,     3,     2,     0,     1,
+       1,     2,     4,     2,     3,     3,     1,     1,     1,     0,
+       5,     1,     1,     1,     2,     2,     2,     3,     3,     3,
        3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     5,     0,     1,     1,     3,     1,     1,     0,
-       4,     0,     1,     1,     3,     0,     4,     0,     1,     1,
-       3,     3,     1,     4,     6,     3,     1,     4,     3,     1,
+       3,     5,     0,     1,     1,     3,     1,     1,     0,     4,
+       0,     1,     1,     3,     0,     4,     0,     1,     1,     3,
+       3,     1,     4,     6,     3,     1,     4,     3,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     2
+       2
 };
 
-/* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
-   STATE-NUM when YYTABLE doesn't specify something else to do.  Zero
+/* YYDEFACT[STATE-NAME] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE doesn't specify something else to do.  Zero
    means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       2,     0,     4,     1,     0,     0,     0,     0,     0,    16,
-      24,     0,     5,     6,     8,     7,     9,    10,    11,     3,
-      99,     0,    14,    93,    94,    95,    82,    91,    92,    96,
-       0,     0,     0,     2,    75,    69,    13,    37,    38,    39,
-      42,    67,    68,    44,    43,    89,    90,    34,     0,     0,
-     100,     0,    32,     0,     0,     0,    47,    45,    46,     0,
-       0,    77,    71,     0,     0,     0,     0,     0,     0,     0,
+       2,     0,     4,     1,     0,     0,     0,     0,     0,    15,
+      23,     0,     5,     6,     8,     7,     9,    10,    11,     3,
+      98,     0,     0,    92,    93,    94,    81,    90,    91,    95,
+       0,     0,     0,     2,    74,    68,    13,    36,    37,    38,
+      41,    66,    67,    43,    42,    88,    89,    33,     0,     0,
+      99,     0,    31,     0,     0,     0,    46,    44,    45,     0,
+       0,    76,    70,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-      82,    22,    18,    21,     0,    25,    26,    29,   101,     0,
-      12,     0,    63,    36,    35,    97,    98,     0,    78,    79,
-       0,    73,     0,    72,    61,    49,    48,    55,    56,    57,
-      58,    59,    60,    50,    51,    52,    53,    54,     0,     0,
-       0,    85,     0,     0,    17,     0,     0,    30,    31,    28,
-      33,     0,    65,     0,    64,    76,     0,     0,    70,     0,
-       0,     0,    83,    23,    19,    20,    27,     0,    41,     0,
-      80,    81,    74,    62,     0,    15,    66,    86,    84,     0,
-       0,     0,    88,    87
+      81,    21,    17,    20,     0,    24,    25,    28,   100,     0,
+      12,    14,    62,    35,    34,    96,    97,     0,    77,    78,
+       0,    72,     0,    71,    60,    48,    47,    54,    55,    56,
+      57,    58,    59,    49,    50,    51,    52,    53,     0,     0,
+       0,    84,     0,     0,    16,     0,     0,    29,    30,    27,
+      32,    64,     0,    63,    75,     0,     0,    69,     0,     0,
+       0,    82,    22,    18,    19,    26,    40,     0,    79,    80,
+      73,    61,     0,    65,    85,    83,     0,     0,     0,    87,
+      86
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,     1,     2,     4,    12,    13,    14,    15,    54,    16,
-      48,    81,    82,   124,    17,    49,    85,    86,   129,    18,
-      19,    83,    55,    37,    38,    39,   133,   134,    40,    41,
-      62,   102,   103,    42,    61,    97,    98,    99,    43,   158,
-      44,    45,    46,   100,    84,    52
+      -1,     1,     2,     4,    12,    13,    14,    15,    16,    48,
+      81,    82,   124,    17,    49,    85,    86,   129,    18,    19,
+      83,    55,    37,    38,    39,   132,   133,    40,    41,    62,
+     102,   103,    42,    61,    97,    98,    99,    43,   155,    44,
+      45,    46,   100,    84,    52
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
@@ -700,120 +701,121 @@ static const yytype_int16 yydefgoto[] =
 #define YYPACT_NINF -39
 static const yytype_int16 yypact[] =
 {
-     -39,     7,   -39,   -39,    97,    -9,    -9,   129,   129,   -39,
+     -39,     7,   -39,   -39,    97,    -9,    -9,   128,   128,   -39,
      -39,   -10,   -39,   -39,   -39,   -39,   -39,   -39,   -39,   -39,
-     -39,    -1,   -39,   -39,   -39,   -39,   -29,   -39,   -39,   -39,
-     129,   129,   129,   129,   -39,   -39,   283,   -39,   -39,   -39,
-     -39,   -39,   -39,   -38,   -39,   -39,   -39,   283,   159,   129,
-     -39,     0,   -21,   129,     1,   -18,   -39,   -39,   -39,    14,
-     180,    -3,   129,   129,   129,   129,   129,   129,   129,   129,
-     129,   129,   129,   129,   129,   129,   129,   129,    95,    27,
-     -19,     5,   -39,   283,    24,     9,   -39,   232,   -39,   -10,
-     283,    69,   129,   -39,   -39,   -39,   -39,    74,    83,   -39,
-      85,   283,    79,    87,    49,   320,   308,   332,   332,    18,
-      18,    18,    18,    39,    39,   -39,   -39,   -39,   257,    91,
-       4,   -39,    -9,   159,   -39,   129,   129,   -39,   -39,   -39,
-     -39,   129,   283,    89,    93,   -39,    -3,   129,   -39,   129,
-     129,    90,   -39,   -39,   -39,   283,   -39,   205,   -39,   129,
-     -39,   283,   283,   283,   120,   -39,   283,   -39,   -37,   129,
-     122,    63,   -39,   -39
+     -39,    -1,   -11,   -39,   -39,   -39,   -22,   -39,   -39,   -39,
+     128,   128,   128,   128,   -39,   -39,   257,   -39,   -39,   -39,
+     -39,   -39,   -39,   -38,   -39,   -39,   -39,   257,   158,   128,
+     -39,     0,   -17,   128,   128,     6,   -39,   -39,   -39,   -18,
+     179,    -3,   128,   128,   128,   128,   128,   128,   128,   128,
+     128,   128,   128,   128,   128,   128,   128,   128,    94,    27,
+     -19,     5,   -39,   257,    33,    77,   -39,   206,   -39,   -10,
+     257,   257,   128,   -39,   -39,   -39,   -39,    75,    83,   -39,
+      85,   257,    79,    86,    49,   294,   282,   306,   306,    18,
+      18,    18,    18,    39,    39,   -39,   -39,   -39,   231,    84,
+       4,   -39,    -9,   158,   -39,   128,   128,   -39,   -39,   -39,
+     -39,   257,    90,    96,   -39,    -3,   128,   -39,   128,   128,
+      88,   -39,   -39,   -39,   257,   -39,   -39,   128,   -39,   257,
+     257,   257,   119,   257,   -39,   -37,   128,   122,    63,   -39,
+     -39
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
      -39,   108,   -39,   -39,   -39,   -39,   -39,   -39,   -39,   -39,
-     -39,   -39,    30,   -39,   -39,   -39,   -39,    28,   -39,   -39,
-     -39,    -7,   -39,   -39,   -39,   -39,   -39,   -39,   -39,   -39,
-     -39,   -39,   -39,   -39,   -39,   -39,   -39,    19,   -39,   -39,
-     -39,   -39,   -39,   -39,    -2,    61
+     -39,    28,   -39,   -39,   -39,   -39,    26,   -39,   -39,   -39,
+      -7,   -39,   -39,   -39,   -39,   -39,   -39,   -39,   -39,   -39,
+     -39,   -39,   -39,   -39,   -39,   -39,    19,   -39,   -39,   -39,
+     -39,   -39,   -39,    -2,    64
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
    positive, shift that token.  If negative, reduce the rule which
-   number is the opposite.  If zero, do what YYDEFACT says.
-   If YYTABLE_NINF, syntax error.  */
-#define YYTABLE_NINF -100
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
+#define YYTABLE_NINF -99
 static const yytype_int16 yytable[] =
 {
-      36,    47,   -99,    21,    22,    78,   159,     3,    20,    50,
-     -40,    53,    79,   160,    95,    96,    63,    89,   122,    88,
-     -40,    92,    91,    56,    57,    58,    60,    64,    65,    66,
+      36,    47,   -98,    21,    22,    78,   156,     3,    20,    50,
+      54,    53,    79,   157,    95,    96,    63,   -39,   122,    88,
+     -39,    89,    93,    56,    57,    58,    60,    64,    65,    66,
       67,    68,    69,    70,    71,    72,    73,    74,    75,    76,
-      77,    51,    87,   123,   121,   125,    90,   126,   142,    72,
-      73,    74,    75,    76,    93,   101,   104,   105,   106,   107,
+      77,    51,    87,   123,   121,    92,    90,    91,   141,    72,
+      73,    74,    75,    76,   125,   101,   104,   105,   106,   107,
      108,   109,   110,   111,   112,   113,   114,   115,   116,   117,
      118,   120,    74,    75,    76,    63,    68,    69,    70,    71,
-      72,    73,    74,    75,    76,   132,    64,    65,    66,    67,
+      72,    73,    74,    75,    76,   131,    64,    65,    66,    67,
       68,    69,    70,    71,    72,    73,    74,    75,    76,    77,
-       5,     6,     7,     8,     9,    10,    11,   163,   131,    23,
-      24,    25,    26,    27,    28,    29,   135,    30,   145,    87,
-     143,   136,   137,   138,   147,   139,    31,    32,   119,   148,
-     151,   149,   152,   153,    33,   141,    34,   157,    35,   162,
-     154,    59,   156,    23,    24,    25,    26,    27,    28,    29,
-     130,    30,   161,   144,   146,   150,     0,     0,     0,     0,
-      31,    32,     0,     0,     0,     0,     0,     0,    33,     0,
-      34,     0,    35,    23,    24,    25,    80,    27,    28,    29,
-       0,    30,     0,     0,     0,     0,     0,     0,     0,     0,
-      31,    32,    63,     0,     0,     0,     0,     0,    33,     0,
-      34,     0,    35,    64,    65,    66,    67,    68,    69,    70,
-      71,    72,    73,    74,    75,    76,    77,    63,     0,     0,
-      94,     0,     0,     0,     0,     0,     0,     0,    64,    65,
-      66,    67,    68,    69,    70,    71,    72,    73,    74,    75,
-      76,    77,   127,   128,    63,   155,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,    64,    65,    66,    67,    68,
-      69,    70,    71,    72,    73,    74,    75,    76,    77,    63,
+       5,     6,     7,     8,     9,    10,    11,   160,    23,    24,
+      25,    26,    27,    28,    29,   126,    30,   134,   144,    87,
+     142,   135,   136,   137,   138,    31,    32,   119,   140,   149,
+     146,   150,   151,    33,   147,    34,   154,    35,   152,   159,
+     153,    59,    23,    24,    25,    26,    27,    28,    29,   158,
+      30,   143,   145,   130,   148,     0,     0,     0,     0,    31,
+      32,     0,     0,     0,     0,     0,     0,    33,     0,    34,
+       0,    35,    23,    24,    25,    80,    27,    28,    29,     0,
+      30,     0,     0,     0,     0,     0,     0,     0,     0,    31,
+      32,    63,     0,     0,     0,     0,     0,    33,     0,    34,
+       0,    35,    64,    65,    66,    67,    68,    69,    70,    71,
+      72,    73,    74,    75,    76,    77,   127,   128,    63,    94,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,    64,
+      65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
+      75,    76,    77,    63,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,    64,    65,    66,    67,    68,    69,
+      70,    71,    72,    73,    74,    75,    76,    77,   139,    63,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
       64,    65,    66,    67,    68,    69,    70,    71,    72,    73,
-      74,    75,    76,    77,   140,    63,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,    64,    65,    66,    67,
-      68,    69,    70,    71,    72,    73,    74,    75,    76,    77,
-      63,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    64,    63,    66,    67,    68,    69,    70,    71,    72,
-      73,    74,    75,    76,    63,    66,    67,    68,    69,    70,
-      71,    72,    73,    74,    75,    76,     0,     0,     0,    68,
-      69,    70,    71,    72,    73,    74,    75,    76
+      74,    75,    76,    77,    63,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,    64,    63,    66,    67,    68,
+      69,    70,    71,    72,    73,    74,    75,    76,    63,    66,
+      67,    68,    69,    70,    71,    72,    73,    74,    75,    76,
+       0,     0,     0,    68,    69,    70,    71,    72,    73,    74,
+      75,    76
 };
+
+#define yypact_value_is_default(yystate) \
+  ((yystate) == (-39))
+
+#define yytable_value_is_error(yytable_value) \
+  YYID (0)
 
 static const yytype_int16 yycheck[] =
 {
        7,     8,    21,     5,     6,    43,    43,     0,    17,    19,
-      39,    12,    50,    50,    17,    18,    12,    38,    13,    19,
-      39,    39,    21,    30,    31,    32,    33,    23,    24,    25,
+      21,    12,    50,    50,    17,    18,    12,    39,    13,    19,
+      39,    38,    40,    30,    31,    32,    33,    23,    24,    25,
       26,    27,    28,    29,    30,    31,    32,    33,    34,    35,
-      36,    51,    49,    38,    17,    21,    53,    38,    44,    31,
-      32,    33,    34,    35,    40,    62,    63,    64,    65,    66,
+      36,    51,    49,    38,    17,    39,    53,    54,    44,    31,
+      32,    33,    34,    35,    21,    62,    63,    64,    65,    66,
       67,    68,    69,    70,    71,    72,    73,    74,    75,    76,
       77,    78,    33,    34,    35,    12,    27,    28,    29,    30,
       31,    32,    33,    34,    35,    92,    23,    24,    25,    26,
       27,    28,    29,    30,    31,    32,    33,    34,    35,    36,
-       3,     4,     5,     6,     7,     8,     9,    44,    39,    14,
-      15,    16,    17,    18,    19,    20,    42,    22,   125,   126,
-     122,    38,    37,    44,   131,    38,    31,    32,    33,    40,
-     137,    38,   139,   140,    39,    44,    41,    17,    43,    17,
-      50,    33,   149,    14,    15,    16,    17,    18,    19,    20,
-      89,    22,   159,   123,   126,   136,    -1,    -1,    -1,    -1,
-      31,    32,    -1,    -1,    -1,    -1,    -1,    -1,    39,    -1,
-      41,    -1,    43,    14,    15,    16,    17,    18,    19,    20,
-      -1,    22,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      31,    32,    12,    -1,    -1,    -1,    -1,    -1,    39,    -1,
-      41,    -1,    43,    23,    24,    25,    26,    27,    28,    29,
-      30,    31,    32,    33,    34,    35,    36,    12,    -1,    -1,
-      40,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    23,    24,
-      25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
-      35,    36,    10,    11,    12,    40,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    33,    34,    35,    36,    12,
+       3,     4,     5,     6,     7,     8,     9,    44,    14,    15,
+      16,    17,    18,    19,    20,    38,    22,    42,   125,   126,
+     122,    38,    37,    44,    38,    31,    32,    33,    44,   136,
+      40,   138,   139,    39,    38,    41,    17,    43,    50,    17,
+     147,    33,    14,    15,    16,    17,    18,    19,    20,   156,
+      22,   123,   126,    89,   135,    -1,    -1,    -1,    -1,    31,
+      32,    -1,    -1,    -1,    -1,    -1,    -1,    39,    -1,    41,
+      -1,    43,    14,    15,    16,    17,    18,    19,    20,    -1,
+      22,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    31,
+      32,    12,    -1,    -1,    -1,    -1,    -1,    39,    -1,    41,
+      -1,    43,    23,    24,    25,    26,    27,    28,    29,    30,
+      31,    32,    33,    34,    35,    36,    10,    11,    12,    40,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    23,
+      24,    25,    26,    27,    28,    29,    30,    31,    32,    33,
+      34,    35,    36,    12,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    23,    24,    25,    26,    27,    28,
+      29,    30,    31,    32,    33,    34,    35,    36,    37,    12,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
       23,    24,    25,    26,    27,    28,    29,    30,    31,    32,
-      33,    34,    35,    36,    37,    12,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    23,    24,    25,    26,
-      27,    28,    29,    30,    31,    32,    33,    34,    35,    36,
-      12,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    23,    12,    25,    26,    27,    28,    29,    30,    31,
-      32,    33,    34,    35,    12,    25,    26,    27,    28,    29,
-      30,    31,    32,    33,    34,    35,    -1,    -1,    -1,    27,
-      28,    29,    30,    31,    32,    33,    34,    35
+      33,    34,    35,    36,    12,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    23,    12,    25,    26,    27,
+      28,    29,    30,    31,    32,    33,    34,    35,    12,    25,
+      26,    27,    28,    29,    30,    31,    32,    33,    34,    35,
+      -1,    -1,    -1,    27,    28,    29,    30,    31,    32,    33,
+      34,    35
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -821,22 +823,22 @@ static const yytype_int16 yycheck[] =
 static const yytype_uint8 yystos[] =
 {
        0,    53,    54,     0,    55,     3,     4,     5,     6,     7,
-       8,     9,    56,    57,    58,    59,    61,    66,    71,    72,
-      17,    96,    96,    14,    15,    16,    17,    18,    19,    20,
-      22,    31,    32,    39,    41,    43,    73,    75,    76,    77,
-      80,    81,    85,    90,    92,    93,    94,    73,    62,    67,
-      19,    51,    97,    12,    60,    74,    73,    73,    73,    53,
-      73,    86,    82,    12,    23,    24,    25,    26,    27,    28,
+       8,     9,    56,    57,    58,    59,    60,    65,    70,    71,
+      17,    95,    95,    14,    15,    16,    17,    18,    19,    20,
+      22,    31,    32,    39,    41,    43,    72,    74,    75,    76,
+      79,    80,    84,    89,    91,    92,    93,    72,    61,    66,
+      19,    51,    96,    12,    21,    73,    72,    72,    72,    53,
+      72,    85,    81,    12,    23,    24,    25,    26,    27,    28,
       29,    30,    31,    32,    33,    34,    35,    36,    43,    50,
-      17,    63,    64,    73,    96,    68,    69,    73,    19,    38,
-      73,    21,    39,    40,    40,    17,    18,    87,    88,    89,
-      95,    73,    83,    84,    73,    73,    73,    73,    73,    73,
-      73,    73,    73,    73,    73,    73,    73,    73,    73,    33,
-      73,    17,    13,    38,    65,    21,    38,    10,    11,    70,
-      97,    39,    73,    78,    79,    42,    38,    37,    44,    38,
-      37,    44,    44,    96,    64,    73,    69,    73,    40,    38,
-      89,    73,    73,    73,    50,    40,    73,    17,    91,    43,
-      50,    73,    17,    44
+      17,    62,    63,    72,    95,    67,    68,    72,    19,    38,
+      72,    72,    39,    40,    40,    17,    18,    86,    87,    88,
+      94,    72,    82,    83,    72,    72,    72,    72,    72,    72,
+      72,    72,    72,    72,    72,    72,    72,    72,    72,    33,
+      72,    17,    13,    38,    64,    21,    38,    10,    11,    69,
+      96,    72,    77,    78,    42,    38,    37,    44,    38,    37,
+      44,    44,    95,    63,    72,    68,    40,    38,    88,    72,
+      72,    72,    50,    72,    17,    90,    43,    50,    72,    17,
+      44
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -851,9 +853,18 @@ static const yytype_uint8 yystos[] =
 
 /* Like YYERROR except do call yyerror.  This remains here temporarily
    to ease the transition to the new meaning of YYERROR, for GCC.
-   Once GCC version 2 has supplanted version 1, this can go.  */
+   Once GCC version 2 has supplanted version 1, this can go.  However,
+   YYFAIL appears to be in use.  Nevertheless, it is formally deprecated
+   in Bison 2.4.2's NEWS entry, where a plan to phase it out is
+   discussed.  */
 
 #define YYFAIL		goto yyerrlab
+#if defined YYFAIL
+  /* This is here to suppress warnings from the GCC cpp's
+     -Wunused-macros.  Normally we don't worry about that warning, but
+     some users do, and we want to make it easy for users to remove
+     YYFAIL uses, which will produce warnings from Bison 2.5.  */
+#endif
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
@@ -863,7 +874,6 @@ do								\
     {								\
       yychar = (Token);						\
       yylval = (Value);						\
-      yytoken = YYTRANSLATE (yychar);				\
       YYPOPSTACK (1);						\
       goto yybackup;						\
     }								\
@@ -910,7 +920,7 @@ while (YYID (0))
    we won't break user code: when these are the locations we know.  */
 
 #ifndef YY_LOCATION_PRINT
-# if YYLTYPE_IS_TRIVIAL
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
 #  define YY_LOCATION_PRINT(File, Loc)			\
      fprintf (File, "%d.%d-%d.%d",			\
 	      (Loc).first_line, (Loc).first_column,	\
@@ -1119,7 +1129,6 @@ int yydebug;
 # define YYMAXDEPTH 10000
 #endif
 
-
 
 #if YYERROR_VERBOSE
 
@@ -1222,115 +1231,142 @@ yytnamerr (char *yyres, const char *yystr)
 }
 # endif
 
-/* Copy into YYRESULT an error message about the unexpected token
-   YYCHAR while in state YYSTATE.  Return the number of bytes copied,
-   including the terminating null byte.  If YYRESULT is null, do not
-   copy anything; just return the number of bytes that would be
-   copied.  As a special case, return 0 if an ordinary "syntax error"
-   message will do.  Return YYSIZE_MAXIMUM if overflow occurs during
-   size calculation.  */
-static YYSIZE_T
-yysyntax_error (char *yyresult, int yystate, int yychar)
+/* Copy into *YYMSG, which is of size *YYMSG_ALLOC, an error message
+   about the unexpected token YYTOKEN for the state stack whose top is
+   YYSSP.
+
+   Return 0 if *YYMSG was successfully written.  Return 1 if *YYMSG is
+   not large enough to hold the message.  In that case, also set
+   *YYMSG_ALLOC to the required number of bytes.  Return 2 if the
+   required number of bytes is too large to store.  */
+static int
+yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
+                yytype_int16 *yyssp, int yytoken)
 {
-  int yyn = yypact[yystate];
+  YYSIZE_T yysize0 = yytnamerr (0, yytname[yytoken]);
+  YYSIZE_T yysize = yysize0;
+  YYSIZE_T yysize1;
+  enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
+  /* Internationalized format string. */
+  const char *yyformat = 0;
+  /* Arguments of yyformat. */
+  char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
+  /* Number of reported tokens (one for the "unexpected", one per
+     "expected"). */
+  int yycount = 0;
 
-  if (! (YYPACT_NINF < yyn && yyn <= YYLAST))
-    return 0;
-  else
+  /* There are many possibilities here to consider:
+     - Assume YYFAIL is not used.  It's too flawed to consider.  See
+       <http://lists.gnu.org/archive/html/bison-patches/2009-12/msg00024.html>
+       for details.  YYERROR is fine as it does not invoke this
+       function.
+     - If this state is a consistent state with a default action, then
+       the only way this function was invoked is if the default action
+       is an error action.  In that case, don't check for expected
+       tokens because there are none.
+     - The only way there can be no lookahead present (in yychar) is if
+       this state is a consistent state with a default action.  Thus,
+       detecting the absence of a lookahead is sufficient to determine
+       that there is no unexpected or expected token to report.  In that
+       case, just report a simple "syntax error".
+     - Don't assume there isn't a lookahead just because this state is a
+       consistent state with a default action.  There might have been a
+       previous inconsistent state, consistent state with a non-default
+       action, or user semantic action that manipulated yychar.
+     - Of course, the expected token list depends on states to have
+       correct lookahead information, and it depends on the parser not
+       to perform extra reductions after fetching a lookahead from the
+       scanner and before detecting a syntax error.  Thus, state merging
+       (from LALR or IELR) and default reductions corrupt the expected
+       token list.  However, the list is correct for canonical LR with
+       one exception: it will still contain any token that will not be
+       accepted due to an error action in a later state.
+  */
+  if (yytoken != YYEMPTY)
     {
-      int yytype = YYTRANSLATE (yychar);
-      YYSIZE_T yysize0 = yytnamerr (0, yytname[yytype]);
-      YYSIZE_T yysize = yysize0;
-      YYSIZE_T yysize1;
-      int yysize_overflow = 0;
-      enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
-      char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
-      int yyx;
+      int yyn = yypact[*yyssp];
+      yyarg[yycount++] = yytname[yytoken];
+      if (!yypact_value_is_default (yyn))
+        {
+          /* Start YYX at -YYN if negative to avoid negative indexes in
+             YYCHECK.  In other words, skip the first -YYN actions for
+             this state because they are default actions.  */
+          int yyxbegin = yyn < 0 ? -yyn : 0;
+          /* Stay within bounds of both yycheck and yytname.  */
+          int yychecklim = YYLAST - yyn + 1;
+          int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
+          int yyx;
 
-# if 0
-      /* This is so xgettext sees the translatable formats that are
-	 constructed on the fly.  */
-      YY_("syntax error, unexpected %s");
-      YY_("syntax error, unexpected %s, expecting %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s or %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s");
-# endif
-      char *yyfmt;
-      char const *yyf;
-      static char const yyunexpected[] = "syntax error, unexpected %s";
-      static char const yyexpecting[] = ", expecting %s";
-      static char const yyor[] = " or %s";
-      char yyformat[sizeof yyunexpected
-		    + sizeof yyexpecting - 1
-		    + ((YYERROR_VERBOSE_ARGS_MAXIMUM - 2)
-		       * (sizeof yyor - 1))];
-      char const *yyprefix = yyexpecting;
-
-      /* Start YYX at -YYN if negative to avoid negative indexes in
-	 YYCHECK.  */
-      int yyxbegin = yyn < 0 ? -yyn : 0;
-
-      /* Stay within bounds of both yycheck and yytname.  */
-      int yychecklim = YYLAST - yyn + 1;
-      int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
-      int yycount = 1;
-
-      yyarg[0] = yytname[yytype];
-      yyfmt = yystpcpy (yyformat, yyunexpected);
-
-      for (yyx = yyxbegin; yyx < yyxend; ++yyx)
-	if (yycheck[yyx + yyn] == yyx && yyx != YYTERROR)
-	  {
-	    if (yycount == YYERROR_VERBOSE_ARGS_MAXIMUM)
-	      {
-		yycount = 1;
-		yysize = yysize0;
-		yyformat[sizeof yyunexpected - 1] = '\0';
-		break;
-	      }
-	    yyarg[yycount++] = yytname[yyx];
-	    yysize1 = yysize + yytnamerr (0, yytname[yyx]);
-	    yysize_overflow |= (yysize1 < yysize);
-	    yysize = yysize1;
-	    yyfmt = yystpcpy (yyfmt, yyprefix);
-	    yyprefix = yyor;
-	  }
-
-      yyf = YY_(yyformat);
-      yysize1 = yysize + yystrlen (yyf);
-      yysize_overflow |= (yysize1 < yysize);
-      yysize = yysize1;
-
-      if (yysize_overflow)
-	return YYSIZE_MAXIMUM;
-
-      if (yyresult)
-	{
-	  /* Avoid sprintf, as that infringes on the user's name space.
-	     Don't have undefined behavior even if the translation
-	     produced a string with the wrong number of "%s"s.  */
-	  char *yyp = yyresult;
-	  int yyi = 0;
-	  while ((*yyp = *yyf) != '\0')
-	    {
-	      if (*yyp == '%' && yyf[1] == 's' && yyi < yycount)
-		{
-		  yyp += yytnamerr (yyp, yyarg[yyi++]);
-		  yyf += 2;
-		}
-	      else
-		{
-		  yyp++;
-		  yyf++;
-		}
-	    }
-	}
-      return yysize;
+          for (yyx = yyxbegin; yyx < yyxend; ++yyx)
+            if (yycheck[yyx + yyn] == yyx && yyx != YYTERROR
+                && !yytable_value_is_error (yytable[yyx + yyn]))
+              {
+                if (yycount == YYERROR_VERBOSE_ARGS_MAXIMUM)
+                  {
+                    yycount = 1;
+                    yysize = yysize0;
+                    break;
+                  }
+                yyarg[yycount++] = yytname[yyx];
+                yysize1 = yysize + yytnamerr (0, yytname[yyx]);
+                if (! (yysize <= yysize1
+                       && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+                  return 2;
+                yysize = yysize1;
+              }
+        }
     }
+
+  switch (yycount)
+    {
+# define YYCASE_(N, S)                      \
+      case N:                               \
+        yyformat = S;                       \
+      break
+      YYCASE_(0, YY_("syntax error"));
+      YYCASE_(1, YY_("syntax error, unexpected %s"));
+      YYCASE_(2, YY_("syntax error, unexpected %s, expecting %s"));
+      YYCASE_(3, YY_("syntax error, unexpected %s, expecting %s or %s"));
+      YYCASE_(4, YY_("syntax error, unexpected %s, expecting %s or %s or %s"));
+      YYCASE_(5, YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
+# undef YYCASE_
+    }
+
+  yysize1 = yysize + yystrlen (yyformat);
+  if (! (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+    return 2;
+  yysize = yysize1;
+
+  if (*yymsg_alloc < yysize)
+    {
+      *yymsg_alloc = 2 * yysize;
+      if (! (yysize <= *yymsg_alloc
+             && *yymsg_alloc <= YYSTACK_ALLOC_MAXIMUM))
+        *yymsg_alloc = YYSTACK_ALLOC_MAXIMUM;
+      return 1;
+    }
+
+  /* Avoid sprintf, as that infringes on the user's name space.
+     Don't have undefined behavior even if the translation
+     produced a string with the wrong number of "%s"s.  */
+  {
+    char *yyp = *yymsg;
+    int yyi = 0;
+    while ((*yyp = *yyformat) != '\0')
+      if (*yyp == '%' && yyformat[1] == 's' && yyi < yycount)
+        {
+          yyp += yytnamerr (yyp, yyarg[yyi++]);
+          yyformat += 2;
+        }
+      else
+        {
+          yyp++;
+          yyformat++;
+        }
+  }
+  return 0;
 }
 #endif /* YYERROR_VERBOSE */
-
 
 /*-----------------------------------------------.
 | Release the memory associated to this symbol.  |
@@ -1367,6 +1403,7 @@ yydestruct (yymsg, yytype, yyvaluep, yylocationp, context)
     }
 }
 
+
 /* Prevent warnings from -Wmissing-prototypes.  */
 #ifdef YYPARSE_PARAM
 #if defined __STDC__ || defined __cplusplus
@@ -1383,12 +1420,9 @@ int yyparse ();
 #endif /* ! YYPARSE_PARAM */
 
 
-
-
-
-/*-------------------------.
-| yyparse or yypush_parse.  |
-`-------------------------*/
+/*----------.
+| yyparse.  |
+`----------*/
 
 #ifdef YYPARSE_PARAM
 #if (defined __STDC__ || defined __C99__FUNC__ \
@@ -1452,7 +1486,7 @@ YYLTYPE yylloc;
     YYLTYPE *yylsp;
 
     /* The locations where the error started and ended.  */
-    YYLTYPE yyerror_range[2];
+    YYLTYPE yyerror_range[3];
 
     YYSIZE_T yystacksize;
 
@@ -1499,7 +1533,7 @@ YYLTYPE yylloc;
   yyvsp = yyvs;
   yylsp = yyls;
 
-#if YYLTYPE_IS_TRIVIAL
+#if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
   /* Initialize the default location before parsing starts.  */
   yylloc.first_line   = yylloc.last_line   = 1;
   yylloc.first_column = yylloc.last_column = 1;
@@ -1601,7 +1635,7 @@ yybackup:
 
   /* First try to decide what to do without reference to lookahead token.  */
   yyn = yypact[yystate];
-  if (yyn == YYPACT_NINF)
+  if (yypact_value_is_default (yyn))
     goto yydefault;
 
   /* Not known => get a lookahead token if don't already have one.  */
@@ -1632,8 +1666,8 @@ yybackup:
   yyn = yytable[yyn];
   if (yyn <= 0)
     {
-      if (yyn == 0 || yyn == YYTABLE_NINF)
-	goto yyerrlab;
+      if (yytable_value_is_error (yyn))
+        goto yyerrlab;
       yyn = -yyn;
       goto yyreduce;
     }
@@ -1689,95 +1723,95 @@ yyreduce:
     {
         case 2:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 180 "Ahuacatl/ahuacatl-grammar.y"
     {
       // a query or a sub-query always starts a new scope
       if (!TRI_StartScopeContextAql(context)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
   case 3:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 185 "Ahuacatl/ahuacatl-grammar.y"
     {
       // end the scope
       (yyval.node) = (TRI_aql_node_t*) TRI_GetFirstStatementAql(context);
 
       TRI_EndScopeContextAql(context);
-    ;}
+    }
     break;
 
   case 4:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 194 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 5:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 196 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 6:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 201 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 7:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 203 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 8:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 205 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 9:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 207 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 10:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 209 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 11:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 211 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 12:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 215 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeForAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
@@ -1790,12 +1824,12 @@ yyreduce:
       }
       
       (yyval.node) = node;
-    ;}
+    }
     break;
 
   case 13:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 230 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeFilterAql(context, (yyvsp[(2) - (2)].node));
@@ -1808,30 +1842,15 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
   case 14:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 245 "Ahuacatl/ahuacatl-grammar.y"
     {
-      if (!TRI_PushStackParseAql(context, (yyvsp[(2) - (2)].strval)) || !TRI_StartScopeContextAql(context)) {
-        ABORT_OOM
-      }
-    ;}
-    break;
-
-  case 15:
-
-/* Line 1455 of yacc.c  */
-#line 249 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      TRI_aql_node_t* node;
-
-      TRI_EndScopeContextAql(context);
-
-      node = TRI_CreateNodeAssignAql(context, TRI_PopStackParseAql(context), (yyvsp[(6) - (7)].node));
+      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
       if (!node) {
         ABORT_OOM
       }
@@ -1841,13 +1860,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 16:
+  case 15:
 
-/* Line 1455 of yacc.c  */
-#line 268 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 260 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
@@ -1856,13 +1875,13 @@ yyreduce:
       }
 
       TRI_PushStackParseAql(context, node);
-    ;}
+    }
     break;
 
-  case 17:
+  case 16:
 
-/* Line 1455 of yacc.c  */
-#line 276 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 268 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), (yyvsp[(4) - (4)].strval));
       if (!node) {
@@ -1874,29 +1893,29 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 17:
+
+/* Line 1806 of yacc.c  */
+#line 283 "Ahuacatl/ahuacatl-grammar.y"
+    {
+    }
     break;
 
   case 18:
 
-/* Line 1455 of yacc.c  */
-#line 291 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 285 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 19:
 
-/* Line 1455 of yacc.c  */
-#line 293 "Ahuacatl/ahuacatl-grammar.y"
-    {
-    ;}
-    break;
-
-  case 20:
-
-/* Line 1455 of yacc.c  */
-#line 298 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 290 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeAssignAql(context, (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -1906,42 +1925,42 @@ yyreduce:
       if (!TRI_PushListAql(context, node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 21:
+  case 20:
 
-/* Line 1455 of yacc.c  */
-#line 308 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 300 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushListAql(context, (yyvsp[(1) - (1)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
+    break;
+
+  case 21:
+
+/* Line 1806 of yacc.c  */
+#line 308 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.strval) = NULL;
+    }
     break;
 
   case 22:
 
-/* Line 1455 of yacc.c  */
-#line 316 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 311 "Ahuacatl/ahuacatl-grammar.y"
     {
-      (yyval.strval) = NULL;
-    ;}
+      (yyval.strval) = (yyvsp[(2) - (2)].strval);
+    }
     break;
 
   case 23:
 
-/* Line 1455 of yacc.c  */
-#line 319 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.strval) = (yyvsp[(2) - (2)].strval);
-    ;}
-    break;
-
-  case 24:
-
-/* Line 1455 of yacc.c  */
-#line 325 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 317 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
@@ -1950,13 +1969,13 @@ yyreduce:
       }
 
       TRI_PushStackParseAql(context, node);
-    ;}
+    }
     break;
 
-  case 25:
+  case 24:
 
-/* Line 1455 of yacc.c  */
-#line 333 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 325 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
@@ -1969,35 +1988,35 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 26:
+  case 25:
 
-/* Line 1455 of yacc.c  */
-#line 349 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 341 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushListAql(context, (yyvsp[(1) - (1)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 27:
+  case 26:
 
-/* Line 1455 of yacc.c  */
-#line 354 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 346 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushListAql(context, (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 28:
+  case 27:
 
-/* Line 1455 of yacc.c  */
-#line 362 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 354 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeSortElementAql(context, (yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].boolval));
       if (!node) {
@@ -2005,40 +2024,40 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 28:
+
+/* Line 1806 of yacc.c  */
+#line 365 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.boolval) = true;
+    }
     break;
 
   case 29:
 
-/* Line 1455 of yacc.c  */
-#line 373 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 368 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.boolval) = true;
-    ;}
+    }
     break;
 
   case 30:
 
-/* Line 1455 of yacc.c  */
-#line 376 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 371 "Ahuacatl/ahuacatl-grammar.y"
     {
-      (yyval.boolval) = true;
-    ;}
+      (yyval.boolval) = false;
+    }
     break;
 
   case 31:
 
-/* Line 1455 of yacc.c  */
-#line 379 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.boolval) = false;
-    ;}
-    break;
-
-  case 32:
-
-/* Line 1455 of yacc.c  */
-#line 385 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 377 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), TRI_CreateNodeValueIntAql(context, (yyvsp[(2) - (2)].intval)));
       if (!node) {
@@ -2050,13 +2069,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 33:
+  case 32:
 
-/* Line 1455 of yacc.c  */
-#line 397 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 389 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, (yyvsp[(2) - (4)].intval)), TRI_CreateNodeValueIntAql(context, (yyvsp[(4) - (4)].intval)));
       if (!node) {
@@ -2068,13 +2087,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 34:
+  case 33:
 
-/* Line 1455 of yacc.c  */
-#line 412 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 404 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeReturnAql(context, (yyvsp[(2) - (2)].node));
       if (!node) {
@@ -2086,63 +2105,83 @@ yyreduce:
       }
       
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 34:
+
+/* Line 1806 of yacc.c  */
+#line 420 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.node) = (yyvsp[(2) - (3)].node);
+    }
     break;
 
   case 35:
 
-/* Line 1455 of yacc.c  */
-#line 428 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 423 "Ahuacatl/ahuacatl-grammar.y"
     {
-      (yyval.node) = (yyvsp[(2) - (3)].node);
-    ;}
+      TRI_aql_node_t* subQuery;
+      TRI_aql_node_t* result;
+      TRI_aql_node_t* nameNode;
+
+      subQuery = TRI_CreateNodeSubqueryAql(context, (yyvsp[(2) - (3)].node));
+      if (!subQuery) {
+        ABORT_OOM
+      }
+
+      // push the sub query execution into the statement list
+      if (!TRI_AddStatementAql(context, subQuery)) {
+        ABORT_OOM
+      }
+
+      nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
+      if (!nameNode) {
+        ABORT_OOM
+      }
+
+      result = TRI_CreateNodeReferenceAql(context, TRI_AQL_NODE_STRING(nameNode));
+      if (!result) {
+        ABORT_OOM
+      }
+
+      // return the result
+      (yyval.node) = result;
+    }
     break;
 
   case 36:
 
-/* Line 1455 of yacc.c  */
-#line 431 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 451 "Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_aql_node_t* node = TRI_CreateNodeSubqueryAql(context, (yyvsp[(2) - (3)].node));
-      if (!node) {
-        ABORT_OOM
-      }
-
-      (yyval.node) = node;
-    ;}
+      (yyval.node) = (yyvsp[(1) - (1)].node);
+    }
     break;
 
   case 37:
 
-/* Line 1455 of yacc.c  */
-#line 439 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 454 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 38:
 
-/* Line 1455 of yacc.c  */
-#line 442 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 457 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 39:
 
-/* Line 1455 of yacc.c  */
-#line 445 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
-    break;
-
-  case 40:
-
-/* Line 1455 of yacc.c  */
-#line 448 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 460 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
 
@@ -2156,13 +2195,13 @@ yyreduce:
       }
 
       TRI_PushStackParseAql(context, node);
-    ;}
+    }
     break;
 
-  case 41:
+  case 40:
 
-/* Line 1455 of yacc.c  */
-#line 461 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 473 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
@@ -2171,40 +2210,40 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 41:
+
+/* Line 1806 of yacc.c  */
+#line 482 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.node) = (yyvsp[(1) - (1)].node);
+    }
     break;
 
   case 42:
 
-/* Line 1455 of yacc.c  */
-#line 470 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 485 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 43:
 
-/* Line 1455 of yacc.c  */
-#line 473 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 488 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 44:
 
-/* Line 1455 of yacc.c  */
-#line 476 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
-    break;
-
-  case 45:
-
-/* Line 1455 of yacc.c  */
-#line 482 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 494 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryPlusAql(context, (yyvsp[(2) - (2)].node));
       if (!node) {
@@ -2212,13 +2251,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 46:
+  case 45:
 
-/* Line 1455 of yacc.c  */
-#line 490 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 502 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryMinusAql(context, (yyvsp[(2) - (2)].node));
       if (!node) {
@@ -2226,13 +2265,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 47:
+  case 46:
 
-/* Line 1455 of yacc.c  */
-#line 498 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 510 "Ahuacatl/ahuacatl-grammar.y"
     { 
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryNotAql(context, (yyvsp[(2) - (2)].node));
       if (!node) {
@@ -2240,13 +2279,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 48:
+  case 47:
 
-/* Line 1455 of yacc.c  */
-#line 509 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 521 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryOrAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2254,13 +2293,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 49:
+  case 48:
 
-/* Line 1455 of yacc.c  */
-#line 517 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 529 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryAndAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2268,13 +2307,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 50:
+  case 49:
 
-/* Line 1455 of yacc.c  */
-#line 525 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 537 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryPlusAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2282,13 +2321,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 51:
+  case 50:
 
-/* Line 1455 of yacc.c  */
-#line 533 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 545 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryMinusAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2296,13 +2335,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 52:
+  case 51:
 
-/* Line 1455 of yacc.c  */
-#line 541 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 553 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryTimesAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2310,13 +2349,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 53:
+  case 52:
 
-/* Line 1455 of yacc.c  */
-#line 549 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 561 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryDivAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2324,13 +2363,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 54:
+  case 53:
 
-/* Line 1455 of yacc.c  */
-#line 557 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 569 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryModAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2338,13 +2377,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 55:
+  case 54:
 
-/* Line 1455 of yacc.c  */
-#line 565 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 577 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryEqAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2352,13 +2391,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 56:
+  case 55:
 
-/* Line 1455 of yacc.c  */
-#line 573 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 585 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryNeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2366,13 +2405,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 57:
+  case 56:
 
-/* Line 1455 of yacc.c  */
-#line 581 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 593 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLtAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2380,13 +2419,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 58:
+  case 57:
 
-/* Line 1455 of yacc.c  */
-#line 589 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 601 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGtAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2394,13 +2433,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 59:
+  case 58:
 
-/* Line 1455 of yacc.c  */
-#line 597 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 609 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2408,13 +2447,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 60:
+  case 59:
 
-/* Line 1455 of yacc.c  */
-#line 605 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 617 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2422,13 +2461,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 61:
+  case 60:
 
-/* Line 1455 of yacc.c  */
-#line 613 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 625 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryInAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
       if (!node) {
@@ -2436,13 +2475,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 62:
+  case 61:
 
-/* Line 1455 of yacc.c  */
-#line 624 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 636 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorTernaryAql(context, (yyvsp[(1) - (5)].node), (yyvsp[(3) - (5)].node), (yyvsp[(5) - (5)].node));
       if (!node) {
@@ -2450,65 +2489,65 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 62:
+
+/* Line 1806 of yacc.c  */
+#line 647 "Ahuacatl/ahuacatl-grammar.y"
+    {
+    }
     break;
 
   case 63:
 
-/* Line 1455 of yacc.c  */
-#line 635 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 649 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 64:
 
-/* Line 1455 of yacc.c  */
-#line 637 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 654 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+      TRI_PushListAql(context, (yyvsp[(1) - (1)].node));
+    }
     break;
 
   case 65:
 
-/* Line 1455 of yacc.c  */
-#line 642 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 657 "Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_PushListAql(context, (yyvsp[(1) - (1)].node));
-    ;}
+      TRI_PushListAql(context, (yyvsp[(3) - (3)].node));
+    }
     break;
 
   case 66:
 
-/* Line 1455 of yacc.c  */
-#line 645 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 663 "Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_PushListAql(context, (yyvsp[(3) - (3)].node));
-    ;}
+      (yyval.node) = (yyvsp[(1) - (1)].node);
+    }
     break;
 
   case 67:
 
-/* Line 1455 of yacc.c  */
-#line 651 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 666 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 68:
 
-/* Line 1455 of yacc.c  */
-#line 654 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
-    break;
-
-  case 69:
-
-/* Line 1455 of yacc.c  */
-#line 660 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 672 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       if (!node) {
@@ -2516,60 +2555,60 @@ yyreduce:
       }
 
       TRI_PushStackParseAql(context, node);
-    ;}
+    }
+    break;
+
+  case 69:
+
+/* Line 1806 of yacc.c  */
+#line 679 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.node) = TRI_PopStackParseAql(context);
+    }
     break;
 
   case 70:
 
-/* Line 1455 of yacc.c  */
-#line 667 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 685 "Ahuacatl/ahuacatl-grammar.y"
     {
-      (yyval.node) = TRI_PopStackParseAql(context);
-    ;}
+    }
     break;
 
   case 71:
 
-/* Line 1455 of yacc.c  */
-#line 673 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 687 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 72:
 
-/* Line 1455 of yacc.c  */
-#line 675 "Ahuacatl/ahuacatl-grammar.y"
-    {
-    ;}
-    break;
-
-  case 73:
-
-/* Line 1455 of yacc.c  */
-#line 680 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 692 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushListAql(context, (yyvsp[(1) - (1)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 74:
+  case 73:
 
-/* Line 1455 of yacc.c  */
-#line 685 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 697 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushListAql(context, (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 75:
+  case 74:
 
-/* Line 1455 of yacc.c  */
-#line 693 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 705 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeArrayAql(context);
       if (!node) {
@@ -2577,65 +2616,65 @@ yyreduce:
       }
 
       TRI_PushStackParseAql(context, node);
-    ;}
+    }
+    break;
+
+  case 75:
+
+/* Line 1806 of yacc.c  */
+#line 712 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.node) = TRI_PopStackParseAql(context);
+    }
     break;
 
   case 76:
 
-/* Line 1455 of yacc.c  */
-#line 700 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 718 "Ahuacatl/ahuacatl-grammar.y"
     {
-      (yyval.node) = TRI_PopStackParseAql(context);
-    ;}
+    }
     break;
 
   case 77:
 
-/* Line 1455 of yacc.c  */
-#line 706 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 720 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 78:
 
-/* Line 1455 of yacc.c  */
-#line 708 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 725 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 79:
 
-/* Line 1455 of yacc.c  */
-#line 713 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 727 "Ahuacatl/ahuacatl-grammar.y"
     {
-    ;}
+    }
     break;
 
   case 80:
 
-/* Line 1455 of yacc.c  */
-#line 715 "Ahuacatl/ahuacatl-grammar.y"
-    {
-    ;}
-    break;
-
-  case 81:
-
-/* Line 1455 of yacc.c  */
-#line 720 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 732 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!TRI_PushArrayAql(context, (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 82:
+  case 81:
 
-/* Line 1455 of yacc.c  */
-#line 728 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 740 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable or collection
       TRI_aql_node_t* node;
@@ -2652,109 +2691,109 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 83:
+  case 82:
 
-/* Line 1455 of yacc.c  */
-#line 745 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 757 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable[]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 84:
+  case 83:
 
-/* Line 1455 of yacc.c  */
-#line 752 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 764 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable[*]
       (yyval.node) = TRI_CreateNodeExpandAql(context, (yyvsp[(1) - (6)].node), (yyvsp[(6) - (6)].node));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 85:
+  case 84:
 
-/* Line 1455 of yacc.c  */
-#line 759 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 771 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable.reference
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 86:
+  case 85:
 
-/* Line 1455 of yacc.c  */
-#line 769 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 781 "Ahuacatl/ahuacatl-grammar.y"
     {
       // reference
       (yyval.node) = TRI_CreateNodeAttributeAql(context, (yyvsp[(1) - (1)].strval));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 87:
+  case 86:
 
-/* Line 1455 of yacc.c  */
-#line 776 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 788 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable[]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
     break;
 
-  case 88:
+  case 87:
 
-/* Line 1455 of yacc.c  */
-#line 783 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 795 "Ahuacatl/ahuacatl-grammar.y"
     {
       // variable.variable
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
       if (!(yyval.node)) {
         ABORT_OOM
       }
-    ;}
+    }
+    break;
+
+  case 88:
+
+/* Line 1806 of yacc.c  */
+#line 805 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      (yyval.node) = (yyvsp[(1) - (1)].node);
+    }
     break;
 
   case 89:
 
-/* Line 1455 of yacc.c  */
-#line 793 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 808 "Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
+    }
     break;
 
   case 90:
 
-/* Line 1455 of yacc.c  */
-#line 796 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.node) = (yyvsp[(1) - (1)].node);
-    ;}
-    break;
-
-  case 91:
-
-/* Line 1455 of yacc.c  */
-#line 802 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 814 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, (yyvsp[(1) - (1)].strval));
       if (!node) {
@@ -2762,13 +2801,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 92:
+  case 91:
 
-/* Line 1455 of yacc.c  */
-#line 810 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 822 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
 
@@ -2782,13 +2821,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 93:
+  case 92:
 
-/* Line 1455 of yacc.c  */
-#line 824 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 836 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);
       if (!node) {
@@ -2796,13 +2835,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 94:
+  case 93:
 
-/* Line 1455 of yacc.c  */
-#line 832 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 844 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, true);
       if (!node) {
@@ -2810,13 +2849,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 95:
+  case 94:
 
-/* Line 1455 of yacc.c  */
-#line 840 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 852 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
       if (!node) {
@@ -2824,13 +2863,13 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
     break;
 
-  case 96:
+  case 95:
 
-/* Line 1455 of yacc.c  */
-#line 851 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 863 "Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, (yyvsp[(1) - (1)].strval));
       if (!node) {
@@ -2838,76 +2877,87 @@ yyreduce:
       }
 
       (yyval.node) = node;
-    ;}
+    }
+    break;
+
+  case 96:
+
+/* Line 1806 of yacc.c  */
+#line 874 "Ahuacatl/ahuacatl-grammar.y"
+    {
+      if (!(yyvsp[(1) - (1)].strval)) {
+        ABORT_OOM
+      }
+
+      (yyval.strval) = (yyvsp[(1) - (1)].strval);
+    }
     break;
 
   case 97:
 
-/* Line 1455 of yacc.c  */
-#line 862 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 881 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!(yyvsp[(1) - (1)].strval)) {
         ABORT_OOM
       }
 
       (yyval.strval) = (yyvsp[(1) - (1)].strval);
-    ;}
+    }
     break;
 
   case 98:
 
-/* Line 1455 of yacc.c  */
-#line 869 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 890 "Ahuacatl/ahuacatl-grammar.y"
     {
-      if (!(yyvsp[(1) - (1)].strval)) {
-        ABORT_OOM
-      }
-
       (yyval.strval) = (yyvsp[(1) - (1)].strval);
-    ;}
+    }
     break;
 
   case 99:
 
-/* Line 1455 of yacc.c  */
-#line 878 "Ahuacatl/ahuacatl-grammar.y"
-    {
-      (yyval.strval) = (yyvsp[(1) - (1)].strval);
-    ;}
-    break;
-
-  case 100:
-
-/* Line 1455 of yacc.c  */
-#line 884 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 896 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!(yyvsp[(1) - (1)].strval)) {
         ABORT_OOM
       }
 
       (yyval.intval) = TRI_Int64String((yyvsp[(1) - (1)].strval));
-    ;}
+    }
     break;
 
-  case 101:
+  case 100:
 
-/* Line 1455 of yacc.c  */
-#line 891 "Ahuacatl/ahuacatl-grammar.y"
+/* Line 1806 of yacc.c  */
+#line 903 "Ahuacatl/ahuacatl-grammar.y"
     {
       if (!(yyvsp[(2) - (2)].strval)) {
         ABORT_OOM
       }
 
       (yyval.intval) = - TRI_Int64String((yyvsp[(2) - (2)].strval));
-    ;}
+    }
     break;
 
 
 
-/* Line 1455 of yacc.c  */
-#line 2909 "Ahuacatl/ahuacatl-grammar.c"
+/* Line 1806 of yacc.c  */
+#line 2948 "Ahuacatl/ahuacatl-grammar.c"
       default: break;
     }
+  /* User semantic actions sometimes alter yychar, and that requires
+     that yytoken be updated with the new translation.  We take the
+     approach of translating immediately before every use of yytoken.
+     One alternative is translating here after every semantic action,
+     but that translation would be missed if the semantic action invokes
+     YYABORT, YYACCEPT, or YYERROR immediately after altering yychar or
+     if it invokes YYBACKUP.  In the case of YYABORT or YYACCEPT, an
+     incorrect destructor might then be invoked immediately.  In the
+     case of YYERROR or YYBACKUP, subsequent parser actions might lead
+     to an incorrect destructor call or verbose syntax error message
+     before the lookahead is translated.  */
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
 
   YYPOPSTACK (yylen);
@@ -2936,6 +2986,10 @@ yyreduce:
 | yyerrlab -- here on detecting error |
 `------------------------------------*/
 yyerrlab:
+  /* Make sure we have latest lookahead translation.  See comments at
+     user semantic actions for why this is necessary.  */
+  yytoken = yychar == YYEMPTY ? YYEMPTY : YYTRANSLATE (yychar);
+
   /* If not already recovering from an error, report this error.  */
   if (!yyerrstatus)
     {
@@ -2943,41 +2997,40 @@ yyerrlab:
 #if ! YYERROR_VERBOSE
       yyerror (&yylloc, context, YY_("syntax error"));
 #else
+# define YYSYNTAX_ERROR yysyntax_error (&yymsg_alloc, &yymsg, \
+                                        yyssp, yytoken)
       {
-	YYSIZE_T yysize = yysyntax_error (0, yystate, yychar);
-	if (yymsg_alloc < yysize && yymsg_alloc < YYSTACK_ALLOC_MAXIMUM)
-	  {
-	    YYSIZE_T yyalloc = 2 * yysize;
-	    if (! (yysize <= yyalloc && yyalloc <= YYSTACK_ALLOC_MAXIMUM))
-	      yyalloc = YYSTACK_ALLOC_MAXIMUM;
-	    if (yymsg != yymsgbuf)
-	      YYSTACK_FREE (yymsg);
-	    yymsg = (char *) YYSTACK_ALLOC (yyalloc);
-	    if (yymsg)
-	      yymsg_alloc = yyalloc;
-	    else
-	      {
-		yymsg = yymsgbuf;
-		yymsg_alloc = sizeof yymsgbuf;
-	      }
-	  }
-
-	if (0 < yysize && yysize <= yymsg_alloc)
-	  {
-	    (void) yysyntax_error (yymsg, yystate, yychar);
-	    yyerror (&yylloc, context, yymsg);
-	  }
-	else
-	  {
-	    yyerror (&yylloc, context, YY_("syntax error"));
-	    if (yysize != 0)
-	      goto yyexhaustedlab;
-	  }
+        char const *yymsgp = YY_("syntax error");
+        int yysyntax_error_status;
+        yysyntax_error_status = YYSYNTAX_ERROR;
+        if (yysyntax_error_status == 0)
+          yymsgp = yymsg;
+        else if (yysyntax_error_status == 1)
+          {
+            if (yymsg != yymsgbuf)
+              YYSTACK_FREE (yymsg);
+            yymsg = (char *) YYSTACK_ALLOC (yymsg_alloc);
+            if (!yymsg)
+              {
+                yymsg = yymsgbuf;
+                yymsg_alloc = sizeof yymsgbuf;
+                yysyntax_error_status = 2;
+              }
+            else
+              {
+                yysyntax_error_status = YYSYNTAX_ERROR;
+                yymsgp = yymsg;
+              }
+          }
+        yyerror (&yylloc, context, yymsgp);
+        if (yysyntax_error_status == 2)
+          goto yyexhaustedlab;
       }
+# undef YYSYNTAX_ERROR
 #endif
     }
 
-  yyerror_range[0] = yylloc;
+  yyerror_range[1] = yylloc;
 
   if (yyerrstatus == 3)
     {
@@ -3014,7 +3067,7 @@ yyerrorlab:
   if (/*CONSTCOND*/ 0)
      goto yyerrorlab;
 
-  yyerror_range[0] = yylsp[1-yylen];
+  yyerror_range[1] = yylsp[1-yylen];
   /* Do not reclaim the symbols of the rule which action triggered
      this YYERROR.  */
   YYPOPSTACK (yylen);
@@ -3033,7 +3086,7 @@ yyerrlab1:
   for (;;)
     {
       yyn = yypact[yystate];
-      if (yyn != YYPACT_NINF)
+      if (!yypact_value_is_default (yyn))
 	{
 	  yyn += YYTERROR;
 	  if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
@@ -3048,7 +3101,7 @@ yyerrlab1:
       if (yyssp == yyss)
 	YYABORT;
 
-      yyerror_range[0] = *yylsp;
+      yyerror_range[1] = *yylsp;
       yydestruct ("Error: popping",
 		  yystos[yystate], yyvsp, yylsp, context);
       YYPOPSTACK (1);
@@ -3058,10 +3111,10 @@ yyerrlab1:
 
   *++yyvsp = yylval;
 
-  yyerror_range[1] = yylloc;
+  yyerror_range[2] = yylloc;
   /* Using YYLLOC is tempting, but would change the location of
      the lookahead.  YYLOC is available though.  */
-  YYLLOC_DEFAULT (yyloc, (yyerror_range - 1), 2);
+  YYLLOC_DEFAULT (yyloc, yyerror_range, 2);
   *++yylsp = yyloc;
 
   /* Shift the error token.  */
@@ -3097,8 +3150,13 @@ yyexhaustedlab:
 
 yyreturn:
   if (yychar != YYEMPTY)
-     yydestruct ("Cleanup: discarding lookahead",
-		 yytoken, &yylval, &yylloc, context);
+    {
+      /* Make sure we have latest lookahead translation.  See comments at
+         user semantic actions for why this is necessary.  */
+      yytoken = YYTRANSLATE (yychar);
+      yydestruct ("Cleanup: discarding lookahead",
+                  yytoken, &yylval, &yylloc, context);
+    }
   /* Do not reclaim the symbols of the rule which action triggered
      this YYABORT or YYACCEPT.  */
   YYPOPSTACK (yylen);
