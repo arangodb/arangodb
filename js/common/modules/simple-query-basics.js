@@ -86,11 +86,15 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
+/// @note @FN{near} does not support negative skips.
+///
 /// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
 ///////////////////////////////////////////////////////////////////////////////
 ///
-/// Limits the result to @FA{limit} documents. Note that @FA{limit} can be more
-/// than 100, this will raise the default limit.
+/// Limits the result to @FA{limit} documents instead of the default 100.
+///
+/// @note @FA{limit} can be more than 100, this will raise the default
+/// limit.
 ///
 /// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance()}
 ////////////////////////////////////////////////////////////////////////
@@ -255,21 +259,22 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
-/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Selects all documents of a collection that match the specified example and
-/// returns a cursor. The example must be specified as paths and values. Allowed
-/// attribute types for searching are numbers, strings, and boolean values.
-///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access
-/// the result. The result can be limited using the @FN{skip} and @FN{limit}
-/// operator.
-///
 /// @FUN{@FA{collection}.byExample(@FA{example})}
 ///
-/// As alternative you can supply an example as single argument. Note that an
-/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
-/// as attribute.
+/// Selects all documents of a collection that match the specified example and
+/// returns a cursor. Allowed attribute types for searching are numbers,
+/// strings, and boolean values.
+///
+/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
+/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
+///
+/// @note An attribute name of the form @LIT{a.b} is interpreted as attribute
+/// path, not as attribute.
+///
+/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// As alternative you can supply a list of paths and values.
 ///
 /// @EXAMPLES
 ///
@@ -283,14 +288,23 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.byExample = function () {
+  var example;
 
-  // create a REAL array, otherwise JSON.stringify will fail
-  var example = [];
-
-  for (var i = 0;  i < arguments.length;  ++i) {
-    example.push(arguments[i]);
+  // example is given as only argument
+  if (arguments.length == 1) {
+    example = arguments[0];
   }
 
+  // example is given as list
+  else {
+    example = {};
+
+    for (var i = 0;  i < arguments.length;  i += 2) {
+      example[arguments[i]] = arguments[i + 1];
+    }
+  }
+
+  // create a REAL array, otherwise JSON.stringify will fail
   return new SimpleQueryByExample(this, example);
 }
 
@@ -319,7 +333,6 @@ AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExamp
 
 function GeneralArrayCursor (documents, skip, limit) {
   this._documents = documents;
-  this._current = 0;
   this._countTotal = documents.length;
   this._skip = skip;
   this._limit = limit;
@@ -345,56 +358,43 @@ function GeneralArrayCursor (documents, skip, limit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.execute = function () {
-  if (this._skip == null || this._skip <= 0) {
+  if (this._skip == null) {
     this._skip = 0;
   }
 
-  if (this._skip != 0 && this._limit == null) {
-    this._current = this._skip;
+  var len = this._documents.length;
+  var s = 0;
+  var e = len;
 
-    this._countQuery = this._documents.length - this._skip;
+  // skip from the beginning
+  if (0 < this._skip) {
+    s = this._skip;
 
-    if (this._countQuery < 0) {
-      this._countQuery = 0;
+    if (e < s) {
+      s = e;
     }
   }
-  else if (this._limit != null) {
-    var documents;
-    var start;
-    var end;
-    
-    if (0 == this._limit) {
-      start = 0;
-      end = 0;
+
+  // skip from the end
+  else if (this._skip < 0) {
+    var skip = -this._skip;
+
+    if (skip < e) {
+      s = e - skip;
     }
-    else if (0 < this._limit) {
-      start = this._skip;
-      end = this._skip + this._limit;
-    }
-    else {
-      start = this._documents.length + this._limit;
-      end = this._documents.length;
-    }
-    
-    if (start < this._skip) {
-      start = this._skip;
-    }
-    
-    if (this._documents.length < end) {
-      end = this._documents.length;
-    }
-    
-    documents = [];
-    
-    for (var i = start;  i < end;  ++i) {
-      documents.push(this._documents[i]);
-    }
-    
-    this._documents = documents;
-    this._skip = 0;
-    this._limit = null;
-    this._countQuery = this._documents.length;
   }
+
+  // apply limit
+  if (this._limit != null) {
+    if (s + this._limit < e) {
+      e = s + this._limit;
+    }
+  }
+
+  this._current = s;
+  this._stop = e;
+
+  this._countQuery = e - s;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,7 +435,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.hasNext = function () {
-  return this._current < this._documents.length;
+  return this._current < this._stop;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +443,7 @@ GeneralArrayCursor.prototype.hasNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.next = function() {
-  if (this._current < this._documents.length) {
+  if (this._current < this._stop) {
     return this._documents[this._current++];
   }
   else {
@@ -530,33 +530,13 @@ function JoinLimits (query, limit) {
     query._limit = limit
   }
 
-  // both are positive, use the smaller one
-  else if (0 < query._limit && 0 < limit) {
+  // use the smaller one
+  else {
     query = query.clone();
 
     if (limit < query._limit) {
       query._limit = limit;
     }
-  }
-
-  // both are negative, use the greater one
-  else if (query._limit < 0 && limit < 0) {
-    query = query.clone();
-
-    if (query._limit < limit) {
-      query._limit = limit;
-    }
-  }
-
-  // different sign
-  else {
-    q = query.clone().toArray();
-
-    q = new SimpleQueryArray(q);
-    q._limit = limit;
-    q._countTotal = query._countTotal;
-
-    query = q;
   }
 
   return query;
@@ -594,12 +574,11 @@ SimpleQuery.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limit
 ///
-/// @FUN{limit(@FA{number})}
+/// @FUN{@FA{query}.limit(@FA{number})}
 ///
 /// Limits a result to the first @FA{number} documents. Specifying a limit of
 /// @CODE{0} returns no documents at all. If you do not need a limit, just do
-/// not add the limit operator. If you specifiy a negtive limit of @CODE{-n},
-/// this will return the last @CODE{n} documents instead.
+/// not add the limit operator. The limit must be non-negative.
 ///
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
@@ -614,15 +593,25 @@ SimpleQuery.prototype.limit = function (limit) {
     throw "query is already executing";
   }
 
+  if (limit < 0) {
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorMessage = "limit must be non-negative";
+    throw err;
+  }
+
   return JoinLimits(this, limit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skip
 ///
-/// @FUN{skip(@FA{number})}
+/// @FUN{@FA{query}.skip(@FA{number})}
 ///
-/// Skips the first @FA{number} documents.
+/// Skips the first @FA{number} documents. If @FA{number} is positive, then skip
+/// the number of documents. If @FA[number} is negative, then the total amount N
+/// of documents must be known and the results starts at position (N +
+/// @FA{number}).
 ///
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
@@ -638,13 +627,6 @@ SimpleQuery.prototype.skip = function (skip) {
 
   if (skip == null) {
     skip = 0;
-  }
-
-  if (skip < 0) {
-    var err = new AvocadoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
-    err.errorMessage = "skip must be non-negative";
-    throw err;
   }
 
   if (this._execution != null) {
@@ -701,16 +683,20 @@ SimpleQuery.prototype.toArray = function () {
 ///
 /// The @FN{count} operator counts the number of document in the result set and
 /// returns that number. The @FN{count} operator ignores any limits and returns
-/// the total number of documents found. Note that not all simple queries
-/// support counting. In this case @LIT{null} is returned.
+/// the total number of documents found.
+///
+/// @note Not all simple queries support counting. In this case @LIT{null} is
+/// returned.
 ///
 /// @FUN{count(@LIT{true})}
 ///
 /// If the result set was limited by the @FN{limit} operator or documents were
 /// skiped using the @FN{skip} operator, the @FN{count} operator with argument
 /// @LIT{true} will use the number of elements in the final result set - after
-/// applying @FN{limit} and @FN{skip}. Note that not all simple queries support
-/// counting. In this case @LIT{null} is returned.
+/// applying @FN{limit} and @FN{skip}.
+///
+/// @note Not all simple queries support counting. In this case @LIT{null} is
+/// returned.
 ///
 /// @EXAMPLES
 ///
@@ -936,7 +922,7 @@ SimpleQueryArray.prototype.clone = function () {
 
 SimpleQueryArray.prototype.execute = function () {
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
+    if (this._skip == null) {
       this._skip = 0;
     }
 

@@ -34,14 +34,6 @@
 ///    <li>@ref UserManualServerStartStop
 ///    </li>
 ///    <li>Avocado Query Language
-///     <ol>
-///      <li>@ref AQLBasics
-///      </li>
-///      <li>@ref Optimizer
-///      </li>
-///      <li>@ref IndexUsage
-///      </li>
-///     </ol>
 ///    </li>
 ///    <li>@ref AvocadoErrors
 ///    </li>

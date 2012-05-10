@@ -114,29 +114,9 @@ function SimpleQueryArraySkipLimitSuite () {
 
       assertEqual(n, numbers.slice(0,9));
 
-      n = query.clone().limit(-9).toArray();
-
-      assertEqual(n, numbers.slice(1,10));
-
-      n = query.clone().limit(-1).toArray();
-
-      assertEqual(n, numbers.slice(9,10));
-
-      n = query.clone().limit(9).limit(-8).toArray();
-
-      assertEqual(n, numbers.slice(1,9));
-
-      n = query.clone().limit(-9).limit(8).toArray();
-      
-      assertEqual(n, numbers.slice(1,9));
-
       n = query.clone().limit(9).limit(8).limit(7).toArray();
 
       assertEqual(n, numbers.slice(0,7));
-
-      n = query.clone().limit(-9).limit(-8).limit(-7).toArray();
-
-      assertEqual(n, numbers.slice(3,10));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,17 +140,17 @@ function SimpleQueryArraySkipLimitSuite () {
 
       assertEqual(n, numbers.slice(1,8));
 
-      n = query.clone().skip(2).limit(-9).toArray();
+      n = query.clone().skip(-5).limit(3).toArray();
 
-      assertEqual(n, numbers.slice(2,10));
+      assertEqual(n, numbers.slice(5,8));
 
-      n = query.clone().limit(9).skip(1).limit(-9).toArray();
+      n = query.clone().skip(-8).limit(7).skip(1).limit(4).toArray();
 
-      assertEqual(n, numbers.slice(1,9));
+      assertEqual(n, numbers.slice(3,7));
 
-      n = query.clone().limit(-9).skip(1).limit(7).toArray();
+      n = query.clone().skip(-10).limit(9).skip(1).limit(7).toArray();
 
-      assertEqual(n, numbers.slice(2,9));
+      assertEqual(n, numbers.slice(1,8));
     }
   };
 }
@@ -265,25 +245,9 @@ function SimpleQueryAllSkipLimitSuite () {
 
       assertEqual(n, numbers.slice(0,9));
 
-      n = collection.all().limit(-9).toArray().map(num);
-
-      assertEqual(n, numbers.slice(1,10));
-
-      n = collection.all().limit(9).limit(-8).toArray().map(num);
-
-      assertEqual(n, numbers.slice(1,9));
-
-      n = collection.all().limit(-9).limit(8).toArray().map(num);
-      
-      assertEqual(n, numbers.slice(1,9));
-
       n = collection.all().limit(9).limit(8).limit(7).toArray().map(num);
 
       assertEqual(n, numbers.slice(0,7));
-
-      n = collection.all().limit(-9).limit(-8).limit(-7).toArray().map(num);
-
-      assertEqual(n, numbers.slice(3,10));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,13 +271,17 @@ function SimpleQueryAllSkipLimitSuite () {
 
       assertEqual(n, numbers.slice(1,8));
 
-      n = collection.all().skip(2).limit(-9).toArray().map(num);
+      n = collection.all().skip(-5).limit(3).toArray().map(num);
 
-      assertEqual(n, numbers.slice(2,10));
+      assertEqual(n, numbers.slice(5,8));
 
-      n = collection.all().limit(-9).skip(1).limit(7).toArray().map(num);
+      n = collection.all().skip(-8).limit(7).skip(1).limit(4).toArray().map(num);
 
-      assertEqual(n, numbers.slice(2,9));
+      assertEqual(n, numbers.slice(3,7));
+
+      n = collection.all().skip(-10).limit(9).skip(1).limit(7).toArray().map(num);
+
+      assertEqual(n, numbers.slice(1,8));
     }
   };
 }
