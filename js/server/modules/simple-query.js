@@ -99,7 +99,7 @@ function ByExample (collection, example, skip, limit) {
   var idx = collection.lookupHashIndex.apply(collection, attributes);
 
   if (idx == null && unique) {
-    idx = collection.lookupUniqueConstraint(collection, attributes);
+    idx = collection.lookupUniqueConstraint.apply(collection, attributes);
 
     if (idx != null) {
       console.info("found unique constraint %s", idx.id);
@@ -188,7 +188,7 @@ AvocadoCollection.prototype.firstExample = function () {
     }
   }
 
-  var documents = ByExample(this._collection, this._example, 0, 1);
+  var documents = ByExample(this, example, 0, 1);
 
   if (0 < documents.documents.length) {
     return documents.documents[0];
