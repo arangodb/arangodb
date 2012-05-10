@@ -451,7 +451,7 @@ TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t*, TRI_json_t*);
 /// TRI_hash_index_elements_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t* values);
+TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t** values);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

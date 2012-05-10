@@ -206,6 +206,7 @@ avocado_SOURCES = \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
+	V8/v8-query.cpp \
 	V8/v8-vocbase.cpp \
 	VocBase/barrier.c \
 	VocBase/blob-collection.c \
@@ -339,7 +340,6 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
-	AQLBasics \
 	Actions \
 	AvocadoErrors \
 	AvocadoScript \
@@ -365,7 +365,6 @@ WIKI = \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \
-	IndexUsage \
 	Indexes \
 	InstallManual \
 	Installing \
@@ -377,7 +376,6 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	OTWP \
-	Optimizer \
 	RefManual \
 	RestDocument \
 	RestEdge \

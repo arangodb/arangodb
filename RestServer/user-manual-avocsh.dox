@@ -35,14 +35,6 @@
 ///    </li>
 ///    <li>@ref SimpleQueries
 ///    </li>
-///    <li>Vertices, Edges, and Graphs
-///     <ol>
-///      <li>@ref Graphs
-///      </li>
-///      <li>@ref JSModuleGraph
-///      </li>
-///     </ol>
-///    </li>
 ///   </ol>
 ///  </li>
 /// </ol>

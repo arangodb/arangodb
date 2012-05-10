@@ -56,9 +56,9 @@ describe AvocadoDB do
 	doc.parsed_response['count'].should eq(100)
       end
 
-      it "get all documents with negative limit" do
+      it "get all documents with negative skip" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"limit\" : -100 }"
+	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : -100 }"
 	doc = AvocadoDB.log_put("#{prefix}-all-negative-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -303,7 +303,7 @@ describe AvocadoDB do
 	d7 = doc.parsed_response['_id']
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : [ { \"i\" : 1 } ] }"
+	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"i\" : 1 } }"
 	doc = AvocadoDB.log_put("#{prefix}-by-example1", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -316,7 +316,7 @@ describe AvocadoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d1,d2,d3,d4]
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : [ { \"a\" : { \"j\" : 1 } } ] }"
+	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a\" : { \"j\" : 1 } } }"
 	doc = AvocadoDB.log_put("#{prefix}-by-example2", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -329,7 +329,7 @@ describe AvocadoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d2]
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : [ \"a.j\", 1 ] }"
+	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1 } }"
 	doc = AvocadoDB.log_put("#{prefix}-by-example3", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -342,7 +342,7 @@ describe AvocadoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d2,d3]
 
 	cmd = api + "/first-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : [ \"a.j\", 1, \"a.k\", 1 ] }"
+	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 1 } }"
 	doc = AvocadoDB.log_put("#{prefix}-first-example", cmd, :body => body)
 
 	doc.code.should eq(200)
@@ -352,7 +352,7 @@ describe AvocadoDB do
 	doc.parsed_response['document']['_id'].should eq(d3)
 
 	cmd = api + "/first-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : [ \"a.j\", 1, \"a.k\", 2 ] }"
+	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 2 } }"
 	doc = AvocadoDB.log_put("#{prefix}-first-example-not-found", cmd, :body => body)
 
 	doc.code.should eq(404)

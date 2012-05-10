@@ -408,7 +408,7 @@ actions.defineHttp({
       }
       else {
         try {
-          var result = collection.byExample.apply(collection, example);
+          var result = collection.byExample(example);
 
           if (skip != null) {
             result = result.skip(skip);
@@ -488,7 +488,7 @@ actions.defineHttp({
         actions.badParameter(req, res, "example");
       }
       else {
-        var result = collection.byExample.apply(collection, example).limit(1);
+        var result = collection.byExample(example).limit(1);
 
         if (result.hasNext()) {
           actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
