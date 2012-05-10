@@ -754,20 +754,6 @@ reference:
 
       $$ = node;
     }
-  | reference T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
-      // variable[]
-      $$ = TRI_CreateNodeIndexedAql(context, $1, $3);
-      if (!$$) {
-        ABORT_OOM
-      }
-    }
-  | reference T_LIST_OPEN T_TIMES T_LIST_CLOSE '.' expansion %prec INDEXED {
-      // variable[*]
-      $$ = TRI_CreateNodeExpandAql(context, $1, $6);
-      if (!$$) {
-        ABORT_OOM
-      }
-    }
   | reference '.' T_STRING %prec REFERENCE {
       // variable.reference
       $$ = TRI_CreateNodeAttributeAccessAql(context, $1, $3);
@@ -775,26 +761,84 @@ reference:
         ABORT_OOM
       }
     }
-  ;
-
-expansion:
-    T_STRING {
-      // reference
-      $$ = TRI_CreateNodeAttributeAql(context, $1);
-      if (!$$) {
-        ABORT_OOM
-      }
-    }
-  | expansion T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | reference T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
       // variable[]
       $$ = TRI_CreateNodeIndexedAql(context, $1, $3);
       if (!$$) {
         ABORT_OOM
       }
     }
+  | reference T_LIST_OPEN T_TIMES T_LIST_CLOSE {
+      // variable[*]
+      TRI_aql_node_t* node;
+      char* varname = TRI_GetNameParseAql(context);
+
+      if (!varname) {
+        ABORT_OOM
+      }
+
+      // create a temporary variable for the row iterator
+      node = TRI_CreateNodeReferenceAql(context, varname);
+
+      TRI_PushStackParseAql(context, varname);
+      TRI_PushStackParseAql(context, $1);
+      TRI_PushStackParseAql(context, node);
+
+    } expansion %prec INDEXED {
+      TRI_aql_node_t* nameNode;
+      TRI_aql_node_t* expand;
+      TRI_aql_node_t* expanded = TRI_PopStackParseAql(context);
+      char* varname = TRI_PopStackParseAql(context);
+
+      if (!expanded || !$1) {
+        TRI_SetErrorParseAql(context, "invalid nesting of expanders", (yyloc).first_line, (yyloc).first_column);
+        YYABORT;
+      }
+
+      expand = TRI_CreateNodeExpandAql(context, varname, expanded, $6);
+
+      if (!TRI_AddStatementAql(context, expand)) {
+        ABORT_OOM
+      }
+      
+      nameNode = TRI_AQL_NODE_MEMBER(expand, 1);
+      if (!nameNode) {
+        ABORT_OOM
+      }
+
+      $$ = TRI_CreateNodeReferenceAql(context, TRI_AQL_NODE_STRING(nameNode));
+
+      if (!$$) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+expansion:
+    /* empty */ {
+      $$ = NULL;
+    }
   | expansion '.' T_STRING %prec REFERENCE {
-      // variable.variable
-      $$ = TRI_CreateNodeAttributeAccessAql(context, $1, $3);
+      // variable.reference
+      if ($1 == NULL) {
+        $$ = TRI_CreateNodeAttributeAccessAql(context, TRI_PopStackParseAql(context), $3);
+      }
+      else {
+        $$ = TRI_CreateNodeAttributeAccessAql(context, $1, $3);
+      }
+
+      if (!$$) {
+        ABORT_OOM
+      }
+    }
+  | expansion T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+      if ($1 == NULL) {
+        $$ = TRI_CreateNodeIndexedAql(context, TRI_PopStackParseAql(context), $3);
+      }
+      else {
+        $$ = TRI_CreateNodeIndexedAql(context, $1, $3);
+      }
+
       if (!$$) {
         ABORT_OOM
       }
