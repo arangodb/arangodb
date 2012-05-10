@@ -438,8 +438,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
+      $('#nav1').removeClass('highlighted'); 
       var collectionID = location.hash.substr(16, location.hash.length); 
-       
       globalAjaxCursorChange();
       $.ajax({
         type: "GET",
@@ -1400,6 +1400,7 @@ var logTable = $('#logTableID').dataTable({
 
     if (this.id == "showdocs" ) {
       window.location.href = "#showCollection?" + collectionID; 
+      $('#nav1').removeClass('highlighted'); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////

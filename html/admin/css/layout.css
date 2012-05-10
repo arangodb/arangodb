@@ -21,6 +21,15 @@ html.busy, html.busy * {
   background-color: white !important; 
 }
 
+.hoverClass:hover {
+  background-color: #696969 !important;
+  border-bottom: 1px solid #696969; 
+  color: white !important;
+}
+
+.hoverClass:hover a {
+}
+ 
 #logView .ui-tabs-nav .ui-state-active {
   //background-color: #E4E9D2 !important; 
   background-color: #E6E6E6 !important;
@@ -283,7 +292,6 @@ pre ul li span{
   height:34px !important;
   width: 100px !important;
   float:right; 
-  margin-top: -11px !important;     
 }
 
 #queryOutput {
@@ -297,6 +305,13 @@ pre ul li span{
 }
 
 #avocshWindow {
+  font-size: 0.8em;  
+  border:#999 1px solid;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -moz-border-radius: 2px; -webkit-border-radius: 2px;
+  margin-top: 0px;  
   background-color: white;  
   height: 300px; 
   overflow-y: auto; 
@@ -317,9 +332,10 @@ pre ul li span{
 
 #avocshContent {
   font-family: "courier";
-  width: 90%;
+  width: 90.5%;
   height: 40px;
-  background-color: white;  
+  background-color: white; 
+  margin-right: 0.5%;   
 } 
 
 .avocshSuccess {
@@ -338,9 +354,10 @@ pre ul li span{
   font-family: "courier";
 }
 
-#submitAvoc { 
+#submitAvoc {
   height: 40px !important; 
-  width: 10% !important;   
+  width: 9% !important;  
+  margin-top: 10px !important;  
 }
 
 #centerView {
@@ -600,6 +617,19 @@ pre ul li span{
   border: medium none; 
 }
 
+#queryForm {
+  margin-top: -3px;     
+}
+
+#queryView {
+  height: 350px;   
+}
+
+#avocshView {
+  height: 350px;
+  padding-top: 2px;
+  padding-right: 2px; 
+}
 /*
 ##############################################################################
 ### small buttons
