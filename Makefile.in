@@ -933,7 +933,6 @@ DOXYGEN = \
 ################################################################################
 ################################################################################
 WIKI = \
-	AQLBasics \
 	Actions \
 	AvocadoErrors \
 	AvocadoScript \
@@ -959,7 +958,6 @@ WIKI = \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \
-	IndexUsage \
 	Indexes \
 	InstallManual \
 	Installing \
@@ -971,7 +969,6 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	OTWP \
-	Optimizer \
 	RefManual \
 	RestDocument \
 	RestEdge \
