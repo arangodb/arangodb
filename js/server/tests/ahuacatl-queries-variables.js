@@ -330,6 +330,19 @@ function ahuacatlQueryVariablesTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return data using quoted identifiers
+////////////////////////////////////////////////////////////////////////////////
+
+    testEscapedAccess : function () {
+      var query = "FOR a IN " + JSON.stringify(airports) + " RETURN `a`.`continent`.`countries`[0].`airports`[0].`name`";
+      var expected = ["CGN", "LGA", "NRT"];
+
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
+
   };
 }
 
