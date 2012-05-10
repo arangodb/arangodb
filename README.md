@@ -57,12 +57,12 @@ Start the server:
 Start the shell in another windows:
 
     > ./avocsh
-					   _     
+                                           _     
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
     | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
      \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
-			   |___/                 
+                           |___/                 
 
     Welcome to avocsh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
     Using Google V8 3.9.4.0 JavaScript engine.
