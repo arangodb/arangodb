@@ -413,7 +413,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/query-locks.$(OBJEXT) VocBase/query-memory.$(OBJEXT) \
 	VocBase/query-node.$(OBJEXT) VocBase/query-order.$(OBJEXT) \
 	VocBase/query-parse.$(OBJEXT) VocBase/query-result.$(OBJEXT) \
-	VocBase/query.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
+	VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -868,7 +868,6 @@ avocado_SOURCES = \
 	VocBase/query-order.c \
 	VocBase/query-parse.c \
 	VocBase/query-result.c \
-	VocBase/query.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -1943,8 +1942,6 @@ VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-result.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/shadow-data.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/simple-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -2243,7 +2240,6 @@ mostlyclean-compile:
 	-rm -f VocBase/query-order.$(OBJEXT)
 	-rm -f VocBase/query-parse.$(OBJEXT)
 	-rm -f VocBase/query-result.$(OBJEXT)
-	-rm -f VocBase/query.$(OBJEXT)
 	-rm -f VocBase/shadow-data.$(OBJEXT)
 	-rm -f VocBase/simple-collection.$(OBJEXT)
 	-rm -f VocBase/synchroniser.$(OBJEXT)
@@ -2492,7 +2488,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-order.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-result.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/synchroniser.Po@am__quote@

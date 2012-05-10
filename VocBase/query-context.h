@@ -35,11 +35,6 @@
 extern "C" {
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 EXECUTION CONTEXT
 // -----------------------------------------------------------------------------
@@ -49,34 +44,28 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript execution context
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void* TRI_js_exec_context_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execution context of a query
-///
-/// In order to execute a query, you need an execution context. The results are
-/// only valid as long as the context exists. After freeing the context you
-/// should no longer access the result cursor or the result documents.
-///
-/// When creating an execution context, parts of clauses might use JavaScript.
-/// A JavaScript execution context is created for these clauses.
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_rc_context_s { // DEPRECATED
-  TRI_doc_collection_t* _primary;
-
-  TRI_js_exec_context_t _selectClause;
-  TRI_js_exec_context_t _whereClause;
-  TRI_js_exec_context_t _orderClause;
-}
-TRI_rc_context_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new execution context
