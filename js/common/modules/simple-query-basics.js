@@ -609,7 +609,7 @@ SimpleQuery.prototype.limit = function (limit) {
 /// @FUN{@FA{query}.skip(@FA{number})}
 ///
 /// Skips the first @FA{number} documents. If @FA{number} is positive, then skip
-/// the number of documents. If @FA[number} is negative, then the total amount N
+/// the number of documents. If @FA{number} is negative, then the total amount N
 /// of documents must be known and the results starts at position (N +
 /// @FA{number}).
 ///

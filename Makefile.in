@@ -2951,6 +2951,7 @@ unittests-verbose:
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
+	@echo "## > make unittests SKIP_BOOST=1                                              ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
 	@echo "################################################################################"
