@@ -408,15 +408,7 @@ actions.defineHttp({
       }
       else {
         try {
-          var result = collection.byExample.apply(collection, example);
-
-          if (skip != null) {
-            result = result.skip(skip);
-          }
-
-          if (limit != null) {
-            result = result.limit(limit);
-          }
+          var result = collection.byExample(example, skip, limit);
 
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }

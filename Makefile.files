@@ -206,6 +206,7 @@ avocado_SOURCES = \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
+	V8/v8-query.cpp \
 	V8/v8-vocbase.cpp \
 	VocBase/barrier.c \
 	VocBase/blob-collection.c \

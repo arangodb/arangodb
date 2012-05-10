@@ -65,6 +65,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-query.h"
 #include "V8/v8-vocbase.h"
 
 using namespace std;
@@ -792,6 +793,7 @@ int AvocadoServer::executeShell (bool tests) {
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
   TRI_InitV8VocBridge(context, _vocbase);
+  TRI_InitV8Queries(context);
   TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, _startupModules);
   TRI_InitV8Shell(context);
