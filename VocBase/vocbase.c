@@ -40,7 +40,6 @@
 #include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/query-cursor.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"

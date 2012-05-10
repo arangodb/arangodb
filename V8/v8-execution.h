@@ -28,9 +28,6 @@
 #ifndef TRIAGENS_V8_V8_EXECUTION_H
 #define TRIAGENS_V8_V8_EXECUTION_H 1
 
-#include "VocBase/query-context.h"
-#include "VocBase/query-result.h"
-#include "VocBase/query-base.h"
 #include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
@@ -42,7 +39,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,74 +48,48 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets an json array
+/// @brief execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t,
-                                          TRI_json_t*);
-
+typedef void* TRI_js_exec_context_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines documents in a join/where
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const,
-                                      TRI_js_exec_context_t,
-                                      const size_t,
-                                      const bool); 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a documents composed of multiple elements
+/// @addtogroup V8Utils
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineSelectExecutionContext (TRI_js_exec_context_t,
-                                       TRI_rc_result_t*);
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a document
+/// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t,
-                                         char const* name,
-                                         TRI_doc_collection_t* collection,
-                                         TRI_doc_mptr_t const* document);
+TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines two documents for comparsions (e.g. used in order by)
+/// @brief frees an new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t,
-                                        TRI_select_result_t*,
-                                        TRI_sr_documents_t*, 
-                                        TRI_sr_documents_t*); 
+void TRI_FreeExecutionContext (TRI_js_exec_context_t context);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an execution context
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t, void* storage);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an execution context for a condition
+/// @addtogroup V8Utils
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteConditionExecutionContext (TRI_query_instance_t* const, 
-                                           TRI_js_exec_context_t, 
-                                           bool* result);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an execution context for a ref access
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteRefExecutionContext (TRI_memory_zone_t*,
-                                     TRI_js_exec_context_t, 
-                                     TRI_json_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an execution context for order by
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t, int* result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a result context

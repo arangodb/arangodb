@@ -173,11 +173,6 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
         Ahuacatl/ahuacatl-variable.c \
-	QL/ast-query.c \
-	QL/formatter.c \
-	QL/optimize.c \
-	QL/parser.c \
-	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
@@ -221,20 +216,6 @@ avocado_SOURCES = \
 	VocBase/general-cursor.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/query-base.c \
-	VocBase/query-cursor.c \
-	VocBase/query-data-feeder.c \
-	VocBase/query-execute.c \
-	VocBase/query-functions.c \
-	VocBase/query-javascript.c \
-	VocBase/query-join.c \
-	VocBase/query-join-execute.c \
-	VocBase/query-locks.c \
-	VocBase/query-memory.c \
-	VocBase/query-node.c \
-	VocBase/query-order.c \
-	VocBase/query-parse.c \
-	VocBase/query-result.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -300,7 +281,6 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c \
         Ahuacatl/ahuacatl-tokens.c
 
 BUILT_SOURCES += $(FLEX_FILES)
@@ -320,7 +300,6 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 ################################################################################
 
 BISON_FILES = \
-	QL/parser.c \
 	Ahuacatl/ahuacatl-grammar.c
 
 BUILT_SOURCES += $(BISON_FILES)
