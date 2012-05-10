@@ -141,12 +141,20 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.firstExample = function () {
+  var example;
 
-  // create a REAL array, otherwise JSON.stringify will fail
-  var example = [];
+  // example is given as only argument
+  if (arguments.length == 1) {
+    example = arguments[0];
+  }
 
-  for (var i = 0;  i < arguments.length;  ++i) {
-    example.push(arguments[i]);
+  // example is given as list
+  else {
+    example = {};
+
+    for (var i = 0;  i < arguments.length;  i += 2) {
+      example[arguments[i]] = arguments[i + 1];
+    }
   }
 
   var data = {
