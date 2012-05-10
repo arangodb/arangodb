@@ -242,16 +242,8 @@ filter_statement:
   ;
 
 let_statement:
-    T_LET variable_name {
-      if (!TRI_PushStackParseAql(context, $2) || !TRI_StartScopeContextAql(context)) {
-        ABORT_OOM
-      }
-    } T_ASSIGN T_OPEN expression T_CLOSE {
-      TRI_aql_node_t* node;
-
-      TRI_EndScopeContextAql(context);
-
-      node = TRI_CreateNodeAssignAql(context, TRI_PopStackParseAql(context), $6);
+    T_LET variable_name T_ASSIGN expression {
+      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $2, $4);
       if (!node) {
         ABORT_OOM
       }
@@ -429,12 +421,32 @@ expression:
       $$ = $2;
     }
   | T_OPEN query T_CLOSE {
-      TRI_aql_node_t* node = TRI_CreateNodeSubqueryAql(context, $2);
-      if (!node) {
+      TRI_aql_node_t* subQuery;
+      TRI_aql_node_t* result;
+      TRI_aql_node_t* nameNode;
+
+      subQuery = TRI_CreateNodeSubqueryAql(context, $2);
+      if (!subQuery) {
         ABORT_OOM
       }
 
-      $$ = node;
+      // push the sub query execution into the statement list
+      if (!TRI_AddStatementAql(context, subQuery)) {
+        ABORT_OOM
+      }
+
+      nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
+      if (!nameNode) {
+        ABORT_OOM
+      }
+
+      result = TRI_CreateNodeReferenceAql(context, TRI_AQL_NODE_STRING(nameNode));
+      if (!result) {
+        ABORT_OOM
+      }
+
+      // return the result
+      $$ = result;
     } 
   | operator_unary {
       $$ = $1;

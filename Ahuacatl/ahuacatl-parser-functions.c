@@ -134,6 +134,23 @@ void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a new unique variable name
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
+  char buffer[16];
+
+  assert(context);
+
+  // fill buffer with 0 bytes
+  memset(buffer, 0, sizeof(buffer));
+  snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
+
+  // register the string and return the copy of it
+  return TRI_RegisterStringAql(context, buffer, strlen(buffer), false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
