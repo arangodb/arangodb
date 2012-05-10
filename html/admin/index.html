@@ -10,7 +10,6 @@
     </style>
       <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.validate.js"></script>
       <script type="text/javascript" language="javascript" src="js/json2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
@@ -236,11 +235,11 @@
         
         <div id="tabs">
           <ul>
-            <li><a href="#All">All</a><li>
-            <li><a id="logCritTab" href="#Critical">Critical</a><li>
-            <li><a id="logWarnTab" href=#Warning">Warning</a><li>
-            <li><a id="logInfoTab" href="#Info">Info</a><li>
-            <li><a id="logDebuTab" href="#Debug">Debug</a><li>
+            <li><a class="hoverClass" id="logAllTab" href="#All">All</a><li>
+            <li><a class="hoverClass" id="logCritTab" href="#Critical">Critical</a><li>
+            <li><a class="hoverClass" id="logWarnTab" href=#Warning">Warning</a><li>
+            <li><a class="hoverClass" id="logInfoTab" href="#Info">Info</a><li>
+            <li><a class="hoverClass" id="logDebuTab" href="#Debug">Debug</a><li>
           </ul>
         
           <div id="All">
@@ -346,7 +345,7 @@
       </div>
 
       <div id="avocshView" style="display: none">
-        <div class="editBox" id="avocshWindow">
+        <div id="avocshWindow">
         </div>
       
         <form>
