@@ -242,8 +242,8 @@ filter_statement:
   ;
 
 let_statement:
-    T_LET variable_name T_ASSIGN T_OPEN expression T_CLOSE {
-      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $2, $5);
+    T_LET variable_name T_ASSIGN expression {
+      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $2, $4);
       if (!node) {
         ABORT_OOM
       }
