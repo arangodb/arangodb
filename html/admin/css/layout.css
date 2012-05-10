@@ -636,3 +636,8 @@ pre ul li span{
 #uploadFile {
   float:right; 
 }
+
+#configContent td {
+  width: 200px; 
+  padding-top:3px; 
+}
