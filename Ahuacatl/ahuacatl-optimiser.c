@@ -201,13 +201,18 @@ static void StartScope (TRI_aql_context_t* const context,
 /// @brief end an optimiser scope
 ////////////////////////////////////////////////////////////////////////////////
 
-static void EndScope (TRI_aql_context_t* const context) {
+static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
   TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
+    
+  if (isReturn && (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY)) {
+    // dont't close these scopes with a return as they are closed by other functions
+    return;
+  }
 
   // we are closing at least one scope
   while (true) {
     TRI_aql_codegen_scope_e type = scope->_type;
-
+    
     TRI_RemoveVectorPointer(&context->_optimiser._scopes, context->_optimiser._scopes._length - 1);
 
     // break if we reached the top level for loop
@@ -838,9 +843,6 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
     else if (node->_type == AQL_NODE_SUBQUERY) {
       StartScope(context, TRI_AQL_SCOPE_FUNCTION, NULL, NULL);
     }
-    else if (node->_type == AQL_NODE_ASSIGN) {
-      StartScope(context, TRI_AQL_SCOPE_LET, NULL, NULL);
-    }
 #endif
 
     result = OptimiseNode(context, node);
@@ -849,13 +851,10 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
     // scope handling
     if (node->_type == AQL_NODE_RETURN) {
       PatchForLoops(context);
-      EndScope(context);
+      EndScope(context, true);
     }  
     else if (node->_type == AQL_NODE_SUBQUERY) {
-      EndScope(context);
-    }
-    else if (node->_type == AQL_NODE_LET) {
-      EndScope(context);
+      EndScope(context, false);
     }
   }
 #endif
@@ -897,7 +896,7 @@ TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const context,
   node = TRI_ModifyWalkTreeAql(walker, node); 
   
 #ifdef RANGE_OPTIMIZER  
-  EndScope(context);
+  EndScope(context, false);
 #endif
 
   TRI_FreeModifyTreeWalkerAql(walker);

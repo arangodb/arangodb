@@ -63,7 +63,7 @@ typedef uint32_t TRI_aql_codegen_register_t;
 
 typedef enum {
   TRI_AQL_SCOPE_MAIN,
-  TRI_AQL_SCOPE_LET,
+  TRI_AQL_SCOPE_SUBQUERY,
   TRI_AQL_SCOPE_FOR,
   TRI_AQL_SCOPE_FOR_NESTED,
   TRI_AQL_SCOPE_FUNCTION,

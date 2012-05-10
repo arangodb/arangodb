@@ -55,8 +55,8 @@ extern "C" {
 
 #define TRI_AQL_IDX_FOR_VARIABLE                                              0
 #define TRI_AQL_IDX_FOR_EXPRESSION                                            1
-#define TRI_AQL_IDX_ASSIGN_VARIABLE                                           0
-#define TRI_AQL_IDX_ASSIGN_EXPRESSION                                         1
+#define TRI_AQL_IDX_LET_VARIABLE                                              0
+#define TRI_AQL_IDX_LET_EXPRESSION                                            1
 #define TRI_AQL_IDX_FILTER_EXPRESSION                                         0
 #define TRI_AQL_IDX_COLLECT_LIST                                              0
 #define TRI_AQL_IDX_COLLECT_INTO                                              1
@@ -68,13 +68,16 @@ extern "C" {
 #define TRI_AQL_IDX_INDEXED_INDEX                                             1
 #define TRI_AQL_IDX_EXPAND_EXPANDED                                           0
 #define TRI_AQL_IDX_EXPAND_EXPANSION                                          1
+#define TRI_AQL_IDX_ASSIGN_VARIABLE                                           0
+#define TRI_AQL_IDX_ASSIGN_EXPRESSION                                         1
 #define TRI_AQL_IDX_UNARY_OPERAND                                             0
 #define TRI_AQL_IDX_BINARY_LHS                                                0
 #define TRI_AQL_IDX_BINARY_RHS                                                1
 #define TRI_AQL_IDX_TERNARY_CONDITION                                         0
 #define TRI_AQL_IDX_TERNARY_TRUEPART                                          1
 #define TRI_AQL_IDX_TERNARY_FALSEPART                                         2
-#define TRI_AQL_IDX_SUBQUERY_QUERY                                            0
+#define TRI_AQL_IDX_SUBQUERY_VARIABLE                                         0
+#define TRI_AQL_IDX_SUBQUERY_QUERY                                            1
 #define TRI_AQL_IDX_FCALL_PARAMETERS                                          0
 #define TRI_AQL_IDX_ARRAY_ELEMENT_SUBNODE                                     0
 #define TRI_AQL_IDX_ARRAY_VALUES                                              0
@@ -492,7 +495,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_context_t* const,
                                                   const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
+/// @brief create an AST subquery (execution) node
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_context_t* const,
