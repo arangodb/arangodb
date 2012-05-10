@@ -366,9 +366,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
-	Ahuacatl/ahuacatl-variable.$(OBJEXT) QL/ast-query.$(OBJEXT) \
-	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
-	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
+	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
 	RestHandler/RestEdgeHandler.$(OBJEXT) \
@@ -402,18 +400,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
 	VocBase/general-cursor.$(OBJEXT) VocBase/headers.$(OBJEXT) \
-	VocBase/index.$(OBJEXT) VocBase/query-base.$(OBJEXT) \
-	VocBase/query-cursor.$(OBJEXT) \
-	VocBase/query-data-feeder.$(OBJEXT) \
-	VocBase/query-execute.$(OBJEXT) \
-	VocBase/query-functions.$(OBJEXT) \
-	VocBase/query-javascript.$(OBJEXT) \
-	VocBase/query-join.$(OBJEXT) \
-	VocBase/query-join-execute.$(OBJEXT) \
-	VocBase/query-locks.$(OBJEXT) VocBase/query-memory.$(OBJEXT) \
-	VocBase/query-node.$(OBJEXT) VocBase/query-order.$(OBJEXT) \
-	VocBase/query-parse.$(OBJEXT) VocBase/query-result.$(OBJEXT) \
-	VocBase/shadow-data.$(OBJEXT) \
+	VocBase/index.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -806,11 +793,6 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
         Ahuacatl/ahuacatl-variable.c \
-	QL/ast-query.c \
-	QL/formatter.c \
-	QL/optimize.c \
-	QL/parser.c \
-	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
@@ -854,20 +836,6 @@ avocado_SOURCES = \
 	VocBase/general-cursor.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/query-base.c \
-	VocBase/query-cursor.c \
-	VocBase/query-data-feeder.c \
-	VocBase/query-execute.c \
-	VocBase/query-functions.c \
-	VocBase/query-javascript.c \
-	VocBase/query-join.c \
-	VocBase/query-join-execute.c \
-	VocBase/query-locks.c \
-	VocBase/query-memory.c \
-	VocBase/query-node.c \
-	VocBase/query-order.c \
-	VocBase/query-parse.c \
-	VocBase/query-result.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -919,7 +887,6 @@ JAVASCRIPT_HEADER = \
 ################################################################################
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c \
         Ahuacatl/ahuacatl-tokens.c
 
 
@@ -933,7 +900,6 @@ FLEXXX_FILES = \
 ################################################################################
 ################################################################################
 BISON_FILES = \
-	QL/parser.c \
 	Ahuacatl/ahuacatl-grammar.c
 
 
@@ -1769,19 +1735,6 @@ Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-QL/$(am__dirstamp):
-	@$(MKDIR_P) QL
-	@: > QL/$(am__dirstamp)
-QL/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) QL/$(DEPDIR)
-	@: > QL/$(DEPDIR)/$(am__dirstamp)
-QL/ast-query.$(OBJEXT): QL/$(am__dirstamp) \
-	QL/$(DEPDIR)/$(am__dirstamp)
-QL/formatter.$(OBJEXT): QL/$(am__dirstamp) \
-	QL/$(DEPDIR)/$(am__dirstamp)
-QL/optimize.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
-QL/parser.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
-QL/tokens.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 RestHandler/$(am__dirstamp):
 	@$(MKDIR_P) RestHandler
 	@: > RestHandler/$(am__dirstamp)
@@ -1913,34 +1866,6 @@ VocBase/general-cursor.$(OBJEXT): VocBase/$(am__dirstamp) \
 VocBase/headers.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/index.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-base.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-cursor.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-data-feeder.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-functions.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-join.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-locks.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-memory.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-order.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-result.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/shadow-data.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2112,11 +2037,6 @@ mostlyclean-compile:
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
-	-rm -f QL/ast-query.$(OBJEXT)
-	-rm -f QL/formatter.$(OBJEXT)
-	-rm -f QL/optimize.$(OBJEXT)
-	-rm -f QL/parser.$(OBJEXT)
-	-rm -f QL/tokens.$(OBJEXT)
 	-rm -f Rest/AddressPort.$(OBJEXT)
 	-rm -f Rest/AnyServer.$(OBJEXT)
 	-rm -f Rest/HttpRequest.$(OBJEXT)
@@ -2226,20 +2146,6 @@ mostlyclean-compile:
 	-rm -f VocBase/general-cursor.$(OBJEXT)
 	-rm -f VocBase/headers.$(OBJEXT)
 	-rm -f VocBase/index.$(OBJEXT)
-	-rm -f VocBase/query-base.$(OBJEXT)
-	-rm -f VocBase/query-cursor.$(OBJEXT)
-	-rm -f VocBase/query-data-feeder.$(OBJEXT)
-	-rm -f VocBase/query-execute.$(OBJEXT)
-	-rm -f VocBase/query-functions.$(OBJEXT)
-	-rm -f VocBase/query-javascript.$(OBJEXT)
-	-rm -f VocBase/query-join-execute.$(OBJEXT)
-	-rm -f VocBase/query-join.$(OBJEXT)
-	-rm -f VocBase/query-locks.$(OBJEXT)
-	-rm -f VocBase/query-memory.$(OBJEXT)
-	-rm -f VocBase/query-node.$(OBJEXT)
-	-rm -f VocBase/query-order.$(OBJEXT)
-	-rm -f VocBase/query-parse.$(OBJEXT)
-	-rm -f VocBase/query-result.$(OBJEXT)
 	-rm -f VocBase/shadow-data.$(OBJEXT)
 	-rm -f VocBase/simple-collection.$(OBJEXT)
 	-rm -f VocBase/synchroniser.$(OBJEXT)
@@ -2360,11 +2266,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/optimize.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/AddressPort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/AnyServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
@@ -2474,20 +2375,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/index.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-cursor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-data-feeder.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-execute.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-functions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-locks.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-memory.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-order.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/synchroniser.Po@am__quote@
@@ -2818,8 +2705,6 @@ distclean-generic:
 	-rm -f PriorityQueue/$(am__dirstamp)
 	-rm -f ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ProgramOptions/$(am__dirstamp)
-	-rm -f QL/$(DEPDIR)/$(am__dirstamp)
-	-rm -f QL/$(am__dirstamp)
 	-rm -f Rest/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Rest/$(am__dirstamp)
 	-rm -f RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -2870,7 +2755,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2918,7 +2803,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
