@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, access optimizer
+/// @brief Ahuacatl, access optimiser
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMIZER_H
-#define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMIZER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H
+#define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
@@ -64,16 +64,16 @@ typedef enum {
 TRI_aql_logical_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief access types
+/// @brief access types, sorted from best (most efficient) to last
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_AQL_ACCESS_ALL = 0,      // all values must be accessed
   TRI_AQL_ACCESS_IMPOSSIBLE,   // no values must be accessed
   TRI_AQL_ACCESS_EXACT,        // one value must be accessed
   TRI_AQL_ACCESS_LIST,         // a list of values must be accessed
   TRI_AQL_ACCESS_RANGE_SINGLE, // a range with one bound must be accessed
-  TRI_AQL_ACCESS_RANGE_DOUBLE  // a two bounded range must be accessed
+  TRI_AQL_ACCESS_RANGE_DOUBLE, // a two bounded range must be accessed
+  TRI_AQL_ACCESS_ALL           // all values must be accessed
 }
 TRI_aql_access_e;
 
@@ -144,18 +144,58 @@ TRI_aql_attribute_name_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a vector of ranges
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_CloneRangesAql (TRI_aql_context_t* const, 
+                                          const TRI_vector_pointer_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free access structure with its members and the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeAccessAql (TRI_aql_field_access_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone an attribute access structure by deep-copying it
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const,
+                                            TRI_aql_field_access_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the preferred (i.e. better) access type for a loop
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_PickAccessAql (const TRI_aql_field_access_t* const,
+                       const TRI_aql_field_access_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a range vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeRangesAql (TRI_vector_pointer_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump a single range for debugging purposes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DumpRangeAql (const TRI_aql_field_access_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump ranges found for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DumpRangesAql (const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect a condition and note all accesses found for it
+/// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_InspectConditionAql (TRI_aql_context_t* const,  
-                                               TRI_aql_node_t*,
-                                               const TRI_vector_pointer_t* const);
+TRI_vector_pointer_t* TRI_OptimiseRangesAql (TRI_aql_context_t* const,  
+                                             TRI_aql_node_t*,
+                                             bool*,
+                                             const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

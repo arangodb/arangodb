@@ -155,17 +155,17 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
-        Ahuacatl/ahuacatl-access-optimizer.c \
+        Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
 	Ahuacatl/ahuacatl-codegen-js.c \
         Ahuacatl/ahuacatl-collections.c \
-        Ahuacatl/ahuacatl-constant-folder.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \

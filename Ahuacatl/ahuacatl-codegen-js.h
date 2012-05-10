@@ -76,8 +76,8 @@ TRI_aql_codegen_scope_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_variable_s {
-  char* _name;
-  TRI_aql_codegen_register_t _register;
+  char* _name; // variable name
+  TRI_aql_codegen_register_t _register; // the assigned register
 }
 TRI_aql_codegen_variable_t;
 
@@ -86,16 +86,16 @@ TRI_aql_codegen_variable_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_scope_s {
-  TRI_string_buffer_t* _buffer;
-  TRI_aql_codegen_scope_e _type;
+  TRI_string_buffer_t* _buffer; // generated code
+  TRI_aql_codegen_scope_e _type; // scope type
   TRI_aql_codegen_register_t _listRegister;
   TRI_aql_codegen_register_t _keyRegister;
   TRI_aql_codegen_register_t _ownRegister;
   TRI_aql_codegen_register_t _resultRegister;
-  TRI_associative_pointer_t _variables;
-  const char* _variableName;
-  const char* _name;
-  char* _prefix; // prefix for variable names
+  TRI_associative_pointer_t _variables; // list of variables in scope
+  const char* _variableName; // name of for variable TODO: check if this is needed
+  const char* _name; // for debugging purposes only
+  char* _prefix; // prefix for variable names, used in FUNCTION scopes only
 }
 TRI_aql_codegen_scope_t;
 
