@@ -67,7 +67,7 @@ typedef struct {
 typedef struct {
   size_t _numElements;
   HashIndexElement* _elements; // simple list of elements
-} HashIndexElements;  
+} TRI_hash_index_elements_t;  
 
 
 
@@ -87,7 +87,7 @@ void HashIndex_free (HashIndex*);
 
 int HashIndex_add (HashIndex*, HashIndexElement*);
 
-HashIndexElements* HashIndex_find (HashIndex*, HashIndexElement*); 
+TRI_hash_index_elements_t* HashIndex_find (HashIndex*, HashIndexElement*); 
 
 int HashIndex_insert (HashIndex*, HashIndexElement*);
 
@@ -110,7 +110,7 @@ HashIndex* MultiHashIndex_new (void);
 
 int MultiHashIndex_add (HashIndex*, HashIndexElement*);
 
-HashIndexElements* MultiHashIndex_find (HashIndex*, HashIndexElement*); 
+TRI_hash_index_elements_t* MultiHashIndex_find (HashIndex*, HashIndexElement*); 
 
 int MultiHashIndex_insert (HashIndex*, HashIndexElement*);
 

@@ -367,6 +367,24 @@ void TRI_FreeVectorPointer (TRI_memory_zone_t* zone, TRI_vector_pointer_t* vecto
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a vector and frees the pointer and the content
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
+                                   TRI_vector_pointer_t* vector) {
+  size_t i;
+  void* ptr;
+
+  for (i = 0;  i < vector->_length;  ++i) {
+    ptr = vector->_buffer[i];
+
+    if (ptr != NULL) {
+      TRI_Free(zone, ptr);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -727,6 +745,16 @@ bool TRI_EmptyVectorString (TRI_vector_string_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearVectorString (TRI_vector_string_t* vector) {
+  size_t i;
+
+  if (vector->_buffer != NULL) {
+    for (i = 0;  i < vector->_length;  ++i) {
+      if (vector->_buffer[i] != 0) {
+        TRI_Free(vector->_memoryZone, vector->_buffer[i]);
+      }
+    }
+  }
+
   vector->_length = 0;
 }
 

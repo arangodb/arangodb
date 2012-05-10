@@ -44,37 +44,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new base data data feeder struct - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_data_feeder_t* CreateDataFeederX (const TRI_data_feeder_type_e type,
-                                            const TRI_doc_collection_t* collection,
-                                            const TRI_join_t* join,
-                                            size_t level) {
-  TRI_data_feeder_t* feeder;
-  
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_t), false);
-  if (!feeder) {
-    return NULL;
-  }
-  
-  feeder->_type       = type;
-  feeder->_level      = level;
-  feeder->_join       = (TRI_select_join_t*) join;
-  feeder->_part       = (TRI_join_part_t*) ((TRI_select_join_t*) join)->_parts._buffer[level];
-  feeder->_collection = collection;
-  feeder->_ranges     = NULL;
-  feeder->_state      = NULL;
-
-  feeder->init        = NULL;
-  feeder->rewind      = NULL;
-  feeder->current     = NULL;
-  feeder->free        = NULL;
-  
-  return feeder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new base data data feeder struct
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,36 +185,6 @@ static void FreeFeederTableScan (TRI_data_feeder_t* feeder) {
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new table scan data feeder - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_data_feeder_t* TRI_CreateDataFeederTableScanX (const TRI_doc_collection_t* collection,
-                                                  TRI_join_t* join,
-                                                  size_t level) {
-  TRI_data_feeder_t* feeder;
-
-  feeder = CreateDataFeederX(FEEDER_TABLE_SCAN, collection, join, level);
-  if (!feeder) {
-    return NULL;
-  }
-
-  feeder->_state = (TRI_data_feeder_table_scan_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_table_scan_t), false);
-
-  if (!feeder->_state) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-    return NULL;
-  }
-
-  feeder->init        = InitFeederTableScan;
-  feeder->rewind      = RewindFeederTableScan;
-  feeder->current     = CurrentFeederTableScan;
-  feeder->free        = FreeFeederTableScan;
-
-  return feeder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,36 +385,6 @@ static void FreeFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new primary index data feeder - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookupX (const TRI_doc_collection_t* collection,
-                                                      TRI_join_t* join,
-                                                      size_t level) {
-  TRI_data_feeder_t* feeder;
-
-  feeder = CreateDataFeederX(FEEDER_PRIMARY_LOOKUP, collection, join, level);
-  if (!feeder) {
-    return NULL;
-  }
-
-  feeder->_state = (TRI_data_feeder_primary_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_primary_lookup_t), false);
-  if (!feeder->_state) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-    return NULL;
-  }
-
-  // init feeder
-  feeder->init        = InitFeederPrimaryLookup; 
-  feeder->rewind      = RewindFeederPrimaryLookup;
-  feeder->current     = CurrentFeederPrimaryLookup;
-  feeder->free        = FreeFeederPrimaryLookup;
-  
-  return feeder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new primary index data feeder
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -592,7 +501,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, parameters, doc);
       }
     }
-    state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
+    state->_hashElements = TRI_LookupJsonHashIndex(state->_index, parameters);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
@@ -629,7 +538,7 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
                                     feeder->_level, 
                                     true);
     if (TRI_ExecuteRefExecutionContext (state->_context, TRI_UNKNOWN_MEM_ZONE, parameters)) {
-      state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
+      state->_hashElements = TRI_LookupJsonHashIndex(state->_index, parameters);
     }
  
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -692,35 +601,6 @@ static void FreeFeederHashLookup (TRI_data_feeder_t* feeder) {
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new data feeder for hash lookups - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_data_feeder_t* TRI_CreateDataFeederHashLookupX (const TRI_doc_collection_t* collection,
-                                                   TRI_join_t* join,
-                                                   size_t level) {
-  TRI_data_feeder_t* feeder;
-  
-  feeder = CreateDataFeederX(FEEDER_HASH_LOOKUP, collection, join, level);
-  if (!feeder) {
-    return NULL;
-  }
-  
-  feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_hash_lookup_t), false);
-  if (!feeder->_state) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-    return NULL;
-  }
-
-  feeder->init        = InitFeederHashLookup; 
-  feeder->rewind      = RewindFeederHashLookup;
-  feeder->current     = CurrentFeederHashLookup;
-  feeder->free        = FreeFeederHashLookup;
-  
-  return feeder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1158,35 +1038,6 @@ static void FreeFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new data feeder for skiplist lookups - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookupX (const TRI_doc_collection_t* collection,
-                                                       TRI_join_t* join,
-                                                       size_t level) {
-  TRI_data_feeder_t* feeder;
-
-  feeder = CreateDataFeederX(FEEDER_SKIPLIST_LOOKUP, collection, join, level);
-  if (!feeder) {
-    return NULL;
-  }
-  
-  feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_skiplist_lookup_t), false);
-  if (!feeder->_state) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-    return NULL;
-  }
-
-  feeder->init        = InitFeederSkiplistLookup; 
-  feeder->rewind      = RewindFeederSkiplistLookup;
-  feeder->current     = CurrentFeederSkiplistLookup;
-  feeder->free        = FreeFeederSkiplistLookup;
-  
-  return feeder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new data feeder for skiplist lookups
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1327,42 +1178,6 @@ static void FreeFeederGeoLookup (TRI_data_feeder_t* feeder) {
   if (feeder) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new data feeder for geo lookups - DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_data_feeder_t* TRI_CreateDataFeederGeoLookupX (const TRI_doc_collection_t* collection,
-                                                  TRI_join_t* join,
-                                                  size_t level,
-                                                  QL_ast_query_geo_restriction_t* restriction) {
-  TRI_data_feeder_t* feeder;
-  TRI_data_feeder_geo_lookup_t* state;
-  
-  feeder = CreateDataFeederX(FEEDER_GEO_LOOKUP, collection, join, level);
-  if (!feeder) {
-    return NULL;
-  }
-  
-  feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_data_feeder_geo_lookup_t), false);
-
-  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
-
-  if (!state) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, feeder);
-    return NULL;
-  }
-
-  state->_restriction = restriction;
-
-  feeder->init        = InitFeederGeoLookup; 
-  feeder->rewind      = RewindFeederGeoLookup;
-  feeder->current     = CurrentFeederGeoLookup;
-  feeder->free        = FreeFeederGeoLookup;
-  
-  return feeder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
