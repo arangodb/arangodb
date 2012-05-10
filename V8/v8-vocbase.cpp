@@ -426,11 +426,11 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 /// @brief converts argument strings to TRI_vector_pointer_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int VectorPointerFromArguments (v8::Arguments const& argv,
-                                TRI_vector_pointer_t* result,
-                                size_t start,
-                                size_t end,
-                                string& error) {
+int FillVectorPointerFromArguments (v8::Arguments const& argv,
+                                    TRI_vector_pointer_t* result,
+                                    size_t start,
+                                    size_t end,
+                                    string& error) {
 
   // ...........................................................................
   // convert the arguments into a "C" string and stuff them into a vector
@@ -531,7 +531,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
   
-  int res = VectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  int res = FillVectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
@@ -2850,19 +2850,21 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     }
   }
 
-  TRI_FreeContextAql(context);
-
   if (cursor) {
     TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+    TRI_FreeContextAql(context);
     return scope.Close(WrapGeneralCursor(cursor));
   }
 
   if (tryCatch.HasCaught()) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_RUNTIME_ERROR, TRI_ObjectToString(tryCatch.Exception()).c_str());
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeContextAql(context);
 
     return scope.Close(errorObject);
   }
+
+  TRI_FreeContextAql(context);
 
   return scope.Close(v8::ThrowException(v8::String::New("cannot create cursor")));
 }
@@ -3443,7 +3445,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
   
-  int res = VectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  int res = FillVectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
   
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
