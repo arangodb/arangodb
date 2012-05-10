@@ -191,7 +191,7 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
   }
 
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    throw "expecting document for member access";
+    return null;
   }
 
   var result = value[attributeName];
