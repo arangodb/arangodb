@@ -438,8 +438,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
+      $('#nav1').removeClass('highlighted'); 
       var collectionID = location.hash.substr(16, location.hash.length); 
-       
       globalAjaxCursorChange();
       $.ajax({
         type: "GET",
@@ -562,11 +562,103 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#config") {
-      hideAllSubDivs(); 
+      hideAllSubDivs();
+      $('#configContent').empty();  
       $('#collectionsView').hide();
       $('#configView').show();
       createnav ("Configuration"); 
-      var switcher = "primary"; 
+      var switcher = "primary";
+      var insertType;  
+
+      $.ajax({
+        type: "GET", url: "/_admin/config/description",contentType: "application/json", processData: false, async: false,   
+        success: function(data) {
+          $.each(data, function(key, val) {
+            if (key == "error" || key == "code") {
+            }
+            else {
+              $('#configContent').append('<div class="customToolbar">' + val.name + '</div>');
+              $.each(val, function(k, v) {
+                if (v.name != undefined) {
+                  switch(v.type) { 
+                    case 'integer':
+                      if (v.readonly == true) {
+                        insertType = '<a class="conf_integer" id="conf_' + k + '">123456</a>'; break;
+                      }
+                      else { 
+                        insertType = '<a class="conf_integer editInt" id="conf_' + k + '">123456</a>'; break;
+                      }
+                    case 'string':
+                      if (v.readonly == true) {  
+                        insertType = '<a class="conf_string" id="conf_' + k + '">string</a>'; break;
+                      }
+                      else {
+                        insertType = '<a class="editString conf_string" id="conf_' + k + '">string</a>'; break;
+                      }
+                    case 'pull-down':
+                      insertType = '<select class="conf_pulldown" id="conf_' + k + '" name="someselect" size="1">';
+                      $.each(v.values, function(KEY, VAL) {
+                        insertType += '<option>' + VAL + '</option>';
+                      }); 
+                      insertType += '</select>';
+                      break; 
+                    case 'boolean': 
+                      insertType = '<select class="conf_boolean" id="conf_' + k + '" name="someselect" size="1">';
+                      insertType += '<option>true</option><option>false</option>'; break;
+                    //TODO Section 
+                    case 'section':
+                      insertType = '<a class="conf_section" id="conf_' + k + '">someval</a>'; break;
+                  } 
+                  $('#configContent').append('<tr><td>' + v.name + '</td><td>' + insertType + '</td></tr>');
+                  makeStringEditable(); 
+                  makeIntEditable(); 
+                }
+              });
+            }
+          });
+          $.ajax({
+            type: "GET", url: "/_admin/config/configuration",contentType: "application/json", processData:false, async:false, 
+            success: function(data) {
+              var currentID;
+              var currentClass;  
+              $.each(data, function(key, val) {
+                if (key == "error" || key == "code") {
+                }
+                else {
+                  $.each(val, function(k, v) {
+                    currentID = "#conf_" + k; 
+                    currentClass = $(currentID).attr('class');
+
+                    if ($(currentID).hasClass('conf_string')) {
+                      $(currentID).text(v.value);  
+                    }
+                    else if ($(currentID).hasClass('conf_integer')) {
+                      $(currentID).text(v.value);  
+                    }
+                    else if ($(currentID).hasClass('conf_boolean')) {
+                      $(currentID).val(v.value);  
+                    }
+                    else if ($(currentID).hasClass('conf_pulldown')) {
+                      $(currentID).val(v.value);  
+                    }
+                    //TODO Section 
+                    else if ($(currentID).hasClass('conf_section')) {
+                      $(currentID).text(v.file.value);  
+                    }
+
+
+                  }); 
+                }
+              });
+            },
+            error: function(data) {
+            }
+          });
+        },
+        error: function(data) {
+        }
+      });
+/* 
       var content={"Menue":{"Haha":"wert1", "ahha":"wert2"}, "Favoriten":{"top10":"content"},"Test":{"testing":"hallo 123 test"}}; 
       $("#configContent").empty();
 
@@ -582,9 +674,8 @@ var logTable = $('#logTableID').dataTable({
           switcher = "primary"; 
           }
         });         
-        //$('#configContent').append('<a>' + menues + '</a><br>');
       }); 
-
+*/
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1309,6 +1400,7 @@ var logTable = $('#logTableID').dataTable({
 
     if (this.id == "showdocs" ) {
       window.location.href = "#showCollection?" + collectionID; 
+      $('#nav1').removeClass('highlighted'); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1637,7 +1729,6 @@ function createLogTable(loglevel) {
   currentPage = 1;  
   currentLoglevel = loglevel;  
   var url = "/_admin/log?level="+loglevel+"&size=10";
-
 //set tableid  
   if (loglevel == 1) {currentTableID = "#critLogTableID";  } 
   else if (loglevel == 2) {currentTableID = "#warnLogTableID";} 
@@ -1648,7 +1739,6 @@ function createLogTable(loglevel) {
     url = "/_admin/log?upto=4&size=10"; 
   } 
 //get first rows
- 
   $.getJSON(url, function(data) { 
     var items=[];
     var i=0; 
@@ -2070,4 +2160,38 @@ function highlightNav (string) {
   $("#nav3").removeClass("nonhighlighted");
   $("#nav4").removeClass("nonhighlighted");
   $(string).addClass("highlighted");
+}
+
+function makeStringEditable () {
+  $('.editString').editable(function(value, settings) { 
+    return(value);
+  },{
+    tooltip   : 'Click to edit string...',
+    width     : '200px',
+    height    : '20px'
+  });
+}
+
+function makeIntEditable () {
+  $('.editInt').editable(function(value, settings) {
+    if (is_int(value) == true) {
+      return value; 
+    }
+    else {
+      alert("Only integers allowed!"); 
+      return 0;
+    } 
+  },{
+    tooltip   : 'Click to edit integer...',
+    width     : '200px',
+    height    : '20px'
+  });
+}
+
+function is_int(value){
+  if((parseFloat(value) == parseInt(value)) && !isNaN(value)){
+      return true;
+  } else {
+      return false;
+  }
 }
