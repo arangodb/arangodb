@@ -512,7 +512,7 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*,
-                                                      TRI_vector_t const* paths,
+                                                      TRI_vector_pointer_t const* attributes,
                                                       bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////

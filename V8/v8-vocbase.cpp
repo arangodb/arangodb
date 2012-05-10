@@ -331,7 +331,8 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
 static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
                                                       v8::Arguments const& argv,
                                                       bool unique,
-                                                      int type) {
+                                                      bool create,
+                                                      TRI_idx_type_e type) {
   v8::HandleScope scope;  
   
   // .............................................................................
@@ -368,15 +369,11 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   }
   
   // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-  
-  // .............................................................................
   // Create a list of paths, these will be used to create a list of shapes
   // which will be used by the hash index.
   // .............................................................................
+  
+  string errorString;
   
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
@@ -402,14 +399,19 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   bool created;
   TRI_index_t* idx;
 
-  if (type == 0) {
-    idx = TRI_EnsureHashIndexSimCollection(sim, &attributes, unique, &created);
+  if (type == TRI_IDX_TYPE_HASH_INDEX) {
+    if (create) {
+      idx = TRI_EnsureHashIndexSimCollection(sim, &attributes, unique, &created);
 
-    if (idx == 0) {
-      res = TRI_errno();
+      if (idx == 0) {
+        res = TRI_errno();
+      }
+    }
+    else {
+      idx = TRI_LookupHashIndexSimCollection(sim, &attributes, unique);
     }
   }
-  else if (type == 1) {
+  else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     idx = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, unique, &created);
 
     if (idx == 0) {
@@ -417,7 +419,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
     }
   }
   else {
-    LOG_ERROR("unknown index type %d", type);
+    LOG_ERROR("unknown index type %d", (int) type);
     res = TRI_ERROR_INTERNAL;
     idx = 0;
   }
@@ -430,8 +432,14 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   TRI_DestroyVectorPointer(&attributes);
 
   if (idx == 0) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created")));
+    if (create) {
+      TRI_ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created")));
+    }
+    else {
+      TRI_ReleaseCollection(collection);
+      return scope.Close(v8::Null());
+    }
   }  
   
   // .............................................................................
@@ -448,8 +456,10 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
-  if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+  if (create) {
+    if (index->IsObject()) {
+      index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+    }
   }
 
   TRI_ReleaseCollection(collection);
@@ -2206,7 +2216,15 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
-  return EnsureHashSkipListIndex("ensureUniqueConstraint", argv, true, 0);
+  return EnsureHashSkipListIndex("ensureUniqueConstraint", argv, true, true, TRI_IDX_TYPE_HASH_INDEX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LookupUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
+  return EnsureHashSkipListIndex("lookupUniqueConstraint", argv, true, false, TRI_IDX_TYPE_HASH_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2229,7 +2247,15 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsureHashSkipListIndex("ensureHashIndex", argv, false, 0);
+  return EnsureHashSkipListIndex("ensureHashIndex", argv, false, true, TRI_IDX_TYPE_HASH_INDEX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& argv) {
+  return EnsureHashSkipListIndex("lookupHashIndex", argv, false, false, TRI_IDX_TYPE_HASH_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2369,7 +2395,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsureHashSkipListIndex("ensureUniqueSkipList", argv, true, 1);
+  return EnsureHashSkipListIndex("ensureUniqueSkipList", argv, true, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2389,7 +2415,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments co
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsureHashSkipListIndex("ensureSkipList", argv, false, 1);
+  return EnsureHashSkipListIndex("ensureSkipList", argv, false, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4219,6 +4245,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
   v8::Handle<v8::String> IdFuncName = v8::Persistent<v8::String>::New(v8::String::New("id"));
   v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
+  v8::Handle<v8::String> LookupHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupHashIndex"));
+  v8::Handle<v8::String> LookupUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupUniqueConstraint"));
   v8::Handle<v8::String> NameFuncName = v8::Persistent<v8::String>::New(v8::String::New("name"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
@@ -4381,6 +4409,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
+  rt->Set(LookupUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_LookupUniqueConstraintVocbaseCol));
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
   rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
@@ -4422,6 +4452,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
+  rt->Set(LookupUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_LookupUniqueConstraintVocbaseCol));
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
   rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));

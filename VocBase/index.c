@@ -1812,7 +1812,7 @@ TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t
 
   if (element.fields == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_WARNING("out-of-memory in LookupHashIndex");
+    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
     return NULL; 
   }  
     
@@ -1847,16 +1847,27 @@ TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t* values) {
+TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t** values) {
   TRI_hash_index_t* hashIndex;
   TRI_hash_index_elements_t* result;
   HashIndexElement element;
+  size_t j;
   
   hashIndex = (TRI_hash_index_t*) idx;
 
   element.numFields = hashIndex->_paths._length;
-  element.fields = values;
+  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
 
+  if (element.fields == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
+    return NULL; 
+  }  
+
+  for (j = 0; j < element.numFields; ++j) {
+    element.fields[j] = *values[j];
+  }
+    
   if (hashIndex->base._unique) {
     result = HashIndex_find(hashIndex->_hashIndex, &element);
   }
@@ -1864,6 +1875,8 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
     result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
   }
 
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
+  
   return result;  
 }
 

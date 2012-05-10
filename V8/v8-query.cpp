@@ -224,12 +224,17 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
       *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "shaper failed");
       return TRI_ERROR_BAD_PARAMETER;
     }
-    
 
     v8::Handle<v8::String> key = v8::String::New(name);
-    v8::Handle<v8::Value> val = example->Get(key);
+
+    if (example->HasOwnProperty(key)) {
+      v8::Handle<v8::Value> val = example->Get(key);
     
-    values[i] = TRI_ShapedJsonV8Object(val, shaper);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+    }
+    else {
+      values[i] = TRI_ShapedJsonV8Object(v8::Null(), shaper);
+    }
 
     if (values[i] == 0) {
       CleanupExampleObject(shaper, i, 0, values);
@@ -458,6 +463,8 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       if (vertexCollection != 0) {
         TRI_ReleaseCollection(vertexCollection);
       }
+
+      collection->_collection->endRead(collection->_collection);
 
       TRI_ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(errMsg));
@@ -804,12 +811,14 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, &err);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    collection->_collection->endRead(collection->_collection);
+
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(err));
   }
 
   // find the matches
-  TRI_hash_index_elements_t* list = TRI_LookupShapedJsonHashIndex(idx, *values);
+  TRI_hash_index_elements_t* list = TRI_LookupShapedJsonHashIndex(idx, values);
 
   // convert result
   size_t total = list->_numElements;
@@ -924,12 +933,14 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
+
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
     collection->_collection->endRead(collection->_collection);
+
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
@@ -1024,12 +1035,14 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
+
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
     collection->_collection->endRead(collection->_collection);
+
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }

@@ -3192,7 +3192,7 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3209,6 +3209,73 @@ typedef struct pid_name_s {
   char* _name;
 }
 pid_name_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index (unique or non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                  TRI_vector_t const* paths,
+                                                  bool unique) {
+  TRI_index_t* matchedIndex = NULL;                                                                                        
+  size_t j;
+  size_t k;
+
+  // go through every index and see if we have a match 
+  for (j = 0;  j < collection->_indexes._length;  ++j) {
+    TRI_index_t* idx            = collection->_indexes._buffer[j];
+    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+    bool found                  = true;
+        
+    // check that the type of the index is in fact a hash index 
+    if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
+      continue;
+    }
+        
+    // check that the uniqueness is the same
+    if (idx->_unique != unique) {
+      continue;
+    }
+        
+    // check that the number of paths (fields) in the hash index matches that
+    // of the number of attributes
+    if (paths->_length != hashIndex->_paths._length) {
+      continue;
+    }
+        
+    // go through all the attributes and see if they match
+    for (k = 0;  k < paths->_length;  ++k) {
+      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, k)));
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
+
+      if (field != shape) {
+        found = false;
+        break;          
+      } 
+    }  
+
+    // stop if we found a match
+    if (found) {
+      matchedIndex = idx;
+      break;
+    }    
+  }
+
+  return matchedIndex;  
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a hash index to the collection
@@ -3246,7 +3313,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // a new one.
   // ...........................................................................
 
-  idx = TRI_LookupHashIndexSimCollection(collection, &paths, unique);
+  idx = LookupHashIndexSimCollection(collection, &paths, unique);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -3373,20 +3440,7 @@ static int HashIndexFromJson (TRI_sim_collection_t* sim,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares pid
+/// @brief compares pid and name
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ComparePidName (void const* left, void const* right) {
@@ -3394,60 +3448,6 @@ static int ComparePidName (void const* left, void const* right) {
   pid_name_t const* r = right;
 
   return l->_pid - r->_pid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a hash index (unique or non-unique)
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                               TRI_vector_t const* paths,
-                                               bool unique) {
-  TRI_index_t* matchedIndex = NULL;                                                                                        
-  size_t j;
-  size_t k;
-
-  // go through every index and see if we have a match 
-  for (j = 0;  j < collection->_indexes._length;  ++j) {
-    TRI_index_t* idx            = collection->_indexes._buffer[j];
-    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-    bool found                  = true;
-        
-    // check that the type of the index is in fact a hash index 
-    if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-      continue;
-    }
-        
-    // check that the uniqueness is the same
-    if (idx->_unique != unique) {
-      continue;
-    }
-        
-    // check that the number of paths (fields) in the hash index matches that
-    // of the number of attributes
-    if (paths->_length != hashIndex->_paths._length) {
-      continue;
-    }
-        
-    // go through all the attributes and see if they match
-    for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, k)));
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
-
-      if (field != shape) {
-        found = false;
-        break;          
-      } 
-    }  
-
-    // stop if we found a match
-    if (found) {
-      matchedIndex = idx;
-      break;
-    }    
-  }
-
-  return matchedIndex;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3505,6 +3505,49 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index (unique or non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
+                                               TRI_vector_pointer_t const* attributes,
+                                               bool unique) {
+  TRI_index_t* idx;
+  TRI_vector_pointer_t fields;
+  TRI_vector_t paths;
+  int res;
+
+  // determine the sorted shape ids for the attributes
+  res = TRI_PidNamesByAttributeNames(attributes, 
+                                     sim->base._shaper,
+                                     &paths,
+                                     &fields);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  
+  idx = LookupHashIndexSimCollection(sim, &paths, unique);
+  
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  // release memory allocated to vector
+  TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
+
+  return idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3521,10 +3564,7 @@ TRI_index_t* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  // ............................................................................. 
-  // Given the list of attributes (as strings) 
-  // .............................................................................
-
+  // given the list of attributes (as strings) 
   idx = CreateHashIndexSimCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
