@@ -1,6 +1,6 @@
 # -*- mode: Makefile; -*-
 
-MANUAL_DST="fceller@www.avocadodb.org:/srv/www/www.avocadodb.org/avoc/manuals"
+MANUAL_DST="fceller@www.arangodb.org:/srv/www/www.arangodb.org/avoc/manuals"
 
 ################################################################################
 ## publish

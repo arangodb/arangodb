@@ -24,95 +24,13 @@
 /// @author Dr. Frank Celler
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 //////////////////////////////////////////////////////////////////////////////// 
+
 #ifndef TRIAGENS_V8_V8_VOCBASE_H
 #define TRIAGENS_V8_V8_VOCBASE_H 1
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     documentation
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page AvocadoScript Avocado Script
-///
-/// All the actions and transactions are programmed in JavaScript. The AvocadoDB
-/// provides a fluent interface in JavaScript to access the database directly
-/// together with a set of support function.  A fluent interface is implemented
-/// by using method chaining to relay the instruction context of a subsequent
-/// call.  The AvocadoDB defines the following methods:
-///
-/// - selection by example
-/// - field selection (aka projection)
-/// - sorting
-/// - pagination of the result-set
-///
-/// Advanced topics are
-///
-/// - geo coordinates
-///
-/// @section FirstStepsFI First Steps
-///
-/// All documents are stored in collections. All collections are stored in a
-/// database.
-///
-/// @verbinclude fluent41
-///
-/// Printing the @VAR{db} variable will show you the location, where the
-/// datafiles of the collections are stored by default.
-///
-/// Creating a collection is simple.  It will automatically be created
-/// when accessing the members of the @VAR{db}.
-///
-/// @verbinclude fluent42
-///
-/// If the collections does not exists, it is called a new-born. No file has
-/// been created so far. If you access the collection, then the directory and
-/// corresponding files will be created.
-///
-/// @verbinclude fluent43
-///
-/// If you restart the server and access the collection again, it will now show
-/// as "unloaded".
-///
-/// @verbinclude fluent44
-///
-/// In order to create new documents in a collection, use the @FN{save}
-/// operator.
-///
-/// @verbinclude fluent45
-///
-/// In order to select all elements of a collection, one can use the @FN{all}
-/// operator.
-///
-/// @verbinclude fluent46
-///
-/// This will select all documents and prints the first 20 documents. If there
-/// are more than 20 documents, then @CODE{...more results...} is printed and
-/// you can use the variable @VAR{it} to access the next 20 document.
-///
-/// @verbinclude fluent2
-///
-/// In the above examples @CODE{db.examples.all()} defines a query. Printing
-/// that query, executes the query and returns a cursor to the result set.  The
-/// first 20 documents are printed and the query (resp. cursor) is assigned to
-/// the variable @VAR{it}.
-///
-/// A query can also be executed using @FN{hasNext} and @FN{next}.
-///
-/// @verbinclude fluent3
-///
-/// Next steps:
-///
-/// - learn about ref SelectionByExample
-/// - learn about ref FieldSelection
-/// - learn about ref Sorting
-/// - learn about ref Pagination
-/// - learn about ref GeoCoordinates
-/// - look at all the JavaScriptFunc
-////////////////////////////////////////////////////////////////////////////////
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -122,6 +40,46 @@
 /// @addtogroup V8VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts and locks the collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_sim_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const& argv,
+                                                         TRI_vocbase_col_t const*& collection,
+                                                         v8::Handle<v8::Object>* err);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseCollection (TRI_vocbase_col_t const* collection);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                         TRI_vocbase_col_t const*& collection,
+                                                         TRI_voc_did_t& did,
+                                                         TRI_voc_rid_t& rid,
+                                                         v8::Handle<v8::Value> val);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a index identifier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
+                                      TRI_vocbase_col_t const*& collection,
+                                      v8::Handle<v8::Value> val,
+                                      bool ignoreNotFound,
+                                      v8::Handle<v8::Object>* err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
