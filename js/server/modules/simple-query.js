@@ -79,6 +79,45 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief query-by scan or hash index
+////////////////////////////////////////////////////////////////////////////////
+
+function ByExample (collection, example, skip, limit) {
+  var unique = true;
+  var attributes = [];
+
+  for (var k in example) {
+    if (example.hasOwnProperty(k)) {
+      attributes.push(k);
+
+      if (example[k] == null) {
+        unique = false;
+      }
+    }
+  }
+
+  var idx = collection.lookupHashIndex.apply(collection, attributes);
+
+  if (idx == null && unique) {
+    idx = collection.lookupUniqueConstraint(collection, attributes);
+
+    if (idx != null) {
+      console.info("found unique constraint %s", idx.id);
+    }
+  }
+  else {
+    console.info("found hash index %s", idx.id);
+  }
+
+  if (idx != null) {
+    return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
+  }
+  else {
+    return collection.BY_EXAMPLE(example, skip, limit);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,7 +129,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var documents = this._collection.BY_EXAMPLE(this._example, this._skip, this._limit);
+    var documents = ByExample(this._collection, this._example, this._skip, this._limit);
 
     this._execution = new SQ.GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;
@@ -149,7 +188,7 @@ AvocadoCollection.prototype.firstExample = function () {
     }
   }
 
-  var documents = this.BY_EXAMPLE(example, 0, 1);
+  var documents = ByExample(this._collection, this._example, 0, 1);
 
   if (0 < documents.documents.length) {
     return documents.documents[0];
