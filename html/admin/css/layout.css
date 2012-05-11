@@ -89,10 +89,6 @@ td {
   height:30px;    
 }
 
-#editCollectionView td {
-  font-size: 1.2em ;  
-}
-
 pre ul li span{
   font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
   font-size: 1em;
@@ -216,8 +212,25 @@ pre ul li span{
   box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
+#createCollection, #refreshCollections {
+  font-size: 0.85em !important;  
+}
+
 #createCollectionView {
-  height:130px;
+  height:auto; 
+}
+
+#createCollectionView td, #editCollectionView td {
+  width:200px;
+  background-color: #e4e9d2;
+}
+
+.first {
+  width: 200px !important;  
+}
+
+.longTD {
+  width: 100% !important;  
 }
 
 #newCollection_left, #editCollection_left {
@@ -250,23 +263,12 @@ pre ul li span{
   resize: none; 
 }
 
-#editCollectionTable {
-  font-size: 0.8em;  
-  border-width: 1px; 
-  border-color: green;
-  border-style: solid;
-  background-color: #E4E9D2;
-  padding-left: 5px;
-  padding-bottom: 2px; 
-  padding-top: 2px;  
-} 
-
 #newCollection_right form {
   padding-top: 10px;  
   margin-left: -7px;  
 }
 
-#waitForSyncForm {
+#waitForSyncForm, #isSystemForm {
   padding-left: 5px; 
 }
 
@@ -340,7 +342,7 @@ form {
   -moz-border-radius: 2px; -webkit-border-radius: 2px;
   margin-top: 0px;  
   background-color: white;  
-  height: 300px; 
+  height: 70%; 
   overflow-y: auto; 
   width:100%;
 }
@@ -364,7 +366,7 @@ form {
 
 #avocshContent {
   font-family: "courier";
-  width: 100%;
+  width: 90%;
   height: 30px;
   background-color: white; 
   margin-right: 0.5%;
@@ -387,10 +389,9 @@ form {
 }
 
 #submitAvoc {
-  visibility:hidden; 
-  height: 40px !important; 
-  width: 9% !important;  
-  margin-top: 10px !important;  
+  height: 29px !important; 
+  width: 9.5% !important;  
+  vertical-align: -1px;  
 }
 
 #centerView {
@@ -659,7 +660,6 @@ form {
 }
 
 #avocshView {
-  height: 350px;
   padding-top: 2px;
   padding-right: 2px; 
 }
