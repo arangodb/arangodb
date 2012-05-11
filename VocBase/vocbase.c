@@ -796,6 +796,8 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -804,6 +806,8 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -829,6 +833,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
       return res;
     }
 
+    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -855,6 +860,8 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
       // release the WRITE lock and try again
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      // TODO: might this cause endless recursion in some obscure cases??
       return LoadCollectionVocBase(vocbase, collection);
     }
     else {

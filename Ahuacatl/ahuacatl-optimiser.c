@@ -43,7 +43,11 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ModifyNode (void*, TRI_aql_node_t*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise nodes recursively
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* ProcessNode (void*, TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -382,7 +386,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
   if (!json) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
     return NULL;
   }
 
@@ -468,7 +472,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
     
     if (changed) {
       // expression code was changed, re-optimise it
-      node->_members._buffer[0] = ModifyNode((void*) context, expression);
+      node->_members._buffer[0] = ProcessNode((void*) context, expression);
       expression = TRI_AQL_NODE_MEMBER(node, 0);
 
       // try again if it is constant
@@ -828,7 +832,7 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
 /// this is the callback function used by the tree walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
+static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
   TRI_aql_context_t* context = (TRI_aql_context_t*) data;
   TRI_aql_node_t* result = node;
 
@@ -883,7 +887,7 @@ TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const context,
                                  TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
  
-  walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ModifyNode);
+  walker = TRI_CreateModifyTreeWalkerAql((void*) context, &ProcessNode);
   if (!walker) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;

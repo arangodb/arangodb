@@ -309,8 +309,9 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // create datafile structure
   datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
+
   if (!datafile) {
-    // TODO: FIXME
+    return NULL;
   }
 
   InitDatafile(datafile,
@@ -739,6 +740,8 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
     close(datafile->_fd);
 
     LOG_ERROR("datafile '%s' is corrupt", datafile->_filename);
+    // must free datafile here
+    TRI_FreeDatafile(datafile);
 
     return NULL;
   }
