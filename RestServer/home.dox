@@ -67,10 +67,10 @@
 /// @subsection HomePHP PHP
 /// 
 /// There is a PHP client available in a separate project:
-/// https://github.com/triAGENS/AvocadoDB-PHP
+/// https://github.com/triAGENS/ArangoDB-PHP
 ///
 /// See also Packagist:
-/// http://packagist.org/packages/triagens/Avocado
+/// http://packagist.org/packages/triagens/ArangoDb
 /// 
 /// @subsection HomePython Python
 /// 
