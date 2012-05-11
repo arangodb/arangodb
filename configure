@@ -9462,7 +9462,7 @@ fi
 BUILD_H="\$(top_srcdir)/build.h"
 
 
-ac_config_files="$ac_config_files Makefile Doxygen/avocado.doxy"
+ac_config_files="$ac_config_files Makefile Doxygen/avocado.template"
 
 ac_config_headers="$ac_config_headers config/config.h BasicsC/local-configuration.h"
 
@@ -10310,7 +10310,7 @@ do
   case $ac_config_target in
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "Doxygen/avocado.doxy") CONFIG_FILES="$CONFIG_FILES Doxygen/avocado.doxy" ;;
+    "Doxygen/avocado.template") CONFIG_FILES="$CONFIG_FILES Doxygen/avocado.template" ;;
     "config/config.h") CONFIG_HEADERS="$CONFIG_HEADERS config/config.h" ;;
     "BasicsC/local-configuration.h") CONFIG_HEADERS="$CONFIG_HEADERS BasicsC/local-configuration.h" ;;
 

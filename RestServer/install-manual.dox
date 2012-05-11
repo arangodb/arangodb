@@ -28,34 +28,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallManual AvocadoDB Installation Manual
 ///
-/// <ol>
+/// @if LATEX
+/// <ul>
 ///  <li>@ref Installing</li>
 ///  <li>@ref Compiling</li>
-/// </ol>
+/// </ul>
+/// @else
+/// @copydetails InstallingTOC
+/// @copydetails CompilingTOC
+/// @endif
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallingTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref Installing
-///   <ol>
+///   <ul>
 ///     <li>@ref MacOSX
-///      <ol>
+///      <ul>
 ///       <li>@ref MacOSXHomebrew
-///      </ol>
+///      </ul>
 ///     </li>
-///   </ol>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Installing Installing the AvocadoDB
 ///
+/// @ifnot LATEX
 /// <hr>
-/// @copydoc InstallingTOC
+///  @copydetails InstallingTOC
 /// <hr>
+/// @endif
 ///
 /// @section MacOSX
 ///////////////////
@@ -66,44 +73,53 @@
 /// If you are using <a href="http://mxcl.github.com/homebrew/">homebrew</a>,
 /// than you can install the AvocadoDB using @CODE{brew} as follows:
 ///
-/// @LIT{brew install https://raw.github.com/triAGENS/homebrew/master/Library/Formula/avocadodb.rb}
+/// @LIT{brew install avocadodb}
 ///
-/// This will install the AvocadoDB within your Homebrew tree.
+/// This will install the current stable version of AvocadoDB within
+/// your Homebrew tree.
+///
+/// If you want to install the latest version use:
+///
+/// @LIT{brew install --HEAD avocadodb}
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CompilingTOC
 ///
-/// <ol>
-///  <li>@ref CompilingAIO
-///   <ol>
-///    <li>@ref CompilingAIOPrerequisites
+/// <ul>
+///  <li>@ref Compiling
+///   <ul>
+///    <li>@ref CompilingAIO
+///     <ul>
+///      <li>@ref CompilingAIOPrerequisites
+///      </li>
+///      <li>@ref DownloadSourceAIO
+///      </li>
+///      <li>@ref CompilingAIOConfigure
+///      </li>
+///      <li>@ref CompilingAIOCompile
+///      </li>
+///      <li>@ref CompilingAIOTest
+///      </li>
+///      <li>@ref CompilingAIOInstall
+///      </li>
+///     </ul>
 ///    </li>
-///    <li>@ref DownloadSourceAIO
+///    <li>@ref CompilingDevel
+///     <ul>
+///      <li>@ref CompilingDevelPrerequisites
+///      </li>
+///      <li>@ref DownloadSourceDevel
+///      </li>
+///      <li>@ref CompilingDevelSetup
+///      </li>
+///      <li>@ref CompilingDevelConfigure
+///      </li>
+///     </ul>
 ///    </li>
-///    <li>@ref CompilingAIOConfigure
-///    </li>
-///    <li>@ref CompilingAIOCompile
-///    </li>
-///    <li>@ref CompilingAIOTest
-///    </li>
-///    <li>@ref CompilingAIOInstall
-///    </li>
-///   </ol>
+///   </ul>
 ///  </li>
-///  <li>@ref CompilingDevel
-///   <ol>
-///    <li>@ref CompilingDevelPrerequisites
-///    </li>
-///    <li>@ref DownloadSourceDevel
-///    </li>
-///    <li>@ref CompilingDevelSetup
-///    </li>
-///    <li>@ref CompilingDevelConfigure
-///    </li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,9 +147,11 @@
 /// all the prerequisites. The disadvantage is that it takes longer to compile
 /// and you cannot make changes to the flex or bison files.
 ///
+/// @ifnot LATEX
 /// <hr>
-/// @copydoc CompilingTOC
+///  @copydetails CompilingTOC
 /// <hr>
+/// @endif
 ///
 /// @section CompilingAIO All-In-One Version
 ////////////////////////////////////////////

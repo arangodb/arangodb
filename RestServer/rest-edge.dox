@@ -28,26 +28,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestEdgeTOC
 ///
-/// <ol>
-///  <li>@ref RestEdgeIntro</li>
-///  <li>@ref RestEdgeResource</li>
-///  <li>@ref RestEdgeHttp
-///    @copydetails RestEdgeCallsTOC
+/// <ul>
+///  <li>@ref RestEdge
+///   <ul>
+///    <li>@ref RestEdgeIntro</li>
+///    <li>@ref RestEdgeResource</li>
+///    <li>@ref RestEdgeHttp
+///     @copydetails RestEdgeCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestEdgeCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref RestEdgeRead "GET /edge/document-handle"</li>
 ///  <li>@ref RestEdgeCreate "POST /edge?collection=collection-identifier&from=from-handle&to=to-handle"</li>
 ///  <li>@ref RestEdgeUpdate "PUT /edge/document-handle"</li>
 ///  <li>@ref RestEdgeDelete "DELETE /edge/document-handle"</li>
 ///  <li>@ref RestEdgeHead "HEAD /edge/document-handle"</li>
 ///  <li>@ref RestEdgeEdges "GET /edges/collection-identifier?vertex=vertex-handle&directory=direction"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +79,11 @@
 /// @LIT{_from} is the document handle of the linked vertex (incoming relation),
 /// @LIT{_to} is the document handle of the linked vertex (outgoing relation).
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc RestEdgeTOC
 /// <hr>
+/// @endif
 ///
 /// @section RestEdgeIntro Documents, Identifiers, Handles
 //////////////////////////////////////////////////////////////

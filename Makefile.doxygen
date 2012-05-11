@@ -40,13 +40,16 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
-## Doxygen
+## doxygen
 ################################################################################
 
 .PHONY: doxygen
 
-doxygen: Doxygen/avocado.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado.doxy > /dev/null
+Doxygen/avocado-html.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
+
+doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
@@ -55,9 +58,39 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
+Doxygen/avocado-xml.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
+
+wiki: Doxygen/avocado-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-xml.doxy > /dev/null
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
+
+################################################################################
+## latex
+################################################################################
+
+.PHONY: latex
+
+Doxygen/avocado-latex.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
+
+latex: Doxygen/avocado-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-latex.doxy > /dev/null
+
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex
 
 ################################################################################
 ## CLEANUP
