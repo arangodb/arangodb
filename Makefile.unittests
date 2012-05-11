@@ -28,6 +28,7 @@ unittests-verbose:
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
 	@echo "## > make unittests SKIP_BOOST=1                                              ##"
+	@echo "## > make unittests SKIP_GEO=1                                                ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
 	@echo "################################################################################"
@@ -89,7 +90,7 @@ unittests-boost:
 	@echo
 
 	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
-	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
+	test $(SKIP_GEO) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
 
 	@echo
 
