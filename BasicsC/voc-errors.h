@@ -169,6 +169,9 @@ extern "C" {
 ///   operation.
 /// - 1562: @CODE{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
+/// - 1570: @CODE{no suitable geo index found for geo restriction on '\%s'}
+///   Will be raised when a geo restriction was specified but no suitable geo
+///   index is found to resolve it.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1011,6 +1014,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1562)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1570: ERROR_QUERY_GEO_INDEX_MISSING
+///
+/// no suitable geo index found for geo restriction on '%s'
+///
+/// Will be raised when a geo restriction was specified but no suitable geo
+/// index is found to resolve it.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                                 (1570)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

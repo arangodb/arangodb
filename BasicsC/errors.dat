@@ -115,6 +115,7 @@ ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1552,"bind parameter '%s' was not declared
 ERROR_QUERY_INVALID_LOGICAL_VALUE,1560,"invalid logical value","Will be raised when a non-boolean value is used in a logical operation."
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISON_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
+ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
 
 ################################################################################
 ## AvocadoDB cursor errors

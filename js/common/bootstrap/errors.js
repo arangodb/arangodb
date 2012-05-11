@@ -75,6 +75,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_QUERY_INVALID_LOGICAL_VALUE" : { "code" : 1560, "message" : "invalid logical value" }, 
   "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" }, 
   "ERROR_QUERY_DIVISON_BY_ZERO"  : { "code" : 1562, "message" : "division by zero" }, 
+  "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" }, 
   "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" }, 
   "ERROR_SESSION_USERHANDLER_URL_INVALID" : { "code" : 1700, "message" : "expecting <prefix>/user/<username>" }, 
   "ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER" : { "code" : 1701, "message" : "cannot create user" }, 
