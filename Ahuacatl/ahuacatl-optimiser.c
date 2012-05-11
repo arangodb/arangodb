@@ -382,7 +382,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
   if (!json) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
     return NULL;
   }
 

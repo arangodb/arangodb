@@ -128,6 +128,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
+        // TODO: memory allocation might fail
         TRI_PushBackVectorString(&collection->_indexFiles, filename);
       }
 
@@ -141,6 +142,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_col_header_marker_t* cm;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
+        // TODO: memory allocation might fail
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
@@ -151,6 +153,8 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
           break;
         }
+
+        assert(datafile);
 
         TRI_PushBackVectorPointer(&all, datafile);
 
@@ -242,8 +246,11 @@ static bool CheckCollection (TRI_collection_t* collection) {
       datafile = sealed._buffer[i];
 
       number = TRI_StringUInt32(datafile->_fid);
+      // TODO: memory allocation might fail
       dname = TRI_Concatenate3String("datafile-", number, ".db");
+      // TODO: memory allocation might fail
       filename = TRI_Concatenate2File(collection->_directory, dname);
+      // TODO: memory allocation might fail
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
       TRI_FreeString(TRI_CORE_MEM_ZONE, number);
