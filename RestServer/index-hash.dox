@@ -28,19 +28,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexHashTOC
 ///
-/// <ol>
-///  <li>@ref IndexHashHttp
-///   <ol>
-///    <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref IndexHash
+///   <ul>
+///    <li>@ref IndexHashHttp
+///     <ul>
+///      <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
+///     </ul>
+///    </li>
+///    <li>@ref IndexHashShell
+///     <ul>
+///      <li>@ref IndexHashShellEnsureUniqueConstraint "collection.ensureUniqueConstraint"</li>
+///      <li>@ref IndexHashShellEnsureHashIndex "collection.ensureHashIndex"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref IndexHashShell
-///   <ol>
-///    <li>@ref IndexHashShellEnsureUniqueConstraint "collection.ensureUniqueConstraint"</li>
-///    <li>@ref IndexHashShellEnsureHashIndex "collection.ensureHashIndex"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,9 +52,11 @@
 ///
 /// This is an introduction to AvocadoDB's hash indexes.
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc IndexHashTOC
 /// <hr>
+/// @endif
 ///
 /// It is possible to define a hash index on one or more attributes (or paths)
 /// of a documents. This hash is then used in queries to locate documents in

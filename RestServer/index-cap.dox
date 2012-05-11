@@ -28,18 +28,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexCapTOC
 ///
-/// <ol>
-///  <li>@ref IndexCapHttp
-///   <ol>
-///    <li>@ref IndexCapHttpEnsureCapConstraint "POST /_api/index"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref IndexCap
+///   <ul>
+///    <li>@ref IndexCapHttp
+///     <ul>
+///      <li>@ref IndexCapHttpEnsureCapConstraint "POST /_api/index"</li>
+///     </ul>
+///    </li>
+///    <li>@ref IndexCapShell
+///     <ul>
+///      <li>@ref IndexCapShellEnsureCapConstraint "collection.ensureCapConstraint"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref IndexCapShell
-///   <ol>
-///    <li>@ref IndexCapShellEnsureCapConstraint "collection.ensureCapConstraint"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,9 +52,11 @@
 /// This is an introduction to AvocadoDB's size restrictions aka cap for
 /// collections.
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc IndexCapTOC
 /// <hr>
+/// @endif
 ///
 /// It is possible to restrict the size of collection. If you add a document and
 /// the size exceeds the limit, then the least recently created or updated

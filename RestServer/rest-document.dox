@@ -28,26 +28,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestDocumentTOC
 ///
-/// <ol>
-///  <li>@ref RestDocumentIntro</li>
-///  <li>@ref RestDocumentResource</li>
-///  <li>@ref RestDocumentHttp
-///    @copydetails RestDocumentCallsTOC
+/// <ul>
+///  <li>@ref RestDocument
+///   <ul>
+///    <li>@ref RestDocumentIntro</li>
+///    <li>@ref RestDocumentResource</li>
+///    <li>@ref RestDocumentHttp
+///      @copydetails RestDocumentCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestDocumentCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref RestDocumentRead "GET /document/document-handle"</li>
 ///  <li>@ref RestDocumentCreate "POST /document?collection=collection-identifier"</li>
 ///  <li>@ref RestDocumentUpdate "PUT /document/document-handle"</li>
 ///  <li>@ref RestDocumentDelete "DELETE /document/document-handle"</li>
 ///  <li>@ref RestDocumentHead "HEAD /document/document-handle"</li>
 ///  <li>@ref RestDocumentReadAll "GET /document?collection=collection-identifier"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,9 +59,11 @@
 ///
 /// This is an introduction to AvocadoDB's REST interface for documents.
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc RestDocumentTOC
 /// <hr>
+/// @endif
 ///
 /// @section RestDocumentIntro Documents, Identifiers, Handles
 //////////////////////////////////////////////////////////////

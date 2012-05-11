@@ -93,7 +93,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/m4/Makefile.all-in-one-mruby \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
-	$(top_srcdir)/Doxygen/avocado.doxy.in \
+	$(top_srcdir)/Doxygen/avocado.template.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
@@ -153,7 +153,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/BasicsC/local-configuration.h
-CONFIG_CLEAN_FILES = Doxygen/avocado.doxy
+CONFIG_CLEAN_FILES = Doxygen/avocado.template
 CONFIG_CLEAN_VPATH_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -954,6 +954,7 @@ WIKI = \
 	HttpInterface \
 	HttpSimple \
 	HttpSystem \
+	ImplementorManual \
 	IndexCap \
 	IndexGeo \
 	IndexHash \
@@ -1120,7 +1121,7 @@ BasicsC/stamp-h2: $(top_srcdir)/BasicsC/local-configuration.h.in $(top_builddir)
 
 distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 BasicsC/local-configuration.h BasicsC/stamp-h2
-Doxygen/avocado.doxy: $(top_builddir)/config.status $(top_srcdir)/Doxygen/avocado.doxy.in
+Doxygen/avocado.template: $(top_builddir)/config.status $(top_srcdir)/Doxygen/avocado.template.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 clean-noinstLIBRARIES:
@@ -2895,8 +2896,11 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-doxygen: Doxygen/avocado.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado.doxy > /dev/null
+Doxygen/avocado-html.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
+
+doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
@@ -2904,9 +2908,38 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
+Doxygen/avocado-xml.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
+
+wiki: Doxygen/avocado-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-xml.doxy > /dev/null
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
+
+################################################################################
+################################################################################
+
+.PHONY: latex
+
+Doxygen/avocado-latex.doxy: Doxygen/avocado.template
+	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
+
+latex: Doxygen/avocado-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado-latex.doxy > /dev/null
+
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex
 
 .setup-directories:
 	@test -d js || mkdir js

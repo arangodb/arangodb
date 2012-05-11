@@ -361,6 +361,7 @@ WIKI = \
 	HttpInterface \
 	HttpSimple \
 	HttpSystem \
+	ImplementorManual \
 	IndexCap \
 	IndexGeo \
 	IndexHash \

@@ -28,45 +28,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpCollectionTOC
 ///
-/// <ol>
-///  <li>@ref HttpCollectionIntro</li>
-///  <li>@ref HttpCollectionResource</li>
-///  <li>@ref HttpCollectionHttp
-///   @copydetails HttpCollectionCallsTOC
+/// <ul>
+///  <li>@ref HttpCollection
+///   <ul>
+///    <li>@ref HttpCollectionIntro</li>
+///    <li>@ref HttpCollectionResource</li>
+///    <li>@ref HttpCollectionHttp
+///     @copydetails HttpCollectionCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpCollectionCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref HttpCollectionConstructor
-///   <ol>
+///   <ul>
 ///    <li>@ref HttpCollectionCreate "POST /_api/collection"</li>
 ///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/collection-identifier"</li>
 ///    <li>@ref HttpCollectionTruncate "PUT /_api/collection/collection-identifier/truncate"</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref HttpCollectionReading
-///   <ol>
+///   <ul>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/properties"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/count"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/figures"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
 ///    <li>@ref HttpCollectionReadAll "GET /_api/collection/"</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref HttpCollectionChanging
-///   <ol>
+///   <ul>
 ///    <li>@ref HttpCollectionLoad "PUT /_api/collection/collection-identifier/load"</li>
 ///    <li>@ref HttpCollectionUnload "PUT /_api/collection/collection-identifier/unload"</li>
 ///    <li>@ref HttpCollectionProperties "PUT /_api/collection/collection-identifier/properties"</li>
 ///    <li>@ref HttpCollectionRename "PUT /_api/collection/collection-identifier/rename"</li>
-///   </ol>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +78,11 @@
 ///
 /// This is an introduction to AvocadoDB's Http interface for collections.
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc HttpCollectionTOC
 /// <hr>
+/// @endif
 ///
 /// @section HttpCollectionIntro Collections
 ////////////////////////////////////////////

@@ -28,24 +28,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexGeoTOC
 ///
-/// <ol>
-///  <li>@ref IndexGeoHttp
-///   <ol>
-///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
-///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
-///    <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref IndexGeo
+///   <ul>
+///    <li>@ref IndexGeoHttp
+///     <ul>
+///      <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
+///      <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
+///      <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
+///     </ul>
+///    </li>
+///    <li>@ref IndexGeoShell
+///     <ul>
+///      <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
+///      <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
+///      <li>@ref IndexGeoShellGeo "collection.geo"</li>
+///      <li>@ref IndexGeoShellNear "collection.near"</li>
+///      <li>@ref IndexGeoShellWithin "collection.within"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref IndexGeoShell
-///   <ol>
-///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
-///    <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
-///    <li>@ref IndexGeoShellGeo "collection.geo"</li>
-///    <li>@ref IndexGeoShellNear "collection.near"</li>
-///    <li>@ref IndexGeoShellWithin "collection.within"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +57,11 @@
 ///
 /// This is an introduction to AvocadoDB's geo indexes.
 ///
+/// @ifnot LATEX
 /// <hr>
 /// @copydoc IndexGeoTOC
 /// <hr>
+/// @endif
 ///
 /// AvocadoDB uses Hilbert curves to implement geo-spatial indexes. See this
 /// <a href="http://www.avocadodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
