@@ -69,8 +69,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
-                                                    const char* const query) {
+                                         const char* const query) {
   TRI_aql_context_t* context;
+
+  assert(vocbase);
+  assert(query);
 
   context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t), false);
   if (!context) {
@@ -230,6 +233,12 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
   
 bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
+  if (context->_parser->_length == 0) {
+    // query is empty, no need to parse it
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_EMPTY, NULL);
+    return false;
+  }
+
   // parse the query
   if (!TRI_ParseAql(context)) {
     // lexing/parsing failed
