@@ -66,8 +66,10 @@ extern "C" {
 #define TRI_AQL_IDX_ATTRIBUTE_ACCESS_ACCESSED                                 0
 #define TRI_AQL_IDX_INDEXED_ACCESSED                                          0
 #define TRI_AQL_IDX_INDEXED_INDEX                                             1
-#define TRI_AQL_IDX_EXPAND_EXPANDED                                           0
-#define TRI_AQL_IDX_EXPAND_EXPANSION                                          1
+#define TRI_AQL_IDX_EXPAND_VARIABLE1                                          0
+#define TRI_AQL_IDX_EXPAND_VARIABLE2                                          1
+#define TRI_AQL_IDX_EXPAND_EXPANDED                                           2
+#define TRI_AQL_IDX_EXPAND_EXPANSION                                          3
 #define TRI_AQL_IDX_ASSIGN_VARIABLE                                           0
 #define TRI_AQL_IDX_ASSIGN_EXPRESSION                                         1
 #define TRI_AQL_IDX_UNARY_OPERAND                                             0
@@ -522,6 +524,7 @@ TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const,
+                                         const char* const,
                                          const TRI_aql_node_t* const,
                                          const TRI_aql_node_t* const);
 

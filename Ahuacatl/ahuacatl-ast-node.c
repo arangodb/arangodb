@@ -792,12 +792,24 @@ TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
+                                         const char* const varname,
                                          const TRI_aql_node_t* const expanded,
                                          const TRI_aql_node_t* const expansion) {
   CREATE_NODE(AQL_NODE_EXPAND)
 
-  ADD_MEMBER(expanded)
-  ADD_MEMBER(expansion)
+  if (!varname) {
+    ABORT_OOM
+  }
+
+  {
+    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname);
+    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context));
+
+    ADD_MEMBER(variable1)
+    ADD_MEMBER(variable2)
+    ADD_MEMBER(expanded)
+    ADD_MEMBER(expansion)
+  }
 
   return node;
 }
