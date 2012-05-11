@@ -438,7 +438,10 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
   size_t n;
  
   assert(context);
-  assert(statement);
+
+  if (!statement) {
+    return false;
+  }
         
   n = context->_scopes._length;
   assert(n > 0);

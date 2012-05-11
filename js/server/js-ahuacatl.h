@@ -192,7 +192,7 @@ static string JS_server_ahuacatl =
   "  }\n"
   "\n"
   "  if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {\n"
-  "    throw \"expecting document for member access\";\n"
+  "    return null;\n"
   "  }\n"
   "\n"
   "  var result = value[attributeName];\n"
