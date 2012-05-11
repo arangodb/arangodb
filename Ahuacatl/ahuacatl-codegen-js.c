@@ -1476,10 +1476,18 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFilter (TRI_aql_codegen_js_t* const generator, 
                            const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  
   ScopeOutput(generator, "if (!(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")) {\n");
-  ScopeOutput(generator, "continue;\n");
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+    // in these scopes, we must not generated a continue statement. this would be illegal
+    ScopeOutput(generator, "return [ ];\n");
+  }
+  else {
+    ScopeOutput(generator, "continue;\n");
+  }
   ScopeOutput(generator, "}\n");
 }
 
