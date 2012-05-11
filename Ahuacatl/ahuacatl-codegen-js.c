@@ -630,6 +630,11 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+    // these scopes are closed by other means
+    return;
+  }
+
   // we are closing at least one scope
   while (true) {
     TRI_aql_codegen_scope_e type = scope->_type;
