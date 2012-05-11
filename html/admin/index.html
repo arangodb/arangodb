@@ -155,11 +155,21 @@
         </table>
 
         <div id="documentsToolbar">
-          <button class="enabled" id="documents_last"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-          <button class="enabled" id="documents_next"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-          <button class="enabled" id="documents_prev"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-          <button class="enabled" id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-          <a id="documents_status">Showing</a>
+
+          <div class="floatLeft">
+            <a id="documents_status">Showing</a>
+          </div>
+
+          <div class="floatRight">
+            <form id="docPageForm">
+              Jump to: <input type="text" id="docPageInput" placeholder="Page"></input>
+              <button id="submitDocPageInput">Ok</button>
+            </form>
+            <button class="enabled" id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+            <button class="enabled" id="documents_prev"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+            <button class="enabled" id="documents_next"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+            <button class="enabled" id="documents_last"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+          </div>
         </div>
 
       </div>
@@ -340,18 +350,21 @@
       </div>
 
       <div id="configView" style="display: none">
+        <button class="minimal enabled" id="updateConfiguration">
+          <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
+          <a>Update configuration</a>
+        </button>
         <div id="configContent">
         </div>
       </div>
 
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
+          <a id="welcomemsg">Welcome! AvocSH 0.9<a><br><br> 
         </div>
-      
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
- 
       </div>
 
       <div id="queryView" style="display: none">
