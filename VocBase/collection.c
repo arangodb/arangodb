@@ -538,7 +538,7 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter) {
   TRI_json_t* json;
   char* filename;
-  char* error;
+  char* error = NULL;
   size_t i;
   size_t n;
 
@@ -555,10 +555,14 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
 
   if (json == NULL) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+    if (error != NULL) {
+      LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+    }
+    else {
+      LOG_ERROR("cannot open '%s', parameter block not readable", filename);
+    }
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
