@@ -141,7 +141,7 @@ function POST_api_cursor(req, res) {
                             (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID);
+      actions.resultBad(req, res, actions.ERROR_QUERY_EMPTY);
       return;
     }
    
