@@ -76,6 +76,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_INVALID_LOGICAL_VALUE\" : { \"code\" : 1560, \"message\" : \"invalid logical value\" }, \n"
   "  \"ERROR_QUERY_INVALID_ARITHMETIC_VALUE\" : { \"code\" : 1561, \"message\" : \"invalid arithmetic value\" }, \n"
   "  \"ERROR_QUERY_DIVISON_BY_ZERO\"  : { \"code\" : 1562, \"message\" : \"division by zero\" }, \n"
+  "  \"ERROR_QUERY_GEO_INDEX_MISSING\" : { \"code\" : 1570, \"message\" : \"no suitable geo index found for geo restriction on '%s'\" }, \n"
   "  \"ERROR_CURSOR_NOT_FOUND\"       : { \"code\" : 1600, \"message\" : \"cursor not found\" }, \n"
   "  \"ERROR_SESSION_USERHANDLER_URL_INVALID\" : { \"code\" : 1700, \"message\" : \"expecting <prefix>/user/<username>\" }, \n"
   "  \"ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER\" : { \"code\" : 1701, \"message\" : \"cannot create user\" }, \n"
