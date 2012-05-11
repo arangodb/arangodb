@@ -1018,7 +1018,6 @@ var logTable = $('#logTableID').dataTable({
     return false; 
   });
 
-
 ///////////////////////////////////////////////////////////////////////////////
 /// toggle button for source / table - new document view 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1223,7 +1222,6 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         url: "/document/" + documentID 
       });
-      location.reload(); 
     }
 
     catch(e) {
@@ -1690,7 +1688,6 @@ function createnav (menue) {
 ///////////////////////////////////////////////////////////////////////////////
 
 $(function() {
-  var open = false;  
   $('#footerSlideButton').click(function() {
     if(open === false) {
       $('#footerSlideContent').animate({ height: '120px' });
@@ -1991,7 +1988,6 @@ function FormatJSON(oData, sIndent) {
     var sIndentStyle = "    ";
     var sDataType = RealTypeOf(oData);
 
-    // open object
     if (sDataType == "array") {
         if (oData.length == 0) {
             return "[]";
@@ -2154,6 +2150,47 @@ function stateReplace (value) {
   return output;
 }
 
+$('#submitDocPageInput').live('click', function () {
+  try {
+    var enteredPage = JSON.parse($('#docPageInput').val());
+    if (enteredPage > 0 && enteredPage <= totalCollectionCount) {
+      $('#documentsTableID').dataTable().fnClearTable();
+  
+      var offset = enteredPage * 10 - 10; 
+      $.ajax({
+        type: 'PUT',
+        url: '/_api/simple/all/',
+        data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+        contentType: "application/json",
+        success: function(data) {
+          $.each(data.result, function(k, v) {
+            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+          });
+          $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+          collectionCurrentPage = enteredPage;
+          $('#documents_status').text("Showing page " + enteredPage + " of " + totalCollectionCount); 
+          return 0; 
+        },
+        error: function(data) {
+        }
+      });
+    }
+    
+    else { 
+      console.log("out of reach");
+      return 0; 
+    }  
+  }
+
+  catch(e) {
+    alert("No valid Page"); 
+  return 0; 
+  }
+  return 0; 
+});
+
+
+
 function highlightNav (string) {
   $("#nav1").removeClass("nonhighlighted");
   $("#nav2").removeClass("nonhighlighted");
@@ -2195,3 +2232,8 @@ function is_int(value){
       return false;
   }
 }
+
+$('#docPageInput').submit(function() {
+  alert('Handler for .submit() called.');
+  return false;
+});

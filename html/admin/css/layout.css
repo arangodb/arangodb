@@ -102,12 +102,35 @@ pre ul li span{
   font-size: 0.8em !important; 
 }
 
-#logToolbar button, #documentsToolbar button {
+#logToolbar button {
   float:right;
-  margin-bottom: 10px;      
+  margin-bottom: 10px;  
+  padding-right: 5px;      
 }
 
-#logToolbar a, #documentsToolbar a {
+#documentsToolbar button {
+  padding:0;  
+}
+
+#docPageInput {
+  width:40px;   
+}
+
+#docPageForm {
+  display:inline; 
+  vertical-align:3px;   
+  font-size: 0.8em;  
+}
+
+.floatRight {
+  float:right;
+}
+
+.floatLeft {
+  float:left;
+}
+
+#logToolbar a {
   font-size: 0.85em;  
 }
 
@@ -252,8 +275,8 @@ pre ul li span{
 }
 
 .ui-tabs-nav {
-  font-size: 0.8em !important; 
-  height: 35px; 
+  font-size: 0.7em !important; 
+  height: 30px; 
   -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
   -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
   box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
@@ -274,6 +297,10 @@ pre ul li span{
   -webkit-box-shadow: none !important;
   -moz-box-shadow: none !important;
   box-shadow: none !important; 
+}
+
+form {
+  margin: 0; 
 }
 
 #tab_right {
@@ -318,6 +345,11 @@ pre ul li span{
   width:100%;
 }
 
+#welcomemsg {
+  padding-left: 10px; 
+  padding-top: 10px; 
+  font-family: "courier"; 
+}
 
 #avocshWindow p {
   margin-top: 10px; 
@@ -332,10 +364,10 @@ pre ul li span{
 
 #avocshContent {
   font-family: "courier";
-  width: 90.5%;
-  height: 40px;
+  width: 100%;
+  height: 30px;
   background-color: white; 
-  margin-right: 0.5%;   
+  margin-right: 0.5%;
 } 
 
 .avocshSuccess {
@@ -355,6 +387,7 @@ pre ul li span{
 }
 
 #submitAvoc {
+  visibility:hidden; 
   height: 40px !important; 
   width: 9% !important;  
   margin-top: 10px !important;  
@@ -630,6 +663,7 @@ pre ul li span{
   padding-top: 2px;
   padding-right: 2px; 
 }
+
 /*
 ##############################################################################
 ### small buttons
