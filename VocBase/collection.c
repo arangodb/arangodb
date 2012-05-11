@@ -553,6 +553,7 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  // TODO: memory allocation might fail
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -864,7 +865,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   res = TRI_LoadParameterInfoCollection(path, &info);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot save collection parameter '%s': '%s'", path, TRI_last_error());
+    LOG_ERROR("cannot load collection parameter '%s': '%s'", path, TRI_last_error());
     return NULL;
   }
 
