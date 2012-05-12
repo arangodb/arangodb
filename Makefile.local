@@ -22,3 +22,4 @@ publish-html:
 publish-pdf:
 	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
 	scp Doxygen/latex/user-manual-server.pdf $(MANUAL_DST)
+	scp Doxygen/latex/implementor-manual.pdf $(MANUAL_DST)
