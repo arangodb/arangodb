@@ -411,11 +411,12 @@ am_arangoimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
-	V8Client/avocimp.$(OBJEXT)
+	V8Client/arangoimp.$(OBJEXT)
 arangoimp_OBJECTS = $(am_arangoimp_OBJECTS)
 arangoimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
-am__arangoirb_SOURCES_DIST = MRClient/avocirb.cpp
-@ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
+am__arangoirb_SOURCES_DIST = MRClient/arangoirb.cpp
+@ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS =  \
+@ENABLE_MRUBY_TRUE@	MRClient/arangoirb.$(OBJEXT)
 arangoirb_OBJECTS = $(am_arangoirb_OBJECTS)
 @ENABLE_MRUBY_TRUE@arangoirb_DEPENDENCIES = libarango.a \
 @ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
@@ -423,7 +424,7 @@ am_arangosh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
-	V8Client/avocsh.$(OBJEXT)
+	V8Client/arangosh.$(OBJEXT)
 arangosh_OBJECTS = $(am_arangosh_OBJECTS)
 arangosh_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
@@ -851,14 +852,14 @@ arangosh_SOURCES = \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocsh.cpp
+	V8Client/arangosh.cpp
 
 
 ################################################################################
 ################################################################################
 @ENABLE_MRUBY_TRUE@arangoirb_LDADD = libarango.a $(LIBS)
 @ENABLE_MRUBY_TRUE@arangoirb_SOURCES = \
-@ENABLE_MRUBY_TRUE@	MRClient/avocirb.cpp
+@ENABLE_MRUBY_TRUE@	MRClient/arangoirb.cpp
 
 
 ################################################################################
@@ -869,7 +870,7 @@ arangoimp_SOURCES = \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocimp.cpp
+	V8Client/arangoimp.cpp
 
 
 ################################################################################
@@ -971,7 +972,6 @@ WIKI = \
 	JSModuleInternal \
 	JSModules \
 	Key-Value \
-	OTWP \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -983,9 +983,8 @@ WIKI = \
 	SimpleQueries \
 	UserManualServer \
 	UserManualServerBasics \
-	UserManualServerStartStop \
 	UserManualShell \
-	UserManualShellStartStop  \
+	UserManualShellStartStop \
 	jsUnity
 
 FORCE = 0
@@ -1907,7 +1906,7 @@ V8Client/ImportHelper.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
-V8Client/avocimp.$(OBJEXT): V8Client/$(am__dirstamp) \
+V8Client/arangoimp.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 arangoimp$(EXEEXT): $(arangoimp_OBJECTS) $(arangoimp_DEPENDENCIES) 
 	@rm -f arangoimp$(EXEEXT)
@@ -1918,12 +1917,12 @@ MRClient/$(am__dirstamp):
 MRClient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) MRClient/$(DEPDIR)
 	@: > MRClient/$(DEPDIR)/$(am__dirstamp)
-MRClient/avocirb.$(OBJEXT): MRClient/$(am__dirstamp) \
+MRClient/arangoirb.$(OBJEXT): MRClient/$(am__dirstamp) \
 	MRClient/$(DEPDIR)/$(am__dirstamp)
 arangoirb$(EXEEXT): $(arangoirb_OBJECTS) $(arangoirb_DEPENDENCIES) 
 	@rm -f arangoirb$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(arangoirb_OBJECTS) $(arangoirb_LDADD) $(LIBS)
-V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
+V8Client/arangosh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 arangosh$(EXEEXT): $(arangosh_OBJECTS) $(arangosh_DEPENDENCIES) 
 	@rm -f arangosh$(EXEEXT)
@@ -2036,7 +2035,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
-	-rm -f MRClient/avocirb.$(OBJEXT)
+	-rm -f MRClient/arangoirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
 	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
@@ -2121,8 +2120,8 @@ mostlyclean-compile:
 	-rm -f V8/v8-vocbase.$(OBJEXT)
 	-rm -f V8Client/ImportHelper.$(OBJEXT)
 	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
-	-rm -f V8Client/avocimp.$(OBJEXT)
-	-rm -f V8Client/avocsh.$(OBJEXT)
+	-rm -f V8Client/arangoimp.$(OBJEXT)
+	-rm -f V8Client/arangosh.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
 	-rm -f Variant/VariantBlob.$(OBJEXT)
 	-rm -f Variant/VariantBoolean.$(OBJEXT)
@@ -2266,7 +2265,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/avocirb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
@@ -2351,8 +2350,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocimp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocsh.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/arangoimp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/arangosh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBlob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBoolean.Po@am__quote@
