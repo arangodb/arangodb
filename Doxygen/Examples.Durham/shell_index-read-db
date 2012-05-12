@@ -1,4 +1,4 @@
-avocado> db.example.getIndexes().map(function(x) { return x.id; });
+arango> db.example.getIndexes().map(function(x) { return x.id; });
 ["93013/0"]
-avocado> db._index("93013/0");
+arango> db._index("93013/0");
 { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }

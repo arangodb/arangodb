@@ -1,8 +1,8 @@
-avocado> f = g.getVertices();
+arango> f = g.getVertices();
 [vertex iterator]
 
-avocado> f.hasNext();
+arango> f.hasNext();
 true
 
-avocado> v = f.next();
+arango> v = f.next();
 Vertex(18364)

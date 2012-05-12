@@ -1,2 +1,2 @@
-avocado> v = g.addVertex("hugo");
+arango> v = g.addVertex("hugo");
 Vertex("hugo")

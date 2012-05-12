@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoAPI
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ var actions = require("actions");
 /// error occurs during query processing, the server will respond with @LIT{HTTP 400}.
 /// Again, the body of the response will contain details about the error.
 ///
-/// A list of query errors can be found @ref AvocadoErrors here.
+/// A list of query errors can be found @ref ArangoErrors here.
 ///
 /// @EXAMPLES
 ///
@@ -148,7 +148,7 @@ function POST_api_cursor(req, res) {
     }
    
     // error occurred
-    if (cursor instanceof AvocadoError) {
+    if (cursor instanceof ArangoError) {
       actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
       return;
     }
@@ -210,7 +210,7 @@ function PUT_api_cursor(req, res) {
     var cursorId = decodeURIComponent(req.suffix[0]); 
     var cursor = CURSOR(cursorId);
 
-    if (!(cursor instanceof AvocadoCursor)) {
+    if (!(cursor instanceof ArangoCursor)) {
       actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     } 
@@ -262,7 +262,7 @@ function DELETE_api_cursor(req, res) {
     var cursorId = decodeURIComponent(req.suffix[0]);
     var cursor = CURSOR(cursorId);
 
-    if (! (cursor instanceof AvocadoCursor)) {
+    if (! (cursor instanceof ArangoCursor)) {
       actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     }

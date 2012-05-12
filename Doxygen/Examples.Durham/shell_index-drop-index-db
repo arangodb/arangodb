@@ -1,15 +1,15 @@
-avocado> db.example.ensureSkiplist("a", "b");
+arango> db.example.ensureSkiplist("a", "b");
 { "id" : "73650/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
 
-avocado> i = db.example.getIndexes();
+arango> i = db.example.getIndexes();
 [{ "id" : "73650/0", "type" : "primary", "fields" : ["_id"] },
  { "id" : "73650/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
 
-avocado> db._dropIndex(i[0]);
+arango> db._dropIndex(i[0]);
 false
 
-avocado> db._dropIndex(i[1].id);
+arango> db._dropIndex(i[1].id);
 true
 
-avocado> i = db.example.getIndexes();
+arango> i = db.example.getIndexes();
 [{ "id" : "73650/0", "type" : "primary", "fields" : ["_id"] }]

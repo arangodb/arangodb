@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AvocadoShell client API
+/// @brief ArangoShell client API
 ///
 /// @file
 ///
@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,7 +35,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,11 +51,11 @@ var DEFAULT_QUERY_COLLECTION = "query";
 
 var HELP = "";
 var helpQueries = "";
-var helpAvocadoDatabase = "";
-var helpAvocadoCollection = "";
-var helpAvocadoQueryCursor = "";
-var helpAvocadoStoredStatement = "";
-var helpAvocadoStatement = "";
+var helpArangoDatabase = "";
+var helpArangoCollection = "";
+var helpArangoQueryCursor = "";
+var helpArangoStoredStatement = "";
+var helpArangoStatement = "";
 var helpExtended = "";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ var helpExtended = "";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -109,7 +109,7 @@ function TRI_CheckRequestResult (requestResult) {
   }
   
   if (requestResult["error"] != undefined && requestResult["error"]) {    
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }  
 }
 
@@ -137,7 +137,7 @@ function TRI_CreateHelpHeadline (text) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -222,10 +222,10 @@ function stop_color_print () {
 function help () {
   print(HELP);
   print(helpQueries);
-  print(helpAvocadoDatabase);
-  print(helpAvocadoCollection);
-  print(helpAvocadoStatement);
-  print(helpAvocadoQueryCursor);
+  print(helpArangoDatabase);
+  print(helpArangoCollection);
+  print(helpArangoStatement);
+  print(helpArangoQueryCursor);
   print(helpExtended);
 }
 
@@ -238,7 +238,7 @@ function help () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -273,7 +273,7 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AvocadoError
+// --SECTION--                                                      ArangoError
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -281,7 +281,7 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -289,7 +289,7 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoError (error) {
+function ArangoError (error) {
   if (error != null) {
     this.error = error.error;
     this.code = error.code;
@@ -307,7 +307,7 @@ function AvocadoError (error) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,7 +315,7 @@ function AvocadoError (error) {
 /// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoError.prototype._PRINT = function() {
+ArangoError.prototype._PRINT = function() {
   internal.output(this.toString());
 }
 
@@ -323,7 +323,7 @@ AvocadoError.prototype._PRINT = function() {
 /// @brief toString function
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoError.prototype.toString = function() {
+ArangoError.prototype.toString = function() {
   var result = "";
   if (typeof(COLOR_BRIGHT) != "undefined") {
     result = COLOR_BRIGHT + "Error: " + COLOR_OUTPUT_RESET;
@@ -341,11 +341,11 @@ AvocadoError.prototype.toString = function() {
 /// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoError.prototype.toString = function() {
+ArangoError.prototype.toString = function() {
   var errorNum = this.errorNum;
   var errorMessage = this.errorMessage;
 
-  return "[AvocadoError " + errorNum + ": " + errorMessage + "]";
+  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +353,7 @@ AvocadoError.prototype.toString = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   AvocadoDatabase
+// --SECTION--                                                   ArangoDatabase
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -361,7 +361,7 @@ AvocadoError.prototype.toString = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,12 +369,12 @@ AvocadoError.prototype.toString = function() {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoDatabase (connection) {
+function ArangoDatabase (connection) {
   this._connection = connection;
-  this._collectionConstructor = AvocadoCollection;
+  this._collectionConstructor = ArangoCollection;
 }
 
-ModuleCache["/internal"].exports.AvocadoDatabase = AvocadoDatabase;
+ModuleCache["/internal"].exports.ArangoDatabase = ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -385,17 +385,17 @@ ModuleCache["/internal"].exports.AvocadoDatabase = AvocadoDatabase;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoDatabase
+/// @brief help for ArangoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
-'AvocadoDatabase constructor:                                        ' + "\n" +
-' > db = new AvocadoDatabase(connection);                            ' + "\n" +
+helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
+'ArangoDatabase constructor:                                        ' + "\n" +
+' > db = new ArangoDatabase(connection);                            ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -419,19 +419,19 @@ helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
 '  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoDatabase
+/// @brief print the help for ArangoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._help = function () {  
-  print(helpAvocadoDatabase);
+ArangoDatabase.prototype._help = function () {  
+  print(helpArangoDatabase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype.toString = function () {  
-  return "[object AvocadoDatabase]";
+ArangoDatabase.prototype.toString = function () {  
+  return "[object ArangoDatabase]";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +443,7 @@ AvocadoDatabase.prototype.toString = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -451,7 +451,7 @@ AvocadoDatabase.prototype.toString = function () {
 /// @brief return all collections from the database
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._collections = function () {
+ArangoDatabase.prototype._collections = function () {
   var requestResult = this._connection.GET("/_api/collection");
   
   TRI_CheckRequestResult(requestResult);
@@ -478,13 +478,13 @@ AvocadoDatabase.prototype._collections = function () {
 /// @brief return a single collection, identified by its id or name
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._collection = function (id) {
+ArangoDatabase.prototype._collection = function (id) {
   var requestResult = this._connection.GET("/_api/collection/" + encodeURIComponent(id));
   
   // return null in case of not found
   if (requestResult != null
       && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     return null;
   }
 
@@ -504,7 +504,7 @@ AvocadoDatabase.prototype._collection = function (id) {
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._create = function (name, properties) {
+ArangoDatabase.prototype._create = function (name, properties) {
   var body = {
     "name" : name
   };
@@ -536,7 +536,7 @@ AvocadoDatabase.prototype._create = function (name, properties) {
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._truncate = function (id) {
+ArangoDatabase.prototype._truncate = function (id) {
   for (var name in this) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
@@ -556,7 +556,7 @@ AvocadoDatabase.prototype._truncate = function (id) {
 /// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._drop = function (id) {
+ArangoDatabase.prototype._drop = function (id) {
   for (var name in this) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
@@ -576,7 +576,7 @@ AvocadoDatabase.prototype._drop = function (id) {
 /// @brief returns one index
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._index = function (id) {
+ArangoDatabase.prototype._index = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -592,7 +592,7 @@ AvocadoDatabase.prototype._index = function (id) {
 /// @brief deletes one index
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._dropIndex = function (id) {
+ArangoDatabase.prototype._dropIndex = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -601,7 +601,7 @@ AvocadoDatabase.prototype._dropIndex = function (id) {
 
   if (requestResult != null
       && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_INDEX_NOT_FOUND.code) {
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
     return false;
   }
 
@@ -619,7 +619,7 @@ AvocadoDatabase.prototype._dropIndex = function (id) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -627,7 +627,7 @@ AvocadoDatabase.prototype._dropIndex = function (id) {
 /// @brief return a single document from the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._document = function (id) {
+ArangoDatabase.prototype._document = function (id) {
   var rev = null;
   var requestResult;
 
@@ -648,14 +648,14 @@ AvocadoDatabase.prototype._document = function (id) {
 
   if (requestResult != null
       && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -667,7 +667,7 @@ AvocadoDatabase.prototype._document = function (id) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._remove = function (id, overwrite) {
+ArangoDatabase.prototype._remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -696,16 +696,16 @@ AvocadoDatabase.prototype._remove = function (id, overwrite) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
 
     if (overwrite) {
-      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+      if (requestResult.errorNum == internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
         return false;
       }
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -717,7 +717,7 @@ AvocadoDatabase.prototype._remove = function (id, overwrite) {
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._replace = function (id, data, overwrite) { 
+ArangoDatabase.prototype._replace = function (id, data, overwrite) { 
   var rev = null;
   var requestResult;
 
@@ -746,10 +746,10 @@ AvocadoDatabase.prototype._replace = function (id, data, overwrite) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -766,7 +766,7 @@ AvocadoDatabase.prototype._replace = function (id, data, overwrite) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -774,8 +774,8 @@ AvocadoDatabase.prototype._replace = function (id, data, overwrite) {
 /// @brief factory method to create a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._createStatement = function (data) {  
-  return new AvocadoStatement(this, data);
+ArangoDatabase.prototype._createStatement = function (data) {  
+  return new ArangoStatement(this, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -783,7 +783,7 @@ AvocadoDatabase.prototype._createStatement = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AvocadoEdges
+// --SECTION--                                                      ArangoEdges
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -791,7 +791,7 @@ AvocadoDatabase.prototype._createStatement = function (data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -799,14 +799,14 @@ AvocadoDatabase.prototype._createStatement = function (data) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoEdges (connection) {
+function ArangoEdges (connection) {
   this._connection = connection;
-  this._collectionConstructor = AvocadoEdgesCollection;
+  this._collectionConstructor = ArangoEdgesCollection;
 }
 
-AvocadoEdges.prototype = new AvocadoDatabase();
+ArangoEdges.prototype = new ArangoDatabase();
 
-ModuleCache["/internal"].exports.AvocadoEdges = AvocadoEdges;
+ModuleCache["/internal"].exports.ArangoEdges = ArangoEdges;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -817,17 +817,17 @@ ModuleCache["/internal"].exports.AvocadoEdges = AvocadoEdges;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoEdges
+/// @brief help for ArangoEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoEdges = TRI_CreateHelpHeadline("AvocadoEdges help") +
-'AvocadoEdges constructor:                                           ' + "\n" +
-' > edges = new AvocadoEdges(connection);                            ' + "\n" +
+helpArangoEdges = TRI_CreateHelpHeadline("ArangoEdges help") +
+'ArangoEdges constructor:                                           ' + "\n" +
+' > edges = new ArangoEdges(connection);                            ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -836,19 +836,19 @@ helpAvocadoEdges = TRI_CreateHelpHeadline("AvocadoEdges help") +
 '  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoEdges
+/// @brief print the help for ArangoEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdges.prototype._help = function () {  
-  print(helpAvocadoEdges);
+ArangoEdges.prototype._help = function () {  
+  print(helpArangoEdges);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdges.prototype.toString = function () {  
-  return "[object AvocadoEdges]";
+ArangoEdges.prototype.toString = function () {  
+  return "[object ArangoEdges]";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,7 +856,7 @@ AvocadoEdges.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AvocadoCollection
+// --SECTION--                                                 ArangoCollection
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -864,7 +864,7 @@ AvocadoEdges.prototype.toString = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -872,7 +872,7 @@ AvocadoEdges.prototype.toString = function () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoCollection (database, data) {
+function ArangoCollection (database, data) {
   this._database = database;
 
   if (typeof data === "string") {
@@ -885,7 +885,7 @@ function AvocadoCollection (database, data) {
   }
 }
 
-ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
+ModuleCache["/internal"].exports.ArangoCollection = ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -896,7 +896,7 @@ ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -904,37 +904,37 @@ ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
 /// @brief collection is corrupted
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_CORRUPTED = 0;
+ArangoCollection.STATUS_CORRUPTED = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is new born
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_NEW_BORN = 1;
+ArangoCollection.STATUS_NEW_BORN = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloaded
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_UNLOADED = 2;
+ArangoCollection.STATUS_UNLOADED = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is loaded
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_LOADED = 3;
+ArangoCollection.STATUS_LOADED = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloading
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_UNLOADING = 4;
+ArangoCollection.STATUS_UNLOADING = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.STATUS_DELETED = 5;
+ArangoCollection.STATUS_DELETED = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -945,16 +945,16 @@ AvocadoCollection.STATUS_DELETED = 5;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoCollection
+/// @brief help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
-'AvocadoCollection constructor:                                      ' + "\n" +
+helpArangoCollection = TRI_CreateHelpHeadline("ArangoCollection help") +
+'ArangoCollection constructor:                                      ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -985,35 +985,35 @@ helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
 /// @brief return a string representation of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.toString = function () {  
-  return TRI_GetIdString(this, "AvocadoCollection");
+ArangoCollection.prototype.toString = function () {  
+  return TRI_GetIdString(this, "ArangoCollection");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype._PRINT = function () {  
+ArangoCollection.prototype._PRINT = function () {  
   var status = "unknown";
 
   switch (this.status()) {
-    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
-    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
-    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
-    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+    case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
+    case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
   }
   
-  internal.output("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
+  internal.output("[ArangoCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoCollection
+/// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype._help = function () {  
-  print(helpAvocadoCollection);
+ArangoCollection.prototype._help = function () {  
+  print(helpArangoCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1025,7 +1025,7 @@ AvocadoCollection.prototype._help = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1033,7 +1033,7 @@ AvocadoCollection.prototype._help = function () {
 /// @brief returns the name of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.name = function () {
+ArangoCollection.prototype.name = function () {
   if (this._name == null) {
     this.refresh();
   }
@@ -1045,7 +1045,7 @@ AvocadoCollection.prototype.name = function () {
 /// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.status = function () {
+ArangoCollection.prototype.status = function () {
   if (this._status == null) {
     this.refresh();
   }
@@ -1057,7 +1057,7 @@ AvocadoCollection.prototype.status = function () {
 /// @brief gets or sets the properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.properties = function (properties) {
+ArangoCollection.prototype.properties = function (properties) {
   var requestResult;
 
   if (properties == null) {
@@ -1087,7 +1087,7 @@ AvocadoCollection.prototype.properties = function (properties) {
 /// @brief gets the figures of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.figures = function () {
+ArangoCollection.prototype.figures = function () {
   var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
 
   TRI_CheckRequestResult(requestResult);
@@ -1099,12 +1099,12 @@ AvocadoCollection.prototype.figures = function () {
 /// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.drop = function () {
+ArangoCollection.prototype.drop = function () {
   var requestResult = this._database._connection.DELETE("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
-  this._status = AvocadoCollection.STATUS_DELETED;
+  this._status = ArangoCollection.STATUS_DELETED;
 
   var database = this._database;
 
@@ -1112,7 +1112,7 @@ AvocadoCollection.prototype.drop = function () {
     if (database.hasOwnProperty(name)) {
       var collection = database[name];
 
-      if (collection instanceof AvocadoCollection) {
+      if (collection instanceof ArangoCollection) {
         if (collection._id == this._id) {
           delete database[name];
         }
@@ -1125,7 +1125,7 @@ AvocadoCollection.prototype.drop = function () {
 /// @brief returns all documents
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.toArray = function () {
+ArangoCollection.prototype.toArray = function () {
   return this.all().toArray();
 }
 
@@ -1133,7 +1133,7 @@ AvocadoCollection.prototype.toArray = function () {
 /// @brief returns all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.getIndexes = function () {
+ArangoCollection.prototype.getIndexes = function () {
   var requestResult = this._database._connection.GET("/_api/index?collection=" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
@@ -1145,7 +1145,7 @@ AvocadoCollection.prototype.getIndexes = function () {
 /// @brief returns one index
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.index = function (id) {
+ArangoCollection.prototype.index = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -1154,19 +1154,19 @@ AvocadoCollection.prototype.index = function (id) {
 
   if (s.length != 2) {
     var requestResult = {
-      errorNum: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code,
-      errorMessage: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message
+      errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
   else if (s[0] != this._id) {
     var requestResult = {
-      errorNum: internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code,
-      errorMessage: internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.message
+      errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   var requestResult = this._database._connection.GET("/_api/index/" + id);
@@ -1180,7 +1180,7 @@ AvocadoCollection.prototype.index = function (id) {
 /// @brief deletes one index
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.dropIndex = function (id) {
+ArangoCollection.prototype.dropIndex = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -1189,26 +1189,26 @@ AvocadoCollection.prototype.dropIndex = function (id) {
 
   if (s.length != 2) {
     var requestResult = {
-      errorNum: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code,
-      errorMessage: internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message
+      errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
   else if (s[0] != this._id) {
     var requestResult = {
-      errorNum: internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code,
-      errorMessage: internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.message
+      errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   var requestResult = this._database._connection.DELETE("/_api/index/" + id);
 
   if (requestResult != null
       && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_INDEX_NOT_FOUND.code) {
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
     return false;
   }
 
@@ -1221,7 +1221,7 @@ AvocadoCollection.prototype.dropIndex = function (id) {
 /// @brief adds a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.ensureCapConstraint = function (size) {
+ArangoCollection.prototype.ensureCapConstraint = function (size) {
   var body;
 
   body = { type : "cap", size : size };
@@ -1237,7 +1237,7 @@ AvocadoCollection.prototype.ensureCapConstraint = function (size) {
 /// @brief adds an geo index
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   var body;
 
   if (typeof lon == "boolean") {
@@ -1261,7 +1261,7 @@ AvocadoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 /// @brief adds an geo constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
   var body;
 
   // only two parameter
@@ -1296,7 +1296,7 @@ AvocadoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.truncate = function () {
+ArangoCollection.prototype.truncate = function () {
   var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
 
   TRI_CheckRequestResult(requestResult);
@@ -1308,7 +1308,7 @@ AvocadoCollection.prototype.truncate = function () {
 /// @brief loads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.load = function () {
+ArangoCollection.prototype.load = function () {
   var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
 
   TRI_CheckRequestResult(requestResult);
@@ -1320,7 +1320,7 @@ AvocadoCollection.prototype.load = function () {
 /// @brief unloads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.unload = function () {
+ArangoCollection.prototype.unload = function () {
   var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
 
   TRI_CheckRequestResult(requestResult);
@@ -1332,7 +1332,7 @@ AvocadoCollection.prototype.unload = function () {
 /// @brief renames a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.rename = function (name) {
+ArangoCollection.prototype.rename = function (name) {
   var body = { name : name };
   var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
 
@@ -1349,7 +1349,7 @@ AvocadoCollection.prototype.rename = function (name) {
 /// @brief refreshes a collection status and name
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.refresh = function () {
+ArangoCollection.prototype.refresh = function () {
   var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
@@ -1367,7 +1367,7 @@ AvocadoCollection.prototype.refresh = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1375,7 +1375,7 @@ AvocadoCollection.prototype.refresh = function () {
 /// @brief returns the number of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.count = function () {
+ArangoCollection.prototype.count = function () {
   var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/count");
 
   TRI_CheckRequestResult(requestResult);
@@ -1387,7 +1387,7 @@ AvocadoCollection.prototype.count = function () {
 /// @brief return a single document from the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.document = function (id) {
+ArangoCollection.prototype.document = function (id) {
   var rev = null;
   var requestResult;
 
@@ -1408,17 +1408,17 @@ AvocadoCollection.prototype.document = function (id) {
 
   if (requestResult != null
       && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
     else if (s[0] != this._id) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -1430,7 +1430,7 @@ AvocadoCollection.prototype.document = function (id) {
 /// @brief save a document in the collection, return its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.save = function (data) {    
+ArangoCollection.prototype.save = function (data) {    
   var requestResult = this._database._connection.POST("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
@@ -1442,7 +1442,7 @@ AvocadoCollection.prototype.save = function (data) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.remove = function (id, overwrite) {
+ArangoCollection.prototype.remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -1471,19 +1471,19 @@ AvocadoCollection.prototype.remove = function (id, overwrite) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
     else if (s[0] != this._id) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
     }
 
     if (overwrite) {
-      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+      if (requestResult.errorNum == internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
         return false;
       }
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -1495,7 +1495,7 @@ AvocadoCollection.prototype.remove = function (id, overwrite) {
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.replace = function (id, data, overwrite) { 
+ArangoCollection.prototype.replace = function (id, data, overwrite) { 
   var rev = null;
   var requestResult;
 
@@ -1524,13 +1524,13 @@ AvocadoCollection.prototype.replace = function (id, data, overwrite) {
     var s = id.split("/");
 
     if (s.length != 2) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
     }
     else if (s[0] != this._id) {
-      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
     }
 
-    throw new AvocadoError(requestResult);
+    throw new ArangoError(requestResult);
   }
 
   TRI_CheckRequestResult(requestResult);
@@ -1543,7 +1543,7 @@ AvocadoCollection.prototype.replace = function (id, data, overwrite) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            AvocadoEdgesCollection
+// --SECTION--                                            ArangoEdgesCollection
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -1551,7 +1551,7 @@ AvocadoCollection.prototype.replace = function (id, data, overwrite) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1559,7 +1559,7 @@ AvocadoCollection.prototype.replace = function (id, data, overwrite) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoEdgesCollection (database, data) {
+function ArangoEdgesCollection (database, data) {
   this._database = database;
 
   if (typeof data === "string") {
@@ -1572,9 +1572,9 @@ function AvocadoEdgesCollection (database, data) {
   }
 }
 
-AvocadoEdgesCollection.prototype = new AvocadoCollection();
+ArangoEdgesCollection.prototype = new ArangoCollection();
 
-ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
+ModuleCache["/internal"].exports.ArangoEdgesCollection = ArangoEdgesCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1585,16 +1585,16 @@ ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoCollection
+/// @brief help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoEdgesCollection = TRI_CreateHelpHeadline("AvocadoEdgesCollection help") +
-'AvocadoEdgesCollection constructor:                                 ' + "\n" +
+helpArangoEdgesCollection = TRI_CreateHelpHeadline("ArangoEdgesCollection help") +
+'ArangoEdgesCollection constructor:                                 ' + "\n" +
 ' > col = edges.mycoll;                                              ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1606,35 +1606,35 @@ helpAvocadoEdgesCollection = TRI_CreateHelpHeadline("AvocadoEdgesCollection help
 /// @brief return a string representation of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype.toString = function () {  
-  return TRI_GetIdString(this, "AvocadoEdgesCollection");
+ArangoEdgesCollection.prototype.toString = function () {  
+  return TRI_GetIdString(this, "ArangoEdgesCollection");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype._PRINT = function () {  
+ArangoEdgesCollection.prototype._PRINT = function () {  
   var status = "unknown";
 
   switch (this.status()) {
-    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
-    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
-    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
-    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+    case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
+    case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
   }
   
-  internal.output("[AvocadoEdgesCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
+  internal.output("[ArangoEdgesCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoCollection
+/// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype._help = function () {  
-  print(helpAvocadoEdgesCollection);
+ArangoEdgesCollection.prototype._help = function () {  
+  print(helpArangoEdgesCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1646,7 +1646,7 @@ AvocadoEdgesCollection.prototype._help = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1654,7 +1654,7 @@ AvocadoEdgesCollection.prototype._help = function () {
 /// @brief save a document in the collection, return its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype.save = function (from, to, data) {    
+ArangoEdgesCollection.prototype.save = function (from, to, data) {    
   if (from.hasOwnProperty("_id")) {
     from = from._id;
   }
@@ -1678,7 +1678,7 @@ AvocadoEdgesCollection.prototype.save = function (from, to, data) {
 /// @brief returns the edges starting or ending in a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype.edges = function (vertex) {
+ArangoEdgesCollection.prototype.edges = function (vertex) {
 
   // if vertex is a list, iterator and concat
   if (vertex instanceof Array) {
@@ -1709,7 +1709,7 @@ AvocadoEdgesCollection.prototype.edges = function (vertex) {
 /// @brief returns the edges ending in a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype.inEdges = function (vertex) {
+ArangoEdgesCollection.prototype.inEdges = function (vertex) {
 
   // if vertex is a list, iterator and concat
   if (vertex instanceof Array) {
@@ -1740,7 +1740,7 @@ AvocadoEdgesCollection.prototype.inEdges = function (vertex) {
 /// @brief returns the edges starting in a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
+ArangoEdgesCollection.prototype.outEdges = function (vertex) {
 
   // if vertex is a list, iterator and concat
   if (vertex instanceof Array) {
@@ -1772,7 +1772,7 @@ AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                AvocadoQueryCursor
+// --SECTION--                                                ArangoQueryCursor
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -1780,7 +1780,7 @@ AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1788,7 +1788,7 @@ AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoQueryCursor (database, data) {
+function ArangoQueryCursor (database, data) {
   this._database = database;
   this.data = data;
   this._hasNext = false;
@@ -1819,16 +1819,16 @@ function AvocadoQueryCursor (database, data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoQueryCursor
+/// @brief help for ArangoQueryCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoQueryCursor = TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
-'AvocadoQueryCursor constructor:                                     ' + "\n" +
+helpArangoQueryCursor = TRI_CreateHelpHeadline("ArangoQueryCursor help") +
+'ArangoQueryCursor constructor:                                     ' + "\n" +
 ' > cu1 = qi1.execute();                                             ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  hasMore();                            returns true if there       ' + "\n" +
@@ -1849,16 +1849,16 @@ helpAvocadoQueryCursor = TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
 /// @brief print the help for the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype._help = function () {
-  print(helpAvocadoQueryCursor);
+ArangoQueryCursor.prototype._help = function () {
+  print(helpArangoQueryCursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.toString = function () {  
-  return TRI_GetIdString(this, "AvocadoQueryCursor");
+ArangoQueryCursor.prototype.toString = function () {  
+  return TRI_GetIdString(this, "ArangoQueryCursor");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1870,7 +1870,7 @@ AvocadoQueryCursor.prototype.toString = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1878,7 +1878,7 @@ AvocadoQueryCursor.prototype.toString = function () {
 /// @brief return whether there are more results available in the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.hasNext = function () {
+ArangoQueryCursor.prototype.hasNext = function () {
   return this._hasNext;
 }
 
@@ -1889,7 +1889,7 @@ AvocadoQueryCursor.prototype.hasNext = function () {
 /// the server, this function will make a roundtrip to the server
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.next = function () {
+ArangoQueryCursor.prototype.next = function () {
   if (!this._hasNext) {
     throw "No more results";
   }
@@ -1934,7 +1934,7 @@ AvocadoQueryCursor.prototype.next = function () {
 /// server. Calling this function will also fully exhaust the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.elements = function () {  
+ArangoQueryCursor.prototype.elements = function () {  
   var result = [];
   
   while (this.hasNext()) { 
@@ -1952,7 +1952,7 @@ AvocadoQueryCursor.prototype.elements = function () {
 /// disposed is considered a user error
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.dispose = function () {
+ArangoQueryCursor.prototype.dispose = function () {
   if (!this.data.id) {
     // client side only cursor
     return;
@@ -1975,7 +1975,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
 /// with the "doCount" attribute. Otherwise it will return undefined.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype.count = function () {
+ArangoQueryCursor.prototype.count = function () {
   if (!this.data.id) {
     throw "cursor has been disposed";
   }
@@ -1988,7 +1988,7 @@ AvocadoQueryCursor.prototype.count = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  AvocadoStatement
+// --SECTION--                                                  ArangoStatement
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -1996,7 +1996,7 @@ AvocadoQueryCursor.prototype.count = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2004,18 +2004,18 @@ AvocadoQueryCursor.prototype.count = function () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function AvocadoStatement (database, data) {
+function ArangoStatement (database, data) {
   this._database = database;
   this._doCount = false;
   this._batchSize = null;
   this._bindVars = {};
   
   if (!(data instanceof Object)) {
-    throw "AvocadoStatement needs initial data";
+    throw "ArangoStatement needs initial data";
   }
     
   if (data.query == undefined || data.query == "") {
-    throw "AvocadoStatement needs a valid query attribute";
+    throw "ArangoStatement needs a valid query attribute";
   }
   this.setQuery(data.query);
 
@@ -2036,17 +2036,17 @@ function AvocadoStatement (database, data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for AvocadoStatement
+/// @brief help for ArangoStatement
 ////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoStatement = TRI_CreateHelpHeadline("AvocadoStatement help") +
-'AvocadoStatement constructor:                                       ' + "\n" +
-' > st = new AvocadoStatement({ "query" : "for ..." });              ' + "\n" +
+helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
+'ArangoStatement constructor:                                       ' + "\n" +
+' > st = new ArangoStatement({ "query" : "for ..." });              ' + "\n" +
 ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
@@ -2073,19 +2073,19 @@ helpAvocadoStatement = TRI_CreateHelpHeadline("AvocadoStatement help") +
 ' > print(c.elements());                                             ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoStatement
+/// @brief print the help for ArangoStatement
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype._help = function () {
-  print(helpAvocadoStatement);
+ArangoStatement.prototype._help = function () {
+  print(helpArangoStatement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the statement
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.toString = function () {  
-  return TRI_GetIdString(this, "AvocadoStatement");
+ArangoStatement.prototype.toString = function () {  
+  return TRI_GetIdString(this, "ArangoStatement");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2097,7 +2097,7 @@ AvocadoStatement.prototype.toString = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoShell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2109,7 +2109,7 @@ AvocadoStatement.prototype.toString = function () {
 /// execute() is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.bind = function (key, value) {
+ArangoStatement.prototype.bind = function (key, value) {
   if (key instanceof Object) {
     if (value != undefined) {
       throw "invalid bind parameter declaration";
@@ -2141,7 +2141,7 @@ AvocadoStatement.prototype.bind = function (key, value) {
 /// @brief return the bind variables already set
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.getBindVariables = function () {
+ArangoStatement.prototype.getBindVariables = function () {
   return this._bindVars;
 }
 
@@ -2149,7 +2149,7 @@ AvocadoStatement.prototype.getBindVariables = function () {
 /// @brief get the count flag for the statement
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.getCount = function () {
+ArangoStatement.prototype.getCount = function () {
   return this._doCount;
 }
 
@@ -2158,7 +2158,7 @@ AvocadoStatement.prototype.getCount = function () {
 /// in a single server roundtrip.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.getBatchSize = function () {
+ArangoStatement.prototype.getBatchSize = function () {
   return this._batchSize;
 }
 
@@ -2166,7 +2166,7 @@ AvocadoStatement.prototype.getBatchSize = function () {
 /// @brief get query string
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.getQuery = function () {
+ArangoStatement.prototype.getQuery = function () {
   return this._query;
 }
 
@@ -2177,7 +2177,7 @@ AvocadoStatement.prototype.getQuery = function () {
 /// total number of result documents. The count flag is not set by default.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.setCount = function (bool) {
+ArangoStatement.prototype.setCount = function (bool) {
   this._doCount = bool ? true : false;
 }
 
@@ -2188,7 +2188,7 @@ AvocadoStatement.prototype.setCount = function (bool) {
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.setBatchSize = function (value) {
+ArangoStatement.prototype.setBatchSize = function (value) {
   if (parseInt(value) > 0) {
     this._batchSize = parseInt(value);
   }
@@ -2198,7 +2198,7 @@ AvocadoStatement.prototype.setBatchSize = function (value) {
 /// @brief set the query string
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.setQuery = function (query) {
+ArangoStatement.prototype.setQuery = function (query) {
   this._query = query;
 }
 
@@ -2206,7 +2206,7 @@ AvocadoStatement.prototype.setQuery = function (query) {
 /// @brief parse a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.parse = function () {
+ArangoStatement.prototype.parse = function () {
   var body = {
     "query" : this._query,
   }
@@ -2226,7 +2226,7 @@ AvocadoStatement.prototype.parse = function () {
 /// In case of an error, the error will be printed
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.execute = function () {
+ArangoStatement.prototype.execute = function () {
   var body = {
     "query" : this._query,
     "count" : this._doCount,
@@ -2241,7 +2241,7 @@ AvocadoStatement.prototype.execute = function () {
     
   TRI_CheckRequestResult(requestResult);
 
-  return new AvocadoQueryCursor(this._database, requestResult);
+  return new ArangoQueryCursor(this._database, requestResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2258,8 +2258,8 @@ AvocadoStatement.prototype.execute = function () {
 
 HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
-'  avocado:                               AvocadoConnection          ' + "\n" +
-'  db:                                    AvocadoDatabase            ' + "\n" +
+'  arango:                               ArangoConnection          ' + "\n" +
+'  db:                                    ArangoDatabase            ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
@@ -2276,7 +2276,7 @@ HELP = TRI_CreateHelpHeadline("Help") +
 
 helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
-' > st = new AvocadoStatement(db, { "query" : "for..." });           ' + "\n" +
+' > st = new ArangoStatement(db, { "query" : "for..." });           ' + "\n" +
 ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
 'Set query options:                                                  ' + "\n" +
 ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
@@ -2325,11 +2325,11 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 ////////////////////////////////////////////////////////////////////////////////
 
 try {
-  if (typeof avocado !== 'undefined') {
+  if (typeof arango !== 'undefined') {
 
     // default databases
-    db = new AvocadoDatabase(avocado);
-    edges = new AvocadoEdges(avocado);
+    db = new ArangoDatabase(arango);
+    edges = new ArangoEdges(arango);
 
     // load collection data
     db._collections();

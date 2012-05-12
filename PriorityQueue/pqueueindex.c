@@ -259,7 +259,7 @@ int PQIndex_add(PQIndex* idx, PQIndexElement* element) {
 
   if (TRI_FindByKeyAssociativeArray(idx->_aa, element->data) != NULL) {
     // attempt to add duplicate document to the priority queue
-    return TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
 
   
@@ -273,14 +273,14 @@ int PQIndex_add(PQIndex* idx, PQIndexElement* element) {
   // ...........................................................................
   if (!TRI_InsertElementAssociativeArray(idx->_aa, element, false)) {
     // can not add item to associative array -- give up on insert
-    return TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
 
   
   if (!idx->_pq->add(idx->_pq, element)) {
     TRI_RemoveElementAssociativeArray(idx->_aa, element, NULL);
     // can not add item to priority queue array -- give up on insert
-    return TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -306,11 +306,11 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   bool ok;
   
   if (idx == NULL) {
-    return TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
 
   if (element == NULL) {
-    return TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
   
   // ...........................................................................
@@ -319,7 +319,7 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
 
   item = TRI_FindByKeyAssociativeArray(idx->_aa, element->data);
   if (item == NULL) {
-    return TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING;
+    return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING;
   }
 
   
@@ -338,7 +338,7 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   ok = TRI_RemoveElementAssociativeArray(idx->_aa,item,NULL) && ok;
   
   if (!ok) {
-    return TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED;
+    return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
   
   return TRI_ERROR_NO_ERROR;  

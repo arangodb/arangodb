@@ -1,14 +1,14 @@
-avocado> var a = { "Hallo" : "World" };
+arango> var a = { "Hallo" : "World" };
 
-avocado> var b = { "Hallo" : "World" };
-avocado> b.PRINT = function() { output(this.Hallo); };
+arango> var b = { "Hallo" : "World" };
+arango> b.PRINT = function() { output(this.Hallo); };
 function () { output(this.Hallo); }
 
-avocado> print(a);
+arango> print(a);
 { "Hallo" : "World" }
 
-avocado> print(b);
+arango> print(b);
 World
 
-avocado> print(a, b);
+arango> print(a, b);
 { "Hallo" : "World" }World

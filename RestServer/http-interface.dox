@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpInterface Lightweight HTTP Interface
 ///
-/// The AvocadoDB has a REST interface for accessing the resources. It
+/// The ArangoDB has a REST interface for accessing the resources. It
 /// also provides a lightweight HTTP interface to execute actions. Actions are
 /// small JavaScript functions which encapsulate business logic.
 ///

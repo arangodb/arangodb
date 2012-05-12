@@ -1,2 +1,2 @@
-avocado> logLevel();
+arango> logLevel();
 "info"

@@ -1,8 +1,8 @@
-avocado> v = g.addVertex(1);
+arango> v = g.addVertex(1);
 Vertex(1)
 
-avocado> e = g.addEdge(v, v, 2, "knows");
+arango> e = g.addEdge(v, v, 2, "knows");
 Edge(2)
 
-avocado> e.getLabel();
+arango> e.getLabel();
 knows

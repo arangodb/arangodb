@@ -39,7 +39,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Indexes Indexes
 ///
-/// This is an introduction to AvocadoDB's various indexes.
+/// This is an introduction to ArangoDB's various indexes.
 ///
 /// <hr>
 /// @copydoc IndexesTOC

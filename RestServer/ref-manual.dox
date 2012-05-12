@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page RefManual AvocadoDB Reference Manual
+/// @page RefManual ArangoDB Reference Manual
 ///
 /// @if LATEX
 /// <ul>
@@ -97,7 +97,7 @@
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
-///    <li>@ref AvocadoErrors
+///    <li>@ref ArangoErrors
 ///    </li>
 ///    <li>@ref DBAdmin
 ///     <ul>
@@ -125,7 +125,7 @@
 /// @page CommandLineSubTOC
 ///
 /// <ul>
-///  <li>@ref CommandLineAvocado</li>
+///  <li>@ref CommandLineArango</li>
 ///  <li>@ref CommandLineScheduler</li>
 ///  <li>@ref CommandLineLogging</li>
 ///  <li>@ref CommandLineRandom</li>
@@ -217,42 +217,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page CommandLineAvocadoTOC
+/// @page CommandLineArangoTOC
 ///
 /// <ul>
-///  <li>@ref CommandLineAvocadoHttpPort "server.http-port"</li>
-///  <li>@ref CommandLineAvocadoAdminPort "server.admin-port"</li>
-///  <li>@ref CommandLineAvocadoDirectory "database.directory"</li>
-///  <li>@ref CommandLineAvocadoMaximalJournalSize "database.maximal-journal-size"</li>
-///  <li>@ref CommandLineAvocadoRemoveOnDrop "database.remove-on-drop"</li>
+///  <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
+///  <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///  <li>@ref CommandLineArangoDirectory "database.directory"</li>
+///  <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
+///  <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page CommandLineAvocado Command-Line Options for the AvocadoDB
+/// @page CommandLineArango Command-Line Options for the ArangoDB
 ///
 /// <hr>
-/// @copydoc CommandLineAvocadoTOC
+/// @copydoc CommandLineArangoTOC
 /// <hr>
 ///
-/// @anchor CommandLineAvocadoHttpPort
-/// @copydetails triagens::avocado::AvocadoServer::_httpPort
+/// @anchor CommandLineArangoHttpPort
+/// @copydetails triagens::arango::ArangoServer::_httpPort
 /// <hr>
 ///
-/// @anchor CommandLineAvocadoAdminPort
-/// @copydetails triagens::avocado::AvocadoServer::_adminPort
+/// @anchor CommandLineArangoAdminPort
+/// @copydetails triagens::arango::ArangoServer::_adminPort
 /// <hr>
 ///
-/// @anchor CommandLineAvocadoDirectory
-/// @copydetails triagens::avocado::AvocadoServer::_databasePath
+/// @anchor CommandLineArangoDirectory
+/// @copydetails triagens::arango::ArangoServer::_databasePath
 /// <hr>
 ///
-/// @anchor CommandLineAvocadoMaximalJournalSize
-/// @copydetails triagens::avocado::AvocadoServer::_defaultMaximalSize
+/// @anchor CommandLineArangoMaximalJournalSize
+/// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
 /// <hr>
 ///
-/// @anchor CommandLineAvocadoRemoveOnDrop
-/// @copydetails triagens::avocado::AvocadoServer::_removeOnDrop
+/// @anchor CommandLineArangoRemoveOnDrop
+/// @copydetails triagens::arango::ArangoServer::_removeOnDrop
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

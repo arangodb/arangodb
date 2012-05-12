@@ -1,2 +1,2 @@
-avocado> db.users.count();
+arango> db.users.count();
 10001

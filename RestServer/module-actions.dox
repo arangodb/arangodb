@@ -44,7 +44,7 @@
 ///    <li>@ref JSModuleActionsResultUnsupported "actions.resultUnsupported"</li>
 ///   </ol>
 ///  </li>
-///  <li>@ref JSModuleActionsAvocadoDB
+///  <li>@ref JSModuleActionsArangoDB
 ///   <ol>
 ///    <li>@ref JSModuleActionsCollectionNotFound "actions.collectionNotFound"</li>
 ///    <li>@ref JSModuleActionsIndexNotFound "actions.indexNotFound"</li>
@@ -97,7 +97,7 @@
 /// @copydetails JSF_ResultUnsupported
 /// <hr>
 ///
-/// @section JSModuleActionsAvocadoDB AvocadoDB Result Generators
+/// @section JSModuleActionsArangoDB ArangoDB Result Generators
 /////////////////////////////////////////////////////////////////
 ///
 /// @anchor JSModuleActionsCollectionNotFound

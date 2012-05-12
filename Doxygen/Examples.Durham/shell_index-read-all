@@ -1,4 +1,4 @@
-avocado> db.demo.getIndexes()
+arango> db.demo.getIndexes()
 [
   { "id" : "1439003/0", 
     "type" : "primary",

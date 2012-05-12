@@ -1,11 +1,11 @@
-avocado> v = g.addVertex(1, { name : "Hugo" });
+arango> v = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
-avocado> v.getProperty("name");
+arango> v.getProperty("name");
 "Hugo"
 
-avocado> v.setProperty("name", "Emil");
+arango> v.setProperty("name", "Emil");
 "Emil"
 
-avocado> v.getProperty("name");
+arango> v.getProperty("name");
 "Emil"

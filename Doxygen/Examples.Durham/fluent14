@@ -1,16 +1,16 @@
-avocado> db.geo2.drop();
+arango> db.geo2.drop();
 true
 
-avocado> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+arango> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
 23735273
 
-avocado> for (i = -90;  i <= 90;  i += 10) 
+arango> for (i = -90;  i <= 90;  i += 10) 
 .......>   for (j = -180; j <= 180; j += 10)
 .......>     db.geo2.save({ name : "Name" + i + "-" + j,
 .......>                    location: { latitude : i,
 .......>                                longitude : j } });
 
-avocado> db.geo2.near(0,0);
+arango> db.geo2.near(0,0);
 { "location" : { "latitude" : 0, "longitude" : 0 },
   "name" : "Name0-0", 
   "_id" : "48956356:73466820" }

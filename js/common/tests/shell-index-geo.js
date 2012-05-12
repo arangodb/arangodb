@@ -7,7 +7,7 @@
     print,
     PRINT_OBJECT,
     console,
-    AvocadoCollection, AvocadoEdgesCollection */
+    ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -580,7 +580,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -588,7 +588,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -596,7 +596,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -604,7 +604,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -614,7 +614,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -622,7 +622,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -630,7 +630,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -638,7 +638,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -661,7 +661,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -669,7 +669,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -682,7 +682,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -690,7 +690,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -698,7 +698,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -706,7 +706,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(0, collection.near(0,0).toArray().length);
@@ -726,7 +726,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -734,7 +734,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -742,7 +742,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -750,7 +750,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -760,7 +760,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -768,7 +768,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -776,7 +776,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -784,7 +784,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -808,7 +808,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -816,7 +816,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(1, collection.near(0,0).toArray().length);
@@ -829,7 +829,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -837,7 +837,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -845,7 +845,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       try {
@@ -853,7 +853,7 @@ function GeoIndexErrorHandlingSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_GEO_INDEX_VIOLATED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
       }
 
       assertEqual(0, collection.near(0,0).toArray().length);

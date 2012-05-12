@@ -8,7 +8,7 @@ find . \
     \
     | awk '{print $3}' | sort | uniq > /tmp/verbinclude.used
 
-for file in Durham Fyn AvocadoDB; do
+for file in Durham Fyn ArangoDB; do
     (cd Doxygen/Examples.$file && ls -1) | fgrep -v "~"
 done | sort | uniq > /tmp/verbinclude.examples
 

@@ -1,2 +1,2 @@
-avocado> db.five.all().nextRef();
+arango> db.five.all().nextRef();
 159896:1798296

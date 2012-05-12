@@ -1,10 +1,10 @@
-avocado> a1 = db.example.save({ a : 1 });
+arango> a1 = db.example.save({ a : 1 });
 { "_id" : "116308/4214943", "_rev" : 4214943 }
-avocado> db._delete(a1);
+arango> db._delete(a1);
 true
-avocado> db._delete(a1);
-JavaScript exception in file '(avocado)' at 1,4: [AvocadoError 1202: document not found: cannot delete document]
+arango> db._delete(a1);
+JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: cannot delete document]
 !db._delete(a1);
 !   ^
-avocado> db._delete(a1, true);
+arango> db._delete(a1, true);
 false

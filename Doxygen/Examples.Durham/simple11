@@ -1,2 +1,2 @@
-avocado> edges.edges-collection.edges("195189:1702517");
+arango> edges.edges-collection.edges("195189:1702517");
 [ { _id : 2030197:3537525, _rev : 3537525, _from : 195189:1702517, _to : 195189:1833589, label : knows } ]

@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @page AvocadoScript Avocado Script
+/// @page ArangoScript Arango Script
 ///
-/// All the actions and transactions are programmed in JavaScript. The AvocadoDB
+/// All the actions and transactions are programmed in JavaScript. The ArangoDB
 /// provides a fluent interface in JavaScript to access the database directly
 /// together with a set of support function.  A fluent interface is implemented
 /// by using method chaining to relay the instruction context of a subsequent
-/// call.  The AvocadoDB defines the following methods:
+/// call.  The ArangoDB defines the following methods:
 ///
 /// - selection by example
 /// - field selection (aka projection)

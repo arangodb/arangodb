@@ -55,7 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpIndex HTTP Interface for Indexes
 ///
-/// This is an introduction to AvocadoDB's Http interface for indexes in
+/// This is an introduction to ArangoDB's Http interface for indexes in
 /// general. There are special sections for various index types.
 ///
 /// @EMBEDTOC{HttpIndexTOC}
@@ -81,8 +81,8 @@
 /// @section HttpIndexResource Address of an Index
 //////////////////////////////////////////////////
 ///
-/// All indexes in AvocadoDB have an unique handle. This index handle identifies
-/// an index and is managed by AvocadoDB. All indexes are found under the URI
+/// All indexes in ArangoDB have an unique handle. This index handle identifies
+/// an index and is managed by ArangoDB. All indexes are found under the URI
 ///
 /// @LIT{http://@FA{server}:@FA{port}/_api/index/@FA{index-handle}}
 ///

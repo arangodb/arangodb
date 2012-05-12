@@ -683,7 +683,7 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, b
           j = IndexStaticCopyElementElement(&(skiplist->_base), &(nextNode->_element), element);
           return j;
         }
-        return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
+        return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
       
       // .......................................................................    
@@ -1100,7 +1100,7 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* ol
       // yet. Nothing to remove so return.
       // .......................................................................
       if (currentLevel == 0) {
-        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING; 
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING; 
       }
       
       // .......................................................................
@@ -1152,7 +1152,7 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* ol
       // We have reached the lowest level of the lists -- no such item.
       // .......................................................................    
       if (currentLevel == 0) {
-        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING; 
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING; 
       }
       
       // .......................................................................    
@@ -1888,7 +1888,7 @@ int TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* element
           j = IndexStaticCopyElementElement(&(skiplist->_base), &(nextNode->_element),element);
           return j;
         }
-        return TRI_ERROR_AVOCADO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED;
+        return TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED;
       }
       
       // .......................................................................    
@@ -2053,7 +2053,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* elemen
       // yet. Nothing to remove so return.
       // .......................................................................
       if (currentLevel == 0) {
-        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
       }
       
       // .......................................................................
@@ -2111,7 +2111,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* elemen
         // The element could not be located        
         // .....................................................................
         if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS) {
-          return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
+          return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
         }
         
         // .....................................................................
@@ -2155,7 +2155,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* elemen
   // ..........................................................................
   
   if (currentNode == NULL) {
-    return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
+    return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
   }
 
   

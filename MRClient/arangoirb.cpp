@@ -339,7 +339,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console = new MRLineEditor(mrb, ".avocado-mrb");
+  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
 
   console->open(! NoAutoComplete);
 

@@ -36,7 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexPrioQueue Priority Queues
 ///
-/// This is an introduction to AvocadoDB's priority queues.
+/// This is an introduction to ArangoDB's priority queues.
 ///
 /// <hr>
 /// @copydoc IndexPrioQueueTOC

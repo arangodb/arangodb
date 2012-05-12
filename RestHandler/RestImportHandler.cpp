@@ -37,14 +37,14 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,7 +65,7 @@ RestImportHandler::RestImportHandler (HttpRequest* request, TRI_vocbase_t* vocba
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,7 +148,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -183,7 +183,7 @@ bool RestImportHandler::createByArray () {
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -199,7 +199,7 @@ bool RestImportHandler::createByArray () {
     releaseCollection();
     
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "Could not use collection");
     return false;
   }
@@ -301,7 +301,7 @@ bool RestImportHandler::createByList () {
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -315,7 +315,7 @@ bool RestImportHandler::createByList () {
   
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "No JSON list in second line found");
     return false;            
   }
@@ -332,7 +332,7 @@ bool RestImportHandler::createByList () {
     if (!keys) {
       LOGGER_WARNING << "No JSON data in first line: " << line;
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "No JSON data found");
       return false;      
     }
@@ -342,7 +342,7 @@ bool RestImportHandler::createByList () {
         LOGGER_WARNING << "No JSON string list in first line found: " << line;
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "No JSON string list in first line found");
         return false;        
       }
@@ -352,7 +352,7 @@ bool RestImportHandler::createByList () {
       LOGGER_WARNING << "Wrong JSON data in first line: " << line;
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "Wrong JSON data");
       return false;      
     }        
@@ -360,7 +360,7 @@ bool RestImportHandler::createByList () {
   else {
     LOGGER_WARNING << "No JSON data in first line: " << line;
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "No JSON data found");
     return false;      
   }        
@@ -376,7 +376,7 @@ bool RestImportHandler::createByList () {
     }
  
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
                   "Could not use collection");
     return false;
   }

@@ -7,7 +7,7 @@
     print,
     PRINT_OBJECT,
     console,
-    AvocadoCollection, AvocadoEdgesCollection */
+    ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -109,7 +109,7 @@ function CapConstraintSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED.code, err.errorNum);
       }
     },
 

@@ -35,14 +35,14 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,7 +63,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -139,7 +139,7 @@ bool RestEdgeHandler::createDocument () {
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -224,15 +224,15 @@ bool RestEdgeHandler::createDocument () {
     int res = TRI_errno();
 
     switch (res) {
-      case TRI_ERROR_AVOCADO_READ_ONLY:
+      case TRI_ERROR_ARANGO_READ_ONLY:
         generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
         return false;
 
-      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
         generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
         return false;
 
-      case TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED:
+      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
         generateError(HttpResponse::BAD, res, "geo constraint violated");
         return false;
 

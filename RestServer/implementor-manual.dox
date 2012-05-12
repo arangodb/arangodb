@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ImplementorManual AvocadoDB's Reference Manual for API Implementors
+/// @page ImplementorManual ArangoDB's Reference Manual for API Implementors
 ///
 /// @if LATEX
 /// <ul>
@@ -41,7 +41,7 @@
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
-///  <li>@ref AvocadoErrors</li>
+///  <li>@ref ArangoErrors</li>
 ///  <li>@ref IndexSkiplist</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
@@ -65,7 +65,7 @@
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
-///    <li>@ref AvocadoErrors</li>
+///    <li>@ref ArangoErrors</li>
 ///   </ul>
 ///  </li>
 ///  <li>Under Construction
