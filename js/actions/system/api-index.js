@@ -53,6 +53,8 @@ var API = "_api/index";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all indexes of an collection
 ///
+/// @RESTHEADER{GET /_api/index,reads all indexes of a collection}
+///
 /// @REST{GET /_api/index?collection=@FA{collection-identifier}}
 ///
 /// Returns an object with an attribute @LIT{indexes} containing a list of all
@@ -95,6 +97,8 @@ function GET_api_indexes (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an index
+///
+/// @RESTHEADER{GET /_api/index,reads an index}
 ///
 /// @REST{GET /_api/index/@FA{index-handle}}
 ///
@@ -155,6 +159,8 @@ function GET_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cap constraint
 ///
+/// @RESTHEADER{POST /_api/index,creates a cap constraint}
+///
 /// @REST{POST /_api/index?collection=@FA{collection-identifier}}
 ///
 /// Creates a cap constraint for the collection @FA{collection-identifier}, if
@@ -202,6 +208,8 @@ function POST_api_index_cap (req, res, collection, body) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo index
+///
+/// @RESTHEADER{GET /_api/index,creates a geo-spatial index}
 ///
 /// @REST{POST /_api/index?collection=@FA{collection-identifier}}
 ///
@@ -337,6 +345,41 @@ function POST_api_index_geo (req, res, collection, body) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash index
+///
+/// @RESTHEADER{POST /_api/index,creates a hash index}
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a hash index for the collection @FA{collection-identifier}, if it
+/// does not already exist. The call expects an object containing the index
+/// details.
+///
+/// - @LIT{type}: must be equal to @LIT{"hash"}.
+///
+/// - @LIT{fields}: A list of attribute paths.
+///
+/// - @LIT{unique}: If @LIT{true}, then create a unique index.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// If the collection already contains documents and you try to create a unique
+/// hash index in such a way that there are documents violating the uniqueness,
+/// then a @LIT{HTTP 400} is returned.
+///
+/// @EXAMPLES
+///
+/// Creating an unique constraint:
+///
+/// @verbinclude api-index-create-new-unique-constraint
+///
+/// Creating a hash index:
+///
+/// @verbinclude api-index-create-new-hash-index
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index_hash (req, res, collection, body) {
@@ -406,12 +449,15 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
+/// @RESTHEADER{POST /_api/index,creates an index}
+///
 /// @REST{POST /_api/index?collection=@FA{collection-identifier}}
 ///
 /// Creates a new index in the collection @FA{collection-identifier}. Expects
 /// an object containing the index details.
 ///
-/// See @ref IndexGeo, @ref IndexHash, and @ref IndexSkiplist for details.
+/// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
+/// @ref IndexSkiplistHttp for details.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
@@ -480,7 +526,9 @@ function POST_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an index
+/// @brief deletes an index
+///
+/// @RESTHEADER{DELETE /_api/index,deletes an index}
 ///
 /// @REST{DELETE /_api/index/@FA{index-handle}}
 ///
@@ -524,7 +572,7 @@ function DELETE_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads or creates a collection
+/// @brief reads or creates an index
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

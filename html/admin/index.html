@@ -8,27 +8,23 @@
       @import "css/jquery-ui-1.8.19.custom.css";
       @import "css/jquery.dataTables_themeroller.css";  
     </style>
-
-    <link href="css/prettify.css" type="text/css" rel="stylesheet" />
-
-    <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
-    <script type="text/javascript" language="javascript" src="js/json2.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.address-1.4.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
-    <script type="text/javascript" language="javascript" src="js/master.js"></script>
-    <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
-    <script type="text/javascript" language="javascript" src="js/client.js"></script>
-    <script type="text/javascript" language="javascript" src="js/jsunity.js"></script>
-    <script type="text/javascript" language="javascript" src="js/test.js"></script>
-    
+      <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
+      <script type="text/javascript" language="javascript" src="js/json2.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.address-1.4.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
+      <script type="text/javascript" language="javascript" src="js/master.js"></script>
+      <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
+      <script type="text/javascript" language="javascript" src="js/client.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jsunity.js"></script>
+      <script type="text/javascript" language="javascript" src="js/test.js"></script>
     <style>
-      a:link {color: #9EAF5A; text-decoration: none;}  
-      a:visited {color: #9EAF5A; text-decoration: none;}
+      a:link {color: #797979; text-decoration: none;}  
+      a:visited {color: #797979; text-decoration: none;}
     </style>
 
   </head>
@@ -47,7 +43,6 @@
 
       <div id="menue-right">
         <button class="minimal" id="Collections">Collections</button>
-        <button class="minimal" id="Status">Status</button>
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Configuration">Configuration</button>
         <button class="minimal" id="Query">Query</button>
@@ -56,20 +51,20 @@
 
     </div>
     <div id="brotkruemelnavi" class="ui-layout-south">
-      <a id="nav1"></a>
-      <a id="nav2"></a>
-      <a id="nav3"></a>
-      <a id="nav4"></a>
+      <a id="nav1" class="nonhighlighted"></a>
+      <a id="nav2" class="nonhighlighted"></a>
+      <a id="nav3" class="nonhighlighted"></a>
+      <a id="nav4" class="nonhighlighted"></a>
     </div>
   </div>
   
   <div id="centerView" class="ui-layout-center" class="ui-layout-content">
     <div id="collectionsView">
-      <button class="toolbar" id="createCollection">
+      <button class="toolbar enabled" id="createCollection">
         <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
         <a>New Collection</a>
       </button>
-      <button class="toolbar" id="refreshCollections">
+      <button class="toolbar enabled" id="refreshCollections">
         <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
         <a>Refresh</a>
       </button>
@@ -90,58 +85,80 @@
     <div id="subCenterView">
 
       <div id="createCollectionView" style="display: none">
-        <button class="minimal" id="saveNewCollection">
+        <button class="minimal enabled" id="saveNewCollection">
           <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
           <a>Save Collection</a>
         </button>
-        <button class="minimal" id="cancelNewCollection">
+        <button class="minimal enabled" id="cancelNewCollection">
           <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
           <a>Cancel</a>
         </button>
         <br></br>
-        <div id="newCollection_left">
-          <a>Name:</a><br></br>
-          <a>waitForSync:</a>
-        </div>
-        <div id="newCollection_right">
-          <input type="text" class="smallInput" id="createCollName"></input>
-          <form action="#" id="waitForSyncForm">
-            <input type="radio" name="waitForSync" value=true checked>yes</input>
-            <input type="radio" name="waitForSync" value=false>no</input>
-          </form>
-        </div>
-          
-
+        <table cellpadding="3" cellspacing="0" border="0">
+          <tr><td>Name:</td>
+          <td>
+            <input type="text" class="smallInput" id="createCollName"></input>
+          </td>
+          <td class="longTD">Enter new collection name here</td>
+          </tr>
+          <tr><td>waitForSync:</td><td>
+            <form action="#" id="waitForSyncForm">
+              <input type="radio" name="waitForSync" value=true>yes</input>
+              <input type="radio" name="waitForSync" value=false checked>no</input>
+            </form>
+          </td>
+          <td class="longTD">If true then the data is synchronised to disk before returning from a create or update of an document.
+          </td>
+          </tr>
+          <tr><td>isSystem:</td><td>
+            <form action="#" id="isSystemForm">
+              <input type="radio" name="isSystem" value=true>yes</input>
+              <input type="radio" name="isSystem" value=false checked>no</input>
+            </form>
+          </td> 
+          <td class="longTD">If true, create a system collection. In this case collection-name should start with an underscore.
+          </td>
+        </tr>
+        <tr><td>journalSize:</td></td><td></td><td class="longTD">
+          The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
+        </td></tr>
+        </table>
 
       </div>
 
       <div id="editCollectionView" style="display: none">
-        <button class="minimal" id="saveEditedCollection">
+        <button class="minimal enabled" id="saveEditedCollection">
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Save Collection</a>
         </button>
         <br></br>
-          <table cellpadding="3" cellspacing="0" border="0" width="300px" id="editCollectionTable">
+          <table cellpadding="3" cellspacing="0" border="0">
             <tr> 
-              <td align="left"><b>Name:</b></td>
-              <td><input id="editCollectionName" type="text" placeholder="unknown" name="username"></td>
+              <td class="first" align="left">Name:</td>
+              <td class="longTD"><input id="editCollectionName" type="text" placeholder="unknown" name="username"></td>
             </tr>
             <tr> 
-              <td align="left"><b>ID:</b></td>
+              <td class="first" align="left">ID:</td>
               <td id="editCollectionID">unknown</td>
             </tr>
             <tr> 
-              <td align="left"><b>Status:</b></td>
+              <td class="first" align="left">Status:</td>
               <td id="editCollectionStatus">unknown</td>
             </tr>
           </table>
       </div>
 
       <div id="documentsView" style="display: none">
-        <button class="minimal" id="addDocumentButton">
+        <button class="minimal enabled" id="addDocumentButton">
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Add Document</a>
         </button>
+
+       <form id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+         <input type="submit" value="Import" />
+         <input type="file" name="filename" />
+       </form>
+ 
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
           <thead>
             <tr>
@@ -154,25 +171,35 @@
         </table>
 
         <div id="documentsToolbar">
-          <button id="documents_last"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-          <button id="documents_next"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-          <button id="documents_prev"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-          <button id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-          <a id="documents_status">Showing</a>
+
+          <div class="floatLeft">
+            <a id="documents_status">Showing</a>
+          </div>
+
+          <div class="floatRight">
+            <form id="docPageForm">
+              Jump to: <input type="text" id="docPageInput" placeholder="Page"></input>
+              <button id="submitDocPageInput">Ok</button>
+            </form>
+            <button class="enabled" id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+            <button class="enabled" id="documents_prev"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+            <button class="enabled" id="documents_next"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+            <button class="enabled" id="documents_last"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+          </div>
         </div>
 
       </div>
 
       <div id="documentEditView" style="display: none">
-        <button class="minimal" id="saveEditedDocButton">
+        <button class="minimal enabled" id="saveEditedDocButton">
             <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
             <a>Save Document</a>
           </button>
-        <button class="minimal" id="addEditedDocRowButton">
+        <button class="minimal enabled" id="addEditedDocRowButton">
             <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
             <a>Add row</a>
           </button>
-        <button class="minimal" id="toggleEditedDocButton">
+        <button class="minimal enabled" id="toggleEditedDocButton">
             <a>Source</a>
             <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
           </button>
@@ -198,15 +225,15 @@
       <div id="newDocumentView" style="display: none">
 
         <div id="newDocumentTableView">
-          <button class="minimal" id="saveNewDocButton">
+          <button class="minimal enabled" id="saveNewDocButton">
             <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
             <a>Save Document</a>
           </button>
-          <button class="minimal" id="addNewDocButton">
+          <button class="minimal enabled" id="addNewDocButton">
             <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
             <a>Add row</a>
           </button>
-          <button class="minimal" id="toggleNewDocButton">
+          <button class="minimal enabled" id="toggleNewDocButton">
             <a>Source</a>
             <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
           </button>
@@ -234,11 +261,11 @@
         
         <div id="tabs">
           <ul>
-            <li><a href="#All">All</a><li>
-            <li><a id="logCritTab" href="#Critical">Critical</a><li>
-            <li><a id="logWarnTab" href=#Warning">Warning</a><li>
-            <li><a id="logInfoTab" href="#Info">Info</a><li>
-            <li><a id="logDebuTab" href="#Debug">Debug</a><li>
+            <li><a class="hoverClass" id="logAllTab" href="#All">All</a><li>
+            <li><a class="hoverClass" id="logCritTab" href="#Critical">Critical</a><li>
+            <li><a class="hoverClass" id="logWarnTab" href=#Warning">Warning</a><li>
+            <li><a class="hoverClass" id="logInfoTab" href="#Info">Info</a><li>
+            <li><a class="hoverClass" id="logDebuTab" href="#Debug">Debug</a><li>
           </ul>
         
           <div id="All">
@@ -251,10 +278,10 @@
               </thead>
             </table>
             <div id="logToolbar">
-                <button id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-                <button id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-                <button id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-                <button id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+                <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+                <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+                <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+                <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
                 <a id="logTableID_status">Showing</a>
             </div>
           </div>
@@ -269,10 +296,10 @@
               </thead>
             </table>
             <div id="logToolbar">
-              <button id="critLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              <button class="enabled" id="critLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+              <button class="enabled" id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+              <button class="enabled" id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+              <button class="enabled" id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="critLogTableID_status">Showing</a>
             </div>
           </div>
@@ -287,10 +314,10 @@
               </thead>
             </table>
             <div id="logToolbar">
-              <button id="warnLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button id="warnLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button id="warnLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button id="warnLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              <button class="enabled" id="warnLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+              <button class="enabled" id="warnLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+              <button class="enabled" id="warnLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+              <button class="enabled" id="warnLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="warnLogTableID_status">Showing</a>
             </div>
           </div>
@@ -305,10 +332,10 @@
               </thead>
             </table>
             <div id="logToolbar">
-              <button id="infoLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button id="infoLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button id="infoLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button id="infoLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              <button class="enabled" id="infoLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+              <button class="enabled" id="infoLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+              <button class="enabled" id="infoLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+              <button class="enabled" id="infoLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="infoLogTableID_status">Showing</a>
             </div> 
           </div>
@@ -323,10 +350,10 @@
               </thead>
             </table>
             <div id="logToolbar">
-              <button id="debugLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button id="debugLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button id="debugLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button id="debugLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              <button class="enabled" id="debugLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+              <button class="enabled" id="debugLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+              <button class="enabled" id="debugLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+              <button class="enabled" id="debugLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="debugLogTableID_status">Showing</a>
             </div>
           </div>
@@ -339,16 +366,21 @@
       </div>
 
       <div id="configView" style="display: none">
+        <button class="minimal enabled" id="updateConfiguration">
+          <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
+          <a>Update configuration</a>
+        </button>
+        <div id="configContent">
+        </div>
       </div>
 
       <div id="avocshView" style="display: none">
-        <div class="editBox" id="avocshWindow">
+        <div id="avocshWindow">
+          <a id="welcomemsg">Welcome! AvocSH 0.9<a><br><br> 
         </div>
-      
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
- 
       </div>
 
       <div id="queryView" style="display: none">
@@ -369,11 +401,11 @@
 
             <div id="footerLeft"> 
               <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
-              <button class="minimal" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
+              <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
               <form class="login-form" id="loginWindow" action="#">
               <input type="text" name="username" id="usernameField" placeholder="username"> 
               <input type="password" name="password" id="passwordField" placeholder="password">
-              <button class="minimal" value="log in" id="loginButton">Login</button>
+              <button class="minimal enabled" value="log in" id="loginButton">Login</button>
               </form>
             
             </div>

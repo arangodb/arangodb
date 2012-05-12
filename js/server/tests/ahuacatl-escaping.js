@@ -251,6 +251,46 @@ function ahuacatlEscapingTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation unquoted names handling
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationNoQuotes1 : function () {
+      var expected = [ { "r" : 1 }, { "r" : 2 }, { "r" : 3 } ];
+      var actual = getQueryResults("FOR r IN [ 1, 2, 3 ] return { r : r }", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation unquoted names handling
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationNoQuotes2 : function () {
+      var expected = [ { "alias" : 1 }, { "alias" : 2 }, { "alias" : 3 } ];
+      var actual = getQueryResults("FOR r IN [ 1, 2, 3 ] return { alias : r }", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation unquoted names handling
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationNoQuotes3 : function () {
+      var expected = [ { "v" : { "value" : 1 } }, { "v" : { "value" : 2 } } ];
+      var actual = getQueryResults("FOR r IN [ 1, 2 ] LET fx = { value : r } RETURN { v : fx }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test punctuation unquoted names handling
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationNoQuotes4 : function () {
+      var expected = [ { "fx" : [ { "someval" : 99 }, { "someval" : 1 } ] }, { "fx" : [ { "someval" : 99 }, { "someval" : 2 } ] } ];
+      var actual = getQueryResults("FOR r IN [ 1, 2 ] LET fx = ( FOR someval IN [ 99, r ] RETURN { someval : someval } ) RETURN { fx : fx }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test UTF8 names escaping
 ////////////////////////////////////////////////////////////////////////////////
     

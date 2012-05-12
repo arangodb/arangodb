@@ -116,6 +116,8 @@ bool RestAdminLogHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the log files (inheritDoc)
 ///
+/// @RESTHEADER{GET /_admin/log,reads the log information}
+///
 /// @REST{GET /_admin/log}
 ///
 /// Returns all fatal, error, warning or info log messages.
@@ -377,6 +379,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   }
   
   TRI_FreeBufferLogging(logs);
+  TRI_DestroyVector(&clean);
   
   generateResult(result);
   return HANDLER_DONE;

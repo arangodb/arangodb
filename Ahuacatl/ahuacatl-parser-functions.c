@@ -73,7 +73,13 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
                            const int line,
                            const int column) {
   char buffer[1024];
-  char* region = TRI_GetContextErrorAql(context->_query, line, column);
+  char* region;
+  
+  assert(context);
+  assert(context->_query);
+  assert(message);
+
+  region = TRI_GetContextErrorAql(context->_query, line, column);
 
   if (!region) {
     // OOM
@@ -131,6 +137,23 @@ void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
   assert(context->_parser->_stack._length > 0);
 
   return context->_parser->_stack._buffer[context->_parser->_stack._length - 1];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a new unique variable name
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
+  char buffer[16];
+
+  assert(context);
+
+  // fill buffer with 0 bytes
+  memset(buffer, 0, sizeof(buffer));
+  snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
+
+  // register the string and return the copy of it
+  return TRI_RegisterStringAql(context, buffer, strlen(buffer), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -56,6 +56,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all user names
 ///
+/// @RESTHEADER{GET /_admin/user-manager/users,reads all front-end users}
+///
 /// @REST{GET /_admin/user-manager/users}
 ///
 /// Returns all user names. The result object contains:

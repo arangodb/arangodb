@@ -41,7 +41,6 @@
 #include "BasicsC/strings.h"
 #include "V8/v8-conv.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/query-base.h"
 
 using namespace std;
 using namespace triagens::basics;

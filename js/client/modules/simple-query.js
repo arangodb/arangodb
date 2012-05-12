@@ -98,31 +98,84 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
-      this._skip = 0;
+    var data = {
+      collection : this._collection._id,
+      example : this._example
+    }  
+
+    if (this._limit != null) {
+      data.limit = this._limit;
     }
 
-    var parameters = [ ];
-
-    // the actual example is passed in the first argument
-    for (var i in this._example[0]) {
-      if (this._example[0].hasOwnProperty(i)) {
-
-        // attribute name
-        parameters.push(i);
-
-        // attribute value
-        parameters.push(this._example[0][i]);
-      }
+    if (this._skip != null) {
+      data.skip = this._skip;
     }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
 
-    var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);
+    TRI_CheckRequestResult(requestResult);
 
-    this._execution = new SQ.GeneralArrayCursor(documents, this._skip, this._limit);
-    this._countQuery = documents.length;
-    this._countTotal = documents.length;
+    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.firstExample = function () {
+  var example;
+
+  // example is given as only argument
+  if (arguments.length == 1) {
+    example = arguments[0];
+  }
+
+  // example is given as list
+  else {
+    example = {};
+
+    for (var i = 0;  i < arguments.length;  i += 2) {
+      example[arguments[i]] = arguments[i + 1];
+    }
+  }
+
+  var data = {
+    collection : this._id,
+    example : example
+  }  
+
+  var requestResult = this._database._connection.PUT("/_api/simple/first-example", JSON.stringify(data));
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+    return null;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult.document;
+}
+
+AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

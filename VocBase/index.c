@@ -1211,214 +1211,88 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 /// @brief helper for hashing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int HashIndexHelper (const TRI_hash_index_t* hashIndex, 
+static int HashIndexHelper (TRI_hash_index_t const* hashIndex, 
                             HashIndexElement* hashElement,
-                            const TRI_doc_mptr_t* document,
-                            const TRI_shaped_json_t* shapedDoc) {
+                            TRI_doc_mptr_t const* document,
+                            TRI_shaped_json_t const* shapedDoc) {
   union { void* p; void const* c; } cnv;
-  TRI_shaped_json_t shapedObject;
   TRI_shape_access_t* acc;
+  TRI_shaped_json_t shapedObject;
+  TRI_shaper_t* shaper;
+  int res;
   size_t j;
   
+  shaper = hashIndex->base._collection->_shaper;
+
+  // .............................................................................
+  // Attempting to locate a hash entry using TRI_shaped_json_t object. Use this
+  // when we wish to remove a hash entry and we only have the "keys" rather than
+  // having the document (from which the keys would follow).
+  // .............................................................................
+
   if (shapedDoc != NULL) {
-  
-    // ..........................................................................
-    // Attempting to locate a hash entry using TRI_shaped_json_t object. Use this
-    // when we wish to remove a hash entry and we only have the "keys" rather than
-    // having the document (from which the keys would follow).
-    // ..........................................................................
-    
     hashElement->data = NULL;
+  }
 
-    for (j = 0; j < hashIndex->_paths._length; ++j) {
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths,j)));
+  // .............................................................................
+  // Assign the document to the HashIndexElement structure - so that it can
+  // later be retreived.
+  // .............................................................................
+
+  else if (document != NULL) {
+    cnv.c = document;
+    hashElement->data = cnv.p;
+
+    shapedDoc = &document->_document;
+  }
+
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  // .............................................................................
+  // Extract the attribute values
+  // .............................................................................
+
+  res = TRI_ERROR_NO_ERROR;
+
+  for (j = 0;  j < hashIndex->_paths._length;  ++j) {
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, j)));
       
-      // ..........................................................................
-      // Determine if document has that particular shape 
-      // ..........................................................................
+    // determine if document has that particular shape 
+    acc = TRI_ShapeAccessor(shaper, shapedDoc->_sid, shape);
 
-      acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+    if (acc == NULL || acc->_shape == NULL) {
+      if (acc != NULL) {
+        TRI_FreeShapeAccessor(acc);
+      }
 
-      if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
+      shapedObject._sid = shaper->_sidNull;
+      shapedObject._data.length = 0;
+      shapedObject._data.data = NULL;
 
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_AVOCADO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING;
-      }  
+      res = TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+    }
+    else {
      
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
-
+      // extract the field
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
         TRI_FreeShapeAccessor(acc);
         // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
 
         return TRI_ERROR_INTERNAL;
       }
-      
-      // ..........................................................................
-      // Store the json shaped Object -- this is what will be hashed
-      // ..........................................................................    
 
-      hashElement->fields[j] = shapedObject;
       TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
-  }
-  
-  else if (document != NULL) {
-  
-    // ..........................................................................
-    // Assign the document to the HashIndexElement structure - so that it can later
-    // be retreived.
-    // ..........................................................................
 
-    cnv.c = document;
-    hashElement->data = cnv.p;
- 
-    for (j = 0; j < hashIndex->_paths._length; ++j) {
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths,j)));
-      
-      // ..........................................................................
-      // Determine if document has that particular shape 
-      // It is not an error if the document DOES NOT have the particular shape
-      // ..........................................................................
-
-      acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, document->_document._sid, shape);
-
-      if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
-
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
-        return TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
-      }  
-      
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
-
-      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
-        // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
-        return TRI_ERROR_INTERNAL;
+      if (shapedObject._sid == shaper->_sidNull) {
+        res = TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
       }
-      
-      // ..........................................................................
-      // Store the field
-      // ..........................................................................    
-
-      hashElement->fields[j] = shapedObject;
-
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
-  }
-  
-  else {
-    return TRI_ERROR_INTERNAL;
-  }
-  
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash indexes a document
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  HashIndexElement hashElement;
-  TRI_hash_index_t* hashIndex;
-  int res;
-
-  // ............................................................................
-  // Obtain the hash index structure
-  // ............................................................................
-
-  hashIndex = (TRI_hash_index_t*) idx;
-
-  if (idx == NULL) {
-    LOG_WARNING("internal error in InsertHashIndex");
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
-
-  // ............................................................................
-  // Allocate storage to shaped json objects stored as a simple list.
-  // These will be used for hashing.
-  // ............................................................................
-    
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
-         
-  if (hashElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in InsertHashIndex");
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-  }  
-
-  res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
-  
-
-  // ............................................................................
-  // It is possible that this document does not have the necessary attributes
-  // (keys) to participate in this index.
-  // ............................................................................
-
-  
-  // ............................................................................
-  // If an error occurred in the called procedure HashIndexHelper, we must
-  // now exit -- and deallocate memory assigned to hashElement.
-  // ............................................................................
-  
-  if (res != TRI_ERROR_NO_ERROR) { // some sort of error occurred
-  
-    // ..........................................................................
-    // Deallocated the memory already allocated to hashElement.fields
-    // ..........................................................................
-      
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-
-    
-    // ..........................................................................
-    // It may happen that the document does not have the necessary attributes to 
-    // be included within the hash index, in this case do not report back an error.
-    // ..........................................................................
-    
-    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
-      return TRI_ERROR_NO_ERROR;
     }
-    
-    return res;
-  }
-
-
-  
-  // ............................................................................
-  // Fill the json field list from the document for unique hash index
-  // ............................................................................
-  
-  
-  if (hashIndex->base._unique) {
-    res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
-  }
-  
-  // ............................................................................
-  // Fill the json field list from the document for non-unique hash index
-  // ............................................................................
-  
-  else {
-    res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
-  }
-
-  // ............................................................................
-  // Memory which has been allocated to hashElement.fields remains allocated
-  // contents of which are stored in the hash array.
-  // ............................................................................
       
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+    // store the json shaped Object -- this is what will be hashed
+    hashElement->fields[j] = shapedObject;
+  }
   
   return res;
 }
@@ -1510,6 +1384,84 @@ static void RemoveIndexHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a a document to a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  HashIndexElement hashElement;
+  TRI_hash_index_t* hashIndex;
+  int res;
+
+  // .............................................................................
+  // Obtain the hash index structure
+  // .............................................................................
+
+  hashIndex = (TRI_hash_index_t*) idx;
+
+  if (idx == NULL) {
+    LOG_WARNING("internal error in InsertHashIndex");
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+
+  // .............................................................................
+  // Allocate storage to shaped json objects stored as a simple list.
+  // These will be used for hashing.
+  // .............................................................................
+    
+  hashElement.numFields = hashIndex->_paths._length;
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+         
+  res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
+
+  // .............................................................................
+  // It is possible that this document does not have the necessary attributes
+  // (keys) to participate in this index.
+  //
+  // If an error occurred in the called procedure HashIndexHelper, we must
+  // now exit -- and deallocate memory assigned to hashElement.
+  // .............................................................................
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+  
+    // .............................................................................
+    // It may happen that the document does not have the necessary attributes to 
+    // be included within the hash index, in this case do not report back an error.
+    // .............................................................................
+    
+    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      return res;
+    }
+  }
+  
+  // .............................................................................
+  // Fill the json field list from the document for unique or non-unique index
+  // .............................................................................
+  
+  if (hashIndex->base._unique) {
+    res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
+  }
+  else {
+    res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
+  }
+
+  // .............................................................................
+  // Memory which has been allocated to hashElement.fields remains allocated
+  // contents of which are stored in the hash array.
+  // .............................................................................
+      
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+  
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1518,9 +1470,9 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_hash_index_t* hashIndex;
   int res;
   
-  // ............................................................................
+  // .............................................................................
   // Obtain the hash index structure
-  // ............................................................................
+  // .............................................................................
 
   hashIndex = (TRI_hash_index_t*) idx;
 
@@ -1529,79 +1481,65 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   } 
 
-  // ............................................................................
+  // .............................................................................
   // Allocate some memory for the HashIndexElement structure
-  // ............................................................................
+  // .............................................................................
 
   hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
 
-  if (hashElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in InsertHashIndex");
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-  }  
-  
-  // ..........................................................................
+  // .............................................................................
   // Fill the json field list from the document
-  // ..........................................................................
+  // .............................................................................
 
   res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
 
-  
-  // ..........................................................................
+  // .............................................................................
   // It may happen that the document does not have attributes which match
   // For now return internal error, there needs to be its own error number
   // and the appropriate action needs to be taken by the calling function in 
   // such cases.
-  // ..........................................................................
+  // .............................................................................
   
   if (res != TRI_ERROR_NO_ERROR) {
-  
-    // ........................................................................
-    // Deallocate memory allocated to hashElement.fields above
-    // ........................................................................
-    
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-    
-    
-    // ........................................................................
-    // It may happen that the document does not have the necessary attributes
-    // to have particpated within the hash index. In this case, we do not
-    // report an error to the calling procedure.
-    // ........................................................................
-    
-    // ........................................................................
-    // -1 from the called procedure HashIndexHelper implies that we do not 
-    // propagate the error to the parent function. However for removal
-    // we advice the parent function. TODO: return a proper error code.
-    // ........................................................................
+   
+    // .............................................................................
+    // It may happen that the document does not have the necessary attributes to
+    // have particpated within the hash index. In this case, we do not report an
+    // error to the calling procedure.
+    //
+    // TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING from the called
+    // procedure HashIndexHelper implies that we do not propagate the error to
+    // the parent function. However for removal we advice the parent
+    // function. TODO: return a proper error code.
+    // .............................................................................
     
     if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
-      return TRI_ERROR_NO_ERROR;
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        return TRI_ERROR_NO_ERROR;
+      }
     }
-    
-    return res;
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      return res;
+    }
   }
   
-  // ............................................................................
-  // Attempt the removal for unique hash indexes
-  // ............................................................................
+  // .............................................................................
+  // Attempt the removal for unique or non-unique hash indexes
+  // .............................................................................
   
   if (hashIndex->base._unique) {
     res = HashIndex_remove(hashIndex->_hashIndex, &hashElement);
   } 
-  
-  // ............................................................................
-  // Attempt the removal for non-unique hash indexes
-  // ............................................................................
-  
   else {
     res = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
   }
   
-  // ............................................................................
+  // .............................................................................
   // Deallocate memory allocated to hashElement.fields above
-  // ............................................................................
+  // .............................................................................
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
   
@@ -1616,20 +1554,20 @@ static int UpdateHashIndex (TRI_index_t* idx,
                             const TRI_doc_mptr_t* newDoc, 
                             const TRI_shaped_json_t* oldDoc) {
                              
-  // ..........................................................................
-  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by
-  //       a TRI_doc_mptr_t object. However for non-unique indexes we must
-  //       pass the document shape to the hash remove function.
-  // ..........................................................................
+  // .............................................................................
+  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by a
+  // TRI_doc_mptr_t object. However for non-unique indexes we must pass the
+  // document shape to the hash remove function.
+  // .............................................................................
   
   union { void* p; void const* c; } cnv;
   HashIndexElement hashElement;
   TRI_hash_index_t* hashIndex;
   int  res;  
   
-  // ............................................................................
+  // .............................................................................
   // Obtain the hash index structure
-  // ............................................................................
+  // .............................................................................
   
   hashIndex = (TRI_hash_index_t*) idx;
 
@@ -1638,179 +1576,100 @@ static int UpdateHashIndex (TRI_index_t* idx,
     return TRI_ERROR_INTERNAL;
   }
 
-  // ............................................................................
+  // .............................................................................
   // Allocate some memory for the HashIndexElement structure
-  // ............................................................................
+  // .............................................................................
 
   hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
-
-  if (hashElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in UpdateHashIndex");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }  
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
   
-  // ............................................................................
+  // .............................................................................
   // Update for unique hash index
-  // ............................................................................
-  
-  // ............................................................................
+  //
   // Fill in the fields with the values from oldDoc
-  // ............................................................................
+  // .............................................................................
   
-  if (hashIndex->base._unique) {
-  
-    assert(oldDoc != NULL);
+  assert(oldDoc != NULL);
 
-    res = HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc);
+  res = HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc);
     
-    if (res == TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_NO_ERROR) {
     
-      // ............................................................................
-      // We must fill the hashElement with the value of the document shape -- this
-      // is necessary when we attempt to remove non-unique hash indexes.
-      // ............................................................................
+    // ............................................................................
+    // We must fill the hashElement with the value of the document shape -- this
+    // is necessary when we attempt to remove non-unique hash indexes.
+    // ............................................................................
 
-      cnv.c = newDoc; // we are assuming here that the doc ptr does not change
-      hashElement.data = cnv.p;
+    cnv.c = newDoc; // we are assuming here that the doc ptr does not change
+    hashElement.data = cnv.p;
       
-      // ............................................................................
-      // Remove the hash index entry and return.
-      // ............................................................................
+    // ............................................................................
+    // Remove the old hash index entry
+    // ............................................................................
 
+    if (hashIndex->base._unique) {
       res = HashIndex_remove(hashIndex->_hashIndex, &hashElement); 
-
-      if (res != TRI_ERROR_NO_ERROR) {
-      
-        // ..........................................................................
-        // This error is common, when a document 'update' occurs, but fails
-        // due to the fact that a duplicate entry already exists, when the 'rollback'
-        // is applied, there is no document to remove -- so we get this error.
-        // ..........................................................................
-        
-        LOG_WARNING("could not remove existing document from hash index in UpdateHashIndex");
-      }
-    }    
-
-    // ..............................................................................
-    // Here we are assuming that the existing document could not be removed, because
-    // the doc did not have the correct attributes. TODO: do not make this assumption.
-    // ..............................................................................
-    
+    }
     else {
-      LOG_WARNING("existing document was not removed from hash index in UpdateHashIndex");
+      res = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
     }
 
-    
-    // ............................................................................
-    // Fill the json simple list from the document
-    // ............................................................................
-
-    res = HashIndexHelper(hashIndex, &hashElement, newDoc, NULL);
-
-
-    // ............................................................................
-    // Deal with any errors reported back.
-    // ............................................................................
-
+    // ..........................................................................
+    // This error is common, when a document 'update' occurs, but fails
+    // due to the fact that a duplicate entry already exists, when the 'rollback'
+    // is applied, there is no document to remove -- so we get this error.
+    // ..........................................................................
+        
     if (res != TRI_ERROR_NO_ERROR) {
+      LOG_DEBUG("could not remove existing document from hash index in UpdateHashIndex");
+    }
+  }    
     
-      // ..........................................................................
-      // Deallocated memory given to hashElement.fields
-      // ..........................................................................
+  else if (res != TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+    LOG_WARNING("existing document was not removed from hash index in UpdateHashIndex");
+  }
     
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-      
-      if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
-        // ........................................................................
-        // probably fields do not match. 
-        // ........................................................................
+  // ............................................................................
+  // Fill the json simple list from the document
+  // ............................................................................
 
+  res = HashIndexHelper(hashIndex, &hashElement, newDoc, NULL);
+
+  // ............................................................................
+  // Deal with any errors reported back.
+  // ............................................................................
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    
+    // probably fields do not match. 
+    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+      if (hashIndex->base._unique) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
       }
-    
+    }
+    else {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
       return res;
     }
+  }
 
-    // ............................................................................
-    // Attempt to add the hash entry from the new doc
-    // ............................................................................
+  // ............................................................................
+  // Attempt to add the hash entry from the new doc
+  // ............................................................................
 
+  if (hashIndex->base._unique) {
     res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
   }
-
-  // ............................................................................
-  // Update for non-unique hash index
-  // ............................................................................
-
   else {
-  
-    // ............................................................................
-    // Fill in the fields with the values from oldDoc
-    // ............................................................................    
-    
-    res = HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-
-      // ............................................................................
-      // We must fill the hashElement with the value of the document shape -- this
-      // is necessary when we attempt to remove non-unique hash indexes.
-      // ............................................................................
-
-      cnv.c = newDoc;
-      hashElement.data = cnv.p;
-      
-      // ............................................................................
-      // Remove the hash index entry and return.
-      // ............................................................................
-
-      res = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("could not remove old document from (non-unique) hash index in UpdateHashIndex");
-      }
-    }    
-
-    else {
-      LOG_WARNING("existing document was not removed from (non-unique) hash index in UpdateHashIndex");
-    }
-    
-    // ............................................................................
-    // Fill the shaped json simple list from the document
-    // ............................................................................
-
-    res = HashIndexHelper(hashIndex, &hashElement, newDoc, NULL); 
-
-    if (res != TRI_ERROR_NO_ERROR) {
-
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
-      
-      if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
-
-        // ........................................................................
-        // probably fields do not match -- report internal error for now 
-        // ........................................................................
-    
-        return TRI_ERROR_NO_ERROR;
-      }
-    
-      return res;
-    }
-    
-    // ............................................................................
-    // Attempt to add the hash entry from the new doc
-    // ............................................................................
-
     res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
   }
-  
-  
+
   // ............................................................................
   // Deallocate memory given to hashElement.fields
   // ............................................................................
   
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+  TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1935,25 +1794,25 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the hash index
+/// @brief locates entries in the hash index given a JSON list
 ///
 /// @warning who ever calls this function is responsible for destroying
-/// HashIndexElements* results
+/// TRI_hash_index_elements_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterList) {
+TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t* values) {
   TRI_hash_index_t* hashIndex;
-  HashIndexElements* result;
-  HashIndexElement  element;
-  TRI_shaper_t*     shaper;
+  TRI_hash_index_elements_t* result;
+  HashIndexElement element;
+  TRI_shaper_t* shaper;
   size_t j;
   
-  element.numFields = parameterList->_value._objects._length;
+  element.numFields = values->_value._objects._length;
   element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
 
   if (element.fields == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_WARNING("out-of-memory in LookupHashIndex");
+    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
     return NULL; 
   }  
     
@@ -1961,7 +1820,7 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   shaper = hashIndex->base._collection->_shaper;
     
   for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
+    TRI_json_t* jsonObject = (TRI_json_t*) (TRI_AtVector(&(values->_value._objects), j));
     TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
 
     element.fields[j] = *shapedObject;
@@ -1977,6 +1836,43 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
 
   for (j = 0; j < element.numFields; ++j) {
     TRI_DestroyShapedJson(shaper, element.fields + j);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
+  
+  return result;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t** values) {
+  TRI_hash_index_t* hashIndex;
+  TRI_hash_index_elements_t* result;
+  HashIndexElement element;
+  size_t j;
+  
+  hashIndex = (TRI_hash_index_t*) idx;
+
+  element.numFields = hashIndex->_paths._length;
+  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
+
+  if (element.fields == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
+    return NULL; 
+  }  
+
+  for (j = 0; j < element.numFields; ++j) {
+    element.fields[j] = *values[j];
+  }
+    
+  if (hashIndex->base._unique) {
+    result = HashIndex_find(hashIndex->_hashIndex, &element);
+  }
+  else {
+    result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);

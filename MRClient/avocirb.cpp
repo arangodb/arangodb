@@ -416,22 +416,26 @@ int main (int argc, char* argv[]) {
   ParseProgramOptions(argc, argv);
 
   // http://www.network-science.de/ascii/   Font: ogre
-  if (NoColors) {
-    printf("                        _      _      \n");
-    printf("   __ ___   _____   ___(_)_ __| |__   \n");
-    printf("  / _` \\ \\ / / _ \\ / __| | '__| '_ \\  \n");
-    printf(" | (_| |\\ V / (_) | (__| | |  | |_) | \n");
-    printf("  \\__,_| \\_/ \\___/ \\___|_|_|  |_.__/  \n");
-    printf("                                      \n");
+  {
+    char const* g = DEF_GREEN;
+    char const* r = DEF_RED;
+    char const* z = DEF_RESET;
+
+    if (NoColors) {
+      g = "";
+      r = "";
+      z = "";
+    }
+
+    printf("%s                                  %s _      _     %s\n", g, r, z);
+    printf("%s  __ _ _ __ __ _ _ __   __ _  ___ %s(_)_ __| |__  %s\n", g, r, z);
+    printf("%s / _` | '__/ _` | '_ \\ / _` |/ _ \\%s| | '__| '_ \\ %s\n", g, r, z);
+    printf("%s| (_| | | | (_| | | | | (_| | (_) %s| | |  | |_) |%s\n", g, r, z);
+    printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|_|_|  |_.__/ %s\n", g, r, z);
+    printf("%s                       |___/      %s              %s\n", g, r, z);
   }
-  else {
-    printf("%s                       %s _      _      %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-    printf("%s   __ ___   _____   ___%s(_)_ __| |__   %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-    printf("%s  / _` \\ \\ / / _ \\ / __%s| | '__| '_ \\  %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-    printf("%s | (_| |\\ V / (_) | (__%s| | |  | |_) | %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-    printf("%s  \\__,_| \\_/ \\___/ \\___%s|_|_|  |_.__/  %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-    printf("%s                       %s               %s\n", DEF_GREEN, DEF_RED, DEF_RESET);
-  }
+
+  printf("\n");
   printf("Welcome to avocirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION

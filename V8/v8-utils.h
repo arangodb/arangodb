@@ -31,7 +31,6 @@
 #include "V8/v8-globals.h"
 
 #include "BasicsC/json.h"
-#include "V8/v8-c-utils.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL

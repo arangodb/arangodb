@@ -177,6 +177,27 @@ function ahuacatlQueryNonCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from nested subqueries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryFor1 : function () {
+      var expected = [ 4, 5, 6 ];
+      var actual = getQueryResults("FOR i IN ((FOR j IN ((FOR k IN ((FOR l IN [1,2,3] RETURN l+1)) RETURN k+1)) RETURN j+1)) RETURN i", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return data from nested subqueries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryFor2 : function () {
+      var expected = [ 1, 2, 3 ];
+
+      var actual = getQueryResults("FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return values from let
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,6 +214,46 @@ function ahuacatlQueryNonCollectionTestSuite () {
     testNestedLet2 : function () {
       var expected = [ [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ] ];
       var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN quarters", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from let
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedLet3 : function () {
+      var expected = [{ "a" : 1, "b" : [4, 5, 6], "c" : [7, 8, 9] }, { "a" : 2, "b" : [5, 6, 7], "c" : [8, 9, 10] }, { "a" : 3, "b" : [6, 7, 8], "c" : [9, 10, 11] }];
+      var actual = getQueryResults("FOR i IN [1,2,3] LET j=(FOR x IN [3,4,5] RETURN x+i) LET k=(FOR y IN [6,7,8] RETURN y+i) RETURN { \"a\": i, \"b\" : j, \"c\" : k }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from let
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedLet4 : function () {
+      var expected = [[[9, 8, 7], [9, 8, 7]], [[9, 8, 7], [9, 8, 7]], [[9, 8, 7], [9, 8, 7]]];
+      var actual = getQueryResults("FOR i IN [1,2,3] LET j=(FOR x IN [2010,2011] LET k=(FOR y IN [9,8,7] RETURN y) RETURN k) RETURN j", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from simple let
+////////////////////////////////////////////////////////////////////////////////
+
+    testSimpleLet1 : function () {
+      var expected = [ 1, 2, 3 ];
+      var actual = getQueryResults("FOR i IN [1,2,3] LET j=i RETURN j", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from simple let
+////////////////////////////////////////////////////////////////////////////////
+
+    testSimpleLet1 : function () {
+      var expected = [ "the fox", "the fox", "the fox" ];
+      var actual = getQueryResults("FOR i IN [1,2,3] LET j=\"the fox\" RETURN j", true);
       assertEqual(expected, actual);
     },
 

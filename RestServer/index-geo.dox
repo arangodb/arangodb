@@ -28,24 +28,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexGeoTOC
 ///
-/// <ol>
-///  <li>@ref IndexGeoHttp
-///   <ol>
-///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
-///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
-///    <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref IndexGeo
+///   <ul>
+///    <li>@ref IndexGeoIntro
+///    </li>
+///    <li>@ref IndexGeoShell
+///     <ul>
+///      <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
+///      <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
+///      <li>@ref IndexGeoShellGeo "collection.geo"</li>
+///      <li>@ref IndexGeoShellNear "collection.near"</li>
+///      <li>@ref IndexGeoShellWithin "collection.within"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref IndexGeoShell
-///   <ol>
-///    <li>@ref IndexGeoShellEnsureGeoIndex "collection.ensureGeoIndex"</li>
-///    <li>@ref IndexGeoShellEnsureGeoConstraint "collection.ensureGeoConstraint"</li>
-///    <li>@ref IndexGeoShellGeo "collection.geo"</li>
-///    <li>@ref IndexGeoShellNear "collection.near"</li>
-///    <li>@ref IndexGeoShellWithin "collection.within"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +52,10 @@
 ///
 /// This is an introduction to AvocadoDB's geo indexes.
 ///
-/// <hr>
-/// @copydoc IndexGeoTOC
-/// <hr>
+/// @EMBEDTOC{IndexGeoTOC}
+///
+/// @section IndexGeoIntro Geo Indexes
+//////////////////////////////////////
 ///
 /// AvocadoDB uses Hilbert curves to implement geo-spatial indexes. See this
 /// <a href="http://www.avocadodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
@@ -68,21 +68,6 @@
 ///
 /// A geo-spatial constraint makes the same assumptions, but documents
 /// not fulfilling these requirements are rejected.
-///
-/// @section IndexGeoHttp Accessing Geo Indexes via Http
-////////////////////////////////////////////////////////
-///
-/// @anchor IndexGeoHttpEnsureGeo
-/// @copydetails JSF_POST_api_index_geo
-/// <hr>
-///
-/// @anchor IndexGeoHttpNear
-/// @copydetails JSA_PUT_api_simple_near
-/// <hr>
-///
-/// @anchor IndexGeoHttpWithin
-/// @copydetails JSA_PUT_api_simple_within
-/// <hr>
 ///
 /// @section IndexGeoShell Accessing Geo Indexes from the Shell
 ///////////////////////////////////////////////////////////////
@@ -105,6 +90,35 @@
 ///
 /// @anchor IndexGeoShellWithin
 /// @copydetails JSF_AvocadoCollection_prototype_within
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexGeoHttpTOC
+///
+/// <ul>
+///  <li>@ref IndexGeoHttp
+///   <ul>
+///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
+///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
+///    <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexGeoHttp Accessing Geo Indexes via Http
+///
+/// @EMBEDTOC{IndexGeoHttpTOC}
+///
+/// @anchor IndexGeoHttpEnsureGeo
+/// @copydetails JSF_POST_api_index_geo
+///
+/// @anchor IndexGeoHttpNear
+/// @copydetails JSA_PUT_api_simple_near
+///
+/// @anchor IndexGeoHttpWithin
+/// @copydetails JSA_PUT_api_simple_within
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

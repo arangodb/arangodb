@@ -401,6 +401,8 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash-index
+///
+/// @note @FA{paths} must be sorted.
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
@@ -434,17 +436,26 @@ void TRI_FreeHashIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the hash index
+/// @brief locates entries in the hash index given a JSON list
+///
+/// @warning who ever calls this function is responsible for destroying
+/// TRI_hash_index_elements_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndexElements* TRI_LookupHashIndex (TRI_index_t*, TRI_json_t*);
+TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t*, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+///
+/// @warning who ever calls this function is responsible for destroying
+/// TRI_hash_index_elements_t* results
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t** values);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              PRIORITY QUEUE INDEX

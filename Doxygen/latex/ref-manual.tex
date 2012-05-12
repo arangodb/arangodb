@@ -1,4 +1,4 @@
-\documentclass[a4paper]{book}
+\documentclass[a4paper,11pt,oneside]{book}
 \usepackage{makeidx}
 \usepackage{graphicx}
 \usepackage{multicol}
@@ -24,9 +24,10 @@
 \begin{center}
 {\Large AvocadoDB Reference Manual }\\
 \vspace*{1cm}
-{\large by Dr. Frank Celler}\\
+{\large The ArangoDB Team}\\
 \vspace*{0.5cm}
-{\small Version 0.1.0}\\
+\input{version}
+{\small Version \arangodbversion}\\
 \end{center}
 \end{titlepage}
 \clearemptydoublepage
@@ -34,35 +35,6 @@
 \tableofcontents
 \clearemptydoublepage
 \pagenumbering{arabic}
-\chapter{JavaScript Modules}
-\label{JSModules}
-\input{d9/de4/JSModules}
-\chapter{Module \char`\"{}console\char`\"{}}
-\label{JSModuleConsole}
-\input{d7/d40/JSModuleConsole}
-\chapter{Module \char`\"{}fs\char`\"{}}
-\label{JSModuleFs}
-\input{d2/d66/JSModuleFs}
-\chapter{Module \char`\"{}graph\char`\"{}}
-\label{JSModuleGraph}
-\input{d2/d35/JSModuleGraph}
-\chapter{Module \char`\"{}internal\char`\"{}}
-\label{JSModuleInternal}
-\input{d3/d4b/JSModuleInternal}
-\chapter{Command-\/Line Options}
-\label{CommandLine}
-\input{db/d15/CommandLine}
-\chapter{Command-\/Line Options for the AvocadoDB}
-\label{CommandLineAvocado}
-\input{d9/ddd/CommandLineAvocado}
-\chapter{Command-\/Line Options for Communication}
-\label{CommandLineScheduler}
-\input{d9/db2/CommandLineScheduler}
-\chapter{Command-\/Line Options for Logging}
-\label{CommandLineLogging}
-\input{d3/d58/CommandLineLogging}
-\chapter{Command-\/Line Options for Random Numbers}
-\label{CommandLineRandom}
-\input{df/d91/CommandLineRandom}
+\input{RefManual.inc}
 \printindex
 \end{document}

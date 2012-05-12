@@ -172,7 +172,7 @@ function AHUACATL_GET_INDEX (value, index) {
     throw "expecting list or document for index access";
   }
 
-  var result = value[attributeName];
+  var result = value[index];
 
   if (AHUACATL_TYPEWEIGHT(result) === AHUACATL_TYPEWEIGHT_NULL) {
     return null;
@@ -191,7 +191,7 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
   }
 
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    throw "expecting document for member access";
+    return null;
   }
 
   var result = value[attributeName];

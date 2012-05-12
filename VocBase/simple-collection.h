@@ -432,7 +432,7 @@ TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a geo index
+/// @brief finds a geo index, list style
 ///
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,7 +444,7 @@ struct TRI_index_s* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* coll
                                                       bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a geo index
+/// @brief finds a geo index, attribute style
 ///
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,14 +456,125 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* coll
                                                       bool ignoreNull);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists, list style
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* collection,
+                                                      char const* location,
+                                                      bool geoJson,
+                                                      bool constraint,
+                                                      bool ignoreNull,
+                                                      bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists, attribute style
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
+                                                      char const* latitude,
+                                                      char const* longitude,
+                                                      bool constraint,
+                                                      bool ignoreNull,
+                                                      bool* created);
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        HASH INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts attribute names to sorted lists of pids and names
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
+                                  TRI_shaper_t* shaper,
+                                  TRI_vector_t* pids,
+                                  TRI_vector_pointer_t* names);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
+///
+/// @note The caller must hold at least a read-lock.
+///
+/// @note The @FA{paths} must be sorted.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*,
+                                                      TRI_vector_pointer_t const* attributes,
+                                                      bool unique);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                      TRI_vector_pointer_t const* attributes,
+                                                      bool unique,
+                                                      bool* created);
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    SKIPLIST INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a skiplist index
 ///
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*,
-                                                      TRI_vector_t const*);
+struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
+                                                          TRI_vector_t const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                          TRI_vector_pointer_t const* attributes,
+                                                          bool unique,
+                                                          bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PRIORITY QUEUE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a priority queue index
@@ -476,13 +587,30 @@ struct TRI_index_s* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collectio
                                                                
                                                                
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a skiplist index
-///
-/// Note that the caller must hold at least a read-lock.
+/// @brief ensures that a priority queue index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
-                                                          TRI_vector_t const*);
+struct TRI_index_s* TRI_EnsurePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
+                                                               TRI_vector_pointer_t const* attributes,
+                                                               bool unique,
+                                                               bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PRIORITY QUEUE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
@@ -491,57 +619,6 @@ struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
 TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
                                                    size_t size,
                                                    bool* created);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a geo index exists
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* collection,
-                                                      char const* location,
-                                                      bool geoJson,
-                                                      bool constraint,
-                                                      bool ignoreNull,
-                                                      bool* created);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a geo index to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                                      char const* latitude,
-                                                      char const* longitude,
-                                                      bool constraint,
-                                                      bool ignoreNull,
-                                                      bool* created);
-                                                
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds or returns an existing hash index to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                                      const TRI_vector_t* attributes,
-                                                      bool unique,
-                                                      bool* created);
-                                                
-                                                
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds or returns an existing priority queue index to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsurePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
-                                                    const TRI_vector_t* attributes,
-                                                    bool unique,
-                                                    bool* created);
-                                                
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds or returns an existing skiplist index to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
-                                                          const TRI_vector_t* attributes,
-                                                          bool unique,
-                                                          bool* created);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

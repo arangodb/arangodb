@@ -28,79 +28,114 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RefManual AvocadoDB Reference Manual
 ///
-/// <ol>
+/// @if LATEX
+/// <ul>
+///  <li>@ref RestDocument</li>
+///  <li>@ref RestEdge</li>
+///  <li>@ref HttpCursor</li>
+///  <li>@ref HttpSimple</li>
+///  <li>@ref HttpCollection</li>
+///  <li>@ref HttpIndex</li>
+///  <li>@ref HttpSystem</li>
+///  <li>@ref Glossary</li>
+/// </ul>
+/// @else
+/// <ul>
 ///  <li>@ref CommandLine
 ///   @copydetails CommandLineSubTOC
 ///  </li>
 ///  <li>@ref JSModules
-///   <ol>
+///   <ul>
 ///    <li>User Modules
-///     <ol>
+///     <ul>
 ///      <li>@ref JSModuleGraph</li>
-///     </ol>
+///     </ul>
 ///    </li>
 ///    <li>System Modules
-///     <ol>
+///     <ul>
 ///      <li>@ref JSModuleActions</li>
 ///      <li>@ref JSModuleConsole</li>
 ///      <li>@ref JSModuleFs</li>
 ///      <li>@ref JSModuleInternal</li>
-///     </ol>
+///     </ul>
 ///    </li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref OTWP
-///   <ol>
+///   <ul>
 ///    <li>REST Interface
-///     <ol>
+///     <ul>
 ///      <li>@ref RestDocument</li>
 ///      <li>@ref RestEdge</li>
-///     </ol>
+///     </ul>
 ///    </li>
 ///    <li>Light-Weight HTTP for Queries
-///     <ol>
+///     <ul>
 ///      <li>@ref HttpCursor</li>
 ///      <li>@ref HttpSimple</li>
-///     </ol>
+///     </ul>
 ///    </li>
 ///    <li>Light-Weight HTTP for Administration
-///     <ol>
+///     <ul>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
 ///      <li>@ref HttpSystem</li>
-///     </ol>
+///     </ul>
 ///    </li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>Shell Commands
-///   <ol>
+///   <ul>
 ///      <li>@ref ShellDocument</li>
 ///      <li>@ref ShellEdge</li>
 ///      <li>@ref ShellCollection</li>
 ///      <li>@ref ShellIndex</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>Indexes
 ///   @copydetails IndexesTOC
 ///  </li>
-/// </ol>
+///  <li>Advanced Topics
+///   <ul>
+///    <li>@ref AvocadoErrors
+///    </li>
+///    <li>@ref DBAdmin
+///     <ul>
+///      <li>@ref DBAdminDurability
+///      </li>
+///     </ul>
+///    </li>
+///    <li>Actions
+///     <ul>
+///      <li>@ref Actions
+///      </li>
+///      <li>@ref DefineAction
+///      </li>
+///     </ul>
+///    </li>
+///    <li>@ref jsUnity
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+/// @endif
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineSubTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineAvocado</li>
 ///  <li>@ref CommandLineScheduler</li>
 ///  <li>@ref CommandLineLogging</li>
 ///  <li>@ref CommandLineRandom</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineHelp "help"</li>
 ///  <li>@ref CommandLineVersion "version"</li>
 ///  <li>@ref CommandLineConfiguration "configuration"</li>
@@ -109,7 +144,7 @@
 ///  <li>@ref CommandLineUid "uid"</li>
 ///  <li>@ref CommandLineGid "gid"</li>
 ///  <li>@ref CommandLinePidFile "pid-file"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,13 +219,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineAvocadoTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineAvocadoHttpPort "server.http-port"</li>
 ///  <li>@ref CommandLineAvocadoAdminPort "server.admin-port"</li>
 ///  <li>@ref CommandLineAvocadoDirectory "database.directory"</li>
 ///  <li>@ref CommandLineAvocadoMaximalJournalSize "database.maximal-journal-size"</li>
 ///  <li>@ref CommandLineAvocadoRemoveOnDrop "database.remove-on-drop"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +253,54 @@
 ///
 /// @anchor CommandLineAvocadoRemoveOnDrop
 /// @copydetails triagens::avocado::AvocadoServer::_removeOnDrop
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdminTOC
+///
+/// <ul>
+///  <li>@ref DBAdminDurability
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdmin Database Administration
+///
+/// <hr>
+/// @copydetails DBAdminTOC
+/// <hr>
+///
+/// @section DBAdminDurability Durability
+/////////////////////////////////////////
+///
+/// @subsection DBAdminDurability1 Mostly Memory/Durability
+///////////////////////////////////////////////////////////
+///
+/// Database documents are stored in the memory-memory-mapped files are used to
+/// store them. The operating system has the advantageous option to decide
+/// swapping sparsely used areas out of the main memory. Per default, these
+/// memory-mapped files are synced frequently - advantageously storing all
+/// documents securely at once (durability).
+///
+/// @subsection DBAdminDurability2 AppendOnly/MVCC
+//////////////////////////////////////////////////
+/// 
+/// Instead of overwriting existing documents, a completely new version of the
+/// document is generated. The two benefits are:
+///
+/// - Objects can be stored coherently and compactly in the main memory.
+/// - Objects are preserved-isolated writing and reading transactions allow
+///   accessing these objects for parallel operations.
+///
+/// The system collects obsolete versions as garbage, recognizing them as
+/// forsaken. Garbage collection is asynchronous and runs parallel to other
+/// processes.
+///
+/// @subsection DBAdminDurability3 Configuration
+////////////////////////////////////////////////
+///
+/// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

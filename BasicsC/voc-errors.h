@@ -130,85 +130,48 @@ extern "C" {
 /// - 1500: @CODE{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
-/// - 1501: @CODE{parse error: \%s}
+/// - 1501: @CODE{\%s}
 ///   Will be raised when query is parsed and is found to be syntactially
 ///   invalid.
 /// - 1502: @CODE{query is empty}
 ///   Will be raised when an empty query is specified.
-/// - 1503: @CODE{query specification invalid}
-///   Will be raised when a query is sent to the server with an incomplete or
-///   invalid query specification structure.
-/// - 1504: @CODE{number '\%s' is out of range}
-///   Will be raised when a numeric value inside a query is out of the allowed
-///   value range.
-/// - 1505: @CODE{too many joins.}
-///   Will be raised when the number of joins in a query is beyond the allowed
-///   value.
-/// - 1506: @CODE{collection name '\%s' is invalid}
-///   Will be raised when an invalid collection name is used in the from clause
-///   of a query.
-/// - 1507: @CODE{collection alias '\%s' is invalid}
-///   Will be raised when an invalid alias name is used for a collection.
-/// - 1508: @CODE{collection alias '\%s' is declared multiple times in the same query}
-///   Will be raised when the same alias name is declared multiple times in the
-///   same query's from clause.
-/// - 1509: @CODE{collection alias '\%s' is used but was not declared in the from clause}
-///   Will be raised when an alias not declared in the from clause is used in
-///   the query.
-/// - 1510: @CODE{unable to open collection '\%s'}
+/// - 1503: @CODE{runtime error '\%s'}
+///   Will be raised when a runtime error is caused by the query.
+/// - 1510: @CODE{variable name '\%s' has an invalid format}
+///   Will be raised when an invalid variable name is used.
+/// - 1511: @CODE{variable '\%s' is assigned multiple times}
+///   Will be raised when a variable gets re-assigned in a query.
+/// - 1520: @CODE{unable to open collection '\%s'}
 ///   Will be raised when one of the collections referenced in the query was
 ///   not found.
-/// - 1511: @CODE{geo restriction for alias '\%s' is invalid}
-///   Will be raised when a specified geo restriction is invalid.
-/// - 1512: @CODE{no suitable geo index found for geo restriction on '\%s'}
-///   Will be raised when a geo restriction was specified but no suitable geo
-///   index is found to resolve it.
-/// - 1513: @CODE{no value specified for declared bind parameter '\%s'}
-///   Will be raised when a bind parameter was declared in the query but the
-///   query is being executed with no value for that parameter.
-/// - 1514: @CODE{value for bind parameter '\%s' is declared multiple times}
-///   Will be raised when a value gets specified multiple times for the same
-///   bind parameter.
-/// - 1515: @CODE{bind parameter '\%s' was not declared in the query}
-///   Will be raised when a value gets specified for an undeclared bind
-///   parameter.
-/// - 1516: @CODE{invalid value for bind parameter '\%s'}
-///   Will be raised when an invalid value is specified for one of the bind
-///   parameters.
-/// - 1517: @CODE{bind parameter number '\%s' out of range}
-///   Will be specified when the numeric index for a bind parameter of type @n
-///   is out of the allowed range.
-/// - 1518: @CODE{usage of unknown function '\%s'}
-///   Will be raised when an undefined function is called.
-/// - 1520: @CODE{runtime error in query}
-///   Will be raised when a Javascript runtime error occurs while executing a
-///   query.
-/// - 1521: @CODE{limit value '\%s' is out of range}
-///   Will be raised when a limit value in the query is outside the allowed
-///   range (e. g. when passing a negative skip value).
-/// - 1522: @CODE{variable '\%s' is assigned multiple times}
-///   Will be raised when a variable gets re-assigned in a query.
-/// - 1523: @CODE{document attribute '\%s' is assigned multiple times}
-///   Will be raised when a document attribute is re-assigned.
-/// - 1524: @CODE{variable name '\%s' has an invalid format}
-///   Will be raised when an invalid variable name is used.
-/// - 1525: @CODE{invalid structure of bind parameters}
-///   Will be raised when the structure of bind parameters passed has an
-///   unexpected format.
-/// - 1526: @CODE{unable to read-lock collection \%s}
+/// - 1521: @CODE{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
-/// - 1527: @CODE{too many collections}
+/// - 1522: @CODE{too many collections}
 ///   Will be raised when the number of collections in a query is beyond the
 ///   allowed value.
-/// - 1528: @CODE{invalid logical value}
+/// - 1530: @CODE{document attribute '\%s' is assigned multiple times}
+///   Will be raised when a document attribute is re-assigned.
+/// - 1540: @CODE{usage of unknown function '\%s'}
+///   Will be raised when an undefined function is called.
+/// - 1550: @CODE{invalid structure of bind parameters}
+///   Will be raised when the structure of bind parameters passed has an
+///   unexpected format.
+/// - 1551: @CODE{no value specified for declared bind parameter '\%s'}
+///   Will be raised when a bind parameter was declared in the query but the
+///   query is being executed with no value for that parameter.
+/// - 1552: @CODE{bind parameter '\%s' was not declared in the query}
+///   Will be raised when a value gets specified for an undeclared bind
+///   parameter.
+/// - 1560: @CODE{invalid logical value}
 ///   Will be raised when a non-boolean value is used in a logical operation.
-/// - 1529: @CODE{invalid arithmetic value}
+/// - 1561: @CODE{invalid arithmetic value}
 ///   Will be raised when a non-numeric value is used in an arithmetic
 ///   operation.
-/// - 1530: @CODE{division by zero}
+/// - 1562: @CODE{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
-/// - 1531: @CODE{runtime error}
-///   Will be raised when a runtime error is caused by the query.
+/// - 1570: @CODE{no suitable geo index found for geo restriction on '\%s'}
+///   Will be raised when a geo restriction was specified but no suitable geo
+///   index is found to resolve it.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -891,7 +854,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1501: ERROR_QUERY_PARSE
 ///
-/// parse error: %s
+/// %s
 ///
 /// Will be raised when query is parsed and is found to be syntactially invalid.
 ////////////////////////////////////////////////////////////////////////////////
@@ -909,83 +872,37 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_EMPTY                                             (1502)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1503: ERROR_QUERY_SPECIFICATION_INVALID
+/// @brief 1503: ERROR_QUERY_SCRIPT
 ///
-/// query specification invalid
+/// runtime error '%s'
 ///
-/// Will be raised when a query is sent to the server with an incomplete or
-/// invalid query specification structure.
+/// Will be raised when a runtime error is caused by the query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_SPECIFICATION_INVALID                             (1503)
+#define TRI_ERROR_QUERY_SCRIPT                                            (1503)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1504: ERROR_QUERY_NUMBER_OUT_OF_RANGE
+/// @brief 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 ///
-/// number '%s' is out of range
+/// variable name '%s' has an invalid format
 ///
-/// Will be raised when a numeric value inside a query is out of the allowed
-/// value range.
+/// Will be raised when an invalid variable name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               (1504)
+#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1510)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1505: ERROR_QUERY_TOO_MANY_JOINS
+/// @brief 1511: ERROR_QUERY_VARIABLE_REDECLARED
 ///
-/// too many joins.
+/// variable '%s' is assigned multiple times
 ///
-/// Will be raised when the number of joins in a query is beyond the allowed
-/// value.
+/// Will be raised when a variable gets re-assigned in a query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_TOO_MANY_JOINS                                    (1505)
+#define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1511)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1506: ERROR_QUERY_COLLECTION_NAME_INVALID
-///
-/// collection name '%s' is invalid
-///
-/// Will be raised when an invalid collection name is used in the from clause
-/// of a query.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_COLLECTION_NAME_INVALID                           (1506)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1507: ERROR_QUERY_COLLECTION_ALIAS_INVALID
-///
-/// collection alias '%s' is invalid
-///
-/// Will be raised when an invalid alias name is used for a collection.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID                          (1507)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1508: ERROR_QUERY_COLLECTION_ALIAS_REDECLARED
-///
-/// collection alias '%s' is declared multiple times in the same query
-///
-/// Will be raised when the same alias name is declared multiple times in the
-/// same query's from clause.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED                       (1508)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1509: ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED
-///
-/// collection alias '%s' is used but was not declared in the from clause
-///
-/// Will be raised when an alias not declared in the from clause is used in the
-/// query.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED                       (1509)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1510: ERROR_QUERY_COLLECTION_NOT_FOUND
+/// @brief 1520: ERROR_QUERY_COLLECTION_NOT_FOUND
 ///
 /// unable to open collection '%s'
 ///
@@ -993,168 +910,20 @@ void TRI_InitialiseErrorMessages (void);
 /// found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                              (1510)
+#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                              (1520)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1511: ERROR_QUERY_GEO_RESTRICTION_INVALID
-///
-/// geo restriction for alias '%s' is invalid
-///
-/// Will be raised when a specified geo restriction is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID                           (1511)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1512: ERROR_QUERY_GEO_INDEX_MISSING
-///
-/// no suitable geo index found for geo restriction on '%s'
-///
-/// Will be raised when a geo restriction was specified but no suitable geo
-/// index is found to resolve it.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                                 (1512)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1513: ERROR_QUERY_BIND_PARAMETER_MISSING
-///
-/// no value specified for declared bind parameter '%s'
-///
-/// Will be raised when a bind parameter was declared in the query but the
-/// query is being executed with no value for that parameter.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING                            (1513)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1514: ERROR_QUERY_BIND_PARAMETER_REDECLARED
-///
-/// value for bind parameter '%s' is declared multiple times
-///
-/// Will be raised when a value gets specified multiple times for the same bind
-/// parameter.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED                         (1514)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1515: ERROR_QUERY_BIND_PARAMETER_UNDECLARED
-///
-/// bind parameter '%s' was not declared in the query
-///
-/// Will be raised when a value gets specified for an undeclared bind parameter.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                         (1515)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1516: ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID
-///
-/// invalid value for bind parameter '%s'
-///
-/// Will be raised when an invalid value is specified for one of the bind
-/// parameters.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID                      (1516)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1517: ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE
-///
-/// bind parameter number '%s' out of range
-///
-/// Will be specified when the numeric index for a bind parameter of type @n is
-/// out of the allowed range.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE                (1517)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1518: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
-///
-/// usage of unknown function '%s'
-///
-/// Will be raised when an undefined function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1518)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1520: ERROR_QUERY_RUNTIME_ERROR
-///
-/// runtime error in query
-///
-/// Will be raised when a Javascript runtime error occurs while executing a
-/// query.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_RUNTIME_ERROR                                     (1520)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1521: ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
-///
-/// limit value '%s' is out of range
-///
-/// Will be raised when a limit value in the query is outside the allowed range
-/// (e. g. when passing a negative skip value).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                          (1521)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1522: ERROR_QUERY_VARIABLE_REDECLARED
-///
-/// variable '%s' is assigned multiple times
-///
-/// Will be raised when a variable gets re-assigned in a query.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1522)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1523: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
-///
-/// document attribute '%s' is assigned multiple times
-///
-/// Will be raised when a document attribute is re-assigned.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     (1523)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1524: ERROR_QUERY_VARIABLE_NAME_INVALID
-///
-/// variable name '%s' has an invalid format
-///
-/// Will be raised when an invalid variable name is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1524)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1525: ERROR_QUERY_BIND_PARAMETERS_INVALID
-///
-/// invalid structure of bind parameters
-///
-/// Will be raised when the structure of bind parameters passed has an
-/// unexpected format.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1525)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1526: ERROR_QUERY_COLLECTION_LOCK_FAILED
+/// @brief 1521: ERROR_QUERY_COLLECTION_LOCK_FAILED
 ///
 /// unable to read-lock collection %s
 ///
 /// Will be raised when a read lock on the collection cannot be acquired.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            (1526)
+#define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            (1521)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1527: ERROR_QUERY_TOO_MANY_COLLECTIONS
+/// @brief 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
 ///
 /// too many collections
 ///
@@ -1162,47 +931,100 @@ void TRI_InitialiseErrorMessages (void);
 /// allowed value.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1527)
+#define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1522)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1528: ERROR_QUERY_INVALID_LOGICAL_VALUE
+/// @brief 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
+///
+/// document attribute '%s' is assigned multiple times
+///
+/// Will be raised when a document attribute is re-assigned.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     (1530)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
+///
+/// usage of unknown function '%s'
+///
+/// Will be raised when an undefined function is called.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1540)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID
+///
+/// invalid structure of bind parameters
+///
+/// Will be raised when the structure of bind parameters passed has an
+/// unexpected format.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1550)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1551: ERROR_QUERY_BIND_PARAMETER_MISSING
+///
+/// no value specified for declared bind parameter '%s'
+///
+/// Will be raised when a bind parameter was declared in the query but the
+/// query is being executed with no value for that parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING                            (1551)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1552: ERROR_QUERY_BIND_PARAMETER_UNDECLARED
+///
+/// bind parameter '%s' was not declared in the query
+///
+/// Will be raised when a value gets specified for an undeclared bind parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                         (1552)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1560: ERROR_QUERY_INVALID_LOGICAL_VALUE
 ///
 /// invalid logical value
 ///
 /// Will be raised when a non-boolean value is used in a logical operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE                             (1528)
+#define TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE                             (1560)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1529: ERROR_QUERY_INVALID_ARITHMETIC_VALUE
+/// @brief 1561: ERROR_QUERY_INVALID_ARITHMETIC_VALUE
 ///
 /// invalid arithmetic value
 ///
 /// Will be raised when a non-numeric value is used in an arithmetic operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1529)
+#define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1561)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1530: ERROR_QUERY_DIVISON_BY_ZERO
+/// @brief 1562: ERROR_QUERY_DIVISON_BY_ZERO
 ///
 /// division by zero
 ///
 /// Will be raised when there is an attempt to divide by zero.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1530)
+#define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1562)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1531: ERROR_QUERY_SCRIPT
+/// @brief 1570: ERROR_QUERY_GEO_INDEX_MISSING
 ///
-/// runtime error
+/// no suitable geo index found for geo restriction on '%s'
 ///
-/// Will be raised when a runtime error is caused by the query.
+/// Will be raised when a geo restriction was specified but no suitable geo
+/// index is found to resolve it.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_SCRIPT                                            (1531)
+#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                                 (1570)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

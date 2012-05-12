@@ -37,10 +37,12 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_system_status
+/// @fn JSF_GET_admin_status
 /// @brief returns system status information for the server
 ///
-/// @REST{GET /_system/status}
+/// @RESTHEADER{GET /_admin/status,reads the system status}
+///
+/// @REST{GET /_admin/status}
 ///
 /// The call returns an object with the following attributes:
 ///
@@ -70,13 +72,146 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_system/status",
+  url : "_admin/status",
   context : "admin",
 
   callback : function (req, res) {
     try {
       result = {};
       result.system = SYS_PROCESS_STAT();
+
+      actions.resultOk(req, res, 200, result);
+    }
+    catch (err) {
+      actions.resultError(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_config_description
+/// @brief returns configuration description
+///
+/// @RESTHEADER{GET /_admin/config/description,reads the configuration desciption}
+///
+/// @REST{GET /_admin/config/desciption}
+///
+/// The call returns an object describing the configuration.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/config/description",
+  context : "admin",
+
+  callback : function (req, res) {
+    try {
+      result = {
+        database : {
+          name : "Database",
+          type : "section",
+
+          path : {
+            name : "Path",
+            type : "string",
+            readonly : true
+          },
+
+          access : {
+            name : "Combined Access",
+            type : "string",
+            readonly : true
+          }
+        },
+
+        logging : {
+          name : "Logging",
+          type : "section",
+
+          level : {
+            name : "Log Level",
+            type : "pull-down",
+            values : [ "fatal", "error", "warning", "info", "debug", "trace" ]
+          },
+
+          syslog : {
+            name : "Use Syslog",
+            type : "boolean"
+          },
+
+          bufferSize : {
+            name : "Log Buffer Size",
+            type : "integer"
+          },
+
+          output : {
+            name : "Output",
+            type : "section",
+
+            file : {
+              name : "Log File",
+              type : "string",
+              readonly : true
+            }
+          }
+        }
+      };
+
+      actions.resultOk(req, res, 200, result);
+    }
+    catch (err) {
+      actions.resultError(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_config_configuration
+/// @brief returns configuration description
+///
+/// @RESTHEADER{GET /_admin/config/configuration,reads the configuration}
+///
+/// @REST{GET /_admin/config/configuration}
+///
+/// The call returns an object containing configuration.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/config/configuration",
+  context : "admin",
+
+  callback : function (req, res) {
+    try {
+      result = {
+        database : {
+          path : {
+            value : "/tmp/emil/vocbase"
+          },
+
+          access : {
+            value : "localhost:8529"
+          }
+        },
+
+        logging : {
+          level : {
+            value : "info"
+          },
+
+          syslog : {
+            value : true
+          },
+
+          bufferSize : {
+            value : 100
+          },
+
+          output : {
+            file : {
+              value : "/var/log/message/arango.log"
+            }
+          }
+        }
+      };
 
       actions.resultOk(req, res, 200, result);
     }
