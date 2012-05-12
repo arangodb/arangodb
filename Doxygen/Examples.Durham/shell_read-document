@@ -1,2 +1,2 @@
-avocado> db.example.document("1432124/2873916");
+arango> db.example.document("1432124/2873916");
 { "_id" : "1432124/2873916", "_rev" : 2873916, "Hallo" : "World" }

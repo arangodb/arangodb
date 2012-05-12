@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado server
+/// @brief arango server
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AvocadoServer.h"
+#include "ArangoServer.h"
 
 #include <v8.h>
 
@@ -56,7 +56,7 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
-#include "RestServer/AvocadoHttpServer.h"
+#include "RestServer/ArangoHttpServer.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -72,7 +72,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 #include "js/common/bootstrap/js-modules.h"
 #include "js/common/bootstrap/js-print.h"
@@ -95,7 +95,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,7 +126,7 @@ static JSLoader SystemActionLoader;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,7 +151,7 @@ static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* q
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class AvocadoServer
+// --SECTION--                                               class ArangoServer
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -159,7 +159,7 @@ static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* q
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,7 +167,7 @@ static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* q
 /// @brief UnviversalVoc constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoServer::AvocadoServer (int argc, char** argv)
+ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _binaryPath(),
@@ -184,7 +184,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _systemActionPath(),
     _actionThreads(1),
     _gcInterval(1000),
-    _databasePath("/var/lib/avocado"),
+    _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
@@ -203,10 +203,10 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
   
     _workingDirectory = _binaryPath + "/../tmp";
-    _systemActionPath = _binaryPath + "/../share/avocado/js/actions/system";
-    _startupModules = _binaryPath + "/../share/avocado/js/server/modules"
-              + ";" + _binaryPath + "/../share/avocado/js/common/modules";
-    _databasePath = _binaryPath + "/../var/avocado";
+    _systemActionPath = _binaryPath + "/../share/arango/js/actions/system";
+    _startupModules = _binaryPath + "/../share/arango/js/server/modules"
+              + ";" + _binaryPath + "/../share/arango/js/common/modules";
+    _databasePath = _binaryPath + "/../var/arango";
 
 #else
 
@@ -260,7 +260,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -268,10 +268,10 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void AvocadoServer::buildApplicationServer () {
+void ArangoServer::buildApplicationServer () {
   _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
 
-  _applicationServer->setUserConfigFile(".avocado/avocado.conf");
+  _applicationServer->setUserConfigFile(".arango/arango.conf");
 
   // .............................................................................
   // allow multi-threading scheduler
@@ -287,7 +287,7 @@ void AvocadoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationAdminServer);
 
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
+  _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
 
   // .............................................................................
   // build the application user manager
@@ -331,8 +331,8 @@ void AvocadoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
   
-  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc");
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
+  _applicationServer->setSystemConfigFile("arango.conf", _binaryPath + "/../etc");
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
 #else
 
@@ -354,7 +354,7 @@ void AvocadoServer::buildApplicationServer () {
   // use absolute paths
   // .............................................................................
 
-  _applicationServer->setSystemConfigFile("avocado.conf");
+  _applicationServer->setSystemConfigFile("arango.conf");
   _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
 
 #endif
@@ -577,7 +577,7 @@ void AvocadoServer::buildApplicationServer () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int AvocadoServer::startupServer () {
+int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
 
   // .............................................................................
@@ -598,7 +598,7 @@ int AvocadoServer::startupServer () {
   ActionDispatcherThread::_gcInterval = _gcInterval; 
 
   // .............................................................................
-  // create the various parts of the Avocado server
+  // create the various parts of the Arango server
   // .............................................................................
 
   _applicationServer->buildScheduler();
@@ -660,7 +660,7 @@ int AvocadoServer::startupServer () {
                               RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
                               (void*) &handlerDataHttp);
 
-    _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
+    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, ports);
   }
 
   // .............................................................................
@@ -694,14 +694,14 @@ int AvocadoServer::startupServer () {
                                    RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
                                    (void*) &handlerDataAdmin);
 
-    _adminHttpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
   }
 
   // .............................................................................
   // start the main event loop
   // .............................................................................
 
-  LOGGER_INFO << "AvocadoDB (version " << TRIAGENS_VERSION << ") is ready for business";
+  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
 
   if (useHttpPort) {
     if (shareAdminPort) {
@@ -744,7 +744,7 @@ int AvocadoServer::startupServer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -752,7 +752,7 @@ int AvocadoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int AvocadoServer::executeShell (bool tests) {
+int ArangoServer::executeShell (bool tests) {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
@@ -813,9 +813,9 @@ int AvocadoServer::executeShell (bool tests) {
   }
 
   // run the shell
-  printf("AvocadoDB shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+  printf("ArangoDB shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
 
-  v8::Local<v8::String> name(v8::String::New("(avocado)"));
+  v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context);
 
   ok = true;
@@ -850,7 +850,7 @@ int AvocadoServer::executeShell (bool tests) {
 
   // run a shell
   else {
-    V8LineEditor* console = new V8LineEditor(context, ".avocado");
+    V8LineEditor* console = new V8LineEditor(context, ".arango");
 
     console->open(true);
 
@@ -858,7 +858,7 @@ int AvocadoServer::executeShell (bool tests) {
       while(! v8::V8::IdleNotification()) {
       }
 
-      char* input = console->prompt("avocado> ");
+      char* input = console->prompt("arango> ");
 
       if (input == 0) {
         printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! さようなら\n");
@@ -904,33 +904,33 @@ int AvocadoServer::executeShell (bool tests) {
 
 #ifdef TRI_ENABLE_MRUBY
 
-struct RClass* AvocadoDatabaseClass;
-struct RClass* AvocadoEdgesClass;
-struct RClass* AvocadoCollectionClass;
-struct RClass* AvocadoEdgesCollectionClass;
+struct RClass* ArangoDatabaseClass;
+struct RClass* ArangoEdgesClass;
+struct RClass* ArangoCollectionClass;
+struct RClass* ArangoEdgesCollectionClass;
 
-mrb_value MR_AvocadoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
-  printf("initializer of AvocadoDatabase called\n");
+mrb_value MR_ArangoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
+  printf("initializer of ArangoDatabase called\n");
   return exc;
 }
 
-static void MR_AvocadoDatabase_Free (mrb_state* mrb, void* p) {
-  printf("free of AvocadoDatabase called\n");
+static void MR_ArangoDatabase_Free (mrb_state* mrb, void* p) {
+  printf("free of ArangoDatabase called\n");
 }
 
-static const struct mrb_data_type MR_AvocadoDatabase_Type = {
-  "AvocadoDatabase", MR_AvocadoDatabase_Free
+static const struct mrb_data_type MR_ArangoDatabase_Type = {
+  "ArangoDatabase", MR_ArangoDatabase_Free
 };
 
-static void MR_AvocadoCollection_Free (mrb_state* mrb, void* p) {
-  printf("free of AvocadoCollection called\n");
+static void MR_ArangoCollection_Free (mrb_state* mrb, void* p) {
+  printf("free of ArangoCollection called\n");
 }
 
-static const struct mrb_data_type MR_AvocadoCollection_Type = {
-  "AvocadoDatabase", MR_AvocadoCollection_Free
+static const struct mrb_data_type MR_ArangoCollection_Type = {
+  "ArangoDatabase", MR_ArangoCollection_Free
 };
 
-mrb_value MR_AvocadoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
+mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
   char* name;
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t* collection;
@@ -957,11 +957,11 @@ mrb_value MR_AvocadoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
     return exc;
   }
   
-  return mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoCollectionClass, &MR_AvocadoCollection_Type, (void*) collection));
+  return mrb_obj_value(Data_Wrap_Struct(mrb, ArangoCollectionClass, &MR_ArangoCollection_Type, (void*) collection));
 }
 
 
-int AvocadoServer::executeRubyShell () {
+int ArangoServer::executeRubyShell () {
   struct mrb_parser_state* p;
   mrb_state* mrb;
   int n;
@@ -978,23 +978,23 @@ int AvocadoServer::executeRubyShell () {
   mrb = mrb_open();
 
   // create a line editor
-  MRLineEditor* console = new MRLineEditor(mrb, ".avocado-mrb");
+  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
 
   // setup the classes
 #if 0
-  struct RClass* AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
-  struct RClass* AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
-  struct RClass* AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
-  struct RClass* AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
+  struct RClass* ArangoDatabaseClass = mrb_define_class(mrb, "ArangoDatabase", mrb->object_class);
+  struct RClass* ArangoEdgesClass = mrb_define_class(mrb, "ArangoEdges", mrb->object_class);
+  struct RClass* ArangoCollectionClass = mrb_define_class(mrb, "ArangoCollection", mrb->object_class);
+  struct RClass* ArangoEdgesCollectionClass = mrb_define_class(mrb, "ArangoEdgesCollection", mrb->object_class);
 
   // add an initializer (for TESTING only)
-  mrb_define_method(mrb, AvocadoDatabaseClass, "initialize", MR_AvocadoDatabase_Inialize, ARGS_ANY());
+  mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Inialize, ARGS_ANY());
 
   // add a method to extract the collection
-  mrb_define_method(mrb, AvocadoDatabaseClass, "_collection", MR_AvocadoDatabase_Collection, ARGS_ANY());
+  mrb_define_method(mrb, ArangoDatabaseClass, "_collection", MR_ArangoDatabase_Collection, ARGS_ANY());
 
   // create the database variable
-  mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoDatabaseClass, &MR_AvocadoDatabase_Type, (void*) _vocbase));
+  mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, ArangoDatabaseClass, &MR_ArangoDatabase_Type, (void*) _vocbase));
 
   mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
 
@@ -1055,7 +1055,7 @@ int AvocadoServer::executeRubyShell () {
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void AvocadoServer::openDatabase () {
+void ArangoServer::openDatabase () {
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
   if (! _vocbase) {
@@ -1077,13 +1077,13 @@ void AvocadoServer::openDatabase () {
 /// @brief closes the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void AvocadoServer::closeDatabase () {
+void ArangoServer::closeDatabase () {
   ApplicationUserManager::unloadUsers();
   ApplicationUserManager::unloadRoles();
 
   TRI_DestroyVocBase(_vocbase);
   _vocbase = 0;
-  LOGGER_INFO << "AvocadoDB has been shut down";
+  LOGGER_INFO << "ArangoDB has been shut down";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

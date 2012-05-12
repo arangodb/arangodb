@@ -98,7 +98,7 @@ namespace triagens {
       }
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the version and build number of the avocado server
+      /// @brief returns the version and build number of the arango server
       ////////////////////////////////////////////////////////////////////////////////
 
       const string& getVersion () {

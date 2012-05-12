@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualShell AvocadoDB Shell User Manual
+/// @page UserManualShell ArangoDB Shell User Manual
 ///
 /// <ol>
 ///  <li>@ref UserManualShellBasics
@@ -43,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualShellBasics Basics
 ///
-/// The AvocadoDB consists of a server, which can be accessed by clients
+/// The ArangoDB consists of a server, which can be accessed by clients
 /// using the appropriate client API. A simple JavaScript shell can be used
 /// to administrate the server, when no HTTP access is possible or when
 /// more complex administration tasks are required. This shell can also
@@ -62,9 +62,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualShellStartStop Starting the AvocadoDB Shell
+/// @page UserManualShellStartStop Starting the ArangoDB Shell
 ///
-/// After starting the AvocadoDB server, you can access the server
+/// After starting the ArangoDB server, you can access the server
 /// using the avocsh JavaScript shell.
 ///
 /// <hr>
@@ -74,14 +74,14 @@
 /// @section UserManualShellStartStopShell avocsh
 ///
 /// After the server has been @ref UserManualServerStartStop "started",
-/// you can use the AvocadoDB shell to administrate the server. Without
-/// any arguments, the AvocadoDB shell will try to contact the server
+/// you can use the ArangoDB shell to administrate the server. Without
+/// any arguments, the ArangoDB shell will try to contact the server
 /// on port 8529 on the localhost.
 ///
 /// @verbinclude avocsh1
 ///
 /// The shell will print its own version number and, if successfully connected
-/// to a server, the version number of the AvocadoDB server.
+/// to a server, the version number of the ArangoDB server.
 ///
 /// @section UserManualShellStartStopOptions Command-Line Options
 ///

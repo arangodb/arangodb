@@ -2,9 +2,9 @@
 
 require 'httparty'
 
-$address = ENV['AVOCADO_SERVER'] || '127.0.0.1:8529'
+$address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 
-class AvocadoDB
+class ArangoDB
   include HTTParty
 
   base_uri "http://#{$address}"

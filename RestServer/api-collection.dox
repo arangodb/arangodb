@@ -76,7 +76,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpCollection HTTP Interface for Collections
 ///
-/// This is an introduction to AvocadoDB's Http interface for collections.
+/// This is an introduction to ArangoDB's Http interface for collections.
 ///
 /// @EMBEDTOC{HttpCollectionTOC}
 ///
@@ -95,8 +95,8 @@
 /// @section HttpCollectionResource Address of a Collection
 ////////////////////////////////////////////////////////////
 ///
-/// All collections in AvocadoDB have an unique identifier. This collection
-/// identifier identifies a collection and is managed by AvocadoDB. All
+/// All collections in ArangoDB have an unique identifier. This collection
+/// identifier identifies a collection and is managed by ArangoDB. All
 /// collections are found under the URI
 ///
 /// @LIT{http://@FA{server}:@FA{port}/_api/collection/@FA{collection-identifier}}

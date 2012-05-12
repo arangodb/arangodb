@@ -45,11 +45,11 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-Doxygen/avocado-html.doxy: Doxygen/avocado.template
+Doxygen/arango-html.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 
-doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-html.doxy > /dev/null
+doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
@@ -58,15 +58,15 @@ doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
 
 .PHONY: wiki wiki2
 
-Doxygen/avocado-xml.doxy: Doxygen/avocado.template
+Doxygen/arango-xml.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 
 wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Doxygen/avocado-xml.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-xml.doxy > /dev/null
+wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ## latex
@@ -74,11 +74,11 @@ wiki2: Doxygen/avocado-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Doxygen/avocado-latex.doxy: Doxygen/avocado.template
+Doxygen/arango-latex.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 
-latex: Doxygen/avocado-latex.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-latex.doxy > /dev/null
+latex: Doxygen/arango-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 

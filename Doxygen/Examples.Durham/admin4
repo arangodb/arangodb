@@ -1,7 +1,7 @@
-avocado> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+arango> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
 23735273
 
-avocado> for (i = -90;  i <= 90;  i += 10) {
+arango> for (i = -90;  i <= 90;  i += 10) {
 .......>   for (j = -180; j <= 180; j += 10) {
 .......>     db.geo2.save({ name : "Name/" + i + "/" + j,
 .......>                    location: { latitude : i,
@@ -9,7 +9,7 @@ avocado> for (i = -90;  i <= 90;  i += 10) {
 .......>   }
 .......> }
 
-avocado> db.geo2.near(0,0).limit(3).toArray();
+arango> db.geo2.near(0,0).limit(3).toArray();
 [{
    "_id" : "48126444:72964588",
    "_rev" : 72964588, 

@@ -46,7 +46,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexCap Cap Constraint
 ///
-/// This is an introduction to AvocadoDB's size restrictions aka cap for
+/// This is an introduction to ArangoDB's size restrictions aka cap for
 /// collections.
 ///
 /// @EMBEDTOC{IndexCapTOC}

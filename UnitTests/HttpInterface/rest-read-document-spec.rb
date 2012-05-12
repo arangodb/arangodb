@@ -1,9 +1,9 @@
 # coding: utf-8
 
 require 'rspec'
-require './avocadodb.rb'
+require './arangodb.rb'
 
-describe AvocadoDB do
+describe ArangoDB do
   prefix = "rest_read-document"
 
   context "reading a document:" do
@@ -15,16 +15,16 @@ describe AvocadoDB do
     context "error handling:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "returns an error if document handle is corrupted" do
 	cmd = "/document/123456"
-        doc = AvocadoDB.log_get("#{prefix}-bad-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-bad-handle", cmd)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -35,7 +35,7 @@ describe AvocadoDB do
 
       it "returns an error if document handle is corrupted with empty cid" do
 	cmd = "/document//123456"
-        doc = AvocadoDB.log_get("#{prefix}-bad-handle2", cmd)
+        doc = ArangoDB.log_get("#{prefix}-bad-handle2", cmd)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -46,7 +46,7 @@ describe AvocadoDB do
 
       it "returns an error if collection identifier is unknown" do
 	cmd = "/document/123456/234567"
-        doc = AvocadoDB.log_get("#{prefix}-unknown-cid", cmd)
+        doc = ArangoDB.log_get("#{prefix}-unknown-cid", cmd)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -57,7 +57,7 @@ describe AvocadoDB do
 
       it "returns an error if document handle is unknown" do
 	cmd = "/document/#{@cid}/234567"
-        doc = AvocadoDB.log_get("#{prefix}-unknown-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-unknown-handle", cmd)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -65,7 +65,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -76,17 +76,17 @@ describe AvocadoDB do
     context "reading a document:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "create a document and read it" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = ArangoDB.post(cmd, :body => body)
 
 	doc.code.should eq(201)
 
@@ -98,7 +98,7 @@ describe AvocadoDB do
 
 	# get document
 	cmd = "/document/#{did}"
-        doc = AvocadoDB.log_get("#{prefix}", cmd)
+        doc = ArangoDB.log_get("#{prefix}", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -116,15 +116,15 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and read it, use if-none-match" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = ArangoDB.post(cmd, :body => body)
 
 	doc.code.should eq(201)
 
@@ -137,7 +137,7 @@ describe AvocadoDB do
 	# get document, if-none-match with same rev
 	cmd = "/document/#{did}"
 	hdr = { "if-none-match" => "\"#{rev}\"" }
-        doc = AvocadoDB.log_get("#{prefix}-if-none-match", cmd, :headers => hdr)
+        doc = ArangoDB.log_get("#{prefix}-if-none-match", cmd, :headers => hdr)
 
 	doc.code.should eq(304)
 
@@ -149,7 +149,7 @@ describe AvocadoDB do
 	# get document, if-none-match with different rev
 	cmd = "/document/#{did}"
 	hdr = { "if-none-match" => "\"#{rev-1}\"" }
-        doc = AvocadoDB.log_get("#{prefix}-if-none-match-other", cmd, :headers => hdr)
+        doc = ArangoDB.log_get("#{prefix}-if-none-match-other", cmd, :headers => hdr)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -172,15 +172,15 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and read it, use if-match" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = ArangoDB.post(cmd, :body => body)
 
 	doc.code.should eq(201)
 
@@ -193,7 +193,7 @@ describe AvocadoDB do
 	# get document, if-match with same rev
 	cmd = "/document/#{did}"
 	hdr = { "if-match" => "\"#{rev}\"" }
-        doc = AvocadoDB.log_get("#{prefix}-if-match", cmd, :headers => hdr)
+        doc = ArangoDB.log_get("#{prefix}-if-match", cmd, :headers => hdr)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -214,7 +214,7 @@ describe AvocadoDB do
 	# get document, if-match with different rev
 	cmd = "/document/#{did}"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
-        doc = AvocadoDB.log_get("#{prefix}-if-match-other", cmd, :headers => hdr)
+        doc = ArangoDB.log_get("#{prefix}-if-match-other", cmd, :headers => hdr)
 
 	doc.code.should eq(412)
 
@@ -226,9 +226,9 @@ describe AvocadoDB do
 	rev2.should be_kind_of(Integer)
 	rev2.should eq(rev)
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -239,11 +239,11 @@ describe AvocadoDB do
     context "reading all documents:" do
       before do
 	@cn = "UnitTestsCollectionAll"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "get all documents of an empty collection" do
@@ -251,7 +251,7 @@ describe AvocadoDB do
 
 	# get documents
 	cmd = "/document?collection=#{@cid}"
-        doc = AvocadoDB.log_get("#{prefix}-all-0", cmd)
+        doc = ArangoDB.log_get("#{prefix}-all-0", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -260,7 +260,7 @@ describe AvocadoDB do
 	documents.should be_kind_of(Array)
 	documents.length.should eq(0)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "create three documents and read them using the collection identifier" do
@@ -270,7 +270,7 @@ describe AvocadoDB do
 
 	for i in [ 1, 2, 3 ]
 	  body = "{ \"Hallo\" : \"World-#{i}\" }"
-	  doc = AvocadoDB.post(cmd, :body => body)
+	  doc = ArangoDB.post(cmd, :body => body)
 
 	  doc.code.should eq(201)
 
@@ -279,7 +279,7 @@ describe AvocadoDB do
 
 	# get document
 	cmd = "/document?collection=#{@cid}"
-        doc = AvocadoDB.log_get("#{prefix}-all", cmd)
+        doc = ArangoDB.log_get("#{prefix}-all", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -289,10 +289,10 @@ describe AvocadoDB do
 	documents.length.should eq(3)
 
 	for l in location
-	  AvocadoDB.delete(l)
+	  ArangoDB.delete(l)
 	end
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "create three documents and read them using the collection name" do
@@ -302,7 +302,7 @@ describe AvocadoDB do
 
 	for i in [ 1, 2, 3 ]
 	  body = "{ \"Hallo\" : \"World-#{i}\" }"
-	  doc = AvocadoDB.post(cmd, :body => body)
+	  doc = ArangoDB.post(cmd, :body => body)
 
 	  doc.code.should eq(201)
 
@@ -311,7 +311,7 @@ describe AvocadoDB do
 
 	# get document
 	cmd = "/document?collection=#{@cn}"
-        doc = AvocadoDB.log_get("#{prefix}-all-name", cmd)
+        doc = ArangoDB.log_get("#{prefix}-all-name", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -321,10 +321,10 @@ describe AvocadoDB do
 	documents.length.should eq(3)
 
 	for l in location
-	  AvocadoDB.delete(l)
+	  ArangoDB.delete(l)
 	end
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -335,17 +335,17 @@ describe AvocadoDB do
     context "checking a document:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "create a document and read it" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = ArangoDB.post(cmd, :body => body)
 
 	doc.code.should eq(201)
 
@@ -354,7 +354,7 @@ describe AvocadoDB do
 
 	# get document
 	cmd = location
-        doc = AvocadoDB.log_get("#{prefix}-head", cmd)
+        doc = ArangoDB.log_get("#{prefix}-head", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -362,7 +362,7 @@ describe AvocadoDB do
 	content_length = doc.headers['content-length']
 
 	# get the document head
-        doc = AvocadoDB.head(cmd)
+        doc = ArangoDB.head(cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -370,9 +370,9 @@ describe AvocadoDB do
 	doc.headers['content-length'].should eq(content_length)
 	doc.body.should eq(nil)
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 

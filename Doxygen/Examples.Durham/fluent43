@@ -1,5 +1,5 @@
-avocado> db.names.count();
+arango> db.names.count();
 0
 
-avocado> db.names;
+arango> db.names;
 [collection "names"]

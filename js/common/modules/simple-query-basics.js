@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Avocado Simple Query Language
+/// @brief Arango Simple Query Language
 ///
 /// @file
 ///
@@ -26,11 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var AvocadoCollection = internal.AvocadoCollection;
-var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
+var ArangoCollection = internal.ArangoCollection;
+var ArangoEdgesCollection = internal.ArangoEdgesCollection;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                AVOCADO COLLECTION
+// --SECTION--                                                ARANGO COLLECTION
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -62,11 +62,11 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @verbinclude simple4
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.all = function () {
+ArangoCollection.prototype.all = function () {
   return new SimpleQueryAll(this);
 }
 
-AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
+ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for a collection
@@ -119,11 +119,11 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// @verbinclude simple-query-near2
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.near = function (lat, lon) {
+ArangoCollection.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this, lat, lon);
 }
 
-AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
+ArangoEdgesCollection.prototype.near = ArangoCollection.prototype.near;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for a collection
@@ -158,11 +158,11 @@ AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 /// @verbinclude simple-query-within
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.within = function (lat, lon, radius) {
+ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this, lat, lon, radius);
 }
 
-AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
+ArangoEdgesCollection.prototype.within = ArangoCollection.prototype.within;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a geo index selection
@@ -194,7 +194,7 @@ AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
 /// @verbinclude simple-query-geo
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.geo = function(loc, order) {
+ArangoCollection.prototype.geo = function(loc, order) {
   var idx;
 
   var locateGeoIndex1 = function(collection, loc, order) {
@@ -245,7 +245,7 @@ AvocadoCollection.prototype.geo = function(loc, order) {
   }
 
   if (idx == null) {
-    var err = new AvocadoError();
+    var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
@@ -254,7 +254,7 @@ AvocadoCollection.prototype.geo = function(loc, order) {
   return new SimpleQueryGeo(this, idx.id);
 }
 
-AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
+ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
@@ -287,7 +287,7 @@ AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 /// @verbinclude simple19
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.byExample = function () {
+ArangoCollection.prototype.byExample = function () {
   var example;
 
   // example is given as only argument
@@ -308,7 +308,7 @@ AvocadoCollection.prototype.byExample = function () {
   return new SimpleQueryByExample(this, example);
 }
 
-AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExample;
+ArangoEdgesCollection.prototype.byExample = ArangoCollection.prototype.byExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -594,7 +594,7 @@ SimpleQuery.prototype.limit = function (limit) {
   }
 
   if (limit < 0) {
-    var err = new AvocadoError();
+    var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
     err.errorMessage = "limit must be non-negative";
     throw err;
@@ -1158,7 +1158,7 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
   }
     
   if (this._index == null) {
-    var err = new AvocadoError();
+    var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
@@ -1305,7 +1305,7 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
   }
     
   if (this._index == null) {
-    var err = new AvocadoError();
+    var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;

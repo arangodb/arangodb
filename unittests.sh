@@ -101,5 +101,5 @@ if test "x$VALGRIND_TEST" = "xyes";  then
   echo "########################################################"
   echo
 
-  make unittests VALGRIND="valgrind --suppressions=RestServer/avocado.supp --leak-check=full" || exit 1
+  make unittests VALGRIND="valgrind --suppressions=RestServer/arango.supp --leak-check=full" || exit 1
 fi

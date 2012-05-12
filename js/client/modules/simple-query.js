@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Avocado Simple Query Language
+/// @brief Arango Simple Query Language
 ///
 /// @file
 ///
@@ -65,7 +65,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 
     TRI_CheckRequestResult(requestResult);
 
-    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
     if (requestResult.hasOwnProperty("count")) {
       this._countQuery = requestResult.count;
@@ -115,7 +115,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 
     TRI_CheckRequestResult(requestResult);
 
-    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
     if (requestResult.hasOwnProperty("count")) {
       this._countQuery = requestResult.count;
@@ -140,7 +140,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 /// @brief constructs a query-by-example for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.firstExample = function () {
+ArangoCollection.prototype.firstExample = function () {
   var example;
 
   // example is given as only argument
@@ -175,7 +175,7 @@ AvocadoCollection.prototype.firstExample = function () {
   return requestResult.document;
 }
 
-AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
+ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -228,7 +228,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 
     TRI_CheckRequestResult(requestResult);
 
-    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
     if (requestResult.hasOwnProperty("count")) {
       this._countQuery = requestResult.count;
@@ -288,7 +288,7 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
 
     TRI_CheckRequestResult(requestResult);
 
-    this._execution = new AvocadoQueryCursor(this._collection._database, requestResult);
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
     if (requestResult.hasOwnProperty("count")) {
       this._countQuery = requestResult.count;

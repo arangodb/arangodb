@@ -1,7 +1,7 @@
 #! ruby -rubygems
 # coding: utf-8
 
-require 'avocadodb'
+require 'arangodb'
 
 # configuration
 $number_reader = 30
@@ -23,9 +23,9 @@ $doc_cv = ConditionVariable.new
 ## print version number of the server
 ################################################################################
 
-doc = AvocadoDB.get("/version")
+doc = ArangoDB.get("/version")
 
-puts "starting stress test, AvocadoDB #{doc.parsed_response['version']}"
+puts "starting stress test, ArangoDB #{doc.parsed_response['version']}"
 
 ################################################################################
 ## create a collection for testing
@@ -33,10 +33,10 @@ puts "starting stress test, AvocadoDB #{doc.parsed_response['version']}"
 
 cn = "StressTest#{Time.now.to_i}"
 
-AvocadoDB.delete("/_api/collection/#{cn}")
+ArangoDB.delete("/_api/collection/#{cn}")
 
 body = "{ \"name\" : \"#{cn}\" }"
-doc = AvocadoDB.post("/_api/collection", :body => body)
+doc = ArangoDB.post("/_api/collection", :body => body)
 $cid = doc.parsed_response['id']
 
 puts "create collection \"#{cn}\": #{$cid}"
@@ -64,7 +64,7 @@ def read_document (i, pos)
     end
   }
 
-  res = AvocadoDB.get("/document/#{did}")
+  res = ArangoDB.get("/document/#{did}")
 
   if res.code == 200
     if $verbose
@@ -92,7 +92,7 @@ end
 def create_document (i)
   len = 0
   body = "{ \"Hallo\" : #{i} }"
-  res = AvocadoDB.post("/document?collection=#{$cid}", :body => body)
+  res = ArangoDB.post("/document?collection=#{$cid}", :body => body)
 
   if res.code == 201 or res.code == 202
     did = res.parsed_response['_id']
@@ -135,7 +135,7 @@ def delete_document (i, pos)
     end
   }
 
-  res = AvocadoDB.delete("/document/#{did}")
+  res = ArangoDB.delete("/document/#{did}")
 
   if res.code == 200
     if $verbose

@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page InstallManual AvocadoDB's Installation Manual
+/// @page InstallManual ArangoDB's Installation Manual
 ///
 /// @if LATEX
 /// <ul>
@@ -56,7 +56,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Installing Installing the AvocadoDB
+/// @page Installing Installing the ArangoDB
 ///
 /// @EMBEDTOC{InstallingTOC}
 ///
@@ -67,16 +67,16 @@
 //////////////////////////////
 ///
 /// If you are using <a href="http://mxcl.github.com/homebrew/">homebrew</a>,
-/// than you can install the AvocadoDB using @CODE{brew} as follows:
+/// than you can install the ArangoDB using @CODE{brew} as follows:
 ///
-/// @LIT{brew install avocadodb}
+/// @LIT{brew install arangodb}
 ///
-/// This will install the current stable version of AvocadoDB within
+/// This will install the current stable version of ArangoDB within
 /// your Homebrew tree.
 ///
 /// If you want to install the latest version use:
 ///
-/// @LIT{brew install --HEAD avocadodb}
+/// @LIT{brew install --HEAD arangodb}
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,27 +119,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Compiling Compiling the AvocadoDB from scratch
+/// @page Compiling Compiling the ArangoDB from scratch
 ///
-/// The following sections describe how to compile and build the AvocadoDB from
-/// scratch. The AvocadoDB will compile on most Linux and Mac OS X systems. It
+/// The following sections describe how to compile and build the ArangoDB from
+/// scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
 /// assumes that you use the GNU C++ compiler to compile the source. The
-/// AvocadoDB has been tested with the GNU C++ compiler, but should compile with
+/// ArangoDB has been tested with the GNU C++ compiler, but should compile with
 /// any Posix compliant compiler. Please let us know, whether you successfully
 /// compiled it with another C++ compiler.
 ///
 /// There are possibilities:
 ///
-/// - all-in-one: this version contains the source code of the AvocadoDB, all
+/// - all-in-one: this version contains the source code of the ArangoDB, all
 ///               generated files from the autotools, FLEX, and BISON as well
 ///               as a version of V8, libev and boost
 ///
-/// - devel: this version contains the development version of the AvocadoDB.
-///          Use this branch, if you want to make changes to AvocadoDB 
+/// - devel: this version contains the development version of the ArangoDB.
+///          Use this branch, if you want to make changes to ArangoDB 
 ///          source.
 ///
 /// The devel version requires a complete development environment, while the
-/// all-in-one version allows you to compile the AvocadoDB without installing
+/// all-in-one version allows you to compile the ArangoDB without installing
 /// all the prerequisites. The disadvantage is that it takes longer to compile
 /// and you cannot make changes to the flex or bison files.
 ///
@@ -171,14 +171,14 @@
 ///
 /// Download the latest source using GIT:
 ///
-/// @LIT{git clone git://github.com/triAGENS/AvocadoDB.git}
+/// @LIT{git clone git://github.com/triAGENS/ArangoDB.git}
 ///
 /// @subsection CompilingAIOConfigure Configure
 ///////////////////////////////////////////////
 ///
-/// Switch into the AvocadoDB directory
+/// Switch into the ArangoDB directory
 ///
-/// @LIT{cd AvocadoDB}
+/// @LIT{cd ArangoDB}
 ///
 /// In order to configure the build environment execute
 ///
@@ -194,18 +194,18 @@
 ///
 /// @LIT{make}
 ///
-/// This will compile the AvocadoDB and create a binary of the server in
+/// This will compile the ArangoDB and create a binary of the server in
 ///
-/// @LIT{./avocadodb}
+/// @LIT{./arangodb}
 ///
 /// @subsection CompilingAIOTest Test
 /////////////////////////////////////
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./avocado --server.http-port 12345 /tmp/vocbase}
+/// @LIT{./arango --server.http-port 12345 /tmp/vocbase}
 ///
-/// This will start up the AvocadoDB and listen for HTTP requests on port 12345
+/// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to any address. You should see the startup messages
 ///
 /// @verbinclude startup1
@@ -216,7 +216,7 @@
 ///
 /// This should produce a JSON object like
 ///
-/// @LIT{\{"server":"avocado"\,"version":"0.0.8 [exported]"\}}
+/// @LIT{\{"server":"arango"\,"version":"0.0.8 [exported]"\}}
 ///
 /// as result.
 ///
@@ -274,14 +274,14 @@
 ///
 /// Download the latest source using GIT:
 ///
-/// @LIT{git clone git://github.com/triAGENS/AvocadoDB.git}
+/// @LIT{git clone git://github.com/triAGENS/ArangoDB.git}
 ///
 /// @subsection CompilingDevelSetup Setup
 /////////////////////////////////////////
 ///
-/// Switch into the AvocadoDB directory
+/// Switch into the ArangoDB directory
 ///
-/// @LIT{cd AvocadoDB}
+/// @LIT{cd ArangoDB}
 ///
 /// The source tarball contains a pre-generated "configure" script. You can
 /// regenerate this script by using the GNU auto tools. In order to do so,

@@ -1,5 +1,5 @@
-avocado> v1.addInEdge(v2, "D", "knows", { data : 1 });
+arango> v1.addInEdge(v2, "D", "knows", { data : 1 });
 Edge("D")
 
-avocado> v1.getInEdges();
+arango> v1.getInEdges();
 [ Edge("K"), Edge("2 -> 1"), Edges("D") ]

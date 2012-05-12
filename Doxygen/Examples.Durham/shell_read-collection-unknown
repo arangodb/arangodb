@@ -1,2 +1,2 @@
-avocado> db._collection("unknown")
+arango> db._collection("unknown")
 null

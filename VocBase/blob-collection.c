@@ -75,7 +75,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
       collection->base._state = TRI_COL_STATE_READ;
     }
     else {
-      collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
       collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     }
 
@@ -175,7 +175,7 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   }
 
   if (i == n) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     return false;
   }
 
@@ -239,7 +239,7 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
   // try to reserve space
   res = TRI_ReserveElementDatafile(datafile, size, result);
 
-  while (res == TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+  while (res == TRI_ERROR_ARANGO_DATAFILE_FULL) {
     ok = CloseJournal(collection, datafile);
 
     if (! ok) {
@@ -400,11 +400,11 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
   if (collection->base._state != TRI_COL_STATE_WRITE) {
     if (collection->base._state == TRI_COL_STATE_READ) {
       TRI_UnlockMutex(&collection->_lock);
-      return TRI_ERROR_AVOCADO_READ_ONLY;
+      return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
     TRI_UnlockMutex(&collection->_lock);
-    return TRI_ERROR_AVOCADO_ILLEGAL_STATE;
+    return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
 
   // find and select a journal
@@ -412,7 +412,7 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
 
   if (journal == NULL) {
     TRI_UnlockMutex(&collection->_lock);
-    return TRI_ERROR_AVOCADO_NO_JOURNAL;
+    return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
   // and write marker and blob

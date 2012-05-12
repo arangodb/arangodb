@@ -23,7 +23,7 @@ unittests-brief: \
 unittests-verbose:
 	@echo "################################################################################"
 	@echo "##                                                                            ##"
-	@echo "## AvocadoDB Unit-Tests                                                       ##"
+	@echo "## ArangoDB Unit-Tests                                                       ##"
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
@@ -37,11 +37,11 @@ unittests-verbose:
 	@sleep 1
 
 ################################################################################
-## start the avocado server
+## start the arango server
 ################################################################################
 
 PID := $(shell echo $$PPID)
-PIDFILE := /tmp/avocado.$(PID).pid
+PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
@@ -61,7 +61,7 @@ start-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
@@ -98,8 +98,8 @@ unittests-boost: UnitTests/basics_suite
 
 noinst_PROGRAMS = UnitTests/basics_suite UnitTests/geo_suite
 
-UnitTests_basics_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
-UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
+UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
 	UnitTests/Runner.cpp \
@@ -115,8 +115,8 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
-UnitTests_geo_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
-UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+UnitTests_geo_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
+UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libarango.a
 
 UnitTests_geo_suite_SOURCES = \
 	UnitTests/Cambridge/Runner.cpp \
@@ -164,7 +164,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -197,7 +197,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -246,7 +246,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done

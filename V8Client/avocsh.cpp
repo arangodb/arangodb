@@ -61,7 +61,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-modules.h"
@@ -655,7 +655,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   V8ClientConnection* connection = new V8ClientConnection(server, port, requestTimeout, retries, connectionTimeout);
   
   if (connection->isConnected()) {
-    printf("Connected to Avocado DB %s:%d Version %s\n", 
+    printf("Connected to Arango DB %s:%d Version %s\n", 
             connection->getHostname().c_str(), 
             connection->getPort(), 
             connection->getVersion().c_str());    
@@ -874,7 +874,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object AvocadoConnection:" 
+  string result = "[object ArangoConnection:" 
           + connection->getHostname()
           + ":"
           + triagens::basics::StringUtils::itoa(connection->getPort())
@@ -1099,8 +1099,8 @@ int main (int argc, char* argv[]) {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
   
-    StartupModules = string(binaryPath) + "/../share/avocado/js/client/modules"
-             + ";" + string(binaryPath) + "/../share/avocado/js/common/modules";
+    StartupModules = string(binaryPath) + "/../share/arango/js/client/modules"
+             + ";" + string(binaryPath) + "/../share/arango/js/common/modules";
 
 #else
 
@@ -1184,12 +1184,12 @@ int main (int argc, char* argv[]) {
   }
   
   // .............................................................................
-  // define AvocadoConnection class
+  // define ArangoConnection class
   // .............................................................................  
 
   if (useServer) {
     v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
-    connection_templ->SetClassName(v8::String::New("AvocadoConnection"));
+    connection_templ->SetClassName(v8::String::New("ArangoConnection"));
 
     v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
     
@@ -1207,7 +1207,7 @@ int main (int argc, char* argv[]) {
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
     connection_inst->SetInternalFieldCount(2);    
     
-    context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
+    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());    
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
   }
     
@@ -1279,13 +1279,13 @@ int main (int argc, char* argv[]) {
   // set up connection
   if (useServer) {
     if (clientConnection->isConnected()) {
-      printf("Connected to Avocado DB %s:%d Version %s\n", 
+      printf("Connected to Arango DB %s:%d Version %s\n", 
               clientConnection->getHostname().c_str(), 
               clientConnection->getPort(), 
               clientConnection->getVersion().c_str());
 
       // add the client connection to the context:
-      context->Global()->Set(v8::String::New("avocado"), 
+      context->Global()->Set(v8::String::New("arango"), 
                            wrapV8ClientConnection(clientConnection),
                            v8::ReadOnly);
     }

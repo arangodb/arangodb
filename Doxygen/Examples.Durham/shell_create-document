@@ -1,2 +1,2 @@
-avocado> db.example.save({ Hallo : "World" })
+arango> db.example.save({ Hallo : "World" })
 { "_id" : "1432124/3175486", "_rev" : 3175486 }

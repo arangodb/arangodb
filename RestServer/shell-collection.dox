@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado shell
+/// @brief arango shell
 ///
 /// @file
 ///
@@ -66,9 +66,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellCollection AvocadoDB Interface for Collections
+/// @page ShellCollection ArangoDB Interface for Collections
 ///
-/// This is an introduction to AvocadoDB's interface for collections.
+/// This is an introduction to ArangoDB's interface for collections.
 ///
 /// <hr>
 /// @copydoc ShellCollectionTOC
@@ -86,9 +86,9 @@
 /// @section ShellCollectionResource Address of a Collection
 ////////////////////////////////////////////////////////////
 ///
-/// All collections in AvocadoDB have an unique identifier. This collection
+/// All collections in ArangoDB have an unique identifier. This collection
 /// identifier identifies a collection and is managed by
-/// AvocadoDB. Each collection, in addition, has a unique name. This
+/// ArangoDB. Each collection, in addition, has a unique name. This
 /// name is managed by the user. The interface allows you to access
 /// the collections as:
 ///
@@ -130,7 +130,7 @@
 /// <hr>
 ///
 /// @anchor ShellCollectionTruncate
-/// @copydetails JSF_AvocadoCollection_prototype_truncate
+/// @copydetails JSF_ArangoCollection_prototype_truncate
 /// <hr>
 ///
 /// @anchor ShellCollectionProperties
@@ -173,11 +173,11 @@
 /// <hr>
 ///
 /// @anchor ShellCollectionDropDb
-/// @copydetails JSF_AvocadoDatabase_prototype__drop
+/// @copydetails JSF_ArangoDatabase_prototype__drop
 /// <hr>
 ///
 /// @anchor ShellCollectionTruncateDb
-/// @copydetails JSF_AvocadoDatabase_prototype__truncate
+/// @copydetails JSF_ArangoDatabase_prototype__truncate
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

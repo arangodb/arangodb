@@ -59,7 +59,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpCursor HTTP Interface for Cursors
 ///
-/// This is an introduction to AvocadoDB's Http interface for Queries. Results
+/// This is an introduction to ArangoDB's Http interface for Queries. Results
 /// of AQL and simple queries are returned as cursors in order to batch the
 /// communication between server and client. Each call returns a number of
 /// documents in a batch and an indication, if these was the last

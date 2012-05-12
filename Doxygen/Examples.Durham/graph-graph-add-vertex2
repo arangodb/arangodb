@@ -1,5 +1,5 @@
-avocado> v = g.addVertex("Emil", { age : 123 });
+arango> v = g.addVertex("Emil", { age : 123 });
 Vertex("Emil")
 
-avocado> v.getProperty("age");
+arango> v.getProperty("age");
 123

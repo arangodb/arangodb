@@ -35,8 +35,8 @@
 var internal = require("internal"),
   db = internal.db,
   edges = internal.edges,
-  AvocadoCollection = internal.AvocadoCollection,
-  AvocadoEdgesCollection = internal.AvocadoEdgesCollection,
+  ArangoCollection = internal.ArangoCollection,
+  ArangoEdgesCollection = internal.ArangoEdgesCollection,
   shallowCopy,
   propertyKeys,
   findOrCreateCollectionByName,
@@ -47,7 +47,7 @@ var internal = require("internal"),
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +99,7 @@ findOrCreateCollectionByName = function (name) {
   if (col === null) {
     col = internal.db._create(name);
   } 
-  else if (!(col instanceof AvocadoCollection)) {
+  else if (!(col instanceof ArangoCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -120,7 +120,7 @@ findOrCreateEdgeCollectionByName = function (name) {
   if (col === null) {
     col = internal.edges._create(name);
   } 
-  else if (!(col instanceof AvocadoEdgesCollection)) {
+  else if (!(col instanceof ArangoEdgesCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -145,7 +145,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,7 +180,7 @@ function Edge(graph, id) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -342,7 +342,7 @@ Edge.prototype.properties = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -384,7 +384,7 @@ Edge.prototype._PRINT = function (seen, path, names) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -419,7 +419,7 @@ function Vertex(graph, id) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -759,7 +759,7 @@ Vertex.prototype.setProperty = function (name, value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -800,7 +800,7 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -946,7 +946,7 @@ function Graph(name, vertices, edges) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1266,7 +1266,7 @@ Graph.prototype.removeEdge = function (edge) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1323,12 +1323,12 @@ Graph.prototype._PRINT = function (seen, path, names) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.AvocadoCollection = AvocadoCollection;
-exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
+exports.ArangoCollection = ArangoCollection;
+exports.ArangoEdgesCollection = ArangoEdgesCollection;
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;

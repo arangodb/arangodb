@@ -1,2 +1,2 @@
-avocado> v1.addOutEdge(v2, 4, "knows", { data : 1 });
+arango> v1.addOutEdge(v2, 4, "knows", { data : 1 });
 Edge(4)

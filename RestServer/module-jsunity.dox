@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page jsUnity Using jsUnity and node-jscoverage
 ///
-/// The AvocadoDB contains a wrapper for 
+/// The ArangoDB contains a wrapper for 
 /// <a href="http://jsunity.com/">jsUnity</a>, a lightyweight universal
 /// JavAScript unit testing framework.
 ///
@@ -54,7 +54,7 @@
 /// @CODE{node-jscoverage lib lib-cov}
 ///
 /// to create a copy of the JavaScript files with coverage information.  Start
-/// the AvocadoDB with these files and use @FN{jsunity.runCoverage} instead of
+/// the ArangoDB with these files and use @FN{jsunity.runCoverage} instead of
 /// @FN{jsunity.runTest}.
 ////////////////////////////////////////////////////////////////////////////////
 

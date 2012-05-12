@@ -3,7 +3,7 @@
 
 PortSystem              1.0
 
-name                    AvocadoDB
+name                    ArangoDB
 version                 0.1.2
 categories              databases
 platforms               darwin
@@ -13,7 +13,7 @@ maintainers             triagens.de:f.celler
 description             a NoSQL document store that grows with your project
 
 long_description        Our mission: projects are different, project requirements \
-                        change. We want to offer with AvocadoDB a most universally \
+                        change. We want to offer with ArangoDB a most universally \
                         applicable nosql database which can be used in a maximum \
                         number of different use cases. In buzzword bingo language: \
                         we want to become the MySql in nosql – without MySql’s \
@@ -22,10 +22,10 @@ long_description        Our mission: projects are different, project requirement
                         
 supported_archs         i386 x86_64
 
-homepage                http://www.avocadodb.org
+homepage                http://www.arangodb.org
 
 fetch.type		git
-git.url                 https://github.com/triAGENS/AvocadoDB
+git.url                 https://github.com/triAGENS/ArangoDB
 git.branch		v0.1.2
 
 depends_build           port:bison \
@@ -40,18 +40,18 @@ build.target            all
 
 ################################################################################
 
-set dbgroup avocado
-set dbuser avocado
+set dbgroup arango
+set dbuser arango
 
-set dbdir ${prefix}/var/avocado
+set dbdir ${prefix}/var/arango
 
 set sbindir ${prefix}/sbin
 
 set etcbase ${prefix}/etc/voc
-set etcdir ${etcbase}/avocado
+set etcdir ${etcbase}/arango
 
 set logbase ${prefix}/var/log/voc
-set logdir ${logbase}/avocado
+set logdir ${logbase}/arango
 
 ################################################################################
 
@@ -66,8 +66,8 @@ post-destroot {
         ${destroot}${etcdir}
 
     xinstall -m 644 -o ${dbuser} -g ${dbgroup} \
-        ${worksrcpath}/Installation/MacOSX/MacPorts/avocado.conf \
-        ${destroot}${prefix}/etc/voc/avocado.conf.sample
+        ${worksrcpath}/Installation/MacOSX/MacPorts/arango.conf \
+        ${destroot}${prefix}/etc/voc/arango.conf.sample
 
     xinstall -d -m 1777 \
         ${destroot}${logbase}
@@ -82,39 +82,39 @@ post-destroot {
         ${destroot}${prefix}/Library/LaunchDaemons 
 
     xinstall -m 644 \
-        ${worksrcpath}/Installation/MacOSX/MacPorts/org.avocadodb.plist \
-        ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
+        ${worksrcpath}/Installation/MacOSX/MacPorts/org.arangodb.plist \
+        ${destroot}${prefix}/Library/LaunchDaemons/org.arangodb.plist.sample
 
     destroot.keepdirs-append \
         ${destroot}${logdir} \
         ${destroot}${dbdir}
 
-    reinplace "s|/usr/sbin|${sbindir}/|g"   ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
-    reinplace "s|/etc|${etcdir}|g"          ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
+    reinplace "s|/usr/sbin|${sbindir}/|g"   ${destroot}${prefix}/Library/LaunchDaemons/org.arangodb.plist.sample
+    reinplace "s|/etc|${etcdir}|g"          ${destroot}${prefix}/Library/LaunchDaemons/org.arangodb.plist.sample
 
-    reinplace "s|/var/log|${logdir}|g"      ${destroot}${prefix}/etc/voc/avocado.conf.sample
+    reinplace "s|/var/log|${logdir}|g"      ${destroot}${prefix}/etc/voc/arango.conf.sample
 }
 
 ################################################################################
 
 post-activate {
-    if {![file exists ${prefix}/Library/LaunchDaemons/org.avocadodb.plist]} {
-        file copy ${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample \
-            ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+    if {![file exists ${prefix}/Library/LaunchDaemons/org.arangodb.plist]} {
+        file copy ${prefix}/Library/LaunchDaemons/org.arangodb.plist.sample \
+            ${prefix}/Library/LaunchDaemons/org.arangodb.plist
     }
 
-    if {![file exists ${prefix}/etc/voc/avocado.conf]} {
-        file copy ${prefix}/etc/voc/avocado.conf.sample \
-            ${prefix}/etc/voc/avocado.conf
+    if {![file exists ${prefix}/etc/voc/arango.conf]} {
+        file copy ${prefix}/etc/voc/arango.conf.sample \
+            ${prefix}/etc/voc/arango.conf
     }
 }
 
 ################################################################################
 
 notes "
-To start up the AvocadoDB server instance, use
+To start up the ArangoDB server instance, use
 
-    sudo launchctl load ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+    sudo launchctl load ${prefix}/Library/LaunchDaemons/org.arangodb.plist
     
 The server will response on port 8529 to client request and you can use
 
@@ -122,16 +122,16 @@ The server will response on port 8529 to client request and you can use
 
 to access the administration interface.
 
-To stop up the AvocadoDB server instance, use
+To stop up the ArangoDB server instance, use
 
-    sudo launchctl unload ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+    sudo launchctl unload ${prefix}/Library/LaunchDaemons/org.arangodb.plist
 
-Please note that this is a very early version if AvocadoDB. There will be
+Please note that this is a very early version if ArangoDB. There will be
 bugs and we'd realy appreciate it if you report them:
 
-    https://github.com/triAGENS/AvocadoDB/issues
+    https://github.com/triAGENS/ArangoDB/issues
 
 You find the configuration file at
 
-    ${prefix}/etc/voc/avocado.conf
+    ${prefix}/etc/voc/arango.conf
 "

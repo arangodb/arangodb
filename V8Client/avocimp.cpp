@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple avocado importer
+/// @brief simple arango importer
 ///
 /// @file
 ///
@@ -231,7 +231,7 @@ int main (int argc, char* argv[]) {
           DEFAULT_CONNECTION_TIMEOUT);
   
   if (clientConnection->isConnected()) {
-    printf("Connected to Avocado DB %s:%d Version %s\n", 
+    printf("Connected to Arango DB %s:%d Version %s\n", 
             clientConnection->getHostname().c_str(), 
             clientConnection->getPort(), 
             clientConnection->getVersion().c_str());

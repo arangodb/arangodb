@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado http server
+/// @brief arango http server
 ///
 /// @file
 ///
@@ -25,28 +25,28 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_AVOCADO_HTTP_SERVER_H
-#define TRIAGENS_REST_SERVER_AVOCADO_HTTP_SERVER_H 1
+#ifndef TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H
+#define TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H 1
 
 #include "HttpServer/HttpServerImpl.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class AvocadoHttpServer
+// --SECTION--                                           class ArangoHttpServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
-  namespace avocado {
+  namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief specialized http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class AvocadoHttpServer : public rest::HttpServerImpl {
+    class ArangoHttpServer : public rest::HttpServerImpl {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -57,7 +57,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -67,7 +67,7 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        AvocadoHttpServer (rest::Scheduler* scheduler, rest::Dispatcher* dispatcher);
+        ArangoHttpServer (rest::Scheduler* scheduler, rest::Dispatcher* dispatcher);
     };
   }
 }

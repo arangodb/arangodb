@@ -1,11 +1,11 @@
-avocado> v = g.addVertex(1, { name : "Hugo" });
+arango> v = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
-avocado> v.getPropertyKeys();
+arango> v.getPropertyKeys();
 [ "name" ]
 
-avocado> v.setProperty("email", "hugo@hugo.de");
+arango> v.setProperty("email", "hugo@hugo.de");
 "hugo@hugo.de"
 
-avocado> v.getPropertyKeys();
+arango> v.getPropertyKeys();
 [ "name", "email" ]

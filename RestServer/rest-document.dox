@@ -57,7 +57,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestDocument REST Interface for Documents
 ///
-/// This is an introduction to AvocadoDB's REST interface for documents.
+/// This is an introduction to ArangoDB's REST interface for documents.
 ///
 /// @EMBEDTOC{RestDocumentTOC}
 ///
@@ -93,8 +93,8 @@
 /// @section RestDocumentResource Address and ETag of an Document
 /////////////////////////////////////////////////////////////////
 ///
-/// All documents in AvocadoDB have a document handle. This handle uniquely
-/// defines a document and is managed by AvocadoDB. All documents are
+/// All documents in ArangoDB have a document handle. This handle uniquely
+/// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI:
 ///
 /// @LIT{http://@FA{server}:@FA{port}/document/@FA{document-handle}}
@@ -120,22 +120,22 @@
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor RestDocumentRead
-/// @copydetails triagens::avocado::RestDocumentHandler::readSingleDocument
+/// @copydetails triagens::arango::RestDocumentHandler::readSingleDocument
 ///
 /// @anchor RestDocumentCreate
-/// @copydetails triagens::avocado::RestDocumentHandler::createDocument
+/// @copydetails triagens::arango::RestDocumentHandler::createDocument
 ///
 /// @anchor RestDocumentUpdate
-/// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
+/// @copydetails triagens::arango::RestDocumentHandler::updateDocument
 ///
 /// @anchor RestDocumentDelete
-/// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
+/// @copydetails triagens::arango::RestDocumentHandler::deleteDocument
 ///
 /// @anchor RestDocumentHead
-/// @copydetails triagens::avocado::RestDocumentHandler::checkDocument
+/// @copydetails triagens::arango::RestDocumentHandler::checkDocument
 ///
 /// @anchor RestDocumentReadAll
-/// @copydetails triagens::avocado::RestDocumentHandler::readAllDocuments
+/// @copydetails triagens::arango::RestDocumentHandler::readAllDocuments
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

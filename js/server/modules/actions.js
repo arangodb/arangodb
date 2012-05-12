@@ -33,7 +33,7 @@ var console = require("console");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoActions
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +58,7 @@ var console = require("console");
 /// for system actions and are database independent. All actions except "user"
 /// and "api" are executed in a different worker queue than the normal queue for
 /// clients. The "api" actions are used by the client api to communicate with
-/// the AvocadoDB server.  Both the "api" and "user" actions are using the same
+/// the ArangoDB server.  Both the "api" and "user" actions are using the same
 /// worker queue.
 ///
 /// It is possible to specify a list of contexts, in case an actions belongs to
@@ -278,7 +278,7 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoActions
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -364,11 +364,11 @@ function ResultUnsupported (req, res, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      AvocadoDB specific responses
+// --SECTION--                                      ArangoDB specific responses
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoActions
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -430,7 +430,7 @@ function CollectionNotFound (req, res, collection, headers) {
   }
   else {
     ResultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_COLLECTION_NOT_FOUND,
                 "unknown collection '" + collection + "'", headers);
   }
 }
@@ -458,7 +458,7 @@ function IndexNotFound (req, res, collection, index, headers) {
   }
   else {
     ResultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_AVOCADO_INDEX_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_INDEX_NOT_FOUND,
                 "unknown index '" + index + "'", headers);
   }
 }
@@ -472,7 +472,7 @@ function IndexNotFound (req, res, collection, index, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultException (req, res, err, headers) {
-  if (err instanceof AvocadoError) {
+  if (err instanceof ArangoError) {
     var num = err.errorNum;
     var msg = err.errorMessage;
     var code = exports.HTTP_BAD;
@@ -500,7 +500,7 @@ function ResultException (req, res, err, headers) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoActions
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -516,7 +516,7 @@ exports.resultOk                = ResultOk;
 exports.resultUnsupported       = ResultUnsupported;
 exports.resultError             = ResultError;
 
-// AvocadoDB specific responses
+// ArangoDB specific responses
 exports.resultCursor            = ResultCursor;
 exports.collectionNotFound      = CollectionNotFound;
 exports.indexNotFound           = IndexNotFound;

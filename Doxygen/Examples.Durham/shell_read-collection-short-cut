@@ -1,2 +1,2 @@
-avocado> db.examples;
-[AvocadoCollection 110371, "examples" (status new born)]
+arango> db.examples;
+[ArangoCollection 110371, "examples" (status new born)]

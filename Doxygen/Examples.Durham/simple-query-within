@@ -1,4 +1,4 @@
-avocado> db.geo.within(0, 0, 2000 * 1000).distance().toArray();
+arango> db.geo.within(0, 0, 2000 * 1000).distance().toArray();
 [ { _id : 131840:24773376, _rev : 24773376, distance : 0, name : Name/0/0, loc : [ 0, 0 ] }, 
   { _id : 131840:24707840, _rev : 24707840, distance : 1111949.3, name : Name/0/-10, loc : [ 0, -10 ] },
   { _id : 131840:24838912, _rev : 24838912, distance : 1111949.3, name : Name/0/10, loc : [ 0, 10 ] },

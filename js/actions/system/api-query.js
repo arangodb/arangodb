@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoAPI
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +83,7 @@ function POST_api_query (req, res) {
   try {
     var result = AHUACATL_PARSE(json.query);
 
-    if (result instanceof AvocadoError) {
+    if (result instanceof ArangoError) {
       actions.resultBad(req, res, result.errorNum, result.errorMessage);
       return;
     }

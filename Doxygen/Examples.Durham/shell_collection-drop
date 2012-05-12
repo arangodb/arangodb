@@ -1,5 +1,5 @@
-avocado> col = db.examples;
-[AvocadoCollection 109757, "examples" (status unloaded)]
-avocado> col.drop()
-avocado> col;
-[AvocadoCollection 109757, "examples" (status deleted)]
+arango> col = db.examples;
+[ArangoCollection 109757, "examples" (status unloaded)]
+arango> col.drop()
+arango> col;
+[ArangoCollection 109757, "examples" (status deleted)]
