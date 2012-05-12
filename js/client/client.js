@@ -1255,6 +1255,27 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief queries by example
 ////////////////////////////////////////////////////////////////////////////////
 
