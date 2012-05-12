@@ -44,7 +44,7 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         REST_VOCBASE_BASE_HANDLER
@@ -55,7 +55,7 @@ using namespace triagens::avocado;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,7 +111,7 @@ string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,7 +150,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,7 +260,7 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
 
 void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
   generateError(HttpResponse::NOT_FOUND, 
-                TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+                TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                 "collection " + COLLECTION_PATH + "/" + cid + " not found");
 }
 
@@ -272,7 +272,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string
   string location = DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + did;
 
   generateError(HttpResponse::NOT_FOUND,
-                TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
+                TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                 "document " + location + " not found");
 }
 
@@ -282,7 +282,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string
 
 void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
   generateError(HttpResponse::CONFLICT, 
-                TRI_ERROR_AVOCADO_CONFLICT,
+                TRI_ERROR_ARANGO_CONFLICT,
                 "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
 }
 
@@ -316,7 +316,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
   result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
-  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_AVOCADO_CONFLICT));
+  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
   result->add("errorMessage", new VariantString("precondition failed"));
   result->add("_id", new VariantString(StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did)));
   result->add("_rev", new VariantUInt64(rid));
@@ -503,7 +503,7 @@ int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
 
   if (_collection == 0) {
     generateCollectionNotFound(name);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   // and use the collection
@@ -606,7 +606,7 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
   split = StringUtils::split(handle, '/');
 
   if (split.size() != 2) {
-    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD);
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   cid = TRI_UInt64String(split[0].c_str());
@@ -634,7 +634,7 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

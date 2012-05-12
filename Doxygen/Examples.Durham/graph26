@@ -1,4 +1,4 @@
-avocado> var Graph = require("graph").Graph;
+arango> var Graph = require("graph").Graph;
 
-avocado> g2 = new Graph("graph", "vertices", "alternativeEdges");
+arango> g2 = new Graph("graph", "vertices", "alternativeEdges");
 Graph("vertices", "alternativeEdges")

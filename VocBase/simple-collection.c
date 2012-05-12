@@ -155,7 +155,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return datafile;
       }
-      else if (res != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+      else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return NULL;
       }
@@ -561,7 +561,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
             collection->base.endWrite(&collection->base);
           }
 
-          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
+          TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
           mptr._did = 0;
           return mptr;
         }
@@ -603,7 +603,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -728,7 +728,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
       collection->base.endWrite(&collection->base);
     }
 
-    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   // check the revision
@@ -744,7 +744,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
             collection->base.endWrite(&collection->base);
           }
 
-          return TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
+          return TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
         }
       }
 
@@ -776,13 +776,13 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, &result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
     }
 
-    return TRI_ERROR_AVOCADO_NO_JOURNAL;
+    return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
   // generate crc
@@ -1047,7 +1047,7 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
       document->endWrite(&collection->base);
     }
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     mptr._did = 0;
     return mptr;
   }
@@ -1993,7 +1993,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
               (unsigned long) header->_rid);
 
     sim->_headers->release(sim->_headers, header);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   // return in case of a deleted document
@@ -2082,7 +2082,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
     }
 
     // "prefer" unique constraint violated
-    if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
       constraint = true;
     }
     else if (res != TRI_ERROR_NO_ERROR) {
@@ -2091,7 +2091,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
   }
 
   if (constraint) {
-    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -2155,7 +2155,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
     }
 
     // "prefer" unique constraint violated
-    if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
       constraint = true;
     }
     else if (res != TRI_ERROR_NO_ERROR) {
@@ -2164,7 +2164,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   return result;
@@ -2195,7 +2195,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
   found = TRI_RemoveKeyAssociativePointer(&collection->_primaryIndex, &header->_did);
 
   if (found == NULL) {
-    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   // .............................................................................
@@ -2661,7 +2661,7 @@ static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
       return &sim->base._capConstraint->base;
     }
     else {
-      TRI_set_errno(TRI_ERROR_AVOCADO_CAP_CONSTRAINT_ALREADY_DEFINED);
+      TRI_set_errno(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED);
       return NULL;
     }
   }
@@ -3484,7 +3484,7 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
     if (pidnames[j]._pid == 0) {
       TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
 
-      return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
   }
 

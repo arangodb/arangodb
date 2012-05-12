@@ -95,7 +95,7 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return datafile;
       }
-      else if (res != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+      else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return NULL;
       }
@@ -123,7 +123,7 @@ static int CopyDocument (TRI_sim_collection_t* collection,
   journal = SelectCompactor(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     return false;
   }
 

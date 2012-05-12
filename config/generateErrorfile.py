@@ -67,9 +67,9 @@ def genCFile(errors, filename):
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "////////////////////////////////////////////////////////////////////////////////\n"\
-       + "/// @page AvocadoErrors Error codes and meanings\n"\
+       + "/// @page ArangoErrors Error codes and meanings\n"\
        + "///\n"\
-       + "/// The following errors might be raised when running AvocadoDB:\n"\
+       + "/// The following errors might be raised when running ArangoDB:\n"\
        + "///\n"
   
   for e in errors:
@@ -98,7 +98,7 @@ def genCHeaderFile(errors):
            + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief register all errors for AvocadoDB\n"\
+           + "/// @brief register all errors for ArangoDB\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
            + "void TRI_InitialiseErrorMessages (void);\n"\

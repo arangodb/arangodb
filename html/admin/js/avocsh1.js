@@ -1,4 +1,4 @@
-function AvocadoConnection () {
+function ArangoConnection () {
   
 }
 
@@ -6,9 +6,9 @@ function TRI_SYS_OUTPUT (a, b, c, d, e, f, g, h) {
   return true;    
 }
 
-var avocado = new AvocadoConnection();
+var arango = new ArangoConnection();
 
-AvocadoConnection.prototype.get = function (url, obj) {
+ArangoConnection.prototype.get = function (url, obj) {
 var msg; 
   $.ajax({
     async: false, 
@@ -27,7 +27,7 @@ var msg;
 }
 
 
-AvocadoConnection.prototype.delete = function (url, obj) {
+ArangoConnection.prototype.delete = function (url, obj) {
 var msg; 
   $.ajax({
     async: false, 
@@ -46,7 +46,7 @@ var msg;
 }
 
 
-AvocadoConnection.prototype.post = function (url, body, obj) {
+ArangoConnection.prototype.post = function (url, body, obj) {
 var msg; 
   $.ajax({
     async: false, 
@@ -66,7 +66,7 @@ var msg;
 }
 
 
-AvocadoConnection.prototype.put = function (url, body, obj) {
+ArangoConnection.prototype.put = function (url, body, obj) {
 var msg; 
   $.ajax({
     async: false, 

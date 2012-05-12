@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Avocado Simple Query Language
+/// @brief Arango Simple Query Language
 ///
 /// @file
 ///
@@ -171,7 +171,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 /// @verbinclude shell-simple-query-first-example
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.firstExample = function () {
+ArangoCollection.prototype.firstExample = function () {
   var example;
 
   // example is given as only argument
@@ -198,7 +198,7 @@ AvocadoCollection.prototype.firstExample = function () {
   }
 }
 
-AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
+ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -233,7 +233,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
     }
 
     if (this._skip < 0) {
-      var err = new AvocadoError();
+      var err = new ArangoError();
       err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
       err.errorMessage = "skip must be non-negative";
       throw err;

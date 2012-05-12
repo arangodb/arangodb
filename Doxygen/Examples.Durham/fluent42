@@ -1,2 +1,2 @@
-avocado> db.names;
+arango> db.names;
 [new born collection "names"]

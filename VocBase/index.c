@@ -193,7 +193,7 @@ TRI_index_t* TRI_LookupIndex (TRI_doc_collection_t* collection, TRI_idx_iid_t ii
   size_t i;
 
   if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
 
@@ -207,7 +207,7 @@ TRI_index_t* TRI_LookupIndex (TRI_doc_collection_t* collection, TRI_idx_iid_t ii
     }
   }
 
-  TRI_set_errno(TRI_ERROR_AVOCADO_NO_INDEX);
+  TRI_set_errno(TRI_ERROR_ARANGO_NO_INDEX);
   return NULL;
 }
 
@@ -704,7 +704,7 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
         return TRI_ERROR_NO_ERROR;
       }
       else {
-        return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+        return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
       }
     }
     else {
@@ -731,7 +731,7 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   else if (res == -3) {
     if (geo->_constraint) {
       LOG_DEBUG("illegal geo-coordinates, ignoring entry");
-      return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
     }
     else {
       return TRI_ERROR_NO_ERROR;
@@ -801,7 +801,7 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
         return TRI_ERROR_NO_ERROR;
       }
       else {
-        return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+        return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
       }
     }
     else {
@@ -828,7 +828,7 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
   else if (res == -3) {
     if (geo->_constraint) {
       LOG_DEBUG("illegal geo-coordinates, ignoring entry");
-      return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
+      return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
     }
     else {
       return TRI_ERROR_NO_ERROR;
@@ -1271,7 +1271,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       shapedObject._data.length = 0;
       shapedObject._data.data = NULL;
 
-      res = TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+      res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
     }
     else {
      
@@ -1286,7 +1286,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       TRI_FreeShapeAccessor(acc);
 
       if (shapedObject._sid == shaper->_sidNull) {
-        res = TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+        res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
       }
     }
       
@@ -1428,7 +1428,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // be included within the hash index, in this case do not report back an error.
     // .............................................................................
     
-    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
+    if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
       if (hashIndex->base._unique) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
@@ -1508,13 +1508,13 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // have particpated within the hash index. In this case, we do not report an
     // error to the calling procedure.
     //
-    // TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING from the called
+    // TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING from the called
     // procedure HashIndexHelper implies that we do not propagate the error to
     // the parent function. However for removal we advice the parent
     // function. TODO: return a proper error code.
     // .............................................................................
     
-    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
+    if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
       if (hashIndex->base._unique) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
@@ -1625,7 +1625,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
     }
   }    
     
-  else if (res != TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+  else if (res != TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
     LOG_WARNING("existing document was not removed from hash index in UpdateHashIndex");
   }
     
@@ -1642,7 +1642,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
   if (res != TRI_ERROR_NO_ERROR) {
     
     // probably fields do not match. 
-    if (res == TRI_WARNING_AVOCADO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
       if (hashIndex->base._unique) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
@@ -2127,7 +2127,7 @@ static int InsertPriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc
   
   res = PQIndex_insert(pqIndex->_pqIndex, &pqElement);
   
-  if (res == TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED) {
+  if (res == TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED) {
     LOG_WARNING("priority queue insert failure");
   }  
   
@@ -2795,7 +2795,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
           TRI_FreeShapeAccessor(acc);
         }
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
       }  
       
       
@@ -2843,7 +2843,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
           TRI_FreeShapeAccessor(acc);
         }
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
       }  
       
       
@@ -2935,7 +2935,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // be included within the hash index, in this case do not report back an error.
     // ..........................................................................
     
-    if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
+    if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
       return TRI_ERROR_NO_ERROR;
     }
     
@@ -3107,7 +3107,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // report an error to the calling procedure.
     // ........................................................................
     
-    if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
+    if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
       return TRI_ERROR_NO_ERROR;
     }
     
@@ -3228,7 +3228,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     // the doc did not have the correct attributes. TODO: do not make this assumption.
     // ..............................................................................
 
-    else if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
+    else if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
     }
     
     // ..............................................................................
@@ -3254,7 +3254,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
       
-      if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
+      if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
       
         // ........................................................................
         // probably fields do not match. 
@@ -3310,7 +3310,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
       
     }    
 
-    else if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
+    else if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
     }
     
     // ..............................................................................
@@ -3337,7 +3337,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
       
-      if (res == TRI_WARNING_AVOCADO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
+      if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
       
         // ........................................................................
         // probably fields do not match. 

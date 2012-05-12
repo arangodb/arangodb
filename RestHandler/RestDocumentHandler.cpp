@@ -37,14 +37,14 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,7 +65,7 @@ RestDocumentHandler::RestDocumentHandler (HttpRequest* request, TRI_vocbase_t* v
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,7 +149,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,7 +238,7 @@ bool RestDocumentHandler::createDocument () {
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -297,15 +297,15 @@ bool RestDocumentHandler::createDocument () {
     int res = TRI_errno();
 
     switch (res) {
-      case TRI_ERROR_AVOCADO_READ_ONLY:
+      case TRI_ERROR_ARANGO_READ_ONLY:
         generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
         return false;
 
-      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
         generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
         return false;
 
-      case TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED:
+      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
         generateError(HttpResponse::BAD, res, "geo constraint violated");
         return false;
 
@@ -333,7 +333,7 @@ bool RestDocumentHandler::readDocument () {
 
     case 1:
       generateError(HttpResponse::BAD, 
-                    TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                    TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                     "expecting GET /document/<document-handle>");
       return false;
 
@@ -640,7 +640,7 @@ bool RestDocumentHandler::checkDocument () {
 /// If the document does not exists, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" header field, then the AvocadoDB
+/// If an etag is supplied in the "If-Match" header field, then the ArangoDB
 /// checks that the revision of the document is equal to the etag. If there is a
 /// mismatch, then a @LIT{HTTP 409} conflict is returned and no update is
 /// performed.
@@ -747,25 +747,25 @@ bool RestDocumentHandler::updateDocument () {
   }
   else {
     switch (res) {
-      case TRI_ERROR_AVOCADO_READ_ONLY:
+      case TRI_ERROR_ARANGO_READ_ONLY:
         generateError(HttpResponse::FORBIDDEN, 
-                      TRI_ERROR_AVOCADO_READ_ONLY,
+                      TRI_ERROR_ARANGO_READ_ONLY,
                       "collection is read-only");
         return false;
 
-      case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
+      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
         generateDocumentNotFound(cid, didStr);
         return false;
 
-      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
         generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
         return false;
 
-      case TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED:
+      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
         generateError(HttpResponse::BAD, res, "geo constraint violated");
         return false;
 
-      case TRI_ERROR_AVOCADO_CONFLICT:
+      case TRI_ERROR_ARANGO_CONFLICT:
         generatePreconditionFailed(_documentCollection->base._cid, did, rid);
         return false;
 
@@ -796,7 +796,7 @@ bool RestDocumentHandler::updateDocument () {
 /// If the document does not exists, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" field, then the AvocadoDB checks
+/// If an etag is supplied in the "If-Match" field, then the ArangoDB checks
 /// that the revision of the document is equal to the etag. If there is a
 /// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
 /// performed.
@@ -894,17 +894,17 @@ bool RestDocumentHandler::deleteDocument () {
   }
   else {
     switch (res) {
-      case TRI_ERROR_AVOCADO_READ_ONLY:
+      case TRI_ERROR_ARANGO_READ_ONLY:
         generateError(HttpResponse::FORBIDDEN, 
-                      TRI_ERROR_AVOCADO_READ_ONLY,
+                      TRI_ERROR_ARANGO_READ_ONLY,
                       "collection is read-only");
         return false;
 
-      case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
+      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
         generateDocumentNotFound(cid, didStr);
         return false;
 
-      case TRI_ERROR_AVOCADO_CONFLICT:
+      case TRI_ERROR_ARANGO_CONFLICT:
         generatePreconditionFailed(_documentCollection->base._cid, did, rid);
         return false;
 

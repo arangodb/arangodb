@@ -6,20 +6,20 @@
 	<false/>
 
 	<key>Label</key>
-	<string>org.avocadodb</string>
+	<string>org.arangodb</string>
 
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/sbin/avocado</string>
+		<string>/usr/sbin/arango</string>
 		<string>-c</string>
-		<string>/etc/voc/avocado.conf</string>
+		<string>/etc/voc/arango.conf</string>
 	</array>
 
         <key>UserName</key>
-        <string>avocado</string>
+        <string>arango</string>
 
         <key>GroupName</key>
-        <string>avocado</string>
+        <string>arango</string>
 
 	<key>RunAtLoad</key>
 	<true/>

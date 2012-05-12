@@ -1,4 +1,4 @@
-avocado> db.five.all().toArray();
+arango> db.five.all().toArray();
 [ { _id : 159896:1798296, _rev : 1798296, doc : 3 },
   { _id : 159896:1732760, _rev : 1732760, doc : 2 },
   { _id : 159896:1863832, _rev : 1863832, doc : 4 },

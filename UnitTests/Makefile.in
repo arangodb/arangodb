@@ -268,8 +268,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = .
 PID := $(shell echo $$PPID)
-TMP_DIR := "/tmp/avocadodb.$(PID)"
-PID_FILE := "/tmp//avocadodb.$(PID).pid"
+TMP_DIR := "/tmp/arangodb.$(PID)"
+PID_FILE := "/tmp//arangodb.$(PID).pid"
 all: all-recursive
 
 .SUFFIXES:
@@ -610,9 +610,9 @@ uninstall-am:
 	tags-recursive uninstall uninstall-am
 
 
-.PHONY: start-avocadodb stop-avocadodb
+.PHONY: start-arangodb stop-arangodb
 
-start-avocadodb:
+start-arangodb:
 	echo $(PID)
 	echo $(TMP_DIR)
 

@@ -1,4 +1,4 @@
-avocado> edges.relation.outEdges("86294/1528086");
+arango> edges.relation.outEdges("86294/1528086");
 [{ "_id" : "1659158/3100950", "_rev" : 3100950, "_from" : "86294/1528086", "_to" : "86294/1593622", "label" : "knows" }]
-avocado> edges.relation.outEdges("86294/1593622");
+arango> edges.relation.outEdges("86294/1593622");
 [ ]

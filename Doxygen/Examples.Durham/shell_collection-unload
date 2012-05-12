@@ -1,5 +1,5 @@
-avocado> col = db.example;
-[AvocadoCollection 164208316, "example" (status loaded)]
-avocado> col.unload();
-avocado> col;
-[AvocadoCollection 164208316, "example" (status unloaded)]
+arango> col = db.example;
+[ArangoCollection 164208316, "example" (status loaded)]
+arango> col.unload();
+arango> col;
+[ArangoCollection 164208316, "example" (status unloaded)]

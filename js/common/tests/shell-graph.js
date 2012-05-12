@@ -7,7 +7,7 @@
     print,
     PRINT_OBJECT,
     console,
-    AvocadoCollection, AvocadoEdgesCollection */
+    ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -64,8 +64,8 @@ function GraphCreationSuite() {
       graph = new Graph(graph_name, vertex, edge);
 
       assertEqual(graph_name, graph._properties.name);
-      assertTrue(graph._vertices instanceof AvocadoCollection);
-      assertTrue(graph._edges instanceof AvocadoEdgesCollection);
+      assertTrue(graph._vertices instanceof ArangoCollection);
+      assertTrue(graph._edges instanceof ArangoEdgesCollection);
 
       graph.drop();
     },

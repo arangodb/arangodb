@@ -1,2 +1,2 @@
-avocado> db;
-[vocbase at "/var/lib/avocado"]
+arango> db;
+[vocbase at "/var/lib/arango"]

@@ -39,10 +39,10 @@ function ahuacatlFunctionsTestSuite () {
 
   function executeQuery (query) {
     var cursor = AHUACATL_RUN(query, undefined);
-    if (cursor instanceof AvocadoError) {
+    if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
-    assertFalse(cursor instanceof AvocadoError);
+    assertFalse(cursor instanceof ArangoError);
     return cursor;
   }
 

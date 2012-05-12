@@ -1,5 +1,5 @@
-avocado> v = g.addVertex(1, { name : "Hugo" });
+arango> v = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
-avocado> v.getId();
+arango> v.getId();
 "1"

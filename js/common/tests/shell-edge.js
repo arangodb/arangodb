@@ -83,7 +83,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
 
       try {
@@ -91,7 +91,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
   };

@@ -1,2 +1,2 @@
-avocado> db.demo.figures()
+arango> db.demo.figures()
 { "numberDatafiles" : 1, "numberAlive" : 1, "numberDead" : 1, "sizeAlive" : 24, "sizeDead" : 24, "numberDeletion" : 1 }

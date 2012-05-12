@@ -1,10 +1,10 @@
-> ./avocado --shell --startup.modules-path "/tmp/path1;/tmp/path2" /tmp/vocbase
-AvocadoDB shell [V8 version 3.6.5.1, DB version 1 (9727)]
+> ./arango --shell --startup.modules-path "/tmp/path1;/tmp/path2" /tmp/vocbase
+ArangoDB shell [V8 version 3.6.5.1, DB version 1 (9727)]
 
-avocado> var test1 = require("test1");
+arango> var test1 = require("test1");
 
-avocado> test1.const1;
+arango> test1.const1;
 1
 
-avocado> test1.func1();
+arango> test1.func1();
 1

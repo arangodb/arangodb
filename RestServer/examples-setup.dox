@@ -38,7 +38,7 @@
 /// Some of the examples may destroy the collection. In that case you can
 /// use one of the following script to restore the collection.
 ///
-/// @LIT{examples.js}: A JavaScript script usable within the AvocadoDB shell to
+/// @LIT{examples.js}: A JavaScript script usable within the ArangoDB shell to
 /// regenerate the above collections.
 ///
 /// @LIT{examples.sh}: A shell script using curl to setup the collections. The

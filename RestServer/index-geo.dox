@@ -50,15 +50,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexGeo Geo Indexes
 ///
-/// This is an introduction to AvocadoDB's geo indexes.
+/// This is an introduction to ArangoDB's geo indexes.
 ///
 /// @EMBEDTOC{IndexGeoTOC}
 ///
 /// @section IndexGeoIntro Geo Indexes
 //////////////////////////////////////
 ///
-/// AvocadoDB uses Hilbert curves to implement geo-spatial indexes. See this
-/// <a href="http://www.avocadodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
+/// ArangoDB uses Hilbert curves to implement geo-spatial indexes. See this
+/// <a href="http://www.arangodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing">blog</a>
 /// for details.
 ///
 /// A geo-spatial index assumes that the latitude is between -90 and
@@ -81,15 +81,15 @@
 /// <hr>
 ///
 /// @anchor IndexGeoShellGeo
-/// @copydetails JSF_AvocadoCollection_prototype_geo
+/// @copydetails JSF_ArangoCollection_prototype_geo
 /// <hr>
 ///
 /// @anchor IndexGeoShellNear
-/// @copydetails JSF_AvocadoCollection_prototype_near
+/// @copydetails JSF_ArangoCollection_prototype_near
 /// <hr>
 ///
 /// @anchor IndexGeoShellWithin
-/// @copydetails JSF_AvocadoCollection_prototype_within
+/// @copydetails JSF_ArangoCollection_prototype_within
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

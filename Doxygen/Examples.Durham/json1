@@ -1,7 +1,7 @@
-avocado> var a = { "hallo" : "you" };
-avocado> a.toJson = function() { return { "World" : this.hallo }; };
+arango> var a = { "hallo" : "you" };
+arango> a.toJson = function() { return { "World" : this.hallo }; };
 function () { return { "World" : this.hallo }; }
-avocado> toJson(a);
+arango> toJson(a);
 "{\"World\":\"you\"}"
-avocado> toJson({ a : a, b : 1 });
+arango> toJson({ a : a, b : 1 });
 "{\"a\":{\"World\":\"you\"},\"b\":1}"

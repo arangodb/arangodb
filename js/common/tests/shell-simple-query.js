@@ -7,7 +7,7 @@
     print,
     PRINT_OBJECT,
     console,
-    AvocadoCollection, AvocadoEdgesCollection */
+    ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class

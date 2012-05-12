@@ -26,18 +26,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServer AvocadoDB's User Manual
+/// @page UserManualServer ArangoDB's User Manual
 ///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref UserManualServerBasics</li>
-///  <li>AvocadoQueryLanguage</li>
+///  <li>ArangoQueryLanguage</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
 /// @copydetails UserManualServerBasicsTOC
 /// <ul>
-///  <li>Avocado Query Language</li>
+///  <li>Arango Query Language</li>
 /// </ul>
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,19 +63,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualServerBasics Basics
 ///
-/// The AvocadoDB groups documents into collections. Each collection can be
+/// The ArangoDB groups documents into collections. Each collection can be
 /// accessed using queries. For simple queries involving just one collection,
-/// you can use a simple interface from within JavaScript code, see AvocadoDB
+/// you can use a simple interface from within JavaScript code, see ArangoDB
 /// shell user manual. This interface allows you to select documents from one
 /// collection based on simple search criteria. For more complex queries, you
-/// can use the Avocado Query Language, which is an evolution of SQL resp. UNQL.
+/// can use the Arango Query Language, which is an evolution of SQL resp. UNQL.
 ///
 /// @EMBEDTOC{UserManualServerBasicsTOC}
 ///
-/// @section UserManualServerStartStop Starting the AvocadoDB
+/// @section UserManualServerStartStop Starting the ArangoDB
 /////////////////////////////////////////////////////////////
 ///
-/// The AvocadoDB has two modes of operation: as server, where it will answer to
+/// The ArangoDB has two modes of operation: as server, where it will answer to
 /// client requests and an emergency console, where you can access the database
 /// directly. The latter should - as the name suggests - only be used in case of
 /// an emergency, for example, a corrupted collection. Using the emergency
@@ -88,7 +88,7 @@
 /// @subsection UserManualServerStartStopHttp Starting the HTTP Server
 //////////////////////////////////////////////////////////////////////
 ///
-/// The following command starts the AvocadoDB in server mode. You will be able
+/// The following command starts the ArangoDB in server mode. You will be able
 /// to access the server using HTTP request on port 8529. See below for a list
 /// of frequently used options, see @ref CommandLine "here" for a complete list.
 ///
@@ -112,7 +112,7 @@
 ///
 /// Uses the @CA{database-directory} as base directory. There is an alternative
 /// version available for use in configuration files, see @ref
-/// CommandLineAvocado "here".
+/// CommandLineArango "here".
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::options
 ///
@@ -123,7 +123,7 @@
 /// following values: fatal, error, warning, info, debug, trace.  For more
 /// information see @ref CommandLineLogging "here".
 ///
-/// @copydetails triagens::avocado::AvocadoServer::_httpPort
+/// @copydetails triagens::arango::ArangoServer::_httpPort
 ///
 /// @CMDOPT{--shell}
 ///

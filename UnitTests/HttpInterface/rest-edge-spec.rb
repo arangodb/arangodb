@@ -1,9 +1,9 @@
 # coding: utf-8
 
 require 'rspec'
-require './avocadodb.rb'
+require './arangodb.rb'
 
-describe AvocadoDB do
+describe ArangoDB do
   prefix = "rest_edge"
 
   context "creating an edge:" do
@@ -17,7 +17,7 @@ describe AvocadoDB do
 	cn = "UnitTestsCollectionEdge"
 	cmd = "/edge?collection=#{cn}&createCollection=true"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-missing-from-to", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-missing-from-to", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -25,14 +25,14 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.drop_collection(cn)
+	ArangoDB.drop_collection(cn)
       end
 
       it "returns an error if from/to are malformed" do
 	cn = "UnitTestsCollectionEdge"
 	cmd = "/edge?collection=#{cn}&createCollection=true&from=1&to=1"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-bad-from-to", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-bad-from-to", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -40,13 +40,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.drop_collection(cn)
+	ArangoDB.drop_collection(cn)
       end
 
       it "returns an error if vertex-handle is missing" do
 	cn = "UnitTestsCollectionEdge"
 	cmd = "/edges/#{@cid}?vertex="
-        doc = AvocadoDB.log_get("#{prefix}-missing-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -54,7 +54,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json")
 
-	AvocadoDB.drop_collection(cn)
+	ArangoDB.drop_collection(cn)
       end
     end
 
@@ -65,11 +65,11 @@ describe AvocadoDB do
     context "known collection name:" do
       before do
 	@cn = "UnitTestsCollectionEdge"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "creating an edge" do
@@ -77,7 +77,7 @@ describe AvocadoDB do
 
 	# create first vertex
 	body = "{ \"a\" : 1 }"
-	doc = AvocadoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
@@ -87,7 +87,7 @@ describe AvocadoDB do
 
 	# create second vertex
 	body = "{ \"a\" : 2 }"
-	doc = AvocadoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
@@ -98,7 +98,7 @@ describe AvocadoDB do
 	# create edge
 	cmd = "/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
@@ -108,7 +108,7 @@ describe AvocadoDB do
 
 	# check edge
 	cmd = "/edge/#{id3}"
-        doc = AvocadoDB.log_get("#{prefix}-read-edge", cmd)
+        doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['_id'].should eq(id3)
@@ -119,7 +119,7 @@ describe AvocadoDB do
 	# create another edge
 	cmd = "/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
 	body = "{ \"e\" : 1 }"
-        doc = AvocadoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
@@ -129,7 +129,7 @@ describe AvocadoDB do
 
 	# check edge
 	cmd = "/edge/#{id4}"
-        doc = AvocadoDB.log_get("#{prefix}-read-edge", cmd)
+        doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['_id'].should eq(id4)
@@ -141,7 +141,7 @@ describe AvocadoDB do
 	# create third edge
 	cmd = "/edge?collection=#{@cid}&from=#{id2}&to=#{id1}"
 	body = "{ \"e\" : 2 }"
-        doc = AvocadoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
@@ -151,7 +151,7 @@ describe AvocadoDB do
 
 	# check edge
 	cmd = "/edge/#{id5}"
-        doc = AvocadoDB.log_get("#{prefix}-read-edge", cmd)
+        doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['_id'].should eq(id5)
@@ -162,7 +162,7 @@ describe AvocadoDB do
 
 	# check ANY edges
 	cmd = "/edges/#{@cid}?vertex=#{id1}"
-	doc = AvocadoDB.log_get("#{prefix}-read-edges-any", cmd);
+	doc = ArangoDB.log_get("#{prefix}-read-edges-any", cmd);
 
 	doc.code.should eq(200)
 	doc.parsed_response['edges'].should be_kind_of(Array)
@@ -170,7 +170,7 @@ describe AvocadoDB do
 
 	# check IN edges
 	cmd = "/edges/#{@cid}?vertex=#{id1}&direction=in"
-	doc = AvocadoDB.log_get("#{prefix}-read-edges-in", cmd);
+	doc = ArangoDB.log_get("#{prefix}-read-edges-in", cmd);
 
 	doc.code.should eq(200)
 	doc.parsed_response['edges'].should be_kind_of(Array)
@@ -178,7 +178,7 @@ describe AvocadoDB do
 
 	# check OUT edges
 	cmd = "/edges/#{@cid}?vertex=#{id1}&direction=out"
-	doc = AvocadoDB.log_get("#{prefix}-read-edges-out", cmd);
+	doc = ArangoDB.log_get("#{prefix}-read-edges-out", cmd);
 
 	doc.code.should eq(200)
 	doc.parsed_response['edges'].should be_kind_of(Array)

@@ -18,8 +18,8 @@
 3rdParty/ptmalloc3/t-test2
 ARCH.*
 autom4te.cache
-avocado
-avocadodb
+arango
+arangodb
 avocimp
 avocirb
 avocsh
@@ -38,7 +38,7 @@ config/version.sh
 COVERAGE
 .deps
 .dirstamp
-Doxygen/avocado.doxy
+Doxygen/arango.doxy
 Doxygen/html/
 Doxygen/js
 Doxygen/latex/
@@ -52,8 +52,8 @@ GRTAGS
 GTAGS
 JsonParserX/JsonParserX.output
 *.la
-libavocado.a
-libavocadodb.a
+libarango.a
+libarangodb.a
 .libev-build-*
 .libs
 *.lo

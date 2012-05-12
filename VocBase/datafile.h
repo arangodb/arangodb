@@ -287,7 +287,7 @@ TRI_df_marker_t;
 ///     <td>_maximalSize</td>
 ///     <td>The maximal size to which a datafile can grow. If you
 ///         attempt to add more datafile to a datafile, then an
-///         error TRI_ERROR_AVOCADO_DATAFILE_FULL is returned.</td>
+///         error TRI_ERROR_ARANGO_DATAFILE_FULL is returned.</td>
 ///   </tr>
 ///   <tr>
 ///     <td>TRI_voc_tick_t</td>

@@ -92,15 +92,15 @@
 /// <hr>
 ///
 /// @anchor SimpleQueryAll
-/// @copydetails JSF_AvocadoCollection_prototype_all
+/// @copydetails JSF_ArangoCollection_prototype_all
 /// <hr>
 ///
 /// @anchor SimpleQueryByExample
-/// @copydetails JSF_AvocadoCollection_prototype_byExample
+/// @copydetails JSF_ArangoCollection_prototype_byExample
 /// <hr>
 ///
 /// @anchor SimpleQueryFirstExample
-/// @copydetails JSF_AvocadoCollection_prototype_firstExample
+/// @copydetails JSF_ArangoCollection_prototype_firstExample
 /// <hr>
 ///
 /// @anchor SimpleQueryCollectionCount
@@ -108,12 +108,12 @@
 /// <hr>
 ///
 /// @anchor SimpleQueryToArray
-/// @copydetails JSF_AvocadoCollection_prototype_toArray
+/// @copydetails JSF_ArangoCollection_prototype_toArray
 ///
 /// @section SimpleQueriesGeoQueries Geo Queries
 ////////////////////////////////////////////////
 ///
-/// The AvocadoDB allows to selects documents based on geographic
+/// The ArangoDB allows to selects documents based on geographic
 /// coordinates. In order for this to work, a geo-spatial index must be defined.
 /// This index will use a very elaborate algorithm to lookup neighbours that is
 /// a magnitude faster than a simple R* index.
@@ -132,15 +132,15 @@
 /// <hr>
 ///
 /// @anchor SimpleQueryNear
-/// @copydetails JSF_AvocadoCollection_prototype_near
+/// @copydetails JSF_ArangoCollection_prototype_near
 /// <hr>
 ///
 /// @anchor SimpleQueryWithin
-/// @copydetails JSF_AvocadoCollection_prototype_within
+/// @copydetails JSF_ArangoCollection_prototype_within
 /// <hr>
 ///
 /// @anchor SimpleQueryGeo
-/// @copydetails JSF_AvocadoCollection_prototype_geo
+/// @copydetails JSF_ArangoCollection_prototype_geo
 ///
 /// @section SimpleQueriesEdgesQueries Edges Queries
 ////////////////////////////////////////////////////

@@ -1,23 +1,23 @@
-avocado> v1 = g.addVertex(1, { name : "Hugo" });
+arango> v1 = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
-avocado> v2 = g.addVertex(2, { name : "Emil" }); 
+arango> v2 = g.addVertex(2, { name : "Emil" }); 
 Vertex(2)
 
-avocado> e1 = g.addEdge(v1, v2, 3, "knows");
+arango> e1 = g.addEdge(v1, v2, 3, "knows");
 Edge(3)
 
-avocado> e2 = g.addEdge(v1, v2, 4, "hates");
+arango> e2 = g.addEdge(v1, v2, 4, "hates");
 Edge(4)
 
-avocado> v2.getInEdges();
+arango> v2.getInEdges();
 [ Edge(3), Edge(4) ]
 
-avocado> v2.getInEdges("knows");
+arango> v2.getInEdges("knows");
 [ Edge(3) ]
 
-avocado> v2.getInEdges("hates");
+arango> v2.getInEdges("hates");
 [ Edge(4) ]
 
-avocado> v2.getInEdges("knows", "hates");
+arango> v2.getInEdges("knows", "hates");
 [ Edge(3), Edge(4) ]

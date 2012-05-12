@@ -1,2 +1,2 @@
-avocado> db.five.all().limit(2).count();
+arango> db.five.all().limit(2).count();
 5

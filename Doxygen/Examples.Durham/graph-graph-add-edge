@@ -1,8 +1,8 @@
-avocado> v1 = g.addVertex(1);
+arango> v1 = g.addVertex(1);
 Vertex(1)
 
-avocado> v2 = g.addVertex(2);
+arango> v2 = g.addVertex(2);
 Vertex(2)
 
-avocado> e = g.addEdge(v1, v2, 3);
+arango> e = g.addEdge(v1, v2, 3);
 Edge(3)

@@ -33,7 +33,7 @@ var API = "_api/collection";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoAPI
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +80,7 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoAPI
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,7 +101,7 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 ///   update of an document.
 ///
 /// - @LIT{journalSize} (optional, default is a @ref
-///   CommandLineAvocado "configuration parameter"): The maximal size of
+///   CommandLineArango "configuration parameter"): The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
@@ -122,7 +122,7 @@ function POST_api_collection (req, res) {
   }
 
   if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
+    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
                       "name must be non-empty");
     return;
   }
@@ -571,7 +571,7 @@ function PUT_api_collection_rename (req, res, collection) {
   }
 
   if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
+    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
                       "name must be non-empty");
     return;
   }

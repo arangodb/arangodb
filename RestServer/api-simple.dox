@@ -55,7 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpSimple HTTP Interface for Simple Queries
 ///
-/// This is an introduction to AvocadoDB's Http interface for simple queries.
+/// This is an introduction to ArangoDB's Http interface for simple queries.
 ///
 /// @EMBEDTOC{HttpSimpleTOC}
 ///

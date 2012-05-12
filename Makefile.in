@@ -79,7 +79,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-sbin_PROGRAMS = avocado$(EXEEXT)
+sbin_PROGRAMS = arango$(EXEEXT)
 bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
@@ -93,7 +93,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/m4/Makefile.all-in-one-mruby \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
-	$(top_srcdir)/Doxygen/avocado.template.in \
+	$(top_srcdir)/Doxygen/arango.template.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
@@ -153,7 +153,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/BasicsC/local-configuration.h
-CONFIG_CLEAN_FILES = Doxygen/avocado.template
+CONFIG_CLEAN_FILES = Doxygen/arango.template
 CONFIG_CLEAN_VPATH_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -164,9 +164,9 @@ am__v_AR_0 = @echo "  AR    " $@;
 AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
-libavocado_a_AR = $(AR) $(ARFLAGS)
-libavocado_a_LIBADD =
-am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
+libarango_a_AR = $(AR) $(ARFLAGS)
+libarango_a_LIBADD =
+am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable.cpp Basics/FileUtils.cpp \
 	Basics/Initialise.cpp Basics/LibraryLoader.cpp \
 	Basics/Mutex.cpp Basics/MutexLocker.cpp \
@@ -217,7 +217,7 @@ am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLineEditor.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
-am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
+am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
 	Basics/Initialise.$(OBJEXT) Basics/LibraryLoader.$(OBJEXT) \
 	Basics/Mutex.$(OBJEXT) Basics/MutexLocker.$(OBJEXT) \
@@ -281,7 +281,7 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Variant/VariantUInt32.$(OBJEXT) \
 	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
 	Variant/VariantVector.$(OBJEXT) $(am__objects_1)
-libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
+libarango_a_OBJECTS = $(am_libarango_a_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__EXEEXT_1 = avocirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
@@ -318,7 +318,7 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
-am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
+am_arango_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
 	Admin/RestAdminLogHandler.$(OBJEXT) \
@@ -373,9 +373,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestHandler/RestImportHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
-	RestServer/AvocadoHttpServer.$(OBJEXT) \
-	RestServer/AvocadoServer.$(OBJEXT) \
-	RestServer/avocado.$(OBJEXT) \
+	RestServer/ArangoHttpServer.$(OBJEXT) \
+	RestServer/ArangoServer.$(OBJEXT) \
+	RestServer/arango.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
 	ResultGenerator/JsonResultGenerator.$(OBJEXT) \
@@ -404,21 +404,21 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
-avocado_OBJECTS = $(am_avocado_OBJECTS)
+arango_OBJECTS = $(am_arango_OBJECTS)
 am__DEPENDENCIES_1 =
 am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+arango_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
 am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocimp.$(OBJEXT)
 avocimp_OBJECTS = $(am_avocimp_OBJECTS)
-avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+avocimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
 am__avocirb_SOURCES_DIST = MRClient/avocirb.cpp
 @ENABLE_MRUBY_TRUE@am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
 avocirb_OBJECTS = $(am_avocirb_OBJECTS)
-@ENABLE_MRUBY_TRUE@avocirb_DEPENDENCIES = libavocado.a \
+@ENABLE_MRUBY_TRUE@avocirb_DEPENDENCIES = libarango.a \
 @ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
@@ -426,7 +426,7 @@ am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
-avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+avocsh_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -455,12 +455,12 @@ am__v_CXXLD_0 = @echo "  CXXLD " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libavocado_a_SOURCES) $(UnitTests_basics_suite_SOURCES) \
-	$(UnitTests_geo_suite_SOURCES) $(avocado_SOURCES) \
+SOURCES = $(libarango_a_SOURCES) $(UnitTests_basics_suite_SOURCES) \
+	$(UnitTests_geo_suite_SOURCES) $(arango_SOURCES) \
 	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
-DIST_SOURCES = $(am__libavocado_a_SOURCES_DIST) \
+DIST_SOURCES = $(am__libarango_a_SOURCES_DIST) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
-	$(am__UnitTests_geo_suite_SOURCES_DIST) $(avocado_SOURCES) \
+	$(am__UnitTests_geo_suite_SOURCES_DIST) $(arango_SOURCES) \
 	$(avocimp_SOURCES) $(am__avocirb_SOURCES_DIST) \
 	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -677,7 +677,7 @@ CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
 	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_5) \
 	$(am__append_6)
-noinst_LIBRARIES = libavocado.a
+noinst_LIBRARIES = libarango.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
 	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
@@ -690,7 +690,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
-libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
+libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable.cpp Basics/FileUtils.cpp \
 	Basics/Initialise.cpp Basics/LibraryLoader.cpp \
 	Basics/Mutex.cpp Basics/MutexLocker.cpp \
@@ -740,8 +740,8 @@ libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
 
 ################################################################################
 ################################################################################
-avocado_LDADD = libavocado.a $(LIBS)
-avocado_SOURCES = \
+arango_LDADD = libarango.a $(LIBS)
+arango_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
@@ -799,9 +799,9 @@ avocado_SOURCES = \
 	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
-	RestServer/AvocadoHttpServer.cpp \
-	RestServer/AvocadoServer.cpp \
-	RestServer/avocado.cpp \
+	RestServer/ArangoHttpServer.cpp \
+	RestServer/ArangoServer.cpp \
+	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
 	ResultGenerator/JsonResultGenerator.cpp \
@@ -846,7 +846,7 @@ avocado_SOURCES = \
 
 ################################################################################
 ################################################################################
-avocsh_LDADD = libavocado.a $(LIBS)
+avocsh_LDADD = libarango.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
@@ -857,14 +857,14 @@ avocsh_SOURCES = \
 
 ################################################################################
 ################################################################################
-@ENABLE_MRUBY_TRUE@avocirb_LDADD = libavocado.a $(LIBS)
+@ENABLE_MRUBY_TRUE@avocirb_LDADD = libarango.a $(LIBS)
 @ENABLE_MRUBY_TRUE@avocirb_SOURCES = \
 @ENABLE_MRUBY_TRUE@	MRClient/avocirb.cpp
 
 
 ################################################################################
 ################################################################################
-avocimp_LDADD = libavocado.a $(LIBS)
+avocimp_LDADD = libarango.a $(LIBS)
 avocimp_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
@@ -934,10 +934,10 @@ DOXYGEN = \
 ################################################################################
 WIKI = \
 	Actions \
-	AvocadoErrors \
-	AvocadoScript \
+	ArangoErrors \
+	ArangoScript \
 	CommandLine \
-	CommandLineAvocado \
+	CommandLineArango \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
@@ -996,14 +996,14 @@ VALGRIND =
 ################################################################################
 ################################################################################
 PID := $(shell echo $$PPID)
-PIDFILE := /tmp/avocado.$(PID).pid
+PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
 CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
@@ -1018,8 +1018,8 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.cpp
@@ -1126,7 +1126,7 @@ BasicsC/stamp-h2: $(top_srcdir)/BasicsC/local-configuration.h.in $(top_builddir)
 
 distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 BasicsC/local-configuration.h BasicsC/stamp-h2
-Doxygen/avocado.template: $(top_builddir)/config.status $(top_srcdir)/Doxygen/avocado.template.in
+Doxygen/arango.template: $(top_builddir)/config.status $(top_srcdir)/Doxygen/arango.template.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 clean-noinstLIBRARIES:
@@ -1422,10 +1422,10 @@ MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
-libavocado.a: $(libavocado_a_OBJECTS) $(libavocado_a_DEPENDENCIES) 
-	$(AM_V_at)-rm -f libavocado.a
-	$(AM_V_AR)$(libavocado_a_AR) libavocado.a $(libavocado_a_OBJECTS) $(libavocado_a_LIBADD)
-	$(AM_V_at)$(RANLIB) libavocado.a
+libarango.a: $(libarango_a_OBJECTS) $(libarango_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libarango.a
+	$(AM_V_AR)$(libarango_a_AR) libarango.a $(libarango_a_OBJECTS) $(libarango_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libarango.a
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -1767,11 +1767,11 @@ RestServer/$(DEPDIR)/$(am__dirstamp):
 RestServer/ActionDispatcherThread.$(OBJEXT):  \
 	RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/AvocadoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
+RestServer/ArangoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/AvocadoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
+RestServer/ArangoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/avocado.$(OBJEXT): RestServer/$(am__dirstamp) \
+RestServer/arango.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/$(am__dirstamp):
 	@$(MKDIR_P) ResultGenerator
@@ -1883,9 +1883,9 @@ VocBase/voc-shaper.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/vocbase.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-avocado$(EXEEXT): $(avocado_OBJECTS) $(avocado_DEPENDENCIES) 
-	@rm -f avocado$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(avocado_OBJECTS) $(avocado_LDADD) $(LIBS)
+arango$(EXEEXT): $(arango_OBJECTS) $(arango_DEPENDENCIES) 
+	@rm -f arango$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(arango_OBJECTS) $(arango_LDADD) $(LIBS)
 SimpleHttpClient/$(am__dirstamp):
 	@$(MKDIR_P) SimpleHttpClient
 	@: > SimpleHttpClient/$(am__dirstamp)
@@ -2057,9 +2057,9 @@ mostlyclean-compile:
 	-rm -f RestHandler/RestImportHandler.$(OBJEXT)
 	-rm -f RestHandler/RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
-	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
-	-rm -f RestServer/AvocadoServer.$(OBJEXT)
-	-rm -f RestServer/avocado.$(OBJEXT)
+	-rm -f RestServer/ArangoHttpServer.$(OBJEXT)
+	-rm -f RestServer/ArangoServer.$(OBJEXT)
+	-rm -f RestServer/arango.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
 	-rm -f ResultGenerator/JsonResultGenerator.$(OBJEXT)
@@ -2287,9 +2287,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoHttpServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/JsonResultGenerator.Po@am__quote@
@@ -2901,11 +2901,11 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-Doxygen/avocado-html.doxy: Doxygen/avocado.template
+Doxygen/arango-html.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 
-doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-html.doxy > /dev/null
+doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
@@ -2913,26 +2913,26 @@ doxygen: Doxygen/avocado-html.doxy $(DOXYGEN)
 
 .PHONY: wiki wiki2
 
-Doxygen/avocado-xml.doxy: Doxygen/avocado.template
+Doxygen/arango-xml.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 
 wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Doxygen/avocado-xml.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-xml.doxy > /dev/null
+wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ################################################################################
 
 .PHONY: latex
 
-Doxygen/avocado-latex.doxy: Doxygen/avocado.template
+Doxygen/arango-latex.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 
-latex: Doxygen/avocado-latex.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado-latex.doxy > /dev/null
+latex: Doxygen/arango-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
@@ -2984,7 +2984,7 @@ unittests-brief: \
 unittests-verbose:
 	@echo "################################################################################"
 	@echo "##                                                                            ##"
-	@echo "## AvocadoDB Unit-Tests                                                       ##"
+	@echo "## ArangoDB Unit-Tests                                                       ##"
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
@@ -3010,7 +3010,7 @@ start-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
@@ -3065,7 +3065,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -3083,7 +3083,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -3123,7 +3123,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done

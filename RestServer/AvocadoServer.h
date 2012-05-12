@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado server
+/// @brief arango server
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_AVOCADO_SERVER_H
-#define TRIAGENS_REST_SERVER_AVOCADO_SERVER_H 1
+#ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
+#define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Rest/AnyServer.h"
 
@@ -45,25 +45,25 @@ namespace triagens {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class AvocadoServer
+// --SECTION--                                               class ArangoServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
-  namespace avocado {
+  namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AvocadoDB server
+/// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-  class AvocadoServer : public rest::AnyServer {
+  class ArangoServer : public rest::AnyServer {
       private:
-        AvocadoServer (const AvocadoServer&);
-        AvocadoServer& operator= (const AvocadoServer&);
+        ArangoServer (const ArangoServer&);
+        ArangoServer& operator= (const ArangoServer&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -74,7 +74,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +84,7 @@ namespace triagens {
 /// @brief UnviversalVoc constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        AvocadoServer (int argc, char** argv);
+        ArangoServer (int argc, char** argv);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -95,7 +95,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +122,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,7 +163,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -338,7 +338,7 @@ namespace triagens {
 /// @CMDOPT{--database.directory @CA{directory}}
 ///
 /// The directory containing the collections and data-files. Defaults
-/// to @CODE{/var/lib/avocado}.
+/// to @CODE{/var/lib/arango}.
 ///
 /// @CMDOPT{@CA{directory}}
 ///
