@@ -189,8 +189,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// used. If @FA{createCollection} is true, then the collection is created if it
 /// does not exists.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
@@ -374,8 +374,8 @@ bool RestDocumentHandler::readDocument () {
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
@@ -486,8 +486,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// Instead of a @FA{collection-identifier}, a collection name can be given.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
@@ -594,8 +594,8 @@ bool RestDocumentHandler::readAllDocuments () {
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
@@ -656,8 +656,8 @@ bool RestDocumentHandler::checkDocument () {
 /// header. You must never supply both the "ETag" header and the @LIT{rev}
 /// parameter.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
@@ -812,8 +812,8 @@ bool RestDocumentHandler::updateDocument () {
 /// "If-Match" header. You must never supply both the "If-Match" header and the
 /// @LIT{rev} parameter.
 ///
-/// @note If you are implementing a client api, then you should use the path
-/// @LIT{/_api/document}.
+/// @note If you are implementing a client api, then you should use the
+/// alternative path @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
 ///
