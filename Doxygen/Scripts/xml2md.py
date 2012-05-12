@@ -170,6 +170,9 @@ replDict["e_htmlonly"] = ""
 replDict["s_xmlonly"] = ""
 replDict["e_xmlonly"] = ""
 
+replDict["s_latexonly"] = ""
+replDict["e_latexonly"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -229,7 +232,7 @@ gencDict["xreftitle"] = True
 gencDict["xrefdescription"] = True
 
 gencDict["htmlonly"] = False
-
+gencDict["latexonly"] = False
 gencDict["xmlonly"] = True
 
 ################################################################################
