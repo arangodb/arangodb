@@ -9037,7 +9037,7 @@ fi
 if test "${enable_mruby+set}" = set; then :
   enableval=$enable_mruby; tr_MRUBY="${enableval:-yes}"
 else
-  tr_MRUBY=no
+  tr_MRUBY=yes
 
 fi
 
