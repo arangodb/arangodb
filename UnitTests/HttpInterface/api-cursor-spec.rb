@@ -14,7 +14,7 @@ describe AvocadoDB do
 ################################################################################
 
     context "error handling:" do
-      it "returns an errror if body is missing" do
+      it "returns an error if body is missing" do
 	cmd = api
 	doc = AvocadoDB.log_post("#{prefix}-missing-body", cmd)
 	
@@ -22,10 +22,10 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
-	doc.parsed_response['errorNum'].should eq(1503)
+	doc.parsed_response['errorNum'].should eq(1502)
       end
 
-      it "returns an errror if collection is unknown" do
+      it "returns an error if collection is unknown" do
 	cmd = api
 	body = "{ \"query\" : \"FOR u IN unknowncollection LIMIT 2 RETURN u.n\", \"count\" : true, \"bindVars\" : {}, \"batchSize\" : 2 }"
 	doc = AvocadoDB.log_post("#{prefix}-unknown-collection", cmd, :body => body)
@@ -34,10 +34,10 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
-	doc.parsed_response['errorNum'].should eq(1510)
+	doc.parsed_response['errorNum'].should eq(1520)
       end
 
-      it "returns an errror if cursor identifier is missing" do
+      it "returns an error if cursor identifier is missing" do
 	cmd = api
 	doc = AvocadoDB.log_put("#{prefix}-missing-cursor-identifier", cmd)
 	
@@ -48,7 +48,7 @@ describe AvocadoDB do
 	doc.parsed_response['errorNum'].should eq(400)
       end
 
-      it "returns an errror if cursor identifier is invalid" do
+      it "returns an error if cursor identifier is invalid" do
 	cmd = api + "/123456"
 	doc = AvocadoDB.log_put("#{prefix}-invalid-cursor-identifier", cmd)
 	

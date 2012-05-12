@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installation guide
+/// @brief user guide guide
 ///
 /// @file
 ///
@@ -26,89 +26,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServer AvocadoDB User Manual
+/// @page UserManualServer AvocadoDB's User Manual
 ///
-/// <ol>
+/// @if LATEX
+/// <ul>
+///  <li>@ref UserManualServerBasics</li>
+///  <li>AvocadoQueryLanguage</li>
+///  <li>@ref Glossary</li>
+/// </ul>
+/// @else
+/// @copydetails UserManualServerBasicsTOC
+/// <ul>
+///  <li>Avocado Query Language</li>
+/// </ul>
+/// @endif
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualServerBasicsTOC
+///
+/// <ul>
 ///  <li>@ref UserManualServerBasics
-///   <ol>
+///   <ul>
 ///    <li>@ref UserManualServerStartStop
+///     <ul>
+///      <li>@ref UserManualServerStartStopHttp</li>
+///      <li>@ref UserManualServerStartStopDebug</li>
+///      <li>@ref UserManualServerStartStopOptions</li>
+///     </ul>
 ///    </li>
-///    <li>AvocadoScript
-///     <ol>
-///      <li>@ref SimpleQueries
-///      </li>
-///     </ol>
-///    </li>
-///    <li>Avocado Query Language
-///     <ol>
-///      <li>@ref AQLBasics
-///      </li>
-///      <li>@ref Optimizer
-///      </li>
-///      <li>@ref IndexUsage
-///      </li>
-///     </ol>
-///    </li>
-///    <li>@ref AvocadoScript
-///     <ol>
-///      <li>GeoCoordinates
-///      </li>
-///     </ol>
-///    </li>
-///    <li>Vertices, Edges, and Graphs
-///     <ol>
-///      <li>@ref Graphs
-///      </li>
-///      <li>@ref JSModuleGraph
-///      </li>
-///     </ol>
-///    </li>
-///    <li>@ref AvocadoErrors
-///    </li>
-///   </ol>
+///   </ul>
 ///  </li>
-///  <li>Client Communication
-///   <ol>
-///    <li>@ref HttpInterface
-///     <ol>
-///      <li>@ref RestDocument
-///      </li>
-///     </ol>
-///    </li>
-///   </ol>
-///  </li>
-///  <li>@ref DBAdmin
-///   <ol>
-///    <li>@ref DBAdminDurability
-///    </li>
-///    <li>@ref DBAdminIndex
-///     <ol>
-///      <li>@ref DBAdminIndexGeo
-///     </ol>
-///    </li>
-///   </ol>
-///  </li>
-///  <li>Advanced Topics
-///   <ol>
-///    <li>Actions
-///     <ol>
-///      <li>@ref Actions
-///      </li>
-///      <li>@ref DefineAction
-///      </li>
-///     </ol>
-///    </li>
-///    <li>@ref HttpInterface
-///     <ol>
-///      <li>@ref RestSystem
-///      </li>
-///     </ol>
-///    </li>
-///    <li>@ref jsUnity
-///    </li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,41 +65,28 @@
 ///
 /// The AvocadoDB groups documents into collections. Each collection can be
 /// accessed using queries. For simple queries involving just one collection,
-/// you can use a fluent interface from within JavaScript code, see @ref
-/// AvocadoScript. This interface allows you to select documents from one
-/// collection based on simple search criteria. The @ref HttpInterface
-/// lets you create, modify, or delete a single document via HTTP. For 
-/// more complex queries, you can use the Avocado Query Language, which is 
-/// an extension of SQL resp. UNQL.
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServerStartStopTOC
+/// you can use a simple interface from within JavaScript code, see AvocadoDB
+/// shell user manual. This interface allows you to select documents from one
+/// collection based on simple search criteria. For more complex queries, you
+/// can use the Avocado Query Language, which is an evolution of SQL resp. UNQL.
 ///
-/// <ol>
-///  <li>@ref UserManualServerStartStopHttp "Starting the HTTP Server"</li>
-///  <li>@ref UserManualServerStartStopDebug "Starting the Debug Shell"</li>
-///  <li>@ref UserManualServerStartStopOptions "Frequently Used Options"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServerStartStop Starting the AvocadoDB
+/// @EMBEDTOC{UserManualServerBasicsTOC}
 ///
-/// The AvocadoDB has two mode of operation: as server, where it will answer to
-/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly. Using the debug shell allows you to issue all
-/// commands normally available in actions and transactions, see @ref
-/// AvocadoScript.
+/// @section UserManualServerStartStop Starting the AvocadoDB
+/////////////////////////////////////////////////////////////
+///
+/// The AvocadoDB has two modes of operation: as server, where it will answer to
+/// client requests and an emergency console, where you can access the database
+/// directly. The latter should - as the name suggests - only be used in case of
+/// an emergency, for example, a corrupted collection. Using the emergency
+/// console allows you to issue all commands normally available in actions and
+/// transactions.
 ///
 /// You should never start more than one server for the same database,
 /// independent from the mode of operation.
 ///
-/// <hr>
-/// @copydoc UserManualServerStartStopTOC
-/// <hr>
-///
-/// @section UserManualServerStartStopHttp Starting the HTTP Server
+/// @subsection UserManualServerStartStopHttp Starting the HTTP Server
+//////////////////////////////////////////////////////////////////////
 ///
 /// The following command starts the AvocadoDB in server mode. You will be able
 /// to access the server using HTTP request on port 8529. See below for a list
@@ -158,14 +94,16 @@
 ///
 /// @verbinclude option-database-directory
 ///
-/// @section UserManualServerStartStopDebug Starting the Debug Shell
+/// @subsection UserManualServerStartStopDebug Starting the Emergency Console
+/////////////////////////////////////////////////////////////////////////////
 ///
-/// The following command starts a debug shell. See below for a list of
+/// The following command starts a emergency console. See below for a list of
 /// frequently used options, see @ref CommandLine "here" for a complete list.
 ///
 /// @verbinclude start1
 ///
-/// @section UserManualServerStartStopOptions Frequently Used Options
+/// @subsection UserManualServerStartStopOptions Frequently Used Options
+////////////////////////////////////////////////////////////////////////
 ///
 /// The following command-line options are frequently used. For a full
 /// list of options see @ref CommandLine "here".
@@ -190,65 +128,6 @@
 /// @CMDOPT{--shell}
 ///
 /// Opens a debug shell instead of starting the HTTP server.
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page DBAdminTOC
-///
-/// <ol>
-///  <li>@ref DBAdminDurability
-///  </li>
-///  <li>@ref DBAdminIndex
-///   <ol>
-///    <li>@ref DBAdminIndexGeo
-///   </ol>
-///  </li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page DBAdmin Database Administration
-///
-/// <hr>
-/// @copydetails DBAdminTOC
-/// <hr>
-///
-/// @section DBAdminDurability Durability
-///
-/// @subsection DBAdminDurability1 Mostly Memory/Durability
-///
-/// Database documents are stored in the memory-memory-mapped files are used to
-/// store them. The operating system has the advantageous option to decide
-/// swapping sparsely used areas out of the main memory. Per default, these
-/// memory-mapped files are synced frequently - advantageously storing all
-/// documents securely at once (durability).
-///
-/// @subsection DBAdminDurability2 AppendOnly/MVCC
-/// 
-/// Instead of overwriting existing documents, a completely new version of the
-/// document is generated. The two benefits are:
-///
-/// - Objects can be stored coherently and compactly in the main memory.
-/// - Objects are preserved-isolated writing and reading transactions allow
-///   accessing these objects for parallel operations.
-///
-/// The system collects obsolete versions as garbage, recognizing them as
-/// forsaken. Garbage collection is asynchronous and runs parallel to other
-/// processes.
-///
-/// @subsection DBAdminDurability3 Configuration
-///
-/// @copydetails JS_PropertiesVocbaseCol
-///
-/// @section DBAdminIndex Index Management
-///
-/// @subsection DBAdminIndexHash Hash Indexes
-///
-/// copydetails JS_EnsureHashIndexVocbaseCol
-///
-/// @subsection DBAdminIndexGeo Geo Indexes
-///
-/// copydetails JS_EnsureGeoIndexVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

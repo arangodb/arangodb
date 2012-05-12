@@ -32,6 +32,7 @@ libavocado_a_SOURCES = \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
 	BasicsC/json.c \
+	BasicsC/json-utilities.c \
 	BasicsC/linked-list.c \
 	BasicsC/locks-macos.c \
 	BasicsC/locks-posix.c \
@@ -154,16 +155,17 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
 	Ahuacatl/ahuacatl-codegen-js.c \
         Ahuacatl/ahuacatl-collections.c \
-        Ahuacatl/ahuacatl-constant-folder.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
@@ -171,11 +173,6 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
         Ahuacatl/ahuacatl-variable.c \
-	QL/ast-query.c \
-	QL/formatter.c \
-	QL/optimize.c \
-	QL/parser.c \
-	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
@@ -209,6 +206,7 @@ avocado_SOURCES = \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
+	V8/v8-query.cpp \
 	V8/v8-vocbase.cpp \
 	VocBase/barrier.c \
 	VocBase/blob-collection.c \
@@ -219,21 +217,6 @@ avocado_SOURCES = \
 	VocBase/general-cursor.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/query-base.c \
-	VocBase/query-cursor.c \
-	VocBase/query-data-feeder.c \
-	VocBase/query-execute.c \
-	VocBase/query-functions.c \
-	VocBase/query-javascript.c \
-	VocBase/query-join.c \
-	VocBase/query-join-execute.c \
-	VocBase/query-locks.c \
-	VocBase/query-memory.c \
-	VocBase/query-node.c \
-	VocBase/query-order.c \
-	VocBase/query-parse.c \
-	VocBase/query-result.c \
-	VocBase/query.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -287,7 +270,6 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
-	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-server.h \
 	js/server/js-ahuacatl.h
@@ -300,7 +282,6 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c \
         Ahuacatl/ahuacatl-tokens.c
 
 BUILT_SOURCES += $(FLEX_FILES)
@@ -320,7 +301,6 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 ################################################################################
 
 BISON_FILES = \
-	QL/parser.c \
 	Ahuacatl/ahuacatl-grammar.c
 
 BUILT_SOURCES += $(BISON_FILES)
@@ -360,7 +340,6 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
-	AQLBasics \
 	Actions \
 	AvocadoErrors \
 	AvocadoScript \
@@ -382,11 +361,14 @@ WIKI = \
 	HttpInterface \
 	HttpSimple \
 	HttpSystem \
+	ImplementorManual \
 	IndexCap \
+	IndexCapHttp \
 	IndexGeo \
+	IndexGeoHttp \
 	IndexHash \
+	IndexHashHttp \
 	IndexSkiplist \
-	IndexUsage \
 	Indexes \
 	InstallManual \
 	Installing \
@@ -398,7 +380,6 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	OTWP \
-	Optimizer \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -409,6 +390,8 @@ WIKI = \
 	ShellIndex \
 	SimpleQueries \
 	UserManualServer \
+	UserManualServerBasics \
+	UserManualServerStartStop \
 	UserManualShell \
 	UserManualShellStartStop  \
 	jsUnity

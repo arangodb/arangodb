@@ -1,6 +1,7 @@
 # -*- mode: Makefile; -*-
 
 FORCE = 0
+SKIP_BOOST = 0
 VALGRIND =
 
 ################################################################################
@@ -26,6 +27,8 @@ unittests-verbose:
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
+	@echo "## > make unittests SKIP_BOOST=1                                              ##"
+	@echo "## > make unittests SKIP_GEO=1                                                ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
 	@echo "################################################################################"
@@ -86,8 +89,8 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
-	$(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
+	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
+	test $(SKIP_GEO) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
 
 	@echo
 
@@ -101,10 +104,12 @@ UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 UnitTests_basics_suite_SOURCES = \
 	UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
+	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \
 	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
@@ -172,6 +177,8 @@ unittests-shell-server:
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 

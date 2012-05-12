@@ -65,6 +65,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-query.h"
 #include "V8/v8-vocbase.h"
 
 using namespace std;
@@ -642,8 +643,12 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(factory);
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    factory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     if (shareAdminPort) {
       _applicationAdminServer->addHandlers(factory, "/_admin");
@@ -681,6 +686,10 @@ int AvocadoServer::startupServer () {
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    adminFactory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler("/_api" + RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
     adminFactory->addPrefixHandler("/", 
                                    RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
                                    (void*) &handlerDataAdmin);
@@ -784,6 +793,7 @@ int AvocadoServer::executeShell (bool tests) {
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
   TRI_InitV8VocBridge(context, _vocbase);
+  TRI_InitV8Queries(context);
   TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, _startupModules);
   TRI_InitV8Shell(context);
@@ -1052,6 +1062,9 @@ void AvocadoServer::openDatabase () {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
+  
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 

@@ -1,9 +1,28 @@
 # AvocadoDB
 
-My colleagues and I started developing a document-store, which focuses on durability 
-of the data taking advantage of new technologies like SSD, support for graph and geo 
-algorithms needed in social networks, ease of use for the developer and minimal 
-effort to operate for the administrator. 
+We recently started a new open source project – a nosql database
+called AvocadoDB which became ArangoDB in May 2012.  ArangoDB is
+currently pre-alpha. We want to have a version 1 ready by end of May
+2012, a multi server version is planned for the third quarter of
+2012. For details see the roadmap.
+
+Key features include:
+
+* Schema-free schemata let you combine the space efficiency of MySQL with the performance power of NoSQL
+* Use ArangoDB as an application server and fuse your application and database together for maximal throughput
+* JavaScript for all: no language zoo, use just one language from your browser to your back-end
+* ArangoDB is multi-threaded – exploit the power of all your cores
+* Flexible data modeling: model your data as combination of key-value pairs, documents or graphs – perfect for social relations
+* Free index choice: use the correct index for your problem, be it a skip list or a n-gram search
+* Configurable durability: let the application decide if it needs more durability or more performance
+* No-nonsense storage: ArangoDB uses all of the power of modern storage hardware, like SSD and large caches
+* It is open source (Apache Licence 2.0)
+
+For more in-depth information
+
+* read more on the [design goals of ArangoDB](http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives)
+* [watch the video](http://vimeo.com/36411892) – Martin Schoenert, architect of ArangoDB, gives an introduction of what the ArangoDB project is about.
+* or  give it a try.
 
 ## Compilation
 
@@ -38,11 +57,12 @@ Start the server:
 Start the shell in another windows:
 
     > ./avocsh
-                                _         
-       __ ___   _____   ___ ___| |__      
-      / _` \ \ / / _ \ / __/ __| '_ \   
-     | (_| |\ V / (_) | (__\__ \ | | | 
-      \__,_| \_/ \___/ \___|___/_| |_|   
+                                           _     
+      __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
+     / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
+    | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
+     \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
+                           |___/                 
 
     Welcome to avocsh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
     Using Google V8 3.9.4.0 JavaScript engine.

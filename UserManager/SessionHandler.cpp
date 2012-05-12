@@ -133,6 +133,8 @@ HttpHandler::status_e SessionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a session
 ///
+/// @RESTHEADER{POST /_admin/user-manager/sessions,creates a front-end session}
+///
 /// @REST{POST /_admin/user-manager/session}
 ///
 /// Creates a new session. Returns an object with the following attributes.
@@ -159,6 +161,8 @@ HttpHandler::status_e SessionHandler::executePost () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a session
+///
+/// @RESTHEADER{GET /_admin/user-manager/sessions,reads a front-end session}
 ///
 /// @REST{GET /_admin/user-manager/session/@FA{sid}}
 ///
@@ -272,6 +276,8 @@ HttpHandler::status_e SessionHandler::executeDelete () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs in an user
 ///
+/// @RESTHEADER{PUT /_admin/user-manager/sessions/.../login,logs in into a front-end session}
+///
 /// @REST{PUT /_admin/user-manager/session/@FA{sid}/login}
 ///
 /// Logs an user into an existing session. Expects an object with the following
@@ -315,6 +321,8 @@ HttpHandler::status_e SessionHandler::executeLogin (Session* session) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs out an user
 ///
+/// @RESTHEADER{PUT /_admin/user-manager/sessions/.../logout,logs out from a front-end session}
+///
 /// @REST{PUT /_admin/user-manager/session/@FA{sid}/logout}
 ///
 /// Logs out an user from the existing session.
@@ -329,6 +337,8 @@ HttpHandler::status_e SessionHandler::executeLogout (Session* session) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the password
+///
+/// @RESTHEADER{PUT /_admin/user-manager/sessions/.../password,changes the password of a front-end session}
 ///
 /// @REST{PUT /_admin/user-manager/session/@FA{sid}/password}
 ///

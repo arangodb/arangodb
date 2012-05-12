@@ -227,11 +227,12 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
+  
+  TRI_AQL_NODE_DATA(node) = NULL;
 
   return node;
 }
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,34 +240,25 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
-  TRI_aql_node_let_t* node;
-  TRI_aql_node_t* variableNode;
+  CREATE_NODE(AQL_NODE_LET)
   
-  assert(context);
-  
-  if (!name || !expression) {
+  if (!name) {
     ABORT_OOM
   }
   
-  node = (TRI_aql_node_let_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_let_t), false);
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_LET);
-
-  variableNode = TRI_CreateNodeVariableAql(context, name);
-  if (!variableNode) {
+  if (!TRI_IsValidVariableNameAql(name)) { 
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
     return NULL;
   }
-
-  node->_variable = variableNode;
-  node->_expression = (TRI_aql_node_t*) expression;
-
-  return (TRI_aql_node_t*) node;
+  
+  {
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    ADD_MEMBER(variable)
+    ADD_MEMBER(expression)
+  }
+  
+  return node;
 }
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST filter node
@@ -742,13 +734,20 @@ TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_context_t* const conte
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
+/// @brief create an AST subquery (execution) node
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_context_t* const context,
                                            const TRI_aql_node_t* const query) {
   CREATE_NODE(AQL_NODE_SUBQUERY)
-  
+     
+  {
+    // add the temporary variable
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context));
+    ADD_MEMBER(variable)
+  }
+ 
+  // add the actual subquery
   ADD_MEMBER(query)
 
   return node;
@@ -793,12 +792,24 @@ TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
+                                         const char* const varname,
                                          const TRI_aql_node_t* const expanded,
                                          const TRI_aql_node_t* const expansion) {
   CREATE_NODE(AQL_NODE_EXPAND)
 
-  ADD_MEMBER(expanded)
-  ADD_MEMBER(expansion)
+  if (!varname) {
+    ABORT_OOM
+  }
+
+  {
+    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname);
+    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context));
+
+    ADD_MEMBER(variable1)
+    ADD_MEMBER(variable2)
+    ADD_MEMBER(expanded)
+    ADD_MEMBER(expansion)
+  }
 
   return node;
 }

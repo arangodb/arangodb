@@ -1,16 +1,25 @@
 # -*- mode: Makefile; -*-
 
-MANUAL_DST="fceller@www.avocadodb.org:/srv/www/www.avocadodb.org/avoc/manuals"
+MANUAL_DST="fceller@www.arangodb.org:/srv/www/www.arangodb.org/avoc/manuals"
 
 ################################################################################
 ## publish
 ################################################################################
 
-.PHONY: publish
+.PHONY: publish publish-wiki publish-html publish-pdf
 
-publish:
+publish: publish-wiki publish-html publish-pdf
+
+publish-wiki:
 	(cd Doxygen/wiki && git checkout --force && git pull)
 	$(MAKE) wiki
-	(cd Doxygen/wiki && git commit -m "`date`" -a; git push)
+	(cd Doxygen/wiki && git add *.md; git commit -m "`date`" -a; git push)
+
+publish-html:
+	$(MAKE) doxygen
 	@for w in $(WIKI); do scp Doxygen/html/$$w.html $(MANUAL_DST); done
 
+publish-pdf:
+	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
+	scp Doxygen/latex/user-manual-server.pdf $(MANUAL_DST)
+	scp Doxygen/latex/implementor-manual.pdf $(MANUAL_DST)

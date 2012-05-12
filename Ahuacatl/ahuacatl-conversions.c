@@ -61,6 +61,72 @@ static bool AppendListValues (TRI_string_buffer_t* const buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a json struct from a value node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
+                             const TRI_aql_node_t* const node) {
+  switch (node->_type) {
+    case AQL_NODE_VALUE: {
+      switch (node->_value._type) {
+        case AQL_TYPE_FAIL:
+        case AQL_TYPE_NULL:
+          return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+        case AQL_TYPE_BOOL:
+          return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._bool);
+        case AQL_TYPE_INT:
+          return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) node->_value._value._int);
+        case AQL_TYPE_DOUBLE:
+          return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._double);
+        case AQL_TYPE_STRING: 
+          return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._string);
+      }
+    }
+    case AQL_NODE_LIST: {
+      TRI_json_t* result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+      size_t i, n;
+
+      if (result) {
+        n = node->_members._length;
+        for (i = 0; i < n; ++i) {
+          TRI_json_t* subValue = TRI_NodeJsonAql(context, TRI_AQL_NODE_MEMBER(node, i));
+
+          if (subValue) {
+            TRI_PushBack2ListJson(result, subValue); 
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, subValue);
+          }
+        }
+      }
+      return result; 
+    }
+    case AQL_NODE_ARRAY: {
+      TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+      size_t i, n;
+
+      if (result) {
+        n = node->_members._length;
+        for (i = 0; i < n; ++i) {
+          TRI_aql_node_t* element = TRI_AQL_NODE_MEMBER(node, i);
+          TRI_json_t* subValue = TRI_NodeJsonAql(context, TRI_AQL_NODE_MEMBER(element, 0));
+
+          if (subValue) {
+            TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                                 result, 
+                                 TRI_AQL_NODE_STRING(element), 
+                                 subValue);
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, subValue);
+          }
+        }
+      }
+      return result; 
+    }
+    default: {
+      return NULL;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a value node from a json struct
 ////////////////////////////////////////////////////////////////////////////////
 

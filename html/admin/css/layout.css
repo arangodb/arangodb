@@ -21,12 +21,53 @@ html.busy, html.busy * {
   background-color: white !important; 
 }
 
+.hoverClass:hover {
+  background-color: #696969 !important;
+  border-bottom: 1px solid #696969; 
+  color: white !important;
+}
+
+.hoverClass:hover a {
+}
+ 
 #logView .ui-tabs-nav .ui-state-active {
-  background-color: #E4E9D2 !important; 
+  //background-color: #E4E9D2 !important; 
+  background-color: #E6E6E6 !important;
+  border-bottom: solid 2px #E6E6E6 !important;
 }
 
 #logView .fg-toolbar{display: none;}
 #documentsView .fg-toolbar{display: none;}
+
+#documentsView button, #documentEditView button, #newDocumentTableView button {
+  padding-left:11px; 
+}
+
+#documentsView td button, #documentEditView td button, #newDocumentTableView td button {
+  padding: 0; 
+}
+
+.highlighted {
+  color: #9EAF5A !important; 
+  text-decoration:none !important;   
+}
+
+.nonhighlighted {
+  color: #797979 !important; 
+  text-decoration:none !important;   
+}
+
+.arrowbg {
+  padding-right: 2.2em;
+  background: url("../media/icons/arrow.png") no-repeat scroll 100% 50% transparent;
+}
+
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: normal; 
+  font-; 
+  font-family: Verdana, Arial, sans-serif; 
+}
 
 html {
   font-family: Verdana,Arial,sans-serif; 
@@ -37,11 +78,15 @@ tr {
   font-size: 0.8em; 
 }
 th {
-  font-size: 1.1em; 
+  font-size: 1.2em;
+  height:30px;  
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+  text-shadow: 0 1px 0 #fff;
 }
-
-#editCollectionView td {
-  font-size: 1.2em ;  
+td {
+  height:30px;    
 }
 
 pre ul li span{
@@ -53,15 +98,57 @@ pre ul li span{
   font-size: 0.8em !important; 
 }
 
-#logToolbar button, #documentsToolbar button {
+#logToolbar button {
   float:right;
-  margin-bottom: 10px;      
+  margin-bottom: 10px;  
+  padding-right: 5px;      
 }
 
-#logToolbar a, #documentsToolbar a {
+#documentsToolbar button {
+  padding:0;  
+}
+
+#docPageInput {
+  width:40px;   
+}
+
+#docPageForm {
+  display:inline; 
+  vertical-align:3px;   
+  font-size: 0.8em;  
+}
+
+.floatRight {
+  float:right;
+}
+
+.floatLeft {
+  float:left;
+}
+
+#logToolbar a {
   font-size: 0.85em;  
 }
-#logToolbar, #documentsToolbar{
+
+.toolbar_primary {
+  background-color: #e4e9d2;
+}
+
+.toolbar_secondary {
+  background-color: white; 
+}
+
+.toolbar_left {
+  float:left; 
+  width:30%; 
+}
+
+.toolbar_right {
+  float:right; 
+  width:70%; 
+}
+
+#logToolbar, #documentsToolbar, .customToolbar{
   height:24px; 
   border: 1px solid #AAAAAA;
   padding-left: 3px; 
@@ -71,6 +158,9 @@ pre ul li span{
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
   background: url("images/ui-bg_flat_75_e6e6e6_40x100.png") repeat-x scroll 50% 50% #E6E6E6;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 .dataTables_info{
@@ -110,7 +200,6 @@ pre ul li span{
   height:30px;
   line-height: 30px;
   vertical-align: middle;
-  //background-color: #7E9246; 
   background-color: #F3F1EE; 
   color: #9EAF5A;
   font-weight: bold; 
@@ -118,10 +207,30 @@ pre ul li span{
   border-top: 1px solid  #7E9246;
   border-bottom: 1px solid #7E9246;
   padding-left: 7px; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+}
+
+#createCollection, #refreshCollections {
+  font-size: 0.85em !important;  
 }
 
 #createCollectionView {
-  height:130px;
+  height:auto; 
+}
+
+#createCollectionView td, #editCollectionView td {
+  width:200px;
+  background-color: #e4e9d2;
+}
+
+.first {
+  width: 200px !important;  
+}
+
+.longTD {
+  width: 100% !important;  
 }
 
 #newCollection_left, #editCollection_left {
@@ -154,23 +263,12 @@ pre ul li span{
   resize: none; 
 }
 
-#editCollectionTable {
-  font-size: 0.8em;  
-  border-width: 1px; 
-  border-color: green;
-  border-style: solid;
-  background-color: #E4E9D2;
-  padding-left: 5px;
-  padding-bottom: 2px; 
-  padding-top: 2px;  
-} 
-
 #newCollection_right form {
   padding-top: 10px;  
   margin-left: -7px;  
 }
 
-#waitForSyncForm {
+#waitForSyncForm, #isSystemForm {
   padding-left: 5px; 
 }
 
@@ -179,8 +277,12 @@ pre ul li span{
 }
 
 .ui-tabs-nav {
-  font-size: 0.8em !important; 
-  height: 35px;  
+  font-size: 0.7em !important; 
+  height: 30px; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  //border-bottom: 0px !important;  
 }
 
 .ui-tabs, .ui-tabs-panel {
@@ -191,42 +293,105 @@ pre ul li span{
   background: #F3F1EE;
   border: 0; 
 }
+
+#tabs th{
+  border-top: none;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important; 
+}
+
+form {
+  margin: 0; 
+}
+
 #tab_right {
   margin-top: -18px;  
 }
 #refreshLogButton {
   margin-top: 6px; 
 }
+
 #logSearchField {
   font-size: 0.8em;
   height:20px;  
 }
 
+#submitQuery {
+  height:34px !important;
+  width: 100px !important;
+  float:right; 
+}
+
+#queryOutput {
+  font-family: "courier"; 
+}
+
 #queryContent {
+  font-family: "courier";
   width: 100%;
+  resize: none; 
 }
 
 #avocshWindow {
+  font-size: 0.8em;  
+  border:#999 1px solid;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -moz-border-radius: 2px; -webkit-border-radius: 2px;
+  margin-top: 0px;  
   background-color: white;  
-  height: 300px; 
+  height: 70%; 
   overflow-y: auto; 
-  width:100%; 
+  width:100%;
+}
+
+#welcomemsg {
+  padding-left: 10px; 
+  padding-top: 10px; 
+  font-family: "courier"; 
+}
+
+#avocshWindow p {
+  margin-top: 10px; 
+  padding-left: 30px; 
+  padding-right: 30px; 
+}
+
+#avocshWindow b {
+  padding-left: 10px; 
+  padding-right: 10px; 
 }
 
 #avocshContent {
-  width: 100%;
-  text-align:center;   
-  height: 40px; 
+  font-family: "courier";
+  width: 90%;
+  height: 30px;
+  background-color: white; 
+  margin-right: 0.5%;
 } 
 
 .avocshSuccess {
-  background-color: #9EAF5A;
-  color: black;  
+  font-family: "courier";
+  background-color: #e4e9d2;
+  color: #335127; 
 }
 
 .avocshError {
-  background-color: red;  
-  color: white; 
+  font-family: "courier";
+  background-color: #FFD8D8;  
+  color: red; 
+}
+
+.avocshClient {
+  font-family: "courier";
+}
+
+#submitAvoc {
+  height: 29px !important; 
+  width: 9.5% !important;  
+  vertical-align: -1px;  
 }
 
 #centerView {
@@ -412,6 +577,9 @@ pre ul li span{
 .fg-toolbar {
   font-size: 0.7em; 
   border: 1px solid #D3D3D3 !important; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 /*
@@ -421,17 +589,14 @@ pre ul li span{
 */
 #menue button.minimal{
   background: #e3e3e3;
+  padding: 9px 0 8px; 
   border: 1px solid #bbb;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  border-radius: 3px;
   -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
   -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
   box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 0.7em Verdana,Arial,sans-serif;
   line-height: 1;
-  padding: 8px 0 9px;
   text-align: center;
   text-shadow: 0 1px 0 #fff;
   width: 80px;
@@ -460,6 +625,7 @@ pre ul li span{
   background-color: transparent;
   font: 12px "helvetica neue", helvetica, arial, sans-serif;
   width: auto;
+  padding-left:11px;
 }
 
 #collectionsView button a {
@@ -483,6 +649,19 @@ pre ul li span{
 #subCenterView button {
   background-color:transparent; 
   border: medium none; 
+}
+
+#queryForm {
+  margin-top: -3px;     
+}
+
+#queryView {
+  height: 350px;   
+}
+
+#avocshView {
+  padding-top: 2px;
+  padding-right: 2px; 
 }
 
 /*
@@ -516,4 +695,13 @@ pre ul li span{
     box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
     cursor: pointer; 
+}
+
+#uploadFile {
+  float:right; 
+}
+
+#configContent td {
+  width: 200px; 
+  padding-top:3px; 
 }

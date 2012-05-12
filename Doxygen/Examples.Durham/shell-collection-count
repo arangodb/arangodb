@@ -1,0 +1,2 @@
+avocado> db.users.count();
+10001

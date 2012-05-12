@@ -1,32 +1,11 @@
-\documentclass[a4paper]{book}
-\usepackage{makeidx}
-\usepackage{graphicx}
-\usepackage{multicol}
-\usepackage{float}
-\usepackage{listings}
-\usepackage{color}
-\usepackage{ifthen}
-\usepackage[table]{xcolor}
-\usepackage{textcomp}
-\usepackage{alltt}
-\usepackage[utf8]{inputenc}
-\usepackage{mathptmx}
-\usepackage[scaled=.90]{helvet}
-\usepackage{courier}
-\usepackage{doxygen}
-\lstset{language=C++,inputencoding=utf8,basicstyle=\footnotesize,breaklines=true,breakatwhitespace=true,tabsize=8,numbers=left }
-\makeindex
-\setcounter{tocdepth}{3}
-\renewcommand{\footrulewidth}{0.4pt}
-\begin{document}
-\begin{titlepage}
-\vspace*{7cm}
+\input{header.tex}
 \begin{center}
 {\Large AvocadoDB Installation Manual }\\
 \vspace*{1cm}
-{\large by Dr. Frank Celler}\\
+{\large The AvocadoDB Team}\\
 \vspace*{0.5cm}
-{\small Version 0.1.0}\\
+\input{version}
+{\small Version \arangodbversion}\\
 \end{center}
 \end{titlepage}
 \clearemptydoublepage
@@ -34,8 +13,6 @@
 \tableofcontents
 \clearemptydoublepage
 \pagenumbering{arabic}
-\chapter{Compiling the AvocadoDB}
-\label{Compiling}
-\input{d9/d26/Compiling}
+\input{InstallManual.inc}
 \printindex
 \end{document}

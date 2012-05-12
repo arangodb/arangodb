@@ -53,7 +53,7 @@ struct CStringUtf8Setup {
   }
 
   ~CStringUtf8Setup () {
-    BOOST_TEST_MESSAGE("tear-downstring UTF8 test");
+    BOOST_TEST_MESSAGE("tear-down string UTF8 test");
   }
 };
 

@@ -1,0 +1,18 @@
+avocado> db.four.ensureUniqueConstraint("a", "b.c");
+{ "id" : "164405/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
+
+avocado> db.four.save({ a : 1, b : { c : 1 } });
+{ "_id" : "164405/1868341", "_rev" : 1868341 }
+
+avocado> db.four.save({ a : 1, b : { c : 1 } });
+JavaScript exception in file '(avocado)' at 1,9: [AvocadoError 1210: cannot save document]
+!db.four.save({ a : 1, b : { c : 1 } });
+!        ^
+stacktrace: [AvocadoError 1210: cannot save document]
+    at (avocado):1:9
+
+avocado> db.four.save({ a : 1, b : { c : null } });
+{ "_id" : "164405/2196021", "_rev" : 2196021 }
+
+avocado> db.four.save({ a : 1 });
+{ "_id" : "164405/2196023", "_rev" : 2196023 }

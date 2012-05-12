@@ -34,6 +34,7 @@
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-query.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
@@ -252,6 +253,7 @@ void ActionDispatcherThread::initialise () {
   _context->Enter();
 
   TRI_InitV8VocBridge(_context, _vocbase);
+  TRI_InitV8Queries(_context);
   TRI_InitV8Actions(_context, _actionQueue.c_str());
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);

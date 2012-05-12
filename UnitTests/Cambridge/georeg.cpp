@@ -264,6 +264,7 @@ void runTest (int mode)
     double la,lo;
     double d1;
     int i,j,r;
+    void* nullp = 0;
 
     errors=0;
 
@@ -332,9 +333,11 @@ void runTest (int mode)
 /* do both searches with an empty index  */
 
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
-    gccheck(20,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    // gccheck(20,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
-    gccheck(21,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    // gccheck(21,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
 
 /* stick in Jo'burg  */
     gcp4.data=ix + 4;
@@ -349,9 +352,11 @@ void runTest (int mode)
     r = GeoIndex_remove(gi,&gcp4);
     icheck(25,0,r);
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
-    gccheck(26,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    // gccheck(26,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
-    gccheck(27,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    // gccheck(27,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
+    BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
 
 /* try to delete from an empty index  */
 
@@ -1037,7 +1042,10 @@ void runTest (int mode)
             {
                 coonum(&gcp1,j);
                 list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,127000.0);
-                GeoIndex_CoordinatesFree(list1);
+                if (list1) {
+                  // only free if pointer is valid
+                  GeoIndex_CoordinatesFree(list1);
+                }
             }
         }
         BOOST_TEST_MESSAGE("End of timing test");
@@ -1052,7 +1060,10 @@ void runTest (int mode)
             {
                 coonum(&gcp1,j);
                 list1 = GeoIndex_NearestCountPoints(gi,&gcp1,2);
-                GeoIndex_CoordinatesFree(list1);
+                if (list1) {
+                  // only free if pointer is valid
+                  GeoIndex_CoordinatesFree(list1);
+                }
             }
         }
         BOOST_TEST_MESSAGE("End of timing test");

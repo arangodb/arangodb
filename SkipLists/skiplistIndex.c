@@ -1150,6 +1150,8 @@ static bool multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIn
   compareResult = skiplistIndex->skiplist.nonUniqueSkiplist->compareKeyElement(
                                               skiplistIndex->skiplist.nonUniqueSkiplist, 
                                               &(lNode->_element), &(rNode->_element), 0);
+                                              
+                                              
   return (compareResult == -1);  
 } 
 
@@ -1292,6 +1294,7 @@ TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, T
   if (results == NULL) {
     return NULL;
   }  
+  
   results->_index = skiplistIndex;
   TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
   results->_currentInterval = 0;

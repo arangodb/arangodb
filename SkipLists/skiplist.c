@@ -25,9 +25,10 @@
 /// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "skiplist.h"
+#include <BasicsC/logging.h>
 #include <BasicsC/random.h>
 
+#include "skiplist.h"
 #include "compare.h"
 
 #define SKIPLIST_ABSOLUTE_MAX_HEIGHT 100
@@ -340,11 +341,11 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   }
   
   // ..........................................................................  
-  // Assign the comparision call back functions
+  // Assign the STATIC comparision call back functions
   // ..........................................................................  
   
-  skiplist->compareElementElement = compareElementElement;
-  skiplist->compareKeyElement     = compareKeyElement;
+  skiplist->compareElementElement = IndexStaticCompareElementElement; // compareElementElement;
+  skiplist->compareKeyElement     = IndexStaticCompareKeyElement;     // compareKeyElement;
 
   // ..........................................................................  
   // Assign the maximum height of the skip list. This maximum height must be
@@ -352,7 +353,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    printf("%s:%d:Invalid maximum height for skiplist\n",__FILE__,__LINE__);
+    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
     assert(false);
   }  
   
@@ -1290,7 +1291,7 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
+      compareResult = IndexStaticCompareKeyElement(skiplist, key, &(prevNode->_element), 1);
       
 
       // .......................................................................    
@@ -1311,7 +1312,7 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
       }
       
       // .......................................................................    
-      // The element is greater than the next node element. Keep going on this
+      // The key is greater than the next node element. Keep going on this
       // level.
       // .......................................................................    
       if (compareResult < 0) {
@@ -1399,9 +1400,9 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // Assign the comparision call back functions
   // ..........................................................................  
   
-  skiplist->compareElementElement = compareElementElement;
-  skiplist->compareKeyElement     = compareKeyElement;
-  skiplist->equalElementElement   = equalElementElement;
+  skiplist->compareElementElement = IndexStaticMultiCompareElementElement; //compareElementElement;
+  skiplist->compareKeyElement     = IndexStaticMultiCompareKeyElement; // compareKeyElement;
+  skiplist->equalElementElement   = IndexStaticMultiEqualElementElement; //equalElementElement;
   
   // ..........................................................................  
   // Assign the maximum height of the skip list. This maximum height must be
@@ -1409,7 +1410,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    printf("%s:%d:Invalid maximum height for skiplist\n",__FILE__,__LINE__);
+    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
     assert(false);
   }  
   
@@ -2114,7 +2115,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* elemen
         }
         
         // .....................................................................
-        // The element could be located and we are at the lowest level
+        // The element could be located (by matching the key) and we are at the lowest level
         // .....................................................................
         if (compareResult == TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS) {
           goto END;
@@ -2163,7 +2164,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* elemen
   // ..........................................................................
   
   if (old != NULL) {
-    memcpy(old, &(currentNode->_element), skiplist->_base._elementSize);
+    IndexStaticCopyElementElement(&(skiplist->_base), old, &(currentNode->_element));
   }
 
   

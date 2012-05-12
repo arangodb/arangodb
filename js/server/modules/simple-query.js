@@ -49,7 +49,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
   var documents;
 
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
+    if (this._skip == null) {
       this._skip = 0;
     }
 
@@ -79,6 +79,45 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief query-by scan or hash index
+////////////////////////////////////////////////////////////////////////////////
+
+function ByExample (collection, example, skip, limit) {
+  var unique = true;
+  var attributes = [];
+
+  for (var k in example) {
+    if (example.hasOwnProperty(k)) {
+      attributes.push(k);
+
+      if (example[k] == null) {
+        unique = false;
+      }
+    }
+  }
+
+  var idx = collection.lookupHashIndex.apply(collection, attributes);
+
+  if (idx == null && unique) {
+    idx = collection.lookupUniqueConstraint.apply(collection, attributes);
+
+    if (idx != null) {
+      console.info("found unique constraint %s", idx.id);
+    }
+  }
+  else {
+    console.info("found hash index %s", idx.id);
+  }
+
+  if (idx != null) {
+    return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
+  }
+  else {
+    return collection.BY_EXAMPLE(example, skip, limit);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,27 +129,76 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var parameters = [ ];
+    var documents = ByExample(this._collection, this._example, this._skip, this._limit);
 
-    // the actual example is passed in the first argument
-    for (var i in this._example[0]) {
-      if (this._example[0].hasOwnProperty(i)) {
-
-        // attribute name
-        parameters.push(i);
-
-        // attribute value
-        parameters.push(this._example[0][i]);
-      }
-    }
-
-    var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);
-
-    this._execution = new SQ.GeneralArrayCursor(documents, this._skip, this._limit);
-    this._countQuery = documents.length;
-    this._countTotal = documents.length;
+    this._execution = new SQ.GeneralArrayCursor(documents.documents);
+    this._countQuery = documents.count;
+    this._countTotal = documents.total;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// Returns the first documents of a collection that match the specified example
+/// or @LIT{null}. The example must be specified as paths and
+/// values. Allowed attribute types for searching are numbers, strings, and
+/// boolean values.
+///
+/// @FUN{@FA{collection}.firstExample(@FA{example})}
+///
+/// As alternative you can supply an example as single argument. Note that an
+/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
+/// as attribute.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-simple-query-first-example
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.firstExample = function () {
+  var example;
+
+  // example is given as only argument
+  if (arguments.length == 1) {
+    example = arguments[0];
+  }
+
+  // example is given as list
+  else {
+    example = {};
+
+    for (var i = 0;  i < arguments.length;  i += 2) {
+      example[arguments[i]] = arguments[i + 1];
+    }
+  }
+
+  var documents = ByExample(this, example, 0, 1);
+
+  if (0 < documents.documents.length) {
+    return documents.documents[0];
+  }
+  else {
+    return null;
+  }
+}
+
+AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -140,8 +228,15 @@ SQ.SimpleQueryNear.prototype.execute = function () {
   var limit;
 
   if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
+    if (this._skip == null) {
       this._skip = 0;
+    }
+
+    if (this._skip < 0) {
+      var err = new AvocadoError();
+      err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+      err.errorMessage = "skip must be non-negative";
+      throw err;
     }
 
     if (this._limit == null) {

@@ -520,6 +520,7 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
 
   if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {
     // variable already exists in symbol table. this should never happen
+    LOG_TRACE("variable already registered: %s", name);
     generator->_error = true;
   }
 }
@@ -545,7 +546,8 @@ static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const gene
     }
   }
 
-  // variable not found. this should not happen
+  // variable not found. this should never happen
+  LOG_TRACE("variable not found: %s", name);
   generator->_error = true;
   return 0;
 }
@@ -627,6 +629,11 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 
 static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+    // these scopes are closed by other means
+    return;
+  }
 
   // we are closing at least one scope
   while (true) {
@@ -880,43 +887,41 @@ static void ProcessCollection (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
-  TRI_aql_codegen_register_t functionIndex = IncFunction(generator);
-  TRI_aql_codegen_register_t inputRegister = IncRegister(generator);
+  TRI_aql_node_t* nameNode1 = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_node_t* nameNode2 = TRI_AQL_NODE_MEMBER(node, 1);
+  TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
-
-  // expand scope
-  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL, "expand");
-
-  ScopeOutput(generator, "function ");
-  ScopeOutputFunction(generator, functionIndex);
-  ScopeOutput(generator, " (");
-  ScopeOutputRegister(generator, inputRegister);
-  ScopeOutput(generator, ") {\n");
-
+ 
+  // init source 
+  ScopeOutput(generator, "var ");
+  ScopeOutputRegister(generator, sourceRegister);
+  ScopeOutput(generator, " = ");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 2));
+  ScopeOutput(generator, ";\n");
+  
   // var result = [ ];
   InitList(generator, resultRegister);
- 
+  
+  // expand scope
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL, "expand");
+
   // for
-  StartFor(generator, inputRegister, NULL);
+  StartFor(generator, sourceRegister, NULL);
+  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode1), CurrentScope(generator)->_ownRegister);
+
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, ".push(");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 3));
   ScopeOutput(generator, ");\n");
 
   // }
   CloseLoops(generator);
-  ScopeOutput(generator, "return ");
-  ScopeOutputRegister(generator, resultRegister);
-  ScopeOutput(generator, ";\n");
-  ScopeOutput(generator, "}\n");
   
   // expand scope
   EndScope(generator);
-
-  ScopeOutputFunction(generator, functionIndex);
-  ScopeOutput(generator, "(");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ")");
+  
+  // register the variable for the result
+  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode2), resultRegister);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1140,7 +1145,26 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessSubquery (TRI_aql_codegen_js_t* const generator, 
                              const TRI_aql_node_t* const node) {
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  TRI_aql_codegen_register_t scopeRegister = IncRegister(generator);
+  TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, scopeRegister, NULL, "subquery");
+  InitList(generator, scopeRegister);
+  
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+
+  // register might have changed
+  scopeRegister = CurrentScope(generator)->_resultRegister;
+  EndScope(generator);
+
+  ScopeOutput(generator, "var ");
+  ScopeOutputRegister(generator, resultRegister);
+  ScopeOutput(generator, " = ");
+  ScopeOutputRegister(generator, scopeRegister);
+  ScopeOutput(generator, ";\n");
+  
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1162,16 +1186,15 @@ static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFor (TRI_aql_codegen_js_t* const generator, 
                         const TRI_aql_node_t* const node) {
+  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
-  TRI_aql_node_t* nameNode;
 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, " = ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ";\n");
-
-  nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  
   StartFor(generator, sourceRegister, nameNode->_value._value._string);
 }
 
@@ -1216,6 +1239,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   resultRegister = IncRegister(generator);
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
+  
   InitList(generator, resultRegister);
   StartFor(generator, sourceRegister, NULL);
 
@@ -1400,6 +1424,25 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for let keyword
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessLet (TRI_aql_codegen_js_t* const generator, 
+                        const TRI_aql_node_t* const node) {
+  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  
+  ScopeOutput(generator, "var ");
+  ScopeOutputRegister(generator, resultRegister);
+  ScopeOutput(generator, " = ");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+  ScopeOutput(generator, ";\n");
+  
+  // enter the new variable in the symbol table 
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for an assignment (used in COLLECT)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1407,14 +1450,22 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  TRI_aql_codegen_register_t lastResultRegister;
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   
   InitList(generator, resultRegister);
 
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_LET, 0, 0, 0, resultRegister, NULL, "let");
+  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL, "let");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+
+  lastResultRegister = CurrentScope(generator)->_resultRegister;
   EndScope(generator);
- 
+
+  if (lastResultRegister > 0) {
+    // result register was modified inside the scope, e.g. due to a SORT
+    resultRegister = lastResultRegister;
+  }
+
   // enter the new variable in the symbol table 
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -1425,10 +1476,18 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFilter (TRI_aql_codegen_js_t* const generator, 
                            const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  
   ScopeOutput(generator, "if (!(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")) {\n");
-  ScopeOutput(generator, "continue;\n");
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+    // in these scopes, we must not generated a continue statement. this would be illegal
+    ScopeOutput(generator, "return [ ];\n");
+  }
+  else {
+    ScopeOutput(generator, "continue;\n");
+  }
   ScopeOutput(generator, "}\n");
 }
 
@@ -1533,6 +1592,9 @@ static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* 
         break;
       case AQL_NODE_FOR:
         ProcessFor(generator, node);
+        break;
+      case AQL_NODE_LET:
+        ProcessLet(generator, node);
         break;
       case AQL_NODE_COLLECT: 
         ProcessCollect(generator, node);
@@ -1658,6 +1720,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ";\n");
+
   OutputString(&generator->_buffer, "})()");
 
   if (generator->_error) {
@@ -1671,8 +1734,8 @@ char* TRI_GenerateCodeAql (const void* const data) {
   FreeGenerator(generator);
 
   if (code) {
-    LOG_DEBUG("generated code: %s", code);
-  //  printf("generated code: %s", code);
+    LOG_TRACE("generated code: %s", code);
+    // printf("generated code: %s\n", code);
   }
 
   return code;

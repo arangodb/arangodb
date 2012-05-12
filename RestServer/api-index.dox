@@ -28,37 +28,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpIndexTOC
 ///
-/// <ol>
-///  <li>@ref HttpIndexIntro</li>
-///  <li>@ref HttpIndexResource</li>
-///  <li>@ref HttpIndexHttp
-///   @copydetails HttpIndexCallsTOC
+/// <ul>
+///  <li>@ref HttpIndex
+///   <ul>
+///    <li>@ref HttpIndexIntro</li>
+///    <li>@ref HttpIndexResource</li>
+///    <li>@ref HttpIndexHttp
+///     @copydetails HttpIndexCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpIndexCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref HttpIndexRead "GET /_api/index/index-handle"</li>
 ///  <li>@ref HttpIndexCreate "POST /_api/index?collection=collection-identifier"</li>
 ///  <li>@ref HttpIndexDelete "DELETE /_api/index/index-handle"</li>
 ///  <li>@ref HttpIndexReadAll "GET /_api/index?collection=index-handle"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpIndex HTTP Interface for Indexes
 ///
 /// This is an introduction to AvocadoDB's Http interface for indexes in
-/// general. There are special section for
+/// general. There are special sections for various index types.
 ///
-/// @copydoc IndexesTOC
-///
-/// <hr>
-/// @copydoc HttpIndexTOC
-/// <hr>
+/// @EMBEDTOC{HttpIndexTOC}
 ///
 /// @section HttpIndexIntro Indexes
 ///////////////////////////////////
@@ -96,15 +96,12 @@
 ///
 /// @anchor HttpIndexRead
 /// @copydetails JSF_GET_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexCreate
 /// @copydetails JSF_POST_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexDelete
 /// @copydetails JSF_DELETE_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexReadAll
 /// @copydetails JSF_GET_api_indexes

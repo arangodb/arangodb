@@ -28,26 +28,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpSystemTOC
 ///
-/// <ol>
-///  <li>@ref HttpSystemLog "GET /_admin/log"</li>
-///  <li>@ref HttpSystemStatus "GET /_system/status"</li>
-///  <li>@ref HtppSystemUserManagement
-///   <ol>
-///    <li>@ref HttpSystemUsers "GET /_admin/user-manager/users"</li>
-///    <li>@ref HttpSystemUserGet "GET /_admin/user-manager/user/user-name"</li>
-///    <li>@ref HttpSystemUserPost "POST /_admin/user-manager/user/user-name"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref HttpSystem
+///   <ul>
+///    <li>@ref HttpSystemLog "GET /_admin/log"</li>
+///    <li>@ref HttpSystemStatus "GET /_admin/status"</li>
+///    <li>@ref HttpSystemConfigDescription "GET /_admin/config/description"</li>
+///    <li>@ref HttpSystemConfigConfiguration "GET /_admin/config/configuration"</li>
+///    <li>@ref HtppSystemUserManagement
+///     <ul>
+///      <li>@ref HttpSystemUsers "GET /_admin/user-manager/users"</li>
+///      <li>@ref HttpSystemUserGet "GET /_admin/user-manager/user/user-name"</li>
+///      <li>@ref HttpSystemUserPost "POST /_admin/user-manager/user/user-name"</li>
+///     </ul>
+///    </li>
+///    <li>@ref HtppSystemSessionManagement
+///     <ul>
+///      <li>@ref HttpSystemSessionGet "POST /_admin/user-manager/session/sid"</li>
+///      <li>@ref HttpSystemSessionPost "POST /_admin/user-manager/session"</li>
+///      <li>@ref HttpSystemSessionLogin "PUT /_admin/user-manager/session/sid/login"</li>
+///      <li>@ref HttpSystemSessionLogout "PUT /_admin/user-manager/session/sid/logout"</li>
+///      <li>@ref HttpSystemSessionPassword "PUT /_admin/user-manager/session/sid/password"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref HtppSystemSessionManagement
-///   <ol>
-///    <li>@ref HttpSystemSessionGet "POST /_admin/user-manager/session/sid"</li>
-///    <li>@ref HttpSystemSessionPost "POST /_admin/user-manager/session"</li>
-///    <li>@ref HttpSystemSessionLogin "PUT /_admin/user-manager/session/sid/login"</li>
-///    <li>@ref HttpSystemSessionLogout "PUT /_admin/user-manager/session/sid/logout"</li>
-///    <li>@ref HttpSystemSessionPassword "PUT /_admin/user-manager/session/sid/password"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,51 +62,46 @@
 /// This is an introduction to AvocadoDB's Http interface for administration
 /// and monitoring of the server.
 ///
-/// <hr>
-/// @copydoc HttpSystemTOC
-/// <hr>
+/// @EMBEDTOC{HttpSystemTOC}
 ///
 /// @anchor HttpSystemLog
 /// @copydetails triagens::admin::RestAdminLogHandler::execute
-/// <hr>
 ///
 /// @anchor HttpSystemStatus
-/// @copydetails JSF_GET_system_status
-/// <hr>
+/// @copydetails JSF_GET_admin_status
+///
+/// @anchor HttpSystemConfigDescription
+/// @copydetails JSF_GET_admin_config_description
+///
+/// @anchor HttpSystemConfigConfiguration
+/// @copydetails JSF_GET_admin_config_configuration
 ///
 /// @section HtppSystemUserManagement Front-End User Management
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemUsers
 /// @copydetails triagens::admin::UsersHandler::execute
-/// <hr>
 ///
 /// @anchor HttpSystemUserGet
 /// @copydetails triagens::admin::UserHandler::executeGet
-/// <hr>
 ///
 /// @anchor HttpSystemUserPost
 /// @copydetails triagens::admin::UserHandler::executePost
-/// <hr>
 ///
 /// @section HtppSystemSessionManagement Front-End Session Management
 /////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemSessionGet
 /// @copydetails triagens::admin::SessionHandler::executeGet
-/// <hr>
 ///
 /// @anchor HttpSystemSessionPost
 /// @copydetails triagens::admin::SessionHandler::executePost
-/// <hr>
 ///
 /// @anchor HttpSystemSessionLogin
 /// @copydetails triagens::admin::SessionHandler::executeLogin
-/// <hr>
 ///
 /// @anchor HttpSystemSessionLogout
 /// @copydetails triagens::admin::SessionHandler::executeLogout
-/// <hr>
 ///
 /// @anchor HttpSystemSessionPassword
 /// @copydetails triagens::admin::SessionHandler::executePassword
