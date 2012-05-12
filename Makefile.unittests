@@ -61,7 +61,7 @@ start-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
@@ -164,7 +164,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -197,7 +197,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arango "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -222,7 +222,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/avocsh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
