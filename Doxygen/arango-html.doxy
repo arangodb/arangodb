@@ -25,13 +25,13 @@ DOXYFILE_ENCODING      = UTF-8
 # The PROJECT_NAME tag is a single word (or a sequence of words surrounded
 # by quotes) that should identify the project.
 
-PROJECT_NAME           = "AvocadoDB"
+PROJECT_NAME           = "ArangoDB"
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number.
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = @PACKAGE_VERSION@
+PROJECT_NUMBER         = 0.4.2
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description for a project that appears at the top of each page and should give viewer a quick idea about the purpose of the project. Keep the description short.
 
@@ -211,7 +211,7 @@ ALIASES += REST{1}="<tt><b>\1</b></tt>"
 ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
 ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}@endlatexonly@verbinclude \1@latexonly\renewcommand{\examplecap}{}@endlatexonly"
-ALIASES += VERSION="@PACKAGE_VERSION@"
+ALIASES += VERSION="0.4.2"
 ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
 ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
 ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
@@ -506,7 +506,7 @@ GENERATE_DEPRECATEDLIST= YES
 # The ENABLED_SECTIONS tag can be used to enable conditional
 # documentation sections, marked by \if sectionname ... \endif.
 
-ENABLED_SECTIONS =
+ENABLED_SECTIONS = HTML
 
 # The MAX_INITIALIZER_LINES tag determines the maximum number of lines
 # the initial value of a variable or macro consists of for it to appear in
@@ -623,20 +623,20 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
-	@srcdir@/Admin \
-	@srcdir@/Ahuacatl \
-	@srcdir@/ApplicationServer \
-	@srcdir@/Basics \
-	@srcdir@/BasicsC \
-	@srcdir@/Doxygen/js \
-	@srcdir@/Logger \
-	@srcdir@/Rest \
-	@srcdir@/RestHandler \
-	@srcdir@/RestServer \
-	@srcdir@/ShapedJson \
-	@srcdir@/UserManager \
-	@srcdir@/V8 \
-	@srcdir@/VocBase
+	./Admin \
+	./Ahuacatl \
+	./ApplicationServer \
+	./Basics \
+	./BasicsC \
+	./Doxygen/js \
+	./Logger \
+	./Rest \
+	./RestHandler \
+	./RestServer \
+	./ShapedJson \
+	./UserManager \
+	./V8 \
+	./VocBase
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -667,9 +667,9 @@ RECURSIVE              = YES
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = \
-	@srcdir@/V8/v8-json.h \
-	@srcdir@/V8/v8-json.cpp \
-	@srcdir@/Ahuacatl/ahuacatl-tokens.c
+	./V8/v8-json.h \
+	./V8/v8-json.cpp \
+	./Ahuacatl/ahuacatl-tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -698,10 +698,10 @@ EXCLUDE_SYMBOLS        =
 # the \include command).
 
 EXAMPLE_PATH           = \
-	@srcdir@/Doxygen/Examples.AvocadoDB \
-	@srcdir@/Doxygen/Examples.Durham \
-	@srcdir@/Doxygen/Examples.Fyn \
-	@srcdir@/Demos/Scripts
+	./Doxygen/Examples.ArangoDB \
+	./Doxygen/Examples.Durham \
+	./Doxygen/Examples.Fyn \
+	./Demos/Scripts
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
@@ -845,7 +845,7 @@ IGNORE_PREFIX          =
 # If the GENERATE_HTML tag is set to YES (the default) Doxygen will
 # generate HTML output.
 
-GENERATE_HTML          = NO
+GENERATE_HTML = YES
 
 # The HTML_OUTPUT tag is used to specify where the HTML docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be
@@ -863,13 +863,13 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard header.
 
-HTML_HEADER            = @srcdir@/Doxygen/Scripts/avocadodb_header.html
+HTML_HEADER            = ./Doxygen/Scripts/arangodb_header.html
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            = @srcdir@/Doxygen/Scripts/avocadodb_footer.html
+HTML_FOOTER            = ./Doxygen/Scripts/arangodb_footer.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading
 # style sheet that is used by each HTML page. It can be used to
@@ -878,7 +878,7 @@ HTML_FOOTER            = @srcdir@/Doxygen/Scripts/avocadodb_footer.html
 # the style sheet file to the HTML output directory, so don't put your own
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        = @srcdir@/Doxygen/Scripts/avocadodb.css
+HTML_STYLESHEET        = ./Doxygen/Scripts/arangodb.css
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the stylesheet and background images
@@ -1549,7 +1549,7 @@ HIDE_UNDOC_RELATIONS   = YES
 # toolkit from AT&T and Lucent Bell Labs. The other options in this section
 # have no effect if this option is set to NO (the default)
 
-HAVE_DOT               = @HAVE_DOT@
+HAVE_DOT               = YES
 
 # The DOT_NUM_THREADS specifies the number of dot invocations doxygen is
 # allowed to run in parallel. When set to 0 (the default) doxygen will

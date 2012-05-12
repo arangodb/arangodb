@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AvocadoDB server
+/// @brief ArangoDB server
 ///
 /// @file
 ///
@@ -27,20 +27,20 @@
 
 #include "Basics/Common.h"
 
-#include "RestServer/AvocadoServer.h"
+#include "RestServer/ArangoServer.h"
 #include "ResultGenerator/Initialise.h"
 
 using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,8 +52,8 @@ int main (int argc, char* argv[]) {
   TRIAGENS_RESULT_GENERATOR_INITIALISE;
   TRI_InitialiseVocBase();
 
-  // create and start a AvocadoDB server
-  AvocadoServer server(argc, argv);
+  // create and start a ArangoDB server
+  ArangoServer server(argc, argv);
 
   int res = server.start();
 

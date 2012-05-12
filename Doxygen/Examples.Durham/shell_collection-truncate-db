@@ -1,9 +1,9 @@
-avocado> col = db.examples;
-[AvocadoCollection 91022, "examples" (status new born)]
-avocado> col.save({ "Hallo" : "World" });
+arango> col = db.examples;
+[ArangoCollection 91022, "examples" (status new born)]
+arango> col.save({ "Hallo" : "World" });
 { "_id" : "91022/1532814", "_rev" : 1532814 }
-avocado> col.count();
+arango> col.count();
 1
-avocado> db._truncate(col);
-avocado> col.count();
+arango> db._truncate(col);
+arango> col.count();
 0

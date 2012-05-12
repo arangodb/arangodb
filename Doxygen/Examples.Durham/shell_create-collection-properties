@@ -1,4 +1,4 @@
-avocado> c = db._create("cars", { waitForSync : true, journalSize : 1024 * 1204 });
-[AvocadoCollection 96384, "cars" (status loaded)]
-avocado> c.properties()
+arango> c = db._create("cars", { waitForSync : true, journalSize : 1024 * 1204 });
+[ArangoCollection 96384, "cars" (status loaded)]
+arango> c.properties()
 { "waitForSync" : true, "journalSize" : 1232896 }

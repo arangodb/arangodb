@@ -526,13 +526,13 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (document._did == 0) {
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
+                         TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                                "document not found")));
   }
 
   if (rid != 0 && document._rid != rid) {
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_AVOCADO_CONFLICT,
+                         TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT,
                                                "revision not found")));
   }
   
@@ -690,7 +690,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_ReleaseCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND && policy == TRI_DOC_UPDATE_LAST_WRITE) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && policy == TRI_DOC_UPDATE_LAST_WRITE) {
       return scope.Close(v8::False());
     }
     else {
@@ -3104,7 +3104,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
   }
 
   if (   key == "toString"
@@ -3255,7 +3255,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineAvocado
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -3433,7 +3433,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
   }
 
   if (   key == "toString"
@@ -3530,7 +3530,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineAvocado
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -3615,7 +3615,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
   
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
   }  
   
   if (key[0] == '_') {
@@ -3894,7 +3894,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
     if (! IsDocumentHandle(val, cid, did)) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, 
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD, 
                                            "<document-handle> must be a document-handle"));
     }
   }
@@ -3905,14 +3905,14 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
     if (! IsDocumentHandle(didVal, cid, did)) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a document-handle in _id"));
     }
 
     rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
 
     if (rid == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a revision identifier in _rev"));
     }
   }
@@ -3922,7 +3922,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
 
     if (vc == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                                "collection of <document-handle> is unknown"));;
     }
 
@@ -3943,11 +3943,11 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   // check cross collection requests
   if (cid != collection->_collection->base._cid) {
     if (cid == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND, 
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, 
                                                "collection of <document-handle> unknown"));
     }
     else {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                                "cannot execute cross collection query"));
     }
   }
@@ -3976,7 +3976,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
     if (! IsIndexHandle(val, cid, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD,
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "<index-handle> must be a index-handle");
       return 0;
     }
@@ -3988,7 +3988,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
 
     if (! IsIndexHandle(iidVal, cid, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD, 
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, 
                                    "expecting a index-handle in id");
       return 0;
     }
@@ -3999,7 +3999,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
 
     if (vc == 0) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND, 
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, 
                                    "collection of <index-handle> is unknown");
       return 0;
     }
@@ -4023,12 +4023,12 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
   // check cross collection requests
   if (cid != collection->_collection->base._cid) {
     if (cid == 0) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                    "collection of <index-handle> unknown");
       return 0;
     }
     else {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                    "cannot execute cross collection index");
       return 0;
     }
@@ -4038,7 +4038,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
 
   if (idx == 0) {
     if (! ignoreNotFound) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "index is unknown");
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, "index is unknown");
     }
 
     return 0;
@@ -4308,7 +4308,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoDatabase"));
+  ft->SetClassName(v8::String::New("ArangoDatabase"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -4327,7 +4327,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoDatabase"),
+  context->Global()->Set(v8::String::New("ArangoDatabase"),
                          ft->GetFunction());
 
   // .............................................................................
@@ -4335,7 +4335,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoEdges"));
+  ft->SetClassName(v8::String::New("ArangoEdges"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -4354,7 +4354,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoEdges"),
+  context->Global()->Set(v8::String::New("ArangoEdges"),
                          ft->GetFunction());
 
   
@@ -4387,7 +4387,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoCollection"));
+  ft->SetClassName(v8::String::New("ArangoCollection"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -4422,7 +4422,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoCollection"),
+  context->Global()->Set(v8::String::New("ArangoCollection"),
                          ft->GetFunction());
 
   // .............................................................................
@@ -4430,7 +4430,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoEdgesCollection"));
+  ft->SetClassName(v8::String::New("ArangoEdgesCollection"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -4465,7 +4465,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoEdgesCollection"),
+  context->Global()->Set(v8::String::New("ArangoEdgesCollection"),
                          ft->GetFunction());
 
   // .............................................................................
@@ -4473,21 +4473,21 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoError"));
+  ft->SetClassName(v8::String::New("ArangoError"));
 
   rt = ft->InstanceTemplate();
 
   v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoError"), ft->GetFunction());
+  context->Global()->Set(v8::String::New("ArangoError"), ft->GetFunction());
   
   // .............................................................................
   // generate the general cursor template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoCursor"));
+  ft->SetClassName(v8::String::New("ArangoCursor"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -4505,7 +4505,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoCursor"), ft->GetFunction());
+  context->Global()->Set(v8::String::New("ArangoCursor"), ft->GetFunction());
   
   context->Global()->Set(v8::String::New("CURSOR"),
                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),

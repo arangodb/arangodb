@@ -1,14 +1,14 @@
-avocado> v = g.addVertex(1);
+arango> v = g.addVertex(1);
 Vertex(1)
 
-avocado> e = g.addEdge(v, v, 2, "self", { weight: 10 })
+arango> e = g.addEdge(v, v, 2, "self", { weight: 10 })
 Edge(2)
 
-avocado> e.getPropert("weight")
+arango> e.getPropert("weight")
 10
 
-avocado> e.setProperty("weight", 20);
+arango> e.setProperty("weight", 20);
 20
 
-avocado> e.getPropert("weight")
+arango> e.getPropert("weight")
 20

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado http server
+/// @brief arango http server
 ///
 /// @file
 ///
@@ -25,13 +25,13 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AvocadoHttpServer.h"
+#include "ArangoHttpServer.h"
 
 using namespace triagens::rest;
-using namespace triagens::avocado;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class AvocadoHttpServer
+// --SECTION--                                           class ArangoHttpServer
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -39,7 +39,7 @@ using namespace triagens::avocado;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +47,7 @@ using namespace triagens::avocado;
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoHttpServer::AvocadoHttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
+ArangoHttpServer::ArangoHttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
   : HttpServerImpl(scheduler, dispatcher) {
 }
 

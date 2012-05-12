@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado shell
+/// @brief arango shell
 ///
 /// @file
 ///
@@ -60,9 +60,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellDocument AvocadoDB Interface for Documents
+/// @page ShellDocument ArangoDB Interface for Documents
 ///
-/// This is an introduction to AvocadoDB's interface for documents.
+/// This is an introduction to ArangoDB's interface for documents.
 ///
 /// <hr>
 /// @copydoc ShellDocumentTOC
@@ -94,8 +94,8 @@
 /// @section ShellDocumentResource Address and ETag of an Document
 //////////////////////////////////////////////////////////////////
 ///
-/// All documents in AvocadoDB have a document handle. This handle uniquely
-/// defines a document and is managed by AvocadoDB. The interface allows
+/// All documents in ArangoDB have a document handle. This handle uniquely
+/// defines a document and is managed by ArangoDB. The interface allows
 /// you to access the documents of a collection as:
 ///
 /// @LIT{db.@FA{collection}.documet(@FA{document-handle})}

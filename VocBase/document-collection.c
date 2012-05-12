@@ -70,7 +70,7 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
     result._did = 0;
     return result;
   }
@@ -122,7 +122,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
     result._did = 0;
     return result;
   }
@@ -247,7 +247,7 @@ static TRI_datafile_t* CreateJournal (TRI_doc_collection_t* collection, bool com
       collection->base._state = TRI_COL_STATE_READ;
     }
     else {
-      collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
       collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     }
 
@@ -358,7 +358,7 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
   // no journal at this position
   if (vector->_length <= position) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     return false;
   }
 

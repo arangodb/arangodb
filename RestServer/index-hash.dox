@@ -47,7 +47,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexHash Hash Indexes
 ///
-/// This is an introduction to AvocadoDB's hash indexes.
+/// This is an introduction to ArangoDB's hash indexes.
 ///
 /// @EMBEDTOC{IndexHashTOC}
 ///

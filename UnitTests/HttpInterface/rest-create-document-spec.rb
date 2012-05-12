@@ -1,9 +1,9 @@
 # coding: utf-8
 
 require 'rspec'
-require './avocadodb.rb'
+require './arangodb.rb'
 
-describe AvocadoDB do
+describe ArangoDB do
   prefix = "rest_create-document"
 
   context "creating a document:" do
@@ -16,7 +16,7 @@ describe AvocadoDB do
       it "returns an error if url contains a suffix" do
 	cmd = "/document/123456"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-superfluous-suffix", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-superfluous-suffix", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -28,7 +28,7 @@ describe AvocadoDB do
       it "returns an error if collection idenifier is missing" do
 	cmd = "/document"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-missing-cid", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-missing-cid", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -40,7 +40,7 @@ describe AvocadoDB do
       it "returns an error if the collection identifier is unknown" do
 	cmd = "/document?collection=123456"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-unknown-cid", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-unknown-cid", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -52,7 +52,7 @@ describe AvocadoDB do
       it "returns an error if the collection name is unknown" do
 	cmd = "/document?collection=unknown_collection"
 	body = "{}"
-        doc = AvocadoDB.log_post("#{prefix}-unknown-name", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-unknown-name", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -63,14 +63,14 @@ describe AvocadoDB do
 
       it "returns an error if the JSON body is corrupted" do
 	cn = "UnitTestsCollectionBasics"
-	id = AvocadoDB.create_collection(cn)
+	id = ArangoDB.create_collection(cn)
 
 	id.should be_kind_of(Integer)
 	id.should_not be_zero
 
 	cmd = "/document?collection=#{id}"
 	body = "{ 1 : 2 }"
-        doc = AvocadoDB.log_post("#{prefix}-bad-json", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-bad-json", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -78,9 +78,9 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.size_collection(cn).should eq(0)
+	ArangoDB.size_collection(cn).should eq(0)
 
-	AvocadoDB.drop_collection(cn)
+	ArangoDB.drop_collection(cn)
       end
     end
 
@@ -91,17 +91,17 @@ describe AvocadoDB do
     context "known collection identifier, waitForSync = true:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "creating a new document" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.log_post("#{prefix}", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -126,15 +126,15 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "creating a new document complex body" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
-	doc = AvocadoDB.log_post("#{prefix}", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -160,21 +160,21 @@ describe AvocadoDB do
 	location.should eq("/document/#{did}")
 
 	cmd = "/document/#{did}"
-	doc = AvocadoDB.log_get("#{prefix}-complex", cmd)
+	doc = ArangoDB.log_get("#{prefix}-complex", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['Hallo'].should eq('Wo"rld')
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
 
       it "creating a new umlaut document" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
-	doc = AvocadoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -200,7 +200,7 @@ describe AvocadoDB do
 	location.should eq("/document/#{did}")
 
 	cmd = "/document/#{did}"
-	doc = AvocadoDB.log_get("#{prefix}-umlaut", cmd)
+	doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -212,9 +212,9 @@ describe AvocadoDB do
 
 	doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
 	
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -225,17 +225,17 @@ describe AvocadoDB do
     context "known collection identifier, waitForSync = false:" do
       before do
 	@cn = "UnitTestsCollectionUnsynced"
-	@cid = AvocadoDB.create_collection(@cn, false)
+	@cid = ArangoDB.create_collection(@cn, false)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "creating a new document" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.log_post("#{prefix}-accept", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)
 
 	doc.code.should eq(202)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -260,9 +260,9 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -273,17 +273,17 @@ describe AvocadoDB do
     context "known collection name:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
-	@cid = AvocadoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn)
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "creating a new document" do
 	cmd = "/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.log_post("#{prefix}-named-collection", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-named-collection", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -308,9 +308,9 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -324,13 +324,13 @@ describe AvocadoDB do
       end
 
       after do
-	AvocadoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn)
       end
 
       it "returns an error if collection is unknown" do
 	cmd = "/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.log_post("#{prefix}-unknown-collection-name", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-unknown-collection-name", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -342,7 +342,7 @@ describe AvocadoDB do
       it "create the collection and the document" do
 	cmd = "/document?collection=#{@cn}&createCollection=true"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
+	doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
 
 	doc.code.should eq(202)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -363,9 +363,9 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.delete(location)
+	ArangoDB.delete(location)
 
-	AvocadoDB.size_collection(@cn).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
     end
 

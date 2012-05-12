@@ -89,8 +89,8 @@ namespace triagens {
           triagens::basics::VariantArray* json = result->getBodyAsVariantArray();
           if (json) {
             triagens::basics::VariantString* vs = json->lookupString("server");
-            if (vs && vs->getValue() == "avocado") {
-              // connected to avocado server
+            if (vs && vs->getValue() == "arango") {
+              // connected to arango server
               _connected = true;
               vs = json->lookupString("version");
               if (vs) {

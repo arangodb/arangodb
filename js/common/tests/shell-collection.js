@@ -49,7 +49,7 @@ function CollectionSuiteErrorHandling () {
         internal.db._create("_illegal");
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -62,7 +62,7 @@ function CollectionSuiteErrorHandling () {
         internal.db._create("");
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -75,7 +75,7 @@ function CollectionSuiteErrorHandling () {
         internal.db._create("12345");
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -88,7 +88,7 @@ function CollectionSuiteErrorHandling () {
         internal.db["_illegal"];
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -101,7 +101,7 @@ function CollectionSuiteErrorHandling () {
         internal.db[""];
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -114,7 +114,7 @@ function CollectionSuiteErrorHandling () {
         internal.db["12345"];
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_ILLEGAL_NAME.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     }
   };
@@ -285,7 +285,7 @@ function CollectionSuite () {
 
       c1.drop();
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -310,7 +310,7 @@ function CollectionSuite () {
 
       c1.drop();
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -336,7 +336,7 @@ function CollectionSuite () {
 
       c1.drop();
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -359,7 +359,7 @@ function CollectionSuite () {
 
       c1.truncate();
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);
@@ -383,7 +383,7 @@ function CollectionSuite () {
 
       c1.truncate();
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);
@@ -408,7 +408,7 @@ function CollectionSuite () {
 
       c1.truncate();
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);
@@ -580,7 +580,7 @@ function CollectionDbSuite () {
 
       internal.db._drop(cn);
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -605,7 +605,7 @@ function CollectionDbSuite () {
 
       internal.db._drop(cn);
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -631,7 +631,7 @@ function CollectionDbSuite () {
 
       internal.db._drop(cn);
 
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
 
       var c2 = internal.db._collection(cn);
 
@@ -654,7 +654,7 @@ function CollectionDbSuite () {
 
       internal.db._truncate(cn);
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);
@@ -678,7 +678,7 @@ function CollectionDbSuite () {
 
       internal.db._truncate(cn);
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);
@@ -703,7 +703,7 @@ function CollectionDbSuite () {
 
       internal.db._truncate(cn);
 
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
 
       internal.db._drop(cn);

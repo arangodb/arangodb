@@ -4,7 +4,7 @@
 ## common files
 ################################################################################
 
-libavocado_a_SOURCES = \
+libarango_a_SOURCES = \
 	Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable.cpp \
 	Basics/FileUtils.cpp \
@@ -110,18 +110,18 @@ libavocado_a_SOURCES = \
 	Variant/VariantVector.cpp
 
 if ENABLE_MRUBY
-libavocado_a_SOURCES += \
+libarango_a_SOURCES += \
 	MRuby/MRLineEditor.cpp \
 	MRuby/mr-utils.cpp
 endif
 
 ################################################################################
-## avocado server
+## arango server
 ################################################################################
 
-avocado_LDADD = libavocado.a $(LIBS)
+arangod_LDADD = libarango.a $(LIBS)
 
-avocado_SOURCES = \
+arangod_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
@@ -179,9 +179,9 @@ avocado_SOURCES = \
 	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
-	RestServer/AvocadoHttpServer.cpp \
-	RestServer/AvocadoServer.cpp \
-	RestServer/avocado.cpp \
+	RestServer/ArangoHttpServer.cpp \
+	RestServer/ArangoServer.cpp \
+	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
 	ResultGenerator/JsonResultGenerator.cpp \
@@ -224,43 +224,43 @@ avocado_SOURCES = \
 	VocBase/vocbase.c
 
 ################################################################################
-## avocado shell
+## arango shell
 ################################################################################
 
-avocsh_LDADD = libavocado.a $(LIBS)
+arangosh_LDADD = libarango.a $(LIBS)
 
-avocsh_SOURCES = \
+arangosh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocsh.cpp
+	V8Client/arangosh.cpp
 
 ################################################################################
-## avocado ruby shell
+## arango ruby shell
 ################################################################################
 
 if ENABLE_MRUBY
 
-avocirb_LDADD = libavocado.a $(LIBS)
+arangoirb_LDADD = libarango.a $(LIBS)
 
-avocirb_SOURCES = \
-	MRClient/avocirb.cpp
+arangoirb_SOURCES = \
+	MRClient/arangoirb.cpp
 
 endif
 
 ################################################################################
-## avocado importer
+## arango importer
 ################################################################################
 
-avocimp_LDADD = libavocado.a $(LIBS)
+arangoimp_LDADD = libarango.a $(LIBS)
 
-avocimp_SOURCES = \
+arangoimp_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocimp.cpp
+	V8Client/arangoimp.cpp
 
 ################################################################################
 ## JavaScript source code as header
@@ -341,10 +341,10 @@ DOXYGEN = \
 
 WIKI = \
 	Actions \
-	AvocadoErrors \
-	AvocadoScript \
+	ArangoErrors \
+	ArangoScript \
 	CommandLine \
-	CommandLineAvocado \
+	CommandLineArango \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
@@ -379,7 +379,6 @@ WIKI = \
 	JSModuleInternal \
 	JSModules \
 	Key-Value \
-	OTWP \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -391,7 +390,6 @@ WIKI = \
 	SimpleQueries \
 	UserManualServer \
 	UserManualServerBasics \
-	UserManualServerStartStop \
 	UserManualShell \
-	UserManualShellStartStop  \
+	UserManualShellStartStop \
 	jsUnity

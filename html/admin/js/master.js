@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// master.js 
-/// avocadodb js api  
+/// arangodb js api  
 ///////////////////////////////////////////////////////////////////////////////
 
 // documents global vars
@@ -1160,7 +1160,7 @@ var logTable = $('#logTableID').dataTable({
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
-    var client = "avocadodb:" + data;
+    var client = "arangodb:" + data;
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
   

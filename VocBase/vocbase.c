@@ -452,7 +452,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
     LOG_ERROR("duplicate entry for name '%s'", name);
-    TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
     return NULL;
   }
@@ -466,7 +466,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
     LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) cid, name);
-    TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_IDENTIFIER);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
     return NULL;
   }
@@ -580,7 +580,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
             regfree(&re);
             TRI_DestroyVectorString(&files);
 
-            return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+            return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
           }
 
           c->_status = TRI_VOC_COL_STATUS_UNLOADED;
@@ -635,7 +635,7 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
   if (*name == '\0') {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return NULL;
   }
 
@@ -648,7 +648,7 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
 
     LOG_DEBUG("found illegal character in name: %c", wrong);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return NULL;
   }
 
@@ -678,13 +678,13 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
   // cannot manifest a corrupted collection
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // cannot manifest a deleted collection
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   // loaded, unloaded, or unloading are manifested
@@ -746,7 +746,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     LOG_ERROR("unknown collection type '%d' in collection '%s'", (int) type, collection->_name);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
   }
 }
 
@@ -776,12 +776,12 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // release the read lock and acquire a write lock, we have to do some work
@@ -814,13 +814,13 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   // deleted, give up
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   // corrupted, give up
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // new born, manifest collection, release the WRITE lock and try again
@@ -850,7 +850,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
 
         TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-        return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+        return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
       }
 
       collection->_collection = &sim->base;
@@ -868,7 +868,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
       LOG_ERROR("unknown collection type %d for '%s'", (int) type, collection->_name);
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-      return TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+      return TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     }
   }
 
@@ -1024,7 +1024,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   if (! TRI_IsDirectory(path)) {
     LOG_ERROR("database path '%s' is not a directory", path);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
     return NULL;
   }
 
@@ -1040,7 +1040,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, lockFile);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_DATABASE_LOCKED);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_LOCKED);
     return NULL;
   }
 
@@ -1257,7 +1257,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char
   }
 
   if (! bear) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return NULL;
   }
 
@@ -1290,14 +1290,14 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
 
     LOG_DEBUG("collection named '%s' already exists", name);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     return NULL;
   }
 
   if (*name == '\0') {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return NULL;
   }
 
@@ -1309,7 +1309,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
 
     LOG_DEBUG("found illegal character in name: %c", wrong);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return NULL;
   }
 
@@ -1337,7 +1337,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
 
     LOG_ERROR("unknown collection type: %d", parameter->_type);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
 
@@ -1377,7 +1377,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // cannot unload a corrupted collection
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // a unloaded collection is unloaded
@@ -1553,7 +1553,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
   // check name conventions
   if (*newName == '\0') {
-    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   parameter._isSystem = (*oldName == '_');
@@ -1561,7 +1561,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
   if (wrong != 0) {
     LOG_DEBUG("found illegal character in name: %c", wrong);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   // lock collection because we are going to change the name
@@ -1575,7 +1575,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // cannot rename a deleted collection
@@ -1583,7 +1583,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   // check if the new name is unused
@@ -1593,7 +1593,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    return TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
+    return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
   // .............................................................................
@@ -1700,7 +1700,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
   if (collection == NULL) {
     LOG_DEBUG("unknown collection '%s'", name);
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return NULL;
   }
 

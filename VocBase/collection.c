@@ -210,7 +210,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         else if (TRI_EqualString2("datafile", first, firstLen)) {
           if (! datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen", filename);
-            collection->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
+            collection->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
             stop = true;
             break;
           }
@@ -401,7 +401,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_FULL);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
     LOG_ERROR("cannot create datafile '%s' in '%s', maximal size '%u' is too small",
               parameter->_name,
@@ -412,7 +412,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
@@ -438,7 +438,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // uups
   else {
-    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
 
     LOG_ERROR("cannot create collection '%s' in '%s': unknown type '%d'",
               parameter->_name,
@@ -450,7 +450,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // directory must not exists
   if (TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
+    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
@@ -557,7 +557,7 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
@@ -572,14 +572,14 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
     }
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
-    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
   // convert json
@@ -854,7 +854,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   freeCol = false;
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 

@@ -70,7 +70,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -84,7 +84,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -98,7 +98,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -112,7 +112,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     },
 
@@ -126,7 +126,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     },
 
@@ -140,7 +140,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     },
 
@@ -154,7 +154,7 @@ function CollectionDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     }
   };
@@ -244,7 +244,7 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
     },
 
@@ -268,7 +268,7 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
       var doc2 = collection.document(a1._id);
@@ -310,7 +310,7 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
       var a3 = collection.remove(a1, true);
@@ -339,7 +339,7 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     }
   };
@@ -369,7 +369,7 @@ function DatabaseDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -383,7 +383,7 @@ function DatabaseDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -397,7 +397,7 @@ function DatabaseDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -413,7 +413,7 @@ function DatabaseDocumentSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
 
       collection.drop();
@@ -493,7 +493,7 @@ function DatabaseDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
     },
 
@@ -517,7 +517,7 @@ function DatabaseDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
       var doc2 = internal.db._document(a1._id);
@@ -559,7 +559,7 @@ function DatabaseDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
       var a3 = internal.db._remove(a1, true);
@@ -588,7 +588,7 @@ function DatabaseDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     }
   };

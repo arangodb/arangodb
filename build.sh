@@ -9,7 +9,7 @@ echo
 
 OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
-RESULTS="avocado avocsh avocirb"
+RESULTS="arango avocsh avocirb"
 
 export CPPFLAGS=""
 export LDFLAGS=""

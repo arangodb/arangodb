@@ -1,14 +1,14 @@
-avocado> db.users.all().toArray();
+arango> db.users.all().toArray();
 [ { "_id" : "553063885:554702285", "_rev" : 554702285, "id" : 323, "name" : "Peter" }, 
   { "_id" : "553063885:554636749", "_rev" : 554636749, "id" : 535, "name" : "Peter" }, 
   { "_id" : "553063885:554833357", "_rev" : 554833357, "id" : 25, "name" : "Vladimir" } ]
 
-avocado> db.users.byExample({ "id" : 323 }).toArray();
+arango> db.users.byExample({ "id" : 323 }).toArray();
 [ { "id" : 323, "name" : "Peter", "_id" : "553063885:554702285" } ]
 
-avocado> db.users.byExample({ "name" : "Peter" }).toArray();
+arango> db.users.byExample({ "name" : "Peter" }).toArray();
 [ { "id" : 323, "name" : "Peter", "_id" : "553063885:554702285" }, 
   { "id" : 535, "name" : "Peter", "_id" : "553063885:554636749" } ]
 
-avocado> db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+arango> db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
 [ { "id" : 535, "name" : "Peter", "_id" : "553063885:554636749" } ]

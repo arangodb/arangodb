@@ -1,14 +1,14 @@
-avocado> v1 = g.addVertex(1, { name : "Hugo" });
+arango> v1 = g.addVertex(1, { name : "Hugo" });
 Vertex(1)
 
-avocado> v2 = g.addVertex(2, { name : "Emil" }); 
+arango> v2 = g.addVertex(2, { name : "Emil" }); 
 Vertex(2)
 
-avocado> e = g.addEdge(v1, v2, 3, "knows", { "weight" : 10 });
+arango> e = g.addEdge(v1, v2, 3, "knows", { "weight" : 10 });
 Edge(3)
 
-avocado> v1.outbound();
+arango> v1.outbound();
 [  Edge(3) ]
 
-avocado> v2.outbound();
+arango> v2.outbound();
 [ ]

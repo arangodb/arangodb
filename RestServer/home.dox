@@ -26,26 +26,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Home AvocadoDB
+/// @page Home ArangoDB
 ///
 /// My colleagues and I started developing a document-store, which focuses on
 /// durability of the data taking advantage of new technologies like SSD,
 /// support for graph and geo algorithms needed in social networks, ease of use
 /// for the developer and minimal effort to operate for the administrator. The
-/// design goals are described <a href="http://www.avocadodb.org/">here</a>.
+/// design goals are described <a href="http://www.arangodb.org/">here</a>.
 ///
-/// The AvocadoDB consists of a server, a separate shell, which allows you to
+/// The ArangoDB consists of a server, a separate shell, which allows you to
 /// administrate the server, and a set of client API for various languages.
 ///
 /// @xmlonly The HTML version of the manual can be found <ulink url="/manuals">here</ulink>. @endxmlonly
 ///
 /// @warning
-/// AvocadoDB is currently pre-alpha. We want to have a version 1 ready by end
+/// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
 /// of May 2012, a multi server version is planned for the third quarter of
 /// 2012. The document is far from complete. The most complete parts are
 /// @ref RefManual "here".
 ///
-/// @section AvocadoDBServer AvocadoDB Server (Version @VERSION)
+/// @section ArangoDBServer ArangoDB Server (Version @VERSION)
 /// 
 /// <ul>
 ///   <li>@ref InstallManual (<a href="/manuals/install-manual.pdf">pdf</a>)</li>
@@ -55,7 +55,7 @@
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
-/// @section AvocadoDB AvocadoDB Shell
+/// @section ArangoDB ArangoDB Shell
 /// 
 /// <ul>
 ///   <li>@ref UserManualShell</li>
@@ -90,10 +90,10 @@
 /// Frank is twittering for the project on Twitter using <a
 /// href="http://www.twitter.com/fceller">@@fceller</a>. We've also a
 /// "generic" twitter account mainly for announcements called <a
-/// href="http://www.twitter.com/avocadodb">@@avocadodb</a>
+/// href="http://www.twitter.com/arangodb">@@arangodb</a>
 ///
 /// You can also subscribe to a low traffic announcement list on the
-/// <a href="http://www.avocadodb.org/connect">connect page</a>.
+/// <a href="http://www.arangodb.org/connect">connect page</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avocado shell
+/// @brief arango shell
 ///
 /// @file
 ///
@@ -58,9 +58,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellIndex AvocadoDB Interface for Indexes
+/// @page ShellIndex ArangoDB Interface for Indexes
 ///
-/// This is an introduction to AvocadoDB's interface for indexs in general.
+/// This is an introduction to ArangoDB's interface for indexs in general.
 /// There are special sections for
 ///
 /// @copydoc IndexesTOC
@@ -85,8 +85,8 @@
 /// @section ShellIndexResource Address and ETag of an Index
 ////////////////////////////////////////////////////////////
 ///
-/// All indexs in AvocadoDB have an index handle. This handle uniquely
-/// defines an index and is managed by AvocadoDB. The interface allows
+/// All indexs in ArangoDB have an index handle. This handle uniquely
+/// defines an index and is managed by ArangoDB. The interface allows
 /// you to access the indexs of a collection as:
 ///
 /// @LIT{db.@FA{collection}.index(@FA{index-handle})}
@@ -110,7 +110,7 @@
 //////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellIndexRead
-/// @copydetails JSF_AvocadoCollection_prototype_index
+/// @copydetails JSF_ArangoCollection_prototype_index
 /// <hr>
 ///
 /// @anchor ShellIndexReadAll
@@ -125,11 +125,11 @@
 //////////////////////////////////////////////////////////
 ///
 /// @anchor ShellIndexDbRead
-/// @copydetails JSF_AvocadoDatabase_prototype__index
+/// @copydetails JSF_ArangoDatabase_prototype__index
 /// <hr>
 ///
 /// @anchor ShellIndexDbDelete
-/// @copydetails JSF_AvocadoDatabase_prototype__dropIndex
+/// @copydetails JSF_ArangoDatabase_prototype__dropIndex
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

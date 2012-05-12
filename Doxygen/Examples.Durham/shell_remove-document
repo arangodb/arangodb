@@ -1,10 +1,10 @@
-avocado> a1 = db.example.save({ a : 1 });
+arango> a1 = db.example.save({ a : 1 });
 { "_id" : "116308/3449537", "_rev" : 3449537 }
-avocado> db.example.document(a1);
+arango> db.example.document(a1);
 { "_id" : "116308/3449537", "_rev" : 3449537, "a" : 1 }
-avocado> db.example.delete(a1);
+arango> db.example.delete(a1);
 true
-avocado> db.example.document(a1);
-JavaScript exception in file '(avocado)' at 1,12: [AvocadoError 1202: document not found: document not found]
+arango> db.example.document(a1);
+JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
 !db.example.document(a1);
 !           ^

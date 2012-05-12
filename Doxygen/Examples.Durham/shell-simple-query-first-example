@@ -1,2 +1,2 @@
-avocado> db.users.firstExample("name", 1237);
+arango> db.users.firstExample("name", 1237);
 { "_id" : "100225/83049373", "_rev" : 83049373, "name" : 1237 }

@@ -57,10 +57,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestEdge REST Interface for Edges
 ///
-/// This is an introduction to AvocadoDB's REST interface for edges.
+/// This is an introduction to ArangoDB's REST interface for edges.
 ///
 /// AvocacadoDB offers also some graph functionality. A graph consists of nodes,
-/// edges and properties. AvocadoDB stores the information how the nodes relate
+/// edges and properties. ArangoDB stores the information how the nodes relate
 /// to each other aside from the properties.
 ///
 /// So a graph data model always consists of two collections: the relations
@@ -89,8 +89,8 @@
 /// @section RestEdgeResource Address and ETag of an Edge
 /////////////////////////////////////////////////////////
 ///
-/// All documents in AvocadoDB have a document handle. This handle uniquely
-/// defines a document and is managed by AvocadoDB. All documents are
+/// All documents in ArangoDB have a document handle. This handle uniquely
+/// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI
 ///
 /// @LIT{http://@FA{server}:@FA{port}/document/@FA{document-handle}}
@@ -118,7 +118,7 @@
 ///
 /// @anchor RestEdgeCreate
 //////////////////////////
-/// @copydetails triagens::avocado::RestEdgeHandler::createDocument
+/// @copydetails triagens::arango::RestEdgeHandler::createDocument
 ///
 /// @anchor RestEdgeUpdate
 //////////////////////////

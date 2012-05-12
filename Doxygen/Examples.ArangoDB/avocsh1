@@ -9,12 +9,12 @@ Welcome to avocsh x.y.z. Copyright (c) 2012 triAGENS GmbH.
 Using Google V8 3.8.5 JavaScript engine.
 Using READLINE 6.1.
 
-Connected to Avocado DB 127.0.0.1:8529 Version 0.x.y
+Connected to Arango DB 127.0.0.1:8529 Version 0.x.y
 
 ------------------------------------- Help -------------------------------------
 Predefined objects:                                                 
-  avocado:                               AvocadoConnection          
-  db:                                    AvocadoDatabase            
+  arango:                               ArangoConnection          
+  db:                                    ArangoDatabase            
 Example:                                                            
  > db._collections();                    list all collections       
  > db.<coll_name>.all();                 list all documents         

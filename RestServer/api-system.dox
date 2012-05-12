@@ -59,7 +59,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpSystem HTTP Interface for Administration and Monitoring
 ///
-/// This is an introduction to AvocadoDB's Http interface for administration
+/// This is an introduction to ArangoDB's Http interface for administration
 /// and monitoring of the server.
 ///
 /// @EMBEDTOC{HttpSystemTOC}

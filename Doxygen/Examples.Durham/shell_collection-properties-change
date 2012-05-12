@@ -1,2 +1,2 @@
-avocado> db.examples.properties({ waitForSync : false })
+arango> db.examples.properties({ waitForSync : false })
 { "waitForSync" : false, "journalSize" : 33554432 }

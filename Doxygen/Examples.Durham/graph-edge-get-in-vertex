@@ -1,8 +1,8 @@
-avocado> v1 = g.addVertex(1);
+arango> v1 = g.addVertex(1);
 Vertex(1)
 
-avocado> e = g.addEdge(v, v, 2, "self");
+arango> e = g.addEdge(v, v, 2, "self");
 Edge(2)
 
-avocado> e.getInVertex();
+arango> e.getInVertex();
 Vertex(1)

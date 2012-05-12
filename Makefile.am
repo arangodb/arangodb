@@ -33,15 +33,15 @@ LIBS = \
 BUILT_SOURCES = build.h
 CLEANUP =
 
-noinst_LIBRARIES = libavocado.a
-sbin_PROGRAMS = avocado
-bin_PROGRAMS = avocsh avocimp
+noinst_LIBRARIES = libarango.a
+sbin_PROGRAMS = arangod
+bin_PROGRAMS = arangosh arangoimp
 
 if ENABLE_MRUBY
 AM_CPPFLAGS += @MRUBY_CPPFLAGS@
 AM_CPPFLAGS += @MRUBY_LDFLAGS@
 LIBS += @MRUBY_LIBS@
-bin_PROGRAMS += avocirb
+bin_PROGRAMS += arangoirb
 endif
 
 nobase_pkgdata_DATA = \
@@ -63,7 +63,7 @@ install-data-local:
 endif
 
 ################################################################################
-## avocadodb
+## arangodb
 ################################################################################
 
 build.h: configure.ac

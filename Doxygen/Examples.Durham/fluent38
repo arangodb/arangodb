@@ -1,2 +1,2 @@
-avocado> logLevel("debug");
+arango> logLevel("debug");
 "debug"

@@ -1,11 +1,11 @@
-avocado> v1 = g.addVertex(1);
+arango> v1 = g.addVertex(1);
 Vertex(1)
 
-avocado> v2 = g.addVertex(2);
+arango> v2 = g.addVertex(2);
 Vertex(2)
 
-avocado> v1.addInEdge(v2, "2 -> 1");
+arango> v1.addInEdge(v2, "2 -> 1");
 Edge("2 -> 1")
 
-avocado> v1.getInEdges();
+arango> v1.getInEdges();
 [ Edge("2 -> 1") ]

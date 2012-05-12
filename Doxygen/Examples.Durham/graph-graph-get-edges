@@ -1,8 +1,8 @@
-avocado> f = g.getEdges();
+arango> f = g.getEdges();
 [edge iterator]
 
-avocado> f.hasNext();
+arango> f.hasNext();
 true
 
-avocado> e = f.next();
+arango> e = f.next();
 Edge(<graph>, "2141724:4636053")
