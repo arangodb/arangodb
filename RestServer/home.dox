@@ -48,9 +48,9 @@
 /// @section ArangoDBServer ArangoDB Server (Version @VERSION)
 /// 
 /// <ul>
-///   <li>@ref InstallManual (<ulink url="http://www.arangodb.org/manuals/install-manual.pdf">pdf</ulink>)</li>
-///   <li>@ref UserManualServer (<ulink url="http://www.arangodb.org/manuals/user-manual-server.pdf">pdf</ulink>)</a></li>
-///   <li>@ref ImplementorManual (<ulink url="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</ulink>)</li>
+///   <li>@ref InstallManual (<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>)</li>
+///   <li>@ref UserManualServer (<a href="http://www.arangodb.org/manuals/user-manual-server.pdf">pdf</a>)</a></li>
+///   <li>@ref ImplementorManual (<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>)</li>
 ///   <li>@ref RefManual</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
