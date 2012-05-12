@@ -42,8 +42,7 @@
 /// @warning
 /// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
 /// of May 2012, a multi server version is planned for the third quarter of
-/// 2012. The document is far from complete. The most complete parts are
-/// @ref RefManual "here".
+/// 2012. The document is far from complete.
 ///
 /// @section ArangoDBServer ArangoDB Server (Version @VERSION)
 /// 
