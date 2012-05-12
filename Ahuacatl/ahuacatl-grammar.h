@@ -73,20 +73,21 @@
      T_TIMES = 288,
      T_DIV = 289,
      T_MOD = 290,
-     T_QUESTION = 291,
-     T_COLON = 292,
-     T_COMMA = 293,
-     T_OPEN = 294,
-     T_CLOSE = 295,
-     T_DOC_OPEN = 296,
-     T_DOC_CLOSE = 297,
-     T_LIST_OPEN = 298,
-     T_LIST_CLOSE = 299,
-     UPLUS = 300,
-     UMINUS = 301,
-     FUNCCALL = 302,
-     REFERENCE = 303,
-     INDEXED = 304
+     T_EXPAND = 291,
+     T_QUESTION = 292,
+     T_COLON = 293,
+     T_COMMA = 294,
+     T_OPEN = 295,
+     T_CLOSE = 296,
+     T_DOC_OPEN = 297,
+     T_DOC_CLOSE = 298,
+     T_LIST_OPEN = 299,
+     T_LIST_CLOSE = 300,
+     UPLUS = 301,
+     UMINUS = 302,
+     FUNCCALL = 303,
+     REFERENCE = 304,
+     INDEXED = 305
    };
 #endif
 
@@ -107,7 +108,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 111 "Ahuacatl/ahuacatl-grammar.h"
+#line 112 "Ahuacatl/ahuacatl-grammar.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

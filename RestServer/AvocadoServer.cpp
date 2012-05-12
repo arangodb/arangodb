@@ -1062,6 +1062,9 @@ void AvocadoServer::openDatabase () {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
+  
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 

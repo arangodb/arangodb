@@ -10,7 +10,7 @@ var collectionCurrentPage;
 var globalCollectionName;  
 var globalCollectionID;
 var globalCollectionRev;
-  
+var checkCollectionName; 
 var open = false;
 $(document).ready(function() {       
 showCursor();
@@ -76,7 +76,7 @@ $("#documents_last").live('click', function () {
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
-$('#logView ul').append('<button id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField"></input><button id="submitLogSearch">Search</button></form></div>');
+$('#logView ul').append('<button class="enabled" id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField"></input><button id="submitLogSearch">Search</button></form></div>');
 
 ///////////////////////////////////////////////////////////////////////////////
 /// initialize jquery tabs 
@@ -520,6 +520,7 @@ var logTable = $('#logTableID').dataTable({
           }
 
           $('#editCollectionStatus').text(tmpStatus); 
+          checkCollectionName = collectionName; 
         },
         error: function(data) {
         }
@@ -531,7 +532,7 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#editCollectionView').show();
-
+      $('#editCollectionName').focus();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -544,6 +545,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#logView').show();
       createnav ("Logs"); 
+      showCursor();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -687,6 +689,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
+      $('#queryContent').focus();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -698,6 +701,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#avocshView').show();
       createnav ("AvocSH"); 
+      $('#avocshContent').focus();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -713,6 +717,7 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#createCollectionView').show();
+      $('#createCollName').focus();
 
     }
   });
@@ -881,7 +886,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addNewDocButton').live('click', function () {
     if (tableView == true) {
-      newDocumentTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("editme")]);
+      newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("editme")]);
       documentTableMakeEditable('#NewDocumentTableID');
       showCursor();
     }
@@ -1018,7 +1023,6 @@ var logTable = $('#logTableID').dataTable({
     return false; 
   });
 
-
 ///////////////////////////////////////////////////////////////////////////////
 /// toggle button for source / table - new document view 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1059,7 +1063,7 @@ var logTable = $('#logTableID').dataTable({
             newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              newDocumentTable.fnAddData(['<button id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
+              newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
         documentTableMakeEditable ('#NewDocumentTableID'); 
@@ -1085,7 +1089,6 @@ var logTable = $('#logTableID').dataTable({
     var row = $(this).closest("tr").get(0);
     documentEditTable.fnDeleteRow(documentEditTable.fnGetPosition(row));
   });
-
 ///////////////////////////////////////////////////////////////////////////////
 /// submit log search 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1223,7 +1226,6 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         url: "/document/" + documentID 
       });
-      location.reload(); 
     }
 
     catch(e) {
@@ -1271,7 +1273,12 @@ var logTable = $('#logTableID').dataTable({
 
   $('#saveEditedCollection').live('click', function () {
     var newColName = $('#editCollectionName').val(); 
-    var currentid = $('#editCollectionID').text(); 
+    var currentid = $('#editCollectionID').text();
+
+    if (newColName == checkCollectionName) {
+      alert("Nothing to do...");
+      return 0;  
+    } 
     
       $.ajax({
         type: "PUT",
@@ -1287,7 +1294,8 @@ var logTable = $('#logTableID').dataTable({
           drawCollectionsTable(); 
         },
         error: function(data) {
-          alert(JSON.stringify(data));  
+          var temp = JSON.parse(data.responseText);
+          alert("Error: " + JSON.stringify(temp.errorMessage));  
         }
       });
   });
@@ -1305,14 +1313,19 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveNewCollection').live('click', function () {
-     
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
+      var systemcheck = $('input:radio[name=isSystem]:checked').val();
       var collName = $('#createCollName').val(); 
- 
+
+      if (collName == '') {
+        alert("Nothing to do..."); 
+        return 0; 
+      } 
+      
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":"' + JSON.parse(wfscheck) + '"}',  
+        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + '," isSystem":' + JSON.parse(systemcheck)+'}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -1416,8 +1429,9 @@ var logTable = $('#logTableID').dataTable({
           drawCollectionsTable();
         }, 
         error: function (data) {
-          alert('Error:' + JSON.stringify(data));
-          drawCollectionsTable();  
+          var temp = JSON.parse(data.responseText);
+          alert("Error: " + JSON.stringify(temp.errorMessage));  
+          drawCollectionsTable();
         }
       });
     }
@@ -1432,12 +1446,12 @@ var logTable = $('#logTableID').dataTable({
         type: 'PUT', 
         url: "/_api/collection/" + collectionID + "/unload",
         success: function () {
-          drawCollectionsTable();
         }, 
         error: function () {
           alert('Error'); 
         }
       });
+      drawCollectionsTable();
     }
   });
 });
@@ -1500,12 +1514,13 @@ function drawCollectionsTable () {
           }
         });
 	
-        items.push(['<button clas="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
-        items.push(["", val.id, val.name, tempStatus, "", ""]);
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16_nofunction.png" class="nofunction" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
+        val.id, val.name, tempStatus, "", ""]);
       }
       else if (tempStatus == 5) {
         tempStatus = "deleted"; 
@@ -1690,7 +1705,6 @@ function createnav (menue) {
 ///////////////////////////////////////////////////////////////////////////////
 
 $(function() {
-  var open = false;  
   $('#footerSlideButton').click(function() {
     if(open === false) {
       $('#footerSlideContent').animate({ height: '120px' });
@@ -1991,7 +2005,6 @@ function FormatJSON(oData, sIndent) {
     var sIndentStyle = "    ";
     var sDataType = RealTypeOf(oData);
 
-    // open object
     if (sDataType == "array") {
         if (oData.length == 0) {
             return "[]";
@@ -2153,6 +2166,47 @@ function stateReplace (value) {
 
   return output;
 }
+
+$('#submitDocPageInput').live('click', function () {
+  try {
+    var enteredPage = JSON.parse($('#docPageInput').val());
+    if (enteredPage > 0 && enteredPage <= totalCollectionCount) {
+      $('#documentsTableID').dataTable().fnClearTable();
+  
+      var offset = enteredPage * 10 - 10; 
+      $.ajax({
+        type: 'PUT',
+        url: '/_api/simple/all/',
+        data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
+        contentType: "application/json",
+        success: function(data) {
+          $.each(data.result, function(k, v) {
+            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+          });
+          $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+          collectionCurrentPage = enteredPage;
+          $('#documents_status').text("Showing page " + enteredPage + " of " + totalCollectionCount); 
+          return false; 
+        },
+        error: function(data) {
+        }
+      });
+    }
+    
+    else { 
+      console.log("out of reach");
+      return false; 
+    }  
+  }
+
+  catch(e) {
+    alert("No valid Page"); 
+  return false; 
+  }
+  return false; 
+});
+
+
 
 function highlightNav (string) {
   $("#nav1").removeClass("nonhighlighted");

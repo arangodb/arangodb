@@ -128,6 +128,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
+        // TODO: memory allocation might fail
         TRI_PushBackVectorString(&collection->_indexFiles, filename);
       }
 
@@ -141,6 +142,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_col_header_marker_t* cm;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
+        // TODO: memory allocation might fail
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
@@ -151,6 +153,8 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
           break;
         }
+
+        assert(datafile);
 
         TRI_PushBackVectorPointer(&all, datafile);
 
@@ -242,8 +246,11 @@ static bool CheckCollection (TRI_collection_t* collection) {
       datafile = sealed._buffer[i];
 
       number = TRI_StringUInt32(datafile->_fid);
+      // TODO: memory allocation might fail
       dname = TRI_Concatenate3String("datafile-", number, ".db");
+      // TODO: memory allocation might fail
       filename = TRI_Concatenate2File(collection->_directory, dname);
+      // TODO: memory allocation might fail
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
       TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -538,7 +545,7 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter) {
   TRI_json_t* json;
   char* filename;
-  char* error;
+  char* error = NULL;
   size_t i;
   size_t n;
 
@@ -546,6 +553,7 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  // TODO: memory allocation might fail
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -555,10 +563,14 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
 
   if (json == NULL) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+    if (error != NULL) {
+      LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+    }
+    else {
+      LOG_ERROR("cannot open '%s', parameter block not readable", filename);
+    }
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
@@ -853,7 +865,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   res = TRI_LoadParameterInfoCollection(path, &info);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot save collection parameter '%s': '%s'", path, TRI_last_error());
+    LOG_ERROR("cannot load collection parameter '%s': '%s'", path, TRI_last_error());
     return NULL;
   }
 

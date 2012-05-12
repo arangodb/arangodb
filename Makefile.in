@@ -1043,6 +1043,8 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
@@ -2985,6 +2987,7 @@ unittests-verbose:
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
 	@echo "## > make unittests SKIP_BOOST=1                                              ##"
+	@echo "## > make unittests SKIP_GEO=1                                                ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
 	@echo "################################################################################"
@@ -3031,7 +3034,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
 @ENABLE_BOOST_TEST_TRUE@	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
-@ENABLE_BOOST_TEST_TRUE@	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
+@ENABLE_BOOST_TEST_TRUE@	test $(SKIP_GEO) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
 

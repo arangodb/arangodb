@@ -133,7 +133,7 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
-	doc.parsed_response['errorNum'].should eq(1512)
+	doc.parsed_response['errorNum'].should eq(1570)
       end
 
       it "returns documents near a point" do
@@ -209,7 +209,7 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
-	doc.parsed_response['errorNum'].should eq(1512)
+	doc.parsed_response['errorNum'].should eq(1570)
       end
 
       it "returns documents within a radius" do
