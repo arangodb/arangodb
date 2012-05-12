@@ -79,11 +79,11 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-sbin_PROGRAMS = arango$(EXEEXT)
-bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT) $(am__EXEEXT_1)
+sbin_PROGRAMS = arangod$(EXEEXT)
+bin_PROGRAMS = arangosh$(EXEEXT) arangoimp$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_3 = avocirb
+@ENABLE_MRUBY_TRUE@am__append_3 = arangoirb
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
@@ -282,7 +282,7 @@ am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
 	Variant/VariantVector.$(OBJEXT) $(am__objects_1)
 libarango_a_OBJECTS = $(am_libarango_a_OBJECTS)
-@ENABLE_MRUBY_TRUE@am__EXEEXT_1 = avocirb$(EXEEXT)
+@ENABLE_MRUBY_TRUE@am__EXEEXT_1 = arangoirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
@@ -318,7 +318,7 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
-am_arango_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
+am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
 	Admin/RestAdminLogHandler.$(OBJEXT) \
@@ -374,8 +374,7 @@ am_arango_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/ArangoHttpServer.$(OBJEXT) \
-	RestServer/ArangoServer.$(OBJEXT) \
-	RestServer/arango.$(OBJEXT) \
+	RestServer/ArangoServer.$(OBJEXT) RestServer/arango.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
 	ResultGenerator/JsonResultGenerator.$(OBJEXT) \
@@ -404,29 +403,29 @@ am_arango_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
-arango_OBJECTS = $(am_arango_OBJECTS)
+arangod_OBJECTS = $(am_arangod_OBJECTS)
 am__DEPENDENCIES_1 =
 am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-arango_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
-am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+arangod_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
+am_arangoimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocimp.$(OBJEXT)
-avocimp_OBJECTS = $(am_avocimp_OBJECTS)
-avocimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
-am__avocirb_SOURCES_DIST = MRClient/avocirb.cpp
-@ENABLE_MRUBY_TRUE@am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
-avocirb_OBJECTS = $(am_avocirb_OBJECTS)
-@ENABLE_MRUBY_TRUE@avocirb_DEPENDENCIES = libarango.a \
+arangoimp_OBJECTS = $(am_arangoimp_OBJECTS)
+arangoimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
+am__arangoirb_SOURCES_DIST = MRClient/avocirb.cpp
+@ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
+arangoirb_OBJECTS = $(am_arangoirb_OBJECTS)
+@ENABLE_MRUBY_TRUE@arangoirb_DEPENDENCIES = libarango.a \
 @ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
-am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+am_arangosh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocsh.$(OBJEXT)
-avocsh_OBJECTS = $(am_avocsh_OBJECTS)
-avocsh_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
+arangosh_OBJECTS = $(am_arangosh_OBJECTS)
+arangosh_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -456,13 +455,13 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libarango_a_SOURCES) $(UnitTests_basics_suite_SOURCES) \
-	$(UnitTests_geo_suite_SOURCES) $(arango_SOURCES) \
-	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
+	$(UnitTests_geo_suite_SOURCES) $(arangod_SOURCES) \
+	$(arangoimp_SOURCES) $(arangoirb_SOURCES) $(arangosh_SOURCES)
 DIST_SOURCES = $(am__libarango_a_SOURCES_DIST) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
-	$(am__UnitTests_geo_suite_SOURCES_DIST) $(arango_SOURCES) \
-	$(avocimp_SOURCES) $(am__avocirb_SOURCES_DIST) \
-	$(avocsh_SOURCES)
+	$(am__UnitTests_geo_suite_SOURCES_DIST) $(arangod_SOURCES) \
+	$(arangoimp_SOURCES) $(am__arangoirb_SOURCES_DIST) \
+	$(arangosh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -740,8 +739,8 @@ libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 
 ################################################################################
 ################################################################################
-arango_LDADD = libarango.a $(LIBS)
-arango_SOURCES = \
+arangod_LDADD = libarango.a $(LIBS)
+arangod_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
@@ -846,8 +845,8 @@ arango_SOURCES = \
 
 ################################################################################
 ################################################################################
-avocsh_LDADD = libarango.a $(LIBS)
-avocsh_SOURCES = \
+arangosh_LDADD = libarango.a $(LIBS)
+arangosh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
@@ -857,15 +856,15 @@ avocsh_SOURCES = \
 
 ################################################################################
 ################################################################################
-@ENABLE_MRUBY_TRUE@avocirb_LDADD = libarango.a $(LIBS)
-@ENABLE_MRUBY_TRUE@avocirb_SOURCES = \
+@ENABLE_MRUBY_TRUE@arangoirb_LDADD = libarango.a $(LIBS)
+@ENABLE_MRUBY_TRUE@arangoirb_SOURCES = \
 @ENABLE_MRUBY_TRUE@	MRClient/avocirb.cpp
 
 
 ################################################################################
 ################################################################################
-avocimp_LDADD = libarango.a $(LIBS)
-avocimp_SOURCES = \
+arangoimp_LDADD = libarango.a $(LIBS)
+arangoimp_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
@@ -1883,9 +1882,9 @@ VocBase/voc-shaper.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/vocbase.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-arango$(EXEEXT): $(arango_OBJECTS) $(arango_DEPENDENCIES) 
-	@rm -f arango$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(arango_OBJECTS) $(arango_LDADD) $(LIBS)
+arangod$(EXEEXT): $(arangod_OBJECTS) $(arangod_DEPENDENCIES) 
+	@rm -f arangod$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(arangod_OBJECTS) $(arangod_LDADD) $(LIBS)
 SimpleHttpClient/$(am__dirstamp):
 	@$(MKDIR_P) SimpleHttpClient
 	@: > SimpleHttpClient/$(am__dirstamp)
@@ -1910,9 +1909,9 @@ V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/avocimp.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
-avocimp$(EXEEXT): $(avocimp_OBJECTS) $(avocimp_DEPENDENCIES) 
-	@rm -f avocimp$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(avocimp_OBJECTS) $(avocimp_LDADD) $(LIBS)
+arangoimp$(EXEEXT): $(arangoimp_OBJECTS) $(arangoimp_DEPENDENCIES) 
+	@rm -f arangoimp$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(arangoimp_OBJECTS) $(arangoimp_LDADD) $(LIBS)
 MRClient/$(am__dirstamp):
 	@$(MKDIR_P) MRClient
 	@: > MRClient/$(am__dirstamp)
@@ -1921,14 +1920,14 @@ MRClient/$(DEPDIR)/$(am__dirstamp):
 	@: > MRClient/$(DEPDIR)/$(am__dirstamp)
 MRClient/avocirb.$(OBJEXT): MRClient/$(am__dirstamp) \
 	MRClient/$(DEPDIR)/$(am__dirstamp)
-avocirb$(EXEEXT): $(avocirb_OBJECTS) $(avocirb_DEPENDENCIES) 
-	@rm -f avocirb$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(avocirb_OBJECTS) $(avocirb_LDADD) $(LIBS)
+arangoirb$(EXEEXT): $(arangoirb_OBJECTS) $(arangoirb_DEPENDENCIES) 
+	@rm -f arangoirb$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(arangoirb_OBJECTS) $(arangoirb_LDADD) $(LIBS)
 V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
-avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
-	@rm -f avocsh$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(avocsh_OBJECTS) $(avocsh_LDADD) $(LIBS)
+arangosh$(EXEEXT): $(arangosh_OBJECTS) $(arangosh_DEPENDENCIES) 
+	@rm -f arangosh$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(arangosh_OBJECTS) $(arangosh_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

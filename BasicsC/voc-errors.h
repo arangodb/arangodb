@@ -523,7 +523,7 @@ void TRI_InitialiseErrorMessages (void);
 /// state.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_STATE                                   (1000)
+#define TRI_ERROR_ARANGO_ILLEGAL_STATE                                    (1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1001: ERROR_ARANGO_SHAPER_FAILED
@@ -533,7 +533,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Internal error that will be raised when the shaper encountered a porblem.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_SHAPER_FAILED                                   (1001)
+#define TRI_ERROR_ARANGO_SHAPER_FAILED                                    (1001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1002: ERROR_ARANGO_DATAFILE_SEALED
@@ -543,7 +543,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Internal error that will be raised when trying to write to a datafile.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_SEALED                                 (1002)
+#define TRI_ERROR_ARANGO_DATAFILE_SEALED                                  (1002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1003: ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE
@@ -554,7 +554,7 @@ void TRI_InitialiseErrorMessages (void);
 /// encountered.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE                         (1003)
+#define TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE                          (1003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1004: ERROR_ARANGO_READ_ONLY
@@ -565,7 +565,7 @@ void TRI_InitialiseErrorMessages (void);
 /// datafile or collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_READ_ONLY                                       (1004)
+#define TRI_ERROR_ARANGO_READ_ONLY                                        (1004)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1005: ERROR_ARANGO_DUPLICATE_IDENTIFIER
@@ -575,7 +575,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Internal error that will be raised when a identifier duplicate is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER                            (1005)
+#define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER                             (1005)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
@@ -585,7 +585,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a corruption is detected in a datafile.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CORRUPTED_DATAFILE                              (1100)
+#define TRI_ERROR_ARANGO_CORRUPTED_DATAFILE                               (1100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1101: ERROR_ARANGO_ILLEGAL_PARAMETER_FILE
@@ -595,7 +595,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised if a parameter file is corrupted.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE                          (1101)
+#define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE                           (1101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1102: ERROR_ARANGO_CORRUPTED_COLLECTION
@@ -605,7 +605,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a collection contains one or more corrupted datafiles.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CORRUPTED_COLLECTION                            (1102)
+#define TRI_ERROR_ARANGO_CORRUPTED_COLLECTION                             (1102)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1103: ERROR_ARANGO_MMAP_FAILED
@@ -615,7 +615,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the system call mmap failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_MMAP_FAILED                                     (1103)
+#define TRI_ERROR_ARANGO_MMAP_FAILED                                      (1103)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1104: ERROR_ARANGO_FILESYSTEM_FULL
@@ -625,7 +625,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the filesystem is full.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_FILESYSTEM_FULL                                 (1104)
+#define TRI_ERROR_ARANGO_FILESYSTEM_FULL                                  (1104)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1105: ERROR_ARANGO_NO_JOURNAL
@@ -635,7 +635,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a journal cannot be created.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_NO_JOURNAL                                      (1105)
+#define TRI_ERROR_ARANGO_NO_JOURNAL                                       (1105)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_ARANGO_DATAFILE_ALREADY_EXISTS
@@ -646,7 +646,7 @@ void TRI_InitialiseErrorMessages (void);
 /// file of the same name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS                         (1106)
+#define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS                          (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1107: ERROR_ARANGO_DATABASE_LOCKED
@@ -656,7 +656,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the database is locked by a different process.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_LOCKED                                 (1107)
+#define TRI_ERROR_ARANGO_DATABASE_LOCKED                                  (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS
@@ -667,7 +667,7 @@ void TRI_InitialiseErrorMessages (void);
 /// the same name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS             (1108)
+#define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS              (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
@@ -678,7 +678,7 @@ void TRI_InitialiseErrorMessages (void);
 /// detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CONFLICT                                        (1200)
+#define TRI_ERROR_ARANGO_CONFLICT                                         (1200)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1201: ERROR_ARANGO_WRONG_VOCBASE_PATH
@@ -689,7 +689,7 @@ void TRI_InitialiseErrorMessages (void);
 /// database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH                              (1201)
+#define TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH                               (1201)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
@@ -699,7 +699,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a document with a given identifier or handle is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                              (1202)
+#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               (1202)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
@@ -709,7 +709,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a collection with a given identifier or name is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                            (1203)
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             (1203)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
@@ -719,7 +719,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the collection parameter is missing.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                    (1204)
+#define TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     (1204)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
@@ -729,7 +729,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a document handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                             (1205)
+#define TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              (1205)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -739,7 +739,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the maximal size of the journal is too small.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL                          (1206)
+#define TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL                           (1206)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1207: ERROR_ARANGO_DUPLICATE_NAME
@@ -749,7 +749,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a name duplicate is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DUPLICATE_NAME                                  (1207)
+#define TRI_ERROR_ARANGO_DUPLICATE_NAME                                   (1207)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1208: ERROR_ARANGO_ILLEGAL_NAME
@@ -759,7 +759,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when an illegal name is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_NAME                                    (1208)
+#define TRI_ERROR_ARANGO_ILLEGAL_NAME                                     (1208)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1209: ERROR_ARANGO_NO_INDEX
@@ -769,7 +769,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when no suitable index for the query is known.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_NO_INDEX                                        (1209)
+#define TRI_ERROR_ARANGO_NO_INDEX                                         (1209)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1210: ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
@@ -779,7 +779,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when there is a unique constraint violation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
+#define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1211: ERROR_ARANGO_GEO_INDEX_VIOLATED
@@ -789,7 +789,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a illegale coordinate is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                              (1211)
+#define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                               (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND
@@ -799,7 +799,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when an index with a given identifier is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                 (1212)
+#define TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  (1212)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1213: ERROR_ARANGO_CROSS_COLLECTION_REQUEST
@@ -809,7 +809,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a cross-collection is requested.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                        (1213)
+#define TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         (1213)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
@@ -819,7 +819,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a index handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                (1214)
+#define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 (1214)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1215: ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED
@@ -829,7 +829,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when a cap constraint was already defined.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                  (1215)
+#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                   (1215)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -839,7 +839,7 @@ void TRI_InitialiseErrorMessages (void);
 /// Will be raised when the datafile reaches its limit.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_FULL                                   (1300)
+#define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -1397,7 +1397,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails for some reason.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED                          (3100)
+#define TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED                           (3100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3110: ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED
@@ -1408,7 +1408,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails for some reason.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED                          (3110)
+#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED                           (3110)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3111: ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING
@@ -1419,7 +1419,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails when document can not be located within the index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING                    (3111)
+#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING                     (3111)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3312: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
@@ -1430,7 +1430,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails due to the fact that document is duplicated within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED               (3312)
+#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3312)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3313: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
@@ -1442,7 +1442,7 @@ void TRI_InitialiseErrorMessages (void);
 /// that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED           (3313)
+#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3313)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3200: WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING
@@ -1454,7 +1454,7 @@ void TRI_InitialiseErrorMessages (void);
 /// by the hash index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING         (3200)
+#define TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING          (3200)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3202: WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING
@@ -1466,7 +1466,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING           (3202)
+#define TRI_WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING            (3202)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3211: WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING
@@ -1477,7 +1477,7 @@ void TRI_InitialiseErrorMessages (void);
 /// when document can not be located within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING                (3211)
+#define TRI_WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING                 (3211)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3300: WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING
@@ -1489,7 +1489,7 @@ void TRI_InitialiseErrorMessages (void);
 /// required by the hash index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING     (3300)
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING      (3300)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3302: WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING
@@ -1501,7 +1501,7 @@ void TRI_InitialiseErrorMessages (void);
 /// index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING       (3302)
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING        (3302)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3311: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING
@@ -1512,7 +1512,7 @@ void TRI_InitialiseErrorMessages (void);
 /// fails when document can not be located within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING            (3311)
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING             (3311)
 
 
 ////////////////////////////////////////////////////////////////////////////////
