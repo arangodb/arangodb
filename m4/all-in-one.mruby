@@ -7,7 +7,7 @@ dnl ----------------------------------------------------------------------------
 AC_ARG_ENABLE(mruby,
   AS_HELP_STRING([--enable-mruby], [enable MRUBY]),
   [tr_MRUBY="${enableval:-yes}"],
-  [tr_MRUBY=yes]
+  [tr_MRUBY=no]
 )
 
 if test "x$tr_MRUBY" = "xyes";  then
