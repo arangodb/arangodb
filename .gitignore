@@ -103,3 +103,7 @@ VC++
 /nbproject/private/
 UnitTests/geo_suite
 Doxygen/web
+arangod
+arangosh
+arangoimp
+arangoirb
