@@ -210,7 +210,11 @@ ALIASES += CO{1}="<tt>\1</tt>"
 ALIASES += REST{1}="<tt><b>\1</b></tt>"
 ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
+ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}@endlatexonly@verbinclude \1@latexonly\renewcommand{\examplecap}{}@endlatexonly"
 ALIASES += VERSION="0.4.2"
+ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
+ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
+ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.
@@ -620,6 +624,7 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 	./Admin \
+	./Ahuacatl \
 	./ApplicationServer \
 	./Basics \
 	./BasicsC \
@@ -664,7 +669,7 @@ RECURSIVE              = YES
 EXCLUDE                = \
 	./V8/v8-json.h \
 	./V8/v8-json.cpp \
-	./QL/tokens.c
+	./Ahuacatl/ahuacatl-tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
