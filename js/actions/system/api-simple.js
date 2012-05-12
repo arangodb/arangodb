@@ -173,7 +173,7 @@ actions.defineHttp({
     }
 
     if (req.requestType != actions.PUT) {
-      actions.unsupported(req, res);
+      actions.resultUnsupported(req, res);
     }
     else {
       var limit = body.limit;
@@ -290,7 +290,7 @@ actions.defineHttp({
     }
 
     if (req.requestType != actions.PUT) {
-      actions.unsupported(req, res);
+      actions.resultUnsupported(req, res);
     }
     else {
       var limit = body.limit;
@@ -396,7 +396,7 @@ actions.defineHttp({
     }
 
     if (req.requestType != actions.PUT) {
-      actions.unsupported(req, res);
+      actions.resultUnsupported(req, res);
     }
     else {
       var limit = body.limit;
@@ -482,7 +482,7 @@ actions.defineHttp({
     }
 
     if (req.requestType != actions.PUT) {
-      actions.unsupported(req, res);
+      actions.resultUnsupported(req, res);
     }
     else {
       var example = body.example;
@@ -505,6 +505,55 @@ actions.defineHttp({
         }
         else {
           actions.resultNotFound(req, res, "no match");
+        }
+      }
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all documents of a collection matching a given example
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "BY-EXAMPLE-HASH",
+  context : "api",
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    if (req.requestType != actions.PUT) {
+      actions.resultUnsupported(req, res);
+    }
+    else {
+      var limit = body.limit;
+      var skip = body.skip;
+      var name = body.collection;
+      var example = body.example;
+      var index = body.index;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
+
+      if (collection == null) {
+        actions.collectionNotFound(req, res, name);
+      }
+      else if (typeof example !== "object") {
+        actions.badParameter(req, res, "example");
+      }
+      else {
+        try {
+          var result = collection.BY_EXAMPLE_HASH(index, example, skip, limit);
+
+          actions.resultOk(req, res, actions.HTTP_OK, result);
+        }
+        catch (err) {
+          actions.resultException(req, res, err);
         }
       }
     }

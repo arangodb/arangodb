@@ -78,8 +78,6 @@ function UniqueConstraintSuite() {
       var idx = collection.ensureUniqueConstraint("a");
       var id = idx.id;
 
-      print(idx);
-
       assertNotEqual(0, id);
       assertEqual("hash", idx.type);
       assertEqual(true, idx.unique);

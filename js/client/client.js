@@ -1234,6 +1234,56 @@ ArangoCollection.prototype.ensureCapConstraint = function (size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : true, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries by example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
+  var body;
+
+  limit = limit || null;
+  skip = skip || null;
+
+  if (index.hasOwnProperty("id")) {
+    index = index.id;
+  }
+
+  body = { collection : this._id, index : index, skip : skip, limit : limit, example : {} };
+
+  for (var key in example) {
+    if (example.hasOwnProperty(key)) {
+      body.example[key] = example[key];
+    }
+  }
+
+  var requestResult = this._database._connection.PUT("/_api/simple/BY-EXAMPLE-HASH", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an geo index
 ////////////////////////////////////////////////////////////////////////////////
 
