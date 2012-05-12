@@ -31,7 +31,7 @@ PROJECT_NAME           = "ArangoDB"
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 0.4.2
+PROJECT_NUMBER         = 0.5.0
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description for a project that appears at the top of each page and should give viewer a quick idea about the purpose of the project. Keep the description short.
 
@@ -211,7 +211,7 @@ ALIASES += REST{1}="<tt><b>\1</b></tt>"
 ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
 ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}@endlatexonly@verbinclude \1@latexonly\renewcommand{\examplecap}{}@endlatexonly"
-ALIASES += VERSION="0.4.2"
+ALIASES += VERSION="0.5.0"
 ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
 ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
 ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
