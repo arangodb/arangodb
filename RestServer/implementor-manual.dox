@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ImplementorManual AvocadoDB Reference Manual for API Implementors
+/// @page ImplementorManual AvocadoDB's Reference Manual for API Implementors
 ///
 /// @if LATEX
 /// <ul>
@@ -34,13 +34,14 @@
 ///  <li>@ref RestEdge</li>
 ///  <li>@ref HttpCursor</li>
 ///  <li>@ref HttpSimple</li>
+///  <li>@ref IndexCapHttp</li>
+///  <li>@ref IndexGeoHttp</li>
+///  <li>@ref IndexHashHttp</li>
+///  <li>@ref IndexSkiplistHttp</li>
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
 ///  <li>@ref AvocadoErrors</li>
-///  <li>@ref IndexCap</li>
-///  <li>@ref IndexGeo</li>
-///  <li>@ref IndexHash</li>
 ///  <li>@ref IndexSkiplist</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
@@ -53,6 +54,9 @@
 ///  <li>Light-Weight HTTP for Queries
 ///   @copydetails HttpCursorTOC
 ///   @copydetails HttpSimpleTOC
+///   @copydetails IndexCapHttpTOC
+///   @copydetails IndexGeoHttpTOC
+///   @copydetails IndexHashHttpTOC
 ///  </li>
 ///  <li>Light-Weight HTTP for Administration
 ///   @copydetails HttpCollectionTOC
@@ -63,12 +67,9 @@
 ///   <ul>
 ///    <li>@ref AvocadoErrors</li>
 ///   </ul>
-///   @copydetails IndexCapTOC
-///   @copydetails IndexGeoTOC
-///   @copydetails IndexHashTOC
-///   @copydetails IndexSkiplistTOC
 ///  </li>
 ///  <li>Under Construction
+///   @copydetails IndexSkiplistHttpTOC
 ///   <ul>
 ///    <li>@ref Key-Value
 ///     <ul>

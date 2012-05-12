@@ -44,6 +44,8 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor and return the first results
 ///
+/// @RESTHEADER{POST /_api/cursor,creates a cursor}
+///
 /// @REST{POST /_api/cursor}
 ///
 /// The query details include the query string plus optional query options and
@@ -162,6 +164,8 @@ function POST_api_cursor(req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next results from an existing cursor
 ///
+/// @RESTHEADER{PUT /_api/cursor,reads next batch from a cursor}
+///
 /// @REST{PUT /_api/cursor/@FA{cursor-identifier}}
 ///
 /// If the cursor is still alive, returns an object with the following
@@ -221,6 +225,8 @@ function PUT_api_cursor(req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispose an existing cursor
+///
+/// @RESTHEADER{DELETE /_api/cursor,deletes a cursor}
 ///
 /// @REST{DELETE /_api/cursor/@FA{cursor-identifier}}
 ///

@@ -1,4 +1,4 @@
-> curl -X GET --dump - http://localhost:8529/_api/index/115221776
+> curl -X GET --dump - http://localhost:8529/_api/index?collection=115221776
 
 HTTP/1.1 200 OK
 content-type: application/json

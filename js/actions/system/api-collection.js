@@ -87,6 +87,8 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection
 ///
+/// @RESTHEADER{POST /_api/collection,creates a collection}
+///
 /// @REST{POST /_api/collection}
 ///
 /// Creates an new collection with a given name. The request must contain an
@@ -163,6 +165,8 @@ function POST_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
 ///
+/// @RESTHEADER{GET /_api/collection,reads all collections}
+///
 /// @REST{GET /_api/collection}
 ///
 /// Returns an object with an attribute @LIT{collections} containing a 
@@ -197,6 +201,8 @@ function GET_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
+///
+/// @RESTHEADER{GET /_api/collection,reads a collection}
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}}
 //////////////////////////////////////////////////////////
@@ -383,6 +389,8 @@ function GET_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
 ///
+/// @RESTHEADER{PUT /_api/collection/.../load,loads a collection}
+///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/load}
 ///
 /// Loads a collection into memory.  On success an object with the following
@@ -422,6 +430,8 @@ function PUT_api_collection_load (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
 ///
+/// @RESTHEADER{PUT /_api/collection/.../unload,unloads a collection}
+///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/unload}
 ///
 /// Removes a collection from memory. This call does not delete any documents.
@@ -459,6 +469,8 @@ function PUT_api_collection_unload (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ///
+/// @RESTHEADER{PUT /_api/collection/.../truncate,truncates a collection}
+///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/truncate}
 ///
 /// Removes all documents from the collection, but leaves the indexes intact.
@@ -483,6 +495,8 @@ function PUT_api_collection_truncate (req, res, collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
+///
+/// @RESTHEADER{PUT /_api/collection/.../properties,changes the properties of a collection}
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/properties}
 ///
@@ -529,6 +543,8 @@ function PUT_api_collection_properties (req, res, collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
+///
+/// @RESTHEADER{PUT /_api/collection/.../rename,renames a collection}
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/rename}
 ///
@@ -622,6 +638,8 @@ function PUT_api_collection (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
+///
+/// @RESTHEADER{DELETE /_api/collection,deletes a collection}
 ///
 /// @REST{DELETE /_api/collection/@FA{collection-identifier}}
 ///

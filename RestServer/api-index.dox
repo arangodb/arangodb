@@ -56,15 +56,9 @@
 /// @page HttpIndex HTTP Interface for Indexes
 ///
 /// This is an introduction to AvocadoDB's Http interface for indexes in
-/// general. There are special sections for
+/// general. There are special sections for various index types.
 ///
-/// @copydoc IndexesTOC
-///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc HttpIndexTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{HttpIndexTOC}
 ///
 /// @section HttpIndexIntro Indexes
 ///////////////////////////////////
@@ -102,15 +96,12 @@
 ///
 /// @anchor HttpIndexRead
 /// @copydetails JSF_GET_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexCreate
 /// @copydetails JSF_POST_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexDelete
 /// @copydetails JSF_DELETE_api_index
-/// <hr>
 ///
 /// @anchor HttpIndexReadAll
 /// @copydetails JSF_GET_api_indexes

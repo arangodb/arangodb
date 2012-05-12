@@ -62,61 +62,46 @@
 /// This is an introduction to AvocadoDB's Http interface for administration
 /// and monitoring of the server.
 ///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc HttpSystemTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{HttpSystemTOC}
 ///
 /// @anchor HttpSystemLog
 /// @copydetails triagens::admin::RestAdminLogHandler::execute
-/// <hr>
 ///
 /// @anchor HttpSystemStatus
 /// @copydetails JSF_GET_admin_status
-/// <hr>
 ///
 /// @anchor HttpSystemConfigDescription
 /// @copydetails JSF_GET_admin_config_description
-/// <hr>
 ///
 /// @anchor HttpSystemConfigConfiguration
 /// @copydetails JSF_GET_admin_config_configuration
-/// <hr>
 ///
 /// @section HtppSystemUserManagement Front-End User Management
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemUsers
 /// @copydetails triagens::admin::UsersHandler::execute
-/// <hr>
 ///
 /// @anchor HttpSystemUserGet
 /// @copydetails triagens::admin::UserHandler::executeGet
-/// <hr>
 ///
 /// @anchor HttpSystemUserPost
 /// @copydetails triagens::admin::UserHandler::executePost
-/// <hr>
 ///
 /// @section HtppSystemSessionManagement Front-End Session Management
 /////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemSessionGet
 /// @copydetails triagens::admin::SessionHandler::executeGet
-/// <hr>
 ///
 /// @anchor HttpSystemSessionPost
 /// @copydetails triagens::admin::SessionHandler::executePost
-/// <hr>
 ///
 /// @anchor HttpSystemSessionLogin
 /// @copydetails triagens::admin::SessionHandler::executeLogin
-/// <hr>
 ///
 /// @anchor HttpSystemSessionLogout
 /// @copydetails triagens::admin::SessionHandler::executeLogout
-/// <hr>
 ///
 /// @anchor HttpSystemSessionPassword
 /// @copydetails triagens::admin::SessionHandler::executePassword

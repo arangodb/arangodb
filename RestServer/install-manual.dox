@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page InstallManual AvocadoDB Installation Manual
+/// @page InstallManual AvocadoDB's Installation Manual
 ///
 /// @if LATEX
 /// <ul>
@@ -58,11 +58,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Installing Installing the AvocadoDB
 ///
-/// @ifnot LATEX
-/// <hr>
-///  @copydetails InstallingTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{InstallingTOC}
 ///
 /// @section MacOSX
 ///////////////////
@@ -147,11 +143,7 @@
 /// all the prerequisites. The disadvantage is that it takes longer to compile
 /// and you cannot make changes to the flex or bison files.
 ///
-/// @ifnot LATEX
-/// <hr>
-///  @copydetails CompilingTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{CompilingTOC}
 ///
 /// @section CompilingAIO All-In-One Version
 ////////////////////////////////////////////

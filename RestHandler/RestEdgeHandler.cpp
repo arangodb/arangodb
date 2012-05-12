@@ -70,6 +70,8 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
 ///
+/// @RESTHEADER{POST /edge,creates an edge}
+///
 /// @REST{POST /edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
 ///
 /// Creates a new edge in the collection identified by the

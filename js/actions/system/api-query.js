@@ -39,6 +39,8 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a query and return information about it
 ///
+/// @RESTHEADER{POST /_api/query,parses a query}
+///
 /// @REST{POST /_api/query}
 ///
 /// To validate a query string without executing it, the query string can be

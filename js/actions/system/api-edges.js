@@ -36,6 +36,8 @@ var API = "edges";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
 ///
+/// @RESTHEADER{GET /edges,reads in- or outbound edges}
+///
 /// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
 ///
 /// Returns the list of edges starting or ending in the vertex identified by

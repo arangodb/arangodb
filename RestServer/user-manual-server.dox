@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServer AvocadoDB User Manual
+/// @page UserManualServer AvocadoDB's User Manual
 ///
 /// @if LATEX
 /// <ul>
@@ -70,11 +70,7 @@
 /// collection based on simple search criteria. For more complex queries, you
 /// can use the Avocado Query Language, which is an evolution of SQL resp. UNQL.
 ///
-/// @ifnot LATEX
-/// <hr>
-///  @copydoc UserManualServerBasicsTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{UserManualServerBasicsTOC}
 ///
 /// @section UserManualServerStartStop Starting the AvocadoDB
 /////////////////////////////////////////////////////////////
