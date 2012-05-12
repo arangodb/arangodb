@@ -57,9 +57,7 @@
 ///
 /// This is an introduction to AvocadoDB's Http interface for simple queries.
 ///
-/// <hr>
-/// @copydoc HttpSimpleTOC
-/// <hr>
+/// @EMBEDTOC{HttpSimpleTOC}
 ///
 /// @section HttpSimpleIntro Simple Queries
 ///////////////////////////////////////////
@@ -75,19 +73,15 @@
 ///
 /// @anchor HttpSimpleAll
 /// @copydetails JSA_PUT_api_simple_all
-/// <hr>
 ///
 /// @anchor HttpSimpleByExample
 /// @copydetails JSA_PUT_api_simple_by_example
-/// <hr>
 ///
 /// @anchor HttpSimpleFirstExample
 /// @copydetails JSA_PUT_api_simple_first_example
-/// <hr>
 ///
 /// @anchor HttpSimpleNear
 /// @copydetails JSA_PUT_api_simple_near
-/// <hr>
 ///
 /// @anchor HttpSimpleWithin
 /// @copydetails JSA_PUT_api_simple_within

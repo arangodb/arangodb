@@ -67,11 +67,7 @@
 /// might or might not be known. In order to free server resources the client
 /// should delete the cursor as soon as it is no longer needed.
 ///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc HttpCursorTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{HttpCursorTOC}
 ///
 /// To run a select query, the query details need to be shipped from the client
 /// to the server via a HTTP POST request. 
@@ -140,15 +136,12 @@
 ///
 /// @anchor HttpCursorPost
 /// @copydetails JSF_POST_api_cursor
-/// <hr>
 ///
 /// @anchor HttpCursorPostQuery
 /// @copydetails JSF_POST_api_query
-/// <hr>
 ///
 /// @anchor HttpCursorPut
 /// @copydetails JSF_PUT_api_cursor
-/// <hr>
 ///
 /// @anchor HttpCursorDelete
 /// @copydetails JSF_DELETE_api_cursor

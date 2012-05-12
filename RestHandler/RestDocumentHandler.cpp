@@ -156,6 +156,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
 ///
+/// @RESTHEADER{POST /document,creates a document}
+///
 /// @REST{POST /document?collection=@FA{collection-identifier}}
 ///
 /// Creates a new document in the collection identified by the
@@ -181,13 +183,13 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
-/// @REST{POST /document?collection=@FA{collection-name}&createCollection=@FA{create}}
+/// @REST{POST /document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create}}
 ///
 /// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
 /// used. If @FA{createCollection} is true, then the collection is created if it
 /// does not exists.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
@@ -197,11 +199,11 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// the last part of the document handle. It generally will be equal, but there is
 /// no guaranty.
 ///
-/// @verbinclude rest_create-document
+/// @EXAMPLE{rest_create-document,create a document}
 ///
 /// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
 ///
-/// @verbinclude rest_create-document-accept
+/// @EXAMPLE{rest_create-document-accept,accept a document}
 ///
 /// Create a document in a known, named collection
 ///
@@ -349,6 +351,8 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
+/// @RESTHEADER{GET /document,reads a document}
+///
 /// @REST{GET /document/@FA{document-handle}}
 ///
 /// Returns the document identified by @FA{document-handle}. The returned
@@ -370,7 +374,7 @@ bool RestDocumentHandler::readDocument () {
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
@@ -473,6 +477,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents
 ///
+/// @RESTHEADER{GET /document,reads all document}
+///
 /// @REST{GET /document?collection=@FA{collection-identifier}}
 ///
 /// Returns a list of all URI for all documents from the collection identified
@@ -480,7 +486,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// Instead of a @FA{collection-identifier}, a collection name can be given.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
@@ -580,13 +586,15 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
+/// @RESTHEADER{HEAD /document,reads a document header}
+///
 /// @REST{HEAD /document/@FA{document-handle}}
 ///
 /// Like @FN{GET}, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
@@ -609,6 +617,8 @@ bool RestDocumentHandler::checkDocument () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
+///
+/// @RESTHEADER{PUT /document,updates a document}
 ///
 /// @REST{PUT /document/@FA{document-handle}}
 ///
@@ -646,7 +656,7 @@ bool RestDocumentHandler::checkDocument () {
 /// header. You must never supply both the "ETag" header and the @LIT{rev}
 /// parameter.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES
@@ -771,6 +781,8 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
+/// @RESTHEADER{DELETE /document,deletes a document}
+///
 /// @REST{DELETE /document/@FA{document-handle}}
 ///
 /// Deletes the document identified by @FA{document-handle}. If the document
@@ -800,7 +812,7 @@ bool RestDocumentHandler::updateDocument () {
 /// "If-Match" header. You must never supply both the "If-Match" header and the
 /// @LIT{rev} parameter.
 ///
-/// @note If you are implementing a client api then you should use the path
+/// @note If you are implementing a client api, then you should use the path
 /// @LIT{/_api/document}.
 /// 
 /// @EXAMPLES

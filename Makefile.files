@@ -363,8 +363,11 @@ WIKI = \
 	HttpSystem \
 	ImplementorManual \
 	IndexCap \
+	IndexCapHttp \
 	IndexGeo \
+	IndexGeoHttp \
 	IndexHash \
+	IndexHashHttp \
 	IndexSkiplist \
 	Indexes \
 	InstallManual \

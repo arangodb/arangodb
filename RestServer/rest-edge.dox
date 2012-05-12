@@ -79,11 +79,7 @@
 /// @LIT{_from} is the document handle of the linked vertex (incoming relation),
 /// @LIT{_to} is the document handle of the linked vertex (outgoing relation).
 ///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc RestEdgeTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{RestEdgeTOC}
 ///
 /// @section RestEdgeIntro Documents, Identifiers, Handles
 //////////////////////////////////////////////////////////////
@@ -113,38 +109,43 @@
 ///////////////////////////////////////////////////////
 ///
 /// @anchor RestEdgeRead
+////////////////////////
+/// @RESTHEADER{GET /edge,reads an edge}
+///
 /// @REST{GET /edge/@FA{document-handle}}
 ///
 /// See @ref RestDocument for details.
 ///
-/// <hr>
-///
 /// @anchor RestEdgeCreate
+//////////////////////////
 /// @copydetails triagens::avocado::RestEdgeHandler::createDocument
-/// <hr>
 ///
 /// @anchor RestEdgeUpdate
+//////////////////////////
+/// @RESTHEADER{PUT /edge,updates an edge}
+///
 /// @REST{PUT /edge/@FA{document-handle}}
 ///
 /// See @ref RestDocument for details.
 ///
-/// <hr>
-///
 /// @anchor RestEdgeDelete
+//////////////////////////
+/// @RESTHEADER{DELETE /edge,deletes an edge}
+///
 /// @REST{DELETE /edge/@FA{document-handle}}
 ///
 /// See @ref RestDocument for details.
 ///
-/// <hr>
-///
 /// @anchor RestEdgeHead
+////////////////////////
+/// @RESTHEADER{GET /edge,reads an edge header}
+///
 /// @REST{HEAD /document/@FA{document-handle}}
 ///
 /// See @ref RestDocument for details.
 ///
-/// <hr>
-///
 /// @anchor RestEdgeEdges
+/////////////////////////
 /// @copydetails JSF_GET_edges
 ////////////////////////////////////////////////////////////////////////////////
 

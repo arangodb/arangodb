@@ -40,6 +40,8 @@ var actions = require("actions");
 /// @fn JSF_GET_admin_status
 /// @brief returns system status information for the server
 ///
+/// @RESTHEADER{GET /_admin/status,reads the system status}
+///
 /// @REST{GET /_admin/status}
 ///
 /// The call returns an object with the following attributes:
@@ -89,6 +91,8 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_config_description
 /// @brief returns configuration description
+///
+/// @RESTHEADER{GET /_admin/config/description,reads the configuration desciption}
 ///
 /// @REST{GET /_admin/config/desciption}
 ///
@@ -163,6 +167,8 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_config_configuration
 /// @brief returns configuration description
+///
+/// @RESTHEADER{GET /_admin/config/configuration,reads the configuration}
 ///
 /// @REST{GET /_admin/config/configuration}
 ///

@@ -42,6 +42,8 @@ var API = "_api/simple/";
 /// @fn JSA_PUT_api_simple_all
 /// @brief returns all documents of a collection
 ///
+/// @RESTHEADER{PUT /_api/simple/all,executes simple query "all"}
+///
 /// @REST{PUT /_api/simple/all}
 ///
 /// Returns all documents of a collections. The call expects an JSON object
@@ -113,6 +115,8 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_PUT_api_simple_near
 /// @brief returns all documents of a collection near a given location
+///
+/// @RESTHEADER{PUT /_api/simple/near,executes simple query "near"}
 ///
 /// @REST{PUT /_api/simple/near}
 ///
@@ -230,6 +234,8 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
+/// @RESTHEADER{PUT /_api/simple/within,executes simple query "within"}
+///
 /// @REST{PUT /_api/simple/within}
 ///
 /// This will find all documents with in a given radius around the coordinate
@@ -345,6 +351,8 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
+/// @RESTHEADER{PUT /_api/simple/by-example,executes simple query "by-example"}
+///
 /// @REST{PUT /_api/simple/by-example}
 ///
 /// This will find all documents matching a given example.
@@ -431,6 +439,8 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_PUT_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
+///
+/// @RESTHEADER{PUT /_api/simple/first-example,executes simple query "first-example"}
 ///
 /// @REST{PUT /_api/simple/first-example}
 ///

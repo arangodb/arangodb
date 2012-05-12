@@ -59,11 +59,7 @@
 ///
 /// This is an introduction to AvocadoDB's REST interface for documents.
 ///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc RestDocumentTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{RestDocumentTOC}
 ///
 /// @section RestDocumentIntro Documents, Identifiers, Handles
 //////////////////////////////////////////////////////////////
@@ -125,23 +121,18 @@
 ///
 /// @anchor RestDocumentRead
 /// @copydetails triagens::avocado::RestDocumentHandler::readSingleDocument
-/// <hr>
 ///
 /// @anchor RestDocumentCreate
 /// @copydetails triagens::avocado::RestDocumentHandler::createDocument
-/// <hr>
 ///
 /// @anchor RestDocumentUpdate
 /// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
-/// <hr>
 ///
 /// @anchor RestDocumentDelete
 /// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
-/// <hr>
 ///
 /// @anchor RestDocumentHead
 /// @copydetails triagens::avocado::RestDocumentHandler::checkDocument
-/// <hr>
 ///
 /// @anchor RestDocumentReadAll
 /// @copydetails triagens::avocado::RestDocumentHandler::readAllDocuments

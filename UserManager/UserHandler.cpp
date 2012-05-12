@@ -223,6 +223,8 @@ bool UserHandler::isSelf (string const& username) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an user
 ///
+/// @RESTHEADER{POST /_admin/user-manager/user,creates a front-end user}
+///
 /// @REST{POST /_admin/user-manager/user/@FA{user-name}}
 ///
 /// Creates a new user named @FA{user-name}. Expects the following object.
@@ -285,6 +287,8 @@ HttpHandler::status_e UserHandler::executePost (string const& name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an user
+///
+/// @RESTHEADER{POST /_admin/user-manager/user,gets a front-end user}
 ///
 /// @REST{GET /_admin/user-manager/user/@FA{user-name}}
 ///

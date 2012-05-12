@@ -31,10 +31,7 @@
 /// <ul>
 ///  <li>@ref IndexHash
 ///   <ul>
-///    <li>@ref IndexHashHttp
-///     <ul>
-///      <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
-///     </ul>
+///    <li>@ref IndexHashIntro
 ///    </li>
 ///    <li>@ref IndexHashShell
 ///     <ul>
@@ -52,22 +49,15 @@
 ///
 /// This is an introduction to AvocadoDB's hash indexes.
 ///
-/// @ifnot LATEX
-/// <hr>
-/// @copydoc IndexHashTOC
-/// <hr>
-/// @endif
+/// @EMBEDTOC{IndexHashTOC}
+///
+/// @section IndexHashIntro Hash Indexes
+////////////////////////////////////////
 ///
 /// It is possible to define a hash index on one or more attributes (or paths)
 /// of a documents. This hash is then used in queries to locate documents in
 /// O(1) operations. If the hash is unique, then no two documents are allowed
 /// to have the same set of attribute values.
-///
-/// @section IndexHashHttp Accessing Hash Indexes via Http
-//////////////////////////////////////////////////////////
-///
-/// @anchor IndexHashHttpEnsureUniqueConstraint
-/// @copydetails JSF_POST_api_index_hash
 ///
 /// @section IndexHashShell Accessing hash Indexes from the Shell
 /////////////////////////////////////////////////////////////////
@@ -78,6 +68,31 @@
 ///
 /// @anchor IndexHashShellEnsureHashIndex
 /// @copydetails JS_EnsureHashIndexVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexHashHttpTOC
+///
+/// <ul>
+///  <li>@ref IndexHashHttp
+///   <ul>
+///    <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexHashHttp Accessing Hash Indexes via Http
+///
+/// If a suitable hash index exists, then @ref HttpSimpleByExample
+/// "/_api/simple/by-example" will use this index to execute the
+/// query-by-example.
+///
+/// @EMBEDTOC{IndexHashHttpTOC}
+///
+/// @anchor IndexHashHttpEnsureUniqueConstraint
+/// @copydetails JSF_POST_api_index_hash
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
