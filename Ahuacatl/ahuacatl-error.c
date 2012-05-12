@@ -93,6 +93,7 @@ char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
 
   if (error->_data && (NULL != strstr(message, "%s"))) {
     snprintf(buffer, sizeof(buffer), message, error->_data);
+
     return TRI_DuplicateString((const char*) &buffer);
   }
 
@@ -138,35 +139,48 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetContextErrorAql (const char* const query, const size_t line, const size_t column) {
-  size_t currentLine = 1;
-  size_t currentColumn = 1;
-  const char* p = query;
+  const char* p;
   char* temp;
   char* result;
-  size_t offset;
   char c;
- 
-  while ((c = *p++)) {
+  // note: line numbers reported by bison/flex start at 1, columns start at 0 
+  size_t offset;
+  size_t currentLine = 1;
+  size_t currentColumn = 0;
+
+  assert(query);
+
+  p = query;
+  while ((c = *p)) {
+    if (currentLine > line || (currentLine >= line && currentColumn >= column)) {
+      break;
+    }
+
     if (c == '\n') {
+      ++p;
       ++currentLine;
       currentColumn = 0;
     }
     else if (c == '\r') {
+      ++p;
+      ++currentLine;
+      currentColumn = 0;
+
       if (*p == '\n') {
-        ++currentLine;
-        currentColumn = 0;
-        p++;
+        ++p;
       }
     }
-
-    ++currentColumn;
-
-    if (currentLine >= line && currentColumn >= column) {
-      break;
+    else {
+      ++currentColumn;
+      ++p;
     }
   }
 
+  // p is pointing at the position in the query the parse error occurred at
+  assert(p >= query);
+
   offset = p - query;
+
   if (strlen(query) < offset + SNIPPET_LENGTH) {
     return TRI_DuplicateString2(query + offset, strlen(query) - offset);
   }

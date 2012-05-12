@@ -379,6 +379,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   }
   
   TRI_FreeBufferLogging(logs);
+  TRI_DestroyVector(&clean);
   
   generateResult(result);
   return HANDLER_DONE;

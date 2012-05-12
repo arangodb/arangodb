@@ -624,6 +624,7 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 	@srcdir@/Admin \
+	@srcdir@/Ahuacatl \
 	@srcdir@/ApplicationServer \
 	@srcdir@/Basics \
 	@srcdir@/BasicsC \
@@ -668,7 +669,7 @@ RECURSIVE              = YES
 EXCLUDE                = \
 	@srcdir@/V8/v8-json.h \
 	@srcdir@/V8/v8-json.cpp \
-	@srcdir@/QL/tokens.c
+	@srcdir@/Ahuacatl/ahuacatl-tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
