@@ -10,7 +10,7 @@ Key features include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the performance power of NoSQL
 * Use ArangoDB as an application server and fuse your application and database together for maximal throughput
-* JavaScript for all: no language zoo, use just one language from your browser to your back-end
+* JavaScript for all: no language zoo, you can use one language from your browser to your back-end
 * ArangoDB is multi-threaded – exploit the power of all your cores
 * Flexible data modeling: model your data as combination of key-value pairs, documents or graphs – perfect for social relations
 * Free index choice: use the correct index for your problem, be it a skip list or a n-gram search
@@ -37,11 +37,11 @@ On Mac OS X you can install ArangoDB using the packagemanager [Homebrew](http://
 
 This will install ArangoDB and all dependencies. Note that the server will be installed as
 
-    /usr/local/sbin/arango
+    /usr/local/sbin/arangod
 
 The ArangoDB shell will be install as
 
-    /usr/local/bin/avocsh
+    /usr/local/bin/arangosh
 
 ## First Steps
 

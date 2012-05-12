@@ -234,7 +234,7 @@ arangosh_SOURCES = \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocsh.cpp
+	V8Client/arangosh.cpp
 
 ################################################################################
 ## arango ruby shell
@@ -245,7 +245,7 @@ if ENABLE_MRUBY
 arangoirb_LDADD = libarango.a $(LIBS)
 
 arangoirb_SOURCES = \
-	MRClient/avocirb.cpp
+	MRClient/arangoirb.cpp
 
 endif
 
@@ -260,7 +260,7 @@ arangoimp_SOURCES = \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/avocimp.cpp
+	V8Client/arangoimp.cpp
 
 ################################################################################
 ## JavaScript source code as header
@@ -379,7 +379,6 @@ WIKI = \
 	JSModuleInternal \
 	JSModules \
 	Key-Value \
-	OTWP \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -391,7 +390,6 @@ WIKI = \
 	SimpleQueries \
 	UserManualServer \
 	UserManualServerBasics \
-	UserManualServerStartStop \
 	UserManualShell \
-	UserManualShellStartStop  \
+	UserManualShellStartStop \
 	jsUnity
