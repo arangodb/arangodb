@@ -81,16 +81,16 @@ latex: Doxygen/avocado-latex.doxy $(DOXYGEN)
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
 
 ################################################################################
 ## CLEANUP
