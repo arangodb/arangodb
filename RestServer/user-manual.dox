@@ -55,8 +55,10 @@
 ///     </ul>
 ///    </li>
 ///    <li>@ref UserManualShellStartStop
+///     <ul>
+///      <li>@ref UserManualShellStartStopOptions</li>
+///     </ul>
 ///    </li>
-///    <li>@ref UserManualShellStartStopOptions</li>
 ///    </li>
 ///    <li>@ref UserManualServerStartStopDebug
 ///    </li>
@@ -120,7 +122,7 @@
 /// - @LIT{arangosh}: The ArangoDB shell. A client that implements a
 ///   read-eval-print loop (REPL) and provides functions to access and
 ///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
-/// - @LIT{arangoimp}: A buld importer for the ArangoDB server.
+/// - @LIT{arangoimp}: A bulk importer for the ArangoDB server.
 ///   See @ref UserManualImporterStartStop.
 ///
 /// @EMBEDTOC{UserManualBasicsTOC}
@@ -199,11 +201,12 @@
 /// The shell will print its own version number and, if successfully connected
 /// to a server, the version number of the ArangoDB server.
 ///
-/// @section UserManualShellStartStopOptions Command-Line Options
+/// @subsection UserManualShellStartStopOptions Command-Line Options
+////////////////////////////////////////////////////////////////////
 ///
 /// Use @LIT{--help} to get a list of command-line options:
 ///
-/// @verbinclude avocsh2
+/// @verbinclude arangosh-options
 ///
 /// @section UserManualServerStartStopDebug Starting the ArangoDB Emergency Console
 ///////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +215,7 @@
 /// frequently used options, see @ref CommandLine "here" for a complete list.
 ///
 /// @note Never start the emergency console for a database which also has a
-/// server attached to it.
+/// server attached to it. In general the ArangoDB shell is what you want.
 ///
 /// @verbinclude start-emergency-console
 ////////////////////////////////////////////////////////////////////////////////
