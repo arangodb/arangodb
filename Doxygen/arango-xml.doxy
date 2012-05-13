@@ -698,6 +698,7 @@ EXCLUDE_SYMBOLS        =
 # the \include command).
 
 EXAMPLE_PATH           = \
+	./Doxygen/Examples.Ahuacatl \
 	./Doxygen/Examples.ArangoDB \
 	./Doxygen/Examples.Durham \
 	./Doxygen/Examples.Fyn \
