@@ -52,6 +52,25 @@ var internal = require("internal"),
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove elements from an array
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.remove = function (from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove last occurrence of element from an array
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.removeLastOccurrenceOf = function (element) {
+  var index = this.lastIndexOf(element);
+  return this.remove(index);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copy properties
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -748,6 +767,91 @@ Vertex.prototype.setProperty = function (name, value) {
   this._properties = this._graph._vertices.document(id);
 
   return value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shortest path to a certain node
+///
+/// @FUN{@FA{vertex}.setProperty(@FA{target_node})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.pathTo = function (target_node) {
+  var pathes = {}, // {ID => [Node]}
+    determined_list = [], // [ID]
+    todo_list = [], // [ID]
+    i,
+    current_node_id,
+    neighbor_list = [];
+
+  this._pushNeigborsToArray(todo_list);
+
+  for (i = 0; i < todo_list.length; i++) {
+    pathes[todo_list[i]] = [this, this._graph.getVertex(todo_list[i])];
+  }
+
+  while (todo_list.length > 0) {
+    current_node_id = this._getShortestDistanceFor(todo_list, pathes); 
+    determined_list.push(current_node_id);
+    todo_list.removeLastOccurrenceOf(current_node_id);
+
+    neighbor_list = [];
+    this._graph.getVertex(current_node_id)._pushNeigborsToArray(neighbor_list);
+    for (i = 0; i < neighbor_list.length; i++) {
+      if (determined_list.lastIndexOf(neighbor_list[i]) === -1) {
+        todo_list.push(neighbor_list[i]);
+      }
+    }
+
+    if (current_node_id === target_node.getId()) {
+      break;
+    }
+  }
+
+  return pathes[target_node.getId()];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shortest path to a certain node
+///
+/// @FUN{@FA{vertex}._pushNeigborsToArray(@FA{target_array})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype._pushNeigborsToArray = function (target_array) {
+  var i, current_node_id;
+
+  for (i = 0; i < this.getOutEdges().length; i++) {
+    current_node_id = this.getOutEdges()[i].getInVertex().getId();
+    target_array.push(current_node_id);
+  }
+
+  for (i = 0; i < this.getInEdges().length; i++) {
+    current_node_id = this.getInEdges()[i].getOutVertex().getId();
+    target_array.push(current_node_id);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Find the node with the shortest distance for a given list
+///
+/// @FUN{@FA{vertex}._getShortestDistanceFor(@FA{todo_list}, @FA{distances})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype._getShortestDistanceFor = function (todo_list, distances) {
+  var current_node_id,
+    shortest_distance = [null, Infinity],
+    i;
+
+  for (i = 0; i < todo_list.length; i++) {
+    current_node_id = todo_list[i];
+    if (distances[current_node_id].length < shortest_distance[1]) {
+      shortest_distance = [current_node_id, distances[current_node_id].length];
+    }
+  }
+
+  return shortest_distance[0];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
