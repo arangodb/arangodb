@@ -150,13 +150,21 @@ static TRI_action_options_t ParseActionOptions (TRI_v8_global_t* v8g,
                                                 v8::Handle<v8::Object> options) {
   TRI_action_options_t ao;
 
-  // check "parameter" field
+  // check "parameters" field
   if (options->Has(v8g->ParametersKey)) {
     v8::Handle<v8::Value> parameters = options->Get(v8g->ParametersKey);
 
     if (parameters->IsObject()) {
       ParseActionOptionsParameters(v8g, ao, parameters->ToObject());
     }
+  }
+
+  // check the "prefix" field
+  if (options->Has(v8g->PrefixKey)) {
+    ao._prefix = TRI_ObjectToBoolean(options->Get(v8g->PrefixKey));
+  }
+  else {
+    ao._prefix = false;
   }
 
   // and return the result
@@ -179,7 +187,7 @@ static TRI_action_options_t ParseActionOptions (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
 ///
-/// @FUN{defineSystemAction(@FA{name}, @FA{queue}, @FA{callback}, @FA{parameter})}
+/// @FUN{defineAction(@FA{name}, @FA{queue}, @FA{callback}, @FA{parameter})}
 ///
 /// Possible queues are:
 /// - "CLIENT"
@@ -205,10 +213,6 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   }
 
   string name = *utf8name;
-
-  if (name.empty()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be non-empty")));
-  }
 
   // extract the action queue
   v8::String::Utf8Value utf8queue(argv[1]);
@@ -339,14 +343,24 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
 
   // check if we know a callback
   vector<string> suffix = request->suffix();
+  bool poped = false;
     
   // find longest prefix
   while (true) {
     string name = StringUtils::join(suffix, '/');
     map<string, TRI_action_t*>::iterator i = Actions.find(name);
-
+    
     if (i != Actions.end()) {
-      return i->second;
+      TRI_action_t* action = i->second;
+
+      if (action->_options._prefix) {
+        return action;
+      }
+      else {
+        if (! poped) {
+          return action;
+        }
+      }
     }
 
     if (suffix.empty()) {
@@ -354,6 +368,7 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
     }
 
     suffix.pop_back();
+    poped = true;
   }
 
   return 0;
@@ -621,6 +636,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
+  v8g->PrefixKey = v8::Persistent<v8::String>::New(v8::String::New("prefix"));
   v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("requestBody"));
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));

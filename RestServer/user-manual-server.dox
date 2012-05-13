@@ -26,23 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServer ArangoDB's User Manual
-///
-/// @if LATEX
-/// <ul>
-///  <li>@ref UserManualServerBasics</li>
-///  <li>ArangoQueryLanguage</li>
-///  <li>@ref Glossary</li>
-/// </ul>
-/// @else
-/// @copydetails UserManualServerBasicsTOC
-/// <ul>
-///  <li>Arango Query Language</li>
-/// </ul>
-/// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualServerBasicsTOC
 ///
 /// <ul>
@@ -61,26 +44,74 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServerBasics Basics
+/// @page UserManualServerBasics About ArangoDB
 ///
-/// The ArangoDB groups documents into collections. Each collection can be
-/// accessed using queries. For simple queries involving just one collection,
-/// you can use a simple interface from within JavaScript code, see ArangoDB
-/// shell user manual. This interface allows you to select documents from one
-/// collection based on simple search criteria. For more complex queries, you
-/// can use the Arango Query Language, which is an evolution of SQL resp. UNQL.
+/// We recently started a new open source project - a universal nosql database
+/// called AvocadoDB which became ArangoDB in May 2012.
+///
+/// Key features include:
+/// 
+/// <ul>
+///  <li> Schema-free schemata let you combine the space efficiency of MySQL with
+///       the performance power of NoSQL</li>
+///  <li> Use ArangoDB as an application server and fuse your application and
+///       database together for maximal throughput</li>
+///  <li> JavaScript for all: no language zoo, you can use one language from your
+///       browser to your back-end</li>
+///  <li> ArangoDB is multi-threaded - exploit the power of all your cores</li>
+///  <li> Flexible data modeling: model your data as combination of key-value pairs,
+///       documents or graphs - perfect for social relations</li>
+///  <li> Free index choice: use the correct index for your problem, be it a skip
+///       list or a n-gram search</li>
+///  <li> Configurable durability: let the application decide if it needs more
+///       durability or more performance</li>
+///  <li> No-nonsense storage: ArangoDB uses all of the power of modern storage
+///       hardware, like SSD and large caches</li>
+///  <li> It is open source (Apache Licence 2.0)</li>
+/// </ul>
+///
+/// For more in-depth information
+///
+/// <ul>
+///  <li> read more on the <a href="http://www.arangodb.org/2012/03/07/arangodbs-design-objectives">
+///       design goals of ArangoDB</a></li>
+///  <li> <a href="http://vimeo.com/36411892">watch the video</a> - Martin Schoenert, 
+///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
+///       is about.</li>
+///  <li> or  give it a @ref InstallManual "try".</li>
+/// </ul>
+///
+/// The ArangoDB database groups documents into collections. Each collection can
+/// be accessed using queries. For simple queries involving just one collection
+/// and one search criteria, you can use a simple interface from within
+/// JavaScript code or other languages supported by an API. This interface
+/// allows you to select documents from one collection based on simple search
+/// criteria. For more complex queries, you can use the Arango Query Language,
+/// which is an evolution of SQL resp. UNQL for the NoSQL world.
+///
+/// The ArangoDB database packages comes with various programs:
+///
+/// - @LIT{arangod}: The ArangoDB database daemon. This server program is
+///   intended to run as daemon process and to server the various clients
+///   connection to the server via TCP / HTTP. See @ref
+///   UserManualServerStartStop.
+/// - @LIT{arangosh}: The ArangoDB shell. A client that implements a
+///   read-eval-print loop (REPL) and provides functions to access and
+///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
+/// - @LIT{arangoimp}: A buld importer for the ArangoDB server.
+///   See @ref UserManualImporterStartStop.
 ///
 /// @EMBEDTOC{UserManualServerBasicsTOC}
 ///
-/// @section UserManualServerStartStop Starting the ArangoDB
-/////////////////////////////////////////////////////////////
+/// @section UserManualServerStartStop Starting the ArangoDB Server
+///////////////////////////////////////////////////////////////////
 ///
-/// The ArangoDB has two modes of operation: as server, where it will answer to
-/// client requests and an emergency console, where you can access the database
-/// directly. The latter should - as the name suggests - only be used in case of
-/// an emergency, for example, a corrupted collection. Using the emergency
-/// console allows you to issue all commands normally available in actions and
-/// transactions.
+/// The ArangoDB database server has two modes of operation: as server, where it
+/// will answer to client requests and an emergency console, where you can
+/// access the database directly. The latter should - as the name suggests -
+/// only be used in case of an emergency, for example, a corrupted
+/// collection. Using the emergency console allows you to issue all commands
+/// normally available in actions and transactions.
 ///
 /// You should never start more than one server for the same database,
 /// independent from the mode of operation.
@@ -88,11 +119,18 @@
 /// @subsection UserManualServerStartStopHttp Starting the HTTP Server
 //////////////////////////////////////////////////////////////////////
 ///
-/// The following command starts the ArangoDB in server mode. You will be able
-/// to access the server using HTTP request on port 8529. See below for a list
-/// of frequently used options, see @ref CommandLine "here" for a complete list.
+/// The following command starts the ArangoDB database in server mode. You will
+/// be able to access the server using HTTP request on port 8529. See @ref
+/// UserManualServerStartStopOptions "below" for a list of frequently used
+/// options, see @ref CommandLine "here" for a complete list.
 ///
 /// @verbinclude option-database-directory
+///
+/// After starting the server, point your favorite browser to:
+///
+/// @LIT{http://localhost:8529/}
+///
+/// to access the administration front-end.
 ///
 /// @subsection UserManualServerStartStopDebug Starting the Emergency Console
 /////////////////////////////////////////////////////////////////////////////
