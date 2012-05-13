@@ -183,10 +183,12 @@ TRI_action_parameter_t;
 
 typedef struct TRI_action_options_s {
   TRI_action_options_s ()
-    : _parameters() {
+    : _parameters(), 
+      _prefix(false) {
   }
 
   std::map<std::string, TRI_action_parameter_t> _parameters;
+  bool _prefix;
 }
 TRI_action_options_t;
 
