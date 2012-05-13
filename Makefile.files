@@ -341,6 +341,7 @@ DOXYGEN = \
 
 WIKI = \
 	Actions \
+        Aql \
 	ArangoErrors \
 	ArangoScript \
 	CommandLine \
