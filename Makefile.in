@@ -982,9 +982,7 @@ WIKI = \
 	ShellIndex \
 	SimpleQueries \
 	UserManual \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManualBasics \
 	jsUnity
 
 FORCE = 0
@@ -2939,8 +2937,8 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex || true
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
