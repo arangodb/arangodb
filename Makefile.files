@@ -389,7 +389,5 @@ WIKI = \
 	ShellIndex \
 	SimpleQueries \
 	UserManual \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManualBasics \
 	jsUnity

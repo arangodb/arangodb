@@ -394,8 +394,8 @@ ModuleCache["/internal"].exports.ArangoDatabase = ArangoDatabase;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
-'ArangoDatabase constructor:                                        ' + "\n" +
-' > db = new ArangoDatabase(connection);                            ' + "\n" +
+'ArangoDatabase constructor:                                         ' + "\n" +
+' > db = new ArangoDatabase(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -826,8 +826,8 @@ ModuleCache["/internal"].exports.ArangoEdges = ArangoEdges;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdges = TRI_CreateHelpHeadline("ArangoEdges help") +
-'ArangoEdges constructor:                                           ' + "\n" +
-' > edges = new ArangoEdges(connection);                            ' + "\n" +
+'ArangoEdges constructor:                                            ' + "\n" +
+' > edges = new ArangoEdges(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -954,7 +954,7 @@ ArangoCollection.STATUS_DELETED = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoCollection = TRI_CreateHelpHeadline("ArangoCollection help") +
-'ArangoCollection constructor:                                      ' + "\n" +
+'ArangoCollection constructor:                                       ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1665,7 +1665,7 @@ ModuleCache["/internal"].exports.ArangoEdgesCollection = ArangoEdgesCollection;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdgesCollection = TRI_CreateHelpHeadline("ArangoEdgesCollection help") +
-'ArangoEdgesCollection constructor:                                 ' + "\n" +
+'ArangoEdgesCollection constructor:                                  ' + "\n" +
 ' > col = edges.mycoll;                                              ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1899,7 +1899,7 @@ function ArangoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoQueryCursor = TRI_CreateHelpHeadline("ArangoQueryCursor help") +
-'ArangoQueryCursor constructor:                                     ' + "\n" +
+'ArangoQueryCursor constructor:                                      ' + "\n" +
 ' > cu1 = qi1.execute();                                             ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  hasMore();                            returns true if there       ' + "\n" +
@@ -2116,8 +2116,8 @@ function ArangoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
-'ArangoStatement constructor:                                       ' + "\n" +
-' > st = new ArangoStatement({ "query" : "for ..." });              ' + "\n" +
+'ArangoStatement constructor:                                        ' + "\n" +
+' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
 ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
@@ -2329,8 +2329,8 @@ ArangoStatement.prototype.execute = function () {
 
 HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
-'  arango:                               ArangoConnection          ' + "\n" +
-'  db:                                    ArangoDatabase            ' + "\n" +
+'  arango:                                ArangoConnection           ' + "\n" +
+'  db:                                    ArangoDatabase             ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
@@ -2347,7 +2347,7 @@ HELP = TRI_CreateHelpHeadline("Help") +
 
 helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
-' > st = new ArangoStatement(db, { "query" : "for..." });           ' + "\n" +
+' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
 ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
 'Set query options:                                                  ' + "\n" +
 ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
