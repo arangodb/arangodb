@@ -290,8 +290,8 @@
 ///
 /// - @LIT{==} equality
 /// - @LIT{!=} inequality
-/// - @LIT{<}  less than 
-/// - @LIT{<=} less or equal
+/// - @LIT{&lt;}  less than 
+/// - @LIT{&lt;=} less or equal
 /// - @LIT{>}  greater than
 /// - @LIT{>=} greater or equal
 /// - @LIT{in} test if a value is contained in a list
@@ -368,7 +368,7 @@
 ///
 /// @verbinclude aqllogical
 ///
-/// The @LIT{&&}, @LIT{||}, and !@LIT{\!} operators expect their input operands 
+/// The @LIT{&&}, @LIT{||}, and @LIT{!} operators expect their input operands 
 /// to be boolean values each. If a non-boolean operand is used, the operation will
 /// fail with an error. In case all operands are valid, the result of each
 /// logical operator is a boolean value.
@@ -418,7 +418,7 @@
 /// - @LIT{&&} logical and
 /// - @LIT{==}, @LIT{!=} equality and inequality
 /// - @LIT{in} in operator
-/// - @LIT{<}, @LIT{<=}, @LIT{>=}, @LIT{>} less than, less equal,
+/// - @LIT{&lt;}, @LIT{&lt;=}, @LIT{>=}, @LIT{>} less than, less equal,
 ///   greater equal, greater than
 /// - @LIT{+}, @LIT{-} addition, subtraction
 /// - @LIT{*}, @LIT{/}, @LIT{%} multiplication, division, modulus
