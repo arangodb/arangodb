@@ -28,84 +28,74 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page SimpleQueriesTOC
 ///
-/// <ol>
-///  <li>@ref SimpleQueriesQueries
-///   <ol>
-///    <li>@ref SimpleQueryDocument "collection.document(document-reference)"</li>
-///    <li>@ref SimpleQueryAll "collection.all()"</li>
-///    <li>@ref SimpleQueryByExample "collection.byExample(example)"</li>
-///    <li>@ref SimpleQueryFirstExample "collection.firstExample(example)"</li>
-///    <li>@ref SimpleQueryCollectionCount "collection.count()"</li>
-///    <li>@ref SimpleQueryToArray "collection.toArray()"</li>
-///   </ol>
+/// <ul>
+///  <li>@ref SimpleQueries
+///   <ul>
+///    <li>@ref SimpleQueriesQueries
+///     <ul>
+///      <li>@ref SimpleQueryAll "collection.all"</li>
+///      <li>@ref SimpleQueryByExample "collection.byExample"</li>
+///      <li>@ref SimpleQueryFirstExample "collection.firstExample"</li>
+///      <li>@ref SimpleQueryCollectionCount "collection.count"</li>
+///      <li>@ref SimpleQueryToArray "collection.toArray"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesGeoQueries
+///     <ul>
+///      <li>@ref SimpleQueryNear "collection.near"</li>
+///      <li>@ref SimpleQueryWithin "collection.within"</li>
+///      <li>@ref SimpleQueryGeo "collection.geo"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesPagination
+///     <ul>
+///      <li>@ref SimpleQueryLimit "query.limit"</li>
+///      <li>@ref SimpleQuerySkip "query.skip"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesCursor
+///     <ul>
+///      <li>@ref SimpleQueryHasNext "query.hasNext"</li>
+///      <li>@ref SimpleQueryNext "query.next"</li>
+///      <li>@ref SimpleQueryDispose "query.dispose"</li>
+///      <li>@ref SimpleQueryCount "query.count"</li>
+///     </ul>
+///    </li>
+///   </ul>
 ///  </li>
-///  <li>@ref SimpleQueriesGeoQueries
-///   <ol>
-///    <li>@ref SimpleQueryNear "collection.near(latitude, longitude)"</li>
-///    <li>@ref SimpleQueryWithin "collection.within(latitude, longitude)"</li>
-///    <li>@ref SimpleQueryGeo "collection.geo(location)"</li>
-///   </ol>
-///  </li>
-///  <li>@ref SimpleQueriesEdgesQueries
-///   <ol>
-///    <li>@ref SimpleQueryEdges "edges-collection.edges(vertex)"</li>
-///    <li>@ref SimpleQueryInEdges "edges-collection.inEdges(vertex)"</li>
-///    <li>@ref SimpleQueryOutEdges "edges-collection.outEdges(vertex)"</li>
-///   </ol>
-///  </li>
-///  <li>@ref SimpleQueriesPagination
-///   <ol>
-///    <li>@ref SimpleQueryLimit "query.limit(limit)"</li>
-///    <li>@ref SimpleQuerySkip "query.skip(skip)"</li>
-///   </ol>
-///  </li>
-///  <li>@ref SimpleQueriesSequentialAccess
-///   <ol>
-///    <li>@ref SimpleQueryHasNext "query.hasNext()"</li>
-///    <li>@ref SimpleQueryNext "query.next()"</li>
-///    <li>@ref SimpleQueryCount "query.count()"</li>
-///   </ol>
-///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page SimpleQueries Simple Queries
 ///
-/// Simple queries can be used if the query condition is straight forward
-/// simple, i. e., a document reference, all documents, a query-by-example, or a
-/// simple geo query. In a simple query you can specify exactly one collection
-/// and one condition.
-///
-/// <hr>
-/// @copydoc SimpleQueriesTOC
-/// <hr>
+/// Simple queries can be used if the query condition is straight forward,
+/// i. e., a document reference, all documents, a query-by-example, or a simple
+/// geo query. In a simple query you can specify exactly one collection and one
+/// query criteria. In the following sections we describe the JavaScript shell
+/// interface for simple queries, which you can use within the ArangoDB shell
+/// and within actions and transactions. For other languages see the
+/// corresponding language API documentation.
 ///
 /// If a query returns a cursor, then you can use @FN{hasNext} and @FN{next} to
 /// iterate over the result set or @FN{toArray} to convert it to an array.
 ///
+/// @EMBEDTOC{ SimpleQueriesTOC}
+///
 /// @section SimpleQueriesQueries Queries
 /////////////////////////////////////////
 ///
-/// @anchor SimpleQueryDocument
-/// @copydetails JS_DocumentVocbaseCol
-/// <hr>
-///
 /// @anchor SimpleQueryAll
 /// @copydetails JSF_ArangoCollection_prototype_all
-/// <hr>
 ///
 /// @anchor SimpleQueryByExample
 /// @copydetails JSF_ArangoCollection_prototype_byExample
-/// <hr>
 ///
 /// @anchor SimpleQueryFirstExample
 /// @copydetails JSF_ArangoCollection_prototype_firstExample
-/// <hr>
 ///
 /// @anchor SimpleQueryCollectionCount
 /// @copydetails JS_CountVocbaseCol
-/// <hr>
 ///
 /// @anchor SimpleQueryToArray
 /// @copydetails JSF_ArangoCollection_prototype_toArray
@@ -113,48 +103,30 @@
 /// @section SimpleQueriesGeoQueries Geo Queries
 ////////////////////////////////////////////////
 ///
-/// The ArangoDB allows to selects documents based on geographic
-/// coordinates. In order for this to work, a geo-spatial index must be defined.
-/// This index will use a very elaborate algorithm to lookup neighbours that is
-/// a magnitude faster than a simple R* index.
+/// The ArangoDB allows to selects documents based on geographic coordinates. In
+/// order for this to work, a geo-spatial index must be defined.  This index
+/// will use a very elaborate algorithm to lookup neighbors that is a magnitude
+/// faster than a simple R* index.
 ///
 /// In general a geo coordinate is a pair of latitude and longitude.  This can
-/// either be an list with two elements like @CODE{[ -10\, +30 ]} (latitude
-/// first, followed by longitude) or an object like @CODE{{ lon: -10\, lat: +30
-/// }}. In order to find all documents within a given radius around a
-/// coordinate use the @FN{within} operator. In order to find all
-/// documents near a given document use the @FN{near} operator.
+/// either be an list with two elements like @CODE{[-10\, +30]} (latitude
+/// first, followed by longitude) or an object like @CODE{{lon: -10\, lat: +30}}.
+/// In order to find all documents within a given radius around a coordinate
+/// use the @FN{within} operator. In order to find all documents near a given
+/// document use the @FN{near} operator.
 ///
 /// It is possible to define more than one geo-spatial index per collection.  In
 /// this case you must give a hint using the @FN{geo} operator which of indexes
 /// should be used in a query.
 ///
-/// <hr>
-///
 /// @anchor SimpleQueryNear
 /// @copydetails JSF_ArangoCollection_prototype_near
-/// <hr>
 ///
 /// @anchor SimpleQueryWithin
 /// @copydetails JSF_ArangoCollection_prototype_within
-/// <hr>
 ///
 /// @anchor SimpleQueryGeo
 /// @copydetails JSF_ArangoCollection_prototype_geo
-///
-/// @section SimpleQueriesEdgesQueries Edges Queries
-////////////////////////////////////////////////////
-///
-/// @anchor SimpleQueryEdges
-/// @copydetails JS_EdgesQuery
-/// <hr>
-///
-/// @anchor SimpleQueryInEdges
-/// @copydetails JS_InEdgesQuery
-/// <hr>
-///
-/// @anchor SimpleQueryOutEdges
-/// @copydetails JS_OutEdgesQuery
 ///
 /// @section SimpleQueriesPagination Pagination
 ///////////////////////////////////////////////
@@ -174,21 +146,21 @@
 ///
 /// @anchor SimpleQueryLimit
 /// @copydetails JSF_SimpleQuery_prototype_limit
-/// <hr>
 ///
 /// @anchor SimpleQuerySkip
 /// @copydetails JSF_SimpleQuery_prototype_skip
 ///
-/// @section SimpleQueriesSequentialAccess Sequential Access
-////////////////////////////////////////////////////////////
+/// @section SimpleQueriesCursor Sequential Access and Cursors
+//////////////////////////////////////////////////////////////
 ///
 /// @anchor SimpleQueryHasNext
 /// @copydetails JSF_SimpleQuery_prototype_hasNext
-/// <hr>
 ///
 /// @anchor SimpleQueryNext
 /// @copydetails JSF_SimpleQuery_prototype_next
-/// <hr>
+///
+/// @anchor SimpleQueryDispose
+/// @copydetails JSF_SimpleQuery_prototype_dispose
 ///
 /// @anchor SimpleQueryCount
 /// @copydetails JSF_SimpleQuery_prototype_count

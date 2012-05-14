@@ -984,10 +984,8 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
-	UserManualServer \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManual \
+	UserManualBasics \
 	jsUnity
 
 FORCE = 0
@@ -1034,7 +1032,9 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js
+               @srcdir@/js/common/tests/shell-cap-constraint.js \
+               @srcdir@/js/common/tests/shell-unique-constraint.js \
+               @srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
@@ -2944,8 +2944,8 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex || true
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true

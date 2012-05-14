@@ -153,22 +153,19 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Returns the first documents of a collection that match the specified example
-/// or @LIT{null}. The example must be specified as paths and
-/// values. Allowed attribute types for searching are numbers, strings, and
-/// boolean values.
-///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
 ///
-/// As alternative you can supply an example as single argument. Note that an
-/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
-/// as attribute.
+/// Returns the a document of a collection that match the specified example or
+/// @LIT{null}. The example must be specified as paths and values. See @ref
+/// JSF_ArangoCollection_prototype_byExample for details.
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// As alternative you can supply a list of paths and values.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-simple-query-first-example
+/// @TINYEXAMPLE{shell-simple-query-first-example,finds a document with a given name}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.firstExample = function () {

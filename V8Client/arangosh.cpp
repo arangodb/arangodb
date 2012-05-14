@@ -928,7 +928,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor* console = new V8LineEditor(context, ".avocsh");
+  V8LineEditor* console = new V8LineEditor(context, ".arangosh");
 
   console->open(!noAutoComplete);
 
@@ -936,7 +936,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     while (! v8::V8::IdleNotification()) {
     }
 
-    char* input = console->prompt("avocsh> ");
+    char* input = console->prompt("arangosh> ");
 
     if (input == 0) {
       break;
@@ -999,7 +999,7 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
 
   // run tests
   char const* input = "require(\"jsunity\").runCommandLineTests();";
-  v8::Local<v8::String> name(v8::String::New("(avocsh)"));
+  v8::Local<v8::String> name(v8::String::New("(arangosh)"));
   TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
       
   if (tryCatch.HasCaught()) {
@@ -1247,7 +1247,7 @@ int main (int argc, char* argv[]) {
   }
 
   printf("\n");
-  printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+  printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
   printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);

@@ -28,33 +28,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellEdgeTOC
 ///
-/// <ol>
-///  <li>@ref ShellEdgeIntro</li>
-///  <li>@ref ShellEdgeShell
-///    @copydetails ShellEdgeCallsTOC
+/// <ul>
+///  <li>@ref ShellEdge
+///   <ul>
+///    <li>@ref ShellEdgeIntro</li>
+///    <li>@ref ShellEdgeShell
+///      @copydetails ShellEdgeCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellEdgeCallsTOC
 ///
-/// <ol>
-///  <li>@ref ShellEdgeCreate "edge-collection.save(from, to, data)"</li>
-///  <li>@ref ShellEdgeEdges "edge-collection.edges(vertex)"</li>
-///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges(vertex)"</li>
-///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges(vertex)"</li>
-/// </ol>
+/// <ul>
+///  <li>@ref ShellEdgeCreate "edge-collection.save"</li>
+///  <li>@ref ShellEdgeEdges "edge-collection.edges"</li>
+///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges"</li>
+///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges"</li>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellEdge ArangoDB Interface for Edges
+/// @page ShellEdge Handling Edges
 ///
-/// This is an introduction to ArangoDB's interface for edges.
+/// This is an introduction to ArangoDB's interface for edges and how handle
+/// edges from the JavaScript shell @LIT{arangosh}. For other languages see the
+/// corresponding language API.
 ///
-/// <hr>
-/// @copydoc ShellEdgeTOC
-/// <hr>
+/// @EMBEDTOC{ShellEdgeTOC}
 ///
 /// @section ShellEdgeIntro Edges, Identifiers, Handles
 ///////////////////////////////////////////////////////
@@ -68,20 +72,15 @@
 ///
 /// @anchor ShellEdgeCreate
 /// @copydetails JS_SaveEdgesCol
-/// <hr>
 ///
 /// @anchor ShellEdgeEdges
 /// @copydetails JS_EdgesQuery
-/// <hr>
 ///
 /// @anchor ShellEdgeInEdges
 /// @copydetails JS_InEdgesQuery
-/// <hr>
 ///
 /// @anchor ShellEdgeOutEdges
 /// @copydetails JS_OutEdgesQuery
-/// <hr>
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

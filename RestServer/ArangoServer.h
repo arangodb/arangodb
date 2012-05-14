@@ -230,9 +230,9 @@ namespace triagens {
 ///
 /// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
 ///
-/// Specifies the @CA{port} for HTTP requests by clients. This will bind to the
-/// given @CA{address}, which can be a numeric value like @CODE{192.168.1.1} or
-/// a name.
+/// Specifies the @CA{address} and @CA{port} for HTTP requests by clients. This
+/// will bind to the given @CA{address}, which can be a numeric value like
+/// @CODE{192.168.1.1} or a name.
 ///
 /// @CMDOPT{--port @CA{port}}
 ///

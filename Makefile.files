@@ -390,8 +390,6 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
-	UserManualServer \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManual \
+	UserManualBasics \
 	jsUnity
