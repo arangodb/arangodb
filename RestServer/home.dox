@@ -37,7 +37,7 @@
 /// The ArangoDB consists of a server, a separate shell, which allows you to
 /// administrate the server, and a set of client API for various languages.
 ///
-/// @xmlonly The HTML version of the manual can be found <ulink url="http://www.arangodb.org/manuals">here</ulink>. @endxmlonly
+/// @xmlonly The HTML and PDF versions of the manual can be found <ulink url="http://www.arangodb.org/manuals">here</ulink>. @endxmlonly
 ///
 /// @warning
 /// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
@@ -49,7 +49,7 @@
 ///////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref UserManual (<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>)</li>
+///   <li>@ref UserManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
@@ -57,7 +57,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref InstallManual (<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>)</li>
+///   <li>@ref InstallManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
@@ -65,7 +65,7 @@
 //////////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref ImplementorManual (<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>)</li>
+///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref RefManual</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
