@@ -165,6 +165,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-index.c \
         Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \

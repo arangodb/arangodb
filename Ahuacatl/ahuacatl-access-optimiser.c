@@ -1882,6 +1882,75 @@ void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a field access type to an existing field access vector
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
+                                        TRI_vector_pointer_t* const previous,
+                                        TRI_aql_field_access_t* const candidate) {
+  TRI_vector_pointer_t* accesses = NULL;
+  size_t i, n;
+  bool found;
+
+  assert(context);
+  assert(candidate);
+  assert(candidate->_fieldName);
+
+  if (previous != NULL) {
+    // use existing vector if already available
+    accesses = previous;
+  }
+  else {
+    accesses = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+    if (accesses == NULL) {
+      // OOM
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return NULL;
+    }
+    TRI_InitVectorPointer(accesses, TRI_UNKNOWN_MEM_ZONE);
+  }
+
+  found = false;
+  n = accesses->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* existing = (TRI_aql_field_access_t*) TRI_AtVectorPointer(accesses, i);
+    TRI_aql_field_access_t* copy;
+    int result;
+
+    if (!TRI_EqualString(candidate->_fieldName, existing->_fieldName)) {
+      continue;
+    }
+    
+    // we found a match
+    found = true;
+    
+    result = TRI_PickAccessAql(candidate, existing);
+    if (result < 0) {
+      // candidate is preferred
+
+      // free existing field access
+      TRI_FreeAccessAql(existing);
+      // insert candidate instead
+      copy = TRI_CloneAccessAql(context, candidate);
+      if (!copy) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        return accesses;
+      }
+      accesses->_buffer[i] = (void*) copy;
+    }
+    break;
+  }
+
+  if (!found) {
+    // not found, now add this candidate
+    TRI_PushBackVectorPointer(accesses, candidate);
+  }
+
+  return accesses;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
