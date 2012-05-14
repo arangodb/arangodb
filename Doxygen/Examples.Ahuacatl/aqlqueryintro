@@ -1,0 +1,3 @@
+FOR u IN users
+  FILTER u.type == "newbie" && u.active == true
+  RETURN u.name

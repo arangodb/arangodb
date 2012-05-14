@@ -99,6 +99,18 @@ function AHUACATL_NUMERIC_VALUE (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fix a value for a comparison
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FIX (value) {
+  if (value === undefined) {
+    return null;
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the sort type of an operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -133,15 +145,13 @@ function AHUACATL_TYPEWEIGHT (value) {
 /// @brief get the keys of an array or object in a comparable way
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_KEYS (value) {
+function AHUACATL_KEYS (value, doSort) {
   var keys = [];
   
   if (Array.isArray(value)) {
-    var i = 0;
-    for (var k in value) {
-      if (value.hasOwnProperty(k)) {
-        keys.push(i++);
-      }
+    var n = value.length;
+    for (var j = 0; j < n; ++j) {
+      keys.push(j);
     }
   }
   else {
@@ -151,9 +161,51 @@ function AHUACATL_KEYS (value) {
       }
     }
 
-    // object keys need to be sorted by names
-    keys.sort();
+    if (doSort) {
+      // object keys need to be sorted by names
+      keys.sort();
+    }
   }
+
+  return keys;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the keys of an array or object in a comparable way
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_KEYLIST (lhs, rhs) {
+  var keys = [];
+  
+  if (Array.isArray(lhs)) {
+    // lhs & rhs are lists
+    var n;
+    if (lhs.length > rhs.length) {
+      n = lhs.length;
+    }
+    else {
+      n = rhs.length;
+    }
+    for (var j = 0; j < n; ++j) {
+      keys.push(j);
+    }
+    return keys;
+  }
+
+  // lhs & rhs are arrays
+  var k;
+  for (k in lhs) {
+    keys.push(k);
+  }
+  for (k in rhs) {
+    if (lhs.hasOwnProperty(k)) {
+      continue;
+    }
+    keys.push(k);
+  }
+
+  // object keys need to be sorted by names
+  keys.sort();
 
   return keys;
 }
@@ -321,22 +373,10 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    if (numLeft !== numRight) {
-      return false;
-    }
-
-    for (var i = 0; i < numLeft; ++i) {
-      var key = l[i];
-      if (key !== r[i]) {
-        // keys must be identical
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_EQUAL(lhs[key], rhs[key]);
       if (result === false) {
         return result;
@@ -374,22 +414,10 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    if (numLeft !== numRight) {
-      return true;
-    }
-
-    for (var i = 0; i < numLeft; ++i) {
-      var key = l[i];
-      if (key !== r[i]) {
-        // keys differ => unequality
-        return true;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_UNEQUAL(lhs[key], rhs[key]);
       if (result === true) {
         return result;
@@ -429,36 +457,16 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numLeft; ++i) {
-      if (i >= numRight) {
-        // right operand does not have any more keys
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return true;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numRight > numLeft) {
-      return false;
-    }
-
     return null;
   }
 
@@ -512,35 +520,16 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numLeft; ++i) {
-      if (i >= numRight) {
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return true;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numRight > numLeft) {
-      return false;
-    }
-
     return null;
   }
 
@@ -594,36 +583,16 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        // left operand does not have any more keys
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return false;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
-        return true;
-      }
-      // keys are equal
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_LESS_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numLeft > numRight) {
-      return false;
-    }
-
     return null;
   }
 
@@ -677,32 +646,14 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return false;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return true;
-      }
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
-    }
-
-    if (numLeft > numRight) {
-      return false;
     }
 
     return null;
@@ -761,36 +712,16 @@ function AHUACATL_RELATIONAL_CMP (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        // left operand does not have any more keys
-        return -1;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return 1;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
-        return -1
-      }
-      // keys are equal, now compare value
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_CMP(lhs[key], rhs[key]);
       if (result !== 0) {
         return result;
       }
     }
     
-    if (numLeft > numRight) {
-      return 1;
-    }
-
     return 0;
   }
 
@@ -827,7 +758,7 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
     throw "expecting list for in";
   }
   
-  var r = AHUACATL_KEYS(rhs);
+  var r = AHUACATL_KEYS(rhs, false);
   var numRight = r.length;
 
   for (var i = 0; i < numRight; ++i) {
@@ -1073,7 +1004,7 @@ function AHUACATL_CAST_BOOL (value) {
     case AHUACATL_TYPEWEIGHT_LIST:
       return (value.length > 0);
     case AHUACATL_TYPEWEIGHT_DOCUMENT:
-      return (AHUACATL_KEYS(value).length > 0);
+      return (AHUACATL_KEYS(value, false).length > 0);
   }
 }
 

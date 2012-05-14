@@ -1,0 +1,814 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDB query language (AQL)
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Aql ArangoDB Query Language (AQL)
+///
+/// @section AqlPurpose Purpose
+///
+/// The ArangoDB query language (AQL) can be used to retrieve data that is 
+/// stored in ArangoDB. The general workflow when executing a query is as follows:
+/// - a client application ships an AQL query to the ArangoDB server. The query 
+///   text contains everything ArangoDB needs to compile the result set.
+/// - ArangoDB will parse the query, execute it and compile the results. If 
+///   the query is invalid or cannot be executed, the server will return an
+///   error that the client can process and react to. If the query can be 
+///   executed successfully, the server will return the query results to the
+///   client
+///
+/// AQL is mainly a declarative language, meaning that in a query it is 
+/// expressed what result should be achieved and not how. AQL aims to be human-
+/// readable and therefore uses keywords from the English language. Another
+/// design goal of AQL was client independency, meaning that the language and
+/// syntax are the same for all clients, no matter what programming language the
+/// clients might use.
+/// Further design goals of AQL were to support complex query patterns, and
+/// to support the different data models ArangoDB offers.
+///
+/// In its purpose, AQL is similar to the Structured Query Language (SQL), 
+/// but the two languages have major syntactic differences. Furthermore, to 
+/// avoid any confusion between the two languages, the keywords in AQL have 
+/// been chosen to be different from the keywords used in SQL.
+///
+/// @section AqlBasics Language basics
+///
+/// @subsection AqlWhitespace Whitespace
+///
+/// Whitespace can be used in the query text to increase its readability.
+/// However, for the parser any whitespace (spaces, carriage returns, line 
+/// feeds, and tab stops) does not have any special meaning except that it
+/// separates individual tokens in the query. Whitespace within strings or
+/// names must be enclosed in quotes in order to be preseved.
+///
+/// @subsection AqlKeywords Keywords
+///
+/// On the top level, AQL offers the following operations:
+/// - FOR: list iteration
+/// - RETURN: results projection
+/// - FILTER: results filtering
+/// - SORT: result sorting
+/// - LIMIT: result slicing
+/// - LET: variable assignment
+/// - COLLECT: result grouping
+///
+/// Each of the above operations can be initiated in a query by using a 
+/// keyword of the same name. An AQL query can (and typically does) consist
+/// of multiple of the above operations.
+///
+/// An example AQL query might look like this:
+/// @verbinclude aqlqueryintro
+///
+/// In this example query, the terms @LIT{FOR}, @LIT{FILTER}, and @LIT{RETURN}
+/// initiate the higher-level operation according to their name. These terms
+/// are also keywords, meaning that they have a special meaning in the language.
+///
+/// For example, the query parser will use the keywords to find out which 
+/// high-level operations to execute. That also means keywords can only be 
+/// used at certains locations in a query. This also makes all keywords reserved
+/// words that must not be used for other purposes than they are intended for.
+///
+/// For example, it is not possible to use a keyword as a collection or 
+/// attribute name. If a collection or attribute need to have the same name as a
+/// keyword, the collection or attribute name needs to be quoted.
+///
+/// Keywords are case-insensitive, meaning they can be specified in lower, upper, 
+/// or mixed case in queries. In this documentation, all keywords are written in 
+/// upper case to make them distinguishable from other query parts.
+///
+/// In addition to the higher-level operations keywords, there are other keywords.
+/// The current list of keywords is:
+/// - FOR
+/// - RETURN
+/// - FILTER
+/// - SORT
+/// - LIMIT
+/// - LET
+/// - COLLECT
+/// - ASC
+/// - DESC
+/// - IN
+/// - INTO
+/// - NULL
+/// - TRUE
+/// - FALSE
+///
+/// Additional keywords might be added in future versions of ArangoDB. 
+///
+/// @subsection AqlNames Names
+///
+/// In general, names are used to identify objects (collections, attributes,
+/// variables, and functions) in AQL queries. 
+/// 
+/// The maximum supported length of any name is 64 bytes. Names in AQL are 
+/// always case-sensitive.
+///
+/// Keywords must not be used as names. If a reserved keyword should be used
+/// as a name, the name must be enclosed in backticks. Enclosing a name in
+/// backticks allows using otherwise-reserved keywords as names. An example
+/// for this is:
+///
+/// @verbinclude aqlnamebackticks
+///
+/// Due to the backticks, @LIT{filter} and @LIT{sort} are interpreted as names
+/// and not as keywords here.
+///
+/// @subsubsection AqlCollectionNames Collection names
+/// 
+/// Collection names can be used in queries as they are. If a collection 
+/// happens to have the same name as a keyword, the name must be enclosed in
+/// backticks.
+///
+/// Allowed characters in collection names are the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case) and the numbers @LIT{0} to @LIT{9} and the
+/// the underscore (@LIT{_}) symbol. A collection name must start with either
+/// a letter or a number, but not with an underscore.
+///
+/// @subsubsection AqlAttributeNames Attribute names
+/// 
+/// When referring to attributes of documents from a collection, the fully
+/// qualified attribute name must be used. This is because multiple 
+/// collections with ambigious attribute names might be used in a query.
+/// To avoid any ambiguity, it is not allowed to refer to an unqualified 
+/// attribute name.
+/// 
+/// @verbinclude aqlattributenamesvalid
+///
+/// In the above example, the attribute names @LIT{active}, @LIT{name},
+/// @LIT{id}, and @LIT{userId} are qualified using the collection names
+/// they belong to (@LIT{u} and @LIT{f} respectively).
+///
+/// @subsubsection AqlVariableNames Variable names
+/// 
+/// AQL offers the user to assign values to additional variables in a query.
+/// All variables that are assigned a value must have a name that is unique
+/// within the context of the query. Variable names must be different from 
+/// the names of any collection name used in the same query.
+///
+/// @verbinclude aqlvariablenames
+///
+/// In the above query, @LIT{users} is a collection name, and both @LIT{u} 
+/// and @LIT{friends} are variable names. This is because the @LIT{FOR} and
+/// @LIT{LET} operations need target variables to store their intermediate
+/// results.
+///
+/// Allowed characters in variable names are the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case), the numbers @LIT{0} to @LIT{9} and the 
+/// underscore (@LIT{_}) symbol. A variable name must not start with a number. 
+/// If a variable name starts with the underscore character, it must also 
+/// contain at least one letter (a-z or A-Z).
+///
+/// @subsection AqlTypes Data types
+///
+/// AQL supports both primitive and compound data types. The following types are
+/// available:
+/// - primitive types: consisting of exactly one value
+///   - null: an empty value, also: the absence of a value
+///   - bool: boolean truth value with possible values @LIT{false} and @LIT{true}
+///   - number: signed (real) number
+///   - string: UTF-8 encoded text value
+/// - compound types: consisting of multiple values
+///   - list: sequence of values, referred to by their positions
+///   - document: sequence of values, referred to by their names
+///
+/// @subsubsection AqlLiteralsNumber Numeric literals
+///
+/// Numeric literals can be integers or real values. They can optionally be
+/// signed using the @LIT{+} or @LIT{-} symbols. The scientific notation is also
+/// supported.
+///
+/// @verbinclude aqlnumbers
+///
+/// All numeric values are treated as 64-bit double-precision values internally. 
+/// The internal format used is IEEE 754.
+///
+/// @subsubsection AqlLiteralsString String literals
+///
+/// String literals must be enclosed in single or double quotes. If the used 
+/// quote character is to be used itself within the string literal, it must be 
+/// escaped using the backslash (@LIT{\\}) symbol. 
+/// Backslash literals themselves also be escaped using a backslash.
+/// 
+/// @verbinclude aqlstrings
+///
+/// All string literals must be UTF-8 encoded. It is currently not possible to use 
+/// arbitrary binary data if it is not UTF-8 encoded. A workaround to use
+/// binary data is to encode the data using base64 or other algorithms on the
+/// application side before storing, and decoding it on application side after
+/// retrieval.
+/// 
+/// @subsubsection AqlCompoundLists Lists
+///
+/// AQL supports two compound types:
+/// - lists: a composition of unnamed values, each accessible by their positions
+/// - documents: a composition of named values, each accessible by their names
+///
+/// The first supported compound type is the list type. Lists are effectively
+/// sequences of (unnamed/anonymous) values. Individual list elements can be 
+/// accessed by their positions. The order of elements in a list is important.
+/// 
+/// An @LIT{list-declaration} starts with the @LIT{[} symbol and ends 
+/// with the @LIT{]} symbol. A @LIT{list-declaration} contains zero or
+/// many @LIT{expression}s, seperated from each other with the 
+/// @LIT{\,} symbol.
+///
+/// In the easiest case, a list is empty and thus looks like:
+/// 
+/// @verbinclude aqllistempty
+///
+/// List elements can be any legal @LIT{expression} values. Nesting of lists
+/// is supported.
+/// 
+/// @verbinclude aqllistvalues
+///
+/// @subsubsection AqlCompoundDocuments Documents
+///
+/// The other supported compound type is the document type. Documents are a 
+/// composition of zero to many attributes. Each attribute is a name/value pair. 
+/// Document attributes can be accessed individually by their names.
+///
+/// Document declarations start with the @LIT{\{} symbol and end with the 
+/// @LIT{\}} symbol. A document contains zero to many attribute declarations,
+/// seperated from each other with the @LIT{\,} symbol.
+/// In the simplest case, a document is empty. Its declaration would then be:
+///
+/// @verbinclude aqldocumentempty
+///
+/// Each attribute in a document is a name/value pair. Name and value of an 
+/// attribute are separated using the @LIT{:} symbol.
+///
+/// The attribute name is mandatory and must be specified as a quoted or 
+/// unquoted string. If a keyword is to be used as an attribute name, the name
+/// must be quoted.
+///
+/// Any valid expression can be used as an attribute value. That also means
+/// nested documents can be used as attribute values
+///
+/// @verbinclude aqlnamedattributes
+///
+/// @subsection AqlParameter Bind parameters
+///
+/// AQL supports the usage of bind parameters, thus allowing to separate the
+/// query text from literal values used in the query. It is good practice to 
+/// separate the query text from the literal values because this will prevent 
+/// (malicious) injection of keywords and other collection names into an existing 
+/// query. This injection would be dangerous because it might change the meaning 
+/// of an existing query.
+///
+/// Using bind parameters, the meaning of an existing query cannot be changed. 
+/// Bind parameters can be used everywhere in a query where literals can be used.
+///
+/// The syntax for bind parameters is @LIT{\@name} where @LIT{name} is the actual
+/// parameter name. The bind parameter values need to be passed when the query
+/// is executed, but not as part of the query text but in a separate data structure.
+///
+/// @verbinclude aqlbind
+///
+/// @subsection AqlTypeOrder Type and value order
+///
+/// When checking for equality or inequality or when determining the sort order of
+/// values, AQL uses a deterministic algorithm that takes both the data types and
+/// the actual values into account.
+///
+/// The compared operands are first compared by their data types, and only by their
+/// data values if the operands have the same data types.
+///
+/// The following type order is used when comparing data types:
+///
+/// @verbinclude aqltypeorder
+///
+/// This means @LIT{null} is the smallest type in AQL, and @LIT{document} is the type
+/// with the highest order. If the compared operands have a different type, then the
+/// comparison result is determined and the comparison is finished.
+///
+/// For example, the boolean @LIT{true} value will always be less than any numeric or
+/// string value, any list (even an empty list) or any document. Additionally, any string
+/// value (even an empty string) will always be greater than any numeric value, a 
+/// boolean value, @LIT{true}, or @LIT{false}. 
+///
+/// @verbinclude aqlcompareexamples1
+///
+/// If the two compared operands have the same data types, then the operands values
+/// are compared. For the primitive types (null, boolean, number, and string), the 
+/// result is defined as follows:
+/// 
+/// - null: @LIT{null} is equal to @LIT{null}
+/// - boolean:@LIT{false} is less than @LIT{true}
+/// - number: numeric values are ordered by their cardinal value
+/// - string: string values are ordered using a byte-wise comparison 
+///
+/// Note: unlike in SQL, @LIT{null} can be compared to any value, including @LIT{null}
+/// itself, without the result being converted into @LIT{null} automatically.
+///
+/// For compound, types the following special rules are applied:
+///
+/// Two list values are compared by comparing their individual elements position by
+/// position, starting at the first element. For each position, the element types are
+/// compared first. If the types are not equal, the comparison result is determined,
+/// and the comparison is finished. If the types are equal, then the values of the
+/// two elements are compared. 
+/// If one of the lists is finished and the other list still has an element at a
+/// compared position, then @LIT{null} will be used as the element value of the fully 
+/// traversed list.
+///
+/// If a list element is itself a compound value (a list or a document), then the
+/// comparison algorithm will check the element's sub values recursively.
+/// element's sub elements are compared recursively.
+///
+/// @verbinclude aqlcompareexamples2
+///
+/// Two documents operands are compared by checking attribute names and value. The
+/// attribute names are compared first. Before attribute names are compared, a 
+/// combined list of all attribute names from both operands is created and sorted.
+/// This means that the order in which attributes are declared in a document is not 
+/// relevant for comparing documents.
+///
+/// The combined list of attribute names is then traversed, and the respective 
+/// attributes from the two compared operands are then looked up. If one of the
+/// documents does not have an attribute with the sought name, its attribute value
+/// for the comparison is considered to be @LIT{null}.
+/// If the attribute is found in both compared, documents, the usual data type and
+/// data value comparison is performed as described before.
+///
+/// @verbinclude aqlcompareexamples2
+///
+/// @subsection AqlData Accessing data from collections
+///
+/// Collection data can be accessed by specifying a collection name in a query.
+/// A collection can be understood as a list of documents, and that is how they
+/// are treated in AQL. Documents from collections are normally accessing using
+/// the @LIT{FOR} keyword. Note that when iterating over documents from a collection,
+/// the order of documents is undefined. To traverse documents in an explicit and
+/// deterministic order, the @LIT{SORT} keyword should be used in addition.
+///
+/// Data in collections is stored in documents, with each document potentially 
+/// having different attributes than other documents. This is true even for documents
+/// of the same collection.
+///
+/// It is therefore quite normal to encounter documents that do not have some or
+/// all of the attributes that are queried in an AQL query. In this case, the 
+/// non-existing attributes in the document will be treated as if they would exist
+/// with a value of @LIT{null}.
+/// That means that comparing a document attribute to @LIT{null} will return true
+/// if the document has the particular attribute and the attribute has a value of
+/// @LIT{null}, or that the document does not have the particular attribute at all.
+///
+/// For example, the following query will return all documents from the collection
+/// @LIT{users} that have a value of @LIT{null} in the attribute @LIT{name}, plus
+/// all documents from @LIT{users} that do not have the @LIT{name} attribute at all:
+///
+/// @verbinclude aqlnull
+///
+/// Furthermore, @LIT{null} is less than any other value (excluding @LIT{null}
+/// itself). That means documents with non-existing attributes might be included
+/// in the result when comparing attribute values with the less than or less equal 
+/// operators.
+///
+/// For example, the following query with return all documents from the collection
+/// @LIT{users} that have an attribute @LIT{age} with a value less than @LIT{39}, but
+/// also all documents from the collection that do not have the attribute @LIT{age}
+/// at all.
+///
+/// @verbinclude aqlnull2
+/// 
+/// This behavior should always be taken into account when writing queries.
+/// 
+/// @subsection AqlOperators Operators
+///
+/// AQL supports a number of operators that can be used in expressions. 
+/// There are comparison, logical, arithmetic, and the ternary operator.
+///
+/// @subsubsection AqlOperatorsComparison Comparison operators
+///
+/// Comparison (or relational) operators compare two operands. They can be used
+/// with any input data types, and will return a boolean result value. 
+///
+/// The following comparison operators are supported:
+///
+/// - @LIT{==} equality
+/// - @LIT{!=} inequality
+/// - @LIT{<}  less than 
+/// - @LIT{<=} less or equal
+/// - @LIT{>}  greater than
+/// - @LIT{>=} greater or equal
+/// - @LIT{in} test if a value is contained in a list
+///
+/// The @LIT{in} operator expects the second operand to be of type list. All
+/// other operators accept any data types for the first and second operands.
+///
+/// Each of the comparison operators returns a boolean value if the comparison 
+/// can be evaluated and returns @LIT{true} if the comparison evaluates to true,
+/// and @LIT{false} otherwise.
+///
+/// @subsubsection AqlOperatorsLogical Logical operators
+///
+/// Logical operators combine two boolean operands in a logical operation and 
+/// return a boolean result value. 
+///
+/// The following logical operators are supported:
+///
+/// - @LIT{&&} logical and operator
+/// - @LIT{||} logical or operator
+/// - @LIT{!} logical not/negation operator
+///
+/// @verbinclude aqllogical
+///
+/// The @LIT{&&}, @LIT{||}, and @LIT{!} operators expect their input operands 
+/// to be boolean values each. If a non-boolean operand is used, the operation will
+/// fail with an error. In case all operands are valid, the result of each
+/// logical operator is a boolean value.
+///
+/// Both the @LIT{&&} and @LIT{||} operators use short-circuit evaluation and only
+/// evaluate the second operand if the result of the operation cannot be
+/// determined by checking the first operand alone.
+///
+/// @subsubsection AqlOperatorsArithmetic Arithmetic operators
+///
+/// Arithmetic operators perform an arithmetic operation on two numeric operands. The
+/// result of an arithmetic operation is again a numeric value. 
+/// operators are supported:
+///
+/// AQL supports the following arithmetic operators:
+///
+/// - @LIT{+} addition
+/// - @LIT{-} subtraction
+/// - @LIT{*} multiplication
+/// - @LIT{/} division
+/// - @LIT{%} modulus
+///
+/// These operators work with numeric operands only. Invoking any of the 
+/// operators with non-numeric operands will result in an error. An error will
+/// also be raised for some other edge cases as division by zero, numeric over- 
+/// or underflow etc.
+/// If both operands are numeric and the computation result is also valid, the
+/// result will be returned as a numeric value.
+///
+/// The unary plus and unary minus are supported as well.
+///
+/// @verbinclude aqlarithmetic
+///
+/// @subsubsection AQLOperatorTernary Ternary operator
+///
+/// AQL also supports a ternary operator that can be used for conditional 
+/// evaluation. The ternary operator expects a boolean condition as its 
+/// first operand, and it returns the result of the second operand if the
+/// condition evaluates to true, and the third operand otherwise. 
+/// 
+/// Example:
+///
+/// @verbinclude aqlternary
+///
+/// @subsubsection AQLOperatorsPrecedence Operator precedence
+///
+/// The operator precedence in AQL is as follows (lowest precedence first):
+///
+/// - @LIT{? :} ternary operator
+/// - @LIT{||} logical or
+/// - @LIT{&&} logical and
+/// - @LIT{==}, @LIT{!=} equality and inequality
+/// - @LIT{in} in operator
+/// - @LIT{<}, @LIT{<=}, @LIT{>=}, @LIT{>} less than, less equal,
+///   greater equal, greater than
+/// - @LIT{+}, @LIT{-} addition, subtraction
+/// - @LIT{*}, @LIT{/}, @LIT{%} multiplication, division, modulus
+/// - @LIT{!}, @LIT{+}, @LIT{-} logical negation, unary plus, unary minus
+/// - @LIT{[*]} expansion
+/// - @LIT{()} function call
+/// - @LIT{.} member access
+/// - @LIT{[]} indexed value access
+///
+/// Parentheses (@LIT{(} and @LIT{)}) can be used to enforce a different
+/// evaluation order.
+///
+/// @subsection AqlFunctions Functions
+///
+/// AQL supports functions to allow more complex computations. Functions can be
+/// called at any query position where an expression is allowed. The general function
+/// call syntax is:
+///
+/// @verbinclude aqlfunctionsyntax
+///
+/// @LIT{FUNCTIONNAME} is the name of the function to be called, and @LIT{arguments} 
+/// is a comma-separated list of function arguments. If a function does not need any 
+/// arguments, the argument list can be left empty. However, even if the argument list 
+/// is empty the parentheses around it are still mandatory to make function calls 
+/// distinguishable from variable names. Function names are case-sensitive.
+/// Currently, all functions in AQL have upper-cased names.
+///
+/// @subsubsection AqlFunctionsCasting Type cast functions
+///
+/// As mentioned before, some of the operators expect their operands to have a
+/// certain data type. For example, the logical operators expect their operands to
+/// be boolean values, and the arithmetic operators expect their operands to be 
+/// numeric values. 
+/// If an operation is performed with operands of an unexpect type, the operation
+/// will fail with an error. To avoid such failures, value types can be converted
+/// explicitly in a query. This is called type casting.
+///
+/// In an AQL query, type casts are performed only upon request and not implicitly.
+/// This helps avoiding unexpected results. All type casts have to be performed
+/// by invoking a type cast function. The following type cast functions are
+/// available:
+///
+/// - @LIT{TONULL}: takes an input operand of any type and returns a @LIT{null} value
+/// - @LIT{TOBOOL}: takes an input operand of any type and converts it into the appropriate 
+///   boolean value
+/// - @LIT{TONUMBER}: takes an input operand of any type and converts it into
+///   a numeric value
+/// - @LIT{TOSTRING}: takes an input operand of any type and converts it into a string
+///   value
+///
+/// Each of the above functions takes an operand of any data type and returns a result
+/// value of the requested type.
+///
+/// @subsubsection AqlFunctionsChecking Type check functions
+///
+/// AQL also offers functions to check the data type of a value at runtime. The 
+/// following type check functions are available:
+///
+/// - @LIT{ISNULL}: checks whether the argument is a @LIT{null} value
+/// - @LIT{ISBOOL}: checks whether the argument is a boolean value
+/// - @LIT{ISNUMBER}: checks whether the argument is a numeric value
+/// - @LIT{ISSTRING}: checks whether the argument is a string value
+/// - @LIT{ISLIST}: checks whether the argument is a list value
+/// - @LIT{ISDOCUMENT}: checks whether the argument is a document value
+///
+/// Each of the above functions accepts an operand of any type and returns a boolean
+/// result value. 
+///
+/// @subsubsection AqlFunctionsNumeric Numeric functions
+///
+/// AQL offers some numeric functions for calculations. The following functions are
+/// supported:
+///
+/// - @LIT{FLOOR}: returns the integer closest but not greater to the specified value
+/// - @LIT{CEIL}: returns the integer closest but not less than the specified value
+/// - @LIT{ROUND}: returns the integer closest to the specified value
+/// - @LIT{ABS}: returns the absolute value
+/// - @LIT{RAND}: returns a random number between 0 and 1
+///
+/// @subsubsection AqlFunctionsString String functions
+///
+/// AQL offers the following string-related functions:
+///
+/// - @LIT{CONCAT}: concatenate the strings passed as arguments and return the result
+///   string
+///
+/// @subsubsection AqlFunctionsList List functions
+///
+/// AQL supports the following functions to operate on list values:
+///
+/// - @LIT{LENGTH}: returns the length (number of elements) of a list
+/// - @LIT{MIN}: returns the smallest element of a list
+/// - @LIT{MAX}: returns the greatest element of a list
+///
+/// Apart from these functions, AQL also offers several language constructs (e.g. 
+/// @LIT{FOR}, @LIT{SORT}, @LIT{LIMT}, @LIT{COLLECT}) to operate on lists.
+///
+/// @section AqlOperations High-level operations
+///
+/// @subsection AqlOperationFor FOR
+///
+/// The @LIT{FOR} keyword can be to iterate over all elements of a list.
+/// The general syntax is:
+/// 
+/// @verbinclude aqlforsyntax
+///
+/// Each list element returned by @LIT{expression} is visited exactly once. It is
+/// required that @LIT{expression} returns a list in all cases. The empty list is
+/// allowed, too. The current list element is made available for further processing 
+/// in the variable specified by @LIT{variable-name}.
+///
+/// @verbinclude aqlfor 
+///
+/// This will iterate over all elements from the list @LIT{users} (note: this list
+/// consists of all documents from the collection named "users" in this case) and
+/// make the current list element available in variable @LIT{u}. @LIT{u} is not modified
+/// in this example but simply pushed into the result using the @LIT{RETURN} keyword. 
+///
+/// Note: when iterating over collection-based lists as shown here, the order of 
+/// documents is undefined unless an explicit sort order is defined using a @LIT{SORT}
+/// statement.
+///
+/// The variable introduced by @LIT{FOR} is available until the scope the @LIT{FOR} is
+/// placed in is closed. 
+///
+/// Another example that uses a statically declared list of values to iterate over:
+///
+/// @verbinclude aqlforstatic
+///
+/// Nesting of multiple @LIT{FOR} statements is allowed, too. When @LIT{FOR} statements
+/// are nested, a cross product of the list elements returned by the individual @LIT{FOR}
+/// statements will be created.
+///
+/// @verbinclude aqlfornested
+///
+/// In this example, there are two list iterations: an outer iteration
+/// over the list @LIT{users} plus an inner iteration over the list @LIT{locations}.
+/// The inner list is traversed as many times as there are elements in the outer
+/// list. 
+/// For each iteration, the current values of @LIT{users} and @LIT{locations} are 
+/// made available for further processing in the variable @LIT{u} and @LIT{l}.
+///
+/// @subsection AqlOperationReturn RETURN
+///
+/// The @LIT{RETURN} statement can (and must) be used to produce the result of a query.
+/// It is mandatory to specify a @LIT{RETURN} statement at the end of each block in a query,
+/// otherwise the query result would be undefined.
+///
+/// The general syntax for @LIT{return} is:
+///
+/// @verbinclude aqlreturnsyntax
+///
+/// The @LIT{expression} returned by @LIT{RETURN} is produced for each iteration the @LIT{RETURN}
+/// statement is placed in. That means the result of a @LIT{RETURN} statement is always a list 
+/// (this includes the empty list).
+/// To return all elements from the currently iterated list without modification, the following
+/// simple form can be used:
+///
+/// @verbinclude aqlreturn
+///
+/// As @LIT{RETURN} allows specifying an expression, arbitrary computations can be performed to
+/// calculate the result elements. Any of the variables valid in the scope the @LIT{RETURN} is 
+/// placed in can be used for the computations.
+///
+/// Note: return will close the current scope and eliminate all local variables in it.
+///
+/// @subsection AqlOperationFilter FILTER
+///
+/// The @LIT{FILTER} statement can be used to restrict the results to elements that match an
+/// arbitrary logical condition.
+/// The general syntax is:
+///
+/// @verbinclude aqlfiltersyntax
+///
+/// @LIT{condition} must be a condition that evaluates to either @LIT{false} or @LIT{true}. If
+/// the condition result is false, the current element is skipped, so it will not be processed
+/// further and not be part of the result. If the condition is true, the current element is
+/// not skipped and can be further processed.
+///
+/// @verbinclude aqlfilter
+///
+/// In the above example, all list elements from @LIT{users} will be included that have an
+/// attribute @LIT{active} with value @LIT{true} and that have an attribute @LIT{age} with a 
+/// value less than @LIT{39}. All other elements from @LIT{users} will be skipped and not
+/// be included the result produced by @LIT{RETURN}.
+/// 
+/// It is allowed to specifiy multiple @LIT{FILTER} statements in a query, and even in the
+/// same block. If multiple @LIT{FILTER} statements are used, their results will be combined
+/// with a logical and, meaning all filter conditions must be true to include an element.
+///
+/// @verbinclude aqlfiltermultiple
+///
+/// @subsection AqlOperationSort SORT
+///
+/// The @LIT{SORT} statement will force a sort of the list of already produced intermediate 
+/// results in the current block. @LIT{SORT} allows specifying one or multiple sort criteria and
+/// directions. 
+/// The general syntax is:
+///
+/// @verbinclude aqlsortsyntax
+///
+/// Specifiyng the @LIT{direction} is optional. The default (implict) direction for 
+/// a sort is the ascending order. To explicitly specify the sort direction, the keywords 
+/// @LIT{ASC} (ascending) and @LIT{DESC} can be used. Multiple sort criteria can be
+/// separated using commas.
+///
+/// Note: when iterating over collection-based lists, the order of documents is always
+/// undefined unless an explicit sort order is defined using @LIT{SORT}.
+///
+/// @verbinclude aqlsort
+///
+/// @subsection AqlOperationLimit LIMIT
+///
+/// The @LIT{LIMIT} statement allows slicing the list of result documents using an offset 
+/// and a count. It reduces the number of elements in the result to at most the specified
+/// number.
+/// Two general forms of @LIT{LIMIT} are followed:
+///
+/// @verbinclude aqllimitsyntax
+///
+/// The first form allows specifying only the @LIT{count} value whereas the second form 
+/// allows specifying both @LIT{offset} and @LIT{count}. The first form is identical using
+/// the second form with an @LIT{offset} value of @LIT{0}. 
+///
+/// The @LIT{offset} value specifies how many elements from the result shall be discarded.
+/// It must be 0 or greater. The @LIT{count} value specifies how many elements should be
+/// at most included in the result.
+/// 
+/// @verbinclude aqllimit
+///
+/// @subsection AqlOperationLet LET
+///
+/// The @LIT{LET} statement can be used to assign an arbitrary value to a variable. 
+/// The variable is then introduced in the scope the @LIT{LET} statement is placed in.
+/// The general syntax is:
+///
+/// @verbinclude aqlletsyntax
+///
+/// @LIT{LET} statements are mostly used to declare complex computations and to avoid
+/// repeated computations of the same value at multiple parts of a query.
+///
+/// @verbinclude aqllet
+///
+/// In the above example, the computation of the number of recommendations is factored
+/// out using a @LIT{LET} statement, thus avoiding computing the value twice in the
+/// @LIT{RETURN} statement.
+///
+/// Another use case for @LIT{LET} is to declare a complex computation in a subquery,
+/// making the whole query more readable.
+/// 
+/// @verbinclude aqllet2
+///
+/// @subsection AqlOperationCollect COLLECT
+///
+/// The @LIT{COLLECT} keyword can be used to group a list by one or multiple 
+/// group criteria.
+/// The two general syntaxes for @LIT{COLLECT} are:
+///
+/// @verbinclude aqlcollectsyntax
+///
+/// The first form only groups the result by the defined group criteria defined
+/// by @LIT{expression}. In order to further process the results produced by 
+/// @LIT{COLLECT}, a new variable (specified by @LIT{variable-name} is introduced.
+/// This variable contains the group value.
+///
+/// The second form does the same as the first form, but additionally introduces
+/// a variable (specified by @LIT{groups}) that contains all elements that fell into
+/// the group. Specifying the @LIT{INTO} clause is optional-
+///
+/// @verbinclude aqlcollect
+///
+/// In the above example, the list of @LIT{users} will be grouped by the attribute 
+/// @LIT{city}. The result is a new list of documents, with one element per distinct
+/// @LIT{city} value. The elements from the original list (here: @LIT{users}) per city
+/// are made available in the variable @LIT{g}. This is due to the @LIT{INTO} clause.
+///
+/// @LIT{COLLECT} also allows specifying multiple group criteria. Individual group
+/// criteria can be separated by commas.
+///
+/// @verbinclude aqlcollect2
+///
+/// In the above example, the list of @LIT{users} is grouped by first names and ages
+/// first, and for each distinct combination of first name and age, the number of
+/// users found is returned.
+///
+/// Note: the @LIT{COLLECT} statement eliminates all local variables in the current 
+/// scope. After @LIT{COLLECT} only the variables introduced by @LIT{COLLECT} itself
+/// are available.
+///
+/// @section AqlAdvanced Advanced features
+///
+/// @subsection AqlSubqueries Subqueries
+///
+/// Whereever an expression is allowed in AQL, a subquery can be placed. A subquery
+/// is a query part that can introduce its own local variables without affecting
+/// variables and values in its outer scope(s).
+///
+/// @verbinclude aqlsubquery
+///
+/// @subsection AqlExpansion Variable expansion
+///
+/// In order to access a named attribute from all elements in a list easily, 
+/// AQL offers the shortcut operator @LIT{[*]} for variable expansion.
+///
+/// Using the @LIT{[*]} operator with a variable will iterate over all elements
+/// in the variable thus allowing to access a particular attribute of each element.
+/// It is required that the expanded variable is a list.
+/// The result of the @LIT{[*]} operator is again a list.
+/// 
+/// @verbinclude aqlexpansion
+///
+/// In the above example, the attribute @LIT{name} is accessed for each element
+/// in the list @LIT{u.friends}. The result is a flat list of friend names, made 
+/// available as the attribute @LIT{friendNames}.
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
