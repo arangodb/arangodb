@@ -1,0 +1,2 @@
+COLLECT variable-name = expression
+COLLECT variable-name = expression INTO groups
