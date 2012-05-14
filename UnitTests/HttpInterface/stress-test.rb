@@ -23,7 +23,7 @@ $doc_cv = ConditionVariable.new
 ## print version number of the server
 ################################################################################
 
-doc = ArangoDB.get("/version")
+doc = ArangoDB.get("/_admin/version")
 
 puts "starting stress test, ArangoDB #{doc.parsed_response['version']}"
 
