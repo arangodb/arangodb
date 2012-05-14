@@ -148,7 +148,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"100px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -1095,6 +1095,7 @@ var logTable = $('#logTableID').dataTable({
 
   $('#submitLogSearch').live('click', function () {  
 
+    hideLogPagination(); 
     var content = $('#logSearchField').val();
     var selected = $("#tabs").tabs( "option", "selected" ); 
     
@@ -1189,12 +1190,14 @@ var logTable = $('#logTableID').dataTable({
       contentType: "application/json",
       processData: false, 
       success: function(data) {
+        var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<b><font color=green>' + JSON.stringify(data) + '</font></b>'); 
+        $("#queryOutput").append('<font color=green>' + JSON.stringify(temp.errorMessage) + '</font>'); 
       },
       error: function(data) {
+        var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<b><font color=red>' + JSON.stringify(data) + '</font></b>'); 
+        $("#queryOutput").append('<font color=red>' + JSON.stringify(temp.errorMessage) + '</font>'); 
       }
     });
   });
@@ -1739,7 +1742,11 @@ $(function() {
 ///////////////////////////////////////////////////////////////////////////////
 /// Log tables pagination  
 ///////////////////////////////////////////////////////////////////////////////
-function createLogTable(loglevel) { 
+function createLogTable(loglevel) {
+ 
+  $("#logSearchField").val(""); 
+  $(":input").focus(); 
+  showLogPagination();
   currentPage = 1;  
   currentLoglevel = loglevel;  
   var url = "/_admin/log?level="+loglevel+"&size=10";
@@ -2249,3 +2256,20 @@ function is_int(value){
       return false;
   }
 }
+
+function showLogPagination () {
+  $('#logToolbarAll').show(); 
+  $('#logToolbarCrit').show(); 
+  $('#logToolbarWarn').show(); 
+  $('#logToolbarDebu').show(); 
+  $('#logToolbarInfo').show(); 
+}
+
+function hideLogPagination() {
+  $('#logToolbarAll').hide(); 
+  $('#logToolbarCrit').hide(); 
+  $('#logToolbarWarn').hide(); 
+  $('#logToolbarDebu').hide(); 
+  $('#logToolbarInfo').hide(); 
+}
+

@@ -27,6 +27,7 @@
 
 #include <BasicsC/logging.h>
 
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-codegen-js.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
@@ -871,6 +872,20 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for indexed collection access
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessIndexedCollection (TRI_aql_codegen_js_t* const generator,
+                                      const TRI_aql_node_t* const node,
+                                      const TRI_vector_pointer_t* const candidates) {
+  TRI_DumpRangesAql(candidates);
+
+  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS('");
+  ScopeOutput(generator, TRI_AQL_NODE_STRING(node));
+  ScopeOutput(generator, "')");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for collection access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1187,12 +1202,19 @@ static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
 static void ProcessFor (TRI_aql_codegen_js_t* const generator, 
                         const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, " = ");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+
+  if (expressionNode->_type == AQL_NODE_COLLECTION && TRI_AQL_NODE_DATA(node) != NULL) {
+    ProcessIndexedCollection(generator, expressionNode, (TRI_vector_pointer_t*) TRI_AQL_NODE_DATA(node));
+  }
+  else {
+    ProcessNode(generator, expressionNode);
+  }
   ScopeOutput(generator, ";\n");
   
   StartFor(generator, sourceRegister, nameNode->_value._value._string);

@@ -359,6 +359,7 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
+	Ahuacatl/ahuacatl-index.$(OBJEXT) \
 	Ahuacatl/ahuacatl-optimiser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
@@ -785,6 +786,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-index.c \
         Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
@@ -1723,6 +1725,8 @@ Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-index.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-optimiser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1947,6 +1951,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-grammar.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-index.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-optimiser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
@@ -2177,6 +2182,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-optimiser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@

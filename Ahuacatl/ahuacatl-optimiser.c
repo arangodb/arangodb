@@ -32,7 +32,7 @@
 
 #include "V8/v8-execution.h"
 
-#undef RANGE_OPTIMIZER  
+#undef RANGE_OPTIMIZER 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
@@ -115,12 +115,12 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
-
+  
+    // iterate over all possible field accesses we found in this scope
     len = scope->_ranges->_length;
     for (j = 0; j < len; ++j) {
       TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(scope->_ranges, j);
-      TRI_aql_field_access_t* previous;
-      int compareResult;
+      TRI_vector_pointer_t* previous;
 
       // check if the range's variable name is the same as the for variable's name
       if (!TRI_IsPrefixString(fieldAccess->_fieldName, prefix)) { 
@@ -130,17 +130,9 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
 
       // names match
 
-      // check if current or previous range are better
-      previous = (TRI_aql_field_access_t*) scope->_node->_value._value._data; 
-      compareResult = TRI_PickAccessAql(previous, fieldAccess);
-      
-      if (compareResult == 1) {
-        // clone access and copy it into node
-        if (previous) {
-          TRI_FreeAccessAql(previous);
-        }
-        scope->_node->_value._value._data = (void*) TRI_CloneAccessAql(context, fieldAccess);
-      }
+      // merge the field access found into the already existing field accesses for the node
+      previous = (TRI_vector_pointer_t*) scope->_node->_value._value._data; 
+      scope->_node->_value._value._data = (void*) TRI_AddAccessAql(context, previous, fieldAccess);
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
