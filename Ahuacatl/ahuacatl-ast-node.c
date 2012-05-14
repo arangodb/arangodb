@@ -942,6 +942,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     TRI_aql_function_t* function;
     TRI_associative_pointer_t* functions;
     char* upperName;
+    size_t actualCount;
 
     assert(context->_vocbase);
     functions = context->_vocbase->_functions;
@@ -959,6 +960,14 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     if (!function) {
       // function name is unknown
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+      return NULL;
+    }
+
+    // validate number of function call arguments
+    assert(parameters->_type == AQL_NODE_LIST);
+    actualCount = parameters->_members._length;
+    if (actualCount < function->_minArgs || actualCount > function->_maxArgs) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, name);
       return NULL;
     }
 

@@ -70,6 +70,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_TOO_MANY_COLLECTIONS\" : { \"code\" : 1522, \"message\" : \"too many collections\" }, \n"
   "  \"ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED\" : { \"code\" : 1530, \"message\" : \"document attribute '%s' is assigned multiple times\" }, \n"
   "  \"ERROR_QUERY_FUNCTION_NAME_UNKNOWN\" : { \"code\" : 1540, \"message\" : \"usage of unknown function '%s'\" }, \n"
+  "  \"ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH\" : { \"code\" : 1541, \"message\" : \"invalid number of arguments for function '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETERS_INVALID\" : { \"code\" : 1550, \"message\" : \"invalid structure of bind parameters\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_MISSING\" : { \"code\" : 1551, \"message\" : \"no value specified for declared bind parameter '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_UNDECLARED\" : { \"code\" : 1552, \"message\" : \"bind parameter '%s' was not declared in the query\" }, \n"
