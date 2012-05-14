@@ -46,6 +46,7 @@ DEBUG = False
 ################################################################################
 
 r1 = re.compile(r'\\item \\doxyref{(.*)}{p.}{(.*)} *')
+r2 = re.compile(r' *\\appendix *')
 
 f = open(file_name, "r")
 
@@ -67,7 +68,15 @@ for line in f:
             titel = m.group(1)
             inc = m.group(2)
 
-            print "\\chapter{%s}\\input{%s}" % (titel, inc)
+            print "\\chapter{%s}\\label{%s}\\input{%s}" % (titel, inc, inc)
+
+            continue
+        #endif
+
+        m = r2.match(line)
+
+        if m:
+            print "\\appendix"
         #endif
     #endif
 #endfor

@@ -32,7 +32,8 @@
 /// <ul>
 ///  <li>@ref UserManualBasics</li>
 ///  <li>@ref SimpleQueries</li>
-///  <li>ArangoQueryLanguage</li>
+///  <li>@ref Aql</li>
+///
 ///  @latexonly\appendix@endlatexonly
 ///  <li>@ref CommandLine</li>
 ///  <li>@ref Glossary</li>
@@ -40,9 +41,7 @@
 /// @else
 /// @copydetails UserManualBasicsTOC
 /// @copydetails SimpleQueriesTOC
-/// <ul>
-///  <li>Arango Query Language</li>
-/// </ul>
+/// @copydetails AqlTOC
 /// @copydetails CommandLineTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +54,6 @@
 ///   <ul>
 ///    <li>@ref UserManualServerStartStop
 ///     <ul>
-///      <li>@ref UserManualServerStartStopHttp</li>
 ///      <li>@ref UserManualServerStartStopOptions</li>
 ///     </ul>
 ///    </li>
@@ -147,11 +145,8 @@
 /// You should never start more than one server for the same database,
 /// independent from the mode of operation.
 ///
-/// @subsection UserManualServerStartStopHttp Starting the HTTP Server
-//////////////////////////////////////////////////////////////////////
-///
 /// The following command starts the ArangoDB database in server mode. You will
-/// be able to access the server using HTTP request on port 8529. See @ref
+/// be able to access the server using HTTP requests on port 8529. See @ref
 /// UserManualServerStartStopOptions "below" for a list of frequently used
 /// options, see @ref CommandLine "here" for a complete list.
 ///
@@ -204,8 +199,9 @@
 ///
 /// @LIT{http://localhost:8529/_admin}
 ///
-/// Unless you have loaded an application into the ArangoDB server which remaps
+/// Unless you have loaded an application into the ArangoDB server, which remaps
 /// the paths, the front-end will also be available under
+///
 /// @LIT{http://localhost:8529/}.
 ///
 /// @htmlonly <img src="images/fe1.png" alt="ArangoDB Fron-End">@endhtmlonly

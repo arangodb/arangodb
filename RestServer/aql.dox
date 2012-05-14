@@ -26,9 +26,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page AqlTOC
+///
+/// <ul>
+///  <li>@ref Aql
+///   <ul>
+///    <li>@ref AqlPurpose
+///    </li>
+///    <li>@ref AqlBasics
+///     <ul>
+///      <li>@ref AqlWhitespace</li>
+///      <li>@ref AqlKeywords</li>
+///      <li>@ref AqlNames</li>
+///      <li>@ref AqlTypes</li>
+///      <li>@ref AqlParameter</li>
+///      <li>@ref AqlTypeOrder</li>
+///      <li>@ref AqlData</li>
+///      <li>@ref AqlOperators</li>
+///      <li>@ref AqlFunctions</li>
+///     </ul>
+///    </li>
+///    <li>@ref AqlOperations
+///     <ul>
+///      <li>@ref AqlWhitespace</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page Aql ArangoDB Query Language (AQL)
 ///
-/// @section AqlPurpose Purpose
+/// @EMBEDTOC{AqlTOC}
+///
+/// @section AqlPurpose Introduction
 ///
 /// The ArangoDB query language (AQL) can be used to retrieve data that is 
 /// stored in ArangoDB. The general workflow when executing a query is as follows:
@@ -62,7 +95,7 @@
 /// However, for the parser any whitespace (spaces, carriage returns, line 
 /// feeds, and tab stops) does not have any special meaning except that it
 /// separates individual tokens in the query. Whitespace within strings or
-/// names must be enclosed in quotes in order to be preseved.
+/// names must be enclosed in quotes in order to be preserved.
 ///
 /// @subsection AqlKeywords Keywords
 ///
@@ -80,7 +113,8 @@
 /// of multiple of the above operations.
 ///
 /// An example AQL query might look like this:
-/// @verbinclude aqlqueryintro
+///
+/// @EXAMPLE{aqlqueryintro,find all active newbies}
 ///
 /// In this example query, the terms @LIT{FOR}, @LIT{FILTER}, and @LIT{RETURN}
 /// initiate the higher-level operation according to their name. These terms
@@ -101,6 +135,7 @@
 ///
 /// In addition to the higher-level operations keywords, there are other keywords.
 /// The current list of keywords is:
+///
 /// - FOR
 /// - RETURN
 /// - FILTER
@@ -131,7 +166,7 @@
 /// backticks allows using otherwise-reserved keywords as names. An example
 /// for this is:
 ///
-/// @verbinclude aqlnamebackticks
+/// @EXAMPLE{aqlnamebackticks,quoting keywords}
 ///
 /// Due to the backticks, @LIT{filter} and @LIT{sort} are interpreted as names
 /// and not as keywords here.
@@ -155,7 +190,7 @@
 /// To avoid any ambiguity, it is not allowed to refer to an unqualified 
 /// attribute name.
 /// 
-/// @verbinclude aqlattributenamesvalid
+/// @EXAMPLE{aqlattributenamesvalid,active user with active friends}
 ///
 /// In the above example, the attribute names @LIT{active}, @LIT{name},
 /// @LIT{id}, and @LIT{userId} are qualified using the collection names
@@ -168,7 +203,7 @@
 /// within the context of the query. Variable names must be different from 
 /// the names of any collection name used in the same query.
 ///
-/// @verbinclude aqlvariablenames
+/// @EXAMPLE{aqlvariablenames,variable assignment}
 ///
 /// In the above query, @LIT{users} is a collection name, and both @LIT{u} 
 /// and @LIT{friends} are variable names. This is because the @LIT{FOR} and
@@ -185,6 +220,7 @@
 ///
 /// AQL supports both primitive and compound data types. The following types are
 /// available:
+///
 /// - primitive types: consisting of exactly one value
 ///   - null: an empty value, also: the absence of a value
 ///   - bool: boolean truth value with possible values @LIT{false} and @LIT{true}
@@ -223,6 +259,7 @@
 /// @subsubsection AqlCompoundLists Lists
 ///
 /// AQL supports two compound types:
+///
 /// - lists: a composition of unnamed values, each accessible by their positions
 /// - documents: a composition of named values, each accessible by their names
 ///
@@ -230,9 +267,9 @@
 /// sequences of (unnamed/anonymous) values. Individual list elements can be 
 /// accessed by their positions. The order of elements in a list is important.
 /// 
-/// An @LIT{list-declaration} starts with the @LIT{[} symbol and ends 
+/// An @LIT{list-declaration} starts with the @LIT{[} symbol and ends
 /// with the @LIT{]} symbol. A @LIT{list-declaration} contains zero or
-/// many @LIT{expression}s, seperated from each other with the 
+/// many @LIT{expression}s, seperated from each other with the
 /// @LIT{\,} symbol.
 ///
 /// In the easiest case, a list is empty and thus looks like:
@@ -285,7 +322,7 @@
 /// parameter name. The bind parameter values need to be passed when the query
 /// is executed, but not as part of the query text but in a separate data structure.
 ///
-/// @verbinclude aqlbind
+/// @EXAMPLE{aqlbind,using a bind variable}
 ///
 /// @subsection AqlTypeOrder Type and value order
 ///
@@ -380,7 +417,7 @@
 /// @LIT{users} that have a value of @LIT{null} in the attribute @LIT{name}, plus
 /// all documents from @LIT{users} that do not have the @LIT{name} attribute at all:
 ///
-/// @verbinclude aqlnull
+/// @EXAMPLE{aqlnull,all users without a name}
 ///
 /// Furthermore, @LIT{null} is less than any other value (excluding @LIT{null}
 /// itself). That means documents with non-existing attributes might be included
@@ -392,7 +429,7 @@
 /// also all documents from the collection that do not have the attribute @LIT{age}
 /// at all.
 ///
-/// @verbinclude aqlnull2
+/// @EXAMPLE{aqlnull2,all users younger than 39}
 /// 
 /// This behavior should always be taken into account when writing queries.
 /// 

@@ -1878,11 +1878,10 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It
-/// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
-/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
-/// the document.
+/// The @FN{document} method finds a document given it's identifier.  It returns
+/// the document. Note that the returned document contains two
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
+/// document-handle and @LIT{_rev} the revision of the document.
 ///
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
@@ -1899,17 +1898,17 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document for a document-handle:
+/// Returns the document for a document-handle:
 ///
-/// @verbinclude shell_read-document
+/// @TINYEXAMPLE{shell-read-document,read document from a collection}
 ///
 /// An error is raised if the document is unknown:
 ///
-/// @verbinclude shell_read-document-not-found
+/// @TINYEXAMPLE{shell-read-document-not-found,unknown handle}
 ///
 /// An error is raised if the handle is invalid:
 ///
-/// @verbinclude shell_read-document-bad-handle
+/// @TINYEXAMPLE{shell-read-document-bad-handle,invalid handle}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
@@ -3322,11 +3321,10 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It
-/// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
-/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
-/// the document.
+/// The @FN{document} method finds a document given it's identifier.  It returns
+/// the document. Note that the returned document contains two
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
+/// document handle and @LIT{_rev} the revision of the document.
 ///
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
@@ -3338,7 +3336,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document:
+/// Returns the document:
 ///
 /// @verbinclude shell_read-document-db
 ////////////////////////////////////////////////////////////////////////////////

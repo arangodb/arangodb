@@ -86,7 +86,8 @@ ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @note @FN{near} does not support negative skips.
+/// @note @FN{near} does not support negative skips. However, you can still use
+/// @FN{limit} followed to @FN{skip}.
 ///
 /// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
 ///////////////////////////////////////////////////////////////////////////////
@@ -112,11 +113,12 @@ ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
 ///
 /// To get the nearst two locations:
 ///
-/// @verbinclude simple-query-near
+/// @TINYEXAMPLE{simple-query-near,nearest two location}
 ///
-/// If you need the distance as well, then you can use:
+/// If you need the distance as well, then you can use the @FN{distance}
+/// operator:
 ///
-/// @verbinclude simple-query-near2
+/// @TINYEXAMPLE{simple-query-near2,nearest two location with distance in meter}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.near = function (lat, lon) {
@@ -139,14 +141,14 @@ ArangoEdgesCollection.prototype.near = ArangoCollection.prototype.near;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance()}
-///////////////////////////////////////////////////////////////////////////////////////
+/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})@LATEXBREAK.distance()}
+//////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// This will add an attribute @LIT{_distance} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
-////////////////////////////////////////////////////////////////////////////////////////////////
+/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})@LATEXBREAK.distance(@FA{name})}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
@@ -155,7 +157,7 @@ ArangoEdgesCollection.prototype.near = ArangoCollection.prototype.near;
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
-/// @verbinclude simple-query-within
+/// @TINYEXAMPLE{simple-query-within,within a radius}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
@@ -191,7 +193,7 @@ ArangoEdgesCollection.prototype.within = ArangoCollection.prototype.within;
 /// and a destination stored in the attribute @LIT{work}. Than you can use the
 /// @FN{geo} operator to select, which coordinates to use in a near query.
 ///
-/// @verbinclude simple-query-geo
+/// @TINYEXAMPLE{simple-query-geo,use a specific index}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.geo = function(loc, order) {
@@ -261,16 +263,41 @@ ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 ///
 /// @FUN{@FA{collection}.byExample(@FA{example})}
 ///
-/// Selects all documents of a collection that match the specified example and
-/// returns a cursor. Allowed attribute types for searching are numbers,
-/// strings, and boolean values.
+/// Selects all documents of a collection that match the specified
+/// example and returns a cursor. 
 ///
 /// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
 /// result. The result can be limited using the @FN{skip} and @FN{limit}
 /// operator.
 ///
-/// @note An attribute name of the form @LIT{a.b} is interpreted as attribute
-/// path, not as attribute.
+/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// not as attribute. If you use 
+/// 
+/// @LIT{{ a : { c : 1 }}} 
+///
+/// as example, then you will find all documents, such that the attribute
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. E.g., the document
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+///
+/// will match, but the document 
+///
+/// @LIT{{ a : { c : 1\, b : 1 }}}
+///
+/// will not.
+///
+/// However, if you use 
+///
+/// @LIT{{ a.c : 1 }}, 
+///
+/// then you will find all documents, which contain a sub-document in @LIT{a}
+/// that has an attribute @LIT{c} of value @LIT{1}. E.g., both documents 
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+///
+/// @LIT{{ a : { c : 1\, b : 1 }}}
+///
+/// will match.
 ///
 /// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
 ///
@@ -280,11 +307,11 @@ ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 ///
 /// Use @FN{toArray} to get all documents at once:
 ///
-/// @verbinclude simple18
+/// @TINYEXAMPLE{simple18,convert into a list}
 ///
 /// Use @FN{next} to loop over all documents:
 ///
-/// @verbinclude simple19
+/// @TINYEXAMPLE{simple19,iterate over the result-set}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExample = function () {
@@ -768,12 +795,8 @@ SimpleQuery.prototype.next = function() {
 /// @FUN{@FA{cursor}.dispose()}
 ///
 /// If you are no longer interested in any further results, you should call
-/// @FN{dispose} in order to free any resources associated with the query.
-/// After calling @FN{dispose} you can no longer access the query.
-///
-/// @EXAMPLES
-///
-/// @verbinclude simple5
+/// @FN{dispose} in order to free any resources associated with the cursor.
+/// After calling @FN{dispose} you can no longer access the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function() {
