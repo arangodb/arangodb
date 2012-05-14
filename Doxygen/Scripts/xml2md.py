@@ -423,9 +423,7 @@ def char_data(data):
     text = text.replace("\\n", "\n")
     text = text.replace("\\\\", "\\")
     text = text.replace("__~8__", "\\\\n")
-    
-    text = text.replace("<", "&lt;")
-
+   
     if verbatim:
         text = text.replace("\n", "__~2____~1__")
         text = "__~1__%s__~3__" % text
@@ -457,6 +455,10 @@ def finalize_string(text):
     # verbatim
     text = text.replace("__~1__", "    ")
     text = text.replace("__~2__", "\n")
+    
+    # really ugly, but fixes things that otherwise go wrong
+    # unfortunately we can't simply replace <>&"' in text values as this is wrong, either
+    text = text.replace("<tt><", "<tt>&lt;")
     
     return text
 #enddef
