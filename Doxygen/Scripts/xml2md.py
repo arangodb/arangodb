@@ -418,10 +418,15 @@ def char_data(data):
     text = repr(data)
     text = text[1 : len(text) - 1 ]
     
+    text = text.replace("\\'", "'")
     text = text.replace("\\\\n", "__~8__")
     text = text.replace("\\n", "\n")
+    text = text.replace("\\\\", "\\")
     text = text.replace("__~8__", "\\\\n")
     
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
+
     if verbatim:
         text = text.replace("\n", "__~2____~1__")
         text = "__~1__%s__~3__" % text
