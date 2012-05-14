@@ -38,9 +38,6 @@
         <a href="/_admin/html/index.html"><img src="../html/media/images/arangodb_logo.png"></a>
       </div>
 
-      <div id="menue-center">
-      </div>
-
       <div id="menue-right">
         <button class="minimal" id="Collections">Collections</button>
         <button class="minimal" id="Logs">Logs</button>
@@ -278,11 +275,13 @@
               </thead>
             </table>
             <div id="logToolbar">
-                <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-                <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-                <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-                <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-                <a id="logTableID_status">Showing</a>
+             <div id="logToolbarAll">
+             <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+             <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+             <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+             <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+             </div>
+            <a id="logTableID_status">Showing</a>
             </div>
           </div>
 
@@ -296,11 +295,13 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarCrit">
               <button class="enabled" id="critLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="critLogTableID_status">Showing</a>
+             </div>
             </div>
           </div>
         
@@ -314,10 +315,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarWarn">
               <button class="enabled" id="warnLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="warnLogTableID_status">Showing</a>
             </div>
           </div>
@@ -332,10 +335,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarInfo">
               <button class="enabled" id="infoLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="infoLogTableID_status">Showing</a>
             </div> 
           </div>
@@ -350,10 +355,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarDebu">
               <button class="enabled" id="debugLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="debugLogTableID_status">Showing</a>
             </div>
           </div>
@@ -384,12 +391,15 @@
       </div>
 
       <div id="queryView" style="display: none">
-        <form id="queryForm" method="post" onsubmit="return false">
-          <textarea class="editBox" id="queryContent"></textarea><br><button class="minimal" id="submitQuery">Post</button>
-        </form>   
-
         <div id="queryOutput">
         </div>
+        <form id="queryForm" method="post" onsubmit="return false">
+          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
+          <button class="minimal" id="submitQuery">Post</button>
+          <a href=https://github.com/triAGENS/ArangoDB/wiki/Aql>ArangoDB Query Language - click for more information</a>
+        <br></br>
+        </form>   
+
       </div>
 
     </div> 
