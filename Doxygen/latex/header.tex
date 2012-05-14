@@ -16,15 +16,22 @@
 \usepackage[hyphens]{url}
 \usepackage{doxygen}
 \usepackage{listings}
+\usepackage{ifthen}
 \lstset{language=C++,inputencoding=utf8,basicstyle=\footnotesize,breaklines=true,breakatwhitespace=true,tabsize=8,numbers=left }
 \makeindex
 \setcounter{tocdepth}{3}
 \let\DoxyVerbInclude=\undefined
 \renewcommand{\footrulewidth}{0.4pt}
+\newboolean{hascap}
 \newcommand{\examplecap}{}
+\setboolean{hascap}{false}
 \newcommand{\examplesize}{\ttfamily}
 \lstnewenvironment{DoxyVerbInclude}{%
-  \lstset{numbers=none,backgroundcolor=\color{lightgray},language=,basicstyle=\protect\examplesize,breaklines=true,breakatwhitespace=false,caption=\protect\examplecap,captionpos=below}%
+  \ifhascap%
+    \lstset{basicstyle=\protect\examplesize,caption=\protect\examplecap,numbers=none,backgroundcolor=\color{lightgray},language=,breaklines=true,breakatwhitespace=false,captionpos=below}%
+  \else%
+    \lstset{basicstyle=\protect\examplesize,numbers=none,backgroundcolor=\color{lightgray},language=,breaklines=true,breakatwhitespace=false,captionpos=below}%
+  \fi%
 }{%
 }
 \definecolor{gray}{gray}{.9}
