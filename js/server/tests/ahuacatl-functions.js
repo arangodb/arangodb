@@ -128,7 +128,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcat1 : function () {
       var expected = [ "theQuickBrownFoxJumps" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'Fox', 'Jumps')", true);
       assertEqual(expected, actual);
     },
 
@@ -138,7 +138,137 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcat2 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', null, 'Brown', null, 'アボカド', 'Jumps', '名称について')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concatseparator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparator1 : function () {
+      var expected = [ "the,Quick,Brown,Fox,Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCATSEPARATOR(',', 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concatseparator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparator2 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCATSEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test charlength function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCharLength1 : function () {
+      var expected = [ 13 ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHARLENGTH('the quick fox')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test charlength function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCharLength2 : function () {
+      var expected = [ 7 ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHARLENGTH('äöüÄÖÜß')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test charlength function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCharLength3 : function () {
+      var expected = [ 10 ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHARLENGTH('アボカド名称について')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLower1 : function () {
+      var expected = [ "the quick brown fox jumped" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('THE quick Brown foX JuMpED')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLower2 : function () {
+      var expected = [ "äöüäöüß アボカド名称について" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('äöüÄÖÜß アボカド名称について')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLower3 : function () {
+      var expected = [ "0123456789<>|,;.:-_#'+*@!\"$&/(){[]}?\\" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upper function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUpper1 : function () {
+      var expected = [ "THE QUICK BROWN FOX JUMPED" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('THE quick Brown foX JuMpED')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upper function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUpper2 : function () {
+      var expected = [ "ÄÖÜÄÖÜSS アボカド名称について" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('äöüÄÖÜß アボカド名称について')", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test substring function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSubstring1 : function () {
+      var expected = [ "the" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test substring function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSubstring2 : function () {
+      var expected = [ "quick" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test substring function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSubstring3 : function () {
+      var expected = [ "fox" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', -3)", true);
       assertEqual(expected, actual);
     },
 
@@ -196,6 +326,7 @@ function ahuacatlFunctionsTestSuite () {
         assertTrue(value >= 0.0 && value < 1.0);
       }
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge function
