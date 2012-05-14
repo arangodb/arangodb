@@ -1853,11 +1853,11 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_remove-document
+/// @TINYEXAMPLE{shell_remove-document,delete a document}
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_remove-document-conflict
+/// @TINYEXAMPLE{shell_remove-document-conflict,delete a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -1878,11 +1878,10 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It
-/// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
-/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
-/// the document.
+/// The @FN{document} method finds a document given it's identifier.  It returns
+/// the document. Note that the returned document contains two
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
+/// document-handle and @LIT{_rev} the revision of the document.
 ///
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
@@ -1899,17 +1898,17 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document for a document-handle:
+/// Returns the document for a document-handle:
 ///
-/// @verbinclude shell_read-document
+/// @TINYEXAMPLE{shell-read-document,read document from a collection}
 ///
 /// An error is raised if the document is unknown:
 ///
-/// @verbinclude shell_read-document-not-found
+/// @TINYEXAMPLE{shell-read-document-not-found,unknown handle}
 ///
 /// An error is raised if the handle is invalid:
 ///
-/// @verbinclude shell_read-document-bad-handle
+/// @TINYEXAMPLE{shell-read-document-bad-handle,invalid handle}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
@@ -2426,20 +2425,14 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
 /// Returns an object containing all collection figures.
 ///
 /// - @LIT{alive.count}: The number of living documents.
-///
 /// - @LIT{alive.size}: The total size in bytes used by all
 ///   living documents.
-///
 /// - @LIT{dead.count}: The number of dead documents.
-///
 /// - @LIT{dead.size}: The total size in bytes used by all
 ///   dead documents.
-///
 /// - @LIT{dead.deletion}: The total number of deletion markers.
-///
 /// - @LIT{datafiles.count}: The number of active datafiles.
 ///
-
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-figures
@@ -2770,11 +2763,11 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @verbinclude shell_update-document
+/// @TINYEXAMPLE{shell_update-document,updating a document}
 ///
 /// Use a document handle:
 ///
-/// @verbinclude shell_update-document-handle
+/// @TINYEXAMPLE{shell_update-document-handle,updating a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
@@ -2948,7 +2941,9 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 /// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
 /// must be documents or document references.
 ///
-/// @verbinclude shell_create-edge
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell_create-edge,create an edge}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
@@ -3298,11 +3293,11 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_remove-document-db
+/// @TINYEXAMPLE{shell_remove-document-db,delete a document}
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_remove-document-conflict-db
+/// @TINYEXAMPLE{shell_remove-document-conflict-db,delete a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
@@ -3322,11 +3317,10 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It
-/// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
-/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
-/// the document.
+/// The @FN{document} method finds a document given it's identifier.  It returns
+/// the document. Note that the returned document contains two
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
+/// document handle and @LIT{_rev} the revision of the document.
 ///
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
@@ -3338,7 +3332,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document:
+/// Returns the document:
 ///
 /// @verbinclude shell_read-document-db
 ////////////////////////////////////////////////////////////////////////////////
@@ -3383,7 +3377,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @verbinclude shell_update-document-db
+/// @TINYEXAMPLE{shell_update-document-db,updating a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {

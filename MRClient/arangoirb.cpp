@@ -344,7 +344,7 @@ static void RunShell (mrb_state* mrb) {
   console->open(! NoAutoComplete);
 
   while (true) {
-    char* input = console->prompt("avocirb> ");
+    char* input = console->prompt("arangoirb> ");
 
     if (input == 0) {
       break;
@@ -436,7 +436,7 @@ int main (int argc, char* argv[]) {
   }
 
   printf("\n");
-  printf("Welcome to avocirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+  printf("Welcome to arangoirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
   printf("Using MRUBY %s engine. Copyright (c) 2012 mruby developers.\n", TRI_MRUBY_VERSION);

@@ -173,6 +173,9 @@ replDict["e_xmlonly"] = ""
 replDict["s_latexonly"] = ""
 replDict["e_latexonly"] = ""
 
+replDict["s_nonbreakablespace"] = " "
+replDict["e_nonbreakablespace"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -234,6 +237,8 @@ gencDict["xrefdescription"] = True
 gencDict["htmlonly"] = False
 gencDict["latexonly"] = False
 gencDict["xmlonly"] = True
+
+gencDict["nonbreakablespace"] = True
 
 ################################################################################
 #### @brief table entry

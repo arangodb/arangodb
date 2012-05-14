@@ -1,0 +1,8 @@
+> ./arangod --console --log error /tmp/vocbase
+ArangoDB shell [V8 version 3.9.4, DB version 0.5.0]
+
+arango> 1 + 2;
+3
+
+arango> db.geo.count();
+703

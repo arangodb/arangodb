@@ -866,11 +866,12 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 /// @FUN{@FA{edge-collection}.edges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges starting from (outbound) or ending
-/// in (inbound) a document from @FA{vertices}.
+/// in (inbound) a document from @FA{vertices}, which must a list of documents
+/// or document handles.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_edge-edges
+/// @verbinclude shell-edge-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
@@ -887,11 +888,11 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 /// @FUN{@FA{edge-collection}.inEdges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges ending in (inbound) a document from
-/// @FA{vertices}.
+/// @FA{vertices}, which must a list of documents or document handles.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_edge-in-edges
+/// @verbinclude shell-edge-in-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
@@ -989,11 +990,11 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 /// @FUN{@FA{edge-collection}.outEdges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges starting from (outbound) a document
-/// from @FA{vertices}.
+/// from @FA{vertices}, which must a list of documents or document handles.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_edge-out-edges
+/// @verbinclude shell-edge-out-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {

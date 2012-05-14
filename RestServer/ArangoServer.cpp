@@ -858,7 +858,7 @@ int ArangoServer::executeShell (bool tests) {
       while(! v8::V8::IdleNotification()) {
       }
 
-      char* input = console->prompt("arango> ");
+      char* input = console->prompt("arangod> ");
 
       if (input == 0) {
         printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! さようなら\n");
