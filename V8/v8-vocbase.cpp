@@ -1853,11 +1853,11 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_remove-document
+/// @TINYEXAMPLE{shell_remove-document,delete a document}
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_remove-document-conflict
+/// @TINYEXAMPLE{shell_remove-document-conflict,delete a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -2769,11 +2769,11 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @verbinclude shell_update-document
+/// @TINYEXAMPLE{shell_update-document,updating a document}
 ///
 /// Use a document handle:
 ///
-/// @verbinclude shell_update-document-handle
+/// @TINYEXAMPLE{shell_update-document-handle,updating a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
@@ -2947,7 +2947,9 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 /// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
 /// must be documents or document references.
 ///
-/// @verbinclude shell_create-edge
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell_create-edge,create an edge}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
@@ -3297,11 +3299,11 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_remove-document-db
+/// @TINYEXAMPLE{shell_remove-document-db,delete a document}
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_remove-document-conflict-db
+/// @TINYEXAMPLE{shell_remove-document-conflict-db,delete a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
@@ -3381,7 +3383,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @verbinclude shell_update-document-db
+/// @TINYEXAMPLE{shell_update-document-db,updating a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {

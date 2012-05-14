@@ -31,6 +31,8 @@
 /// @if LATEX
 /// <ul>
 ///  <li>@ref UserManualBasics</li>
+///  <li>@ref ShellDocument</li>
+///  <li>@ref ShellEdge</li>
 ///  <li>@ref SimpleQueries</li>
 ///  <li>@ref Aql</li>
 ///
@@ -40,6 +42,8 @@
 /// </ul>
 /// @else
 /// @copydetails UserManualBasicsTOC
+/// @copydetails ShellDocumentTOC
+/// @copydetails ShellEdgeTOC
 /// @copydetails SimpleQueriesTOC
 /// @copydetails AqlTOC
 /// @copydetails CommandLineTOC
