@@ -13,6 +13,7 @@
 \usepackage{mathptmx}
 \usepackage[scaled=.90]{helvet}
 \usepackage{courier}
+\usepackage[hyphens]{url}
 \usepackage{doxygen}
 \usepackage{listings}
 \lstset{language=C++,inputencoding=utf8,basicstyle=\footnotesize,breaklines=true,breakatwhitespace=true,tabsize=8,numbers=left }
@@ -21,8 +22,9 @@
 \let\DoxyVerbInclude=\undefined
 \renewcommand{\footrulewidth}{0.4pt}
 \newcommand{\examplecap}{}
+\newcommand{\examplesize}{\ttfamily}
 \lstnewenvironment{DoxyVerbInclude}{%
-  \lstset{numbers=none,backgroundcolor=\color{lightgray},language=,basicstyle=\ttfamily,breaklines=true,breakatwhitespace=false,caption=\protect\examplecap,captionpos=below}
+  \lstset{numbers=none,backgroundcolor=\color{lightgray},language=,basicstyle=\protect\examplesize,breaklines=true,breakatwhitespace=false,caption=\protect\examplecap,captionpos=below}%
 }{%
 }
 \definecolor{gray}{gray}{.8}

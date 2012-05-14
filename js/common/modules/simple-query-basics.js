@@ -93,8 +93,8 @@ ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
 ///
 /// Limits the result to @FA{limit} documents instead of the default 100.
 ///
-/// @note @FA{limit} can be more than 100, this will raise the default
-/// limit.
+/// @note Unlike with multiple explicit limits, @FA{limit} will raise
+/// the implicit default limit imposed by @FN{within}.
 ///
 /// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance()}
 ////////////////////////////////////////////////////////////////////////
@@ -679,7 +679,7 @@ SimpleQuery.prototype.toArray = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents
 ///
-/// @FUN{count()}
+/// @FUN{@FA{cursor}.count()}
 ///
 /// The @FN{count} operator counts the number of document in the result set and
 /// returns that number. The @FN{count} operator ignores any limits and returns
@@ -688,7 +688,7 @@ SimpleQuery.prototype.toArray = function () {
 /// @note Not all simple queries support counting. In this case @LIT{null} is
 /// returned.
 ///
-/// @FUN{count(@LIT{true})}
+/// @FUN{@FA{cursor}.count(@LIT{true})}
 ///
 /// If the result set was limited by the @FN{limit} operator or documents were
 /// skiped using the @FN{skip} operator, the @FN{count} operator with argument
@@ -723,7 +723,7 @@ SimpleQuery.prototype.count = function (applyPagination) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
 ///
-/// @FUN{hasNext()}
+/// @FUN{@FA{cursor}.hasNext()}
 ///
 /// The @FN{hasNext} operator returns @LIT{true}, then the cursor still has
 /// documents.  In this case the next document can be accessed using the
@@ -743,7 +743,7 @@ SimpleQuery.prototype.hasNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
 ///
-/// @FUN{next()}
+/// @FUN{@FA{cursor}.next()}
 ///
 /// If the @FN{hasNext} operator returns @LIT{true}, then the underlying
 /// cursor of the simple query still has documents.  In this case the
@@ -765,7 +765,7 @@ SimpleQuery.prototype.next = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disposes the result
 ///
-/// @FUN{dispose()}
+/// @FUN{@FA{cursor}.dispose()}
 ///
 /// If you are no longer interested in any further results, you should call
 /// @FN{dispose} in order to free any resources associated with the query.
