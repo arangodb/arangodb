@@ -33,7 +33,6 @@
 ///   <ul>
 ///    <li>@ref SimpleQueriesQueries
 ///     <ul>
-///      <li>@ref SimpleQueryDocument "collection.document"</li>
 ///      <li>@ref SimpleQueryAll "collection.all"</li>
 ///      <li>@ref SimpleQueryByExample "collection.byExample"</li>
 ///      <li>@ref SimpleQueryFirstExample "collection.firstExample"</li>
@@ -46,13 +45,6 @@
 ///      <li>@ref SimpleQueryNear "collection.near"</li>
 ///      <li>@ref SimpleQueryWithin "collection.within"</li>
 ///      <li>@ref SimpleQueryGeo "collection.geo"</li>
-///     </ul>
-///    </li>
-///    <li>@ref SimpleQueriesEdgesQueries
-///     <ul>
-///      <li>@ref SimpleQueryEdges "edges-collection.edges"</li>
-///      <li>@ref SimpleQueryInEdges "edges-collection.inEdges"</li>
-///      <li>@ref SimpleQueryOutEdges "edges-collection.outEdges"</li>
 ///     </ul>
 ///    </li>
 ///    <li>@ref SimpleQueriesPagination
@@ -92,9 +84,6 @@
 ///
 /// @section SimpleQueriesQueries Queries
 /////////////////////////////////////////
-///
-/// @anchor SimpleQueryDocument
-/// @copydetails JS_DocumentVocbaseCol
 ///
 /// @anchor SimpleQueryAll
 /// @copydetails JSF_ArangoCollection_prototype_all
@@ -138,18 +127,6 @@
 ///
 /// @anchor SimpleQueryGeo
 /// @copydetails JSF_ArangoCollection_prototype_geo
-///
-/// @section SimpleQueriesEdgesQueries Edges Queries
-////////////////////////////////////////////////////
-///
-/// @anchor SimpleQueryEdges
-/// @copydetails JS_EdgesQuery
-///
-/// @anchor SimpleQueryInEdges
-/// @copydetails JS_InEdgesQuery
-///
-/// @anchor SimpleQueryOutEdges
-/// @copydetails JS_OutEdgesQuery
 ///
 /// @section SimpleQueriesPagination Pagination
 ///////////////////////////////////////////////

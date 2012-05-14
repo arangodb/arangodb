@@ -28,45 +28,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocumentTOC
 ///
-/// <ol>
-///  <li>@ref ShellDocumentIntro</li>
-///  <li>@ref ShellDocumentResource</li>
-///  <li>@ref ShellDocumentShell
-///    @copydetails ShellDocumentCallsTOC
+/// <ul>
+///  <li>@ref ShellDocument
+///   <ul>
+///    <li>@ref ShellDocumentIntro</li>
+///    <li>@ref ShellDocumentResource</li>
+///    <li>@ref ShellDocumentShell
+///      @copydetails ShellDocumentCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocumentCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref ShellDocumentCollectionMethods
-///   <ol>
+///   <ul>
 ///    <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
 ///    <li>@ref ShellDocumentCreate "collection.save(data)"</li>
 ///    <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
 ///    <li>@ref ShellDocumentDelete "collection.remove(document)"</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref ShellDocumentDatabaseMethods
-///   <ol>
+///   <ul>
 ///    <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
 ///    <li>@ref ShellDocumentDbUpdate "db._replace(document-handle, data)"</li>
 ///    <li>@ref ShellDocumentDbDelete "db._remove(document-handle)"</li>
-///   </ol>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellDocument ArangoDB Interface for Documents
+/// @page ShellDocument Handling Documents
 ///
 /// This is an introduction to ArangoDB's interface for documents.
 ///
-/// <hr>
-/// @copydoc ShellDocumentTOC
-/// <hr>
+/// @EMBEDTOC{ShellDocumentTOC}
 ///
 /// @section ShellDocumentIntro Documents, Identifiers, Handles
 ///////////////////////////////////////////////////////////////
@@ -123,30 +125,24 @@
 ///
 /// @anchor ShellDocumentRead
 /// @copydetails JS_DocumentVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellDocumentCreate
 /// @copydetails JS_SaveVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellDocumentUpdate
 /// @copydetails JS_ReplaceVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellDocumentDelete
 /// @copydetails JS_RemoveVocbaseCol
-/// <hr>
 ///
 /// @subsection ShellDocumentDatabaseMethods Database Methods
 /////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellDocumentDbRead
 /// @copydetails JS_DocumentVocbase
-/// <hr>
 ///
 /// @anchor ShellDocumentDbUpdate
 /// @copydetails JS_ReplaceVocbase
-/// <hr>
 ///
 /// @anchor ShellDocumentDbDelete
 /// @copydetails JS_RemoveVocbase
