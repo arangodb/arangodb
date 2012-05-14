@@ -1,0 +1,3 @@
+FOR u IN users
+  SORT u.lastName, u.firstName, u.id DESC
+  RETURN u

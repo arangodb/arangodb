@@ -1,0 +1,2 @@
+FOR year IN [ 2011, 2012, 2013 ]
+  RETURN { "year" : year, "isLeapYear" : year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) }

@@ -1,0 +1,4 @@
+FOR u IN users
+  FILTER u.active == true
+  FILTER u.age < 39
+  RETURN u
