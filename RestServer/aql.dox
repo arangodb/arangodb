@@ -48,7 +48,19 @@
 ///    </li>
 ///    <li>@ref AqlOperations
 ///     <ul>
-///      <li>@ref AqlWhitespace</li>
+///      <li>@ref AqlOperationFor</li>
+///      <li>@ref AqlOperationReturn</li>
+///      <li>@ref AqlOperationFilter</li>
+///      <li>@ref AqlOperationSort</li>
+///      <li>@ref AqlOperationLimit</li>
+///      <li>@ref AqlOperationLet</li>
+///      <li>@ref AqlOperationCollect</li>
+///     </ul>
+///    </li>
+///    <li>@ref AqlAdvanced
+///     <ul>
+///      <li>@ref AqlSubqueries</li>
+///      <li>@ref AqlExpansion</li>
 ///     </ul>
 ///    </li>
 ///   </ul>
@@ -639,7 +651,7 @@
 /// allowed, too. The current list element is made available for further processing 
 /// in the variable specified by @LIT{variable-name}.
 ///
-/// @verbinclude aqlfor 
+/// @EXAMPLE{aqlfor,for loop}
 ///
 /// This will iterate over all elements from the list @LIT{users} (note: this list
 /// consists of all documents from the collection named "users" in this case) and
@@ -655,13 +667,13 @@
 ///
 /// Another example that uses a statically declared list of values to iterate over:
 ///
-/// @verbinclude aqlforstatic
+/// @EXAMPLE{aqlforstatic,for loop with static content}
 ///
 /// Nesting of multiple @LIT{FOR} statements is allowed, too. When @LIT{FOR} statements
 /// are nested, a cross product of the list elements returned by the individual @LIT{FOR}
 /// statements will be created.
 ///
-/// @verbinclude aqlfornested
+/// @EXAMPLE{aqlfornested,nested for loop}
 ///
 /// In this example, there are two list iterations: an outer iteration
 /// over the list @LIT{users} plus an inner iteration over the list @LIT{locations}.
@@ -707,7 +719,7 @@
 /// further and not be part of the result. If the condition is true, the current element is
 /// not skipped and can be further processed.
 ///
-/// @verbinclude aqlfilter
+/// @EXAMPLE{aqlfilter,all active user younger than 39}
 ///
 /// In the above example, all list elements from @LIT{users} will be included that have an
 /// attribute @LIT{active} with value @LIT{true} and that have an attribute @LIT{age} with a 
@@ -718,7 +730,7 @@
 /// same block. If multiple @LIT{FILTER} statements are used, their results will be combined
 /// with a logical and, meaning all filter conditions must be true to include an element.
 ///
-/// @verbinclude aqlfiltermultiple
+/// @EXAMPLE{aqlfiltermultiple,two filter criteria}
 ///
 /// @subsection AqlOperationSort SORT
 ///
@@ -737,7 +749,7 @@
 /// Note: when iterating over collection-based lists, the order of documents is always
 /// undefined unless an explicit sort order is defined using @LIT{SORT}.
 ///
-/// @verbinclude aqlsort
+/// @EXAMPLE{aqlsort,sort by name}
 ///
 /// @subsection AqlOperationLimit LIMIT
 ///
@@ -756,7 +768,7 @@
 /// It must be 0 or greater. The @LIT{count} value specifies how many elements should be
 /// at most included in the result.
 /// 
-/// @verbinclude aqllimit
+/// @EXAMPLE{aqllimit,first five users}
 ///
 /// @subsection AqlOperationLet LET
 ///
@@ -769,7 +781,7 @@
 /// @LIT{LET} statements are mostly used to declare complex computations and to avoid
 /// repeated computations of the same value at multiple parts of a query.
 ///
-/// @verbinclude aqllet
+/// @EXAMPLE{aqllet,save result}
 ///
 /// In the above example, the computation of the number of recommendations is factored
 /// out using a @LIT{LET} statement, thus avoiding computing the value twice in the
@@ -778,7 +790,7 @@
 /// Another use case for @LIT{LET} is to declare a complex computation in a subquery,
 /// making the whole query more readable.
 /// 
-/// @verbinclude aqllet2
+/// @EXAMPLE{aqllet2,save sub-query}
 ///
 /// @subsection AqlOperationCollect COLLECT
 ///
@@ -797,7 +809,7 @@
 /// a variable (specified by @LIT{groups}) that contains all elements that fell into
 /// the group. Specifying the @LIT{INTO} clause is optional-
 ///
-/// @verbinclude aqlcollect
+/// @EXAMPLE{aqlcollect,find all user living in a city}
 ///
 /// In the above example, the list of @LIT{users} will be grouped by the attribute 
 /// @LIT{city}. The result is a new list of documents, with one element per distinct
