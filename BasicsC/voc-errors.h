@@ -153,6 +153,9 @@ extern "C" {
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @CODE{usage of unknown function '\%s'}
 ///   Will be raised when an undefined function is called.
+/// - 1541: @CODE{invalid number of arguments for function '\%s'}
+///   Will be raised when the number of arguments used in a function call does
+///   not match the expected number of arguments for the function.
 /// - 1550: @CODE{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
@@ -952,6 +955,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1540)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
+///
+/// invalid number of arguments for function '%s'
+///
+/// Will be raised when the number of arguments used in a function call does
+/// not match the expected number of arguments for the function.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH                 (1541)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID
