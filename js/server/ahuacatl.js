@@ -79,10 +79,20 @@ function AHUACATL_CLONE (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief validate function call argument
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName, argument) {
+  if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
+    throw "expecting " + AHUACATL_TYPENAME(expectedType) + " for argument " + argument + " of function " + functionName;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief call a function
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_FCALL(name, parameters) {
+function AHUACATL_FCALL (name, parameters) {
   return name.apply(null, parameters);
 }
 
@@ -108,6 +118,28 @@ function AHUACATL_FIX (value) {
   }
 
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name for a type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TYPENAME (value) {
+  switch (value) {
+    case AHUCATL_TYPEWEIGHT_BOOL:
+      return 'boolean';
+    case AHUCATL_TYPEWEIGHT_NUMBER:
+      return 'number';
+    case AHUCATL_TYPEWEIGHT_STRING:
+      return 'string';
+    case AHUCATL_TYPEWEIGHT_LIST:
+      return 'list';
+    case AHUCATL_TYPEWEIGHT_DOCUMENT:
+      return 'document';
+    case AHUCATL_TYPEWEIGHT_NULL:
+    default:
+      return 'null';
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -939,7 +971,7 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
 ///
-/// both operands must be strings or this function will fail
+/// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_CONCAT () {
@@ -951,15 +983,98 @@ function AHUACATL_STRING_CONCAT () {
     if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
       continue;
     }
-    
-    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_STRING) {
-      throw "expecting strings for string concatenation";
-    }
+
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT", i + 1);
 
     result += element;
   }
 
   return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform string concatenation using a separator character
+///
+/// all operands must be strings or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_CONCAT_SEPARATOR () {
+  var separator;
+  var found = false;
+  var result = '';
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (i > 0 && AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+    
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT_SEPARATOR", i + 1);
+
+    if (i == 0) {
+      separator = element;
+      continue;
+    }
+    else if (found) {
+      result += separator;
+    }
+
+    found = true;
+
+    result += element;
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the length of a string in characters (not bytes)
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_LENGTH (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "STRING_LENGTH", 1);
+
+  return value.length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_LOWER (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "LOWER", 1);
+
+  return value.toLowerCase();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_UPPER (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "UPPER", 1);
+
+  return value.toUpperCase();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a substring of the string
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_SUBSTRING (value, offset, count) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "SUBSTRING", 1);
+  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_NUMBER, "SUBSTRING", 2);
+
+  return value.substr(offset, count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
