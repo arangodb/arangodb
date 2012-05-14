@@ -1,1 +1,1 @@
-null < false < true < number < string < list < document
+null < bool  < number < string < list < document
