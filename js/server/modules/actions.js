@@ -109,7 +109,7 @@ function DefineHttp (options) {
   var contexts = options.context;
   var callback = options.callback;
   var parameters = options.parameters;
-  var prefix = options.prefix || false;
+  var prefix = true;
   var userContext = false;
 
   if (! contexts) {
@@ -138,6 +138,10 @@ function DefineHttp (options) {
   if (typeof callback !== "function") {
     console.error("callback for '%s' must be a function, got '%s'", url + (typeof callback));
     return;
+  }
+
+  if (options.hasOwnProperty("prefix")) {
+    prefix = options.prefix;
   }
 
   var parameter = { parameters : parameters, prefix : prefix };

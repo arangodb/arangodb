@@ -31,14 +31,19 @@
 /// @if LATEX
 /// <ul>
 ///  <li>@ref UserManualBasics</li>
+///  <li>@ref SimpleQueries</li>
 ///  <li>ArangoQueryLanguage</li>
+///  @latexonly\appendix@endlatexonly
+///  <li>@ref CommandLine</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
 /// @copydetails UserManualBasicsTOC
+/// @copydetails SimpleQueriesTOC
 /// <ul>
 ///  <li>Arango Query Language</li>
 /// </ul>
+/// @copydetails CommandLineTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,6 +59,7 @@
 ///      <li>@ref UserManualServerStartStopOptions</li>
 ///     </ul>
 ///    </li>
+///    <li>@ref UserManualServerFE</li>
 ///    <li>@ref UserManualShellStartStop
 ///     <ul>
 ///      <li>@ref UserManualShellStartStopOptions</li>
@@ -97,21 +103,22 @@
 /// For more in-depth information
 ///
 /// <ul>
-///  <li> read more on the <a href="http://www.arangodb.org/2012/03/07/arangodbs-design-objectives">
-///       design goals of ArangoDB</a></li>
-///  <li> <a href="http://vimeo.com/36411892">watch the video</a> - Martin Schoenert, 
+///  <li> read more on the@SPC@EXTREF{http://www.arangodb.org/2012/03/07/arangodbs-design-objectives,design goals of ArangoDB}</li>
+///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
 ///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
 ///       is about.</li>
-///  <li> or  give it a @ref InstallManual "try".</li>
+///  <li> or  give it a@SPC@INTREF{InstallManual,try}.</li>
 /// </ul>
 ///
-/// The ArangoDB database groups documents into collections. Each collection can
-/// be accessed using queries. For simple queries involving just one collection
-/// and one search criteria, you can use a simple interface from within
-/// JavaScript code or other languages supported by an API. This interface
-/// allows you to select documents from one collection based on simple search
-/// criteria. For more complex queries, you can use the Arango Query Language,
-/// which is an evolution of SQL resp. UNQL for the NoSQL world.
+/// The ArangoDB database groups documents into collections. Collections and
+/// documents can be accessed using queries. For simple queries involving just
+/// one collection and one search criteria, you can use a simple interface from
+/// within JavaScript code or other languages supported by an API. This
+/// interface allows you to select documents from one collection based on just
+/// one search criteria. For more complex queries, you can use the Arango Query
+/// Language (AQL), which is an evolution of SQL resp. UNQL for the NoSQL
+/// world. AQL allows you to use more then one collection, similar to joins from
+/// SQL, while still retaining the document and list structures like UNQL.
 ///
 /// The ArangoDB database packages comes with various programs:
 ///
@@ -131,8 +138,8 @@
 ///////////////////////////////////////////////////////////////////
 ///
 /// The ArangoDB database server has two modes of operation: as server, where it
-/// will answer to client requests and an emergency console, where you can
-/// access the database directly. The latter should - as the name suggests -
+/// will answer to client requests and an emergency console, in which you can
+/// access the database directly. The latter - as the name suggests - should 
 /// only be used in case of an emergency, for example, a corrupted
 /// collection. Using the emergency console allows you to issue all commands
 /// normally available in actions and transactions.
@@ -148,7 +155,7 @@
 /// UserManualServerStartStopOptions "below" for a list of frequently used
 /// options, see @ref CommandLine "here" for a complete list.
 ///
-/// @verbinclude option-database-directory
+/// @TINYEXAMPLE{option-database-directory,starting the server}
 ///
 /// After starting the server, point your favorite browser to:
 ///
@@ -188,6 +195,26 @@
 ///
 /// Runs the server as a daemon (as a background process).
 ///
+/// @section UserManualServerFE ArangoDB's Front-End
+////////////////////////////////////////////////////
+///
+/// The ArangoDB server has a graphical front-end, which allows you to inspect
+/// the current state of the server. You can read the front-end using the
+/// following URL:
+///
+/// @LIT{http://localhost:8529/_admin}
+///
+/// Unless you have loaded an application into the ArangoDB server which remaps
+/// the paths, the front-end will also be available under
+/// @LIT{http://localhost:8529/}.
+///
+/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Fron-End">@endhtmlonly
+/// @latexonly\includegraphics[width=12cm]{images/fe1.png}@endlatexonly
+///
+/// The front-end allows you the browser through the collections and
+/// documents. If you need to administrate the database, please use
+/// the ArgangoDB shell described in the next section.
+///
 /// @section UserManualShellStartStop Starting the ArangoDB Shell
 /////////////////////////////////////////////////////////////////
 ///
@@ -196,7 +223,7 @@
 /// any arguments, the ArangoDB shell will try to contact the server
 /// on port 8529 on the localhost.
 ///
-/// @verbinclude arangosh-start
+/// @TINYEXAMPLE{arangosh-start,starting the shell}
 ///
 /// The shell will print its own version number and, if successfully connected
 /// to a server, the version number of the ArangoDB server.
@@ -206,7 +233,7 @@
 ///
 /// Use @LIT{--help} to get a list of command-line options:
 ///
-/// @verbinclude arangosh-options
+/// @TINYEXAMPLE{arangosh-options,shell options}
 ///
 /// @section UserManualServerStartStopDebug Starting the ArangoDB Emergency Console
 ///////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +244,7 @@
 /// @note Never start the emergency console for a database which also has a
 /// server attached to it. In general the ArangoDB shell is what you want.
 ///
-/// @verbinclude start-emergency-console
+/// @EXAMPLE{start-emergency-console,emergency console}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
