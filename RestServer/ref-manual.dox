@@ -61,6 +61,8 @@
 ///    </li>
 ///   </ul>
 ///  </li>
+///  <li>@ref Aql
+///  </li>
 ///  <li>@ref OTWP
 ///   <ul>
 ///    <li>REST Interface
@@ -69,13 +71,13 @@
 ///      <li>@ref RestEdge</li>
 ///     </ul>
 ///    </li>
-///    <li>Light-Weight HTTP for Queries
+///    <li>Light-Weight HTTP Interface for Queries
 ///     <ul>
 ///      <li>@ref HttpCursor</li>
 ///      <li>@ref HttpSimple</li>
 ///     </ul>
 ///    </li>
-///    <li>Light-Weight HTTP for Administration
+///    <li>Light-Weight HTTP Interface for Administration
 ///     <ul>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
