@@ -189,6 +189,14 @@ void TRI_DumpRangeAql (const TRI_aql_field_access_t* const);
 void TRI_DumpRangesAql (const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a field access type to an existing field access vector
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const,
+                                        TRI_vector_pointer_t* const,
+                                        TRI_aql_field_access_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
