@@ -425,7 +425,6 @@ def char_data(data):
     text = text.replace("__~8__", "\\\\n")
     
     text = text.replace("<", "&lt;")
-    text = text.replace(">", "&gt;")
 
     if verbatim:
         text = text.replace("\n", "__~2____~1__")
