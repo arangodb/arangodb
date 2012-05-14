@@ -44,17 +44,19 @@
 /// @page ShellEdgeCallsTOC
 ///
 /// <ul>
-///  <li>@ref ShellEdgeCreate "edge-collection.save(from, to, data)"</li>
-///  <li>@ref ShellEdgeEdges "edge-collection.edges(vertex)"</li>
-///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges(vertex)"</li>
-///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges(vertex)"</li>
+///  <li>@ref ShellEdgeCreate "edge-collection.save"</li>
+///  <li>@ref ShellEdgeEdges "edge-collection.edges"</li>
+///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges"</li>
+///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellEdge Handling Edges
 ///
-/// This is an introduction to ArangoDB's interface for edges.
+/// This is an introduction to ArangoDB's interface for edges and how handle
+/// edges from the JavaScript shell @LIT{arangosh}. For other languages see the
+/// corresponding language API.
 ///
 /// @EMBEDTOC{ShellEdgeTOC}
 ///

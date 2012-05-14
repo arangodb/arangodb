@@ -47,17 +47,17 @@
 /// <ul>
 ///  <li>@ref ShellDocumentCollectionMethods
 ///   <ul>
-///    <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
-///    <li>@ref ShellDocumentCreate "collection.save(data)"</li>
-///    <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
-///    <li>@ref ShellDocumentDelete "collection.remove(document)"</li>
+///    <li>@ref ShellDocumentRead "collection.document"</li>
+///    <li>@ref ShellDocumentCreate "collection.save"</li>
+///    <li>@ref ShellDocumentUpdate "collection.replace"</li>
+///    <li>@ref ShellDocumentDelete "collection.remove"</li>
 ///   </ul>
 ///  </li>
 ///  <li>@ref ShellDocumentDatabaseMethods
 ///   <ul>
-///    <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
-///    <li>@ref ShellDocumentDbUpdate "db._replace(document-handle, data)"</li>
-///    <li>@ref ShellDocumentDbDelete "db._remove(document-handle)"</li>
+///    <li>@ref ShellDocumentDbRead "db._document"</li>
+///    <li>@ref ShellDocumentDbUpdate "db._replace"</li>
+///    <li>@ref ShellDocumentDbDelete "db._remove"</li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -66,7 +66,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocument Handling Documents
 ///
-/// This is an introduction to ArangoDB's interface for documents.
+/// This is an introduction to ArangoDB's interface for documents and how handle
+/// documents from the JavaScript shell @LIT{arangosh}. For other languages see
+/// the corresponding language API.
 ///
 /// @EMBEDTOC{ShellDocumentTOC}
 ///
