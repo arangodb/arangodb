@@ -640,7 +640,7 @@ int ArangoServer::startupServer () {
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
 
-    _applicationAdminServer->addBasicHandlers(factory);
+    _applicationAdminServer->addBasicHandlers(factory, "/_admin");
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
@@ -680,7 +680,7 @@ int ArangoServer::startupServer () {
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
-    _applicationAdminServer->addBasicHandlers(adminFactory);
+    _applicationAdminServer->addBasicHandlers(adminFactory, "/_admin");
     _applicationAdminServer->addHandlers(adminFactory, "/_admin");
     _applicationUserManager->addHandlers(adminFactory, "/_admin");
 
