@@ -40,6 +40,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef DEBUG_AQL
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an access type
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +63,7 @@ static char* AccessName (const TRI_aql_access_e type) {
       return "unknown";
   }
 }
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free access member data, but do not free the access struct itself
@@ -1628,6 +1629,13 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       return NULL;
     } 
 
+    if (node2->_type != AQL_NODE_VALUE && 
+        node2->_type != AQL_NODE_LIST &&
+        node2->_type != AQL_NODE_ARRAY) {
+      // only the above types are supported
+      return NULL;
+    } 
+
     field = GetAttributeName(context, node1);
 
     if (field) {
@@ -1859,6 +1867,7 @@ void TRI_FreeRangesAql (TRI_vector_pointer_t* const ranges) {
 /// @brief dump a single range for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
+#if DEBUG_AQL
 void TRI_DumpRangeAql (const TRI_aql_field_access_t* const fieldAccess) {
   printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fullName);
   printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
@@ -1907,6 +1916,7 @@ void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
     TRI_DumpRangeAql(fieldAccess);
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all field access structs in a vector
