@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#undef DEBUG_AQL 
+#undef TRI_DEBUG_AQL  
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -49,7 +49,7 @@ extern "C" {
 /// @brief log debug information to info or trace log
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef DEBUG_AQL
+#ifdef TRI_DEBUG_AQL
 #define TRI_AQL_LOG(...) LOG_INFO(__VA_ARGS__);
 #else
 #define TRI_AQL_LOG(...) LOG_TRACE(__VA_ARGS__);
