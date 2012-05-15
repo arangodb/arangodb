@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, optimiser
+/// @brief Ahuacatl, log macros
 ///
 /// @file
 ///
@@ -25,55 +25,19 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
-#define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_LOG_H
+#define TRIAGENS_DURHAM_AHUACATL_LOG_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen-js.h"
-#include "Ahuacatl/ahuacatl-log.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
+#include <BasicsC/logging.h> 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scope type used during optimisation
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_optimiser_scope_s {
-  char* _variableName;
-  TRI_aql_node_t* _node;
-  TRI_vector_pointer_t* _ranges;
-  TRI_aql_codegen_scope_e _type;
-}
-TRI_aql_optimiser_scope_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#undef DEBUG_AQL 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,11 +46,14 @@ TRI_aql_optimiser_scope_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the AST
+/// @brief log debug information to info or trace log
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const, 
-                                 TRI_aql_node_t*);
+#ifdef DEBUG_AQL
+#define TRI_AQL_LOG(...) LOG_INFO(__VA_ARGS__);
+#else
+#define TRI_AQL_LOG(...) LOG_TRACE(__VA_ARGS__);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
