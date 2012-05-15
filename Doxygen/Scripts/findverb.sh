@@ -4,8 +4,9 @@ find . \
     \( -name 3rdParty -o -name .svn \) -prune \
     -o \
     \( -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.dox" \) \
-    -exec "grep" "^/// @verbinclude" "{}" ";" \
-    \
+    -exec "grep" '^/// @\(verbinclude \|EXAMPLE{\|TINYEXAMPLE{\)' "{}" ";" \
+    | tr "{" " " \
+    | tr "," " " \
     | awk '{print $3}' | sort | uniq > /tmp/verbinclude.used
 
 for file in Durham Fyn ArangoDB; do
