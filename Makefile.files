@@ -350,6 +350,8 @@ WIKI = \
 	CommandLineScheduler \
 	Compiling \
 	DBAdmin \
+	DbaManual \
+	DbaManualBasics \
 	DefineAction \
 	ExamplesSetup \
 	FirstStepsArangoDB \
