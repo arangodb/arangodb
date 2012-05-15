@@ -700,7 +700,7 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#avocshView').show();
-      createnav ("AvocSH"); 
+      createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
     }
 

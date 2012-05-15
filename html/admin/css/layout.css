@@ -106,7 +106,13 @@ pre ul li span{
 }
 
 #docPageInput {
-  width:40px;   
+  width:40px; 
+  height: 24px;
+  vertical-align: middle;
+}
+
+#addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton {
+  font-size: 0.8em; 
 }
 
 #docPageForm {
@@ -116,6 +122,7 @@ pre ul li span{
 }
 
 .floatRight {
+  vertical-align: middle;
   float:right;
 }
 
@@ -321,15 +328,15 @@ form {
 }
 
 #queryOutput {
-  height:40%;
-  border: 1px solid black;  
-  margin-bottom: 7px;  
-  background-color:white;  
+  height:40%; 
+  yoverflow-y: auto; 
+  border: 1px solid black;
+  background: white;  
   font-family: "courier"; 
-  overflow-y: auto; 
 }
 
 #queryContent {
+  height: 40%; 
   font-family: "courier";
   width: 100%;
   resize: none; 
@@ -445,7 +452,7 @@ form {
 }
 
 #menue-left {
-  margin-top: 3px;
+  margin-top: 5px;
   margin-left: 17px; 
   height:48px; 
   width:auto; 

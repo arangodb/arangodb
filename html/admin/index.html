@@ -43,7 +43,7 @@
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Configuration">Configuration</button>
         <button class="minimal" id="Query">Query</button>
-        <button class="minimal" id="AvocSH">AvocSH</button>
+        <button class="minimal" id="AvocSH">ArangoSH</button>
       </div>
 
     </div>
@@ -151,7 +151,7 @@
           <a>Add Document</a>
         </button>
 
-       <form id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+       <form style="visibility:hidden" id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
          <input type="submit" value="Import" />
          <input type="file" name="filename" />
        </form>
@@ -373,7 +373,7 @@
       </div>
 
       <div id="configView" style="display: none">
-        <button class="minimal enabled" id="updateConfiguration">
+        <button class="minimal enabled" id="updateConfiguration" style="visibility:hidden">
           <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
           <a>Update configuration</a>
         </button>
@@ -383,15 +383,17 @@
 
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
-          <a id="welcomemsg">Welcome! AvocSH 0.9<a><br><br> 
+          <a id="welcomemsg">Welcome! ArangoDB Shell v0.9 - visit xyz fore more information<a><br><br> 
         </div>
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
+          <a href="">ArangoDB Shell - click for more information</a>
       </div>
 
       <div id="queryView" style="display: none">
         <div id="queryOutput">
+          <a style="padding-left:10px">Please enter your query in the box below</a>
         </div>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
@@ -409,7 +411,7 @@
 	<div id="footerSlideContent"> 
           <div id="footerSlideText">
 
-            <div id="footerLeft"> 
+            <div id="footerLeft" style="visibility:hidden"> 
               <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
               <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
               <form class="login-form" id="loginWindow" action="#">
