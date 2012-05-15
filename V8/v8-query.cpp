@@ -628,7 +628,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example
+/// @brief selects elements by example (not using any index)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
@@ -845,6 +845,9 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // .............................................................................
   // outside a write transaction
   // .............................................................................
+  
+  // free data allocated by hash index result
+  TRI_FreeResultHashIndex(idx, list); 
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
@@ -852,6 +855,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   CleanupExampleObject(shaper, n, 0, values);
 
   TRI_ReleaseCollection(collection);
+
   return scope.Close(result);
 }
 

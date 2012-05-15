@@ -85,6 +85,12 @@ HashIndex* HashIndex_new (void);
 
 void HashIndex_free (HashIndex*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set allocated by HashIndex_find
+////////////////////////////////////////////////////////////////////////////////
+
+void HashIndex_freeResult(TRI_hash_index_elements_t* const);
+
 int HashIndex_add (HashIndex*, HashIndexElement*);
 
 TRI_hash_index_elements_t* HashIndex_find (HashIndex*, HashIndexElement*); 
@@ -106,6 +112,12 @@ void MultiHashIndex_destroy (HashIndex*);
 
 void MultiHashIndex_free (HashIndex*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set allocated by MultiHashIndex_find
+////////////////////////////////////////////////////////////////////////////////
+
+void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const);
+
 HashIndex* MultiHashIndex_new (void);
 
 int MultiHashIndex_add (HashIndex*, HashIndexElement*);
@@ -117,7 +129,5 @@ int MultiHashIndex_insert (HashIndex*, HashIndexElement*);
 int MultiHashIndex_remove (HashIndex*, HashIndexElement*); 
 
 int MultiHashIndex_update (HashIndex*, HashIndexElement*, HashIndexElement*);
-
-void MultiHashIndex_free (HashIndex*);
 
 #endif

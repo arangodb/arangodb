@@ -37,6 +37,7 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
+#include "VocBase/simple-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,6 +105,7 @@ TRI_aql_codegen_scope_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_js_s {  
+  TRI_aql_context_t* _context;
   TRI_string_buffer_t _buffer;
   TRI_string_buffer_t _functionBuffer;
   TRI_vector_pointer_t _scopes;
@@ -131,7 +133,7 @@ TRI_aql_codegen_js_t;
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (const void* const);
+char* TRI_GenerateCodeAql (TRI_aql_context_t* const, const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

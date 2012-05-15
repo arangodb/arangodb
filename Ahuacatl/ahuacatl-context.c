@@ -56,6 +56,89 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all collection memory
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeCollections (TRI_aql_context_t* const context) {
+  size_t i = context->_collections._length;
+
+  while (i--) {
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    if (collection) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    }
+  }
+  TRI_DestroyVectorPointer(&context->_collections);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all scopes
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeScopes (TRI_aql_context_t* const context) {
+  while (context->_scopes._length) {
+    TRI_EndScopeContextAql(context);
+  }
+  TRI_DestroyVectorPointer(&context->_scopes);
+  
+  // free scopes allocated by optimiser
+  TRI_DestroyVectorPointer(&context->_optimiser._scopes);
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all strings
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeStrings (TRI_aql_context_t* const context) {
+  size_t i = context->_strings._length;
+
+  while (i--) {
+    void* string = context->_strings._buffer[i];
+
+    if (string) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_strings._buffer[i]);
+    }
+  }
+  TRI_DestroyVectorPointer(&context->_strings);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all nodes
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeNodes (TRI_aql_context_t* const context) {
+  size_t i = context->_nodes._length;
+
+  while (i--) {
+    TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
+    if (node) {
+      TRI_DestroyVectorPointer(&node->_members);
+
+      if (node->_type == AQL_NODE_FOR && node->_value._value._data) {
+        TRI_FreeAccessesAql((TRI_vector_pointer_t*) node->_value._value._data);
+      }
+      // free node itself
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    }
+  }
+
+  TRI_DestroyVectorPointer(&context->_nodes);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @} 
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -149,8 +232,6 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
-  size_t i;
-
   assert(context);
 
   // remove barriers for all collections used
@@ -162,37 +243,9 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   // release all collections used
   TRI_UnlockCollectionsAql(context);
 
-  // free all remaining scopes
-  while (context->_scopes._length) {
-    TRI_EndScopeContextAql(context);
-  }
-  TRI_DestroyVectorPointer(&context->_scopes);
-  
-  // free scopes allocated by optimiser
-  TRI_DestroyVectorPointer(&context->_optimiser._scopes);
-
-  // free all strings registered
-  i = context->_strings._length;
-  while (i--) {
-    void* string = context->_strings._buffer[i];
-
-    if (string) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_strings._buffer[i]);
-    }
-  }
-  TRI_DestroyVectorPointer(&context->_strings);
- 
-  // free all nodes registered
-  i = context->_nodes._length;
-  while (i--) {
-    TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
-    if (node) {
-      TRI_DestroyVectorPointer(&node->_members);
-      // free node itself
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
-    }
-  }
-  TRI_DestroyVectorPointer(&context->_nodes);
+  FreeScopes(context);
+  FreeStrings(context);
+  FreeNodes(context); 
 
   // free parameter names hash
   TRI_DestroyAssociativePointer(&context->_parameterNames);
@@ -200,15 +253,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   // free collection names
   TRI_DestroyAssociativePointer(&context->_collectionNames);
   
-  // free collections
-  i = context->_collections._length;
-  while (i--) {
-    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    if (collection) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-    }
-  }
-  TRI_DestroyVectorPointer(&context->_collections);
+  FreeCollections(context);
   
   // free parameter values
   TRI_FreeBindParametersAql(context);

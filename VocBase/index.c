@@ -1794,6 +1794,22 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set returned by a hash index query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeResultHashIndex (const TRI_index_t* const idx, 
+                              TRI_hash_index_elements_t* const result) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    HashIndex_freeResult(result);
+  }
+  else {
+    MultiHashIndex_freeResult(result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given a JSON list
 ///
 /// @warning who ever calls this function is responsible for destroying

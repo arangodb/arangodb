@@ -157,6 +157,28 @@ bool OpenCollections (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookip a collection in the internal vector
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const context,
+                                            const char* const collectionName) {
+  size_t i, n;
+
+  assert(context);
+
+  n = context->_collections._length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_collection_t* col = (TRI_aql_collection_t*) TRI_AtVectorPointer(&context->_collections, i);
+
+    if (TRI_EqualString(col->_name, collectionName)) {
+      return col;
+    }
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unlock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 

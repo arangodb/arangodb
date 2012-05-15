@@ -1062,8 +1062,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
   assert(context); 
   assert(lhs); 
   assert(rhs); 
-  assert(lhs->_fieldName != NULL);
-  assert(rhs->_fieldName != NULL);
+  assert(lhs->_fullName != NULL);
+  assert(rhs->_fullName != NULL);
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1103,8 +1103,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
   assert(context); 
   assert(lhs); 
   assert(rhs); 
-  assert(lhs->_fieldName != NULL);
-  assert(rhs->_fieldName != NULL);
+  assert(lhs->_fullName != NULL);
+  assert(rhs->_fullName != NULL);
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1235,7 +1235,7 @@ static TRI_vector_pointer_t* MakeAllVector (TRI_aql_context_t* const context,
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
 
     assert(fieldAccess);
-    assert(fieldAccess->_fieldName);
+    assert(fieldAccess->_fullName);
 
     // modify the element in place
     FreeAccessMembers(fieldAccess);
@@ -1267,7 +1267,7 @@ static void MergeVector (TRI_aql_context_t* const context,
     bool found = false;
 
     assert(fieldAccess);
-    assert(fieldAccess->_fieldName);
+    assert(fieldAccess->_fullName);
 
     // check if element is in result vector already
     len = result->_length;
@@ -1275,9 +1275,9 @@ static void MergeVector (TRI_aql_context_t* const context,
       TRI_aql_field_access_t* compareAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, j);
     
       assert(compareAccess);
-      assert(compareAccess->_fieldName);
+      assert(compareAccess->_fullName);
 
-      if (TRI_EqualString(fieldAccess->_fieldName, compareAccess->_fieldName)) {
+      if (TRI_EqualString(fieldAccess->_fullName, compareAccess->_fullName)) {
         // found the element
         if (mergeType == AQL_NODE_OPERATOR_BINARY_AND) {
           result->_buffer[j] = MergeAttributeAccessAnd(context, fieldAccess, compareAccess);
@@ -1315,7 +1315,7 @@ static void InsertVector (TRI_aql_context_t* const context,
     TRI_aql_field_access_t* copy;
 
     assert(fieldAccess);
-    assert(fieldAccess->_fieldName);
+    assert(fieldAccess->_fullName);
 
     copy = TRI_CloneAccessAql(context, fieldAccess);
 
@@ -1419,8 +1419,8 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }
 
-  fieldAccess->_fieldName = TRI_DuplicateString(field->_name._buffer);
-  if (fieldAccess->_fieldName == NULL) {
+  fieldAccess->_fullName = TRI_DuplicateString(field->_name._buffer);
+  if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
     return NULL;
@@ -1703,7 +1703,7 @@ void TRI_FreeAccessAql (TRI_aql_field_access_t* const fieldAccess) {
   assert(fieldAccess);
 
   FreeAccessMembers(fieldAccess);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fieldName);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
 }
 
@@ -1716,7 +1716,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
   TRI_aql_field_access_t* fieldAccess;
 
   assert(source);
-  assert(source->_fieldName);
+  assert(source->_fullName);
   
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
@@ -1725,8 +1725,8 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  fieldAccess->_fieldName = TRI_DuplicateString(source->_fieldName);
-  if (fieldAccess->_fieldName == NULL) {
+  fieldAccess->_fullName = TRI_DuplicateString(source->_fullName);
+  if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
     return NULL;
@@ -1833,7 +1833,7 @@ void TRI_FreeRangesAql (TRI_vector_pointer_t* const ranges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DumpRangeAql (const TRI_aql_field_access_t* const fieldAccess) {
-  printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fieldName);
+  printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fullName);
   printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
   
   if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT || fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
@@ -1882,6 +1882,24 @@ void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free all field access structs in a vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeAccessesAql (TRI_vector_pointer_t* const fieldAccesses) {
+  size_t i, n;
+
+  n = fieldAccesses->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
+
+    TRI_FreeAccessAql(fieldAccess);
+  }
+
+  // free vector
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a field access type to an existing field access vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1894,21 +1912,25 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 
   assert(context);
   assert(candidate);
-  assert(candidate->_fieldName);
+  assert(candidate->_fullName);
 
   if (previous != NULL) {
     // use existing vector if already available
     accesses = previous;
   }
   else {
+    // create a new vector 
     accesses = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
     if (accesses == NULL) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
+
     TRI_InitVectorPointer(accesses, TRI_UNKNOWN_MEM_ZONE);
   }
+
+  assert(accesses);
 
   found = false;
   n = accesses->_length;
@@ -1917,7 +1939,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     TRI_aql_field_access_t* copy;
     int result;
 
-    if (!TRI_EqualString(candidate->_fieldName, existing->_fieldName)) {
+    if (!TRI_EqualString(candidate->_fullName, existing->_fullName)) {
       continue;
     }
     
