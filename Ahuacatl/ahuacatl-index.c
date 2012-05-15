@@ -28,6 +28,9 @@
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h" 
+#include "Ahuacatl/ahuacatl-log.h"
+
+#define DEBUG_OPTIMIZER 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -59,10 +62,10 @@ static void LogIndexString (TRI_index_t const* idx,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  LOG_TRACE("using %s index (%s) for '%s'", 
-            TRI_TypeNameIndex(idx), 
-            buffer->_buffer, 
-            collectionName);
+  TRI_AQL_LOG("using %s index (%s) for '%s'", 
+              TRI_TypeNameIndex(idx), 
+              buffer->_buffer, 
+              collectionName);
 
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
@@ -169,18 +172,27 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
     TRI_aql_access_e lastType;
     size_t numIndexFields = idx->_fields._length;
-
-    if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
-      // ignore all geo indexes for now
-      continue;
-    }
-
+    
     if (numIndexFields == 0) {
       // index should contain at least one field
       continue;
     }
     
+    // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
+    switch (idx->_type) {
+      case TRI_IDX_TYPE_GEO1_INDEX:
+      case TRI_IDX_TYPE_GEO2_INDEX:
+      case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+      case TRI_IDX_TYPE_CAP_CONSTRAINT:
+        // ignore all these index types for now
+        continue;
+      case TRI_IDX_TYPE_PRIMARY_INDEX:
+      case TRI_IDX_TYPE_HASH_INDEX:
+      case TRI_IDX_TYPE_SKIPLIST_INDEX:
+        // these indexes are candidates
+        break;
+    }
+
     TRI_ClearVectorPointer(&matches);
 
     lastType = TRI_AQL_ACCESS_EXACT;

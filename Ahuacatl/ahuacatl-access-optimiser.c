@@ -101,6 +101,34 @@ static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a field access structure of the given type
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const context,
+                                                  const TRI_aql_access_e type,
+                                                  const char* const fullName) {
+  TRI_aql_field_access_t* fieldAccess;
+ 
+  fieldAccess  = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
+  if (fieldAccess == NULL) {
+    // OOM
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return NULL;
+  }
+
+  fieldAccess->_fullName = TRI_DuplicateString(fullName);
+  if (fieldAccess->_fullName == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
+    return NULL;
+  }
+
+  fieldAccess->_type = type;
+
+  return fieldAccess;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1188,34 +1216,6 @@ static TRI_vector_pointer_t* Vectorize (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an attribute access structure vector contains the
-/// impossible range 
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ContainsImpossible (const TRI_vector_pointer_t* const fieldAccesses) {
-  size_t i, n;
-
-  if (!fieldAccesses) {
-    return false;
-  }
-
-  n = fieldAccesses->_length;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
-    
-    assert(fieldAccess);
-
-    if (fieldAccess->_type == TRI_AQL_ACCESS_IMPOSSIBLE) {
-      // impossible range found
-      return true;
-    }
-  }
-
-  // impossible range not found
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert all attribute access structures in a vector to all items
 /// accesses. this is done when a logical NOT is found and we do not now how to
 /// handle the negated conditions
@@ -1591,7 +1591,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                           ProcessNode(context, rhs, changed, inheritedRestrictions),
                           inheritedRestrictions);
 
-    if (ContainsImpossible(result)) {
+    if (TRI_ContainsImpossibleAql(result)) {
       // inject a bool(false) node into the true if the condition is always false
       node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
       node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, false);
@@ -1643,7 +1643,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                             NULL,
                             inheritedRestrictions);
 
-      if (ContainsImpossible(result)) {
+      if (TRI_ContainsImpossibleAql(result)) {
         // inject a dummy false == true node into the true if the condition is always false
         node->_type = AQL_NODE_OPERATOR_BINARY_EQ;
         node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
@@ -1672,6 +1672,43 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an access structure of type impossible
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_field_access_t* TRI_CreateImpossibleAccessAql (TRI_aql_context_t* const context) {
+  return CreateFieldAccess(context, TRI_AQL_ACCESS_IMPOSSIBLE, "unused");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an attribute access structure vector contains the
+/// impossible range 
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const fieldAccesses) {
+  size_t i, n;
+
+  if (!fieldAccesses) {
+    return false;
+  }
+
+  n = fieldAccesses->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
+    
+    assert(fieldAccess);
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_IMPOSSIBLE) {
+      // impossible range found
+      return true;
+    }
+  }
+
+  // impossible range not found
+  return false;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a vector of ranges
@@ -1717,22 +1754,12 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
 
   assert(source);
   assert(source->_fullName);
-  
-  fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
+ 
+  fieldAccess = CreateFieldAccess(context, source->_type, source->_fullName); 
   if (fieldAccess == NULL) {
-    // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
-  fieldAccess->_fullName = TRI_DuplicateString(source->_fullName);
-  if (fieldAccess->_fullName == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
-    return NULL;
-  }
-
-  fieldAccess->_type = source->_type;
   switch (source->_type) {
     case TRI_AQL_ACCESS_EXACT:
     case TRI_AQL_ACCESS_LIST:
