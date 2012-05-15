@@ -1,8 +1,0 @@
-arango> db.names;
-[unloaded collection "names"]
-
-arango> db.names.count();
-0
-
-arango> db.names;
-[collection "names"]

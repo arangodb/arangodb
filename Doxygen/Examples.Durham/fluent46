@@ -1,4 +1,0 @@
-arango> db.names.all();
-{ "age" : 29, "name" : "Meier", "first_name" : "Egon", "_id" : "144723:2001393" }
-{ "age" : 51, "name" : "Meier", "first_name" : "Meier", "_id" : "144723:2066929" }
-{ "age" : 30, "name" : "Meier", "first_name" : "Hugo", "_id" : "144723:1935857" }
