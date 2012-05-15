@@ -29,6 +29,10 @@
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h" 
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Ahuacatl
 /// @{
@@ -89,12 +93,17 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   }
 
   if (pickedIndex->_idx == NULL) {
+    // any index is better than none
     isBetter = true;
   }
   else {
-    isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-               fieldAccesses->_length < pickedIndex->_fieldAccesses->_length ||
-               (fieldAccesses->_length == pickedIndex->_fieldAccesses->_length && idx->_unique && !pickedIndex->_idx->_unique);
+    isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || // primary index is better than any others
+               (idx->_unique && !pickedIndex->_idx->_unique) || // unique indexes are better than non-unique ones 
+               (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length && idx->_unique) || // shorter indexes are better if unique
+               (fieldAccesses->_length > pickedIndex->_fieldAccesses->_length && !idx->_unique); // longer indexes are better if non-unique
+
+    // if we have already picked the primary index, we won't overwrite it with any other index
+    isBetter &= (pickedIndex->_idx->_type != TRI_IDX_TYPE_PRIMARY_INDEX);
   }
 
   if (isBetter) { 
@@ -110,22 +119,50 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an index structure
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
+  assert(idx);
+
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, idx->_fieldAccesses);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine which index to use for a specific for loop
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const availableIndexes,
+                                        const char* const variableName,
                                         const char* const collectionName,
                                         const TRI_vector_pointer_t* const candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
-  size_t i, j, k, n;
+  size_t i, j, k, n, offset;
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   assert(context);
   assert(collectionName);
   assert(candidates);
+
+  offset = strlen(variableName) + 1;
+  assert(offset > 1);
 
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
@@ -159,8 +196,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       // now loop over all candidates
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
-
-        if (!TRI_EqualString(indexedFieldName, candidate->_fieldName)) {
+      
+        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + offset)) {
           // different field
           continue;
         }
@@ -215,9 +252,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // if we can use the primary index, we'll use it
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-      picked = PickIndex(context, picked, idx, &matches);
-    }
+    picked = PickIndex(context, picked, idx, &matches);
   }
 
   TRI_DestroyVectorPointer(&matches);
