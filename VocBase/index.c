@@ -243,6 +243,28 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether an index supports full coverage only
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
+  // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
+  switch (idx->_type) {
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_HASH_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return true;
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return false;
+  }
+
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2714,6 +2736,8 @@ static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
       logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
       UnFillLookupSLOperator(logicalOperator->_left);
       UnFillLookupSLOperator(logicalOperator->_right);
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
       break;
     }
     
@@ -2724,11 +2748,28 @@ static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+
+      if (relationOperator->_parameters != NULL) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
+      }
+
       if (relationOperator->_fields != NULL) {
+        size_t j;
+
+        for (j = 0; j < relationOperator->_numFields; ++j) {
+          TRI_shaped_json_t* field = relationOperator->_fields + j;
+
+          if (field->_data.data) {
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, field->_data.data);
+          }
+        }
+
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields); // don't require storage anymore
         relationOperator->_fields = NULL;
       }
       relationOperator->_numFields = 0;
+      
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
       break;
     }
   }
@@ -2739,6 +2780,7 @@ static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
+// Note: this function will destroy the passed slOperator before it returns
 // Warning: who ever calls this function is responsible for destroying
 // TRI_skiplist_iterator_t* results
 // .............................................................................
@@ -2766,7 +2808,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
   }
 
   // .........................................................................
-  // we must deallocated any memory we allocated in FillLookupSLOperator
+  // we must deallocate any memory we allocated in FillLookupSLOperator
   // .........................................................................
   
   UnFillLookupSLOperator(slOperator); 
@@ -2987,7 +3029,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief describes a skiplist  index as a json object
+/// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {

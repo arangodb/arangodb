@@ -182,13 +182,13 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     switch (idx->_type) {
       case TRI_IDX_TYPE_GEO1_INDEX:
       case TRI_IDX_TYPE_GEO2_INDEX:
-      case TRI_IDX_TYPE_SKIPLIST_INDEX:
       case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
       case TRI_IDX_TYPE_CAP_CONSTRAINT:
         // ignore all these index types for now
         continue;
       case TRI_IDX_TYPE_PRIMARY_INDEX:
       case TRI_IDX_TYPE_HASH_INDEX:
+      case TRI_IDX_TYPE_SKIPLIST_INDEX:
         // these indexes are candidates
         break;
     }
@@ -237,9 +237,9 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT && 
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT /* && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
-              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE) {
+              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE */) {
             // wrong access type for skiplists
             continue;
           }
@@ -256,9 +256,13 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       }
     }
 
+    if (matches._length < 1) {
+      // nothing found
+      continue;
+    }
+
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && 
-        (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || idx->_type == TRI_IDX_TYPE_HASH_INDEX)) {
+    if (matches._length < numIndexFields && TRI_NeedsFullCoverageIndex(idx)) { 
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }
