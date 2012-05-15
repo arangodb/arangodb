@@ -182,13 +182,13 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     switch (idx->_type) {
       case TRI_IDX_TYPE_GEO1_INDEX:
       case TRI_IDX_TYPE_GEO2_INDEX:
+      case TRI_IDX_TYPE_SKIPLIST_INDEX:
       case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
       case TRI_IDX_TYPE_CAP_CONSTRAINT:
         // ignore all these index types for now
         continue;
       case TRI_IDX_TYPE_PRIMARY_INDEX:
       case TRI_IDX_TYPE_HASH_INDEX:
-      case TRI_IDX_TYPE_SKIPLIST_INDEX:
         // these indexes are candidates
         break;
     }
