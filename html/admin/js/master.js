@@ -700,7 +700,7 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#avocshView').show();
-      createnav ("AvocSH"); 
+      createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
     }
 
@@ -1190,11 +1190,11 @@ var logTable = $('#logTableID').dataTable({
       processData: false, 
       success: function(data) {
         $("#queryOutput").empty();
-        $("#queryOutput").append('<b><font color=green>' + JSON.stringify(data) + '</font></b>'); 
+        $("#queryOutput").append('<font color=green>' + JSON.stringify(data) + '</font>'); 
       },
       error: function(data) {
         $("#queryOutput").empty();
-        $("#queryOutput").append('<b><font color=red>' + JSON.stringify(data) + '</font></b>'); 
+        $("#queryOutput").append('<font color=red>' + JSON.stringify(data) + '</font>'); 
       }
     });
   });

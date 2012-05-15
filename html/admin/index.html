@@ -46,7 +46,7 @@
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Configuration">Configuration</button>
         <button class="minimal" id="Query">Query</button>
-        <button class="minimal" id="AvocSH">AvocSH</button>
+        <button class="minimal" id="AvocSH">ArangoSH</button>
       </div>
 
     </div>
@@ -376,20 +376,24 @@
 
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
-          <a id="welcomemsg">Welcome! AvocSH 0.9<a><br><br> 
+          <a id="welcomemsg">Welcome! ArangoDB Shell v0.9 - visit xyz fore more information<a><br><br> 
         </div>
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
+          <a href="">ArangoDB Shell - click for more information</a>
       </div>
 
       <div id="queryView" style="display: none">
-        <form id="queryForm" method="post" onsubmit="return false">
-          <textarea class="editBox" id="queryContent"></textarea><br><button class="minimal" id="submitQuery">Post</button>
-        </form>   
-
         <div id="queryOutput">
         </div>
+        <form id="queryForm"  method="post" onsubmit="return false">
+          <textarea class="editBox" placeholder="waiting for your query..." id="queryContent"></textarea><br>
+          <a href="https://github.com/triAGENS/ArangoDB/wiki/Aql">ArangoDB Query Language - click for more information</a>
+          <button class="minimal" id="submitQuery">Post</button>
+          <br></br>
+        </form>   
+
       </div>
 
     </div> 
