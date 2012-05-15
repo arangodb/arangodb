@@ -936,11 +936,9 @@ DOXYGEN = \
 ################################################################################
 WIKI = \
 	Actions \
-        Aql \
 	ArangoErrors \
 	ArangoScript \
 	CommandLine \
-	CommandLineArango \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
@@ -948,6 +946,7 @@ WIKI = \
 	DBAdmin \
 	DefineAction \
 	ExamplesSetup \
+	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
 	Home \
@@ -986,6 +985,7 @@ WIKI = \
 	SimpleQueries \
 	UserManual \
 	UserManualBasics \
+        Aql \
 	jsUnity
 
 FORCE = 0
