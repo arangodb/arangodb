@@ -154,7 +154,7 @@
           <a>Add Document</a>
         </button>
 
-       <form id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+       <form style="visibility:hidden" id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
          <input type="submit" value="Import" />
          <input type="file" name="filename" />
        </form>
@@ -366,7 +366,7 @@
       </div>
 
       <div id="configView" style="display: none">
-        <button class="minimal enabled" id="updateConfiguration">
+        <button class="minimal enabled" id="updateConfiguration" style="visibility:hidden">
           <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
           <a>Update configuration</a>
         </button>
@@ -404,7 +404,7 @@
 	<div id="footerSlideContent"> 
           <div id="footerSlideText">
 
-            <div id="footerLeft"> 
+            <div id="footerLeft" style="visibility:hidden"> 
               <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
               <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
               <form class="login-form" id="loginWindow" action="#">
