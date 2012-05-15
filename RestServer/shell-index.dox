@@ -28,46 +28,48 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellIndexTOC
 ///
-/// <ol>
-///  <li>@ref ShellIndexIntro</li>
-///  <li>@ref ShellIndexResource</li>
-///  <li>@ref ShellIndexShell
-///    @copydetails ShellIndexCallsTOC
+/// <ul>
+///  <li>@ref ShellIndex</li>
+///   <ul>
+///    <li>@ref ShellIndexIntro</li>
+///    <li>@ref ShellIndexResource</li>
+///    <li>@ref ShellIndexShell
+///      @copydetails ShellIndexCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellIndexCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref ShellIndexCollectionMethods
-///   <ol>
-///    <li>@ref ShellIndexRead "collection.index(index-handle)"</li>
-///    <li>@ref ShellIndexReadAll "collection.getIndexes()"</li>
-///    <li>@ref ShellIndexDelete "collection.dropIndex(index)"</li>
-///   </ol>
+///   <ul>
+///    <li>@ref ShellIndexRead "collection.index"</li>
+///    <li>@ref ShellIndexReadAll "collection.getIndexes"</li>
+///    <li>@ref ShellIndexDelete "collection.dropIndex"</li>
+///   </ul>
 ///  </li>
 ///  <li>@ref ShellIndexDatabaseMethods
-///   <ol>
-///    <li>@ref ShellIndexDbRead "db._index(index-handle)"</li>
-///    <li>@ref ShellIndexDbDelete "db._dropIndex(index)"</li>
-///   </ol>
+///   <ul>
+///    <li>@ref ShellIndexDbRead "db._index"</li>
+///    <li>@ref ShellIndexDbDelete "db._dropIndex"</li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellIndex ArangoDB Interface for Indexes
+/// @page ShellIndex Handling Indexes
 ///
 /// This is an introduction to ArangoDB's interface for indexs in general.
-/// There are special sections for
+/// There are special sections for @ref IndexCap "cap constraints", @ref
+/// IndexGeo "geo-spatial indexes", @ref IndexHash "hash indexes", and @ref
+/// IndexSkiplist "skip-lists".
 ///
-/// @copydoc IndexesTOC
-///
-/// <hr>
-/// @copydoc ShellIndexTOC
-/// <hr>
+/// @EMBEDTOC{ShellIndexTOC}
 ///
 /// @section ShellIndexIntro Indexes, Identifiers, Handles
 //////////////////////////////////////////////////////////
