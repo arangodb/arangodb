@@ -517,6 +517,10 @@ ArangoDatabase.prototype._create = function (name, properties) {
     if (properties.hasOwnProperty("journalSize")) {
       body.journalSize = properties.journalSize;
     }
+
+    if (properties.hasOwnProperty("isSystem")) {
+      body.isSystem = properties.isSystem;
+    }
   }
 
   var requestResult = this._connection.POST("/_api/collection", JSON.stringify(body));
