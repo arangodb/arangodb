@@ -1325,7 +1325,7 @@ var logTable = $('#logTableID').dataTable({
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + '," isSystem":' + JSON.parse(systemcheck)+'}',
+        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+'}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
