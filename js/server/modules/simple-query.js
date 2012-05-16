@@ -106,6 +106,7 @@ function ByExample (collection, example, skip, limit) {
     // we can use the collection's primary index
     var doc;
     try {
+      // look up document by id
       doc = collection.document(documentId);
     }
     catch (e) {
@@ -127,9 +128,11 @@ function ByExample (collection, example, skip, limit) {
   }
 
   if (idx != null) {
+    // use hash index
     return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
   }
   else {
+    // use full collection scan
     return collection.BY_EXAMPLE(example, skip, limit);
   }
 }
