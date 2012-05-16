@@ -119,7 +119,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, false, 1, 1);
   REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, 1, 1);
 
-  // string concat
+  // string functions
   REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, 2, 256); 
   REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, 3, 256); 
   REGISTER_FUNCTION("CHARLENGTH", "STRING_LENGTH", true, false, 1, 1); 
@@ -142,9 +142,10 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, 1, 1);
   REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, 0, 0);
   
-  // string functions
-  
   // misc functions
+  REGISTER_FUNCTION("FAIL", "FAIL", false, false, 0, 1); // FAIL is non-deterministic, otherwise query optimisation will fail!
+  REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, 1, 1); // simple non-deterministic wrapper to avoid optimisations at parse time
+
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, 2, 256);
   REGISTER_FUNCTION("UNION", "UNION", true, false, 2, 256);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, 1, 1);
