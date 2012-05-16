@@ -1,0 +1,4 @@
+FOR u IN users
+  RETURN u
+
+[ { "id" : 1, "name" : "John", "active" : false }, { "age" : 32, "id" : 2, "name" : "Vanessa" }, { "friends" : [ "John", "Vanessa" ], "id" : 3, "name" : "Amy" } ]

@@ -99,6 +99,60 @@
 /// avoid any confusion between the two languages, the keywords in AQL have 
 /// been chosen to be different from the keywords used in SQL.
 ///
+/// AQL currently supports reading data only. That means you can use the language
+/// to issue read-requests on your database, but modifying data via AQL is
+/// currently not supported.
+///
+/// @section AqlQueryResults Query results
+///
+/// @subsection AqlQueryResultsSet Result sets
+///
+/// The result of an AQL query is a list of values. The individual values in the
+/// result list may or may not have a homogenuous structure. For example, when
+/// querying data from a collection, it is possible that the individual documents
+/// in the collections have different attributes. If the documents are returned
+/// by the query without modification, then the query result will also have an 
+/// inhomogenous structure:
+///
+/// @EXAMPLE{aqlqueryresultinhomogenuous,inhomogenuous result set}
+///
+/// However, if a fixed set of attributes is queried, then the query result will
+/// have a homogenuous structure:
+///
+/// @EXAMPLE{aqlqueryresulthomogenuous,homogenuous result set}
+///
+/// If a query does not produce any results because no matching data can be
+/// found, it will produce an empty result list:
+///
+/// @EXAMPLE{aqlqueryresultempty,empty result set}
+///
+/// @subsection AqlQueryResultsErrors Errors
+///
+/// Issuing an invalid query to the server will result in a parse error if the
+/// query is syntactically invalid. ArangoDB will detect such errors during
+/// query inspection and abort further processing. Instead, the error number and
+/// an error message are returned so that the errors can be fixed.
+///
+/// If a query passes the parsing stage, all collections referenced in the query
+/// will be opened. If any of the referenced collections is not present, query
+/// execution will again be aborted and an appropriate error message will be 
+/// returned. 
+///
+/// Executing a query might also produce run-time errors under some circumstances
+/// that cannot be predicted from inspecting the query text alone. This is because
+/// queries might use data from collections that might also be inhomogenuous.
+/// Some examples that will cause run-time errors are:
+/// - division by zero: will be triggered when an attempt is made to use the value 0
+///   as the divisor in an arithmetic division or modulus operation
+/// - invalid operands for arithmetic operations: will be triggered when an attempt
+///   is made to use any non-numeric values as operands in arithmetic operations. 
+///   This includes unary (unary minus, unary plus) and binary operations (plus,
+///   minus, multiplication, division, and modulus)
+/// - invalid operands for logical operations: will be triggered when an attempt is
+///   made to use any non-boolean values as operand(s) in logical operations. This
+///   includes unary (logical not/negation), binary (logical and, logical or), and
+///   the ternary operators.
+/// 
 /// @section AqlBasics Language basics
 ///
 /// @subsection AqlWhitespace Whitespace

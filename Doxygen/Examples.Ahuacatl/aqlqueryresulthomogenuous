@@ -1,0 +1,4 @@
+FOR u IN users
+  RETURN { "id" : u.id, "name" : u.name }
+
+[ { "id" : 1, "name" : "John" }, { "id" : 2, "name" : "Vanessa" }, { "id" : 3, "name" : "Amy" } ]
