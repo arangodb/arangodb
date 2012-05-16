@@ -92,6 +92,39 @@
         }
       },
 
+// Helper
+
+      testPushToNeighbors : function () {
+        var v1 = graph.addVertex(1),
+          v2 = graph.addVertex(2),
+          v3 = graph.addVertex(3),
+          test_array = [];
+
+        graph.addEdge(v1, v2);
+        graph.addEdge(v1, v3);
+
+        v1._pushNeigborsToArray(test_array);
+
+        assertEqual(test_array[0], 2);
+        assertEqual(test_array[1], 3);
+      },
+
+      testShortestDistanceFor : function () {
+        var v1 = graph.addVertex(1),
+          v2 = graph.addVertex(2),
+          v3 = graph.addVertex(3),
+          todo_list = [v1.getId(), v2.getId()], // [ID]
+          distances = {}, // {ID => [Node]}
+          node_id_found; // Node
+
+        distances[v1.getId()] = [v1, v2, v3];
+        distances[v2.getId()] = [v2, v3];
+        distances[v3.getId()] = [v3];
+
+        node_id_found = v1._getShortestDistanceFor(todo_list, distances);
+        assertEqual(node_id_found, v2.getId());
+      },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a short, distinct path
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,9 +157,9 @@
         e2 = graph.addEdge(v2, v3);
 
         assertEqual(v1.pathTo(v3).length, 3);
-        assertEqual(v1.pathTo(v2)[0].getId(), v1.getId());
-        assertEqual(v1.pathTo(v2)[1].getId(), v2.getId());
-        assertEqual(v1.pathTo(v2)[2].getId(), v3.getId());
+        assertEqual(v1.pathTo(v3)[0].getId(), v1.getId());
+        assertEqual(v1.pathTo(v3)[1].getId(), v2.getId());
+        assertEqual(v1.pathTo(v3)[2].getId(), v3.getId());
       }
     };
   }
