@@ -1,6 +1,6 @@
 /*
 ** error.c - Exception class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -16,7 +16,6 @@
 #include "mruby/numeric.h"
 #include "mruby/variable.h"
 #include "mruby/string.h"
-#include "eval_intern.h"
 #include "mruby/class.h"
 
 #define warn_printf printf
@@ -332,7 +331,7 @@ error_pos(void)
 static void
 set_backtrace(mrb_state *mrb, mrb_value info, mrb_value bt)
 {
-	mrb_funcall(mrb, info, "set_backtrace", 1, bt);
+        mrb_funcall(mrb, info, "set_backtrace", 1, bt);
 }
 
 mrb_value

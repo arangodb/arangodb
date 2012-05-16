@@ -1,8 +1,17 @@
+##
+# Hash
 #
-#  Hash
-#
+# ISO 15.2.13
 class Hash
-  # 15.2.13.4.8
+
+  ##
+  # Delete the element with the key +key+.
+  # Return the value of the element if +key+
+  # was found. Return nil if nothing was
+  # found. If a block is given, call the
+  # block with the value of the element.
+  #
+  # ISO 15.2.13.4.8
   def delete(key, &block)
     if block && ! self.has_key?(key)
       block.call(key)
@@ -11,30 +20,52 @@ class Hash
     end
   end
 
-  # 15.2.13.4.9
+  ##
+  # Calls the given block for each element of +self+
+  # and pass the key and value of each element.
+  #
+  # ISO 15.2.13.4.9
   def each(&block)
     self.keys.each{|k| block.call([k, self[k]])}
     self
   end
 
-  # 15.2.13.4.10
+  ##
+  # Calls the given block for each element of +self+
+  # and pass the key of each element.
+  #
+  # ISO 15.2.13.4.10
   def each_key(&block)
     self.keys.each{|k| block.call(k)}
     self
   end
 
-  # 15.2.13.4.11
+  ##
+  # Calls the given block for each element of +self+
+  # and pass the value of each element.
+  #
+  # ISO 15.2.13.4.11
   def each_value(&block)
     self.keys.each{|k| block.call(self[k])}
     self
   end
 
-  # 15.2.13.4.16
+  ##
+  # Create a direct instance of the class Hash.
+  #
+  # ISO 15.2.13.4.16
   def initialize(*args, &block)
     self.__init_core(block, *args)
   end
 
-  # 15.2.13.4.22
+  ##
+  # Return a hash which contains the content of
+  # +self+ and +other+. If a block is given
+  # it will be called for each element with
+  # a duplicate key. The value of the block
+  # will be the final value of this element.
+  # 
+  # ISO 15.2.13.4.22
   def merge(other, &block)
     h = {}
     raise "can't convert argument into Hash" unless other.respond_to?(:to_hash)
@@ -51,7 +82,10 @@ class Hash
   end
 end
 
-# include modules
+##
+# Hash is enumerable
+#
+# ISO 15.2.13.3
 module Enumerable; end
 class Hash
   include Enumerable

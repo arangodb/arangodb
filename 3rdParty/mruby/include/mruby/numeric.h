@@ -1,6 +1,6 @@
 /*
 ** numeric.h - Numeric, Integer, Float, Fixnum class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -16,8 +16,8 @@
 #define NEGFIXABLE(f) ((f) >= FIXNUM_MIN)
 #define FIXABLE(f) (POSFIXABLE(f) && NEGFIXABLE(f))
 
-mrb_value mrb_flt2big(mrb_state *mrb, float d);
+mrb_value mrb_flt2big(mrb_state *mrb, mrb_float d);
 void mrb_num_zerodiv(mrb_state *mrb);
 mrb_value mrb_fix2str(mrb_state *mrb, mrb_value x, int base);
 
-#endif	/* MRUBY_NUMERIC_H */
+#endif  /* MRUBY_NUMERIC_H */

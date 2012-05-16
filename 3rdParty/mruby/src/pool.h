@@ -1,6 +1,6 @@
 /*
 ** pool.h - memory pool
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

@@ -1,6 +1,6 @@
 /*
 ** hash.h - Hash class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -9,15 +9,15 @@
 
 struct RHash {
   MRUBY_OBJECT_HEADER;
+  struct kh_iv *iv;
   struct kh_ht *ht;
-  mrb_value ifnone;
 };
 
 #define N 624
 #define M 397
-#define MATRIX_A 0x9908b0dfU	/* constant vector a */
-#define UMASK 0x80000000U	/* most significant w-r bits */
-#define LMASK 0x7fffffffU	/* least significant r bits */
+#define MATRIX_A 0x9908b0dfU    /* constant vector a */
+#define UMASK 0x80000000U       /* most significant w-r bits */
+#define LMASK 0x7fffffffU       /* least significant r bits */
 #define MIXBITS(u,v) ( ((u) & UMASK) | ((v) & LMASK) )
 #define TWIST(u,v) ((MIXBITS(u,v) >> 1) ^ ((v)&1U ? MATRIX_A : 0U))
 enum {MT_MAX_STATE = N};
@@ -47,18 +47,16 @@ void ruby_setenv(mrb_state *mrb, const char *name, const char *value);
 
 /* RHASH_TBL allocates st_table if not available. */
 #define RHASH(obj)   ((struct RHash*)((obj).value.p))
-#define RHASH_TBL(h) mrb_hash_tbl(h)
-#define RHASH_H_TBL(h)        (RHASH(h)->ht)
-#define RHASH_SIZE(h)         (RHASH_H_TBL(h)->size)
+#define RHASH_TBL(h)          (RHASH(h)->ht)
+#define RHASH_SIZE(h)         (RHASH_TBL(h)->size)
 #define RHASH_EMPTY_P(h)      (RHASH_SIZE(h) == 0)
-#define RHASH_IFNONE(h)       (RHASH(h)->ifnone)
-#define RHASH_PROCDEFAULT(h)  (RHASH(h)->ifnone)
+#define RHASH_IFNONE(h)       mrb_iv_get(mrb, (h), mrb_intern(mrb, "ifnone"))
+#define RHASH_PROCDEFAULT(h)  RHASH_IFNONE(h)
 struct kh_ht * mrb_hash_tbl(mrb_state *mrb, mrb_value hash);
 
 #define MRB_HASH_PROC_DEFAULT 256
 #define MRB_RHASH_PROCDEFAULT_P(h) (RHASH(h)->flags & MRB_HASH_PROC_DEFAULT)
 
-char * ruby_strdup(const char *str);
 void mrb_reset_random_seed(void);
 mrb_value mrb_obj_is_proc(mrb_value proc);
 

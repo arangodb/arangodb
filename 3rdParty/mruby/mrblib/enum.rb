@@ -1,8 +1,27 @@
+##
+# Enumerable
 #
-#  Enumerable
+#  ISO 15.3.2
 #
+#  The <code>Enumerable</code> mixin provides collection classes with
+#  several traversal and searching methods, and with the ability to
+#  sort. The class must provide a method <code>each</code>, which
+#  yields successive members of the collection. If
+#  <code>Enumerable#max</code>, <code>#min</code>, or
+#  <code>#sort</code> is used, the objects in the collection must also
+#  implement a meaningful <code><=></code> operator, as these methods
+#  rely on an ordering between members of the collection.
+
 module Enumerable
-  # 15.3.2.2.1
+
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return false
+  # if one block value is false. Otherwise
+  # return true. If no block is given and
+  # +self+ is false return false.
+  #
+  # ISO 15.3.2.2.1
   def all?(&block)
     st = true
     if block
@@ -23,7 +42,14 @@ module Enumerable
     st
   end
 
-  # 15.3.2.2.2
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return true
+  # if one block value is true. Otherwise
+  # return false. If no block is given and
+  # +self+ is true object return true.
+  #
+  # ISO 15.3.2.2.2
   def any?(&block)
     st = false
     if block
@@ -44,7 +70,13 @@ module Enumerable
     st
   end
 
-  # 15.3.2.2.3
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Append all
+  # values of each block together and 
+  # return this value.
+  #
+  # ISO 15.3.2.2.3
   def collect(&block)
     ary = []
     self.each{|val|
@@ -53,7 +85,14 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.4
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return
+  # +ifnone+ if no block value was true.
+  # Otherwise return the first block value 
+  # which had was true.
+  #
+  # ISO 15.3.2.2.4
   def detect(ifnone=nil, &block)
     ret = ifnone
     self.each{|val|
@@ -65,7 +104,13 @@ module Enumerable
     ret
   end
 
-  # 15.3.2.2.5
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Pass an
+  # index to the block which starts at 0
+  # and increase by 1 for each element.
+  #
+  # ISO 15.3.2.2.5
   def each_with_index(&block)
     i = 0
     self.each{|val|
@@ -75,7 +120,11 @@ module Enumerable
     self
   end
 
-  # 15.3.2.2.6
+  ##
+  # Return an array of all elements which
+  # are yield by +each+.
+  #
+  # ISO 15.3.2.2.6
   def entries
     ary = []
     self.each{|val|
@@ -84,11 +133,19 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.7
-  # find(ifnone=nil, &block)
+  ##
+  # Alias for find
+  #
+  # ISO 15.3.2.2.7
   alias find detect
 
-  # 15.3.2.2.8
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return an array
+  # which contains all elements whose block
+  # value was true.
+  #
+  # ISO 15.3.2.2.8
   def find_all(&block)
     ary = []
     self.each{|val|
@@ -97,7 +154,14 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.9
+  ##
+  # Call the given block for each element
+  # which is yield by +each+ and which return
+  # value was true when invoking === with
+  # +pattern+. Return an array with all 
+  # elements or the respective block values. 
+  #
+  # ISO 15.3.2.2.9
   def grep(pattern, &block)
     ary = []
     self.each{|val|
@@ -108,7 +172,13 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.10
+  ##
+  # Return true if at least one element which
+  # is yield by +each+ returns a true value
+  # by invoking == with +obj+. Otherwise return
+  # false.
+  #
+  # ISO 15.3.2.2.10
   def include?(obj)
     st = false
     self.each{|val|
@@ -120,7 +190,14 @@ module Enumerable
     st
   end
 
-  # 15.3.2.2.11
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return value
+  # is the sum of all block values. Pass
+  # to each block the current sum and the
+  # current element.
+  #
+  # ISO 15.3.2.2.11
   def inject(*args, &block)
     raise ArgumentError, "too many arguments" if args.size > 2
     flag = true  # 1st element?
@@ -137,11 +214,19 @@ module Enumerable
     result
   end
 
-  # 15.3.2.2.12
-  # map(&block)
+  ##
+  # Alias for collect
+  #
+  # ISO 15.3.2.2.12
   alias map collect
 
-  # 15.3.2.2.13
+  ##
+  # Return the maximum value of all elements
+  # yield by +each+. If no block is given <=>
+  # will be invoked to define this value. If
+  # a block is given it will be used instead.
+  #
+  # ISO 15.3.2.2.13
   def max(&block)
     flag = true  # 1st element?
     result = nil
@@ -161,7 +246,13 @@ module Enumerable
     result
   end
 
-  # 15.3.2.2.14
+  ##
+  # Return the minimum value of all elements
+  # yield by +each+. If no block is given <=>
+  # will be invoked to define this value. If
+  # a block is given it will be used instead.
+  #
+  # ISO 15.3.2.2.14
   def min(&block)
     flag = true  # 1st element?
     result = nil
@@ -181,11 +272,22 @@ module Enumerable
     result
   end
 
-  # 15.3.2.2.15
-  # member?(obj)
+  ##
+  # Alias for include?
+  #
+  # ISO 15.3.2.2.15
   alias member? include?
 
-  # 15.3.2.2.16
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return an 
+  # array which contains two arrays. The
+  # first array contains all elements 
+  # whose block value was true. The second
+  # array contains all elements whose
+  # block value was false.
+  #
+  # ISO 15.3.2.2.16
   def partition(&block)
     ary_T = []
     ary_F = []
@@ -199,7 +301,13 @@ module Enumerable
     [ary_T, ary_F]
   end
 
-  # 15.3.2.2.17
+  ##
+  # Call the given block for each element
+  # which is yield by +each+. Return an
+  # array which contains only the elements
+  # whose block value was false.
+  #
+  # ISO 15.3.2.2.17
   def reject(&block)
     ary = []
     self.each{|val|
@@ -208,11 +316,14 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.18
-  # select(&block)
+  ##
+  # Alias for find_all.
+  #
+  # ISO 15.3.2.2.18
   alias select find_all
 
-
+  ##
+  # TODO
   # Does this OK? Please test it.
   def __sort_sub__(sorted, work, src_ary, head, tail, &block)
     if head == tail
@@ -250,7 +361,15 @@ module Enumerable
   end
 #  private :__sort_sub__
 
-  # 15.3.2.2.19
+  ##
+  # Return a sorted array of all elements
+  # which are yield by +each+. If no block
+  # is given <=> will be invoked on each
+  # element to define the order. Otherwise
+  # the given block will be used for
+  # sorting.
+  #
+  # ISO 15.3.2.2.19
   def sort(&block)
     ary = []
     self.each{|val| ary.push(val)}
@@ -260,7 +379,9 @@ module Enumerable
     ary
   end
 
-  # 15.3.2.2.20
-  # to_a
+  ##
+  # Alias for entries.
+  #
+  # ISO 15.3.2.2.20
   alias to_a entries
 end

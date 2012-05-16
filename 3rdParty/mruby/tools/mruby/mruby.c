@@ -65,23 +65,23 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       break;
     case 'e':
       if (argc > 1) {
-	argc--; argv++;
-	if (!args->cmdline) {
-	  char *buf;
+        argc--; argv++;
+        if (!args->cmdline) {
+          char *buf;
 
-	  buf = mrb_malloc(mrb, strlen(argv[0])+1);
-	  strcpy(buf, argv[0]);
-	  args->cmdline = buf;
-	}
-	else {
-	  args->cmdline = mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(argv[0])+2);
-	  strcat(args->cmdline, "\n");
-	  strcat(args->cmdline, argv[0]);
-	}
+          buf = mrb_malloc(mrb, strlen(argv[0])+1);
+          strcpy(buf, argv[0]);
+          args->cmdline = buf;
+        }
+        else {
+          args->cmdline = mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(argv[0])+2);
+          strcat(args->cmdline, "\n");
+          strcat(args->cmdline, argv[0]);
+        }
       }
       else {
-	printf("%s: No code specified for -e\n", *origargv);
-	return 0;
+        printf("%s: No code specified for -e\n", *origargv);
+        return 0;
       }
       break;
     case 'v':
@@ -90,14 +90,14 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       break;
     case '-':
       if (strcmp((*argv) + 2, "version") == 0) {
-	ruby_show_version(mrb);
+        ruby_show_version(mrb);
       }
       else if (strcmp((*argv) + 2, "verbose") == 0) {
-	args->verbose = 1;
-	break;
+        args->verbose = 1;
+        break;
       }
       else if (strcmp((*argv) + 2, "copyright") == 0) {
-	ruby_show_copyright(mrb);
+        ruby_show_copyright(mrb);
       }
       else return -3;
       return 0;

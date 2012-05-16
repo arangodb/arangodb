@@ -1,6 +1,6 @@
 /*
 ** init.c - initialize mruby core
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -32,44 +32,7 @@ void Init_var_tables(mrb_state *mrb);
 void Init_version(mrb_state *mrb);
 void mrb_init_print(mrb_state *mrb);
 void mrb_init_mrblib(mrb_state *mrb);
-
-#define MANDEL
-#ifdef MANDEL
-#include <stdio.h>
-#include <math.h>
-static mrb_value
-mpow(mrb_state *mrb, mrb_value obj)
-{
-  mrb_float x, y;
-
-  mrb_get_args(mrb, "ff", &x, &y);
-  x = pow(x, y);
-
-  return mrb_float_value(x);
-}
-
-static mrb_value
-msqrt(mrb_state *mrb, mrb_value obj)
-{
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = sqrt(x);
-
-  return mrb_float_value(x);
-}
-
-static mrb_value
-mputc(mrb_state *mrb, mrb_value obj)
-{
-  int x;
-
-  mrb_get_args(mrb, "i", &x);
-  putc(x, stdout);
-
-  return mrb_nil_value();
-}
-#endif
+void mrb_init_math(mrb_state *mrb);
 
 void
 mrb_init_core(mrb_state *mrb)
@@ -98,12 +61,8 @@ mrb_init_core(mrb_state *mrb)
 #endif
   mrb_init_exception(mrb);
   mrb_init_print(mrb);
-
-#ifdef MANDEL
-  mrb_define_method(mrb, mrb->kernel_module, "pow", mpow, ARGS_REQ(2));
-  mrb_define_method(mrb, mrb->kernel_module, "sqrt", msqrt, ARGS_REQ(1));
-  mrb_define_method(mrb, mrb->kernel_module, "putc", mputc, ARGS_REQ(1));
-#endif
+  mrb_init_time(mrb);
+  mrb_init_math(mrb);
 
   mrb_init_mrblib(mrb);
 

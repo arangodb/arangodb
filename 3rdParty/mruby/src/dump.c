@@ -1,6 +1,6 @@
 /*
 ** dump.c - mruby binary dumper (Rite binary format)
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -661,7 +661,7 @@ mrb_dump_irep(mrb_state *mrb, int top, FILE* fp)
   if (fwrite("00000000"/* end of file */, 8, 1, fp) != 1)
     return MRB_DUMP_WRITE_FAULT;
 
-  rc = dump_rite_header(mrb, top, fp, rbds);	//TODO: Remove top(SIREP)
+  rc = dump_rite_header(mrb, top, fp, rbds);    //TODO: Remove top(SIREP)
 
   return rc;
 }
