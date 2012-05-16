@@ -99,6 +99,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   }
   else {
     isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || // primary index is better than any others
+               (idx->_type == TRI_IDX_TYPE_HASH_INDEX && pickedIndex->_idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || // hash is better than skiplist
                (idx->_unique && !pickedIndex->_idx->_unique) || // unique indexes are better than non-unique ones 
                (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length && idx->_unique) || // shorter indexes are better if unique
                (fieldAccesses->_length > pickedIndex->_fieldAccesses->_length && !idx->_unique); // longer indexes are better if non-unique
