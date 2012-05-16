@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H
-#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_H
+#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>

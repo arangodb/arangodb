@@ -94,15 +94,15 @@
   * predefined type literals
   * --------------------------------------------------------------------------- */
 
-(?i:null) {
+(?i:NULL) {
   return T_NULL;
 }
 
-(?i:true) {
+(?i:TRUE) {
   return T_TRUE;
 }
 
-(?i:false) {
+(?i:FALSE) {
   return T_FALSE;
 }
  
@@ -219,26 +219,31 @@
   * --------------------------------------------------------------------------- */
 
 ([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
+  /* unquoted string */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_STRING; 
 }
 
 `(\\.|[^\\`])*` {
+  /* string enclosed in backticks */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_STRING;
 }
 
 \"(\\.|[^\\\"])*\" {
+  /* string enclosed in double quotes */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 
 '(\\.|[^\\'])*' {
+  /* string enclosed in single quotes */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
   return T_QUOTED_STRING;
 }
 
 (0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
+  /* a numeric value */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
   return T_NUMBER;
 }
@@ -247,7 +252,9 @@
   * bind parameters
   * --------------------------------------------------------------------------- */
 
-@[a-zA-Z][a-zA-Z0-9_]* {
+@@?[a-zA-Z][a-zA-Z0-9_]* {
+  /* bind parameters must start with a @
+     if followed by another @, this is a collection name parameter */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1, false); 
   return T_PARAMETER;
 }
@@ -257,10 +264,11 @@
   * --------------------------------------------------------------------------- */
 
 [ \t\r\n]+ {
-  /* whitespace */;
+  /* whitespace is ignored */ 
 }
 
 . {
+  /* anything else is returned as it is */
   return (int) yytext[0];
 }
 
