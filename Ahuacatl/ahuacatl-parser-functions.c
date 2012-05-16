@@ -87,11 +87,12 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
     return;
   }
 
+  // note: line numbers reported by bison/flex start at 1, columns start at 0 
   snprintf(buffer, 
            sizeof(buffer), 
            "%d:%d %s near '%s'", 
            line,
-           column,
+           column + 1,
            message,
            region);
 
