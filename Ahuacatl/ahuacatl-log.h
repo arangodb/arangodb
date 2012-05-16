@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 #undef TRI_DEBUG_AQL  
+//#define TRI_DEBUG_AQL 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
