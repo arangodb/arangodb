@@ -450,7 +450,7 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
     context->_error._code = code;
     context->_error._message = (char*) TRI_last_error();
     if (data) {
-      context->_error._data = TRI_DuplicateString(data);
+      context->_error._data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, data);
     }
   }
 }
@@ -598,7 +598,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     copy = TRI_UnescapeUtf8String(value, length, &outLength);
   }
   else {
-    copy = TRI_DuplicateString(value);
+    copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);
   }
 
   if (!copy) {

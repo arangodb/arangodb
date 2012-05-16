@@ -96,7 +96,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
            message,
            region);
 
-  TRI_Free(TRI_CORE_MEM_ZONE, region);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, region);
   TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
 }
 
