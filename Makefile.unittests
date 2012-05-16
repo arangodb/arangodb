@@ -181,6 +181,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
 			@srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@srcdir@/js/server/tests/ahuacatl-parse.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \

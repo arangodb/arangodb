@@ -1772,15 +1772,21 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
     TRI_FreeContextAql(context);
     return scope.Close(errorObject);
   }
+  
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  
+  result->Set(v8::String::New("parsed"), v8::True());
 
   // return the bind parameter names
-  v8::Handle<v8::Array> result = TRI_ArrayAssociativePointer(&context->_parameterNames);
+  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameterNames));
+  // return the collection names
+  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&context->_collectionNames));
     
   TRI_FreeContextAql(context);
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
-
   return scope.Close(result);
 }
 
