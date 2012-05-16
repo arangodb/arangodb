@@ -1,5 +1,0 @@
-SELECT select-expression 
-FROM from-expression 
-[ WHERE where-expression ]
-[ ORDER BY order-by-expression ]
-[ LIMIT limit-expression ]
