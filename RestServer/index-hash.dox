@@ -64,7 +64,6 @@
 ///
 /// @anchor IndexHashShellEnsureUniqueConstraint
 /// @copydetails JS_EnsureUniqueConstraintVocbaseCol
-/// <hr>
 ///
 /// @anchor IndexHashShellEnsureHashIndex
 /// @copydetails JS_EnsureHashIndexVocbaseCol

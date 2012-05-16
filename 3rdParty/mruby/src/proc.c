@@ -1,6 +1,6 @@
 /*
 ** proc.c - Proc class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -30,8 +30,8 @@ mrb_closure_new(mrb_state *mrb, mrb_irep *irep)
   struct REnv *e;
 
   if (!mrb->ci->env) {
-    e = mrb_obj_alloc(mrb, MRB_TT_ENV, mrb->ci->proc->env);
-    e->flags= (unsigned int)irep->nlocals;
+    e = mrb_obj_alloc(mrb, MRB_TT_ENV, (struct RClass *) mrb->ci->proc->env);
+    e->flags= (unsigned int)mrb->ci->proc->body.irep->nlocals;
     e->mid = mrb->ci->mid;
     e->cioff = mrb->ci - mrb->cibase;
     e->stack = mrb->stack;
@@ -59,8 +59,9 @@ mrb_proc_new_cfunc(mrb_state *mrb, mrb_func_t func)
 static mrb_value
 mrb_proc_initialize(mrb_state *mrb, mrb_value self)
 {
-  mrb_value blk = mrb->stack[mrb->ci->argc+1];
+  mrb_value blk;
 
+  mrb_get_args(mrb, "&", &blk);
   if (!mrb_nil_p(blk)) {
     *mrb_proc_ptr(self) = *mrb_proc_ptr(blk);
   }

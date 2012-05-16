@@ -1,6 +1,6 @@
 /*
 ** array.c - Array class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -10,12 +10,6 @@
 #include "mruby/string.h"
 #include "mruby/class.h"
 
-#ifdef INCLUDE_REGEXP
-  #define mrb_usascii_str_new2 mrb_usascii_str_new_cstr
-#else
-  #define mrb_usascii_str_new2 mrb_str_new_cstr
-  #define mrb_usascii_str_new  mrb_str_new
-#endif
 mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mrb_value, int),
                                    mrb_value obj, mrb_value paired_obj, void* arg);
 
@@ -725,7 +719,12 @@ mrb_ary_rindex_m(mrb_state *mrb, mrb_value self)
 mrb_value
 mrb_ary_splat(mrb_state *mrb, mrb_value v)
 {
-  return v;
+  if (mrb_type(v) == MRB_TT_ARRAY) {
+    return v;
+  }
+  else {
+    return mrb_ary_new_from_values(mrb, &v, 1);
+  }
 }
 
 static mrb_value
@@ -735,48 +734,6 @@ mrb_ary_size(mrb_state *mrb, mrb_value self)
 
   return mrb_fixnum_value(a->len);
 }
-
-#if 0 /* --> implement with ruby code */
-mrb_value
-mrb_ary_each(mrb_state *mrb, mrb_value self)
-{
-  long i;
-
-  for (i = 0; i < RARRAY_LEN(self); i++) {
-    mrb_yield(RARRAY_PTR(self)[i]);
-  }
-
-  return self;
-}
-#endif
-
-#if 0 /* --> implement with ruby code */
-mrb_value
-mrb_ary_each_index(mrb_state *mrb, mrb_value self)
-{
-  long i;
-
-  for (i = 0; i < RARRAY_LEN(self); i++) {
-    mrb_yield(mrb_fixnum_value(i));
-  }
-
-  return self;
-}
-#endif
-
-#if 0 /* --> implement with ruby code */
-mrb_value
-mrb_ary_collect_bang(mrb_state *mrb, mrb_value self)
-{
-  long i;
-
-  for (i = 0; i < RARRAY_LEN(self); i++) {
-    RARRAY_PTR(self)[i] = mrb_yield(RARRAY_PTR(self)[i]);
-  }
-
-  return self;
-}
-#endif
 
 mrb_value
 mrb_ary_clear(mrb_state *mrb, mrb_value self)
@@ -826,134 +783,6 @@ mrb_ary_tmp_new(mrb_state *mrb, long capa)
     return mrb_ary_new_capa(mrb, capa);//ary_new(0, capa);
 }
 
-#if 0
-/*
- *  call-seq:
- *     ary.sort!                   -> ary
- *     ary.sort! {| a,b | block }  -> ary
- *
- *  Sorts +self+. Comparisons for
- *  the sort will be done using the <code><=></code> operator or using
- *  an optional code block. The block implements a comparison between
- *  <i>a</i> and <i>b</i>, returning -1, 0, or +1. See also
- *  <code>Enumerable#sort_by</code>.
- *
- *     a = [ "d", "a", "e", "c", "b" ]
- *     a.sort                    #=> ["a", "b", "c", "d", "e"]
- *     a.sort {|x,y| y <=> x }   #=> ["e", "d", "c", "b", "a"]
- */
-
-mrb_value
-mrb_ary_sort_bang(mrb_value ary)
-{
-#if 0
-  mrb_ary_modify(ary);
-  //assert(!ARY_SHARED_P(ary));
-  if (RARRAY_LEN(ary) > 1) {
-    mrb_value tmp = ary_make_substitution(ary); /* only ary refers tmp */
-    struct ary_sort_data data;
-
-    RBASIC(tmp)->klass = 0;
-    data.ary = tmp;
-    data.opt_methods = 0;
-    data.opt_inited = 0;
-    ruby_qsort(RARRAY_PTR(tmp), RARRAY_LEN(tmp), sizeof(VALUE),
-             mrb_block_given_p()?sort_1:sort_2, &data);
-
-      if (ARY_EMBED_P(tmp)) {
-          assert(ARY_EMBED_P(tmp));
-          if (ARY_SHARED_P(ary)) { /* ary might be destructively operated in the given block */
-              mrb_ary_unshare(ary);
-          }
-          FL_SET_EMBED(ary);
-          MEMCPY(RARRAY_PTR(ary), ARY_EMBED_PTR(tmp), VALUE, ARY_EMBED_LEN(tmp));
-          ARY_SET_LEN(ary, ARY_EMBED_LEN(tmp));
-      }
-      else {
-          assert(!ARY_EMBED_P(tmp));
-          if (ARY_HEAP_PTR(ary) == ARY_HEAP_PTR(tmp)) {
-              assert(!ARY_EMBED_P(ary));
-              FL_UNSET_SHARED(ary);
-              ARY_SET_CAPA(ary, ARY_CAPA(tmp));
-          }
-          else {
-              assert(!ARY_SHARED_P(tmp));
-              if (ARY_EMBED_P(ary)) {
-                  FL_UNSET_EMBED(ary);
-              }
-              else if (ARY_SHARED_P(ary)) {
-                  /* ary might be destructively operated in the given block */
-                  mrb_ary_unshare(ary);
-              }
-              else {
-                  xfree(ARY_HEAP_PTR(ary));
-              }
-              ARY_SET_PTR(ary, RARRAY_PTR(tmp));
-              ARY_SET_HEAP_LEN(ary, RARRAY_LEN(tmp));
-              ARY_SET_CAPA(ary, ARY_CAPA(tmp));
-          }
-          /* tmp was lost ownership for the ptr */
-          FL_UNSET(tmp, FL_FREEZE);
-          FL_SET_EMBED(tmp);
-          ARY_SET_EMBED_LEN(tmp, 0);
-          FL_SET(tmp, FL_FREEZE);
-    }
-    /* tmp will be GC'ed. */
-    RBASIC(tmp)->c = mrb->array_class;
-  }
-#endif
-  return ary;
-}
-#endif
-
-mrb_value
-mrb_ary_dup(mrb_state *mrb, mrb_value self)
-{
-  struct RArray *a1 = mrb_ary_ptr(self);
-  struct RArray *a2;
-  mrb_value ary;
-  mrb_value *buf;
-  mrb_int times;
-  //size_t len;
-
-  ary = mrb_ary_new_capa(mrb, a1->len);
-  a2 = mrb_ary_ptr(ary);
-  buf = a2->buf;
-  while(times--) {
-    memcpy(buf, a1->buf, sizeof(mrb_value)*a1->len);
-    buf += a1->len;
-  }
-  a2->len = a1->len;
-
-  return ary;
-}
-
-#if 0
-/*
- *  call-seq:
- *     ary.sort                   -> new_ary
- *     ary.sort {| a,b | block }  -> new_ary
- *
- *  Returns a new array created by sorting +self+. Comparisons for
- *  the sort will be done using the <code><=></code> operator or using
- *  an optional code block. The block implements a comparison between
- *  <i>a</i> and <i>b</i>, returning -1, 0, or +1. See also
- *  <code>Enumerable#sort_by</code>.
- *
- *     a = [ "d", "a", "e", "c", "b" ]
- *     a.sort                    #=> ["a", "b", "c", "d", "e"]
- *     a.sort {|x,y| y <=> x }   #=> ["e", "d", "c", "b", "a"]
- */
-
-mrb_value
-mrb_ary_sort(mrb_state *mrb, mrb_value ary)
-{
-  ary = mrb_ary_dup(mrb, ary);
-  mrb_ary_sort_bang(ary);
-  return ary;
-}
-#endif
-
 static mrb_value
 inspect_ary(mrb_state *mrb, mrb_value ary, mrb_value list)
 {
@@ -996,27 +825,6 @@ inspect_ary(mrb_state *mrb, mrb_value ary, mrb_value list)
 
   return arystr;
 }
-
-#if 0
-static mrb_value
-inspect_ary_r(mrb_state *mrb, mrb_value ary, mrb_value dummy, int recur)
-{
-  long i;
-  mrb_value s, arystr;
-
-  arystr = mrb_str_buf_new(mrb, 128);
-  mrb_str_buf_cat(mrb, arystr, "[", strlen("[")); /* for capa */
-  //arystr = mrb_str_new_cstr(mrb, "[");//mrb_str_buf_new2("[");
-  for (i=0; i<RARRAY_LEN(ary); i++) {
-    s = mrb_inspect(mrb, RARRAY_PTR(ary)[i]);//mrb_inspect(RARRAY_PTR(ary)[i]);
-    if (i > 0) mrb_str_buf_cat(mrb, arystr, ", ", strlen(", "));//mrb_str_buf_cat2(str, ", ");
-    mrb_str_buf_append(mrb, arystr, s);
-  }
-  mrb_str_buf_cat(mrb, arystr, "]", strlen("]"));// mrb_str_buf_cat2(str, "]");
-
-  return arystr;
-}
-#endif
 
 /* 15.2.12.5.31 (x) */
 /*
@@ -1101,139 +909,6 @@ mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
   sep = mrb_obj_as_string(mrb, sep);
   return join_ary(mrb, ary, sep, mrb_ary_new(mrb));
 }
-
-#if 0
-static void ary_join_1(mrb_state *mrb, mrb_value obj, mrb_value ary, mrb_value sep, long i, mrb_value result, mrb_value first);
-
-static mrb_value
-recursive_join(mrb_state *mrb, mrb_value obj, mrb_value args, int recur)
-{
-  mrb_value ary = mrb_ary_ref(mrb, args, 0);
-  mrb_value sep = mrb_ary_ref(mrb, args, 1);
-  mrb_value result = mrb_ary_ref(mrb, args, 2);
-  mrb_value first = mrb_ary_ref(mrb, args, 3);
-
-  if (recur) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "recursive array join");
-  }
-  else {
-    ary_join_1(mrb, obj, ary, sep, 0, result, first);
-  }
-  return mrb_nil_value();
-}
-
-static void
-ary_join_0(mrb_state *mrb, mrb_value ary, mrb_value sep, long max, mrb_value result)
-{
-  long i;
-  mrb_value val;
-
-  for (i=0; i<max; i++) {
-    val = RARRAY_PTR(ary)[i];
-    if (i > 0 && !mrb_nil_p(sep))
-        mrb_str_buf_append(mrb, result, sep);
-    mrb_str_buf_append(mrb, result, val);
-  }
-}
-
-static void
-ary_join_1(mrb_state *mrb, mrb_value obj, mrb_value ary, mrb_value sep, long i, mrb_value result, mrb_value first)
-{
-  mrb_value val, tmp;
-
-  for (; i<RARRAY_LEN(ary); i++) {
-    if (i > 0 && !mrb_nil_p(sep)) {
-      mrb_str_buf_append(mrb, result, sep);
-    }
-
-    val = RARRAY_PTR(ary)[i];
-    switch (mrb_type(val)) {
-      case MRB_TT_STRING:
-    str_join:
-        mrb_str_buf_append(mrb, result, val);
-        break;
-      case MRB_TT_ARRAY:
-        obj = val;
-    ary_join:
-        if (mrb_obj_equal(mrb, val, ary)) {
-          mrb_raise(mrb, E_ARGUMENT_ERROR, "recursive array join");
-        }
-        else {
-          //struct recursive_join_arg args;
-          mrb_value args = mrb_ary_new(mrb);
-
-          mrb_ary_set(mrb, args, 0, val);
-          mrb_ary_set(mrb, args, 1, sep);
-          mrb_ary_set(mrb, args, 2, result);
-          mrb_ary_set(mrb, args, 3, first);
-
-          mrb_exec_recursive(mrb, recursive_join, obj, &args);
-        }
-        break;
-      default:
-        tmp = mrb_check_string_type(mrb, val);
-        if (!mrb_nil_p(tmp)) {
-          val = tmp;
-          goto str_join;
-        }
-        tmp = mrb_check_convert_type(mrb, val, MRB_TT_ARRAY, "Array", "to_ary");
-        if (!mrb_nil_p(tmp)) {
-          obj = val;
-          val = tmp;
-          goto ary_join;
-        }
-        val = mrb_obj_as_string(mrb, val);
-        if (mrb_test(first)) {
-#ifdef INCLUDE_REGEXP /* include "encoding.h" */
-          mrb_enc_copy(mrb, result, val);
-#endif
-          first = mrb_false_value();
-        }
-        goto str_join;
-    }
-  }
-}
-
-mrb_value
-mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
-{
-  long len = 1, i;
-  mrb_value val, tmp, result;
-
-  if (RARRAY_LEN(ary) == 0) return mrb_str_new2(mrb, "");
-
-  if (!mrb_nil_p(sep)) {
-    //StringValue(sep);
-    mrb_string_value(mrb, &sep);
-    len += RSTRING_LEN(sep) * (RARRAY_LEN(ary) - 1);
-  }
-
-  for (i=0; i<RARRAY_LEN(ary); i++) {
-    val = RARRAY_PTR(ary)[i];
-    tmp = mrb_check_string_type(mrb, val);
-
-    if (mrb_nil_p(tmp) || (!mrb_obj_equal(mrb, tmp, val))) {
-      mrb_value first;
-
-      result = mrb_str_buf_new(mrb, len + (RARRAY_LEN(ary)-i)*10);
-      first = (i == 0)? mrb_true_value(): mrb_false_value();
-mrb_realloc(mrb, RSTRING(result)->buf, ++(RSTRING(result)->capa));
-      ary_join_0(mrb, ary, sep, i, result);
-mrb_realloc(mrb, RSTRING(result)->buf, ++(RSTRING(result)->capa));
-      ary_join_1(mrb, ary, ary, sep, i, result, first);
-mrb_realloc(mrb, RSTRING(result)->buf, ++(RSTRING(result)->capa));
-      return result;
-    }
-
-    len += RSTRING_LEN(tmp);
-  }
-
-  result = mrb_str_buf_new(mrb, len);
-  ary_join_0(mrb, ary, sep, RARRAY_LEN(ary), result);
-
-  return result;
-}
-#endif
 
 /*
  *  call-seq:
@@ -1351,44 +1026,6 @@ mrb_ary_eql(mrb_state *mrb, mrb_value ary1)
   return mrb_exec_recursive_paired(mrb, recursive_eql, ary1, ary2, &ary2);
 }
 
-#if 0
-static mrb_value
-recursive_hash(mrb_value ary, mrb_value dummy, int recur)
-{
-  long i;
-  st_index_t h;
-  mrb_value n;
-
-  h = mrb_hash_start(RARRAY_LEN(ary));
-  if (recur) {
-    h = mrb_hash_uint(h, NUM2LONG(mrb_hash(mrb_cArray)));
-  }
-  else {
-    for (i=0; i<RARRAY_LEN(ary); i++) {
-        n = mrb_hash(RARRAY_PTR(ary)[i]);
-        h = mrb_hash_uint(h, NUM2LONG(n));
-    }
-  }
-  h = mrb_hash_end(h);
-  return LONG2FIX(h);
-}
-
-/* 15.2.12.5.35 (x) */
-/*
- *  call-seq:
- *     ary.hash   -> fixnum
- *
- *  Compute a hash-code for this array. Two arrays with the same content
- *  will have the same hash code (and will compare using <code>eql?</code>).
- */
-
-static mrb_value
-mrb_ary_hash(mrb_state *mrb, mrb_value ary)
-{
-  return mrb_exec_recursive_outer(mrb, recursive_hash, ary, mrb_fixnum_value(0));
-}
-#endif
-
 void
 mrb_init_array(mrb_state *mrb)
 {
@@ -1406,30 +1043,15 @@ mrb_init_array(mrb_state *mrb)
   mrb_define_method(mrb, a, "[]",              mrb_ary_aget,         ARGS_ANY());  /* 15.2.12.5.4  */
   mrb_define_method(mrb, a, "[]=",             mrb_ary_aset,         ARGS_ANY());  /* 15.2.12.5.5  */
   mrb_define_method(mrb, a, "clear",           mrb_ary_clear,        ARGS_NONE()); /* 15.2.12.5.6  */
-#if 0 /* --> implement with ruby code */
-  mrb_define_method(mrb, a, "collect!",        mrb_ary_collect_bang, ARGS_NONE()); /* 15.2.12.5.7  */
-#endif
   mrb_define_method(mrb, a, "concat",          mrb_ary_concat_m,     ARGS_REQ(1)); /* 15.2.12.5.8  */
   mrb_define_method(mrb, a, "delete_at",       mrb_ary_delete_at,    ARGS_REQ(1)); /* 15.2.12.5.9  */
-#if 0 /* --> implement with ruby code */
-  mrb_define_method(mrb, a, "each",            mrb_ary_each,         ARGS_NONE()); /* 15.2.12.5.10 */
-#endif
-#if 0 /* --> implement with ruby code */
-  mrb_define_method(mrb, a, "each_index",      mrb_ary_each_index,   ARGS_NONE()); /* 15.2.12.5.11 */
-#endif
   mrb_define_method(mrb, a, "empty?",          mrb_ary_empty_p,      ARGS_NONE()); /* 15.2.12.5.12 */
   mrb_define_method(mrb, a, "first",           mrb_ary_first,        ARGS_ANY());  /* 15.2.12.5.13 */
   mrb_define_method(mrb, a, "index",           mrb_ary_index_m,      ARGS_REQ(1)); /* 15.2.12.5.14 */
-#if 0 /* --> implement with ruby code */
-  mrb_define_method(mrb, a, "initialize",      mrb_ary_initialize,   ARGS_ANY());  /* 15.2.12.5.15 */
-#endif
   mrb_define_method(mrb, a, "initialize_copy", mrb_ary_replace_m,    ARGS_REQ(1)); /* 15.2.12.5.16 */
   mrb_define_method(mrb, a, "join",            mrb_ary_join_m,       ARGS_ANY());  /* 15.2.12.5.17 */
   mrb_define_method(mrb, a, "last",            mrb_ary_last,         ARGS_ANY());  /* 15.2.12.5.18 */
   mrb_define_method(mrb, a, "length",          mrb_ary_size,         ARGS_NONE()); /* 15.2.12.5.19 */
-#if 0 /* --> implement with ruby code */
-  mrb_define_method(mrb, a, "map!",            mrb_ary_collect_bang, ARGS_NONE()); /* 15.2.12.5.20 */
-#endif
   mrb_define_method(mrb, a, "pop",             mrb_ary_pop_m,        ARGS_NONE()); /* 15.2.12.5.21 */
   mrb_define_method(mrb, a, "push",            mrb_ary_push_m,       ARGS_ANY());  /* 15.2.12.5.22 */
   mrb_define_method(mrb, a, "replace",         mrb_ary_replace_m,    ARGS_REQ(1)); /* 15.2.12.5.23 */
@@ -1445,6 +1067,5 @@ mrb_init_array(mrb_state *mrb)
   mrb_define_alias(mrb,   a, "to_s", "inspect");                                   /* 15.2.12.5.32 (x) */
   mrb_define_method(mrb, a, "==",              mrb_ary_equal,        ARGS_REQ(1)); /* 15.2.12.5.33 (x) */
   mrb_define_method(mrb, a, "eql?",            mrb_ary_eql,          ARGS_REQ(1)); /* 15.2.12.5.34 (x) */
-  //mrb_define_method(mrb, a, "hash",            mrb_ary_hash,         ARGS_NONE()); /* 15.2.12.5.35 (x) */
   mrb_define_method(mrb, a, "<=>",              mrb_ary_cmp,         ARGS_REQ(1)); /* 15.2.12.5.36 (x) */
 }

@@ -1,6 +1,6 @@
 /*
 ** proc.h - Proc class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -28,13 +28,13 @@ struct RProc {
 };
 
 /* aspec access */
-#define ARGS_GETREQ(a)		(((a) >> 19) & 0x1f)
-#define ARGS_GETOPT(a)		(((a) >> 14) & 0x1f)
-#define ARGS_GETREST(a)		((a) & (1<<13))
-#define ARGS_GETPOST(a)		(((a) >> 8) & 0x1f)
-#define ARGS_GETKEY(a)		(((a) >> 3) & 0x1f))
-#define ARGS_GETKDICT(a)	((a) & (1<<2))
-#define ARGS_GETBLOCK(a)	((a) & (1<<1))
+#define ARGS_GETREQ(a)          (((a) >> 19) & 0x1f)
+#define ARGS_GETOPT(a)          (((a) >> 14) & 0x1f)
+#define ARGS_GETREST(a)         ((a) & (1<<13))
+#define ARGS_GETPOST(a)         (((a) >> 8) & 0x1f)
+#define ARGS_GETKEY(a)          (((a) >> 3) & 0x1f))
+#define ARGS_GETKDICT(a)        ((a) & (1<<2))
+#define ARGS_GETBLOCK(a)        ((a) & (1<<1))
 
 #define MRB_PROC_CFUNC 128
 #define MRB_PROC_CFUNC_P(p) ((p)->flags & MRB_PROC_CFUNC)
@@ -47,4 +47,4 @@ struct RProc *mrb_proc_new(mrb_state*, mrb_irep*);
 struct RProc *mrb_proc_new_cfunc(mrb_state*, mrb_func_t);
 struct RProc *mrb_closure_new(mrb_state*, mrb_irep*);
 
-#endif	/* MRUBY_STRING_H */
+#endif  /* MRUBY_STRING_H */

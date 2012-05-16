@@ -1,4 +1,13 @@
+##
+# Kernel
+#
+# ISO 15.3.1
 module Kernel
+
+  ##
+  # Invoke method +print+ on STDOUT and passing +*args+
+  #
+  # ISO 15.3.1.2.10
   def print(*args)
     i = 0
     len = args.size
@@ -7,6 +16,11 @@ module Kernel
       i += 1
     end
   end
+
+  ##
+  # Invoke method +puts+ on STDOUT and passing +*args*+
+  #
+  # ISO 15.3.1.2.11
   def puts(*args)
     i = 0
     len = args.size

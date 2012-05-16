@@ -1,6 +1,6 @@
 /*
 ** class.h - Class class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -64,14 +64,16 @@ struct RClass *mrb_vm_define_class(mrb_state*, mrb_value, mrb_value, mrb_sym);
 struct RClass *mrb_vm_define_module(mrb_state*, mrb_value, mrb_sym);
 void mrb_define_method_vm(mrb_state*, struct RClass*, mrb_sym, mrb_value);
 void mrb_define_method_raw(mrb_state*, struct RClass*, mrb_sym, struct RProc *);
+void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, int aspec);
 
 struct RClass *mrb_class_outer_module(mrb_state*, struct RClass *);
 struct RProc *mrb_method_search_vm(mrb_state*, struct RClass**, mrb_sym);
 struct RProc *mrb_method_search(mrb_state*, struct RClass*, mrb_sym);
 
 int mrb_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym mid);
-void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, int aspec);
+int mrb_obj_is_instance_of(mrb_state *mrb, mrb_value obj, struct RClass* c);
+struct RClass* mrb_class_real(struct RClass* cl);
 
 void mrb_obj_call_init(mrb_state *mrb, mrb_value obj, int argc, mrb_value *argv);
 
-#endif	/* MRUBY_CLASS_H */
+#endif  /* MRUBY_CLASS_H */

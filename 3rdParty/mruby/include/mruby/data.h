@@ -1,6 +1,6 @@
 /*
 ** data.h - Data class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -13,7 +13,7 @@ extern "C" {
 
 
 struct mrb_data_type {
-  const char *struct_name;  
+  const char *struct_name;
   void (*dfree)(mrb_state *mrb, void*);
 };
 
@@ -38,6 +38,7 @@ struct RData *mrb_data_object_alloc(mrb_state *mrb, struct RClass* klass, void *
 #define RDATA(obj)         ((struct RData *)((obj).value.p))
 #define DATA_PTR(d)        (RDATA(d)->data)
 #define DATA_TYPE(d)       (RDATA(d)->type)
+void *mrb_get_datatype(mrb_state *mrb, mrb_value, const struct mrb_data_type*);
 void *mrb_check_datatype(mrb_state *mrb, mrb_value, const struct mrb_data_type*);
 #define Data_Get_Struct(mrb,obj,type,sval) do {\
   sval = mrb_check_datatype(mrb, obj, type); \

@@ -372,18 +372,18 @@ static void RunShell (mrb_state* mrb) {
       continue;
     }
 
-    mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+    mrb_value result = mrb_run(mrb,
+                               mrb_proc_new(mrb, mrb->irep[n]),
+                               mrb_top_self(mrb));
 
     if (mrb->exc) {
       cout << "Caught exception:\n";
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
+      mrb_p(mrb, mrb_obj_value(mrb->exc));
       mrb->exc = 0;
     }
-#if 0
     else {
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
+      mrb_p(mrb, result);
     }
-#endif
   }
 
   console->close();

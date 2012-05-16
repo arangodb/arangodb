@@ -1,6 +1,6 @@
 /*
 ** string.c - String class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -147,10 +147,6 @@ mrb_value
 mrb_str_resize(mrb_state *mrb, mrb_value str, size_t len)
 {
   size_t slen;
-
-  if (len < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative string size (or size too big)");
-  }
 
   mrb_str_modify(mrb, str);
   slen = RSTRING_LEN(str);
@@ -483,22 +479,22 @@ mrb_enc_cr_str_exact_copy(mrb_state *mrb, mrb_value dest, mrb_value src)
 #endif //INCLUDE_ENCODING
 
 mrb_value
-str_new4(mrb_state *mrb, enum mrb_vtype ttype, mrb_value str)
+str_new4(mrb_state *mrb, mrb_value str)
 {
   mrb_value str2;
 
-  str2 = mrb_obj_value(mrb_obj_alloc(mrb, ttype, mrb->string_class));//str_alloc(klass);
+  str2 = mrb_obj_value(mrb_obj_alloc(mrb, MRB_TT_STRING, mrb->string_class));
   RSTRING(str2)->len = RSTRING_LEN(str);
   RSTRING(str2)->buf = RSTRING_PTR(str);
 
   if (MRB_STR_SHARED_P(str)) {
-    mrb_value shared = RSTRING_SHARED(str);
+    struct RString *shared = RSTRING_SHARED(str);
     FL_SET(str2, MRB_STR_SHARED);
     RSTRING_SHARED(str2) = shared;
   }
   else {
     FL_SET(str, MRB_STR_SHARED);
-    RSTRING_SHARED(str) = str2;
+    RSTRING_SHARED(str) = mrb_str_ptr(str2);
   }
   mrb_enc_cr_str_exact_copy(mrb, str2, str);
   return str2;
@@ -508,10 +504,6 @@ static mrb_value
 str_new(mrb_state *mrb, enum mrb_vtype ttype, const char *p, size_t len)
 {
   mrb_value str;
-
-  if (len < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative string size (or size too big)");
-  }
 
   //str = str_alloc(mrb);
   str = mrb_str_buf_new(mrb, len);
@@ -600,9 +592,6 @@ mrb_value
 mrb_str_buf_cat(mrb_state *mrb, mrb_value str, const char *ptr, size_t len)
 {
   if (len == 0) return str;
-  if (len < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative string size (or size too big)");
-  }
   return str_buf_cat(mrb, str, ptr, len);
 }
 
@@ -2185,7 +2174,7 @@ str_replace_shared(mrb_state *mrb, mrb_value str2, mrb_value str)
   str = mrb_str_new_frozen(mrb, str);
   RSTRING(str2)->len = RSTRING_LEN(str);
   RSTRING(str2)->buf = RSTRING_PTR(str);
-  RSTRING_SHARED(str2) = str;
+  RSTRING_SHARED(str2) = mrb_str_ptr(str);
   FL_SET(str2, MRB_STR_SHARED);
   mrb_enc_cr_str_exact_copy(mrb, str2, str);
 
@@ -2220,9 +2209,9 @@ mrb_str_new_frozen(mrb_state *mrb, mrb_value orig)
 
   klass = mrb_obj_class(mrb, orig);
 
-  if (MRB_STR_SHARED_P(orig) && !mrb_nil_p(RSTRING_SHARED(orig))) {
+  if (MRB_STR_SHARED_P(orig) && RSTRING_SHARED(orig)) {
     long ofs;
-    ofs = RSTRING_LEN(str) - RSTRING_LEN(orig);
+    ofs = RSTRING_LEN(str) - RSTRING_SHARED(orig)->len;
 #ifdef INCLUDE_ENCODING
     if ((ofs > 0) || (klass != RBASIC(str)->c) ||
         ENCODING_GET(mrb, str) != ENCODING_GET(mrb, orig)) {
@@ -2236,7 +2225,7 @@ mrb_str_new_frozen(mrb_state *mrb, mrb_value orig)
     }
   }
   else {
-    str = str_new4(mrb, orig.tt, orig);
+    str = str_new4(mrb, orig);
   }
   return str;
 }
@@ -2398,6 +2387,13 @@ mrb_str_buf_append(mrb_state *mrb, mrb_value str, mrb_value str2)
     ENC_CODERANGE_SET(str2, str2_cr);
 
     return str;
+}
+#else
+mrb_value
+mrb_str_buf_append(mrb_state *mrb, mrb_value str, mrb_value str2)
+{
+  mrb_str_cat(mrb, str, RSTRING_PTR(str2), RSTRING_LEN(str2));
+  return str;
 }
 #endif //INCLUDE_ENCODING
 
@@ -2776,9 +2772,9 @@ str_replace(mrb_state *mrb, mrb_value str, mrb_value str2)
 
   len = RSTRING_LEN(str2);
   if (MRB_STR_SHARED_P(str2)) {
-    mrb_value shared = RSTRING_SHARED(str2);
+    struct RString *shared = RSTRING_SHARED(str2);
     RSTRING_LEN(str) = len;
-    RSTRING_PTR(str) = RSTRING_PTR(str2);
+    RSTRING_PTR(str) = shared->buf;
     FL_SET(str, MRB_STR_SHARED);
     RSTRING_SHARED(str) = shared;
   }
@@ -3847,6 +3843,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
 //  long i;
 //  mrb_value z;
 //  BDIGIT *zds;
+  unsigned long val;
 
 #undef ISDIGIT
 #define ISDIGIT(c) ('0' <= (c) && (c) <= '9')
@@ -3962,7 +3959,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
   }
   len *= strlen(str)*sizeof(char);
 
-    unsigned long val = strtoul((char*)str, &end, base);
+    val = strtoul((char*)str, &end, base);
 
     if (badcheck) {
       if (end == str) goto bad; /* no number */
@@ -4740,35 +4737,8 @@ mrb_lastline_set(mrb_value val)
 mrb_value
 mrb_str_append(mrb_state *mrb, mrb_value str, mrb_value str2)
 {
-#ifdef INCLUDE_ENCODING
-  mrb_encoding *enc;
-  int cr, cr2;
-#endif //INCLUDE_ENCODING
-
-  //StringValue(str2);
   mrb_string_value(mrb, &str2);
-  if (RSTRING_LEN(str2) > 0 /*&& STR_ASSOC_P(str)*/) {
-      long len = RSTRING_LEN(str)+RSTRING_LEN(str2);
-#ifdef INCLUDE_ENCODING
-      enc = mrb_enc_check(mrb, str, str2);
-      cr = ENC_CODERANGE(str);
-      if ((cr2 = ENC_CODERANGE(str2)) > cr) cr = cr2;
-#endif //INCLUDE_ENCODING
-      mrb_str_modify(mrb, str);
-      REALLOC_N(mrb, RSTRING(str)->buf, char, len+1);
-      memcpy(RSTRING(str)->buf + RSTRING(str)->len,
-             RSTRING_PTR(str2), RSTRING_LEN(str2)+1);
-      RSTRING(str)->len = len;
-      mrb_enc_associate(mrb, str, enc);
-      ENC_CODERANGE_SET(str, cr);
-
-      return str;
-  }
-#ifdef INCLUDE_ENCODING
   return mrb_str_buf_append(mrb, str, str2);
-#else
-  return str;
-#endif //INCLUDE_ENCODING
 }
 
 void

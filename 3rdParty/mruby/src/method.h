@@ -1,6 +1,6 @@
 /*
 ** method.h - method structures and functions
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

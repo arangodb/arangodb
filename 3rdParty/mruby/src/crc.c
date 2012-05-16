@@ -1,6 +1,6 @@
 /*
 ** crc.c - calculate CRC
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

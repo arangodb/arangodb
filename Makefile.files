@@ -343,7 +343,6 @@ DOXYGEN = \
 WIKI = \
 	Actions \
 	ArangoErrors \
-	ArangoScript \
 	CommandLine \
 	CommandLineLogging \
 	CommandLineRandom \
@@ -372,7 +371,6 @@ WIKI = \
 	IndexHash \
 	IndexHashHttp \
 	IndexSkiplist \
-	Indexes \
 	InstallManual \
 	Installing \
 	JSModuleActions \

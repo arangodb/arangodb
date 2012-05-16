@@ -1,6 +1,6 @@
 /*
-** minimain.c - 
-** 
+** minimain.c -
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -71,21 +71,21 @@ main(int argc, char **argv)
   n = 0;
 
   fib_iseq[n++] = MKOP_AB(OP_MOVE, 2, 1);        /* r2 := r1 */
-  fib_iseq[n++] = MKOP_AsBx(OP_LOADI, 3, 3);	 /* r3 := 2 */
-  fib_iseq[n++] = MKOP_ABC(OP_LT, 2, 0, 2);	 /* r2 .< r3 */
-  fib_iseq[n++] = MKOP_AsBx(OP_JMPNOT, 2, 2);	 /* ifnot r2 :else */
-  fib_iseq[n++] = MKOP_AsBx(OP_LOADI, 2, 1);	 /* r6 := 1 */
-  fib_iseq[n++] = MKOP_A(OP_RETURN, 2);		 /* return r2 */
-  fib_iseq[n++] = MKOP_AB(OP_MOVE, 3, 0);	 /* r3 := r0  :else */
-  fib_iseq[n++] = MKOP_AB(OP_MOVE, 4, 1);	 /* r4 := r1 */
-  fib_iseq[n++] = MKOP_ABC(OP_SUBI, 4, 1, 2);	 /* r4 .- 2 */
-  fib_iseq[n++] = MKOP_ABC(OP_SEND, 3, 3, 1);	 /* r3 .fib r4 */
-  fib_iseq[n++] = MKOP_AB(OP_MOVE, 4, 0);	 /* r4 := r0 */
-  fib_iseq[n++] = MKOP_AB(OP_MOVE, 5, 1);	 /* r5 := r1 */
-  fib_iseq[n++] = MKOP_ABC(OP_SUBI, 5, 1, 1);	 /* r5 .- 1 */
-  fib_iseq[n++] = MKOP_ABC(OP_SEND, 4, 3, 1);	 /* r4 .fib :r5 */
-  fib_iseq[n++] = MKOP_ABC(OP_ADD, 3, 2, 1);	 /* r3 .+ r4 */
-  fib_iseq[n++] = MKOP_A(OP_RETURN, 3);		 /* return r3 */
+  fib_iseq[n++] = MKOP_AsBx(OP_LOADI, 3, 3);     /* r3 := 2 */
+  fib_iseq[n++] = MKOP_ABC(OP_LT, 2, 0, 2);      /* r2 .< r3 */
+  fib_iseq[n++] = MKOP_AsBx(OP_JMPNOT, 2, 2);    /* ifnot r2 :else */
+  fib_iseq[n++] = MKOP_AsBx(OP_LOADI, 2, 1);     /* r6 := 1 */
+  fib_iseq[n++] = MKOP_A(OP_RETURN, 2);          /* return r2 */
+  fib_iseq[n++] = MKOP_AB(OP_MOVE, 3, 0);        /* r3 := r0  :else */
+  fib_iseq[n++] = MKOP_AB(OP_MOVE, 4, 1);        /* r4 := r1 */
+  fib_iseq[n++] = MKOP_ABC(OP_SUBI, 4, 1, 2);    /* r4 .- 2 */
+  fib_iseq[n++] = MKOP_ABC(OP_SEND, 3, 3, 1);    /* r3 .fib r4 */
+  fib_iseq[n++] = MKOP_AB(OP_MOVE, 4, 0);        /* r4 := r0 */
+  fib_iseq[n++] = MKOP_AB(OP_MOVE, 5, 1);        /* r5 := r1 */
+  fib_iseq[n++] = MKOP_ABC(OP_SUBI, 5, 1, 1);    /* r5 .- 1 */
+  fib_iseq[n++] = MKOP_ABC(OP_SEND, 4, 3, 1);    /* r4 .fib :r5 */
+  fib_iseq[n++] = MKOP_ABC(OP_ADD, 3, 2, 1);     /* r3 .+ r4 */
+  fib_iseq[n++] = MKOP_A(OP_RETURN, 3);          /* return r3 */
   fib_irep.ilen = n;
   fib_irep.idx  = sirep+1;
 
