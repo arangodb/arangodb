@@ -32,8 +32,9 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlLogicalTestSuite () {
+  var errors = internal.errors;
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,6 +59,14 @@ function ahuacatlLogicalTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (result) {
+    return result.errorNum;
   }
 
 
@@ -152,12 +161,12 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNotInvalid : function () {
-      assertException(function() { getQueryResults("RETURN !null"); });
-      assertException(function() { getQueryResults("RETURN !0"); });
-      assertException(function() { getQueryResults("RETURN !1"); });
-      assertException(function() { getQueryResults("RETURN !\"value\""); });
-      assertException(function() { getQueryResults("RETURN ![ ]"); });
-      assertException(function() { getQueryResults("RETURN !{ }"); });
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !0")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !\"value\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN ![]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !{}")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,10 +175,10 @@ function ahuacatlLogicalTestSuite () {
     
     testUnaryNotPrecedence : function () {
       // not has higher precedence than ==
-      assertException(function() { getQueryResults("RETURN !1 == 0"); });
-      assertException(function() { getQueryResults("RETURN !1 == !1"); });
-      assertException(function() { getQueryResults("RETURN !1 > 7"); });
-      assertException(function() { getQueryResults("RETURN !1 in [1]"); });
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 == 0")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 == !1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 > 7")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 IN [1]")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,12 +236,12 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryPlusInvalid : function () {
-      assertException(function() { getQueryResults("RETURN +null"); });
-      assertException(function() { getQueryResults("RETURN +true"); });
-      assertException(function() { getQueryResults("RETURN +false"); });
-      assertException(function() { getQueryResults("RETURN +\"value\""); });
-      assertException(function() { getQueryResults("RETURN +[ ]"); });
-      assertException(function() { getQueryResults("RETURN +{ }"); });
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +\"value\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +[ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +{ }")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,12 +299,12 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryMinusInvalid : function () {
-      assertException(function() { getQueryResults("RETURN -null"); });
-      assertException(function() { getQueryResults("RETURN -true"); });
-      assertException(function() { getQueryResults("RETURN -false"); });
-      assertException(function() { getQueryResults("RETURN -\"value\""); });
-      assertException(function() { getQueryResults("RETURN -[ ]"); });
-      assertException(function() { getQueryResults("RETURN -{ }"); });
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -\"value\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -[ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -{ }")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,6 +336,230 @@ function ahuacatlLogicalTestSuite () {
       var expected = [ true ];
       var actual = getQueryResults("RETURN -5 == -10--5");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAnd1 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true && true");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAnd2 : function () {
+      var expected = [ false ];
+      var actual = getQueryResults("RETURN true && false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAnd3 : function () {
+      var expected = [ false ];
+      var actual = getQueryResults("RETURN false && true");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAnd4 : function () {
+      var expected = [ false ];
+      var actual = getQueryResults("RETURN false && false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAnd5 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true && !false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and 
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAndInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } && true")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && \"\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && \"false\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && [ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && { }")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } && false")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && \"\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && \"false\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && [ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && { }")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAndShortCircuit1 : function () {
+      // TODO: FIXME                              
+      // var expected = [ false ];
+      // var actual = getQueryResults("RETURN false && FAIL('this will fail')");
+      //assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary and, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryAndShortCircuit2 : function () {
+      assertException(function() { getQueryResults("RETURN false && FAIL('this will fail')"); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr1 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true || true");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr2 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true || false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr3 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN false || true");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr4 : function () {
+      var expected = [ false ];
+      var actual = getQueryResults("RETURN false || false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr5 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true || !false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOr6 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN false || !false");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } || true")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || \"\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || \"false\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || [ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || { }")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } || false")));
+
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || null")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || \"\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || \"false\"")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || [ ]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || { }")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrShortCircuit1 : function () {
+      // TODO: FIXME                              
+      // var expected = [ true ];
+      // var actual = getQueryResults("RETURN true || FAIL('this will fail')");
+      //assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrShortCircuit2 : function () {
+      assertException(function() { getQueryResults("RETURN false || FAIL('this will fail')"); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrShortCircuit3 : function () {
+      assertException(function() { getQueryResults("RETURN FAIL('this will fail') || true"); });
     },
   };
 }
