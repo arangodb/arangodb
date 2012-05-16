@@ -195,7 +195,9 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
     lastType = TRI_AQL_ACCESS_EXACT;
 
-    // now loop over all index fields
+    // now loop over all index fields, from left to right
+    // index field order is important because skiplists can be used with leftmost prefixes as well,
+    // but not with rightmost prefixes
     for (j = 0; j < numIndexFields; ++j) {
       char* indexedFieldName = idx->_fields._buffer[j];
 
@@ -245,9 +247,9 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST /* && 
+              candidate->_type != TRI_AQL_ACCESS_LIST && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
-              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE */) {
+              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE) {
             // wrong access type for skiplists
             continue;
           }

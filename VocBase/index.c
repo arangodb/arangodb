@@ -2720,61 +2720,6 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
   }
 }
 
-
-static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
-  TRI_sl_relation_operator_t* relationOperator;
-  TRI_sl_logical_operator_t*  logicalOperator;
-
-  if (slOperator == NULL) {
-    return;
-  }
-  
-  switch (slOperator->_type) {
-    case TRI_SL_AND_OPERATOR: 
-    case TRI_SL_NOT_OPERATOR:
-    case TRI_SL_OR_OPERATOR: {
-      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
-      UnFillLookupSLOperator(logicalOperator->_left);
-      UnFillLookupSLOperator(logicalOperator->_right);
-
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
-      break;
-    }
-    
-    case TRI_SL_EQ_OPERATOR: 
-    case TRI_SL_GE_OPERATOR: 
-    case TRI_SL_GT_OPERATOR: 
-    case TRI_SL_NE_OPERATOR: 
-    case TRI_SL_LE_OPERATOR: 
-    case TRI_SL_LT_OPERATOR: {
-      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
-
-      if (relationOperator->_parameters != NULL) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
-      }
-
-      if (relationOperator->_fields != NULL) {
-        size_t j;
-
-        for (j = 0; j < relationOperator->_numFields; ++j) {
-          TRI_shaped_json_t* field = relationOperator->_fields + j;
-
-          if (field->_data.data) {
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, field->_data.data);
-          }
-        }
-
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields); // don't require storage anymore
-        relationOperator->_fields = NULL;
-      }
-      relationOperator->_numFields = 0;
-      
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
-      break;
-    }
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ////////////////////////////////////////////////////////////////////////////////
@@ -2811,7 +2756,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
   // we must deallocate any memory we allocated in FillLookupSLOperator
   // .........................................................................
   
-  UnFillLookupSLOperator(slOperator); 
+  TRI_FreeSLOperator(slOperator); 
   
   return result;  
 }

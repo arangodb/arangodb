@@ -380,7 +380,7 @@ static string JS_server_ahuacatl =
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
   "function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {\n"
-  "  return internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;\n"
+  "  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;\n"
   "}\n"
   "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"

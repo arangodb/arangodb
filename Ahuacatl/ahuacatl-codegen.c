@@ -972,7 +972,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     } 
-    // fall through to exact access
+    // fall through to other access types
   }
 
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST('");
@@ -985,15 +985,44 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
 
-    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT);
+    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT || 
+           fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE || 
+           fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
 
     if (i > 0) {
       ScopeOutput(generator, ", ");
     }
 
     ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
-    ScopeOutput(generator, " : ");
-    ScopeOutputJson(generator, fieldAccess->_value._value);
+    ScopeOutput(generator, " : [ ");
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT) {
+      ScopeOutput(generator, " [ \"==\", ");
+      ScopeOutputJson(generator, fieldAccess->_value._value);
+      ScopeOutput(generator, " ] ");
+    }
+    else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
+      ScopeOutput(generator, " [ \"");
+      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._singleRange._type));
+      ScopeOutput(generator, "\", ");
+      ScopeOutputJson(generator, fieldAccess->_value._singleRange._value);
+      ScopeOutput(generator, " ] ");
+    }
+    else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+      // lower bound
+      ScopeOutput(generator, " [ \"");
+      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._between._lower._type));
+      ScopeOutput(generator, "\", ");
+      ScopeOutputJson(generator, fieldAccess->_value._between._lower._value);
+      ScopeOutput(generator, " ], [ \"");
+      // upper bound
+      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._between._upper._type));
+      ScopeOutput(generator, "\", ");
+      ScopeOutputJson(generator, fieldAccess->_value._between._upper._value);
+      ScopeOutput(generator, " ] ");
+    }
+
+    ScopeOutput(generator, " ] ");
   }
 
   ScopeOutput(generator, " })");
