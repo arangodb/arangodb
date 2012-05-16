@@ -2010,6 +2010,26 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the range operator string for a range operator
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_RangeOperatorAql (const TRI_aql_range_e type) {
+  switch (type) {
+    case TRI_AQL_RANGE_LOWER_EXCLUDED:
+      return ">";
+    case TRI_AQL_RANGE_LOWER_INCLUDED:
+      return ">=";
+    case TRI_AQL_RANGE_UPPER_EXCLUDED:
+      return "<";
+    case TRI_AQL_RANGE_UPPER_INCLUDED:
+      return "<=";
+  }
+ 
+  assert(false);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 

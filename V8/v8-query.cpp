@@ -25,6 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 #include "v8-query.h"
 
 #include "V8/v8-conv.h"
@@ -46,11 +48,25 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief geo coordinate container, also containing the distance 
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct {
   double _distance;
   void const* _data;
 }
 geo_coordinate_distance_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query types
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  QUERY_EXAMPLE,
+  QUERY_CONDITION
+}
+query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -203,13 +219,188 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the skiplist operator for a skiplist query
+/// @brief sets up the skiplist operator for a skiplist condition query
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_sl_operator_t* SetupSkiplistOperator (TRI_index_t* idx,
-                                                 TRI_shaper_t* shaper,
-                                                 v8::Handle<v8::Object> example) {
+static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
+                                                   TRI_shaper_t* shaper,
+                                                   v8::Handle<v8::Object> conditions) {
+  TRI_sl_operator_t* lastOperator = 0;
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  size_t numEq = 0;
+  size_t numNonEq = 0; 
+  
+  if (parameters == 0) {
+    return 0;
+  }
+
+  // iterate over all index fields
+  for (size_t i = 0; i < idx->_fields._length; ++i) {
+    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
+
+    if (!conditions->HasOwnProperty(key)) {
+      break;
+    }
+    v8::Handle<v8::Value> fieldConditions = conditions->Get(key);
+
+    if (!fieldConditions->IsArray()) {
+      // wrong data type for field conditions
+      break;
+    }
+    
+    // iterator over all conditions
+    v8::Handle<v8::Array> values = v8::Handle<v8::Array>::Cast(fieldConditions);
+    for (uint32_t j = 0; j < values->Length(); ++j) {
+      v8::Handle<v8::Value> fieldCondition = values->Get(j);
+    
+      if (!fieldCondition->IsArray()) {
+        // wrong data type for single condition
+        goto MEM_ERROR;
+      }
+    
+      v8::Handle<v8::Array> condition = v8::Handle<v8::Array>::Cast(fieldCondition);
+
+      if (condition->Length() != 2) {
+        // wrong number of values in single condition
+        goto MEM_ERROR;
+      }
+
+      v8::Handle<v8::Value> op = condition->Get(0);
+      v8::Handle<v8::Value> value = condition->Get(1);
+
+      if (!op->IsString()) {
+        // wrong operator type
+        goto MEM_ERROR;
+      }
+    
+      TRI_json_t* json = TRI_JsonObject(value);
+
+      if (!json) {
+        goto MEM_ERROR;
+      }
+
+      std::string opValue = TRI_ObjectToString(op);
+      if (opValue == "==") { 
+        // equality comparison
+
+        if (numNonEq > 0) {
+          goto MEM_ERROR;
+        }
+    
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
+        // creation of equality operator is deferred until it is finally needed
+        ++numEq;
+        break;
+      }
+      else {
+        TRI_sl_operator_type_e opType; 
+        if (opValue == ">") {
+          opType = TRI_SL_GT_OPERATOR;
+        }
+        else if (opValue == ">=") {
+          opType = TRI_SL_GE_OPERATOR;
+        }
+        else if (opValue == "<") {
+          opType = TRI_SL_LT_OPERATOR;
+        }
+        else if (opValue == "<=") {
+          opType = TRI_SL_LE_OPERATOR;
+        }
+        else {
+          // wrong operator type
+          goto MEM_ERROR;
+        }
+        
+        ++numNonEq;
+
+        TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+        if (cloned == 0) {
+          goto MEM_ERROR;
+        }
+
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, cloned, json);
+
+        if (numEq) {
+          // create equality operator if one is in queue
+          TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+          if (clonedParams == 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
+            goto MEM_ERROR;
+          }
+          lastOperator = TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
+          numEq = 0;
+        }
+  
+        TRI_sl_operator_t* current = 0;
+
+        // create the operator for the current condition
+        current = TRI_CreateSLOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
+        if (current == 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
+          goto MEM_ERROR;
+        }
+
+        if (lastOperator == 0) {
+          lastOperator = current;
+        }
+        else {
+          // merge the current operator with previous operators using logical AND
+          TRI_sl_operator_t* newOperator = TRI_CreateSLOperator(TRI_SL_AND_OPERATOR, lastOperator, current, NULL, shaper, NULL, 2, NULL);
+
+          if (newOperator == 0) {
+            TRI_FreeSLOperator(current);
+            goto MEM_ERROR;
+          }
+          else {
+            lastOperator = newOperator;
+          }
+        }
+      }
+    }
+
+  }
+
+  if (numEq) {
+    // create equality operator if one is in queue
+    assert(lastOperator == 0);
+    assert(numNonEq == 0);
+    
+    TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+    if (clonedParams == 0) {
+      goto MEM_ERROR;
+    }
+    lastOperator = TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
+  return lastOperator;
+
+MEM_ERROR:
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
+  if (lastOperator == 0) {
+    TRI_FreeSLOperator(lastOperator);
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the skiplist operator for a skiplist example query
+///
+/// this will set up a JSON container with the example values as a list
+/// at the end, one skiplist equality operator is created for the entire list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_sl_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
+                                                TRI_shaper_t* shaper,
+                                                v8::Handle<v8::Object> example) {
+  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (parameters == 0) {
+    return 0;
+  }
 
   for (size_t i = 0; i < idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
@@ -232,7 +423,8 @@ static TRI_sl_operator_t* SetupSkiplistOperator (TRI_index_t* idx,
   }
   
   if (parameters->_value._objects._length > 0) {
-    return CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
+    // example means equality comparisons only
+    return TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -290,6 +482,147 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a skiplist query (by condition or by example)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // expecting index, example, skip, and limit
+  if (argv.Length() < 2) {
+    TRI_ReleaseCollection(collection);
+
+    std::string usage("Usage: ");
+    usage += signature;
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               usage)));
+  }
+
+  if (! argv[1]->IsObject()) {
+    TRI_ReleaseCollection(collection);
+    std::string msg;
+
+    if (type == QUERY_EXAMPLE) {
+      msg = "<example> must be an object";
+    }
+    else {
+      msg = "<conditions> must be an object";
+    }
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
+  }
+
+  TRI_shaper_t* shaper = sim->base._shaper;
+
+  // extract skip and limit
+  TRI_voc_ssize_t skip;
+  TRI_voc_size_t limit;
+
+  ExtractSkipAndLimit(argv, 2, skip, limit);
+
+  if (limit < 0) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "<limit> cannot be negative")));
+  }
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  // extract the index
+  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+
+  if (idx == 0) {
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+  }
+
+  TRI_sl_operator_t* skiplistOperator;
+  v8::Handle<v8::Object> values = argv[1]->ToObject();
+  if (type == QUERY_EXAMPLE) {
+    skiplistOperator = SetupExampleSkiplist(idx, shaper, values);
+  }
+  else {
+    skiplistOperator = SetupConditionsSkiplist(idx, shaper, values);
+  }
+
+  if (!skiplistOperator) {
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+  }
+
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+  TRI_voc_ssize_t total = 0;
+  TRI_voc_size_t count = 0;
+
+  while (true) {
+    SkiplistIndexElement* indexElement = (SkiplistIndexElement*) skiplistIterator->_next(skiplistIterator);
+
+    if (indexElement == NULL) {
+      break;
+    }
+
+    ++total;
+
+    if (total > skip && count < limit) {
+      documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier));
+      ++count;
+    }
+  }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+  
+  // free data allocated by skiplist index result
+  TRI_FreeSkiplistIterator(skiplistIterator);
+  //TRI_FreeSLOperator(skiplistOperator); 
+
+  result->Set(v8::String::New("total"), v8::Number::New((double) total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+
+  TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts geo coordinates
@@ -903,129 +1236,23 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by condition using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
+  std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
+
+  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ByExampleSkiplistIndex (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
+  std::string signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
 
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (sim == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // expecting index, example, skip, and limit
-  if (argv.Length() < 2) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                               "usage: BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)")));
-  }
-
-  // extract the example
-  if (! argv[1]->IsObject()) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                               "<example> must be an object")));
-  }
-
-  v8::Handle<v8::Object> example = argv[1]->ToObject();
-
-  TRI_shaper_t* shaper = sim->base._shaper;
-
-  // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
-
-  ExtractSkipAndLimit(argv, 2, skip, limit);
-
-  if (limit < 0) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                               "<limit> cannot be negative")));
-  }
-
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New();
-
-  v8::Handle<v8::Array> documents = v8::Array::New();
-  result->Set(v8::String::New("documents"), documents);
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-  
-  // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
-
-  if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
-  }
-
-  TRI_sl_operator_t* skiplistOperator = SetupSkiplistOperator(idx, shaper, example);
-
-  if (!skiplistOperator) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
-  }
-
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
-
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
-  TRI_voc_ssize_t total = 0;
-  TRI_voc_size_t count = 0;
-
-  while (true) {
-    SkiplistIndexElement* indexElement = (SkiplistIndexElement*) skiplistIterator->_next(skiplistIterator);
-
-    if (indexElement == NULL) {
-      break;
-    }
-
-    ++total;
-
-    if (total > skip && count < limit) {
-      documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier));
-      ++count;
-    }
-  }
-
-  collection->_collection->endRead(collection->_collection);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-  
-  // free data allocated by skiplist index result
-  TRI_FreeSkiplistIterator(skiplistIterator);
-  //TRI_FreeSLOperator(skiplistOperator); 
-
-  result->Set(v8::String::New("total"), v8::Number::New((double) total));
-  result->Set(v8::String::New("count"), v8::Number::New(count));
-
-  TRI_ReleaseCollection(collection);
-
-  return scope.Close(result);
+  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1293,6 +1520,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   // .............................................................................
 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
+  v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
   v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
   v8::Handle<v8::String> ByExampleHashFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH"));
   v8::Handle<v8::String> ByExampleSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST"));
@@ -1309,9 +1537,10 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->VocbaseColTempl;
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
-  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplistIndex));
+  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
@@ -1322,9 +1551,10 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->EdgesColTempl;
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
-  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplistIndex));
+  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));

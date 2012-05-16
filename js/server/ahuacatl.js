@@ -379,7 +379,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
-  return internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
