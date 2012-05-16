@@ -349,9 +349,22 @@ function ahuacatlBindTestSuite () {
 /// @brief test collection bind variable
 ////////////////////////////////////////////////////////////////////////////////
 
-    testBindCollection : function () {
+    testBindCollection1 : function () {
       var expected = [ 5, 63 ];
       var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 }, true);
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection bind variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindCollection2 : function () {
+      var expected = [ 99 ];
+      var collection = numbers.name();
+      var paramName = "@" + collection;
+      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER u.value == 99 RETURN u.value", { paramName : collection }, true);
 
       assertEqual(expected, actual);
     },
