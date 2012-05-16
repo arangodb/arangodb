@@ -351,7 +351,7 @@ function ahuacatlBindTestSuite () {
 
     testBindCollection : function () {
       var expected = [ 5, 63 ];
-      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 }, true);
+      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 }, true);
 
       assertEqual(expected, actual);
     },
