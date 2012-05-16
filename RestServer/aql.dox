@@ -33,6 +33,8 @@
 ///   <ul>
 ///    <li>@ref AqlPurpose
 ///    </li>
+///    <li>@ref AqlQueryResults
+///    </li>
 ///    <li>@ref AqlBasics
 ///     <ul>
 ///      <li>@ref AqlWhitespace</li>
@@ -108,18 +110,26 @@
 /// @subsection AqlQueryResultsSet Result sets
 ///
 /// The result of an AQL query is a list of values. The individual values in the
-/// result list may or may not have a homogenuous structure. For example, when
-/// querying data from a collection, it is possible that the individual documents
-/// in the collections have different attributes. If the documents are returned
-/// by the query without modification, then the query result will also have an 
-/// inhomogenous structure:
+/// result list may or may not have a homogenuous structure, depending on what
+/// is actually queried.
+///
+/// For example, when returning data from a collection with inhomogenuous documents
+/// (the individual documents in the collection have different attribute names) 
+/// without modification, the result values will as well have an inhomogenuous
+/// structure. Each result value itself is a document:
 ///
 /// @EXAMPLE{aqlqueryresultinhomogenuous,inhomogenuous result set}
 ///
-/// However, if a fixed set of attributes is queried, then the query result will
-/// have a homogenuous structure:
+/// However, if a fixed set of attributes from the collection is queried, then the 
+/// query result values will have a homogenuous structure. Each result value is
+/// still a document:
 ///
 /// @EXAMPLE{aqlqueryresulthomogenuous,homogenuous result set}
+///
+/// It is also possible to query just scalar values. In this case, the result set
+/// is a list of scalars, and each result value is a scalar value:
+///
+/// @EXAMPLE{aqlqueryresultscalar,result set with scalars}
 ///
 /// If a query does not produce any results because no matching data can be
 /// found, it will produce an empty result list:
@@ -152,6 +162,8 @@
 ///   made to use any non-boolean values as operand(s) in logical operations. This
 ///   includes unary (logical not/negation), binary (logical and, logical or), and
 ///   the ternary operators.
+///
+/// Please refer to the @ref ArangoErrors page for a list of error codes and meanings.
 /// 
 /// @section AqlBasics Language basics
 ///
@@ -393,8 +405,8 @@
 /// @EXAMPLE{aqlbind,using a bind variable}
 ///
 /// Bind parameter names must start with any of the letters @LIT{a} to @LIT{z} 
-/// (both in lower and upper case) and can be followed by any letter or numeric
-/// digit or the underscore symbol. 
+/// (both in lower and upper case) or a digit (@LIT{0} to @LIT{9}), and can be 
+/// followed by any letter, digit, or the underscore symbol. 
 ///
 /// A special type of bind parameter exists for injecting collection names. This
 /// type of bind parameter has a name prefixed with an additional @LIT{\@} symbol
@@ -540,6 +552,10 @@
 /// can be evaluated and returns @LIT{true} if the comparison evaluates to true,
 /// and @LIT{false} otherwise.
 ///
+/// Some examples for comparison operations in AQL:
+///
+/// @verbinclude aqlcomparison
+///
 /// @subsubsection AqlOperatorsLogical Logical operators
 ///
 /// Logical operators combine two boolean operands in a logical operation and 
@@ -550,6 +566,8 @@
 /// - @LIT{&&} logical and operator
 /// - @LIT{||} logical or operator
 /// - @LIT{!} logical not/negation operator
+///
+/// Some examples for logical operations in AQL:
 ///
 /// @verbinclude aqllogical
 ///
@@ -584,6 +602,8 @@
 /// result will be returned as a numeric value.
 ///
 /// The unary plus and unary minus are supported as well.
+///
+/// Some example arithmetic operations:
 ///
 /// @verbinclude aqlarithmetic
 ///
