@@ -420,6 +420,24 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute ternary operator
+///
+/// the condition operand must be a boolean value, returns either the truepart
+/// or the falsepart 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
+  if (AHUACATL_TYPEWEIGHT(condition) !== AHUACATL_TYPEWEIGHT_BOOL) {
+    throw "expecting bool condition for ternary operator";
+  }
+
+  if (condition) {
+    return truePart;
+  }
+  return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform logical and
 ///
 /// both operands must be boolean values, returns a boolean, uses short-circuit

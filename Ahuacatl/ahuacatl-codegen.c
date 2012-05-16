@@ -705,6 +705,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, listRegister);
+  // TODO: check if function call can be optimised away
   ScopeOutput(generator, " = AHUACATL_LIST(");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ");\n");
@@ -1510,6 +1511,21 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for ternary
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessTernary (TRI_aql_codegen_js_t* const generator,
+                            const TRI_aql_node_t* const node) {
+  ScopeOutput(generator, "AHUACATL_TERNARY_OPERATOR(");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  ScopeOutput(generator, ", ");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+  ScopeOutput(generator, ", ");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 2));
+  ScopeOutput(generator, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for subqueries (nested fors etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1975,6 +1991,9 @@ static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* 
         break;
       case AQL_NODE_OPERATOR_BINARY_IN:
         ProcessBinaryIn(generator, node);
+        break;
+      case AQL_NODE_OPERATOR_TERNARY:
+        ProcessTernary(generator, node);
         break;
       case AQL_NODE_FCALL:
         ProcessFcall(generator, node);
