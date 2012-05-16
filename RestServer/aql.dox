@@ -359,6 +359,12 @@
 /// 
 /// @verbinclude aqllistvalues
 ///
+/// Individual list values can later be accesses by their positions using the
+/// @LIT{[]} accessor. The position of the accessed element must be a numeric
+/// value. Positions start at 0.
+///
+/// @verbinclude aqllistaccess
+///
 /// @subsubsection AqlCompoundDocuments Documents
 ///
 /// The other supported compound type is the document type. Documents are a 
@@ -383,6 +389,12 @@
 /// nested documents can be used as attribute values
 ///
 /// @verbinclude aqlnamedattributes
+///
+/// Individual document attributes can later be accesses by their names using the
+/// @LIT{.} accessor. If a non-existing attribute is accessed, the result is
+/// @LIT{null}.
+///
+/// @verbinclude aqldocumentaccess
 ///
 /// @subsection AqlParameter Bind parameters
 ///
@@ -637,7 +649,7 @@
 /// - @LIT{.} member access
 /// - @LIT{[]} indexed value access
 ///
-/// Parentheses (@LIT{(} and @LIT{)}) can be used to enforce a different
+/// The parentheses @LIT{(} and @LIT{)} can be used to enforce a different operator
 /// evaluation order.
 ///
 /// @subsection AqlFunctions Functions
@@ -932,17 +944,22 @@
 /// is a query part that can introduce its own local variables without affecting
 /// variables and values in its outer scope(s).
 ///
+/// It is required that subqueries be put inside parentheses @LIT{(} and @LIT{)} to
+/// explicitly mark their start and end points:
+///
 /// @verbinclude aqlsubquery
+///
+/// Subqueries might also include other subqueries themselves.
 ///
 /// @subsection AqlExpansion Variable expansion
 ///
 /// In order to access a named attribute from all elements in a list easily, 
-/// AQL offers the shortcut operator @LIT{[*]} for variable expansion.
+/// AQL offers the shortcut operator @LIT{[\*]} for variable expansion.
 ///
-/// Using the @LIT{[*]} operator with a variable will iterate over all elements
+/// Using the @LIT{[\*]} operator with a variable will iterate over all elements
 /// in the variable thus allowing to access a particular attribute of each element.
 /// It is required that the expanded variable is a list.
-/// The result of the @LIT{[*]} operator is again a list.
+/// The result of the @LIT{[\*]} operator is again a list.
 /// 
 /// @verbinclude aqlexpansion
 ///
