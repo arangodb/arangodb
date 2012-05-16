@@ -399,6 +399,11 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   if (!name) {
     ABORT_OOM
   }
+
+  if (strlen(name) == 0) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+    return NULL;
+  }
   
   TRI_AQL_NODE_STRING(node) = (char*) name;
 
