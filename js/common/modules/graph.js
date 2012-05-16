@@ -1,6 +1,6 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 80,
+         maxlen: 100,
          sloppy: true,
          plusplus: true */
 /*global require, WeakDictionary, exports */
@@ -117,8 +117,7 @@ findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._create(name);
-  } 
-  else if (!(col instanceof ArangoCollection)) {
+  } else if (!(col instanceof ArangoCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -138,8 +137,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.edges._create(name);
-  } 
-  else if (!(col instanceof ArangoEdgesCollection)) {
+  } else if (!(col instanceof ArangoEdgesCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -183,8 +181,7 @@ function Edge(graph, id) {
   if (props) {
     // extract the custom identifier, label, edges
     this._properties = props;
-  } 
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -376,16 +373,13 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  } 
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    } 
-    else {
+    } else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  } 
-  else {
+  } else {
     internal.output("Edge(<", this._id, ">)");
   }
 };
@@ -422,8 +416,7 @@ function Vertex(graph, id) {
   if (props) {
     // extract the custom identifier
     this._properties = props;
-  } 
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -568,8 +561,7 @@ Vertex.prototype.getInEdges = function () {
 
   if (arguments.length === 0) {
     result = this.inbound();
-  } 
-  else {
+  } else {
     labels = {};
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -608,8 +600,7 @@ Vertex.prototype.getOutEdges = function () {
 
   if (arguments.length === 0) {
     result = this.outbound();
-  } 
-  else {
+  } else {
     labels = {};
     for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
@@ -770,7 +761,7 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the shortest path to a certain node
+/// @brief find the shortest path to a certain node, return the ID
 ///
 /// @FUN{@FA{vertex}.setProperty(@FA{target_node})}
 ///
@@ -782,7 +773,8 @@ Vertex.prototype.pathTo = function (target_node) {
     todo_list = [], // [ID]
     i,
     current_node_id,
-    neighbor_list = [];
+    neighbor_list = [],
+    current_neighbor;
 
   this._pushNeigborsToArray(todo_list);
 
@@ -791,13 +783,18 @@ Vertex.prototype.pathTo = function (target_node) {
   }
 
   while (todo_list.length > 0) {
-    current_node_id = this._getShortestDistanceFor(todo_list, pathes); 
+    current_node_id = this._getShortestDistanceFor(todo_list, pathes);
     determined_list.push(current_node_id);
     todo_list.removeLastOccurrenceOf(current_node_id);
 
     neighbor_list = [];
     this._graph.getVertex(current_node_id)._pushNeigborsToArray(neighbor_list);
     for (i = 0; i < neighbor_list.length; i++) {
+      current_neighbor = neighbor_list[i];
+
+      pathes[current_neighbor] = []
+        .concat(pathes[current_node_id])
+        .concat(this._graph.getVertex(current_neighbor));
       if (determined_list.lastIndexOf(neighbor_list[i]) === -1) {
         todo_list.push(neighbor_list[i]);
       }
@@ -846,6 +843,7 @@ Vertex.prototype._getShortestDistanceFor = function (todo_list, distances) {
 
   for (i = 0; i < todo_list.length; i++) {
     current_node_id = todo_list[i];
+
     if (distances[current_node_id].length < shortest_distance[1]) {
       shortest_distance = [current_node_id, distances[current_node_id].length];
     }
@@ -877,16 +875,13 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  } 
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    } 
-    else {
+    } else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  } 
-  else {
+  } else {
     internal.output("Vertex(<", this._id, ">)");
   }
 };
@@ -942,7 +937,7 @@ function Graph(name, vertices, edges) {
     // Currently buggy:
     // gdb.ensureUniqueConstraint("name");
   }
-  
+
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }
@@ -955,11 +950,10 @@ function Graph(name, vertices, edges) {
     if (graphProperties === null) {
       try {
         graphProperties = gdb.document(name);
-      }
-      catch (e) {
+      } catch (e) {
         throw "no graph named '" + name + "' found";
       }
-      
+
       if (graphProperties === null) {
         throw "no graph named '" + name + "' found";
       }
@@ -977,14 +971,11 @@ function Graph(name, vertices, edges) {
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-  } 
-  else if (typeof vertices !== "string" || vertices === "") {
+  } else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
-  } 
-  else if (typeof edges !== "string" || edges === "") {
+  } else if (typeof edges !== "string" || edges === "") {
     throw "<edges> must be a string or null";
-  } 
-  else {
+  } else {
 
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
@@ -1014,12 +1005,10 @@ function Graph(name, vertices, edges) {
                        'name' : name });
 
         graphProperties = gdb.document(graphPropertiesId);
-      } 
-      else {
+      } else {
         throw "found graph but has different <name>";
       }
-    } 
-    else {
+    } else {
       if (graphProperties.vertices !== vertices._id) {
         throw "found graph but has different <vertices>";
       }
@@ -1191,14 +1180,13 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {    
+  } else {
     try {
       vertex = this.constructVertex(id);
-    }
-    catch (e) {
+    } catch (e) {
       vertex = null;
     }
-  } 
+  }
 
   return vertex;
 };
