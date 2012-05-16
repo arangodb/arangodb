@@ -210,7 +210,7 @@
 ///
 /// @LIT{http://localhost:8529/}.
 ///
-/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Fron-End">@endhtmlonly
+/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Front-End">@endhtmlonly
 /// @latexonly\includegraphics[width=12cm]{images/fe1.png}@endlatexonly
 ///
 /// The front-end allows you the browser through the collections and
