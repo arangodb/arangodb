@@ -42,7 +42,7 @@
 /// @else
 /// <ul>
 ///  <li>@ref CommandLine
-///   @copydetails CommandLineTOC
+///   @copydetails CommandLineSubTOC
 ///  </li>
 ///  <li>@ref JSModules
 ///   <ul>
