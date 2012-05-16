@@ -363,8 +363,9 @@ function ahuacatlBindTestSuite () {
     testBindCollection2 : function () {
       var expected = [ 99 ];
       var collection = numbers.name();
-      var paramName = "@" + collection;
-      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER u.value == 99 RETURN u.value", { paramName : collection }, true);
+      var params = { };
+      params["@" + collection] = collection;
+      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER " + collection + ".value == 99 RETURN " + collection + ".value", params, true);
 
       assertEqual(expected, actual);
     },
