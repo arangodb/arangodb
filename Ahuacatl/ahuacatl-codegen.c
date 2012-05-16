@@ -682,6 +682,7 @@ static void ScopePropertyCheck (TRI_aql_codegen_js_t* const generator,
 static void StartFor (TRI_aql_codegen_js_t* const generator,
                       TRI_string_buffer_t* const buffer,
                       const TRI_aql_codegen_register_t sourceRegister,
+                      const bool sourceIsList,
                       const char* const variableName) {
   TRI_aql_codegen_register_t listRegister = IncRegister(generator);
   TRI_aql_codegen_register_t keyRegister = IncRegister(generator);
@@ -705,10 +706,20 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, listRegister);
-  // TODO: check if function call can be optimised away
-  ScopeOutput(generator, " = AHUACATL_LIST(");
-  ScopeOutputRegister(generator, sourceRegister);
-  ScopeOutput(generator, ");\n");
+
+  if (sourceIsList) {
+    // the source register we're using definitely is a list
+    // we can therefore get rid of the function call to AHUACATL_LIST()
+    ScopeOutput(generator, " = ");
+    ScopeOutputRegister(generator, sourceRegister);
+    ScopeOutput(generator, ";\n");
+  }
+  else {
+    // we're not sure whether the source is a list, so we need to force it to be a list
+    ScopeOutput(generator, " = AHUACATL_LIST(");
+    ScopeOutputRegister(generator, sourceRegister);
+    ScopeOutput(generator, ");\n");
+  }
        
   // for (var keyx in listx) 
   ScopeOutput(generator, "for (var "); 
@@ -1260,14 +1271,16 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_node_t* nameNode1 = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* nameNode2 = TRI_AQL_NODE_MEMBER(node, 1);
+  TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 2);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  bool isList = TRI_IsListNodeAql(expressionNode);
  
   // init source 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, " = ");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 2));
+  ProcessNode(generator, expressionNode);
   ScopeOutput(generator, ";\n");
   
   // var result = [ ];
@@ -1277,7 +1290,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL, "expand");
 
   // for
-  StartFor(generator, scope->_buffer, sourceRegister, NULL);
+  StartFor(generator, scope->_buffer, sourceRegister, isList, NULL);
   EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode1), CurrentScope(generator)->_ownRegister);
 
   ScopeOutputRegister(generator, resultRegister);
@@ -1578,6 +1591,7 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
   TRI_vector_pointer_t* fieldAccesses = (TRI_vector_pointer_t*) TRI_AQL_NODE_DATA(node);
   TRI_string_buffer_t* buffer;
+  bool isList = TRI_IsListNodeAql(expressionNode);
  
   buffer = scope->_buffer; // inherit buffer from current scope
 
@@ -1600,7 +1614,7 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
     ScopeOutput(generator, ";\n");
   }
   
-  StartFor(generator, buffer, sourceRegister, nameNode->_value._value._string);
+  StartFor(generator, buffer, sourceRegister, isList, nameNode->_value._value._string);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1646,7 +1660,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   scope->_resultRegister = resultRegister;
   
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, sourceRegister, NULL);
+  StartFor(generator, scope->_buffer, sourceRegister, true, NULL);
 
   // restore symbols
   RestoreSymbols(generator, &variableNames);
@@ -1716,7 +1730,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, groupRegister, NULL);
+  StartFor(generator, scope->_buffer, groupRegister, true, NULL);
   scope = CurrentScope(generator);
 
   // re-enter symbols for collect variables
@@ -1796,7 +1810,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, limitRegister, NULL);
+  StartFor(generator, scope->_buffer, limitRegister, true, NULL);
 
   // restore symbols
   RestoreSymbols(generator, &variableNames);
