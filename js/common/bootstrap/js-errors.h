@@ -74,6 +74,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_BIND_PARAMETERS_INVALID\" : { \"code\" : 1550, \"message\" : \"invalid structure of bind parameters\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_MISSING\" : { \"code\" : 1551, \"message\" : \"no value specified for declared bind parameter '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_UNDECLARED\" : { \"code\" : 1552, \"message\" : \"bind parameter '%s' was not declared in the query\" }, \n"
+  "  \"ERROR_QUERY_BIND_PARAMETER_TYPE\" : { \"code\" : 1553, \"message\" : \"bind parameter '%s' has an invalid value or type\" }, \n"
   "  \"ERROR_QUERY_INVALID_LOGICAL_VALUE\" : { \"code\" : 1560, \"message\" : \"invalid logical value\" }, \n"
   "  \"ERROR_QUERY_INVALID_ARITHMETIC_VALUE\" : { \"code\" : 1561, \"message\" : \"invalid arithmetic value\" }, \n"
   "  \"ERROR_QUERY_DIVISON_BY_ZERO\"  : { \"code\" : 1562, \"message\" : \"division by zero\" }, \n"

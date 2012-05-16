@@ -63,7 +63,7 @@
 ///  </li>
 ///  <li>@ref Aql
 ///  </li>
-///  <li>@ref OTWP
+///  <li>Over the wire protocol
 ///   <ul>
 ///    <li>REST Interface
 ///     <ul>

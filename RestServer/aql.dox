@@ -331,10 +331,24 @@
 /// Bind parameters can be used everywhere in a query where literals can be used.
 ///
 /// The syntax for bind parameters is @LIT{\@name} where @LIT{name} is the actual
-/// parameter name. The bind parameter values need to be passed when the query
-/// is executed, but not as part of the query text but in a separate data structure.
+/// parameter name. The bind parameter values need to be passed along with the query
+/// when it is executed, but not as part of the query text itself. Please refer
+/// to the @ref HttpCursorHttp manual section for information about how to pass 
+/// the bind parameter values to the server.
 ///
 /// @EXAMPLE{aqlbind,using a bind variable}
+///
+/// Bind parameter names must start with any of the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case) and can be followed by any letter or numeric
+/// digit or the underscore symbol. 
+///
+/// A special type of bind parameter exists for injecting collection names. This
+/// type of bind parameter has a name prefixed with an additional @LIT{\@} symbol
+/// (thus when using the bind parameter in a query, two @LIT{\@} symbols must be
+/// used.
+///
+/// @EXAMPLE{aqlbindcollection,using a collection bind variable}
+/// 
 ///
 /// @subsection AqlTypeOrder Type and value order
 ///
