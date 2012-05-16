@@ -252,7 +252,7 @@
   * bind parameters
   * --------------------------------------------------------------------------- */
 
-@@?[a-zA-Z][a-zA-Z0-9_]* {
+@@?[a-zA-Z0-9][a-zA-Z0-9_]* {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1, false); 
