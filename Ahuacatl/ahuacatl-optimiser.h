@@ -39,7 +39,7 @@
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen-js.h"
+#include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 

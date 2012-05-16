@@ -40,7 +40,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef DEBUG_AQL
+#ifdef TRI_DEBUG_AQL
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an access type
 ////////////////////////////////////////////////////////////////////////////////
@@ -1867,7 +1867,7 @@ void TRI_FreeRangesAql (TRI_vector_pointer_t* const ranges) {
 /// @brief dump a single range for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-#if DEBUG_AQL
+#if TRI_DEBUG_AQL
 void TRI_DumpRangeAql (const TRI_aql_field_access_t* const fieldAccess) {
   printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fullName);
   printf("- TYPE: %s\n", AccessName(fieldAccess->_type));

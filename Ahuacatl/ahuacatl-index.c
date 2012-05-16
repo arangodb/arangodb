@@ -30,8 +30,6 @@
 #include "Ahuacatl/ahuacatl-context.h" 
 #include "Ahuacatl/ahuacatl-log.h"
 
-#define DEBUG_OPTIMIZER 1
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------

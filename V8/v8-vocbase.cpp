@@ -42,7 +42,7 @@
 #include "VocBase/general-cursor.h"
 #include "SkipLists/sl-operator.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen-js.h"
+#include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-result.h"
 

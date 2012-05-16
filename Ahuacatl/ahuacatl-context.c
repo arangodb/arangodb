@@ -200,11 +200,10 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   TRI_InitErrorAql(&context->_error);
 
-  context->_query = NULL;
   context->_parser = NULL;
   context->_first = NULL;
 
-  context->_query = TRI_DuplicateString(query);
+  context->_query = query;
   if (!context->_query) {
     TRI_FreeContextAql(context);
     return NULL;
@@ -261,11 +260,6 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 
   // free parser/lexer
   TRI_FreeParserAql(context->_parser);
-
-  // free query string
-  if (context->_query) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_query);
-  }
 
   // free error struct
   TRI_DestroyErrorAql(&context->_error);

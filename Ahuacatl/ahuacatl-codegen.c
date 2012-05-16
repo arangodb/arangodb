@@ -28,7 +28,7 @@
 #include <BasicsC/logging.h>
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-codegen-js.h"
+#include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-functions.h"
@@ -427,9 +427,11 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   // push the scope on the stack
   TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
 
+#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, scope->_name);
   ScopeOutput(generator, ") */\n");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,9 +442,11 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_register_t i, n;
   
+#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope end (");
   ScopeOutput(generator, scope->_name);
   ScopeOutput(generator, ") */\n");
+#endif
 
   n = generator->_scopes._length;
   assert(n > 0);
@@ -1996,7 +2000,9 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context, const void* const d
 
   if (code) {
     LOG_TRACE("generated code: %s", code);
-    // printf("generated code: %s\n", code);
+#ifdef TRI_DEBUG_AQL
+    printf("generated code: %s\n", code);
+#endif
   }
 
   return code;
