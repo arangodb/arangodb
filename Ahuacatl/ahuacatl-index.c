@@ -187,7 +187,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       case TRI_IDX_TYPE_PRIMARY_INDEX:
       case TRI_IDX_TYPE_HASH_INDEX:
       case TRI_IDX_TYPE_SKIPLIST_INDEX:
-        // these indexes are candidates
+        // these indexes are valid candidates
         break;
     }
 
@@ -207,19 +207,22 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
       
-        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + offset)) {
-          // different field
-          continue;
-        }
-
         if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
             candidate->_type == TRI_AQL_ACCESS_ALL) {
           // wrong index type, doesn't help us at all
           continue;
         }
+        
+        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + offset)) {
+          // different attribute, doesn't help
+          continue;
+        }
+
+        // attribute is used in index
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT) {
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST) {
             // wrong access type for primary index
             continue;
           }
@@ -227,18 +230,30 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT) {
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST) {
             // wrong access type for hash index
+            continue;
+          }
+
+          if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
+            // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }
           
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT /* && 
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST /* && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE */) {
             // wrong access type for skiplists
+            continue;
+          }
+          
+          if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
+            // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }
 

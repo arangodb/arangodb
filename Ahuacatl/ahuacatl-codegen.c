@@ -276,9 +276,23 @@ static inline void ScopeOutputJson (TRI_aql_codegen_js_t* const generator,
     return;
   }
 
-  if (TRI_Stringify2Json(scope->_buffer, json) != TRI_ERROR_NO_ERROR) {
+  if (TRI_StringifyJson(scope->_buffer, json) != TRI_ERROR_NO_ERROR) {
     generator->_error = true;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print an index id in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ScopeOutputIndexId (TRI_aql_codegen_js_t* const generator,
+                                       const TRI_aql_collection_t* const collection,
+                                       const TRI_aql_index_t* const idx) {
+  ScopeOutput(generator, "\"");
+  ScopeOutputUInt(generator, collection->_collection->_cid);
+  ScopeOutput(generator, "/");
+  ScopeOutputUInt(generator, idx->_idx->_iid);
+  ScopeOutput(generator, "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -841,6 +855,151 @@ static void RestoreSymbols (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for primary index access
+////////////////////////////////////////////////////////////////////////////////
+
+static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
+                                   const TRI_aql_index_t* const idx,
+                                   const TRI_aql_collection_t* const collection,
+                                   const char* const collectionName) {
+  TRI_aql_field_access_t* fieldAccess;
+  size_t n;
+
+  n = idx->_fieldAccesses->_length;
+  assert(n == 1);
+
+  fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
+
+  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+    ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_PRIMARY_LIST('");
+  }
+  else {
+    ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_PRIMARY('");
+  }
+
+  ScopeOutput(generator, collectionName);
+  ScopeOutput(generator, "', ");
+  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutput(generator, ", ");
+  ScopeOutputJson(generator, fieldAccess->_value._value);
+  ScopeOutput(generator, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for hash index access
+////////////////////////////////////////////////////////////////////////////////
+
+static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
+                                const TRI_aql_index_t* const idx,
+                                const TRI_aql_collection_t* const collection,
+                                const char* const collectionName, 
+                                const size_t offset) {
+  size_t i, n;
+
+  n = idx->_fieldAccesses->_length;
+  assert(n >= 1);
+
+  if (n == 1) {
+    // peek at first element and check if it is a list access
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_HASH_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
+      ScopeOutput(generator, ", ");
+      ScopeOutputJson(generator, fieldAccess->_value._value);
+      ScopeOutput(generator, ")");
+      return;
+    } 
+    // fall through to exact access
+  }
+
+  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_HASH('");
+  ScopeOutput(generator, collectionName);
+  ScopeOutput(generator, "', ");
+  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutput(generator, ", { ");
+
+  // write the example document
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
+
+    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT);
+
+    if (i > 0) {
+      ScopeOutput(generator, ", ");
+    }
+
+    ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
+    ScopeOutput(generator, " : ");
+    ScopeOutputJson(generator, fieldAccess->_value._value);
+  }
+
+  ScopeOutput(generator, " })");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for skiplist access
+////////////////////////////////////////////////////////////////////////////////
+
+static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
+                                    const TRI_aql_index_t* const idx,
+                                    const TRI_aql_collection_t* const collection,
+                                    const char* const collectionName,
+                                    const size_t offset) {
+  size_t i, n;
+
+  n = idx->_fieldAccesses->_length;
+  assert(n >= 1);
+
+  if (n == 1) {
+    // peek at first element and check if it is a list access
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
+      ScopeOutput(generator, ", ");
+      ScopeOutputJson(generator, fieldAccess->_value._value);
+      ScopeOutput(generator, ")");
+      return;
+    } 
+    // fall through to exact access
+  }
+
+  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST('");
+  ScopeOutput(generator, collectionName);
+  ScopeOutput(generator, "', ");
+  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutput(generator, ", { ");
+
+  // write the example document
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
+
+    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT);
+
+    if (i > 0) {
+      ScopeOutput(generator, ", ");
+    }
+
+    ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
+    ScopeOutput(generator, " : ");
+    ScopeOutputJson(generator, fieldAccess->_value._value);
+  }
+
+  ScopeOutput(generator, " })");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for a reference (the name of a variable)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -999,7 +1158,7 @@ static void ProcessHintedCollection (TRI_aql_codegen_js_t* const generator,
   TRI_vector_pointer_t* availableIndexes;
   char* collectionName;
   char* variableName;
-  size_t i, n, offset;
+  size_t offset;
 
   assert(generator);
   assert(nameNode);
@@ -1031,9 +1190,6 @@ static void ProcessHintedCollection (TRI_aql_codegen_js_t* const generator,
     return;
   }
 
-  offset = strlen(variableName) + 1;
-  assert(offset > 1);
-
   switch (idx->_idx->_type) {
     case TRI_IDX_TYPE_GEO1_INDEX: 
     case TRI_IDX_TYPE_GEO2_INDEX: 
@@ -1043,78 +1199,23 @@ static void ProcessHintedCollection (TRI_aql_codegen_js_t* const generator,
       generator->_error = true;
       break;
 
-    case TRI_IDX_TYPE_PRIMARY_INDEX: {
-      TRI_aql_field_access_t* fieldAccess;
-
-      assert(idx->_fieldAccesses->_length > 0);
-     
-      fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
-
-      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_PRIMARY('");
-      ScopeOutput(generator, collectionName);
-      ScopeOutput(generator, "', '");
-      ScopeOutputUInt(generator, collection->_collection->_cid);
-      ScopeOutput(generator, "/");
-      ScopeOutputUInt(generator, idx->_idx->_iid);
-      ScopeOutput(generator, "', ");
-      ScopeOutputJson(generator, fieldAccess->_value._value);
-      ScopeOutput(generator, ")");
+    case TRI_IDX_TYPE_PRIMARY_INDEX: 
+      GeneratePrimaryAccess(generator, idx, collection, collectionName);
       break;
-    }
-    case TRI_IDX_TYPE_HASH_INDEX: {
-      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_HASH('");
-      ScopeOutput(generator, collectionName);
-      ScopeOutput(generator, "', '");
-      // write index id
-      ScopeOutputUInt(generator, collection->_collection->_cid);
-      ScopeOutput(generator, "/");
-      ScopeOutputUInt(generator, idx->_idx->_iid);
-      ScopeOutput(generator, "', { ");
 
-      // write the example document
-      n = idx->_fieldAccesses->_length;
-      for (i = 0; i < n; ++i) {
-        TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
+    case TRI_IDX_TYPE_HASH_INDEX: 
+      offset = strlen(variableName) + 1;
+      assert(offset > 1);
 
-        if (i > 0) {
-          ScopeOutput(generator, ", ");
-        }
-
-        ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
-        ScopeOutput(generator, " : ");
-        ScopeOutputJson(generator, fieldAccess->_value._value);
-      }
-
-      ScopeOutput(generator, " })");
+      GenerateHashAccess(generator, idx, collection, collectionName, offset);
       break;
-    }
-    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST('");
-      ScopeOutput(generator, collectionName);
-      ScopeOutput(generator, "', '");
-      // write index id
-      ScopeOutputUInt(generator, collection->_collection->_cid);
-      ScopeOutput(generator, "/");
-      ScopeOutputUInt(generator, idx->_idx->_iid);
-      ScopeOutput(generator, "', { ");
 
-      // write the example document
-      n = idx->_fieldAccesses->_length;
-      for (i = 0; i < n; ++i) {
-        TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: 
+      offset = strlen(variableName) + 1;
+      assert(offset > 1);
 
-        if (i > 0) {
-          ScopeOutput(generator, ", ");
-        }
-
-        ScopeOutputQuoted2(generator, fieldAccess->_fullName + offset);
-        ScopeOutput(generator, " : ");
-        ScopeOutputJson(generator, fieldAccess->_value._value);
-      }
-
-      ScopeOutput(generator, " })");
+      GenerateSkiplistAccess(generator, idx, collection, collectionName, offset);
       break;
-    }
   }
 
   TRI_FreeIndexAql(idx);

@@ -309,6 +309,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using the primary index
+/// (single index value)
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
@@ -321,11 +322,56 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the primary index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var id = values[i];
+    try {
+      var d = internal.db[collection].document(id);
+      result.push(d);
+    }
+    catch (e) {
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using a hash index
+/// (single index value)
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
   return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a hash index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +381,30 @@ function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
 function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
   return internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a skiplist
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
