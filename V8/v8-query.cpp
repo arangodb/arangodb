@@ -613,7 +613,6 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   
   // free data allocated by skiplist index result
   TRI_FreeSkiplistIterator(skiplistIterator);
-  //TRI_FreeSLOperator(skiplistOperator); 
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
