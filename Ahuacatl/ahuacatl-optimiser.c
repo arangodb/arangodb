@@ -529,6 +529,9 @@ TRY_LOOP:
 static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* const context,
                                                          TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_UNARY_PLUS ||
+         node->_type == AQL_NODE_OPERATOR_UNARY_MINUS);
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
     return node;
@@ -538,9 +541,6 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
-
-  assert(node->_type == AQL_NODE_OPERATOR_UNARY_PLUS ||
-         node->_type == AQL_NODE_OPERATOR_UNARY_MINUS);
 
   if (node->_type == AQL_NODE_OPERATOR_UNARY_PLUS) {
     // + number => number
@@ -564,27 +564,27 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
 static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_UNARY_NOT);
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
+    // node is not a constant value
     return node;
   }
 
   if (!TRI_IsBooleanValueNodeAql(operand)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
   
-  assert(node->_type == AQL_NODE_OPERATOR_UNARY_NOT);
-
-  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
-    // ! bool => evaluate
-    node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
-    if (!node) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    }
-
-    TRI_AQL_LOG("optimised away unary logical operation");
+  // ! (bool value) => evaluate and replace with result
+  node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
+  if (!node) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
+
+  TRI_AQL_LOG("optimised away unary logical operation");
 
   return node;
 }
@@ -609,16 +609,19 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
 
   if (isEligibleLhs && !TRI_IsBooleanValueNodeAql(lhs)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (isEligibleRhs && !TRI_IsBooleanValueNodeAql(rhs)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (!isEligibleLhs || !isEligibleRhs) {
+    // node is not a constant value
     return node;
   }
 
@@ -749,12 +752,14 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
   
   if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
+    // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
   
   if (isEligibleRhs && !TRI_IsNumericValueNodeAql(rhs)) {
+    // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
@@ -780,6 +785,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
+      // division by zero
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
       return node;
     }
@@ -787,6 +793,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
+      // division by zero
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
       return node;
     }
@@ -803,6 +810,48 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
 
   return node;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise the ternary operation
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const context,
+                                                 TRI_aql_node_t* node) {
+  TRI_aql_node_t* condition = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_node_t* truePart = TRI_AQL_NODE_MEMBER(node, 1);
+  TRI_aql_node_t* falsePart = TRI_AQL_NODE_MEMBER(node, 2);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_TERNARY);
+
+  if (!condition || !TRI_IsConstantValueNodeAql(condition)) {
+    // node is not a constant value
+    return node;
+  }
+
+  if (!TRI_IsBooleanValueNodeAql(condition)) {
+    // node is not a boolean value => error
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    return node;
+  }
+  
+  if (!truePart || !falsePart) {
+    // true or false parts not defined
+    //  should not happen but we must not continue in this case
+    return node;
+  }
+    
+  TRI_AQL_LOG("optimised away ternary operation");
+  
+  // evaluate condition
+  if (TRI_GetBooleanNodeValueAql(condition)) {
+    // condition is true, replace with truePart
+    return truePart;
+  }
+  
+  // condition is true, replace with falsePart
+  return falsePart;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise nodes recursively
@@ -836,6 +885,8 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
     case AQL_NODE_OPERATOR_BINARY_DIV:
     case AQL_NODE_OPERATOR_BINARY_MOD:
       return OptimiseBinaryArithmeticOperation(context, node);
+    case AQL_NODE_OPERATOR_TERNARY:
+      return OptimiseTernaryOperation(context, node);
     case AQL_NODE_SORT:
       return OptimiseSort(context, node);
     case AQL_NODE_FILTER:
