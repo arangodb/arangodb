@@ -379,6 +379,25 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection name to the list of collections used
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const name) {
+  assert(context);
+  assert(name);
+
+  // duplicates are not a problem here, we simply ignore them
+  TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
+  
+  if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -402,11 +402,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   
   TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  // duplicates are not a problem here, we simply ignore them
-  TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
-  
-  if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+  if (!TRI_AddCollectionAql(context, name)) {
     return NULL;
   }
 

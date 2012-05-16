@@ -152,7 +152,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
       break;
     
     case TRI_JSON_STRING:
-      value = TRI_RegisterStringAql(context, json->_value._string.data, strlen(json->_value._string.data), false);
+      value = TRI_RegisterStringAql(context, json->_value._string.data, strlen(json->_value._string.data), true);
       node = TRI_CreateNodeValueStringAql(context, value);
       break;
     

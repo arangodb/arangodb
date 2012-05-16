@@ -165,6 +165,8 @@ extern "C" {
 /// - 1552: @CODE{bind parameter '\%s' was not declared in the query}
 ///   Will be raised when a value gets specified for an undeclared bind
 ///   parameter.
+/// - 1553: @CODE{bind parameter '\%s' has an invalid value or type}
+///   Will be raised when a bind parameter has an invalid value or type.
 /// - 1560: @CODE{invalid logical value}
 ///   Will be raised when a non-boolean value is used in a logical operation.
 /// - 1561: @CODE{invalid arithmetic value}
@@ -998,6 +1000,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                         (1552)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1553: ERROR_QUERY_BIND_PARAMETER_TYPE
+///
+/// bind parameter '%s' has an invalid value or type
+///
+/// Will be raised when a bind parameter has an invalid value or type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETER_TYPE                               (1553)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1560: ERROR_QUERY_INVALID_LOGICAL_VALUE
