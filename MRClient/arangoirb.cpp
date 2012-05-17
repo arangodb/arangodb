@@ -381,7 +381,7 @@ static void RunShell (mrb_state* mrb) {
       mrb_p(mrb, mrb_obj_value(mrb->exc));
       mrb->exc = 0;
     }
-    else {
+    else if (! mrb_nil_p(result)) {
       mrb_p(mrb, result);
     }
   }
