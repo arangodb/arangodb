@@ -6,6 +6,7 @@
 %option bison-bridge
 %option yylineno
 %option noyywrap nounput batch
+%x COMMENT
 
 %{
 #include <BasicsC/common.h>
@@ -213,7 +214,7 @@
 "]" {
   return T_LIST_CLOSE;
 }
-
+ 
  /* ---------------------------------------------------------------------------
   * literals
   * --------------------------------------------------------------------------- */
@@ -267,6 +268,31 @@
   /* whitespace is ignored */ 
 }
 
+<INITIAL>"/*" {
+  BEGIN(COMMENT);
+}
+
+<COMMENT>"*/" {
+  BEGIN(INITIAL);
+}
+
+<COMMENT>[^*\r\n]+ { 
+  // eat comment in chunks
+}
+
+<COMMENT>"*" {
+  // eat the lone star
+}
+
+<COMMENT>\r?\n {
+  yylineno++;
+}
+
+<COMMENT>\r {
+  yylineno++;
+}
+
+ 
 . {
   /* anything else is returned as it is */
   return (int) yytext[0];
