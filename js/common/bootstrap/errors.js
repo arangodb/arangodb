@@ -78,7 +78,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_QUERY_BIND_PARAMETER_TYPE" : { "code" : 1553, "message" : "bind parameter '%s' has an invalid value or type" }, 
   "ERROR_QUERY_INVALID_LOGICAL_VALUE" : { "code" : 1560, "message" : "invalid logical value" }, 
   "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" }, 
-  "ERROR_QUERY_DIVISON_BY_ZERO"  : { "code" : 1562, "message" : "division by zero" }, 
+  "ERROR_QUERY_DIVISION_BY_ZERO" : { "code" : 1562, "message" : "division by zero" }, 
   "ERROR_QUERY_LIST_EXPECTED"    : { "code" : 1563, "message" : "list expected" }, 
   "ERROR_QUERY_FAIL_CALLED"      : { "code" : 1569, "message" : "FAIL(%s) called" }, 
   "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" }, 
