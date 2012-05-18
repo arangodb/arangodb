@@ -1063,14 +1063,14 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1561)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1562: ERROR_QUERY_DIVISON_BY_ZERO
+/// @brief 1562: ERROR_QUERY_DIVISION_BY_ZERO
 ///
 /// division by zero
 ///
 /// Will be raised when there is an attempt to divide by zero.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1562)
+#define TRI_ERROR_QUERY_DIVISION_BY_ZERO                                  (1562)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1563: ERROR_QUERY_LIST_EXPECTED

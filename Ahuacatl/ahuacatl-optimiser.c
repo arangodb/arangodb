@@ -789,7 +789,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // division by zero
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = TRI_GetNumericNodeValueAql(lhs) / TRI_GetNumericNodeValueAql(rhs);
@@ -797,7 +797,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // division by zero
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
