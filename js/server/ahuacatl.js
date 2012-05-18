@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +46,26 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find an index of a certain type for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_INDEX (collection, indexTypes) {
+  var indexes = collection.getIndexes();
+
+  for (var i = 0; i < indexes.length; ++i) {
+    var index = indexes[i];
+
+    for (var j = 0; j < indexTypes.length; ++j) {
+      if (index.type == indexTypes[j]) {
+        return index.id;
+      }
+    }
+  }
+
+  return null;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an object
@@ -1671,6 +1693,89 @@ function AHUACATL_SUM () {
   }
 
   return AHUACATL_NUMERIC_VALUE(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     geo functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return at most <limit> documents near a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_NEAR () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var limit = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
+  }
+
+  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return documents within <radius> around a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_WITHIN () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var radius = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
+  }
+
+  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

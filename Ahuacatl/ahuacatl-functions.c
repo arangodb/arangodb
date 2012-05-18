@@ -141,6 +141,10 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, 1, 1);
   REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, 1, 1);
   REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, 0, 0);
+
+  // geo functions
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, 4, 5);
+  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, 4, 5);
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, 0, 1); // FAIL is non-deterministic, otherwise query optimisation will fail!
