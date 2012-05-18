@@ -626,6 +626,7 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name) {
   size_t i;
 
   assert(object->_type == TRI_JSON_ARRAY);
+  assert(name);
 
   n = object->_value._objects._length;
 
