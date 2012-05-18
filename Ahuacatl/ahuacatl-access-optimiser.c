@@ -1424,36 +1424,37 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   assert(field->_name._buffer);
   assert(node);
 
-  value = TRI_NodeJsonAql(context, node);
-  if (!value) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return NULL;
-  }  
-
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
     return NULL;
   }
 
   fieldAccess->_fullName = TRI_DuplicateString(field->_name._buffer);
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
     return NULL;
   }
+  
+  if (operator == AQL_NODE_OPERATOR_BINARY_NE) {
+    // create an all items access, and we're done
+    fieldAccess->_type = TRI_AQL_ACCESS_ALL;
+    return fieldAccess;
+  } 
+
+  // all other operation types require a value...
+  value = TRI_NodeJsonAql(context, node);
+  if (!value) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return NULL;
+  }  
 
   if (operator == AQL_NODE_OPERATOR_BINARY_EQ) {
     // create an exact value access
     fieldAccess->_type = TRI_AQL_ACCESS_EXACT; 
     fieldAccess->_value._value = value;
-  } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_NE) {
-    // create an all items access
-    fieldAccess->_type = TRI_AQL_ACCESS_ALL;
   } 
   else if (operator == AQL_NODE_OPERATOR_BINARY_LT) { 
     // create a single range access
@@ -1893,30 +1894,11 @@ int TRI_PickAccessAql (const TRI_aql_field_access_t* const lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a range vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeRangesAql (TRI_vector_pointer_t* const ranges) {
-  size_t i, n; 
-  
-  assert(ranges);
-   
-  n = ranges->_length;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_field_access_t* fieldAccess = TRI_AtVectorPointer(ranges, i);
-
-    TRI_FreeAccessAql(fieldAccess);
-  }
-
-  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, ranges);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump a single range for debugging purposes
+/// @brief dump a single acces for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_DEBUG_AQL
-void TRI_DumpRangeAql (const TRI_aql_field_access_t* const fieldAccess) {
+void TRI_DumpAccessAql (const TRI_aql_field_access_t* const fieldAccess) {
   printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fullName);
   printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
   
@@ -1952,7 +1934,7 @@ void TRI_DumpRangeAql (const TRI_aql_field_access_t* const fieldAccess) {
 /// @brief dump ranges found for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
+void TRI_DumpAccessesAql (const TRI_vector_pointer_t* const ranges) {
   size_t i, n; 
   
   assert(ranges);
@@ -1961,7 +1943,7 @@ void TRI_DumpRangesAql (const TRI_vector_pointer_t* const ranges) {
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = TRI_AtVectorPointer(ranges, i);
 
-    TRI_DumpRangeAql(fieldAccess);
+    TRI_DumpAccessesAql(fieldAccess);
   }
 }
 #endif
