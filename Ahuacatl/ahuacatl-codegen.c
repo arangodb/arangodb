@@ -1128,9 +1128,41 @@ static void ProcessArrayElement (TRI_aql_codegen_js_t* const generator,
   if (!scope->_buffer) {
     return;
   }
+
   TRI_ValueJavascriptAql(scope->_buffer, &node->_value, AQL_TYPE_STRING);
   ScopeOutput(generator, " : ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for a function call argument list
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
+                            const TRI_aql_function_t* const function, 
+                            const TRI_aql_node_t* const node) {
+  size_t i, n;
+
+  ScopeOutput(generator, "[ ");
+  n = node->_members._length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* parameter = TRI_AQL_NODE_MEMBER(node, i);
+
+    if (i > 0) {
+      ScopeOutput(generator, ", ");
+    }
+
+    if (parameter->_type == AQL_NODE_COLLECTION) {
+      // collection arguments will be created as string arguments => e.g. "users"
+      ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(parameter));
+    }
+    else {
+      // anything else will be created as is
+      ProcessNode(generator, parameter);
+    }
+  }
+
+  ScopeOutput(generator, " ]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1574,7 +1606,7 @@ static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "AHUACATL_FCALL(");
   ScopeOutput(generator, TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
   ScopeOutput(generator, ", ");
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  ProcessArgList(generator, (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node), TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
 
