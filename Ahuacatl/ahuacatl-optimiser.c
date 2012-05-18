@@ -146,6 +146,7 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
 
       // merge the field access found into the already existing field accesses for the node
       PatchForNode(context, scope->_node, fieldAccess); 
+      break;
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
@@ -164,7 +165,7 @@ static void FreeScope (TRI_aql_optimiser_scope_t* const scope) {
   }
 
   if (scope->_ranges) {
-    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, scope->_ranges);
+    TRI_FreeAccessesAql(scope->_ranges);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
@@ -216,9 +217,10 @@ static void StartScope (TRI_aql_context_t* const context,
 
   if (context->_optimiser._scopes._length > 0) {
     // copy ranges of parent scope into current one
-    scope->_ranges = TRI_CloneRangesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
+    scope->_ranges = TRI_CloneAccessesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
   }
-   
+  
+  // finally, add the new scope 
   TRI_PushBackVectorPointer(&context->_optimiser._scopes, scope);
 }
 
@@ -237,7 +239,7 @@ static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
   // we are closing at least one scope
   while (true) {
     TRI_aql_codegen_scope_e type = scope->_type;
-   
+
     FreeScope(scope);
 
     TRI_RemoveVectorPointer(&context->_optimiser._scopes, context->_optimiser._scopes._length - 1);
@@ -486,13 +488,18 @@ TRY_LOOP:
   }
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
-    TRI_vector_pointer_t* ranges;
+    TRI_vector_pointer_t* oldRanges;
+    TRI_vector_pointer_t* newRanges;
     bool changed = false;
 
-    ranges = TRI_OptimiseRangesAql(context, expression, &changed, scope->_ranges);
+    oldRanges = scope->_ranges;
+    newRanges = TRI_OptimiseRangesAql(context, expression, &changed, oldRanges);
     
-    if (ranges) {
-      scope->_ranges = ranges;
+    if (newRanges) {
+      if (oldRanges) {
+        TRI_FreeAccessesAql(oldRanges);
+      }
+      scope->_ranges = newRanges;
     }
     
     if (changed) {
