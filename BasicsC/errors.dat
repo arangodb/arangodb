@@ -102,6 +102,7 @@ ERROR_QUERY_KILLED,1500,"query killed","Will be raised when a running query is k
 ERROR_QUERY_PARSE,1501,"%s","Will be raised when query is parsed and is found to be syntactially invalid."
 ERROR_QUERY_EMPTY,1502,"query is empty","Will be raised when an empty query is specified."
 ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime error is caused by the query."
+ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_COLLECTION_NOT_FOUND,1520,"unable to open collection '%s'","Will be raised when one of the collections referenced in the query was not found."
@@ -110,7 +111,7 @@ ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised whe
 ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1530,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
 ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1540,"usage of unknown function '%s'","Will be raised when an undefined function is called."
 ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,1541,"invalid number of arguments for function '%s'","Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function."
-ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,1542,"invalid argument type used in call to function '%s'","Will be raised when the type of an argument used in a function call does not match the expected argument type."
+ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,1542,"invalid argument type used in call to function '%s()'","Will be raised when the type of an argument used in a function call does not match the expected argument type."
 ERROR_QUERY_BIND_PARAMETERS_INVALID,1550,"invalid structure of bind parameters","Will be raised when the structure of bind parameters passed has an unexpected format."
 ERROR_QUERY_BIND_PARAMETER_MISSING,1551,"no value specified for declared bind parameter '%s'","Will be raised when a bind parameter was declared in the query but the query is being executed with no value for that parameter."
 ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1552,"bind parameter '%s' was not declared in the query","Will be raised when a value gets specified for an undeclared bind parameter."
@@ -118,6 +119,8 @@ ERROR_QUERY_BIND_PARAMETER_TYPE,1553,"bind parameter '%s' has an invalid value o
 ERROR_QUERY_INVALID_LOGICAL_VALUE,1560,"invalid logical value","Will be raised when a non-boolean value is used in a logical operation."
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISON_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
+ERROR_QUERY_LIST_EXPECTED,1563,"list expected","Will be raised when a non-list operand is used for an operation that expects a list argument operand."
+ERROR_QUERY_FAIL_CALLED,1569,"FAIL(%s) called","Will be raised when the function FAIL() is called from inside a query."
 ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
 
 ################################################################################

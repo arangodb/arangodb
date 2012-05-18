@@ -137,6 +137,8 @@ extern "C" {
 ///   Will be raised when an empty query is specified.
 /// - 1503: @CODE{runtime error '\%s'}
 ///   Will be raised when a runtime error is caused by the query.
+/// - 1504: @CODE{number out of range}
+///   Will be raised when a number is outside the expected range.
 /// - 1510: @CODE{variable name '\%s' has an invalid format}
 ///   Will be raised when an invalid variable name is used.
 /// - 1511: @CODE{variable '\%s' is assigned multiple times}
@@ -156,7 +158,7 @@ extern "C" {
 /// - 1541: @CODE{invalid number of arguments for function '\%s'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
-/// - 1542: @CODE{invalid argument type used in call to function '\%s'}
+/// - 1542: @CODE{invalid argument type used in call to function '\%s()'}
 ///   Will be raised when the type of an argument used in a function call does
 ///   not match the expected argument type.
 /// - 1550: @CODE{invalid structure of bind parameters}
@@ -177,6 +179,11 @@ extern "C" {
 ///   operation.
 /// - 1562: @CODE{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
+/// - 1563: @CODE{list expected}
+///   Will be raised when a non-list operand is used for an operation that
+///   expects a list argument operand.
+/// - 1569: @CODE{FAIL(\%s) called}
+///   Will be raised when the function FAIL() is called from inside a query.
 /// - 1570: @CODE{no suitable geo index found for geo restriction on '\%s'}
 ///   Will be raised when a geo restriction was specified but no suitable geo
 ///   index is found to resolve it.
@@ -890,6 +897,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_SCRIPT                                            (1503)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1504: ERROR_QUERY_NUMBER_OUT_OF_RANGE
+///
+/// number out of range
+///
+/// Will be raised when a number is outside the expected range.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               (1504)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 ///
 /// variable name '%s' has an invalid format
@@ -975,7 +992,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
 ///
-/// invalid argument type used in call to function '%s'
+/// invalid argument type used in call to function '%s()'
 ///
 /// Will be raised when the type of an argument used in a function call does
 /// not match the expected argument type.
@@ -1054,6 +1071,27 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1562)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1563: ERROR_QUERY_LIST_EXPECTED
+///
+/// list expected
+///
+/// Will be raised when a non-list operand is used for an operation that
+/// expects a list argument operand.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_LIST_EXPECTED                                     (1563)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1569: ERROR_QUERY_FAIL_CALLED
+///
+/// FAIL(%s) called
+///
+/// Will be raised when the function FAIL() is called from inside a query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FAIL_CALLED                                       (1569)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1570: ERROR_QUERY_GEO_INDEX_MISSING
