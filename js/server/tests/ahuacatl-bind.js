@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
 var jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,9 +33,10 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlBindTestSuite () {
+  var errors = internal.errors;
   var numbers = null;
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,6 +82,14 @@ function ahuacatlBindTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (result) {
+    return result.errorNum;
   }
 
 
@@ -325,13 +335,13 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindMissing : function () {
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @", { }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @@", { }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value", { }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value", { "values" : [ ] }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value1", { "value" : 1, "value11" : 2 }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value1 + @value2", { "value1" : 1 }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2 }, true); } );
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @", { })));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @@", { })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value", { })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value", { "values" : [ ] })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value1", { "value" : 1, "value11": 2 })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value1 + @value2", { "value1" : 1 })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2 })));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,10 +349,10 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindSuperfluous : function () {
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN 1", { "value" : 1 }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN 1", { "value": null }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value", { "value2" : 3 }, true); } );
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2, "value3" : 3, "value4" : 4 }, true); } );
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN 1", { "value" : 1 })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN 1", { "value" : null })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value", { "value" : 3, "value2" : 3 })));
+      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(AHUACATL_RUN("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2, "value3" : 3, "value4" : 4 })));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
