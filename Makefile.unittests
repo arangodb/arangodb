@@ -180,6 +180,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
+			@srcdir@/js/server/tests/ahuacatl-complex.js \
 			@srcdir@/js/server/tests/ahuacatl-logical.js \
 			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
 			@srcdir@/js/server/tests/ahuacatl-relational.js \
