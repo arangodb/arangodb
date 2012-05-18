@@ -156,6 +156,9 @@ extern "C" {
 /// - 1541: @CODE{invalid number of arguments for function '\%s'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
+/// - 1542: @CODE{invalid argument type used in call to function '\%s'}
+///   Will be raised when the type of an argument used in a function call does
+///   not match the expected argument type.
 /// - 1550: @CODE{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
@@ -968,6 +971,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH                 (1541)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
+///
+/// invalid argument type used in call to function '%s'
+///
+/// Will be raised when the type of an argument used in a function call does
+/// not match the expected argument type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH                   (1542)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID

@@ -1562,32 +1562,6 @@ function AHUACATL_LENGTH () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_MERGE () {
-  var result = { };
-
-  for (var i in arguments) {
-    var element = arguments[i];
-
-    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      throw "expecting documents for merge";
-    }
-
-    for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
-        continue;
-      }
-
-      result[k] = element[k];
-    }
-  }
-
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the union (all) of all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1790,6 +1764,33 @@ function AHUACATL_GEO_WITHIN () {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      throw "expecting documents for merge";
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result[k] = element[k];
+    }
+  }
+
+  return result; 
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief passthru the argument

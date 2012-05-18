@@ -950,21 +950,12 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
   {
     TRI_aql_function_t* function;
     TRI_associative_pointer_t* functions;
-    char* upperName;
-    size_t actualCount;
 
     assert(context->_vocbase);
     functions = context->_vocbase->_functions;
     assert(functions);
 
-    // normalize the name by upper-casing it
-    upperName = TRI_UpperAsciiString(name);
-    if (!upperName) {
-      ABORT_OOM
-    }
-
-    function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
+    function = TRI_GetByExternalNameFunctionAql(functions, name);
 
     if (!function) {
       // function name is unknown
@@ -972,11 +963,8 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
       return NULL;
     }
 
-    // validate number of function call arguments
-    assert(parameters->_type == AQL_NODE_LIST);
-    actualCount = parameters->_members._length;
-    if (actualCount < function->_minArgs || actualCount > function->_maxArgs) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, name);
+    // validate function call arguments
+    if (!TRI_ValidateArgsFunctionAql(context, function, parameters)) {
       return NULL;
     }
 
