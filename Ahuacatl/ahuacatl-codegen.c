@@ -410,7 +410,6 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
                         const TRI_aql_codegen_register_t keyRegister, 
                         const TRI_aql_codegen_register_t ownRegister, 
                         const TRI_aql_codegen_register_t resultRegister, 
-                        const char* const variableName,
                         const char* const name) {
   TRI_aql_codegen_scope_t* scope;
   
@@ -426,9 +425,10 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   scope->_keyRegister = keyRegister;
   scope->_ownRegister = ownRegister;
   scope->_resultRegister = resultRegister;
-  scope->_variableName = variableName;
   scope->_prefix = NULL;
+#ifdef TRI_DEBUG_AQL
   scope->_name = name;
+#endif
 
   // init symbol table
   TRI_InitAssociativePointer(&scope->_variables, 
@@ -495,7 +495,7 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
   size_t n;
 
   // start a new scope first
-  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL, "sort");
+  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, "sort");
   scope = CurrentScope(generator);
 
   ScopeOutput(generator, "function ");
@@ -557,7 +557,7 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
   size_t n;
 
   // start a new scope first
-  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL, "group");
+  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, "group");
   scope = CurrentScope(generator);
   scope->_prefix = "g";
 
@@ -697,7 +697,6 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
              keyRegister, 
              ownRegister, 
              scope->_resultRegister, 
-             variableName, 
              "for");
 
   if (variableName) {
@@ -1287,7 +1286,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
   
   // expand scope
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL, "expand");
+  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, "expand");
 
   // for
   StartFor(generator, scope->_buffer, sourceRegister, isList, NULL);
@@ -1548,7 +1547,7 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
 
-  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, scopeRegister, NULL, "subquery");
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, scopeRegister, "subquery");
   InitList(generator, scopeRegister);
   
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1874,7 +1873,7 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
   
   InitList(generator, resultRegister);
 
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL, "let");
+  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, "let");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
 
   lastResultRegister = CurrentScope(generator)->_resultRegister;
@@ -2059,7 +2058,7 @@ TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator,
 
   assert(node);
 
-  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL, "main");
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, "main");
   InitList(generator, startRegister);
   
   ProcessNode(generator, node);

@@ -94,9 +94,10 @@ typedef struct TRI_aql_codegen_scope_s {
   TRI_aql_codegen_register_t _ownRegister;
   TRI_aql_codegen_register_t _resultRegister;
   TRI_associative_pointer_t _variables; // list of variables in scope
-  const char* _variableName; // name of for variable TODO: check if this is needed
-  const char* _name; // for debugging purposes only
   char* _prefix; // prefix for variable names, used in FUNCTION scopes only
+#ifdef TRI_DEBUG_AQL
+  const char* _name; // for debugging purposes only
+#endif
 }
 TRI_aql_codegen_scope_t;
 
