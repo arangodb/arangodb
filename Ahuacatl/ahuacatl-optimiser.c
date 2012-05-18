@@ -408,8 +408,11 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
   if (!json) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
-    return NULL;
+    // cannot optimise the function call due to an internal error
+
+    // TODO: check whether we can validate the arguments here already and return an error early
+    // TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
+    return node;
   }
 
   // use the constant values instead of the function call node

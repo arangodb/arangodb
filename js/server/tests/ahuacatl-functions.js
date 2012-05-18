@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
 var jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,8 +33,9 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFunctionsTestSuite () {
+  var errors = internal.errors;
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -66,7 +68,7 @@ function ahuacatlFunctionsTestSuite () {
       else {
         var keys = [ ];
         for (var k in row) {
-          if (row.hasOwnProperty(k) && k != '_id' && k != '_rev') {
+          if (row.hasOwnProperty(k)) {
             keys.push(k);
           }
         }
@@ -83,6 +85,14 @@ function ahuacatlFunctionsTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (result) {
+    return result.errorNum;
   }
 
 
@@ -123,6 +133,19 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test length function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLengthInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH(4)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LENGTH({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -143,6 +166,23 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+
+    testConcatInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(\"yes\", true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(\"yes\", 4)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(\"yes\", [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(\"yes\", { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(true, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT(4, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT([ ], \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCAT({ }, \"yes\")")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test concatseparator function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -160,6 +200,29 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return CONCATSEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps')", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concatseparator function
+////////////////////////////////////////////////////////////////////////////////
+
+    testConcatSeparatorInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(null, \"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(true, \"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(4, \"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR([ ], \"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR({ }, \"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", true, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", 4, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", [ ], \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", { }, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", \"yes\", true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", \"yes\", 4)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", \"yes\", [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CONCATSEPARATOR(\"yes\", \"yes\", { })")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +256,20 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test charlength function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCharLengthInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH(\"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH(3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CHARLENGTH({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test lower function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -223,6 +300,20 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLowerInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER(\"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER(3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN LOWER({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test upper function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -240,6 +331,20 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ "ÄÖÜÄÖÜSS アボカド名称について" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('äöüÄÖÜß アボカド名称について')", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upper function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpperInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER(\"yes\", \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER(3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UPPER({ })")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,6 +378,30 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test substring function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubstringInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", 0, 2, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(null, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(true, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(3, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING([ ], 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING({ }, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", null, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", true, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", \"yes\", 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", [ ], 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", { }, 0)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", \"yes\", null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", \"yes\", true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", \"yes\", [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN SUBSTRING(\"yes\", \"yes\", { })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test floor function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -280,6 +409,20 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ -100, -3, -3, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 99 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return FLOOR(r)", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test floor function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFloorInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR(1, 2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN FLOOR({ })")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,6 +436,20 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test ceil function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCeilInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL(1,2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN CEIL({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test abs function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -303,6 +460,20 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test abs function
+////////////////////////////////////////////////////////////////////////////////
+
+    testAbsInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS(1,2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ABS({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test round function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -310,6 +481,20 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ -100, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 100 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test round function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRoundInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND(1,2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND(true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN ROUND({ })")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +510,15 @@ function ahuacatlFunctionsTestSuite () {
         var value = actual[i];
         assertTrue(value >= 0.0 && value < 1.0);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rand function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRandInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN RAND(1)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN RAND(2)")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,6 +562,30 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMergeInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, 3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE(null, { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE(true, { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE(3, { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE(\"yes\", { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE([ ], { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, { }, null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, { }, true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, { }, 3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, { }, \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MERGE({ }, { }, [ ])")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test union function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -395,6 +613,30 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ "Fred", "John", "John", "Amy" ];
       var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) return u", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], 3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], [ ], null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], [ ], true)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], [ ], 3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], [ ], \"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION([ ], [ ], { })")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION(null, [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION(true, [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION(3, [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION(\"yes\", [ ])")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN UNION({ }, [ ])")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,6 +670,20 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMinInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN([ ], 2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN(false)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN(3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MIN({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test max function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -456,6 +712,31 @@ function ahuacatlFunctionsTestSuite () {
       var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MAX(u)", true);
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaxInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX([ ], 2)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX(null)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX(false)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX(3)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX(\"yes\")")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN MAX({ })")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-existing functions
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonExisting : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(AHUACATL_RUN("RETURN FOO()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(AHUACATL_RUN("RETURN BAR()")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(AHUACATL_RUN("RETURN PENG(true)")));
+    }
+
   };
 }
 
