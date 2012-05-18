@@ -120,7 +120,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
     TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i); 
 
     assert(key->_type == TRI_JSON_STRING);
-    TRI_PushBack2ListJson(keys, key); 
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key); 
   } 
 
   n = rhs->_value._objects._length;
@@ -128,7 +128,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
     TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i); 
 
     assert(key->_type == TRI_JSON_STRING);
-    TRI_PushBack2ListJson(keys, key); 
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key); 
   } 
 
   // sort the key list in place
@@ -240,6 +240,9 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
     case TRI_JSON_ARRAY: {
       TRI_json_t* keys;
+          
+      assert(lhs->_type == TRI_JSON_ARRAY);
+      assert(rhs->_type == TRI_JSON_ARRAY);
 
       keys = GetMergedKeyList(lhs, rhs);
       if (keys != NULL) {
@@ -254,6 +257,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
           keyElement = TRI_AtVector(&keys->_value._objects, i);
           assert(keyElement->_type == TRI_JSON_STRING);
+          assert(keyElement->_value._string.data);
 
           lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
           rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
