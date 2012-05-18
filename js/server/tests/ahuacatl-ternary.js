@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
 var jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,8 +33,9 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlTernaryTestSuite () {
+  var errors = internal.errors;
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,6 +65,14 @@ function ahuacatlTernaryTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (result) {
+    return result.errorNum;
   }
 
 
@@ -157,6 +167,20 @@ function ahuacatlTernaryTestSuite () {
       var actual = getQueryResults("RETURN true ? true ? false ? 1 : -1 : -2 : 3");
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ternary with non-boolean condition
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTernaryInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN (4) ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN (4 - 3) ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"true\" ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } ? 2 : 3")));
+    }
 
   };
 }
