@@ -1344,6 +1344,21 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   assert(context);
   assert(mergeType == AQL_NODE_OPERATOR_BINARY_AND || mergeType == AQL_NODE_OPERATOR_BINARY_OR);
 
+  // first check if we can get away without copying/merging the vectors
+  if (inheritedRestrictions == NULL) {
+    // 3rd vector is empty
+    if (lhs != NULL && rhs == NULL) {
+      // 2nd vector is also empty, we simply return the 1st one
+      // no copying/merging required
+      return lhs;
+    }
+    if (lhs == NULL && rhs != NULL) {
+      // 1st vector is also empty, we simply return the 2nd one
+      // no copying/merging required
+      return rhs;
+    }
+  }
+
   result = CreateEmptyVector(context);
   if (!result) {
     // free memory
@@ -1353,6 +1368,9 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     if (rhs) {
       TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, rhs);
     }
+
+    // OOM
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }
@@ -1376,7 +1394,6 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1417,12 +1434,14 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
     return NULL;
   }
 
   fieldAccess->_fullName = TRI_DuplicateString(field->_name._buffer);
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
     return NULL;
   }
@@ -1467,12 +1486,20 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     fieldAccess->_type = TRI_AQL_ACCESS_LIST;
     fieldAccess->_value._value = value;
 
-    // sort values in list
-    TRI_SortListJson(fieldAccess->_value._value);
-    // make list values unique
-    list = TRI_UniquifyListJson(fieldAccess->_value._value);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._value);
-    fieldAccess->_value._value = list;
+    // check if list contains more than 1 value
+    if (value->_value._objects._length > 1) {
+      // list contains more than one value, we need to make it unique
+
+      // sort values in list
+      TRI_SortListJson(fieldAccess->_value._value);
+      // make list values unique, this will create a new list
+      list = TRI_UniquifyListJson(fieldAccess->_value._value);
+      // free old list
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._value);
+
+      // now use the sorted && unique list
+      fieldAccess->_value._value = list;
+    }
   }
   else {
     assert(false);
@@ -1592,13 +1619,18 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                           ProcessNode(context, rhs, changed, inheritedRestrictions),
                           inheritedRestrictions);
 
-    if (TRI_ContainsImpossibleAql(result)) {
-      // inject a bool(false) node into the true if the condition is always false
-      node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
-      node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, false);
+    if (result == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    }
+    else {
+      if (TRI_ContainsImpossibleAql(result)) {
+        // inject a bool(false) node into the true if the condition is always false
+        node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
+        node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, false);
 
-      // set changed marker
-      *changed = true;
+        // set changed marker
+        *changed = true;
+      }
     }
 
     return result;
@@ -1650,15 +1682,20 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                             Vectorize(context, attributeAccess),
                             NULL,
                             inheritedRestrictions);
+    
+      if (result == NULL) {
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
+      else {
+        if (TRI_ContainsImpossibleAql(result)) {
+          // inject a dummy false == true node into the true if the condition is always false
+          node->_type = AQL_NODE_OPERATOR_BINARY_EQ;
+          node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
+          node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, true);
 
-      if (TRI_ContainsImpossibleAql(result)) {
-        // inject a dummy false == true node into the true if the condition is always false
-        node->_type = AQL_NODE_OPERATOR_BINARY_EQ;
-        node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
-        node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, true);
-
-        // set changed marker
-        *changed = true;
+          // set changed marker
+          *changed = true;
+        }
       }
 
       return result;
@@ -1765,6 +1802,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
  
   fieldAccess = CreateFieldAccess(context, source->_type, source->_fullName); 
   if (fieldAccess == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1772,19 +1810,29 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
     case TRI_AQL_ACCESS_EXACT:
     case TRI_AQL_ACCESS_LIST:
       fieldAccess->_value._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._value);
-      // TODO: handle OOM
+      if (fieldAccess->_value._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
       break;
     case TRI_AQL_ACCESS_RANGE_SINGLE:
       fieldAccess->_value._singleRange._type = source->_value._singleRange._type;
       fieldAccess->_value._singleRange._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._singleRange._value);
-      // TODO: handle OOM
+      if (fieldAccess->_value._singleRange._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
       break;
     case TRI_AQL_ACCESS_RANGE_DOUBLE:
       fieldAccess->_value._between._lower._type = source->_value._between._lower._type;
       fieldAccess->_value._between._upper._type = source->_value._between._upper._type;
       fieldAccess->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._between._lower._value);
       fieldAccess->_value._between._upper._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._between._upper._value);
-      // TODO: handle OOM
+      if (fieldAccess->_value._between._lower._value == NULL ||
+          fieldAccess->_value._between._upper._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
       break;
     case TRI_AQL_ACCESS_ALL:
     case TRI_AQL_ACCESS_IMPOSSIBLE:

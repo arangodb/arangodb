@@ -732,6 +732,8 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     
   TRI_AQL_LOG("optimised away binary relational operation");
 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
   return node;
 }
 
