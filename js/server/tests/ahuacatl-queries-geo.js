@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
 var jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +33,9 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlGeoTestSuite () {
+  var errors = internal.errors;
   var locations = null;
+  var locationsNon = null;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
@@ -89,6 +92,14 @@ function ahuacatlGeoTestSuite () {
     return results;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (result) {
+    return result.errorNum;
+  }
+
 
   return {
 
@@ -98,7 +109,6 @@ function ahuacatlGeoTestSuite () {
 
     setUp : function () {
       locations = internal.db.UnitTestsAhuacatlLocations;
-
       if (locations.count() == 0) {
         for (var lat = -40; lat <= 40; ++lat) {
           for (var lon = -40; lon <= 40; ++lon) {
@@ -107,6 +117,15 @@ function ahuacatlGeoTestSuite () {
         }
 
         locations.ensureGeoIndex("latitude", "longitude");
+      }
+
+      locationsNon = internal.db.UnitTestsAhuacatlLocationsNon;
+      if (locationsNon.count() == 0) {
+        for (var lat = -40; lat <= 40; ++lat) {
+          for (var lon = -40; lon <= 40; ++lon) {
+            locationsNon.save({"latitude" : lat, "longitude" : lon });
+          }
+        }
       }
     },
 
@@ -202,7 +221,31 @@ function ahuacatlGeoTestSuite () {
       var expected = [ ];
       var actual = getQueryResults("FOR x IN WITHIN(" + locations.name() + ", -90, 90, 10000) SORT x.latitude, x.longitude RETURN x");
       assertEqual(expected, actual);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test without geo index available
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonIndexed : function () {
+      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(AHUACATL_RUN("RETURN NEAR(" + locationsNon.name() + ", 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(" + locationsNon.name() + ", 0, 0, 10)")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid collection parameter
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCollectionArgument : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(1234, 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(false, 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(true, 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN([ ], 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN({ }, 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(@name, 0, 0, 10)")));
+    },
+
   }
 }
 
