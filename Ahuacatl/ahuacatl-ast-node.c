@@ -1025,14 +1025,27 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
     return false;
   }
 
-  if (node->_type == AQL_NODE_LIST || node->_type == AQL_NODE_ARRAY) {
+  if (node->_type == AQL_NODE_LIST) {
     size_t i;
     size_t n = node->_members._length;
 
     for (i = 0; i < n; ++i) {
-      TRI_aql_node_t* member = (TRI_aql_node_t*) node->_members._buffer[i];
+      TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
 
       if (!TRI_IsConstantValueNodeAql(member)) {
+        return false;
+      }
+    }
+  }
+  else if (node->_type == AQL_NODE_ARRAY) {
+    size_t i;
+    size_t n = node->_members._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
+      TRI_aql_node_t* value = TRI_AQL_NODE_MEMBER(member, 0);
+
+      if (!TRI_IsConstantValueNodeAql(value)) {
         return false;
       }
     }

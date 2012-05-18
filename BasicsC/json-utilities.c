@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/json-utilities.h>
+#include <BasicsC/string-buffer.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -66,6 +67,10 @@ static uint32_t SortJsonRandomGenerator (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TypeWeight (const TRI_json_t* const value) {
+  if (value == NULL) {
+    return 0;
+  }
+
   switch (value->_type) {
     case TRI_JSON_BOOLEAN:
       return 1;
@@ -93,6 +98,51 @@ static int CompareJson (TRI_json_t* lhs, TRI_json_t* rhs, size_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two list of array keys, sort them and return a combined list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs, 
+                                     const TRI_json_t* const rhs) {
+  TRI_json_t* keys;
+  TRI_json_t* unique;
+  size_t i, n;
+
+  assert(lhs->_type == TRI_JSON_ARRAY);
+  assert(rhs->_type == TRI_JSON_ARRAY);
+
+  keys = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (keys == NULL) {
+    return NULL;
+  }
+
+  n = lhs->_value._objects._length;
+  for (i = 0 ; i < n; i += 2) {
+    TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i); 
+
+    assert(key->_type == TRI_JSON_STRING);
+    TRI_PushBack2ListJson(keys, key); 
+  } 
+
+  n = rhs->_value._objects._length;
+  for (i = 0 ; i < n; i += 2) {
+    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i); 
+
+    assert(key->_type == TRI_JSON_STRING);
+    TRI_PushBack2ListJson(keys, key); 
+  } 
+
+  // sort the key list in place
+  TRI_SortListJson(keys);
+
+  // list is now sorted
+  unique = TRI_UniquifyListJson(keys);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
+
+  return unique; // might be NULL
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,6 +161,7 @@ static int CompareJson (TRI_json_t* lhs, TRI_json_t* rhs, size_t size) {
 
 int TRI_CompareValuesJson (const TRI_json_t* const lhs, 
                            const TRI_json_t* const rhs) {
+  // note: both lhs and rhs may be NULL!
   int lWeight = TypeWeight(lhs);
   int rWeight = TypeWeight(rhs);
   
@@ -122,7 +173,12 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
     return 1;
   }
 
-  // equal weight
+  // lhs and rhs have equal weights
+  if (lhs == NULL) {
+    // both lhs and rhs are NULL, so they are equal
+    return 0;
+  }
+
   switch (lhs->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
@@ -156,62 +212,60 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
     case TRI_JSON_LIST: {
       size_t nl = lhs->_value._objects._length;
       size_t nr = rhs->_value._objects._length;
+      size_t n;
       size_t i;
-      
-      for (i = 0; i < nl; ++i) {
+
+      if (nl > nr) {
+        n = nl;
+      }
+      else {
+        n = nr;
+      }
+
+      for (i = 0; i < n; ++i) {
+        TRI_json_t* lhsValue;
+        TRI_json_t* rhsValue;
         int result;
 
-        if (i >= nr) {
-          // left list is longer
-          return 1;
-        }
-
-        result = TRI_CompareValuesJson(TRI_AtVector(&lhs->_value._objects, i), 
-                                       TRI_AtVector(&rhs->_value._objects, i));
+        lhsValue = (i >= nl) ? NULL : TRI_AtVector(&lhs->_value._objects, i);
+        rhsValue = (i >= nr) ? NULL : TRI_AtVector(&rhs->_value._objects, i);
+        result = TRI_CompareValuesJson(lhsValue, rhsValue);
         if (result != 0) {
           return result;
         }
       }
 
-      // right list is longer
-      if (nr > nl) {
-        return -1;
-      }
-      
       return 0;
     }
 
     case TRI_JSON_ARRAY: {
-      size_t nl = lhs->_value._objects._length;
-      size_t nr = rhs->_value._objects._length;
-      size_t i;
+      TRI_json_t* keys;
 
-      for (i = 0; i < nl; i += 2) {
-        int result;
+      keys = GetMergedKeyList(lhs, rhs);
+      if (keys != NULL) {
+        size_t i, n;
 
-        if (i > nr) {
-          // left list is longer
-          return 1;
+        n = keys->_value._objects._length;
+        for (i = 0; i < n; ++i) {
+          TRI_json_t* keyElement;
+          TRI_json_t* lhsValue;
+          TRI_json_t* rhsValue;
+          int result;
+
+          keyElement = TRI_AtVector(&keys->_value._objects, i);
+          assert(keyElement->_type == TRI_JSON_STRING);
+
+          lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
+          rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
+        
+          result = TRI_CompareValuesJson(lhsValue, rhsValue);
+          if (result != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
+            return result;
+          }
         }
 
-        // compare key
-        result = TRI_CompareValuesJson(TRI_AtVector(&lhs->_value._objects, i), 
-                                       TRI_AtVector(&rhs->_value._objects, i));
-        if (result != 0) {
-          return result;
-        }
-       
-        // compare value 
-        result = TRI_CompareValuesJson(TRI_AtVector(&lhs->_value._objects, i + 1), 
-                                       TRI_AtVector(&rhs->_value._objects, i + 1));
-        if (result != 0) {
-          return result;
-        }
-      }
-      
-      // right list is longer
-      if (nr > nl) {
-        return -1;
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       }
 
       return 0;
@@ -533,7 +587,7 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
   assert(list);
   assert(list->_type == TRI_JSON_LIST);
 
-  n =  list->_value._objects._length;
+  n = list->_value._objects._length;
   if (n > 1) {
     // only sort if more than one value in list
     SortListJson((TRI_json_t*) TRI_BeginVector(&list->_value._objects), 
