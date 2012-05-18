@@ -48,6 +48,24 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief throw a runtime exception
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_THROW (error, data) {
+  var err = new ArangoError
+
+  err.errorNum = error.code;
+  if (data) {
+    err.errorMessage = error.message.replace(/%s/, data);
+  }
+  else {
+    err.errorMessage = error.message;
+  }
+
+  throw err;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find an index of a certain type for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +124,7 @@ function AHUACATL_CLONE (obj) {
 
 function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName, argument) {
   if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
-    throw "expecting " + AHUACATL_TYPENAME(expectedType) + " for argument " + argument + " of function " + functionName;
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
   }
 }
 
@@ -275,7 +293,7 @@ function AHUACATL_GET_INDEX (value, index) {
   
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_LIST &&
       AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    throw "expecting list or document for index access";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   var result = value[index];
@@ -315,7 +333,7 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
 
 function AHUACATL_LIST (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   return value;
@@ -450,7 +468,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 
 function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
   if (AHUACATL_TYPEWEIGHT(condition) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool condition for ternary operator";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (condition) {
@@ -469,7 +487,7 @@ function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
 function AHUACATL_LOGICAL_AND (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for and";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (!lhs) {
@@ -489,7 +507,7 @@ function AHUACATL_LOGICAL_AND (lhs, rhs) {
 function AHUACATL_LOGICAL_OR (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for or";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
   
   if (lhs) {
@@ -507,7 +525,7 @@ function AHUACATL_LOGICAL_OR (lhs, rhs) {
 
 function AHUACATL_LOGICAL_NOT (lhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operand for not";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   return !lhs;
@@ -926,7 +944,7 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   var rightWeight = AHUACATL_TYPEWEIGHT(rhs);
   
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list for in";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
   
   var r = AHUACATL_KEYS(rhs, false);
@@ -963,13 +981,14 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
 
 function AHUACATL_UNARY_PLUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -981,13 +1000,14 @@ function AHUACATL_UNARY_PLUS (value) {
 
 function AHUACATL_UNARY_MINUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(-value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1000,13 +1020,14 @@ function AHUACATL_UNARY_MINUS (value) {
 function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) { 
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1019,13 +1040,14 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1038,13 +1060,14 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for times";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1057,17 +1080,18 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
 function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for div";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
   
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1080,17 +1104,18 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for mod";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1397,7 +1422,7 @@ function AHUACATL_IS_DOCUMENT (value) {
 
 function AHUACATL_NUMBER_FLOOR (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for floor";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
   return Math.floor(value);
@@ -1409,7 +1434,7 @@ function AHUACATL_NUMBER_FLOOR (value) {
 
 function AHUACATL_NUMBER_CEIL (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for ceil";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
   return Math.ceil(value);
@@ -1421,7 +1446,7 @@ function AHUACATL_NUMBER_CEIL (value) {
 
 function AHUACATL_NUMBER_ROUND (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for round";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
   return Math.round(value);
@@ -1433,7 +1458,7 @@ function AHUACATL_NUMBER_ROUND (value) {
 
 function AHUACATL_NUMBER_ABS (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for abs";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
   return Math.abs(value);
@@ -1530,7 +1555,7 @@ function AHUACATL_LIMIT (value, offset, count) {
   AHUACATL_LIST(value);
 
   if (count < 0) {
-    throw "negative count is not supported for limit";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return value.slice(offset, offset + count);
@@ -1572,7 +1597,7 @@ function AHUACATL_UNION () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
-      throw "expecting lists for union";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
     }
 
     for (var k in element) {
@@ -1655,7 +1680,7 @@ function AHUACATL_SUM () {
     }
 
     if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-      throw "expecting number for sum";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
     }
     
     if (result === null) {
@@ -1695,10 +1720,7 @@ function AHUACATL_GEO_NEAR () {
 
   var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
   if (idx == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
-    throw err;
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
@@ -1730,10 +1752,7 @@ function AHUACATL_GEO_WITHIN () {
 
   var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
   if (idx == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
-    throw err;
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
@@ -1776,7 +1795,7 @@ function AHUACATL_MERGE () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      throw "expecting documents for merge";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
     }
 
     for (var k in element) {
@@ -1816,10 +1835,10 @@ function AHUACATL_FAIL () {
   var message = arguments[0];
 
   if (AHUACATL_TYPEWEIGHT(message) === AHUACATL_TYPEWEIGHT_STRING) {
-    throw "FAIL() called with argument '" + message + "'";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
 
-  throw "FAIL() called";
+  AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

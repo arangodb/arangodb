@@ -199,11 +199,8 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithin5 : function () {
-      var expected = [
-      ];
-
+      var expected = [ ];
       var actual = getQueryResults("FOR x IN WITHIN(" + locations.name() + ", -90, 90, 10000) SORT x.latitude, x.longitude RETURN x");
-      print(actual);
       assertEqual(expected, actual);
     }
   }

@@ -1725,6 +1725,14 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   if (tryCatch.HasCaught()) {
+    if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+      // we already have an ArangoError object
+      TRI_FreeContextAql(context);
+
+      return scope.Close(tryCatch.Exception());
+    }
+
+    // create a new error object
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, TRI_ObjectToString(tryCatch.Exception()).c_str());
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObjectAhuacatl(&context->_error);
     TRI_FreeContextAql(context);
