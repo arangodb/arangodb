@@ -72,7 +72,14 @@ function ahuacatlGeoTestSuite () {
       var resultRow = { };
       for (var k in keys) {
         if (keys.hasOwnProperty(k)) {
-          resultRow[keys[k]] = row[keys[k]];
+          var value = row[keys[k]];
+          if (typeof(value) == "number") {
+            if (value != parseFloat(parseInt(value))) {
+              value = Number(value).toFixed(5);
+            }
+          }
+
+          resultRow[keys[k]] = value;
         }
 
       }
@@ -115,14 +122,7 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear1 : function () {
-      var expected = [
-        { "distance" : 111194.92664455873, "latitude" : -1, "longitude" : 0 }, 
-        { "distance" : 111194.92664455873, "latitude" : 0, "longitude" : -1 }, 
-        { "distance" : 111194.92664455873, "latitude" : 0, "longitude" : 1 }, 
-        { "distance" : 111194.92664455873, "latitude" : 1, "longitude" : 0 }, 
-        { "distance" : 0, "latitude" : 0, "longitude" : 0 }
-      ];
-
+      var expected = [ { "distance" : "111194.92664", "latitude" : -1, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : -1 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : 1 }, { "distance" : "111194.92664", "latitude" : 1, "longitude" : 0 }, { "distance" : 0, "latitude" : 0, "longitude" : 0 } ];
       var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", 0, 0, 5, \"distance\") SORT x.distance DESC, x.latitude, x.longitude RETURN x");
       assertEqual(expected, actual);
     },
@@ -132,12 +132,7 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear2 : function () {
-      var expected = [
-        { "latitude" : -10, "longitude" : 24 }, 
-        { "latitude" : -10, "longitude" : 25 }, 
-        { "latitude" : -10, "longitude" : 26 }
-      ];
-
+      var expected = [ { "latitude" : -10, "longitude" : 24 }, { "latitude" : -10, "longitude" : 25 }, { "latitude" : -10, "longitude" : 26 } ];
       var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -10, 25, 3) SORT x.latitude, x.longitude RETURN x");
       assertEqual(expected, actual);
     },
@@ -147,13 +142,8 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear3 : function () {
-      var expected = [
-        { "latitude" : -40, "longitude" : 38 }, 
-        { "latitude" : -40, "longitude" : 39 }, 
-        { "latitude" : -40, "longitude" : 40 }
-      ];
-
-      var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -90, 90, 3) SORT x.latitude, x.longitude RETURN x");
+      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
     },
 
@@ -172,14 +162,7 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithin2 : function () {
-      var expected = [
-        { "distance" : 111194.92664455873, "latitude" : -1, "longitude" : 0 }, 
-        { "distance" : 111194.92664455873, "latitude" : 0, "longitude" : -1 }, 
-        { "distance" : 0, "latitude" : 0, "longitude" : 0 }, 
-        { "distance" : 111194.92664455873, "latitude" : 0, "longitude" : 1 }, 
-        { "distance" : 111194.92664455873, "latitude" : 1, "longitude" : 0 }
-      ];
-     
+      var expected = [ { "distance" : "111194.92664", "latitude" : -1, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : -1 }, { "distance" : 0, "latitude" : 0, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : 1 }, { "distance" : "111194.92664", "latitude" : 1, "longitude" : 0 } ];
       var actual = getQueryResults("FOR x IN WITHIN(" + locations.name() + ", 0, 0, 150000, \"distance\") SORT x.latitude, x.longitude RETURN x");
       assertEqual(expected, actual);
     },
@@ -220,6 +203,7 @@ function ahuacatlGeoTestSuite () {
       ];
 
       var actual = getQueryResults("FOR x IN WITHIN(" + locations.name() + ", -90, 90, 10000) SORT x.latitude, x.longitude RETURN x");
+      print(actual);
       assertEqual(expected, actual);
     }
   }
