@@ -1757,11 +1757,11 @@ bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const fieldAccesses)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone a vector of ranges
+/// @brief clone a vector of accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_CloneRangesAql (TRI_aql_context_t* const context, 
-                                          const TRI_vector_pointer_t* const source) {
+TRI_vector_pointer_t* TRI_CloneAccessesAql (TRI_aql_context_t* const context, 
+                                            const TRI_vector_pointer_t* const source) {
   TRI_vector_pointer_t* result;
  
   if (!source) {
@@ -1987,14 +1987,11 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
   }
   else {
     // create a new vector 
-    accesses = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+    accesses = CreateEmptyVector(context);
     if (accesses == NULL) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
-
-    TRI_InitVectorPointer(accesses, TRI_UNKNOWN_MEM_ZONE);
   }
 
   assert(accesses);
@@ -2019,13 +2016,14 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 
       // free existing field access
       TRI_FreeAccessAql(existing);
-      // insert candidate instead
       copy = TRI_CloneAccessAql(context, candidate);
       if (!copy) {
         // OOM
         TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return accesses;
       }
+
+      // insert copy of candidate instead
       accesses->_buffer[i] = (void*) copy;
     }
     break;
@@ -2033,7 +2031,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 
   if (!found) {
     // not found, now add this candidate
-    TRI_PushBackVectorPointer(accesses, candidate);
+    TRI_PushBackVectorPointer(accesses, TRI_CloneAccessAql(context, candidate));
   }
 
   return accesses;

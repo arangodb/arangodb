@@ -157,11 +157,11 @@ TRI_aql_field_access_t* TRI_CreateImpossibleAccessAql (TRI_aql_context_t* const)
 bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone a vector of ranges
+/// @brief clone a vector of accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_CloneRangesAql (TRI_aql_context_t* const, 
-                                          const TRI_vector_pointer_t* const);
+TRI_vector_pointer_t* TRI_CloneAccessesAql (TRI_aql_context_t* const, 
+                                            const TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free access structure with its members and the pointer
