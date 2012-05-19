@@ -270,6 +270,13 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
       }
+
+      // finished iterating over all candidates
+
+      if (matches._length != j + 1) {
+        // we already have picked less candidate fields than we should
+        break;
+      }
     }
 
     if (matches._length < 1) {
