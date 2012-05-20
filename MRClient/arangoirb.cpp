@@ -43,6 +43,7 @@
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
 #include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
 #include "MRuby/mr-utils.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -58,6 +59,7 @@ extern "C" {
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -77,6 +79,24 @@ using namespace triagens::httpclient;
 // static double DEFAULT_REQUEST_TIMEOUT = 10.0;
 // static size_t DEFAULT_RETRIES = 5;
 // static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for Ruby bootstrap files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for Ruby modules files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupModules = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup JavaScript files
+////////////////////////////////////////////////////////////////////////////////
+
+static MRLoader StartupLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server address
@@ -274,8 +294,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
-    // ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
-    // ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
+    ("startup.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
+    ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
     ("pager", &OutputPager, "output pager")
     ("use-pager", "use pager")
     ("pretty-print", "pretty print values")          
@@ -457,20 +477,36 @@ int main (int argc, char* argv[]) {
   }
 
   // create a new ruby shell
-  MR_state_t mrs;
+  MR_state_t* mrs = MR_OpenShell();
 
-  mrb_state* mrb = mrb_open();
+  // load java script from js/bootstrap/*.h files
+  if (StartupPath.empty()) {
+  }
+  else {
+    LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+    StartupLoader.setDirectory(StartupPath);
+  }
 
-  memcpy(&mrs, mrb, sizeof(mrb_state));
+  // load all init files
+  char const* files[] = {
+    "client/client.rb"
+  };
+  
+  for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+    bool ok = StartupLoader.loadScript(&mrs->_mrb, files[i]);
+    
+    if (ok) {
+      LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
+    }
+    else {
+      LOGGER_ERROR << "cannot load ruby file '" << files[i] << "'";
+      exit(EXIT_FAILURE);
+    }
+  }
+  
+  TRI_InitMRUtils(mrs);
 
-  mrs._arangoError = NULL;
-
-  TRI_InitMRUtils(&mrs);
-
-  RunShell(&mrs);
-
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
+  RunShell(mrs);
 
   return ret;
 }

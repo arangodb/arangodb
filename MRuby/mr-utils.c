@@ -187,6 +187,21 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief opens a new context
+////////////////////////////////////////////////////////////////////////////////
+
+MR_state_t* MR_OpenShell () {
+  MR_state_t* mrs;
+
+  mrb_state* mrb = mrb_open();
+
+  mrs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MR_state_t), true);
+  memcpy(mrs, mrb, sizeof(mrb_state));
+
+  return mrs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,6 +223,70 @@ mrb_value MR_ArangoError (mrb_state* mrb, int errNum, char const* errMessage) {
   mrb_iv_set(mrb, exc, id, val);
 
   return exc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an exception and stacktrace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LogRubyException (mrb_state* mrb, struct RObject* exc) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a file in the current context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteRubyFile (mrb_state* mrb, char const* filename) {
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes all files from a directory in the current context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteRubyDirectory (mrb_state* mrb, char const* path) {
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a string within a V8 context, optionally print the result
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteRubyString (mrb_state* mrb,
+                            char const* script,
+                            char const* name,
+                            bool printResult,
+                            mrb_value* result) {
+  struct mrb_parser_state* p;
+  mrb_value r;
+  int n;
+
+  p = mrb_parse_nstring(mrb, input, strlen(input));
+
+  if (p == 0 || p->tree == 0 || 0 < p->nerr) {
+    cout << "UPPS!\n";
+    return false;
+  }
+
+  n = mrb_generate_code(&mrs->_mrb, p->tree);
+
+  if (n < 0) {
+    cout << "UPPS: " << n << " returned by mrb_generate_code\n";
+    return false;
+  }
+
+  r = mrb_run(&mrs->_mrb,
+              mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
+              mrb_top_self(&mrs->_mrb));
+
+  if (mrb.exc) {
+    cout << "Caught exception:\n";
+    mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
+    mrs->_mrb.exc = 0;
+  }
+  else if (! mrb_nil_p(result)) {
+    mrb_p(&mrs->_mrb, result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
