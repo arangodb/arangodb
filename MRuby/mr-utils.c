@@ -28,14 +28,15 @@
 #include "mr-utils.h"
 
 #include "BasicsC/json.h"
+#include "BasicsC/strings.h"
 
-#include "mruby.h"
 #include "mruby/array.h"
 #include "mruby/data.h"
 #include "mruby/hash.h"
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
+#include "mruby/error.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -124,7 +125,7 @@ static mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                    ruby functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +161,13 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
   json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, s, &errmsg);
 
   if (json == NULL) {
-    return mrb_nil_value();
+    mrb_value exc;
+
+    exc = MR_ArangoError(mrb, TRI_ERROR_, errmsg);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
+
+    mrb_exc_raise(mrb, exc);
+    assert(false);
   }
 
   return MR_ObjectJson(mrb, json);
@@ -171,7 +178,7 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                    ruby functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,25 +187,62 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief init utilities
+/// @brief creates a ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMRUtils (mrb_state* mrb) {
+mrb_value MR_ArangoError (mrb_state* mrb, int errNum, char const* errMessage) {
+  MR_state_t* mrs;
+  mrb_value exc;
+  mrb_value val;
+  mrb_sym id;
+
+  mrs = (MR_state_t*) mrb;
+  exc = mrb_exc_new(mrb, mrs->_arangoError, errMessage, strlen(errMessage));
+
+  id = mrb_intern(mrb, "@error_num");
+  val = mrb_fixnum_value(errNum);
+  mrb_iv_set(mrb, exc, id, val);
+
+  id = mrb_intern(mrb, "@error_message");
+  val = mrb_str_new(mrb, errMessage, strlen(errMessage));
+  mrb_iv_set(mrb, exc, id, val);
+
+  return exc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  module functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init mruby utilities
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitMRUtils (MR_state_t* mrs) {
   struct RClass *rcl;
 
-  rcl = mrb->kernel_module;
+  rcl = mrs->_mrb.kernel_module;
 
   // .............................................................................
   // timing function
   // .............................................................................
 
-  mrb_define_method(mrb, rcl, "time", MR_Time, ARGS_NONE());
+  mrb_define_method(&mrs->_mrb, rcl, "time", MR_Time, ARGS_NONE());
 
   // .............................................................................
   // arango exception
   // .............................................................................
 
-  rcl = mrb_define_class(mrb, "ArangoError", mrb->eStandardError_class);
+ mrs->_arangoError = mrb_define_class(&mrs->_mrb, "ArangoError", mrs->_mrb.eStandardError_class);
 
   /*
 mrb_value
@@ -219,9 +263,9 @@ mrb_obj_ivar_set(mrb_state *mrb, mrb_value self)
   // json parser and generator
   // .............................................................................
 
-  rcl = mrb_define_class(mrb, "ArangoJson", mrb->object_class);
+  rcl = mrb_define_class(&mrs->_mrb, "ArangoJson", mrs->_mrb.object_class);
   
-  mrb_define_class_method(mrb, rcl, "parse", MR_JsonParse, ARGS_REQ(1));
+  mrb_define_class_method(&mrs->_mrb, rcl, "parse", MR_JsonParse, ARGS_REQ(1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

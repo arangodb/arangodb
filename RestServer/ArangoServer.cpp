@@ -963,6 +963,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
 
 int ArangoServer::executeRubyShell () {
   struct mrb_parser_state* p;
+  MR_state_t mrs;
   mrb_state* mrb;
   int n;
 
@@ -977,8 +978,10 @@ int ArangoServer::executeRubyShell () {
   // create a new ruby shell
   mrb = mrb_open();
 
+  memcpy(&mrs, mrb, sizeof(mrb_state));
+
   // create a line editor
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(&mrs, ".arango-mrb");
 
   // setup the classes
 #if 0

@@ -665,7 +665,7 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		int n; \
+		yy_size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -2385,12 +2385,14 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 
     if (c != END_OF_FILE) {
       object = NULL;
+      yyextra._message = "failed to parse json object: expecting EOF";
+
       LOG_DEBUG("failed to parse json object: expecting EOF");
     }
   }
 
   if (error != NULL) {
-    if (yyextra._message != 0) {
+    if (yyextra._message != NULL) {
       *error = TRI_DuplicateString(yyextra._message);
     }
     else {

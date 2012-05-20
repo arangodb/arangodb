@@ -338,8 +338,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+static void RunShell (MR_state_t* mrs) {
+  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
 
   console->open(! NoAutoComplete);
 
@@ -357,7 +357,7 @@ static void RunShell (mrb_state* mrb) {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input));
+    struct mrb_parser_state* p = mrb_parse_nstring(&mrs->_mrb, input, strlen(input));
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -365,24 +365,24 @@ static void RunShell (mrb_state* mrb) {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(&mrs->_mrb, p->tree);
 
     if (n < 0) {
       cout << "UPPS: " << n << " returned by mrb_generate_code\n";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb,
-                               mrb_proc_new(mrb, mrb->irep[n]),
-                               mrb_top_self(mrb));
+    mrb_value result = mrb_run(&mrs->_mrb,
+                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
+                               mrb_top_self(&mrs->_mrb));
 
-    if (mrb->exc) {
+    if (mrs->_mrb.exc) {
       cout << "Caught exception:\n";
-      mrb_p(mrb, mrb_obj_value(mrb->exc));
-      mrb->exc = 0;
+      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
+      mrs->_mrb.exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(mrb, result);
+      mrb_p(&mrs->_mrb, result);
     }
   }
 
@@ -457,11 +457,17 @@ int main (int argc, char* argv[]) {
   }
 
   // create a new ruby shell
+  MR_state_t mrs;
+
   mrb_state* mrb = mrb_open();
 
-  TRI_InitMRUtils(mrb);
+  memcpy(&mrs, mrb, sizeof(mrb_state));
 
-  RunShell(mrb);
+  mrs._arangoError = NULL;
+
+  TRI_InitMRUtils(&mrs);
+
+  RunShell(&mrs);
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();
