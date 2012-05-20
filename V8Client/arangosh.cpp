@@ -947,6 +947,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     }
 
     string i = triagens::basics::StringUtils::trim(input);
+
     if (i == "exit" || i == "quit") {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       break;
