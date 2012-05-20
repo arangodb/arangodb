@@ -237,8 +237,8 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-MRLineEditor::MRLineEditor (mrb_state* mrb, string const& history)
-  : LineEditor(history), _current(), _mrb(mrb) {
+MRLineEditor::MRLineEditor (MR_state_t* mrs, string const& history)
+  : LineEditor(history), _current(), _mrs(mrs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +285,7 @@ bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t colum
   char const* msg = "syntax error, unexpected $end";
   char* text = TRI_DuplicateString(source.c_str());
 
-  struct mrb_parser_state* p = mrb_parse_nstring_ext(_mrb, text, source.size());
+  struct mrb_parser_state* p = mrb_parse_nstring_ext(&_mrs->_mrb, text, source.size());
   TRI_FreeString(TRI_CORE_MEM_ZONE, text);
 
   // out of memory?
