@@ -25,34 +25,18 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_JSLOADER_H
-#define TRIAGENS_REST_SERVER_JSLOADER_H 1
+#include "MRLoader.h"
 
-#include "Utilities/ScriptLoader.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
+#include "BasicsC/files.h"
+#include "BasicsC/strings.h"
+#include "Logger/Logger.h"
+#include "MRuby/mr-utils.h"
 
-#include <v8.h>
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class JSLoader
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace arango {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript source code loader
-////////////////////////////////////////////////////////////////////////////////
-
-    class JSLoader : public ScriptLoader {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+using namespace std;
+using namespace triagens::basics;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -63,13 +47,12 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
 
-        JSLoader ();
+MRLoader::MRLoader () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -84,40 +67,90 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool loadScript (v8::Persistent<v8::Context>, string const& name);
+bool MRLoader::loadScript (mrb_state* mrb, string const& name) {
+  findScript(name);
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i == _scripts.end()) {
+    LOGGER_ERROR << "unknown script '" << name << "'";
+    return false;
+  }
+
+  bool ok = TRI_ExecuteRubyString(mrb, i->second.c_str(), name.c_str(), false, NULL);
+
+  if (! ok) {
+    TRI_LogRubyException(mrb, mrb->exc);
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool loadAllScripts (v8::Persistent<v8::Context>);
+bool MRLoader::loadAllScripts (mrb_state* mrb) {
+  if (_directory.empty()) {
+    return true;
+  }
+    
+  vector<string> parts = getDirectoryParts();
+
+  bool result = true;
+
+  for (size_t i = 0; i < parts.size(); i++) {
+    result &= TRI_ExecuteRubyDirectory(mrb, parts.at(i).c_str());
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script
+/// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool executeScript (v8::Persistent<v8::Context>, string const& name);
+bool MRLoader::executeScript (mrb_state* mrb, string const& name) {
+  findScript(name);
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i == _scripts.end()) {
+    return false;
+  }
+
+  string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
+
+  bool ok = TRI_ExecuteRubyString(mrb, content.c_str(), name.c_str(), false, NULL);
+
+  if (! ok) {
+    TRI_LogRubyException(mrb, mrb->exc);
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool executeAllScripts (v8::Persistent<v8::Context>);
-    };
+bool MRLoader::executeAllScripts (mrb_state* mrb) {
+  if (_directory.empty()) {
+    return true;
   }
+
+  return TRI_ExecuteRubyDirectory(mrb, _directory.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

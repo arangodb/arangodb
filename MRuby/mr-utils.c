@@ -163,7 +163,7 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
   if (json == NULL) {
     mrb_value exc;
 
-    exc = MR_ArangoError(mrb, TRI_ERROR_, errmsg);
+    exc = MR_ArangoError(mrb, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
 
     mrb_exc_raise(mrb, exc);
@@ -178,7 +178,7 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    ruby functions
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

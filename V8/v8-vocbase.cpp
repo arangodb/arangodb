@@ -1694,7 +1694,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     
     if (code) {
       v8::Handle<v8::Value> result;
-      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
+      result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
       TRI_json_t* json = TRI_JsonObject(result);
