@@ -81,6 +81,7 @@ libarango_a_SOURCES = \
 	UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp \
 	Utilities/LineEditor.cpp \
+	Utilities/ScriptLoader.cpp \
 	V8/JSLoader.cpp \
 	V8/V8LineEditor.cpp \
 	V8/v8-conv.cpp \
@@ -111,6 +112,7 @@ libarango_a_SOURCES = \
 
 if ENABLE_MRUBY
 libarango_a_SOURCES += \
+	MRuby/MRLoader.cpp \
 	MRuby/MRLineEditor.cpp \
 	MRuby/mr-utils.cpp
 endif

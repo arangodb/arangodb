@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 utility functions
+/// @brief source code loader
 ///
 /// @file
 ///
@@ -25,130 +25,156 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_UTILS_H
-#define TRIAGENS_V8_V8_UTILS_H 1
+#include "ScriptLoader.h"
 
-#include "V8/v8-globals.h"
+#include "Basics/MutexLocker.h"
+#include "BasicsC/files.h"
+#include "BasicsC/strings.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
-#include "BasicsC/json.h"
+using namespace std;
+using namespace triagens::basics;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a type
+/// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const SLOT_CLASS_TYPE = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a "C++ class"
-////////////////////////////////////////////////////////////////////////////////
-
-static int const SLOT_CLASS = 1;
+ScriptLoader::ScriptLoader ()
+  : _scripts(),
+    _directory(),
+    _lock() {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unwraps a C++ class given a v8::Object
+/// @brief gets the directory for scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
-  if (obj->InternalFieldCount() <= SLOT_CLASS) {
-    return 0;
+string const& ScriptLoader::getDirectory () const {
+  return _directory;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the directory for scripts
+////////////////////////////////////////////////////////////////////////////////
+
+void ScriptLoader::setDirectory (string const& directory) {
+  MUTEX_LOCKER(_lock);
+
+  _directory = directory;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new named script
+////////////////////////////////////////////////////////////////////////////////
+
+void ScriptLoader::defineScript (string const& name, string const& script) {
+  MUTEX_LOCKER(_lock);
+
+  _scripts[name] = script;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a named script
+////////////////////////////////////////////////////////////////////////////////
+
+string const& ScriptLoader::findScript (string const& name) {
+  MUTEX_LOCKER(_lock);
+  static string empty = "";
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i != _scripts.end()) {
+    return i->second;
   }
 
-  if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
-    return 0;
+  if (! _directory.empty()) {
+    vector<string> parts = getDirectoryParts();
+
+    for (size_t i = 0; i < parts.size(); i++) {
+      char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
+      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
+
+      if (result == 0 && (i == parts.size() - 1)) {
+        LOGGER_ERROR << "cannot locate file '" << name.c_str() << "': " << TRI_last_error();
+      }
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      if (result != 0) {
+        _scripts[name] = result;
+        TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+        return _scripts[name];
+      }
+    }
   }
 
-  return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
-} 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds attributes to array
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AugmentObject (v8::Handle<v8::Value>, TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reports an exception
-////////////////////////////////////////////////////////////////////////////////
-
-std::string TRI_StringifyV8Exception (v8::TryCatch*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an exception and stacktrace
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LogV8Exception (v8::TryCatch*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a file into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context>, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context>, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a file in the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context>, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context>, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context, optionally print the result
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> source,
-                                                   v8::Handle<v8::Value> name,
-                                                   bool printResult);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 utils function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Utils (v8::Handle<v8::Context>, std::string const&);
+  return empty;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets a list of all specified directory parts
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> ScriptLoader::getDirectoryParts () {
+  vector<string> directories;
+  
+  if (! _directory.empty()) {
+    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
+
+    for (size_t i = 0; i < parts._length; i++) {
+      string part = StringUtils::trim(parts._buffer[i]);
+
+      if (! part.empty()) {
+        directories.push_back(part);
+      }
+    }
+
+    TRI_DestroyVectorString(&parts);
+  }
+  
+  return directories;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

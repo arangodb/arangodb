@@ -119,6 +119,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/config.sub config/depcomp config/install-sh \
 	config/missing
 @ENABLE_MRUBY_TRUE@am__append_4 = \
+@ENABLE_MRUBY_TRUE@	MRuby/MRLoader.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.cpp
 
@@ -221,9 +222,9 @@ am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
-	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
-	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Utilities/ScriptLoader.cpp V8/JSLoader.cpp V8/V8LineEditor.cpp \
+	V8/v8-conv.cpp V8/v8-execution.cpp V8/v8-json.cpp \
+	V8/v8-shell.cpp V8/v8-utils.cpp Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
 	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
 	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
@@ -233,10 +234,11 @@ am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	Variant/VariantObject.cpp Variant/VariantString.cpp \
 	Variant/VariantUInt16.cpp Variant/VariantUInt32.cpp \
 	Variant/VariantUInt64.cpp Variant/VariantUInt8.cpp \
-	Variant/VariantVector.cpp MRuby/MRLineEditor.cpp \
-	MRuby/mr-utils.cpp
+	Variant/VariantVector.cpp MRuby/MRLoader.cpp \
+	MRuby/MRLineEditor.cpp MRuby/mr-utils.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLineEditor.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLoader.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
 am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
@@ -285,7 +287,8 @@ am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	UserManager/SessionHandler.$(OBJEXT) \
 	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
 	UserManager/UsersHandler.$(OBJEXT) \
-	Utilities/LineEditor.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	Utilities/LineEditor.$(OBJEXT) \
+	Utilities/ScriptLoader.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/V8LineEditor.$(OBJEXT) V8/v8-conv.$(OBJEXT) \
 	V8/v8-execution.$(OBJEXT) V8/v8-json.$(OBJEXT) \
 	V8/v8-shell.$(OBJEXT) V8/v8-utils.$(OBJEXT) \
@@ -765,9 +768,9 @@ libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
-	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
-	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Utilities/ScriptLoader.cpp V8/JSLoader.cpp V8/V8LineEditor.cpp \
+	V8/v8-conv.cpp V8/v8-execution.cpp V8/v8-json.cpp \
+	V8/v8-shell.cpp V8/v8-utils.cpp Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
 	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
 	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
@@ -1389,6 +1392,8 @@ Utilities/$(DEPDIR)/$(am__dirstamp):
 	@: > Utilities/$(DEPDIR)/$(am__dirstamp)
 Utilities/LineEditor.$(OBJEXT): Utilities/$(am__dirstamp) \
 	Utilities/$(DEPDIR)/$(am__dirstamp)
+Utilities/ScriptLoader.$(OBJEXT): Utilities/$(am__dirstamp) \
+	Utilities/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1456,6 +1461,8 @@ MRuby/$(am__dirstamp):
 MRuby/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) MRuby/$(DEPDIR)
 	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/MRLoader.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
@@ -2086,6 +2093,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f MRClient/arangoirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
+	-rm -f MRuby/MRLoader.$(OBJEXT)
 	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
@@ -2157,6 +2165,7 @@ mostlyclean-compile:
 	-rm -f UserManager/UserHandler.$(OBJEXT)
 	-rm -f UserManager/UsersHandler.$(OBJEXT)
 	-rm -f Utilities/LineEditor.$(OBJEXT)
+	-rm -f Utilities/ScriptLoader.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -2317,6 +2326,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
@@ -2388,6 +2398,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@

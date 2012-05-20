@@ -837,7 +837,7 @@ int ArangoServer::executeShell (bool tests) {
 
     // run tests
     char const* input = "require(\"jsunity\").runCommandLineTests();";
-    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+    TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
@@ -875,7 +875,7 @@ int ArangoServer::executeShell (bool tests) {
       v8::HandleScope scope;
       v8::TryCatch tryCatch;
 
-      TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+      TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       
       if (tryCatch.HasCaught()) {
