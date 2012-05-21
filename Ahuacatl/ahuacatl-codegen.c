@@ -660,22 +660,6 @@ static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const gene
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add code for the property check (if (!var.hasOwnProperty()) continue)
-////////////////////////////////////////////////////////////////////////////////
-
-static void ScopePropertyCheck (TRI_aql_codegen_js_t* const generator, 
-                                const TRI_aql_codegen_register_t listRegister,
-                                const TRI_aql_codegen_register_t keyRegister) {
-  ScopeOutput(generator, "if (!");
-  ScopeOutputRegister(generator, listRegister);
-  ScopeOutput(generator, ".hasOwnProperty(");
-  ScopeOutputRegister(generator, keyRegister); 
-  ScopeOutput(generator, ")) {\n");
-  ScopeOutput(generator, "continue;\n");
-  ScopeOutput(generator, "}\n");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief start a for loop
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -723,12 +707,14 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   // for (var keyx in listx) 
   ScopeOutput(generator, "for (var "); 
   ScopeOutputRegister(generator, keyRegister);
-  ScopeOutput(generator, " in ");
+  ScopeOutput(generator, " = 0; "); 
+  ScopeOutputRegister(generator, keyRegister);
+  ScopeOutput(generator, " < "); 
   ScopeOutputRegister(generator, listRegister);
-  ScopeOutput(generator, ") {\n");
+  ScopeOutput(generator, ".length; ++"); 
+  ScopeOutputRegister(generator, keyRegister);
+  ScopeOutput(generator, ") {\n"); 
 
-  ScopePropertyCheck(generator, listRegister, keyRegister);
-    
   // var rx = listx[keyx];
   scope = CurrentScope(generator);
   ScopeOutput(generator, "var ");
