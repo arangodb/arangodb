@@ -84,7 +84,7 @@ typedef struct TRI_aql_context_s {
   TRI_associative_pointer_t _collectionNames;
   size_t _variableIndex;
   void* _first;
-  char* _query;
+  const char* _query;
 
   struct {
     TRI_vector_pointer_t _scopes;

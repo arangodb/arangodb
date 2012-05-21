@@ -1,5 +1,5 @@
 FOR u IN users
-  LET recommendations = 
+  LET recommendations = ( 
     FOR r IN recommendations
       FILTER u.id == r.userId
       SORT u.rank DESC

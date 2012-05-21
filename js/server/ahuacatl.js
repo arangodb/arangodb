@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +46,44 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throw a runtime exception
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_THROW (error, data) {
+  var err = new ArangoError
+
+  err.errorNum = error.code;
+  if (data) {
+    err.errorMessage = error.message.replace(/%s/, data);
+  }
+  else {
+    err.errorMessage = error.message;
+  }
+
+  throw err;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find an index of a certain type for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_INDEX (collection, indexTypes) {
+  var indexes = collection.getIndexes();
+
+  for (var i = 0; i < indexes.length; ++i) {
+    var index = indexes[i];
+
+    for (var j = 0; j < indexTypes.length; ++j) {
+      if (index.type == indexTypes[j]) {
+        return index.id;
+      }
+    }
+  }
+
+  return null;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an object
@@ -84,7 +124,7 @@ function AHUACATL_CLONE (obj) {
 
 function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName, argument) {
   if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
-    throw "expecting " + AHUACATL_TYPENAME(expectedType) + " for argument " + argument + " of function " + functionName;
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
   }
 }
 
@@ -253,7 +293,7 @@ function AHUACATL_GET_INDEX (value, index) {
   
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_LIST &&
       AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    throw "expecting list or document for index access";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   var result = value[index];
@@ -293,19 +333,118 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
 
 function AHUACATL_LIST (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection
+/// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS (collection) {
   return internal.db[collection].all().toArray();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the primary index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
+  try {
+    return [ internal.db[collection].document(id) ];
+  }
+  catch (e) {
+    return [ ];
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the primary index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var id = values[i];
+    try {
+      var d = internal.db[collection].document(id);
+      result.push(d);
+    }
+    catch (e) {
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a hash index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
+  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a hash index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
+  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a skiplist
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -321,6 +460,24 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute ternary operator
+///
+/// the condition operand must be a boolean value, returns either the truepart
+/// or the falsepart 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
+  if (AHUACATL_TYPEWEIGHT(condition) !== AHUACATL_TYPEWEIGHT_BOOL) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  if (condition) {
+    return truePart;
+  }
+  return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform logical and
 ///
 /// both operands must be boolean values, returns a boolean, uses short-circuit
@@ -330,7 +487,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 function AHUACATL_LOGICAL_AND (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for and";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (!lhs) {
@@ -350,7 +507,7 @@ function AHUACATL_LOGICAL_AND (lhs, rhs) {
 function AHUACATL_LOGICAL_OR (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for or";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
   
   if (lhs) {
@@ -368,7 +525,7 @@ function AHUACATL_LOGICAL_OR (lhs, rhs) {
 
 function AHUACATL_LOGICAL_NOT (lhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operand for not";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   return !lhs;
@@ -787,7 +944,7 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   var rightWeight = AHUACATL_TYPEWEIGHT(rhs);
   
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list for in";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
   
   var r = AHUACATL_KEYS(rhs, false);
@@ -824,13 +981,14 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
 
 function AHUACATL_UNARY_PLUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -842,13 +1000,14 @@ function AHUACATL_UNARY_PLUS (value) {
 
 function AHUACATL_UNARY_MINUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(-value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -861,13 +1020,14 @@ function AHUACATL_UNARY_MINUS (value) {
 function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) { 
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -880,13 +1040,14 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -899,13 +1060,14 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for times";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -918,17 +1080,18 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
 function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for div";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
   
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -941,17 +1104,18 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for mod";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1258,7 +1422,7 @@ function AHUACATL_IS_DOCUMENT (value) {
 
 function AHUACATL_NUMBER_FLOOR (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for floor";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
   return Math.floor(value);
@@ -1270,7 +1434,7 @@ function AHUACATL_NUMBER_FLOOR (value) {
 
 function AHUACATL_NUMBER_CEIL (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for ceil";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
   return Math.ceil(value);
@@ -1282,7 +1446,7 @@ function AHUACATL_NUMBER_CEIL (value) {
 
 function AHUACATL_NUMBER_ROUND (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for round";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
   return Math.round(value);
@@ -1294,7 +1458,7 @@ function AHUACATL_NUMBER_ROUND (value) {
 
 function AHUACATL_NUMBER_ABS (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for abs";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
   return Math.abs(value);
@@ -1391,11 +1555,24 @@ function AHUACATL_LIMIT (value, offset, count) {
   AHUACATL_LIST(value);
 
   if (count < 0) {
-    throw "negative count is not supported for limit";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return value.slice(offset, offset + count);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         list processing functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the length of a list
@@ -1410,32 +1587,6 @@ function AHUACATL_LENGTH () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_MERGE () {
-  var result = { };
-
-  for (var i in arguments) {
-    var element = arguments[i];
-
-    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      throw "expecting documents for merge";
-    }
-
-    for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
-        continue;
-      }
-
-      result[k] = element[k];
-    }
-  }
-
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the union (all) of all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1446,7 +1597,7 @@ function AHUACATL_UNION () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
-      throw "expecting lists for union";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
     }
 
     for (var k in element) {
@@ -1529,7 +1680,7 @@ function AHUACATL_SUM () {
     }
 
     if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-      throw "expecting number for sum";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
     }
     
     if (result === null) {
@@ -1541,6 +1692,153 @@ function AHUACATL_SUM () {
   }
 
   return AHUACATL_NUMERIC_VALUE(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     geo functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return at most <limit> documents near a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_NEAR () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var limit = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
+  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return documents within <radius> around a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_WITHIN () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var radius = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
+  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    misc functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result[k] = element[k];
+    }
+  }
+
+  return result; 
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief passthru the argument
+///
+/// this function is marked as non-deterministic so its argument withstands
+/// query optimisation. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_PASSTHRU () {
+  var value = arguments[0];
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief always fail
+///
+/// this function is non-deterministic so it is not executed at query 
+/// optimisation time. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FAIL () {
+  var message = arguments[0];
+
+  if (AHUACATL_TYPEWEIGHT(message) === AHUACATL_TYPEWEIGHT_STRING) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, message);
+  }
+
+  AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

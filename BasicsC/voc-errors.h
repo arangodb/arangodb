@@ -137,6 +137,8 @@ extern "C" {
 ///   Will be raised when an empty query is specified.
 /// - 1503: @CODE{runtime error '\%s'}
 ///   Will be raised when a runtime error is caused by the query.
+/// - 1504: @CODE{number out of range}
+///   Will be raised when a number is outside the expected range.
 /// - 1510: @CODE{variable name '\%s' has an invalid format}
 ///   Will be raised when an invalid variable name is used.
 /// - 1511: @CODE{variable '\%s' is assigned multiple times}
@@ -156,6 +158,9 @@ extern "C" {
 /// - 1541: @CODE{invalid number of arguments for function '\%s'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
+/// - 1542: @CODE{invalid argument type used in call to function '\%s()'}
+///   Will be raised when the type of an argument used in a function call does
+///   not match the expected argument type.
 /// - 1550: @CODE{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
@@ -165,6 +170,8 @@ extern "C" {
 /// - 1552: @CODE{bind parameter '\%s' was not declared in the query}
 ///   Will be raised when a value gets specified for an undeclared bind
 ///   parameter.
+/// - 1553: @CODE{bind parameter '\%s' has an invalid value or type}
+///   Will be raised when a bind parameter has an invalid value or type.
 /// - 1560: @CODE{invalid logical value}
 ///   Will be raised when a non-boolean value is used in a logical operation.
 /// - 1561: @CODE{invalid arithmetic value}
@@ -172,6 +179,11 @@ extern "C" {
 ///   operation.
 /// - 1562: @CODE{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
+/// - 1563: @CODE{list expected}
+///   Will be raised when a non-list operand is used for an operation that
+///   expects a list argument operand.
+/// - 1569: @CODE{FAIL(\%s) called}
+///   Will be raised when the function FAIL() is called from inside a query.
 /// - 1570: @CODE{no suitable geo index found for geo restriction on '\%s'}
 ///   Will be raised when a geo restriction was specified but no suitable geo
 ///   index is found to resolve it.
@@ -885,6 +897,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_SCRIPT                                            (1503)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1504: ERROR_QUERY_NUMBER_OUT_OF_RANGE
+///
+/// number out of range
+///
+/// Will be raised when a number is outside the expected range.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               (1504)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 ///
 /// variable name '%s' has an invalid format
@@ -968,6 +990,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH                 (1541)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
+///
+/// invalid argument type used in call to function '%s()'
+///
+/// Will be raised when the type of an argument used in a function call does
+/// not match the expected argument type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH                   (1542)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID
 ///
 /// invalid structure of bind parameters
@@ -1000,6 +1033,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                         (1552)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1553: ERROR_QUERY_BIND_PARAMETER_TYPE
+///
+/// bind parameter '%s' has an invalid value or type
+///
+/// Will be raised when a bind parameter has an invalid value or type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETER_TYPE                               (1553)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1560: ERROR_QUERY_INVALID_LOGICAL_VALUE
 ///
 /// invalid logical value
@@ -1020,14 +1063,35 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1561)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1562: ERROR_QUERY_DIVISON_BY_ZERO
+/// @brief 1562: ERROR_QUERY_DIVISION_BY_ZERO
 ///
 /// division by zero
 ///
 /// Will be raised when there is an attempt to divide by zero.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DIVISON_BY_ZERO                                   (1562)
+#define TRI_ERROR_QUERY_DIVISION_BY_ZERO                                  (1562)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1563: ERROR_QUERY_LIST_EXPECTED
+///
+/// list expected
+///
+/// Will be raised when a non-list operand is used for an operation that
+/// expects a list argument operand.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_LIST_EXPECTED                                     (1563)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1569: ERROR_QUERY_FAIL_CALLED
+///
+/// FAIL(%s) called
+///
+/// Will be raised when the function FAIL() is called from inside a query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FAIL_CALLED                                       (1569)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1570: ERROR_QUERY_GEO_INDEX_MISSING

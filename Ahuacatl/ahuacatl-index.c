@@ -28,6 +28,11 @@
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h" 
+#include "Ahuacatl/ahuacatl-log.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Ahuacatl
@@ -55,10 +60,10 @@ static void LogIndexString (TRI_index_t const* idx,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  LOG_TRACE("using %s index (%s) for '%s'", 
-            TRI_TypeNameIndex(idx), 
-            buffer->_buffer, 
-            collectionName);
+  TRI_AQL_LOG("using %s index (%s) for '%s'", 
+              TRI_TypeNameIndex(idx), 
+              buffer->_buffer, 
+              collectionName);
 
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
@@ -89,12 +94,18 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   }
 
   if (pickedIndex->_idx == NULL) {
+    // any index is better than none
     isBetter = true;
   }
   else {
-    isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-               fieldAccesses->_length < pickedIndex->_fieldAccesses->_length ||
-               (fieldAccesses->_length == pickedIndex->_fieldAccesses->_length && idx->_unique && !pickedIndex->_idx->_unique);
+    isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || // primary index is better than any others
+               (idx->_type == TRI_IDX_TYPE_HASH_INDEX && pickedIndex->_idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || // hash is better than skiplist
+               (idx->_unique && !pickedIndex->_idx->_unique) || // unique indexes are better than non-unique ones 
+               (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length && idx->_unique) || // shorter indexes are better if unique
+               (fieldAccesses->_length > pickedIndex->_fieldAccesses->_length && !idx->_unique); // longer indexes are better if non-unique
+
+    // if we have already picked the primary index, we won't overwrite it with any other index
+    isBetter &= (pickedIndex->_idx->_type != TRI_IDX_TYPE_PRIMARY_INDEX);
   }
 
   if (isBetter) { 
@@ -110,16 +121,41 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an index structure
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
+  assert(idx);
+
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, idx->_fieldAccesses);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine which index to use for a specific for loop
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const availableIndexes,
+                                        const char* const variableName,
                                         const char* const collectionName,
                                         const TRI_vector_pointer_t* const candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
-  size_t i, j, k, n;
+  size_t i, j, k, n, offset;
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
@@ -127,28 +163,42 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   assert(collectionName);
   assert(candidates);
 
+  offset = strlen(variableName) + 1;
+  assert(offset > 1);
+
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
     TRI_aql_access_e lastType;
     size_t numIndexFields = idx->_fields._length;
-
-    if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
-      // ignore all geo indexes for now
-      continue;
-    }
-
+    
     if (numIndexFields == 0) {
       // index should contain at least one field
       continue;
     }
     
+    // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
+    switch (idx->_type) {
+      case TRI_IDX_TYPE_GEO1_INDEX:
+      case TRI_IDX_TYPE_GEO2_INDEX:
+      case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+      case TRI_IDX_TYPE_CAP_CONSTRAINT:
+        // ignore all these index types for now
+        continue;
+      case TRI_IDX_TYPE_PRIMARY_INDEX:
+      case TRI_IDX_TYPE_HASH_INDEX:
+      case TRI_IDX_TYPE_SKIPLIST_INDEX:
+        // these indexes are valid candidates
+        break;
+    }
+
     TRI_ClearVectorPointer(&matches);
 
     lastType = TRI_AQL_ACCESS_EXACT;
 
-    // now loop over all index fields
+    // now loop over all index fields, from left to right
+    // index field order is important because skiplists can be used with leftmost prefixes as well,
+    // but not with rightmost prefixes
     for (j = 0; j < numIndexFields; ++j) {
       char* indexedFieldName = idx->_fields._buffer[j];
 
@@ -159,20 +209,23 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       // now loop over all candidates
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
-
-        if (!TRI_EqualString(indexedFieldName, candidate->_fieldName)) {
-          // different field
-          continue;
-        }
-
+      
         if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
             candidate->_type == TRI_AQL_ACCESS_ALL) {
           // wrong index type, doesn't help us at all
           continue;
         }
+        
+        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + offset)) {
+          // different attribute, doesn't help
+          continue;
+        }
+
+        // attribute is used in index
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT) {
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST) {
             // wrong access type for primary index
             continue;
           }
@@ -180,18 +233,30 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT) {
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST) {
             // wrong access type for hash index
+            continue;
+          }
+
+          if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
+            // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }
           
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT && 
+          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_LIST && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE) {
             // wrong access type for skiplists
+            continue;
+          }
+          
+          if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
+            // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }
 
@@ -205,19 +270,28 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
       }
+
+      // finished iterating over all candidates
+
+      if (matches._length != j + 1) {
+        // we already have picked less candidate fields than we should
+        break;
+      }
+    }
+
+    if (matches._length < 1) {
+      // nothing found
+      continue;
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && 
-        (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || idx->_type == TRI_IDX_TYPE_HASH_INDEX)) {
+    if (matches._length < numIndexFields && TRI_NeedsFullCoverageIndex(idx)) { 
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }
 
     // if we can use the primary index, we'll use it
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-      picked = PickIndex(context, picked, idx, &matches);
-    }
+    picked = PickIndex(context, picked, idx, &matches);
   }
 
   TRI_DestroyVectorPointer(&matches);

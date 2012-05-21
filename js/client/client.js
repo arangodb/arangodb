@@ -2141,7 +2141,7 @@ helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
 '  _database                      database object                    ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
-'                              c.x = @a@ && c.y = @b@ return c" });  ' + "\n" +
+'                              c.x == @a && c.y == @b return c" });  ' + "\n" +
 ' > st.bind("a", "hello");                                           ' + "\n" +
 ' > st.bind("b", "world");                                           ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +

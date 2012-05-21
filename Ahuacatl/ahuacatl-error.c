@@ -94,10 +94,10 @@ char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
   if (error->_data && (NULL != strstr(message, "%s"))) {
     snprintf(buffer, sizeof(buffer), message, error->_data);
 
-    return TRI_DuplicateString((const char*) &buffer);
+    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, (const char*) &buffer);
   }
 
-  return TRI_DuplicateString(message);
+  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,17 +182,17 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
   offset = p - query;
 
   if (strlen(query) < offset + SNIPPET_LENGTH) {
-    return TRI_DuplicateString2(query + offset, strlen(query) - offset);
+    return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, strlen(query) - offset);
   }
 
-  temp = TRI_DuplicateString2(query + offset, SNIPPET_LENGTH);
+  temp = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, SNIPPET_LENGTH);
   if (!temp) {
     // out of memory
     return NULL;
   }
 
-  result = TRI_Concatenate2String(temp, SNIPPET_SUFFIX);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, temp);
+  result = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, temp, SNIPPET_SUFFIX);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, temp);
 
   return result;
 }

@@ -1,5 +1,0 @@
-select u
-from Users u
-order by distance( u.location, [ 10.0, 20 ] )
-limit 10
-

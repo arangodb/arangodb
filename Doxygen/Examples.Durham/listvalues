@@ -1,3 +1,0 @@
-[ 1, 2, 3 ]
-[ -99, "yikes!", [ true, [ "no"], [ ] ], 1 ]
-[ { "name" : "fox" }, { "name" : "marshal" } ] 

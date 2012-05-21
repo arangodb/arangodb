@@ -88,7 +88,7 @@ function POST_api_query (req, res) {
       return;
     }
 
-    result = { "bindVars" : result };
+    result = { "bindVars" : result.parameters, "collections" : result.collections };
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }

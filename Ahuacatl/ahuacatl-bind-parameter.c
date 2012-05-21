@@ -64,7 +64,24 @@ static TRI_aql_node_t* ModifyNode (void* data,
      
   bind = (TRI_aql_bind_parameter_t*) TRI_LookupByKeyAssociativePointer(bindValues, name);
   if (bind) {
-    node = TRI_JsonNodeAql(context, bind->_value);
+    if (*name == '@') {
+      // a collection name bind parameter
+      if (bind->_value->_type == TRI_JSON_STRING) {
+        char* collectionName = TRI_RegisterStringAql(context, bind->_value->_value._string.data, strlen(bind->_value->_value._string.data), false);
+        node = TRI_CreateNodeCollectionAql(context, collectionName);
+      }
+      else {
+        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, name);
+        node = NULL;
+      }
+    }
+    else {
+      node = TRI_JsonNodeAql(context, bind->_value);
+    }
+
+    if (node == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+    }
   }
   
   return node;

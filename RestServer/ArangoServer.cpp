@@ -640,7 +640,8 @@ int ArangoServer::startupServer () {
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
 
-    _applicationAdminServer->addBasicHandlers(factory, "/_admin");
+    // add /version URL
+    _applicationAdminServer->addBasicHandlers(factory, "/_api");
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
@@ -651,6 +652,9 @@ int ArangoServer::startupServer () {
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     if (shareAdminPort) {
+      // add /version URL
+      _applicationAdminServer->addBasicHandlers(factory, "/_admin");
+
       _applicationAdminServer->addHandlers(factory, "/_admin");
       _applicationUserManager->addHandlers(factory, "/_admin");
       allowedQueuesHttp.insert("SYSTEM");
@@ -680,7 +684,10 @@ int ArangoServer::startupServer () {
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
+    // add /version URL
     _applicationAdminServer->addBasicHandlers(adminFactory, "/_admin");
+    _applicationAdminServer->addBasicHandlers(adminFactory, "/_api");
+
     _applicationAdminServer->addHandlers(adminFactory, "/_admin");
     _applicationUserManager->addHandlers(adminFactory, "/_admin");
 

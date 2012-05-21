@@ -310,6 +310,55 @@ function ahuacatlEscapingTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLineBreaks1 : function () {
+      var expected = [ "the\nquick\nbrown\r\nfox\rjumped\n" ];
+      var actual = getQueryResults("RETURN \"the\nquick\nbrown\r\nfox\rjumped\n\"", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line breaks2
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLineBreaks2 : function () {
+      var expected = [ { "the\nquick\nbrown\r\nfox\rjumped\n" : "over\nthis\r\nattribute" } ];
+      var actual = getQueryResults("RETURN { \"the\nquick\nbrown\r\nfox\rjumped\n\" : \"over\nthis\r\nattribute\" }", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments1 : function () {
+      var expected = [ "jumped" ];
+      var actual = getQueryResults("RETURN /* \"the quick fox\" */ \"jumped\"", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments2 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN /* \"the\n \" \\qui\\ck\\ \"\"\"\" \" \"\"f\\ox\" */ 1", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments3 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN /*'the ' \\qui\\ck\\ ''''' '' 'f\\ox'*/ 1", true);
+      assertEqual(expected, actual);
+    },
   };
 }
 

@@ -1,3 +1,0 @@
-select { user : u, locations : l }
-from Users u
-list join Locations l on u == l.user
