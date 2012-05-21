@@ -176,7 +176,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
 ///
 /// Returns the a document of a collection that match the specified example or
-/// @LIT{null}. The example must be specified as paths and values. See @ref
+/// @LIT{null}. The example must be specified as paths and values. See 
 /// @FN{byExample} for details.
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
