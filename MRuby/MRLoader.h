@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_REST_SERVER_MRLOADER_H
 #define TRIAGENS_REST_SERVER_MRLOADER_H 1
 
-#include "utilities/ScriptLoader.h"
+#include "Utilities/ScriptLoader.h"
 
 #include <mruby.h>
 
