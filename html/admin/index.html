@@ -151,7 +151,7 @@
           <a>Add Document</a>
         </button>
 
-       <form style="visibility:hidden" id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
+       <form id="uploadFile" action="/_api/import/?collection=...&createCollection=false" method=POST enctype="multipart/form-data">
          <input type="submit" value="Import" />
          <input type="file" name="filename" />
        </form>
