@@ -479,8 +479,11 @@ int main (int argc, char* argv[]) {
   // create a new ruby shell
   MR_state_t* mrs = MR_OpenShell();
 
+  TRI_InitMRUtils(mrs);
+
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
+    StartupLoader.defineScript("client/client.rb", "");
   }
   else {
     LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
@@ -504,8 +507,6 @@ int main (int argc, char* argv[]) {
     }
   }
   
-  TRI_InitMRUtils(mrs);
-
   RunShell(mrs);
 
   return ret;

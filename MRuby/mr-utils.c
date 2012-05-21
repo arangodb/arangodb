@@ -37,6 +37,7 @@
 #include "mruby/string.h"
 #include "mruby/variable.h"
 #include "mruby/error.h"
+#include "compile.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -261,32 +262,36 @@ bool TRI_ExecuteRubyString (mrb_state* mrb,
   mrb_value r;
   int n;
 
-  p = mrb_parse_nstring(mrb, input, strlen(input));
+  p = mrb_parse_nstring(mrb, script, strlen(script));
 
   if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-    cout << "UPPS!\n";
+    printf("failed to parse script\n");
     return false;
   }
 
-  n = mrb_generate_code(&mrs->_mrb, p->tree);
+  n = mrb_generate_code(mrb, p->tree);
 
   if (n < 0) {
-    cout << "UPPS: " << n << " returned by mrb_generate_code\n";
+    printf("failed to generate code: %d\n", n);
     return false;
   }
 
-  r = mrb_run(&mrs->_mrb,
-              mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
-              mrb_top_self(&mrs->_mrb));
+  r = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
 
-  if (mrb.exc) {
-    cout << "Caught exception:\n";
-    mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
-    mrs->_mrb.exc = 0;
+  if (mrb->exc) {
+    printf("caught exception\n");
+    mrb_p(mrb, mrb_obj_value(mrb->exc));
+    mrb->exc = 0;
   }
-  else if (! mrb_nil_p(result)) {
-    mrb_p(&mrs->_mrb, result);
+  else if (! mrb_nil_p(r)) {
+    mrb_p(mrb, r);
   }
+
+  if (result != NULL) {
+    *result = r;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
