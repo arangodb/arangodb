@@ -318,6 +318,96 @@ function CollectionEdgeSuite () {
       e = edge.outEdges([v1, v2]);
 
       assertEqual(1, e.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadEdgesInvalid1 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.edges("the fox");
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadEdgesInvalid2 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.edges(1);
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief in edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadInEdgesInvalid1 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.inEdges("the fox");
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief in edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadInEdgesInvalid2 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.inEdges(1);
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief out edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadOutEdgesInvalid1 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.outEdges("the fox");
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief out edges query invalid
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadOutEdgesInvalid2 : function () {
+      var d = edge.save(v1, v2, { "Hallo" : "World" });
+
+      try {
+        var e = edge.outEdges(1);
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
     }
   };
 }
