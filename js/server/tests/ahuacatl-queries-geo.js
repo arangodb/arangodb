@@ -96,8 +96,13 @@ function ahuacatlGeoTestSuite () {
 /// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getErrorCode (result) {
-    return result.errorNum;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -228,8 +233,8 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(AHUACATL_RUN("RETURN NEAR(" + locationsNon.name() + ", 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(" + locationsNon.name() + ", 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN NEAR(" + locationsNon.name() + ", 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(" + locationsNon.name() + ", 0, 0, 10)"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,13 +242,13 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidCollectionArgument : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(1234, 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(false, 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(true, 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN([ ], 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN({ }, 0, 0, 10)")));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(AHUACATL_RUN("RETURN WITHIN(@name, 0, 0, 10)")));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(1234, 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(false, 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(true, 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN([ ], 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN({ }, 0, 0, 10)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(@name, 0, 0, 10)"); } ));
     },
 
   }

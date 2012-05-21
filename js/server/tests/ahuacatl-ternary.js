@@ -71,8 +71,13 @@ function ahuacatlTernaryTestSuite () {
 /// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getErrorCode (result) {
-    return result.errorNum;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -173,13 +178,13 @@ function ahuacatlTernaryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testTernaryInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN (4) ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN (4 - 3) ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"true\" ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] ? 2 : 3")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } ? 2 : 3")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN (4) ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN (4 - 3) ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"true\" ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } ? 2 : 3"); }));
     }
 
   };

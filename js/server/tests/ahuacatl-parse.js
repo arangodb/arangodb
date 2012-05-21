@@ -39,8 +39,13 @@ function ahuacatlParseTestSuite () {
 /// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getErrorCode (result) {
-    return result.errorNum;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +95,7 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyQuery : function () {
-      assertEqual(errors.ERROR_QUERY_EMPTY.code, getErrorCode(AHUACATL_PARSE("")));
+      assertEqual(errors.ERROR_QUERY_EMPTY.code, getErrorCode(function() { AHUACATL_PARSE(""); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,29 +103,29 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBrokenQueries : function () {
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE(" ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("  ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in [")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in [1")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in [1]")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in [1] return")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for u in [1] return u;")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE(";")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("1")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for @u in users return 1")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return ")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return 1;")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return 1 +")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return 1 + 1 +")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("return (1")));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(AHUACATL_PARSE("for f1 in x1")));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE(" "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("  "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in ["); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in [1"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in [1]"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in [1] return"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for u in [1] return u;"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE(";"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("1"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for @u in users return 1"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return "); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return 1;"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return 1 +"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return 1 + 1 +"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("return (1"); } ));
+      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { AHUACATL_PARSE("for f1 in x1"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +176,7 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTooManyCollections : function () {
-      assertEqual(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, getErrorCode(AHUACATL_PARSE("for x1 in y1 for x2 in y2 for x3 in y3 for x4 in y4 for x5 in y5 for x6 in y6 for x7 in y7 for x8 in y8 for x9 in y9 for x10 in y10 for x11 in y11 for x12 in y12 for x13 in y13 for x14 in y14 for x15 in y15 for x16 in y16 for x17 in y17 for x18 in y18 for x19 in y19 for x20 in y20 for x21 in y21 for x22 in y22 for x23 in y23 for x24 in y24 for x25 in y25 for x26 in y26 for x27 in y27 for x28 in y28 for x29 in y29 for x30 in y30 for x31 in y31 for x32 in y32 for x33 in y33 return x1")));
+      assertEqual(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, getErrorCode(function() { AHUACATL_PARSE("for x1 in y1 for x2 in y2 for x3 in y3 for x4 in y4 for x5 in y5 for x6 in y6 for x7 in y7 for x8 in y8 for x9 in y9 for x10 in y10 for x11 in y11 for x12 in y12 for x13 in y13 for x14 in y14 for x15 in y15 for x16 in y16 for x17 in y17 for x18 in y18 for x19 in y19 for x20 in y20 for x21 in y21 for x22 in y22 for x23 in y23 for x24 in y24 for x25 in y25 for x26 in y26 for x27 in y27 for x28 in y28 for x29 in y29 for x30 in y30 for x31 in y31 for x32 in y32 for x33 in y33 return x1"); } ));
     }
 
   };
