@@ -72,6 +72,7 @@ namespace triagens {
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
       _quote = '"';
       _separator = ',';
+      _createCollection = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
       regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_ICASE | REG_EXTENDED);
       _hasError = false;
@@ -229,6 +230,20 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
     /// private functions
     ////////////////////////////////////////////////////////////////////////////////
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief return the collection-related URL part
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    string ImportHelper::getCollectionUrlPart () {
+      string part("collection=" + StringUtils::urlEncode(_collectionName));
+
+      if (_createCollection) {
+        part += "&createCollection=yes";
+      }
+
+      return part;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief start a new csv line
@@ -359,13 +374,14 @@ namespace triagens {
 
     }
 
+
     void ImportHelper::sendCsvBuffer () {
       if (_hasError) {
         return;
       }
 
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?collection=" + StringUtils::urlEncode(_collectionName), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
+      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
       handleResult(result);
 
@@ -378,7 +394,7 @@ namespace triagens {
       }
       
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&collection=" + StringUtils::urlEncode(_collectionName), str, len, headerFields);
+      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
 
       handleResult(result);
     }
