@@ -552,7 +552,7 @@ ArangoEdgesCollection.prototype._PRINT = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief strng representation of a collection
+/// @brief string representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.toString = function(seen, path, names, level) {

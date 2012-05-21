@@ -29,7 +29,18 @@
 /// @page IndexSkiplistTOC
 ///
 /// <ul>
-///  <li>Skip-Lists are MISSING</li>
+///  <li>@ref IndexSkiplist
+///   <ul>
+///    <li>@ref IndexSkiplistIntro
+///    </li>
+///    <li>@ref IndexSkiplistShell
+///     <ul>
+///      <li>@ref IndexSkiplistShellEnsureUniqueSkiplist "collection.ensureUniqueSkiplist"</li>
+///      <li>@ref IndexSkiplistShellEnsureSkiplist "collection.ensureSkiplist"</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,20 +50,52 @@
 /// This is an introduction to ArangoDB's skip-lists.
 ///
 /// @EMBEDTOC{IndexSkiplistTOC}
+///
+/// @section IndexSkiplistIntro Skiplist Indexes
+////////////////////////////////////////////////
+///
+/// It is possible to define a skip-list index on one or more attributes (or
+/// paths) of a documents. This skip-list is then used in queries to locate
+/// documents within a given range. If the skip-list is unique, then no two
+/// documents are allowed to have the same set of attribute values.
+///
+/// @section IndexSkiplistShell Accessing Skip-List Indexes from the Shell
+//////////////////////////////////////////////////////////////////////////
+///
+/// @anchor IndexSkiplistShellEnsureUniqueSkiplist
+/// @copydetails JS_EnsureUniqueSkiplistVocbaseCol
+///
+/// @anchor IndexSkiplistShellEnsureSkiplist
+/// @copydetails JS_EnsureSkiplistVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexSkiplistHttpTOC
 ///
 /// <ul>
-///  <li>Skip-Lists Documentation Is MISSING</li>
+///  <li>@ref IndexSkiplistHttp
+///   <ul>
+///    <li>@ref IndexSkiplistHttpEnsureSkiplist "POST /_api/index"</li>
+///    <li>@ref IndexSkiplistHttpRange "POST /_api/simple/range"</li>
+///   </ul>
+///  </li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexSkiplistHttp Accessing Skip-List Indexes via Http
 ///
+/// If a suitable skip-list index exists, then @ref HttpSimpleRange
+/// "/_api/simple/range" will use this index to execute a range
+/// query.
+///
 /// @EMBEDTOC{IndexSkiplistHttpTOC}
+///
+/// @anchor IndexSkiplistHttpEnsureSkiplist
+/// @copydetails JSF_POST_api_index_skiplist
+///
+/// @anchor IndexSkiplistHttpRange
+/// @copydetails JSA_PUT_api_simple_range
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
