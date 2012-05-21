@@ -564,7 +564,8 @@ actions.defineHttp({
 ///
 /// @REST{PUT /_api/simple/range}
 ///
-/// This will find all documents within a given range.
+/// This will find all documents within a given range. You must declare a
+/// skip-list index on the attribute in order to be able to use a range query.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///

@@ -36,6 +36,7 @@
 ///      <li>@ref SimpleQueryAll "collection.all"</li>
 ///      <li>@ref SimpleQueryByExample "collection.byExample"</li>
 ///      <li>@ref SimpleQueryFirstExample "collection.firstExample"</li>
+///      <li>@ref SimpleQueryRange "collection.range"</li>
 ///      <li>@ref SimpleQueryCollectionCount "collection.count"</li>
 ///      <li>@ref SimpleQueryToArray "collection.toArray"</li>
 ///     </ul>
@@ -93,6 +94,9 @@
 ///
 /// @anchor SimpleQueryFirstExample
 /// @copydetails JSF_ArangoCollection_prototype_firstExample
+///
+/// @anchor SimpleQueryRange
+/// @copydetails JSF_ArangoCollection_prototype_range
 ///
 /// @anchor SimpleQueryCollectionCount
 /// @copydetails JS_CountVocbaseCol

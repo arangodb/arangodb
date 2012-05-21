@@ -442,11 +442,7 @@ function POST_api_index_hash (req, res, collection, body) {
 ///
 /// @EXAMPLES
 ///
-/// Creating an unique constraint:
-///
-/// @verbinclude api-index-create-new-unique-skiplist
-///
-/// Creating a hash index:
+/// Creating a skiplist:
 ///
 /// @verbinclude api-index-create-new-skiplist
 ////////////////////////////////////////////////////////////////////////////////

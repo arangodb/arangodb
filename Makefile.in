@@ -968,6 +968,7 @@ WIKI = \
 	IndexHash \
 	IndexHashHttp \
 	IndexSkiplist \
+	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
