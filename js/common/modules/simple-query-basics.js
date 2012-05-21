@@ -273,7 +273,7 @@ ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 /// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
 /// not as attribute. If you use 
 /// 
-/// @LIT{{ a : { c : 1 }}} 
+/// @LIT{{ a : { c : 1 } }} 
 ///
 /// as example, then you will find all documents, such that the attribute
 /// @LIT{a} contains a document of the form @LIT{{c : 1 }}. E.g., the document
@@ -282,7 +282,7 @@ ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 ///
 /// will match, but the document 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 }}}
+/// @LIT{{ a : { c : 1\, b : 1 } }}
 ///
 /// will not.
 ///
@@ -295,7 +295,7 @@ ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 ///
 /// @LIT{{ a : { c : 1 }\, b : 1 }} and 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 }}}
+/// @LIT{{ a : { c : 1\, b : 1 } }}
 ///
 /// will match.
 ///
