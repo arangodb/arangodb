@@ -868,7 +868,7 @@ int ArangoServer::executeShell (bool tests) {
       char* input = console->prompt("arangod> ");
 
       if (input == 0) {
-        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! さようなら\n");
+        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
         break;
       }
 
