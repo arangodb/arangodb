@@ -66,8 +66,13 @@ function ahuacatlLogicalTestSuite () {
 /// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getErrorCode (result) {
-    return result.errorNum;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -162,12 +167,12 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNotInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !0")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !\"value\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN ![]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !{}")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !0"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !\"value\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN ![]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !{}"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,10 +181,10 @@ function ahuacatlLogicalTestSuite () {
     
     testUnaryNotPrecedence : function () {
       // not has higher precedence than ==
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 == 0")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 == !1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 > 7")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN !1 IN [1]")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !1 == 0"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !1 == !1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !1 > 7"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN !1 IN [1]"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,33 +242,33 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAndInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null && true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 && true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" && true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" && true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] && true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } && true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null && true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 && true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"\" && true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"false\" && true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] && true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } && true"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && \"\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && \"false\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true && { }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && \"\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && \"false\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true && { }"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null && false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 && false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" && false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" && false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] && false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } && false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null && false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 && false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"\" && false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"false\" && false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] && false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } && false"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && \"\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && \"false\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false && { }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && \"\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && \"false\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false && { }"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,33 +355,33 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOrInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null || true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 || true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" || true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" || true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] || true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } || true")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null || true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 || true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"\" || true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"false\" || true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] || true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } || true"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || \"\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || \"false\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN true || { }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || \"\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || \"false\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN true || { }"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null || false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 || false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"\" || false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"false\" || false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] || false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } || false")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null || false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 || false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"\" || false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"false\" || false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] || false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } || false"); } ));
 
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || \"\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || \"false\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false || { }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || \"\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || \"false\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false || { }"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

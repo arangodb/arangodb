@@ -71,8 +71,13 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getErrorCode (result) {
-    return result.errorNum;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -147,12 +152,12 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryPlusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +\"value\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +[ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN +{ }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +\"value\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +[ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN +{ }"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,12 +215,12 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryMinusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -true")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -\"value\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -[ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN -{ }")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -true"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -\"value\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -[ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN -{ }"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,18 +299,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryPlusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + \"0\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + [ 0 ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 + { }")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null + 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false + 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"0\" + 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] + 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ 0 ] + 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } + 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + \"0\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + [ 0 ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 + { }"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null + 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false + 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"0\" + 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] + 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ 0 ] + 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } + 1"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,18 +348,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryMinusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - \"0\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - [ 0 ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 - { }")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null - 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false - 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"0\" - 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] - 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ 0 ] - 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } - 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - \"0\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - [ 0 ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 - { }"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null - 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false - 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"0\" - 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] - 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ 0 ] - 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } - 1"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -432,18 +437,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryMultiplicationInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * \"0\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * [ 0 ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 * { }")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null * 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false * 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"0\" * 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] * 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ 0 ] * 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } * 1")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * \"0\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * [ 0 ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 * { }"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null * 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false * 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"0\" * 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] * 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ 0 ] * 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } * 1"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,21 +536,21 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryDivisionInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / \"0\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / [ 0 ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 / { }")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null / 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false / 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"0\" / 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] / 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ 0 ] / 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } / 1")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 / 0")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 / 0.0")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 / (1 - 1)")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / \"0\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / [ 0 ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / { }"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"0\" / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ 0 ] / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } / 1"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / 0"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / 0.0"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 / (1 - 1)"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,21 +558,21 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryModulusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % null")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % false")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % \"0\"")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % [ ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % [ 0 ]")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN 1 % { }")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN null % 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN false % 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN \"0\" % 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ ] % 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN [ 0 ] % 1")));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(AHUACATL_RUN("RETURN { } % 1")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 % 0")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 % 0.0")));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(AHUACATL_RUN("RETURN 1 % (1 - 1)")));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % null"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % false"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % \"0\""); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % [ ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % [ 0 ]"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % { }"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN false % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"0\" % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ 0 ] % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } % 1"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % 0"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % 0.0"); } ));
+      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 % (1 - 1)"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
