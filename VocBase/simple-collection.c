@@ -1925,6 +1925,29 @@ int TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pid name structure
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct pid_name_s {
+  TRI_shape_pid_t _pid;
+  char* _name;
+}
+pid_name_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -2333,6 +2356,144 @@ static int FillIndex (TRI_sim_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a path based, unique or non-unique index
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* LookupPathIndexSimCollection (TRI_sim_collection_t* collection,
+                                                  TRI_vector_t const* paths,
+                                                  TRI_idx_type_e type,
+                                                  bool unique) {
+  TRI_index_t* matchedIndex = NULL;                                                                                        
+  size_t j;
+  size_t k;
+
+  // go through every index and see if we have a match 
+  for (j = 0;  j < collection->_indexes._length;  ++j) {
+    TRI_index_t* idx            = collection->_indexes._buffer[j];
+    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+    bool found                  = true;
+        
+    // check that the type of the index is in fact a hash index 
+    if (idx->_type != type) {
+      continue;
+    }
+        
+    // check that the uniqueness is the same
+    if (idx->_unique != unique) {
+      continue;
+    }
+        
+    // check that the number of paths (fields) in the hash index matches that
+    // of the number of attributes
+    if (paths->_length != hashIndex->_paths._length) {
+      continue;
+    }
+        
+    // go through all the attributes and see if they match
+    for (k = 0;  k < paths->_length;  ++k) {
+      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, k)));
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
+
+      if (field != shape) {
+        found = false;
+        break;          
+      } 
+    }  
+
+    // stop if we found a match
+    if (found) {
+      matchedIndex = idx;
+      break;
+    }    
+  }
+
+  return matchedIndex;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores a path based index (template)
+////////////////////////////////////////////////////////////////////////////////
+
+static int PathBasedIndexFromJson (TRI_sim_collection_t* sim,
+                                   TRI_json_t* definition,
+                                   TRI_idx_iid_t iid,
+                                   TRI_index_t* (*creator)(TRI_sim_collection_t*,
+                                                           TRI_vector_pointer_t const*,
+                                                           TRI_idx_iid_t,
+                                                           bool,
+                                                           bool*)) {
+  TRI_index_t* idx;
+  TRI_json_t* bv;
+  TRI_json_t* fld;
+  TRI_json_t* fieldStr;
+  TRI_vector_pointer_t attributes;
+  bool unique;
+  size_t fieldCount;
+  size_t j;
+  
+  // extract fields
+  fld = ExtractFields(definition, &fieldCount, iid);
+
+  if (fld == NULL) {
+    return TRI_errno();
+  }
+
+  // extract the list of fields
+  if (fieldCount < 1) {
+    LOG_ERROR("ignoring index %lu, need at least von attribute path",(unsigned long) iid);
+
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  // determine if the hash index is unique or non-unique
+  unique = false;
+  bv = TRI_LookupArrayJson(definition, "unique");
+
+  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+    unique = bv->_value._boolean;
+  }
+  else {
+    LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }  
+    
+  // Initialise the vector in which we store the fields on which the hashing
+  // will be based.
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+    
+  // find fields
+  for (j = 0;  j < fieldCount;  ++j) {
+    fieldStr = TRI_AtVector(&fld->_value._objects, j);
+
+    TRI_PushBackVectorPointer(&attributes, fieldStr->_value._string.data);
+  }  
+
+  // create the index
+  idx = creator(sim, &attributes, iid, unique, NULL);
+
+  // cleanup
+  TRI_DestroyVectorPointer(&attributes);
+
+  if (idx == NULL) {
+    LOG_ERROR("cannot create hash index %lu", (unsigned long) iid);
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares pid and name
+////////////////////////////////////////////////////////////////////////////////
+
+static int ComparePidName (void const* left, void const* right) {
+  pid_name_t const* l = left;
+  pid_name_t const* r = right;
+
+  return l->_pid - r->_pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2479,6 +2640,86 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   else {
     return false;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts attribute names to lists of pids and names
+///
+/// In case of an error, all allocated memory in pids and names will be
+/// freed.
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
+                                  TRI_shaper_t* shaper,
+                                  TRI_vector_t* pids,
+                                  TRI_vector_pointer_t* names,
+                                  bool sorted) {
+  pid_name_t* pidnames;
+  size_t j;
+
+  // .............................................................................
+  // sorted case
+  // .............................................................................
+
+  if (sorted) {
+
+    // combine name and pid
+    pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+    
+    for (j = 0;  j < attributes->_length;  ++j) {
+      pidnames[j]._name = attributes->_buffer[j];
+      pidnames[j]._pid = shaper->findAttributePathByName(shaper, pidnames[j]._name);   
+      
+      if (pidnames[j]._pid == 0) {
+        TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
+        
+        return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      }
+    }
+    
+    // sort according to pid
+    qsort(pidnames, attributes->_length, sizeof(pid_name_t), ComparePidName);
+    
+    // split again
+    TRI_InitVector(pids, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
+    TRI_InitVectorPointer(names, TRI_CORE_MEM_ZONE);
+    
+    for (j = 0;  j < attributes->_length;  ++j) {
+      TRI_PushBackVector(pids, &pidnames[j]._pid);
+      TRI_PushBackVectorPointer(names, pidnames[j]._name);
+    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
+  }
+
+  // .............................................................................
+  // unsorted case
+  // .............................................................................
+
+  else {
+    TRI_InitVector(pids, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
+    TRI_InitVectorPointer(names, TRI_CORE_MEM_ZONE);
+    
+    for (j = 0;  j < attributes->_length;  ++j) {
+      char* name;
+      TRI_shape_pid_t pid;
+
+      name = attributes->_buffer[j];
+      pid = shaper->findAttributePathByName(shaper, name);
+
+      if (pid == 0) {
+        TRI_DestroyVector(pids);
+        TRI_DestroyVectorPointer(names);
+
+        return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      }
+
+      TRI_PushBackVector(pids, &pid);
+      TRI_PushBackVectorPointer(names, name);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3192,29 +3433,6 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pid name structure
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct pid_name_s {
-  TRI_shape_pid_t _pid;
-  char* _name;
-}
-pid_name_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -3222,60 +3440,6 @@ pid_name_t;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a hash index (unique or non-unique)
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_index_t* LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                                  TRI_vector_t const* paths,
-                                                  bool unique) {
-  TRI_index_t* matchedIndex = NULL;                                                                                        
-  size_t j;
-  size_t k;
-
-  // go through every index and see if we have a match 
-  for (j = 0;  j < collection->_indexes._length;  ++j) {
-    TRI_index_t* idx            = collection->_indexes._buffer[j];
-    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-    bool found                  = true;
-        
-    // check that the type of the index is in fact a hash index 
-    if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-      continue;
-    }
-        
-    // check that the uniqueness is the same
-    if (idx->_unique != unique) {
-      continue;
-    }
-        
-    // check that the number of paths (fields) in the hash index matches that
-    // of the number of attributes
-    if (paths->_length != hashIndex->_paths._length) {
-      continue;
-    }
-        
-    // go through all the attributes and see if they match
-    for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, k)));
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
-
-      if (field != shape) {
-        found = false;
-        break;          
-      } 
-    }  
-
-    // stop if we found a match
-    if (found) {
-      matchedIndex = idx;
-      break;
-    }    
-  }
-
-  return matchedIndex;  
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a hash index to the collection
@@ -3297,7 +3461,8 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   res = TRI_PidNamesByAttributeNames(attributes, 
                                      collection->base._shaper,
                                      &paths,
-                                     &fields);
+                                     &fields,
+                                     true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -3313,7 +3478,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupHashIndexSimCollection(collection, &paths, unique);
+  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -3358,96 +3523,13 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores an index (template)
-////////////////////////////////////////////////////////////////////////////////
-
-static int FieldBasedIndexFromJson (TRI_sim_collection_t* sim,
-                                    TRI_json_t* definition,
-                                    TRI_idx_iid_t iid,
-                                    TRI_index_t* (*creator)(TRI_sim_collection_t*,
-                                                            TRI_vector_pointer_t const*,
-                                                            TRI_idx_iid_t,
-                                                            bool,
-                                                            bool*)) {
-  TRI_index_t* idx;
-  TRI_json_t* bv;
-  TRI_json_t* fld;
-  TRI_json_t* fieldStr;
-  TRI_vector_pointer_t attributes;
-  bool unique;
-  size_t fieldCount;
-  size_t j;
-  
-  // extract fields
-  fld = ExtractFields(definition, &fieldCount, iid);
-
-  if (fld == NULL) {
-    return TRI_errno();
-  }
-
-  // extract the list of fields
-  if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %lu, need at least von attribute path",(unsigned long) iid);
-
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  // determine if the hash index is unique or non-unique
-  unique = false;
-  bv = TRI_LookupArrayJson(definition, "unique");
-
-  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
-    unique = bv->_value._boolean;
-  }
-  else {
-    LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }  
-    
-  // Initialise the vector in which we store the fields on which the hashing
-  // will be based.
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-    
-  // find fields
-  for (j = 0;  j < fieldCount;  ++j) {
-    fieldStr = TRI_AtVector(&fld->_value._objects, j);
-
-    TRI_PushBackVectorPointer(&attributes, fieldStr->_value._string.data);
-  }  
-
-  // create the index
-  idx = creator(sim, &attributes, iid, unique, NULL);
-
-  // cleanup
-  TRI_DestroyVectorPointer(&attributes);
-
-  if (idx == NULL) {
-    LOG_ERROR("cannot create hash index %lu", (unsigned long) iid);
-    return TRI_errno();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
 static int HashIndexFromJson (TRI_sim_collection_t* sim,
                               TRI_json_t* definition,
                               TRI_idx_iid_t iid) {
-  return FieldBasedIndexFromJson(sim, definition, iid, CreateHashIndexSimCollection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares pid and name
-////////////////////////////////////////////////////////////////////////////////
-
-static int ComparePidName (void const* left, void const* right) {
-  pid_name_t const* l = left;
-  pid_name_t const* r = right;
-
-  return l->_pid - r->_pid;
+  return PathBasedIndexFromJson(sim, definition, iid, CreateHashIndexSimCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3462,47 +3544,6 @@ static int ComparePidName (void const* left, void const* right) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts attribute names to sorted lists of pids and names
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
-                                  TRI_shaper_t* shaper,
-                                  TRI_vector_t* pids,
-                                  TRI_vector_pointer_t* names) {
-  pid_name_t* pidnames;
-  size_t j;
-
-  // combine name and pid
-  pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
-
-  for (j = 0;  j < attributes->_length;  ++j) {
-    pidnames[j]._name = attributes->_buffer[j];
-    pidnames[j]._pid = shaper->findAttributePathByName(shaper, pidnames[j]._name);   
-
-    if (pidnames[j]._pid == 0) {
-      TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
-
-      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    }
-  }
-
-  // sort according to pid
-  qsort(pidnames, attributes->_length, sizeof(pid_name_t), ComparePidName);
-
-  // split again
-  TRI_InitVector(pids, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorPointer(names, TRI_CORE_MEM_ZONE);
-
-  for (j = 0;  j < attributes->_length;  ++j) {
-    TRI_PushBackVector(pids, &pidnames[j]._pid);
-    TRI_PushBackVectorPointer(names, pidnames[j]._name);
-  }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
@@ -3520,7 +3561,8 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
   res = TRI_PidNamesByAttributeNames(attributes, 
                                      sim->base._shaper,
                                      &paths,
-                                     &fields);
+                                     &fields,
+                                     true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
@@ -3532,7 +3574,7 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  idx = LookupHashIndexSimCollection(sim, &paths, unique);
+  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
   
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
@@ -3614,42 +3656,32 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
                                                       TRI_idx_iid_t iid,
                                                       bool unique,
                                                       bool* created) {
-  TRI_index_t* idx     = NULL;
-  TRI_shaper_t* shaper = collection->base._shaper;
-  TRI_vector_t paths;
+  TRI_index_t* idx;
   TRI_vector_pointer_t fields;
+  TRI_vector_t paths;
   int res;
-  size_t j;
-  
-  TRI_InitVector(&paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorPointer(&fields, TRI_UNKNOWN_MEM_ZONE);
 
-  // ...........................................................................
-  // Determine the shape ids for the attributes
-  // ...........................................................................
+  res = TRI_PidNamesByAttributeNames(attributes, 
+                                     collection->base._shaper,
+                                     &paths,
+                                     &fields,
+                                     false);
 
-  for (j = 0;  j < attributes->_length;  ++j) {
-    char* path = attributes->_buffer[j];
-    TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
-
-    if (shape == 0) {
-      TRI_DestroyVector(&paths);
-      TRI_DestroyVectorPointer(&fields);
-
-      return NULL;
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (created != NULL) {
+      *created = false;
     }
 
-    TRI_PushBackVector(&paths, &shape);
-    TRI_PushBackVectorPointer(&fields, path);
+    return NULL;
   }
-  
+
   // ...........................................................................
   // Attempt to find an existing index which matches the attributes above.
   // If a suitable index is found, return that one otherwise we need to create
   // a new one.
   // ...........................................................................
 
-  idx = TRI_LookupSkiplistIndexSimCollection(collection, &paths);
+  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -3663,24 +3695,19 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
     return idx;
   }
 
-  // ...........................................................................
   // Create the skiplist index
-  // ...........................................................................
-
   idx = TRI_CreateSkiplistIndex(&collection->base, &fields, &paths, unique);
 
-  // ...........................................................................
+  // release memory allocated to vector
+  TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
+  
   // If index id given, use it otherwise use the default.
-  // ...........................................................................
-
   if (iid) {
     idx->_iid = iid;
   }
   
-  // ...........................................................................
   // initialises the index with all existing documents
-  // ...........................................................................
-
   res = FillIndex(collection, idx);
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3688,19 +3715,9 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
     return NULL;
   }
   
-  // ...........................................................................
-  // store index
-  // ...........................................................................
-
+  // store index and return
   TRI_PushBackVectorPointer(&collection->_indexes, idx);
   
-  // ...........................................................................
-  // release memory allocated to vector
-  // ...........................................................................
-
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
-
   if (created != NULL) {
     *created = true;
   }
@@ -3715,7 +3732,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
 static int SkiplistIndexFromJson (TRI_sim_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  return FieldBasedIndexFromJson(sim, definition, iid, CreateSkiplistIndexSimCollection);
+  return PathBasedIndexFromJson(sim, definition, iid, CreateSkiplistIndexSimCollection);
 }
                                                   
 ////////////////////////////////////////////////////////////////////////////////
@@ -3735,76 +3752,54 @@ static int SkiplistIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a skiplist index (unique or non-unique)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
-                                                   const TRI_vector_t* paths) {
-  TRI_index_t* matchedIndex = NULL;                                                                                        
-  size_t j, k;
+TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
+                                                   TRI_vector_pointer_t const* attributes,
+                                                   bool unique) {
+  TRI_index_t* idx;
+  TRI_vector_pointer_t fields;
+  TRI_vector_t paths;
+  int res;
   
-  // ...........................................................................
-  // Note: This function does NOT differentiate between non-unique and unique
-  //       skiplist indexes. The first index which matches the attributes
-  //       (paths parameter) will be returned.
-  // ...........................................................................
-  
-  
-  // ........................................................................... 
-  // go through every index and see if we have a match 
-  // ........................................................................... 
-  
-  for (j = 0;  j < collection->_indexes._length;  ++j) {
-    TRI_index_t* idx                    = collection->_indexes._buffer[j];
-    TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
-    bool found                          = true;
+  // determine the unsorted shape ids for the attributes
+  res = TRI_PidNamesByAttributeNames(attributes, 
+                                     sim->base._shaper,
+                                     &paths,
+                                     &fields,
+                                     false);
 
-    // .........................................................................
-    // check that the type of the index is in fact a skiplist index 
-    // .........................................................................
-        
-    if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-      continue;
-    }
-        
-    // .........................................................................
-    // check that the number of paths (fields) in the index matches that
-    // of the number of attributes
-    // .........................................................................
-        
-    if (paths->_length != skiplistIndex->_paths._length) {
-      continue;
-    }
-        
-    // .........................................................................
-    // Go through all the attributes and see if they match
-    // .........................................................................
-
-    for (k = 0; k < paths->_length; ++k) {
-      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,k)));   
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,k)));
-
-      if (field != shape) {
-        found = false;
-        break;          
-      } 
-    }  
-        
-
-    if (found) {
-      matchedIndex = idx;
-      break;
-    }    
+  if (res != TRI_ERROR_NO_ERROR) {
+    return NULL;
   }
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  return matchedIndex;  
+  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  // release memory allocated to vector
+  TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
+
+  return idx;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
-                                                  TRI_vector_pointer_t const* attributes,
-                                                  bool unique,
-                                                  bool* created) {
+TRI_index_t* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
+                                                   TRI_vector_pointer_t const* attributes,
+                                                   bool unique,
+                                                   bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3814,10 +3809,6 @@ TRI_index_t* TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  // ............................................................................. 
-  // Given the list of attributes (as strings) 
-  // .............................................................................
-
   idx = CreateSkiplistIndexSimCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
@@ -3968,7 +3959,7 @@ static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t*
 static int PriorityQueueFromJson (TRI_sim_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  return FieldBasedIndexFromJson(sim, definition, iid, CreatePriorityQueueIndexSimCollection);
+  return PathBasedIndexFromJson(sim, definition, iid, CreatePriorityQueueIndexSimCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
