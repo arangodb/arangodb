@@ -758,22 +758,22 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       case TRI_EDGE_UNUSED:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: edge(<vertices>)")));
+                                                   "usage: edges(<vertices>)")));
 
       case TRI_EDGE_IN:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: inEdge(<vertices>)")));
+                                                   "usage: inEdges(<vertices>)")));
 
       case TRI_EDGE_OUT:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: outEdge(<vertices>)")));
+                                                   "usage: outEdges(<vertices>)")));
 
       case TRI_EDGE_ANY:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: edge(<vertices>)")));
+                                                   "usage: edges(<vertices>)")));
     }
   }
 
@@ -794,7 +794,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
     uint32_t len = vertices->Length();
 
-    for (uint32_t i = 0;  i < len;  ++i) {
+    for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
       TRI_voc_cid_t cid;
       TRI_voc_did_t did;
@@ -802,7 +802,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       
       TRI_vocbase_col_t const* vertexCollection = 0;
       v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
-      
+     
       if (! errMsg.IsEmpty()) {
         if (vertexCollection != 0) {
           TRI_ReleaseCollection(vertexCollection);
@@ -839,8 +839,6 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
       
     if (! errMsg.IsEmpty()) {
-      collection->_collection->endRead(collection->_collection);
-
       if (vertexCollection != 0) {
         TRI_ReleaseCollection(vertexCollection);
       }
