@@ -12,6 +12,8 @@ var globalCollectionID;
 var globalCollectionRev;
 var checkCollectionName; 
 var open = false;
+var rowCounter = 0; 
+
 $(document).ready(function() {       
 showCursor();
 
@@ -764,11 +766,7 @@ var logTable = $('#logTableID').dataTable({
       var collectionID; 
       var boxContent = $('#documentEditSourceBox').val();
       var jsonContent = JSON.parse(boxContent);
-      $.each(jsonContent, function(row1, row2) {
-        if ( row1 == '_id') {
-          collectionID = row2; 
-        } 
-      });
+      collectionID = globalCollectionID;  
 
       $.ajax({
         type: "PUT",
@@ -812,7 +810,8 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addEditedDocRowButton').live('click', function () {
     if (tableView == true) {
-      documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("editme")]);
+      rowCounter = rowCounter + 1; 
+      documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somekey" + rowCounter, value2html("editme"), JSON.stringify("editme")]);
       documentTableMakeEditable('#documentEditTableID');
       showCursor();
     }
@@ -886,7 +885,8 @@ var logTable = $('#logTableID').dataTable({
 
   $('#addNewDocButton').live('click', function () {
     if (tableView == true) {
-      newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somevalue", value2html("editme"), JSON.stringify("editme")]);
+      rowCounter = rowCounter + 1; 
+      newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>', "somekey" + rowCounter, value2html("editme"), JSON.stringify("editme")]);
       documentTableMakeEditable('#NewDocumentTableID');
       showCursor();
     }
@@ -1166,7 +1166,7 @@ var logTable = $('#logTableID').dataTable({
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
   
     try {
-      var server = "" + JSON.stringify(eval(data)); 
+      var server = "" + eval(data); 
       $('#avocshWindow').append('<p class="avocshSuccess">' + server + '</p>');
     }
     catch(e) {
