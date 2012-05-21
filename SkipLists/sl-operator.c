@@ -105,7 +105,7 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
       }
 
       newRelationOperator->_base._type = operatorType;
-      newLogicalOperator->_base._shaper = shaper;
+      newRelationOperator->_base._shaper = shaper;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
       newRelationOperator->_numFields  = numFields;
