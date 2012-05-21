@@ -1,0 +1,4 @@
+FOR u IN users
+  COLLECT first = u.firstName, age = u.age INTO g
+  RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(g) }
+

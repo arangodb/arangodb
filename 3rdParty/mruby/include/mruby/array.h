@@ -1,6 +1,6 @@
 /*
 ** array.h - Array class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -45,4 +45,4 @@ mrb_value mrb_ary_tmp_new(mrb_state *mrb, long capa);
 mrb_value mrb_ary_sort(mrb_state *mrb, mrb_value ary);
 mrb_value mrb_ary_shift(mrb_state *mrb, mrb_value self);
 
-#endif	/* MRUBY_ARRAY_H */
+#endif  /* MRUBY_ARRAY_H */

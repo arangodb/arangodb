@@ -1,0 +1,3 @@
+FOR u IN users
+  FILTER u.id == @id && u.name == @name
+  RETURN u

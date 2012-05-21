@@ -1,0 +1,16 @@
+> ./arangosh --help
+STANDARD options:
+  --help                             help message
+  --log.level <string>               log level (default: "info")
+  --max-upload-size <uint64>         maximum size of import chunks (default: 500000)
+  --no-auto-complete                 disable auto completion
+  --no-colors                        deactivate color support
+  --pager <string>                   output pager (default: "less -X -R -F -L")
+  --pretty-print                     pretty print values
+  --server <string>                  server address and port (default: "127.0.0.1:8529")
+  --startup.directory <string>       startup paths containing the JavaScript files; multiple directories can be 
+                                     separated by cola
+  --startup.modules-path <string>    one or more directories separated by cola (default: 
+                                     "./js/client/modules;./js/common/modules")
+  --unit-tests <string>              do not start as shell, run unit tests instead
+  --use-pager                        use pager

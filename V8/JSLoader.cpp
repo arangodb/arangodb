@@ -51,10 +51,7 @@ using namespace triagens::arango;
 /// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader::JSLoader ()
-  : _scripts(),
-    _directory(),
-    _lock() {
+JSLoader::JSLoader () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,72 +66,6 @@ JSLoader::JSLoader ()
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the directory for scripts
-////////////////////////////////////////////////////////////////////////////////
-
-string const& JSLoader::getDirectory () const {
-  return _directory;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the directory for scripts
-////////////////////////////////////////////////////////////////////////////////
-
-void JSLoader::setDirectory (string const& directory) {
-  MUTEX_LOCKER(_lock);
-
-  _directory = directory;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a new named script
-////////////////////////////////////////////////////////////////////////////////
-
-void JSLoader::defineScript (string const& name, string const& script) {
-  MUTEX_LOCKER(_lock);
-
-  _scripts[name] = script;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a named script
-////////////////////////////////////////////////////////////////////////////////
-
-string const& JSLoader::findScript (string const& name) {
-  MUTEX_LOCKER(_lock);
-  static string empty = "";
-
-  map<string, string>::iterator i = _scripts.find(name);
-
-  if (i != _scripts.end()) {
-    return i->second;
-  }
-
-  if (! _directory.empty()) {
-    vector<string> parts = getDirectoryParts();
-
-    for (size_t i = 0; i < parts.size(); i++) {
-      char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
-
-      if (result == 0 && (i == parts.size() - 1)) {
-        LOGGER_ERROR << "cannot locate file '" << name.c_str() << "': " << TRI_last_error();
-      }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-      if (result != 0) {
-        _scripts[name] = result;
-        TRI_FreeString(TRI_CORE_MEM_ZONE, result);
-        return _scripts[name];
-      }
-    }
-  }
-
-  return empty;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
@@ -153,10 +84,10 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
     return false;
   }
 
-  TRI_ExecuteStringVocBase(context,
-                           v8::String::New(i->second.c_str()),
-                           v8::String::New(name.c_str()),
-                           false);
+  TRI_ExecuteJavaScriptString(context,
+                              v8::String::New(i->second.c_str()),
+                              v8::String::New(name.c_str()),
+                              false);
 
   if (tryCatch.HasCaught()) {
     TRI_LogV8Exception(&tryCatch);
@@ -206,10 +137,10 @@ bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const&
 
   string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
 
-  TRI_ExecuteStringVocBase(context,
-                           v8::String::New(content.c_str()),
-                           v8::String::New(name.c_str()),
-                           false);
+  TRI_ExecuteJavaScriptString(context,
+                              v8::String::New(content.c_str()),
+                              v8::String::New(name.c_str()),
+                              false);
 
   if (! tryCatch.HasCaught()) {
     TRI_LogV8Exception(&tryCatch);
@@ -232,30 +163,6 @@ bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
   }
 
   return TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets a list of all specified directory parts
-////////////////////////////////////////////////////////////////////////////////
-
-vector<string> JSLoader::getDirectoryParts () {
-  vector<string> directories;
-  
-  if (! _directory.empty()) {
-    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
-
-    for (size_t i = 0; i < parts._length; i++) {
-      string part = StringUtils::trim(parts._buffer[i]);
-
-      if (! part.empty()) {
-        directories.push_back(part);
-      }
-    }
-
-    TRI_DestroyVectorString(&parts);
-  }
-  
-  return directories;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

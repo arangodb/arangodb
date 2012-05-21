@@ -445,6 +445,39 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comments
+////////////////////////////////////////////////////////////////////////////////
+
+    testComments1: function () {
+      var expected = [ 1 ];
+
+      var actual = getQueryResults("/* return 2 */ return 1");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comments
+////////////////////////////////////////////////////////////////////////////////
+
+    testComments2: function () {
+      var expected = [ [ 4 ] ];
+
+      var actual = getQueryResults("/* return 1 */ return [/*1,2,3,*/4 /*5,6,7*/]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comments
+////////////////////////////////////////////////////////////////////////////////
+
+    testComments2: function () {
+      var expected = [ 1 ];
+
+      var actual = getQueryResults("/* for u in [1,2,3] */ return 1");
+      assertEqual(expected, actual);
+    },
+
   };
 }
 

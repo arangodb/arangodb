@@ -35,32 +35,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineSchedulerTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineSchedulerThreads "scheduler.threads"</li>
 ///  <li>@ref CommandLineSchedulerBackend "scheduler.backend"</li>
 ///  <li>@ref CommandLineSchedulerShowIoBackends "show-io-backends"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineScheduler Command-Line Options for Communication
 ///
-/// <hr>
-/// @copydoc CommandLineSchedulerTOC
-/// <hr>
-///
 /// @anchor CommandLineSchedulerThreads
-///////////////////////////////////////
 /// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_nrSchedulerThreads
-/// <hr>
 ///
 /// @anchor CommandLineSchedulerBackend
-///////////////////////////////////////
 /// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_backend
-/// <hr>
 ///
 /// @anchor CommandLineSchedulerShowIoBackends
-//////////////////////////////////////////////
 /// @CMDOPT{--show-io-backends}
 ///
 /// If this option is specified, then the server will list available backends

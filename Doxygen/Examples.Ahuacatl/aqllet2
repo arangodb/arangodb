@@ -1,0 +1,12 @@
+FOR u IN users
+  LET friends = (
+    FOR f IN friends 
+      FILTER u.id == f.userId
+      RETURN f
+  )
+  LET memberships = (
+    FOR m IN memberships
+      FILTER u.id == m.userId
+      RETURN m
+  )
+  RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }

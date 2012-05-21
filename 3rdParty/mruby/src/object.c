@@ -1,6 +1,6 @@
 /*
 ** object.c - Object, NilClass, TrueClass, FalseClass class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -310,7 +310,7 @@ mrb_init_object(mrb_state *mrb)
   mrb_define_method(mrb, f, "|",    false_or,       ARGS_REQ(1));  /* 15.2.6.3.4  */
 }
 
-mrb_value
+static mrb_value
 convert_type(mrb_state *mrb, mrb_value val, const char *tname, const char *method, int raise)
 {
   mrb_sym m = 0;

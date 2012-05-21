@@ -1,0 +1,3 @@
+u.age > 15 && u.address.city != ""
+true || false
+!u.isInvalid

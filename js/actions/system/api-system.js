@@ -37,6 +37,39 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
+function AdminRedirect (req, res) {
+  var dest = "/_admin/html/index.html";
+
+  res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
+  res.contentType = "text/html";
+
+  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + dest
+    + "\">"
+    + dest
+    + "</a>.</p></body></html>";
+
+  res.headers = { location : dest };
+}
+
+actions.defineHttp({
+  url : "",
+  context : "admin",
+  prefix : false,
+  callback : AdminRedirect
+});
+
+actions.defineHttp({
+  url : "_admin",
+  context : "admin",
+  prefix : false,
+  callback : AdminRedirect
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_status
 /// @brief returns system status information for the server
 ///

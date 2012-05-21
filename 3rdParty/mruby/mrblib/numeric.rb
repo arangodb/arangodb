@@ -1,8 +1,14 @@
-#
-#  Integer
-#
+##
+# Integer
+#  
+# ISO 15.2.8
 class Integer
-  # 15.2.8.3.15
+
+  ##
+  # Calls the given block once for each Integer
+  # from +self+ downto +num+.
+  #
+  # ISO 15.2.8.3.15
   def downto(num, &block)
     raise TypeError, "expected Integer" unless num.kind_of? Integer
     i = self
@@ -13,7 +19,10 @@ class Integer
     self
   end
 
-  # 15.2.8.3.22
+  ##
+  # Calls the given block +self+ times.
+  #
+  # ISO 15.2.8.3.22
   def times(&block)
     i = 0
     while(i < self)
@@ -23,7 +32,11 @@ class Integer
     self
   end
 
-  # 15.2.8.3.27
+  ##
+  # Calls the given block once for each Integer
+  # from +self+ upto +num+.
+  #
+  # ISO 15.2.8.3.27
   def upto(num, &block)
     raise TypeError, "expected Integer" unless num.kind_of? Integer
     i = self
@@ -35,7 +48,10 @@ class Integer
   end
 end
 
-# include modules
+##
+# Numeric is comparable
+#
+# ISO 15.2.7.3
 module Comparable; end
 class Numeric
   include Comparable

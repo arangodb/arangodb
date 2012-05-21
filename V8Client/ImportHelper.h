@@ -129,6 +129,16 @@ namespace triagens {
       }
 
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the createCollection flag
+      ///
+      /// @param bool value                create the collection if it does not exist
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setCreateCollection (const bool value) {
+        _createCollection = value;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the number of read lines
       ///
       /// @return size_t       number of read lines
@@ -173,6 +183,7 @@ namespace triagens {
       static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
       static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);      
       
+      string getCollectionUrlPart ();
       void beginLine (size_t row);
       void addField (char const* field, size_t row, size_t column, bool escaped);
       void addLastField (char const* field, size_t row, size_t column, bool escaped);      
@@ -187,6 +198,7 @@ namespace triagens {
       
       char _quote;
       char _separator;
+      bool _createCollection; 
       
       size_t _numberLines;
       size_t _numberOk;

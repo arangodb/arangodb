@@ -1,5 +1,3 @@
-
-
 button {
   padding: 0; 
 }
@@ -70,9 +68,8 @@ html.busy, html.busy * {
 }
 
 html {
-  font-family: Verdana,Arial,sans-serif; 
+  font-family: verdana,arial,helvetica,geneva,sans-serif; 
   font-size: 1em;
-  min-width: 1024px;
 }
 tr {
   font-size: 0.8em; 
@@ -109,7 +106,13 @@ pre ul li span{
 }
 
 #docPageInput {
-  width:40px;   
+  width:40px; 
+  height: 24px;
+  vertical-align: middle;
+}
+
+#addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton {
+  font-size: 0.8em; 
 }
 
 #docPageForm {
@@ -119,6 +122,7 @@ pre ul li span{
 }
 
 .floatRight {
+  vertical-align: middle;
   float:right;
 }
 
@@ -212,8 +216,8 @@ pre ul li span{
   box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
-#createCollection, #refreshCollections {
-  font-size: 0.85em !important;  
+#createCollection, #refreshCollections, #addDocumentButton, #saveEditedDocButton, #saveNewDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #addNewDocButton, #toggleNewDocButton {
+  font-size: 0.8em !important;  
 }
 
 #createCollectionView {
@@ -318,16 +322,21 @@ form {
 }
 
 #submitQuery {
-  height:34px !important;
+  height:30px !important;
   width: 100px !important;
   float:right; 
 }
 
 #queryOutput {
+  height:40%; 
+  yoverflow-y: auto; 
+  border: 1px solid black;
+  background: white;  
   font-family: "courier"; 
 }
 
 #queryContent {
+  height: 40%; 
   font-family: "courier";
   width: 100%;
   resize: none; 
@@ -375,13 +384,14 @@ form {
 .avocshSuccess {
   font-family: "courier";
   background-color: #e4e9d2;
-  color: #335127; 
+  //color: #335127; 
+  color: black; 
 }
 
 .avocshError {
   font-family: "courier";
   background-color: #FFD8D8;  
-  color: red; 
+  color: black; 
 }
 
 .avocshClient {
@@ -442,7 +452,7 @@ form {
 }
 
 #menue-left {
-  margin-top: 3px;
+  margin-top: 5px;
   margin-left: 17px; 
   height:48px; 
   width:auto; 
@@ -656,7 +666,6 @@ form {
 }
 
 #queryView {
-  height: 350px;   
 }
 
 #avocshView {
@@ -704,4 +713,8 @@ form {
 #configContent td {
   width: 200px; 
   padding-top:3px; 
+}
+
+#iInfo {
+  font-size: 0.8em; 
 }

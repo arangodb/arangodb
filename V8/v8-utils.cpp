@@ -362,11 +362,9 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
   }
 
   if (execute) {
-    char* contentWrapper = TRI_Concatenate5String("(function() { ",
+    char* contentWrapper = TRI_Concatenate3String("(function() { ",
                                                   content,
-                                                  "/* end-of-file '",
-                                                  filename,
-                                                  "' */ })()");
+                                                  "/* end-of-file */ })()");
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -612,7 +610,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
   }
 
-  TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
+  TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(v8::Undefined());
@@ -1231,72 +1229,45 @@ bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
-                               v8::Handle<v8::String> source,
-                               v8::Handle<v8::Value> name,
-                               bool printResult) {
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
+                                                   v8::Handle<v8::String> source,
+                                                   v8::Handle<v8::Value> name,
+                                                   bool printResult) {
   v8::HandleScope scope;
 
+  v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    return false;
+    return scope.Close(result);
   }
 
   // compilation succeeded, run the script
-  else {
-    v8::Handle<v8::Value> result = script->Run();
-
-    if (result.IsEmpty()) {
-      return false;
-    }
-    else {
-
-      // if all went well and the result wasn't undefined then print the returned value
-      if (printResult && ! result->IsUndefined()) {
-        v8::TryCatch tryCatch;
-
-        v8::Handle<v8::String> printFuncName = v8::String::New("print");
-        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
-
-        v8::Handle<v8::Value> args[] = { result };
-        print->Call(print, 1, args);
-
-        if (tryCatch.HasCaught()) {
-          TRI_LogV8Exception(&tryCatch);
-        }
-      }
-
-      return true;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context, return the result
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
-                                                v8::Handle<v8::String> source,
-                                                v8::Handle<v8::Value> name) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
-
-  // compilation failed, print errors that happened during compilation
-  if (script.IsEmpty()) {
-    return scope.Close(v8::Undefined());
-  }
-
-  // compilation succeeded, run the script
-  v8::Handle<v8::Value> result = script->Run();
+  result = script->Run();
 
   if (result.IsEmpty()) {
-    return scope.Close(v8::Undefined());
+    return scope.Close(result);
   }
+  else {
 
-  return scope.Close(result);
+    // if all went well and the result wasn't undefined then print the returned value
+    if (printResult && ! result->IsUndefined()) {
+      v8::TryCatch tryCatch;
+
+      v8::Handle<v8::String> printFuncName = v8::String::New("print");
+      v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
+
+      v8::Handle<v8::Value> args[] = { result };
+      print->Call(print, 1, args);
+
+      if (tryCatch.HasCaught()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+    }
+
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 /* This is a public domain general purpose hash table package written by Peter Moore @ UCB. */
 
-/* static	char	sccsid[] = "@(#) st.c 5.1 89/12/14 Crucible"; */
+/* static       char    sccsid[] = "@(#) st.c 5.1 89/12/14 Crucible"; */
 
 #include <stdio.h>
 #ifdef HAVE_STDLIB_H
@@ -66,35 +66,35 @@ static void rehash(st_table *);
 Table of prime numbers 2^n+a, 2<=n<=30.
 */
 static long primes[] = {
-	8 + 3,
-	16 + 3,
-	32 + 5,
-	64 + 3,
-	128 + 3,
-	256 + 27,
-	512 + 9,
-	1024 + 9,
-	2048 + 5,
-	4096 + 3,
-	8192 + 27,
-	16384 + 43,
-	32768 + 3,
-	65536 + 45,
-	131072 + 29,
-	262144 + 3,
-	524288 + 21,
-	1048576 + 7,
-	2097152 + 17,
-	4194304 + 15,
-	8388608 + 9,
-	16777216 + 43,
-	33554432 + 35,
-	67108864 + 15,
-	134217728 + 29,
-	268435456 + 3,
-	536870912 + 11,
-	1073741824 + 85,
-	0
+        8 + 3,
+        16 + 3,
+        32 + 5,
+        64 + 3,
+        128 + 3,
+        256 + 27,
+        512 + 9,
+        1024 + 9,
+        2048 + 5,
+        4096 + 3,
+        8192 + 27,
+        16384 + 43,
+        32768 + 3,
+        65536 + 45,
+        131072 + 29,
+        262144 + 3,
+        524288 + 21,
+        1048576 + 7,
+        2097152 + 17,
+        4194304 + 15,
+        8388608 + 9,
+        16777216 + 43,
+        33554432 + 35,
+        67108864 + 15,
+        134217728 + 29,
+        268435456 + 3,
+        536870912 + 11,
+        1073741824 + 85,
+        0
 };
 
 static int
@@ -104,20 +104,20 @@ new_size(int size)
 
 #if 0
     for (i=3; i<31; i++) {
-	if ((1<<i) > size) return 1<<i;
+        if ((1<<i) > size) return 1<<i;
     }
     return -1;
 #else
     int newsize;
 
     for (i = 0, newsize = MINSIZE;
-	 i < sizeof(primes)/sizeof(primes[0]);
-	 i++, newsize <<= 1)
+         i < sizeof(primes)/sizeof(primes[0]);
+         i++, newsize <<= 1)
     {
-	if (newsize > size) return primes[i];
+        if (newsize > size) return primes[i];
     }
     /* Ran out of polynomials */
-    return -1;			/* should raise exception */
+    return -1;                  /* should raise exception */
 #endif
 }
 
@@ -126,7 +126,7 @@ st_init_table_with_size(const struct st_hash_type *type, int size)
 {
     st_table *tbl;
 
-    size = new_size(size);	/* round up to prime number */
+    size = new_size(size);      /* round up to prime number */
 
     tbl = alloc(st_table);
     tbl->type = type;
@@ -188,13 +188,13 @@ st_clear(st_table *table)
     st_index_t i;
 
     for(i = 0; i < table->num_bins; i++) {
-	ptr = table->bins[i];
-	table->bins[i] = 0;
-	while (ptr != 0) {
-	    next = ptr->next;
-	    free(ptr);
-	    ptr = next;
-	}
+        ptr = table->bins[i];
+        table->bins[i] = 0;
+        while (ptr != 0) {
+            next = ptr->next;
+            free(ptr);
+            ptr = next;
+        }
     }
     table->num_entries = 0;
     table->head = 0;
@@ -216,10 +216,10 @@ st_free_table(st_table *table)
     bin_pos = hash_val%(table)->num_bins;\
     ptr = (table)->bins[bin_pos];\
     if (PTR_NOT_EQUAL(table, ptr, hash_val, key)) {\
-	while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
-	    ptr = ptr->next;\
-	}\
-	ptr = ptr->next;\
+        while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
+            ptr = ptr->next;\
+        }\
+        ptr = ptr->next;\
     }\
 } while (0)
 
@@ -233,11 +233,11 @@ st_lookup(st_table *table, st_data_t key, st_data_t *value)
     FIND_ENTRY(table, ptr, hash_val, bin_pos);
 
     if (ptr == 0) {
-	return 0;
+        return 0;
     }
     else {
-	if (value != 0)  *value = ptr->record;
-	return 1;
+        if (value != 0)  *value = ptr->record;
+        return 1;
     }
 }
 
@@ -245,7 +245,7 @@ st_lookup(st_table *table, st_data_t key, st_data_t *value)
 do {\
     st_table_entry *entry;\
     if (table->num_entries/(table->num_bins) > ST_DEFAULT_MAX_DENSITY) {\
-	rehash(table);\
+        rehash(table);\
         bin_pos = hash_val % table->num_bins;\
     }\
     \
@@ -256,13 +256,13 @@ do {\
     entry->record = value;\
     entry->next = table->bins[bin_pos];\
     if (table->head != 0) {\
-	entry->fore = 0;\
-	(entry->back = table->tail)->fore = entry;\
-	table->tail = entry;\
+        entry->fore = 0;\
+        (entry->back = table->tail)->fore = entry;\
+        table->tail = entry;\
     }\
     else {\
-	table->head = table->tail = entry;\
-	entry->fore = entry->back = 0;\
+        table->head = table->tail = entry;\
+        entry->fore = entry->back = 0;\
     }\
     table->bins[bin_pos] = entry;\
     table->num_entries++;\
@@ -278,12 +278,12 @@ st_insert(st_table *table, st_data_t key, st_data_t value)
     FIND_ENTRY(table, ptr, hash_val, bin_pos);
 
     if (ptr == 0) {
-	ADD_DIRECT(table, key, value, hash_val, bin_pos);
-	return 0;
+        ADD_DIRECT(table, key, value, hash_val, bin_pos);
+        return 0;
     }
     else {
-	ptr->record = value;
-	return 1;
+        ptr->record = value;
+        return 1;
     }
 }
 
@@ -305,17 +305,17 @@ rehash(register st_table *table)
 
     new_num_bins = new_size(table->num_bins+1);
     new_bins = (st_table_entry**)
-	realloc(table->bins, new_num_bins * sizeof(st_table_entry*));
+        realloc(table->bins, new_num_bins * sizeof(st_table_entry*));
     for (i = 0; i < new_num_bins; ++i) new_bins[i] = 0;
     table->num_bins = new_num_bins;
     table->bins = new_bins;
 
     if ((ptr = table->head) != 0) {
-	do {
-	    hash_val = ptr->hash % new_num_bins;
-	    ptr->next = new_bins[hash_val];
-	    new_bins[hash_val] = ptr;
-	} while ((ptr = ptr->fore) != 0);
+        do {
+            hash_val = ptr->hash % new_num_bins;
+            ptr->next = new_bins[hash_val];
+            new_bins[hash_val] = ptr;
+        } while ((ptr = ptr->fore) != 0);
     }
 }
 
@@ -329,55 +329,55 @@ st_copy(st_table *old_table)
 
     new_table = alloc(st_table);
     if (new_table == 0) {
-	return 0;
+        return 0;
     }
 
     *new_table = *old_table;
     new_table->bins = (st_table_entry**)
-	Calloc((unsigned)num_bins, sizeof(st_table_entry*));
+        Calloc((unsigned)num_bins, sizeof(st_table_entry*));
 
     if (new_table->bins == 0) {
-	free(new_table);
-	return 0;
+        free(new_table);
+        return 0;
     }
 
     if ((ptr = old_table->head) != 0) {
-	prev = 0;
-	tail = &new_table->head;
-	do {
-	    entry = alloc(st_table_entry);
-	    if (entry == 0) {
-		st_free_table(new_table);
-		return 0;
-	    }
-	    *entry = *ptr;
-	    hash_val = entry->hash % num_bins;
-	    entry->next = new_table->bins[hash_val];
-	    new_table->bins[hash_val] = entry;
-	    entry->back = prev;
-	    *tail = prev = entry;
-	    tail = &entry->fore;
-	} while ((ptr = ptr->fore) != 0);
-	new_table->tail = prev;
+        prev = 0;
+        tail = &new_table->head;
+        do {
+            entry = alloc(st_table_entry);
+            if (entry == 0) {
+                st_free_table(new_table);
+                return 0;
+            }
+            *entry = *ptr;
+            hash_val = entry->hash % num_bins;
+            entry->next = new_table->bins[hash_val];
+            new_table->bins[hash_val] = entry;
+            entry->back = prev;
+            *tail = prev = entry;
+            tail = &entry->fore;
+        } while ((ptr = ptr->fore) != 0);
+        new_table->tail = prev;
     }
 
     return new_table;
 }
 
-#define REMOVE_ENTRY(table, ptr) do					\
-    {									\
-	if (ptr->fore == 0 && ptr->back == 0) {				\
-	    table->head = 0;						\
-	    table->tail = 0;						\
-	}								\
-	else {								\
-	    st_table_entry *fore = ptr->fore, *back = ptr->back;	\
-	    if (fore) fore->back = back;				\
-	    if (back) back->fore = fore;				\
-	    if (ptr == table->head) table->head = fore;			\
-	    if (ptr == table->tail) table->tail = back;			\
-	}								\
-	table->num_entries--;						\
+#define REMOVE_ENTRY(table, ptr) do                                     \
+    {                                                                   \
+        if (ptr->fore == 0 && ptr->back == 0) {                         \
+            table->head = 0;                                            \
+            table->tail = 0;                                            \
+        }                                                               \
+        else {                                                          \
+            st_table_entry *fore = ptr->fore, *back = ptr->back;        \
+            if (fore) fore->back = back;                                \
+            if (back) back->fore = fore;                                \
+            if (ptr == table->head) table->head = fore;                 \
+            if (ptr == table->tail) table->tail = back;                 \
+        }                                                               \
+        table->num_entries--;                                           \
     } while (0)
 
 int
@@ -389,14 +389,14 @@ st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
 
     hash_val = do_hash_bin(*key, table);
     for (prev = &table->bins[hash_val]; (ptr = *prev) != 0; prev = &ptr->next) {
-	if (EQUAL(table, *key, ptr->key)) {
-	    *prev = ptr->next;
-	    REMOVE_ENTRY(table, ptr);
-	    if (value != 0) *value = ptr->record;
-	    *key = ptr->key;
-	    free(ptr);
-	    return 1;
-	}
+        if (EQUAL(table, *key, ptr->key)) {
+            *prev = ptr->next;
+            REMOVE_ENTRY(table, ptr);
+            if (value != 0) *value = ptr->record;
+            *key = ptr->key;
+            free(ptr);
+            return 1;
+        }
     }
 
     if (value != 0) *value = 0;
@@ -411,40 +411,40 @@ st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
     st_index_t i;
 
     if ((ptr = table->head) != 0) {
-	do {
-	    i = ptr->hash % table->num_bins;
-	    retval = (*func)(ptr->key, ptr->record, (void*)arg);
-	    switch (retval) {
-	      case ST_CHECK:	/* check if hash is modified during iteration */
-		for (tmp = table->bins[i]; tmp != ptr; tmp = tmp->next) {
-		    if (!tmp) {
-			/* call func with error notice */
-			retval = (*func)(0, 0, arg, 1);
-			return 1;
-		    }
-		}
-		/* fall through */
-	      default:
-	      case ST_CONTINUE:
-		ptr = ptr->fore;
-		break;
-	      case ST_STOP:
-		return 0;
-	      case ST_DELETE:
-		last = &table->bins[ptr->hash % table->num_bins];
-		for (; (tmp = *last) != 0; last = &tmp->next) {
-		    if (ptr == tmp) {
-			tmp = ptr->fore;
-			*last = ptr->next;
-			REMOVE_ENTRY(table, ptr);
-			free(ptr);
-			if (ptr == tmp) return 0;
-			ptr = tmp;
-			break;
-		    }
-		}
-	    }
-	} while (ptr && table->head);
+        do {
+            i = ptr->hash % table->num_bins;
+            retval = (*func)(ptr->key, ptr->record, (void*)arg);
+            switch (retval) {
+              case ST_CHECK:    /* check if hash is modified during iteration */
+                for (tmp = table->bins[i]; tmp != ptr; tmp = tmp->next) {
+                    if (!tmp) {
+                        /* call func with error notice */
+                        retval = (*func)(0, 0, arg, 1);
+                        return 1;
+                    }
+                }
+                /* fall through */
+              default:
+              case ST_CONTINUE:
+                ptr = ptr->fore;
+                break;
+              case ST_STOP:
+                return 0;
+              case ST_DELETE:
+                last = &table->bins[ptr->hash % table->num_bins];
+                for (; (tmp = *last) != 0; last = &tmp->next) {
+                    if (ptr == tmp) {
+                        tmp = ptr->fore;
+                        *last = ptr->next;
+                        REMOVE_ENTRY(table, ptr);
+                        free(ptr);
+                        if (ptr == tmp) return 0;
+                        ptr = tmp;
+                        break;
+                    }
+                }
+            }
+        } while (ptr && table->head);
     }
     return 0;
 }
@@ -458,19 +458,19 @@ strhash(const char *string)
     register unsigned int h = 0, g;
 
     while ((c = *string++) != '\0') {
-	h = ( h << 4 ) + c;
-	if ( g = h & 0xF0000000 )
-	    h ^= g >> 24;
-	h &= ~g;
+        h = ( h << 4 ) + c;
+        if ( g = h & 0xF0000000 )
+            h ^= g >> 24;
+        h &= ~g;
     }
     return h;
 #elif defined(HASH_PERL)
     register int val = 0;
 
     while ((c = *string++) != '\0') {
-	val += c;
-	val += (val << 10);
-	val ^= (val >> 6);
+        val += c;
+        val += (val << 10);
+        val ^= (val >> 6);
     }
     val += (val << 3);
     val ^= (val >> 11);
@@ -480,7 +480,7 @@ strhash(const char *string)
     register int val = 0;
 
     while ((c = *string++) != '\0') {
-	val = val*997 + c;
+        val = val*997 + c;
     }
 
     return val + (val>>5);
@@ -549,12 +549,12 @@ strcasehash(st_data_t arg)
      * FNV-1a hash each octet in the buffer
      */
     while (*string) {
-	unsigned int c = (unsigned char)*string++;
-	if ((unsigned int)(c - 'A') <= ('Z' - 'A')) c += 'a' - 'A';
-	hval ^= c;
+        unsigned int c = (unsigned char)*string++;
+        if ((unsigned int)(c - 'A') <= ('Z' - 'A')) c += 'a' - 'A';
+        hval ^= c;
 
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
-	hval *= FNV_32_PRIME;
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
+        hval *= FNV_32_PRIME;
     }
     return hval;
 }

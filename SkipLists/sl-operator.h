@@ -98,23 +98,35 @@ typedef struct TRI_sl_relation_operator_s {
 }
 TRI_sl_relation_operator_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new skiplist operator of the specified type
+///
+/// note that the skiplist will take ownership of the json parameters passed 
+/// to it
+////////////////////////////////////////////////////////////////////////////////
 
-TRI_sl_operator_t* CreateSLOperator (TRI_sl_operator_type_e,
-                                     TRI_sl_operator_t*,
-                                     TRI_sl_operator_t*,
-                                     TRI_json_t*,
-                                     TRI_shaper_t*,
-                                     TRI_shaped_json_t*,
-                                     size_t,
-                                     void*);     
+TRI_sl_operator_t* TRI_CreateSLOperator (TRI_sl_operator_type_e,
+                                         TRI_sl_operator_t*,
+                                         TRI_sl_operator_t*,
+                                         TRI_json_t*,
+                                         TRI_shaper_t*,
+                                         TRI_shaped_json_t*,
+                                         size_t,
+                                         void*);     
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy a skiplist operator recursively (deep copy)
+////////////////////////////////////////////////////////////////////////////////
                                
-TRI_sl_operator_t* CopySLOperator (TRI_sl_operator_t*);
+TRI_sl_operator_t* TRI_CopySLOperator (TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a skiplist operator with all its linked sub information
+/// @brief free a skiplist operator recursively
+///
+/// note that this will also free all the bound json parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSLOperator(TRI_sl_operator_t*);
+void TRI_FreeSLOperator (TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

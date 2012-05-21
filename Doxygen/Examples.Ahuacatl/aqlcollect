@@ -1,0 +1,4 @@
+FOR u IN users
+  COLLECT city = u.city INTO g
+  RETURN { "city" : city, "users" : g }
+

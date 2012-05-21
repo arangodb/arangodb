@@ -1,0 +1,2 @@
+FOR u IN users
+  RETURN { "user" : u, "friendNames" : u.friends[*].name }

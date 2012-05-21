@@ -1,3 +1,0 @@
-SELECT u
-FROM users u
-INNER JOIN locations locs ON (u.id == locs.uid)

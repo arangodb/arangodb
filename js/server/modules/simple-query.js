@@ -84,6 +84,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 
 function ByExample (collection, example, skip, limit) {
   var unique = true;
+  var documentId = null;
   var attributes = [];
 
   for (var k in example) {
@@ -93,7 +94,24 @@ function ByExample (collection, example, skip, limit) {
       if (example[k] == null) {
         unique = false;
       }
+      else if (k == '_id') {
+        // example contains the document id in attribute "_id"
+        documentId = example[k];
+        break;
+      }
     }
+  }
+
+  if (documentId !== null) {
+    // we can use the collection's primary index
+    var doc;
+    try {
+      // look up document by id
+      doc = collection.document(documentId);
+    }
+    catch (e) {
+    }
+    return { "total" : doc ? 1 : 0, "count" : doc ? 1 : 0, "documents" : doc ? [ doc ] : [ ] };
   }
 
   var idx = collection.lookupHashIndex.apply(collection, attributes);
@@ -102,17 +120,19 @@ function ByExample (collection, example, skip, limit) {
     idx = collection.lookupUniqueConstraint.apply(collection, attributes);
 
     if (idx != null) {
-      console.info("found unique constraint %s", idx.id);
+      console.debug("found unique constraint %s", idx.id);
     }
   }
   else {
-    console.info("found hash index %s", idx.id);
+    console.debug("found hash index %s", idx.id);
   }
 
   if (idx != null) {
+    // use hash index
     return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
   }
   else {
+    // use full collection scan
     return collection.BY_EXAMPLE(example, skip, limit);
   }
 }
@@ -153,22 +173,19 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Returns the first documents of a collection that match the specified example
-/// or @LIT{null}. The example must be specified as paths and
-/// values. Allowed attribute types for searching are numbers, strings, and
-/// boolean values.
-///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
 ///
-/// As alternative you can supply an example as single argument. Note that an
-/// attribute name of the form @LIT{a.b} is interpreted as attribute path, not
-/// as attribute.
+/// Returns the a document of a collection that match the specified example or
+/// @LIT{null}. The example must be specified as paths and values. See 
+/// @FN{byExample} for details.
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// As alternative you can supply a list of paths and values.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-simple-query-first-example
+/// @TINYEXAMPLE{shell-simple-query-first-example,finds a document with a given name}
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.firstExample = function () {
@@ -199,6 +216,87 @@ ArangoCollection.prototype.firstExample = function () {
 }
 
 ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstExample;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      RANGED QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ranged query
+////////////////////////////////////////////////////////////////////////////////
+
+function RangedQuery (collection, attribute, left, right, type, skip, limit) {
+  var idx = collection.lookupSkiplist(attribute);
+
+  if (idx == null) {
+    idx = collection.lookupUniqueSkiplist(attribute);
+
+    if (idx != null) {
+      console.debug("found unique skip-list index %s", idx.id);
+    }
+  }
+  else {
+    console.debug("found skip-list index %s", idx.id);
+  }
+
+  if (idx != null) {
+    var cond = {};
+
+    if (type == 0) {
+      cond[attribute] = [ [ ">=", left ], [ "<", right ] ];
+    }
+    else if (type == 1) {
+      cond[attribute] = [ [ ">=", left ], [ "<=", right ] ];
+    }
+    else {
+      throw "unknown type";
+    }
+
+    return collection.BY_CONDITION_SKIPLIST(idx.id, cond, skip, limit);
+  }
+  else {
+    throw "not implemented";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query-by-example
+////////////////////////////////////////////////////////////////////////////////
+
+SQ.SimpleQueryRange.prototype.execute = function () {
+  var documents;
+
+  if (this._execution == null) {
+    if (this._skip == null || this._skip <= 0) {
+      this._skip = 0;
+    }
+
+    var documents = RangedQuery(this._collection,
+                                this._attribute,
+                                this._left,
+                                this._right,
+                                this._type,
+                                this._skip, 
+                                this._limit);
+
+    this._execution = new SQ.GeneralArrayCursor(documents.documents);
+    this._countQuery = documents.count;
+    this._countTotal = documents.total;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

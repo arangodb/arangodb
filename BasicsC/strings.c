@@ -523,6 +523,14 @@ void TRI_CopyString (char* dst, char const* src, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2String (char const* a, char const* b) {
+  return TRI_Concatenate2StringZ(TRI_CORE_MEM_ZONE, a, b);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char const* b) {
   char* result;
   size_t na;
   size_t nb;
@@ -530,12 +538,13 @@ char* TRI_Concatenate2String (char const* a, char const* b) {
   na = strlen(a);
   nb = strlen(b);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + 1, false);
+  result = TRI_Allocate(zone, na + nb + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-
-  result[na + nb] = '\0';
+    result[na + nb] = '\0';
+  }
 
   return result;
 }

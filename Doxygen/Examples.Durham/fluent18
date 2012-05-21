@@ -1,5 +1,0 @@
-arango> db.examples.getIndexes();
-[
- { "iid" : 4701883, "type" : "geo1", "location" : "work" },
- { "iid" : 4545321, "type" : "geo1", "location" : "home" }
-]

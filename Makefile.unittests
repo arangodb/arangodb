@@ -23,7 +23,7 @@ unittests-brief: \
 unittests-verbose:
 	@echo "################################################################################"
 	@echo "##                                                                            ##"
-	@echo "## ArangoDB Unit-Tests                                                       ##"
+	@echo "## ArangoDB Unit-Tests                                                        ##"
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
@@ -146,7 +146,9 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js
+               @srcdir@/js/common/tests/shell-cap-constraint.js \
+               @srcdir@/js/common/tests/shell-unique-constraint.js \
+               @srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 
@@ -177,8 +179,17 @@ unittests-shell-server:
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-bind.js \
+			@srcdir@/js/server/tests/ahuacatl-complex.js \
+			@srcdir@/js/server/tests/ahuacatl-logical.js \
+			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@srcdir@/js/server/tests/ahuacatl-relational.js \
+			@srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@srcdir@/js/server/tests/ahuacatl-parse.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 

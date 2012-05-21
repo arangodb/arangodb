@@ -660,7 +660,7 @@ new_op_asgn(parser_state *p, node *a, mrb_sym op, node *b)
 static node*
 new_int(parser_state *p, const char *s, int base)
 {
-  return list3((node*)NODE_INT, (node*)strdup(s), (node*)base);
+  return list3((node*)NODE_INT, (node*)strdup(s), (node*)(intptr_t)base);
 }
 
 // (:float . i)
@@ -688,14 +688,14 @@ new_dstr(parser_state *p, node *a)
 static node*
 new_back_ref(parser_state *p, int n)
 {
-  return cons((node*)NODE_BACK_REF, (node*)n);
+  return cons((node*)NODE_BACK_REF, (node*)(intptr_t)n);
 }
 
 // (:nthref . n)
 static node*
 new_nth_ref(parser_state *p, int n)
 {
-  return cons((node*)NODE_NTH_REF, (node*)n);
+  return cons((node*)NODE_NTH_REF, (node*)(intptr_t)n);
 }
 
 static void
@@ -774,7 +774,7 @@ ret_args(parser_state *p, node *n)
 static void
 assignable(parser_state *p, node *lhs)
 {
-  switch ((int)lhs->car) {
+  switch ((int)(intptr_t)lhs->car) {
   case NODE_LVAR:
     local_add(p, (mrb_sym)lhs->cdr);
     break;
@@ -788,7 +788,7 @@ var_reference(parser_state *p, node *lhs)
 {
   node *n;
 
-  switch ((int)lhs->car) {
+  switch ((int)(intptr_t)lhs->car) {
   case NODE_LVAR:
     if (!local_var_p(p, (mrb_sym)lhs->cdr)) {
       n = new_fcall(p, (mrb_sym)lhs->cdr, 0);
@@ -814,6 +814,7 @@ var_reference(parser_state *p, node *lhs)
     node *node;
     mrb_sym id;
     int num;
+    unsigned int stack;
     const struct vtable *vars;
 }
 
@@ -1779,13 +1780,12 @@ call_args	: command
 		;
 
 command_args	:  {
-		      $<num>$ = p->cmdarg_stack;
+		      $<stack>$ = p->cmdarg_stack;
 		      CMDARG_PUSH(1);
 		    }
 		  call_args
 		    {
-		      /* CMDARG_POP() */
-		      p->cmdarg_stack = $<num>1;
+		      p->cmdarg_stack = $<stack>1;
 		      $$ = $2;
 		    }
 		;
@@ -1848,10 +1848,15 @@ primary		: literal
 		      $$ = new_fcall(p, $1, 0);
 		    }
 		| keyword_begin
+		    {
+		      $<stack>1 = p->cmdarg_stack;
+		      p->cmdarg_stack = 0;
+		    }
 		  bodystmt
 		  keyword_end
 		    {
-		      $$ = $2;
+		      p->cmdarg_stack = $<stack>1;
+		      $$ = $3;
 		    }
 		| tLPAREN_ARG expr {p->lstate = EXPR_ENDARG;} rparen
 		    {
@@ -1989,7 +1994,7 @@ primary		: literal
 		    }
 		  term
 		    {
-		      $<node>$ = cons(local_switch(p), (node*)p->in_single);
+		      $<node>$ = cons(local_switch(p), (node*)(intptr_t)p->in_single);
 		      p->in_single = 0;
 		    }
 		  bodystmt
@@ -1998,7 +2003,7 @@ primary		: literal
 		      $$ = new_sclass(p, $3, $7);
 		      local_resume(p, $<node>6->car);
 		      p->in_def = $<num>4;
-		      p->in_single = (int)$<node>6->cdr;
+		      p->in_single = (int)(intptr_t)$<node>6->cdr;
 		    }
 		| keyword_module cpath
 		    {
@@ -2972,12 +2977,12 @@ yywarning_s(parser_state *p, const char *fmt, const char *s)
 static void
 backref_error(parser_state *p, node *n)
 {
-  switch ((int)n->car) {
+  switch ((int)(intptr_t)n->car) {
   case NODE_NTH_REF:
-    yyerror_i(p, "can't set variable $%d", (int)n->cdr);
+    yyerror_i(p, "can't set variable $%d", (int)(intptr_t)n->cdr);
     break;
   case NODE_BACK_REF:
-    yyerror_i(p, "can't set variable $%c", (int)n->cdr);
+    yyerror_i(p, "can't set variable $%c", (int)(intptr_t)n->cdr);
     break;
   }
 }
@@ -2993,7 +2998,7 @@ nextc(parser_state *p)
   if (p->pb) {
     node *tmp;
 
-    c = (int)p->pb->car;
+    c = (int)(intptr_t)p->pb->car;
     tmp = p->pb;
     p->pb = p->pb->cdr;
     cons_free(tmp);
@@ -3030,7 +3035,7 @@ pushback(parser_state *p, int c)
 {
   if (c < 0) return;
   p->column--;
-  p->pb = cons((node*)c, p->pb);
+  p->pb = cons((node*)(intptr_t)c, p->pb);
 }
 
 static void
@@ -3051,12 +3056,11 @@ peek_n(parser_state *p, int c, int n)
   node *list = 0;
   int c0;
 
-  n++;				/* must read 1 char */
-  while (n--) {
+  do {
     c0 = nextc(p);
     if (c0 < 0) return FALSE;
-    list = push(list, (node*)c0);
-  }
+    list = push(list, (node*)(intptr_t)c0);
+  } while(n--);
   if (p->pb) {
     p->pb = push(p->pb, (node*)list);
   }
@@ -3819,7 +3823,7 @@ parser_yylex(parser_state *p)
       return tOP_ASGN;
     }
     if (c == '>') {
-      p->lstate = EXPR_ARG;
+      p->lstate = EXPR_ENDFN;
       return tLAMBDA;
     }
     if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p))) {
@@ -4658,7 +4662,7 @@ parser_new(mrb_state *mrb)
   p->cmd_start = TRUE;
   p->in_def = p->in_single = FALSE;
 
-  p->capture_errors = NULL;
+  p->capture_errors = 0;
 
   p->lineno = 1;
 #if defined(PARSER_TEST) || defined(PARSER_DEBUG)
@@ -4683,7 +4687,7 @@ mrb_parse_file(mrb_state *mrb, FILE *f)
 }
 
 parser_state*
-mrb_parse_nstring(mrb_state *mrb, char *s, size_t len)
+mrb_parse_nstring(mrb_state *mrb, const char *s, size_t len)
 {
   parser_state *p;
 
@@ -4698,7 +4702,7 @@ mrb_parse_nstring(mrb_state *mrb, char *s, size_t len)
 }
 
 parser_state*
-mrb_parse_nstring_ext(mrb_state *mrb, char *s, size_t len)
+mrb_parse_nstring_ext(mrb_state *mrb, const char *s, size_t len)
 {
   parser_state *p;
 
@@ -4714,7 +4718,7 @@ mrb_parse_nstring_ext(mrb_state *mrb, char *s, size_t len)
 }
 
 parser_state*
-mrb_parse_string(mrb_state *mrb, char *s)
+mrb_parse_string(mrb_state *mrb, const char *s)
 {
   return mrb_parse_nstring(mrb, s, strlen(s));
 }
@@ -4812,7 +4816,7 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
   if (!tree) return;
  again:
   dump_prefix(offset);
-  n = (int)tree->car;
+  n = (int)(intptr_t)tree->car;
   tree = tree->cdr;
   switch (n) {
   case NODE_BEGIN:
@@ -5051,7 +5055,7 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     dump_prefix(offset+1);
     printf("method='%s' (%d)\n", 
 	   mrb_sym2name(mrb, (mrb_sym)tree->cdr->car),
-	   (int)tree->cdr->car);
+	   (int)(intptr_t)tree->cdr->car);
     tree = tree->cdr->cdr->car;
     if (tree) {
       dump_prefix(offset+1);
@@ -5164,7 +5168,7 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     parser_dump(mrb, tree->car, offset+2);
     tree = tree->cdr;
     dump_prefix(offset+1);
-    printf("op='%s' (%d)\n", mrb_sym2name(mrb, (mrb_sym)tree->car), (int)tree->car);
+    printf("op='%s' (%d)\n", mrb_sym2name(mrb, (mrb_sym)tree->car), (int)(intptr_t)tree->car);
     tree = tree->cdr;
     parser_dump(mrb, tree->car, offset+1);
     break;
@@ -5255,7 +5259,7 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     break;
 
   case NODE_INT:
-    printf("NODE_INT %s base %d\n", (char*)tree->car, (int)tree->cdr->car);
+    printf("NODE_INT %s base %d\n", (char*)tree->car, (int)(intptr_t)tree->cdr->car);
     break;
 
   case NODE_FLOAT:
@@ -5268,7 +5272,7 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     break;
 
   case NODE_STR:
-    printf("NODE_STR \"%s\" len %d\n", (char*)tree->car, (int)tree->cdr);
+    printf("NODE_STR \"%s\" len %d\n", (char*)tree->car, (int)(intptr_t)tree->cdr);
     break;
 
   case NODE_DSTR:

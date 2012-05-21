@@ -501,7 +501,8 @@ struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* coll
 int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
                                   TRI_shaper_t* shaper,
                                   TRI_vector_t* pids,
-                                  TRI_vector_pointer_t* names);
+                                  TRI_vector_pointer_t* names,
+                                  bool sorted);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
@@ -548,13 +549,14 @@ struct TRI_index_s* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
-                                                          TRI_vector_t const*);
+                                                          TRI_vector_pointer_t const* attributes,
+                                                          bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t*,
                                                           TRI_vector_pointer_t const* attributes,
                                                           bool unique,
                                                           bool* created);

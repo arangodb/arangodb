@@ -1,14 +1,14 @@
 /*
 ** object.h - Object, NilClass, TrueClass, FalseClass class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
 #ifndef MRUBY_OBJECT_H
 #define MRUBY_OBJECT_H
 
-#define MRUBY_OBJECT_HEADER	\
-  enum mrb_vtype tt:8;\
+#define MRUBY_OBJECT_HEADER \
+  enum mrb_vtype tt:8; \
   int color:3;\
   unsigned int flags:21;\
   struct RClass *c;\
@@ -49,4 +49,4 @@ struct RObject {
 #define ROBJECT(v) ((struct RObject*)((v).value.p))
 #define ROBJECT_IVPTR(v) (((struct RObject*)((v).value.p))->iv)
 #define ROBJECT_NUMIV(v) (ROBJECT_IVPTR(v) ? ROBJECT_IVPTR(v)->size : 0)
-#endif	/* MRUBY_OBJECT_H */
+#endif  /* MRUBY_OBJECT_H */

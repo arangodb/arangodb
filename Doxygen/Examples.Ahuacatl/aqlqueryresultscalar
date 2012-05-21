@@ -1,0 +1,4 @@
+FOR u IN users
+  RETURN u.id
+
+[ 1, 2, 3 ]

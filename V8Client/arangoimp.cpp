@@ -91,6 +91,7 @@ static string SeparatorChar = ",";
 static string FileName = "";
 static string CollectionName = "";
 static string TypeImport = "json";
+static bool CreateCollection = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -158,6 +159,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("server", &ServerAddress, "server address and port")
     ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
+    ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("type", &TypeImport, "type of file (\"csv\" or \"json\")")
     ("quote", &QuoteChar, "quote character")
     ("separator", &SeparatorChar, "separator character")
@@ -238,6 +240,7 @@ int main (int argc, char* argv[]) {
 
     cout << "----------------------------------------" << endl;
     cout << "collection : " << CollectionName << endl;
+    cout << "create     : " << (CreateCollection ? "yes" : "no") << endl;
     cout << "file       : " << FileName << endl;
     cout << "type       : " << TypeImport << endl;
     cout << "quote      : " << QuoteChar << endl;
@@ -245,6 +248,10 @@ int main (int argc, char* argv[]) {
     cout << "----------------------------------------" << endl;
     
     ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
+
+    if (CreateCollection) {
+      ih.setCreateCollection(true);
+    }
   
     if (QuoteChar.length() == 1) {
       ih.setQuote(QuoteChar[0]);      

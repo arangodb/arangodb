@@ -133,18 +133,10 @@ bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context>, char const*);
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context>,
-                               v8::Handle<v8::String>,
-                               v8::Handle<v8::Value>,
-                               bool printResult);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context, return the result
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ExecuteStringVocBase (v8::Handle<v8::Context>,
-                                                v8::Handle<v8::String>,
-                                                v8::Handle<v8::Value>);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
+                                                   v8::Handle<v8::String> source,
+                                                   v8::Handle<v8::Value> name,
+                                                   bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable

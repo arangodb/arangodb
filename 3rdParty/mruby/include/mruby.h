@@ -1,8 +1,8 @@
 /*
 ** mruby - An embeddable Ruby implementaion
-** 
+**
 ** Copyright (c) mruby developers 2010-2012
-** 
+**
 ** Permission is hereby granted, free of charge, to any person obtaining
 ** a copy of this software and associated documentation files (the
 ** "Software"), to deal in the Software without restriction, including
@@ -33,7 +33,7 @@
 
 enum mrb_vtype {
   MRB_TT_FALSE = 0,   /*   0 */
-  MRB_TT_FREE,	      /*   1 */
+  MRB_TT_FREE,        /*   1 */
   MRB_TT_TRUE,        /*   2 */
   MRB_TT_FIXNUM,      /*   3 */
   MRB_TT_SYMBOL,      /*   4 */
@@ -83,7 +83,7 @@ typedef struct mrb_value {
 
 #include "mruby/object.h"
 
-#define IMMEDIATE_P(x) ((mrb_type(x) >= MRB_TT_FALSE) && (mrb_type(x) <= MRB_TT_FLOAT))
+#define IMMEDIATE_P(x) (mrb_type(x) <= MRB_TT_FLOAT)
 #define SPECIAL_CONST_P(x) IMMEDIATE_P(x)
 #define SYMBOL_P(o) (mrb_type(o) == MRB_TT_SYMBOL)
 #define RTEST(o) mrb_test(o)
@@ -241,15 +241,6 @@ typedef struct mrb_state {
   struct RClass *string_class;
   struct RClass *array_class;
   struct RClass *hash_class;
-  struct RClass *range_class;
-#ifdef INCLUDE_REGEXP
-  struct RClass *regex_class;
-  struct RClass *match_class;
-#endif
-#ifdef INCLUDE_ENCODING
-  struct RClass *encode_class;
-  struct RClass *converter_class;
-#endif
 
   struct RClass *float_class;
   struct RClass *fixnum_class;
@@ -276,9 +267,11 @@ typedef struct mrb_state {
   mrb_int gc_step_ratio;
 
   mrb_sym symidx;
-  struct kh_n2s *name2sym;	/* symbol table */
-  struct kh_s2n *sym2name;	/* reverse symbol table */
+  struct kh_n2s *name2sym;      /* symbol table */
+  struct kh_s2n *sym2name;      /* reverse symbol table */
+#ifdef INCLUDE_REGEXP
   struct RNode *local_svar;/* regexp */
+#endif
 
   struct RClass *eException_class;
   struct RClass *eStandardError_class;
@@ -300,8 +293,8 @@ mrb_value mrb_instance_new(mrb_state *mrb, mrb_value cv);
 struct RClass * mrb_class_new(mrb_state *mrb, struct RClass *super);
 struct RClass * mrb_module_new(mrb_state *mrb);
 struct RClass * mrb_class_from_sym(mrb_state *mrb, struct RClass *klass, mrb_sym name);
-struct RClass * mrb_class_get(mrb_state *mrb, char *name);
-struct RClass * mrb_class_obj_get(mrb_state *mrb, char *name);
+struct RClass * mrb_class_get(mrb_state *mrb, const char *name);
+struct RClass * mrb_class_obj_get(mrb_state *mrb, const char *name);
 
 mrb_value mrb_obj_dup(mrb_state *mrb, mrb_value obj);
 mrb_value mrb_check_to_integer(mrb_state *mrb, mrb_value val, const char *method);
@@ -310,22 +303,22 @@ struct RClass * mrb_define_class_under(mrb_state *mrb, struct RClass *outer, con
 struct RClass * mrb_define_module_under(mrb_state *mrb, struct RClass *outer, const char *name);
 
 /* required arguments */
-#define ARGS_REQ(n)	(((n)&0x1f) << 19)
+#define ARGS_REQ(n)     (((n)&0x1f) << 19)
 /* optional arguments */
-#define ARGS_OPT(n)	(((n)&0x1f) << 14)
+#define ARGS_OPT(n)     (((n)&0x1f) << 14)
 /* rest argument */
-#define ARGS_REST()	(1 << 13)
+#define ARGS_REST()     (1 << 13)
 /* required arguments after rest */
-#define ARGS_POST(n)	(((n)&0x1f) << 8)
+#define ARGS_POST(n)    (((n)&0x1f) << 8)
 /* keyword arguments (n of keys, kdict) */
-#define ARGS_KEY(n1,n2)	((((n1)&0x1f) << 3) | ((n2)?(1<<2):0))
+#define ARGS_KEY(n1,n2) ((((n1)&0x1f) << 3) | ((n2)?(1<<2):0))
 /* block argument */
-#define ARGS_BLOCK()	(1 << 1)
+#define ARGS_BLOCK()    (1 << 1)
 
 /* accept any number of arguments */
-#define ARGS_ANY()	ARGS_REST()
+#define ARGS_ANY()      ARGS_REST()
 /* accept no arguments */
-#define ARGS_NONE()	0
+#define ARGS_NONE()     0
 
 int mrb_get_args(mrb_state *mrb, const char *format, ...);
 
@@ -342,6 +335,7 @@ void *mrb_realloc(mrb_state*, void*, size_t);
 void *mrb_obj_alloc(mrb_state*, enum mrb_vtype, struct RClass*);
 void *mrb_free(mrb_state*, void*);
 
+mrb_value mrb_str_new(mrb_state *mrb, const char *p, size_t len); /* mrb_str_new */
 mrb_value mrb_str_new_cstr(mrb_state*, const char*);
 
 mrb_state* mrb_open(void);
@@ -371,17 +365,6 @@ void mrb_gc_mark(mrb_state*,struct RBasic*);
 #define mrb_gc_mark_value(mrb,val) do {\
   if ((val).tt >= MRB_TT_OBJECT) mrb_gc_mark((mrb), mrb_object(val));\
 } while (0);
-void mrb_gc_mark_gv(mrb_state*);
-void mrb_gc_free_gv(mrb_state*);
-void mrb_gc_mark_iv(mrb_state*, struct RObject*);
-size_t mrb_gc_mark_iv_size(mrb_state*, struct RObject*);
-void mrb_gc_free_iv(mrb_state*, struct RObject*);
-void mrb_gc_mark_mt(mrb_state*, struct RClass*);
-size_t mrb_gc_mark_mt_size(mrb_state*, struct RClass*);
-void mrb_gc_free_mt(mrb_state*, struct RClass*);
-void mrb_gc_mark_ht(mrb_state*, struct RClass*);
-size_t mrb_gc_mark_ht_size(mrb_state*, struct RClass*);
-void mrb_gc_free_ht(mrb_state*, struct RClass*);
 void mrb_field_write_barrier(mrb_state *, struct RBasic*, struct RBasic*);
 #define mrb_field_write_barrier_value(mrb, obj, val) do{\
   if ((val.tt >= MRB_TT_OBJECT)) mrb_field_write_barrier((mrb), (obj), mrb_object(val));\
@@ -406,7 +389,7 @@ const char * mrb_obj_classname(mrb_state *mrb, mrb_value obj);
 struct RClass* mrb_obj_class(mrb_state *mrb, mrb_value obj);
 mrb_value mrb_class_path(mrb_state *mrb, struct RClass *c);
 mrb_value mrb_convert_type(mrb_state *mrb, mrb_value val, mrb_int type, const char *tname, const char *method);
-mrb_int mrb_obj_is_kind_of(mrb_state *mrb, mrb_value obj, struct RClass *c);
+int mrb_obj_is_kind_of(mrb_state *mrb, mrb_value obj, struct RClass *c);
 mrb_value mrb_obj_inspect(mrb_state *mrb, mrb_value self);
 mrb_value mrb_obj_clone(mrb_state *mrb, mrb_value self);
 mrb_value mrb_check_funcall(mrb_state *mrb, mrb_value recv, mrb_sym mid, int argc, mrb_value *argv);
@@ -600,4 +583,4 @@ int mrb_sourceline(void);
 void ruby_default_signal(int sig);
 mrb_value mrb_attr_get(mrb_state *mrb, mrb_value obj, mrb_sym id);
 
-#endif	/* MRUBY_H */
+#endif  /* MRUBY_H */

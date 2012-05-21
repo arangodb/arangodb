@@ -1,6 +1,6 @@
 /*
 ** irep.h - mrb_irep structure
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -26,4 +26,4 @@ typedef struct mrb_irep {
 
 void mrb_add_irep(mrb_state *mrb, int n);
 
-#endif	/* MRUBY_IREP_H */
+#endif  /* MRUBY_IREP_H */
