@@ -452,10 +452,6 @@ actions.defineHttp({
 ///
 /// - @LIT{example}: The example.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
-///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
-///
 /// Returns a result containing the document or @LIT{HTTP 404} if no
 /// document matched the example.
 ///
@@ -551,6 +547,99 @@ actions.defineHttp({
           var result = collection.BY_EXAMPLE_HASH(index, example, skip, limit);
 
           actions.resultOk(req, res, actions.HTTP_OK, result);
+        }
+        catch (err) {
+          actions.resultException(req, res, err);
+        }
+      }
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_range
+/// @brief returns all documents of a collection within a range
+///
+/// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
+///
+/// @REST{PUT /_api/simple/range}
+///
+/// This will find all documents within a given range.
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The identifier or name of the collection to query.
+///
+/// - @LIT{attribute}: The attribute path to check.
+///
+/// - @LIT{left}: The lower bound.
+///
+/// - @LIT{right}: The upper bound.
+///
+/// - @LIT{closed}: If true, use intervall including @LIT{left} and @LIT{right},
+///   otherwise exclude @LIT{right}, but include @LIT{left}.
+///
+/// - @LIT{skip}: The documents to skip in the query. (optional)
+///
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-simple-range
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "range",
+  context : "api",
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    if (req.requestType != actions.PUT) {
+      actions.resultUnsupported(req, res);
+    }
+    else {
+      var limit = body.limit;
+      var skip = body.skip;
+      var name = body.collection;
+      var attribute = body.attribute;
+      var left = body.left;
+      var right = body.right;
+      var closed = body.closed;
+
+      var name = body.collection;
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
+
+      if (collection == null) {
+        actions.collectionNotFound(req, res, name);
+      }
+      else {
+        try {
+          var result;
+
+          if (closed) {
+            result = collection.closedRange(attribute, left, right);
+          }
+          else {
+            result = collection.range(attribute, left, right);
+          }
+
+          if (skip != null) {
+            result = result.skip(skip);
+          }
+
+          if (limit != null) {
+            result = result.limit(limit);
+          }
+
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
         }
         catch (err) {
           actions.resultException(req, res, err);
