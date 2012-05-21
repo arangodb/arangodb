@@ -182,6 +182,59 @@ ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstE
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                       RANGE QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a range query
+////////////////////////////////////////////////////////////////////////////////
+
+SQ.SimpleQueryRange.prototype.execute = function () {
+  var documents;
+
+  if (this._execution == null) {
+    var data = {
+      collection : this._collection._id,
+      attribute : this._attribute,
+      right : this._right,
+      left : this._left,
+      closed : this._type == 1
+    }  
+
+    if (this._limit != null) {
+      data.limit = this._limit;
+    }
+
+    if (this._skip != null) {
+      data.skip = this._skip;
+    }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
+
+    TRI_CheckRequestResult(requestResult);
+
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 SIMPLE QUERY NEAR
 // -----------------------------------------------------------------------------
 
