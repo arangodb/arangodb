@@ -228,15 +228,15 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   TRI_sl_operator_t* lastOperator = 0;
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
-  size_t numNonEq = 0; 
+  size_t lastNonEq = 0; 
   
   if (parameters == 0) {
     return 0;
   }
 
   // iterate over all index fields
-  for (size_t i = 0; i < idx->_fields._length; ++i) {
-    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
+  for (size_t i = 1; i <= idx->_fields._length; ++i) {
+    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i - 1]);
 
     if (!conditions->HasOwnProperty(key)) {
       break;
@@ -283,7 +283,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
       if (opValue == "==") { 
         // equality comparison
 
-        if (numNonEq > 0) {
+        if (lastNonEq > 0) {
           goto MEM_ERROR;
         }
     
@@ -293,6 +293,12 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         break;
       }
       else {
+        if (lastNonEq > 0 && lastNonEq != i) {
+          // if we already had a range condition and a previous field, we cannot continue
+          // because the skiplist interface does not support such queries
+          goto MEM_ERROR;
+        }
+
         TRI_sl_operator_type_e opType; 
         if (opValue == ">") {
           opType = TRI_SL_GT_OPERATOR;
@@ -311,7 +317,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           goto MEM_ERROR;
         }
         
-        ++numNonEq;
+        lastNonEq = i;
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
         if (cloned == 0) {
@@ -363,7 +369,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   if (numEq) {
     // create equality operator if one is in queue
     assert(lastOperator == 0);
-    assert(numNonEq == 0);
+    assert(lastNonEq == 0);
     
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     if (clonedParams == 0) {
