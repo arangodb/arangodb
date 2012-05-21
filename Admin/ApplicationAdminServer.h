@@ -166,7 +166,7 @@ namespace triagens {
 /// Note that the server does not claim ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addBasicHandlers (rest::HttpHandlerFactory*);
+        void addBasicHandlers (rest::HttpHandlerFactory*, string const &prefix);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the http handlers for administration

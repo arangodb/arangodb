@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logging macros and functions
+/// @brief a string buffer for sequential string concatenation 
 ///
 /// @file
 ///

@@ -43,6 +43,7 @@
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
 #include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
 #include "MRuby/mr-utils.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -58,6 +59,7 @@ extern "C" {
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -77,6 +79,24 @@ using namespace triagens::httpclient;
 // static double DEFAULT_REQUEST_TIMEOUT = 10.0;
 // static size_t DEFAULT_RETRIES = 5;
 // static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for Ruby bootstrap files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for Ruby modules files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupModules = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup JavaScript files
+////////////////////////////////////////////////////////////////////////////////
+
+static MRLoader StartupLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server address
@@ -274,8 +294,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
-    // ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
-    // ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
+    ("startup.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
+    ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
     ("pager", &OutputPager, "output pager")
     ("use-pager", "use pager")
     ("pretty-print", "pretty print values")          
@@ -338,13 +358,13 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+static void RunShell (MR_state_t* mrs) {
+  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
 
   console->open(! NoAutoComplete);
 
   while (true) {
-    char* input = console->prompt("avocirb> ");
+    char* input = console->prompt("arangoirb> ");
 
     if (input == 0) {
       break;
@@ -357,7 +377,7 @@ static void RunShell (mrb_state* mrb) {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input));
+    struct mrb_parser_state* p = mrb_parse_nstring(&mrs->_mrb, input, strlen(input));
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -365,25 +385,25 @@ static void RunShell (mrb_state* mrb) {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(&mrs->_mrb, p->tree);
 
     if (n < 0) {
       cout << "UPPS: " << n << " returned by mrb_generate_code\n";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+    mrb_value result = mrb_run(&mrs->_mrb,
+                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
+                               mrb_top_self(&mrs->_mrb));
 
-    if (mrb->exc) {
+    if (mrs->_mrb.exc) {
       cout << "Caught exception:\n";
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
-      mrb->exc = 0;
+      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
+      mrs->_mrb.exc = 0;
     }
-#if 0
-    else {
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
+    else if (! mrb_nil_p(result)) {
+      mrb_p(&mrs->_mrb, result);
     }
-#endif
   }
 
   console->close();
@@ -436,7 +456,7 @@ int main (int argc, char* argv[]) {
   }
 
   printf("\n");
-  printf("Welcome to avocirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+  printf("Welcome to arangoirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
   printf("Using MRUBY %s engine. Copyright (c) 2012 mruby developers.\n", TRI_MRUBY_VERSION);
@@ -457,14 +477,37 @@ int main (int argc, char* argv[]) {
   }
 
   // create a new ruby shell
-  mrb_state* mrb = mrb_open();
+  MR_state_t* mrs = MR_OpenShell();
 
-  TRI_InitMRUtils(mrb);
+  TRI_InitMRUtils(mrs);
 
-  RunShell(mrb);
+  // load java script from js/bootstrap/*.h files
+  if (StartupPath.empty()) {
+    StartupLoader.defineScript("client/client.rb", "");
+  }
+  else {
+    LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+    StartupLoader.setDirectory(StartupPath);
+  }
 
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
+  // load all init files
+  char const* files[] = {
+    "client/client.rb"
+  };
+  
+  for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+    bool ok = StartupLoader.loadScript(&mrs->_mrb, files[i]);
+    
+    if (ok) {
+      LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
+    }
+    else {
+      LOGGER_ERROR << "cannot load ruby file '" << files[i] << "'";
+      exit(EXIT_FAILURE);
+    }
+  }
+  
+  RunShell(mrs);
 
   return ret;
 }

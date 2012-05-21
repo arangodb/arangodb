@@ -553,7 +553,7 @@ static string JS_server_server =
   "};\n"
   "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief strng representation of a collection\n"
+  "/// @brief string representation of a collection\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
   "ArangoCollection.prototype.toString = function(seen, path, names, level) {\n"

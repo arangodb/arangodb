@@ -26,13 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-optimiser.h"
-#include "Ahuacatl/ahuacatl-codegen-js.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
 #include "V8/v8-execution.h"
-
-#undef RANGE_OPTIMIZER  
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
@@ -72,6 +69,24 @@ static inline TRI_aql_optimiser_scope_t* CurrentScope (const TRI_vector_pointer_
   assert(n > 0);
 
   return TRI_AtVectorPointer(scopes, n - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add some access information to a for node
+////////////////////////////////////////////////////////////////////////////////
+
+static void PatchForNode (TRI_aql_context_t* const context, 
+                          TRI_aql_node_t* const node,
+                          TRI_aql_field_access_t* fieldAccess) {
+  TRI_vector_pointer_t* previous;
+
+  if (!node || !fieldAccess) {
+    return;
+  }
+
+  previous = (TRI_vector_pointer_t*) node->_value._value._data; // might be NULL
+
+  node->_value._value._data = (void*) TRI_AddAccessAql(context, previous, fieldAccess);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,38 +130,45 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
-
+  
+    // iterate over all possible field accesses we found in this scope
     len = scope->_ranges->_length;
     for (j = 0; j < len; ++j) {
       TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(scope->_ranges, j);
-      TRI_aql_field_access_t* previous;
-      int compareResult;
 
       // check if the range's variable name is the same as the for variable's name
-      if (!TRI_IsPrefixString(fieldAccess->_fieldName, prefix)) { 
+      if (!TRI_IsPrefixString(fieldAccess->_fullName, prefix)) { 
         // names don't match
         continue;
       }
 
       // names match
 
-      // check if current or previous range are better
-      previous = (TRI_aql_field_access_t*) scope->_node->_value._value._data; 
-      compareResult = TRI_PickAccessAql(previous, fieldAccess);
-      
-      if (compareResult == 1) {
-        // clone access and copy it into node
-        if (previous) {
-          TRI_FreeAccessAql(previous);
-        }
-        scope->_node->_value._value._data = (void*) TRI_CloneAccessAql(context, fieldAccess);
-      }
+      // merge the field access found into the already existing field accesses for the node
+      PatchForNode(context, scope->_node, fieldAccess); 
+      break;
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
     // TODO: we could bubble up some of the filters to higher level loops, but
     // we would need to find out which ones can safely be moved there first
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an optimiser scope
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeScope (TRI_aql_optimiser_scope_t* const scope) {
+  if (scope->_variableName) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, scope->_variableName);
+  }
+
+  if (scope->_ranges) {
+    TRI_FreeAccessesAql(scope->_ranges);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,9 +217,10 @@ static void StartScope (TRI_aql_context_t* const context,
 
   if (context->_optimiser._scopes._length > 0) {
     // copy ranges of parent scope into current one
-    scope->_ranges = TRI_CloneRangesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
+    scope->_ranges = TRI_CloneAccessesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
   }
-   
+  
+  // finally, add the new scope 
   TRI_PushBackVectorPointer(&context->_optimiser._scopes, scope);
 }
 
@@ -216,7 +239,9 @@ static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
   // we are closing at least one scope
   while (true) {
     TRI_aql_codegen_scope_e type = scope->_type;
-    
+
+    FreeScope(scope);
+
     TRI_RemoveVectorPointer(&context->_optimiser._scopes, context->_optimiser._scopes._length - 1);
 
     // break if we reached the top level for loop
@@ -224,7 +249,6 @@ static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
       break;
     }
   
-
     // next iteration
     scope = CurrentScope(&context->_optimiser._scopes);
   }
@@ -386,8 +410,11 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
   if (!json) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
-    return NULL;
+    // cannot optimise the function call due to an internal error
+
+    // TODO: check whether we can validate the arguments here already and return an error early
+    // TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
+    return node;
   }
 
   // use the constant values instead of the function call node
@@ -398,7 +425,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
-  LOG_TRACE("optimised function call");
+  TRI_AQL_LOG("optimised function call");
 
   return node;
 }
@@ -433,12 +460,12 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
     TRI_RemoveVectorPointer(&list->_members, i);
     --n;
 
-    LOG_TRACE("optimised away sort element");
+    TRI_AQL_LOG("optimised away sort element");
   }
 
   if (n == 0) {
     // no members left => sort removed
-    LOG_TRACE("optimised away sort");
+    TRI_AQL_LOG("optimised away sort");
 
     return NULL;
   }
@@ -453,21 +480,26 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
 static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
                                        TRI_aql_node_t* node) {
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
-   
+  TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
+ 
+TRY_LOOP:  
   if (!expression) {
     return node;
   }
   
   if (!TRI_IsConstantValueNodeAql(expression)) {
-#ifdef RANGE_OPTIMIZER  
-    TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
-    TRI_vector_pointer_t* ranges;
+    TRI_vector_pointer_t* oldRanges;
+    TRI_vector_pointer_t* newRanges;
     bool changed = false;
 
-    ranges = TRI_OptimiseRangesAql(context, expression, &changed, scope->_ranges);
+    oldRanges = scope->_ranges;
+    newRanges = TRI_OptimiseRangesAql(context, expression, &changed, oldRanges);
     
-    if (ranges) {
-      scope->_ranges = ranges;
+    if (newRanges) {
+      if (oldRanges) {
+        TRI_FreeAccessesAql(oldRanges);
+      }
+      scope->_ranges = newRanges;
     }
     
     if (changed) {
@@ -475,25 +507,26 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
       node->_members._buffer[0] = ProcessNode((void*) context, expression);
       expression = TRI_AQL_NODE_MEMBER(node, 0);
 
-      // try again if it is constant
-      if (TRI_IsConstantValueNodeAql(expression)) {
-        if (TRI_GetBooleanNodeValueAql(expression)) {
-          // filter expression is always true => remove it
-          LOG_TRACE("optimised away constant filter");
-
-          return NULL;
-        }
-      }
+      // something changed, now try again
+      goto TRY_LOOP;
     }
-#endif
+
     return node;
   }
 
   if (TRI_GetBooleanNodeValueAql(expression)) {
     // filter expression is always true => remove it
-    LOG_TRACE("optimised away constant filter");
+    TRI_AQL_LOG("optimised away constant (true) filter");
 
     return NULL;
+  }
+  else {
+    // filter expression is always false => patch surrounding scope
+    if (scope->_node) {
+      TRI_AQL_LOG("optimised away scope"); 
+
+      PatchForNode(context, scope->_node, TRI_CreateImpossibleAccessAql(context)); 
+    }
   }
 
   return node;
@@ -506,6 +539,9 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
 static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* const context,
                                                          TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_UNARY_PLUS ||
+         node->_type == AQL_NODE_OPERATOR_UNARY_MINUS);
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
     return node;
@@ -515,9 +551,6 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
-
-  assert(node->_type == AQL_NODE_OPERATOR_UNARY_PLUS ||
-         node->_type == AQL_NODE_OPERATOR_UNARY_MINUS);
 
   if (node->_type == AQL_NODE_OPERATOR_UNARY_PLUS) {
     // + number => number
@@ -541,27 +574,27 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
 static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_UNARY_NOT);
 
   if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
+    // node is not a constant value
     return node;
   }
 
   if (!TRI_IsBooleanValueNodeAql(operand)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
   
-  assert(node->_type == AQL_NODE_OPERATOR_UNARY_NOT);
-
-  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
-    // ! bool => evaluate
-    node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
-    if (!node) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    }
-
-    LOG_TRACE("optimised away unary logical operation");
+  // ! (bool value) => evaluate and replace with result
+  node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
+  if (!node) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
+
+  TRI_AQL_LOG("optimised away unary logical operation");
 
   return node;
 }
@@ -586,16 +619,19 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
 
   if (isEligibleLhs && !TRI_IsBooleanValueNodeAql(lhs)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (isEligibleRhs && !TRI_IsBooleanValueNodeAql(rhs)) {
+    // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (!isEligibleLhs || !isEligibleRhs) {
+    // node is not a constant value
     return node;
   }
 
@@ -604,7 +640,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   assert(node->_type == AQL_NODE_OPERATOR_BINARY_AND ||
          node->_type == AQL_NODE_OPERATOR_BINARY_OR);
 
-  LOG_TRACE("optimised away binary logical operation");
+  TRI_AQL_LOG("optimised away binary logical operation");
 
   if (node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
     if (lhsValue) {
@@ -701,7 +737,9 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
     
-  LOG_TRACE("optimised away binary relational operation");
+  TRI_AQL_LOG("optimised away binary relational operation");
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return node;
 }
@@ -726,12 +764,14 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
   
   if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
+    // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
   
   if (isEligibleRhs && !TRI_IsNumericValueNodeAql(rhs)) {
+    // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
@@ -757,14 +797,16 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
+      // division by zero
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = TRI_GetNumericNodeValueAql(lhs) / TRI_GetNumericNodeValueAql(rhs);
   }
   else if (node->_type == AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISON_BY_ZERO, NULL);
+      // division by zero
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
@@ -776,10 +818,52 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     return NULL;
   }
   
-  LOG_TRACE("optimised away binary arithmetic operation");
+  TRI_AQL_LOG("optimised away binary arithmetic operation");
 
   return node;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise the ternary operation
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const context,
+                                                 TRI_aql_node_t* node) {
+  TRI_aql_node_t* condition = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_node_t* truePart = TRI_AQL_NODE_MEMBER(node, 1);
+  TRI_aql_node_t* falsePart = TRI_AQL_NODE_MEMBER(node, 2);
+  
+  assert(node->_type == AQL_NODE_OPERATOR_TERNARY);
+
+  if (!condition || !TRI_IsConstantValueNodeAql(condition)) {
+    // node is not a constant value
+    return node;
+  }
+
+  if (!TRI_IsBooleanValueNodeAql(condition)) {
+    // node is not a boolean value => error
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    return node;
+  }
+  
+  if (!truePart || !falsePart) {
+    // true or false parts not defined
+    //  should not happen but we must not continue in this case
+    return node;
+  }
+    
+  TRI_AQL_LOG("optimised away ternary operation");
+  
+  // evaluate condition
+  if (TRI_GetBooleanNodeValueAql(condition)) {
+    // condition is true, replace with truePart
+    return truePart;
+  }
+  
+  // condition is true, replace with falsePart
+  return falsePart;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise nodes recursively
@@ -813,6 +897,8 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
     case AQL_NODE_OPERATOR_BINARY_DIV:
     case AQL_NODE_OPERATOR_BINARY_MOD:
       return OptimiseBinaryArithmeticOperation(context, node);
+    case AQL_NODE_OPERATOR_TERNARY:
+      return OptimiseTernaryOperation(context, node);
     case AQL_NODE_SORT:
       return OptimiseSort(context, node);
     case AQL_NODE_FILTER:
@@ -836,7 +922,6 @@ static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
   TRI_aql_context_t* context = (TRI_aql_context_t*) data;
   TRI_aql_node_t* result = node;
 
-#ifdef RANGE_OPTIMIZER  
   if (node) {
     // scope handling
     if (node->_type == AQL_NODE_FOR) {
@@ -847,11 +932,9 @@ static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
     else if (node->_type == AQL_NODE_SUBQUERY) {
       StartScope(context, TRI_AQL_SCOPE_FUNCTION, NULL, NULL);
     }
-#endif
 
     result = OptimiseNode(context, node);
 
-#ifdef RANGE_OPTIMIZER  
     // scope handling
     if (node->_type == AQL_NODE_RETURN) {
       PatchForLoops(context);
@@ -861,7 +944,6 @@ static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
       EndScope(context, false);
     }
   }
-#endif
 
   return result;
 }
@@ -893,15 +975,11 @@ TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const context,
     return node;
   }
 
-#ifdef RANGE_OPTIMIZER  
   StartScope(context, TRI_AQL_SCOPE_MAIN, NULL, NULL);
-#endif
 
   node = TRI_ModifyWalkTreeAql(walker, node); 
   
-#ifdef RANGE_OPTIMIZER  
   EndScope(context, false);
-#endif
 
   TRI_FreeModifyTreeWalkerAql(walker);
 

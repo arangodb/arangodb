@@ -13,6 +13,9 @@
 #ifdef INCLUDE_ENCODING
 #include "encoding.h"
 #include <sys/types.h> /* for ssize_t */
+#ifdef _MSC_VER
+typedef int ssize_t;
+#endif
 #include "transcode_data.h"
 #include <ctype.h>
 #include "st.h"
@@ -2694,14 +2697,10 @@ str_encode_bang(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value str)
 {
   mrb_value argv[16];
   int argc;
-
-  mrb_get_args(mrb, "*", &argv, &argc);
   mrb_value newstr;
   int encidx;
 
-  //if (OBJ_FROZEN(str)) { /* in future, may use str_frozen_check from string.c, but that's currently static */
-  //  mrb_raise(mrb, mrb->eRuntimeError_class, "string frozen");
-  //}
+  mrb_get_args(mrb, "*", &argv, &argc);
 
   newstr = str;
   encidx = str_transcode(mrb, argc, argv, &newstr);
@@ -2770,10 +2769,12 @@ str_encode(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value str)
 {
   mrb_value argv[16];
   int argc;
+  mrb_value newstr;
+  int encidx;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  mrb_value newstr = str;
-  int encidx = str_transcode(mrb, argc, argv, &newstr);
+  newstr = str;
+  encidx = str_transcode(mrb, argc, argv, &newstr);
 
   if (encidx < 0) return mrb_str_dup(mrb, str);
   if (mrb_obj_equal(mrb, newstr, str)) {
@@ -3906,13 +3907,13 @@ econv_primitive_errinfo(mrb_state *mrb, mrb_value self)
 static mrb_value
 econv_insert_output(mrb_state *mrb, mrb_value self)
 {
-	mrb_value string;
+        mrb_value string;
     const char *insert_enc;
-
+    mrb_econv_t *ec;
     int ret;
 
     mrb_get_args(mrb, "o", &string);
-    mrb_econv_t *ec = check_econv(mrb, self);
+    ec = check_econv(mrb, self);
 
     //StringValue(string);
     mrb_string_value(mrb, &string);
@@ -4272,7 +4273,6 @@ extern void Init_newline(void);
 void
 mrb_init_transcode(mrb_state *mrb)
 {
-  struct RClass *e;
   struct RClass *s;
   struct RClass *c;
   struct RClass *u;
@@ -4280,7 +4280,7 @@ mrb_init_transcode(mrb_state *mrb)
   struct RClass *eConverterNotFoundError_class;
   struct RClass *eInvalidByteSequenceError_class;
   struct RClass *eUndefinedConversionError_class;
-  e = mrb->encode_class;
+
   eUndefinedConversionError_class = mrb_define_class(mrb, "UndefinedConversionError", E_ENCODING_ERROR);
   eInvalidByteSequenceError_class = mrb_define_class(mrb, "InvalidByteSequenceError", E_ENCODING_ERROR);
   eConverterNotFoundError_class   = mrb_define_class(mrb, "ConverterNotFoundError",   E_ENCODING_ERROR);
@@ -4311,7 +4311,7 @@ mrb_init_transcode(mrb_state *mrb)
   mrb_define_method(mrb, s, "encode",  str_encode,      ARGS_ANY());
   mrb_define_method(mrb, s, "encode!", str_encode_bang, ARGS_ANY());
 
-  c = mrb->converter_class = mrb_define_class(mrb, "Converter", mrb->encode_class);
+  c = mrb_define_class(mrb, "Converter", ENCODE_CLASS);
   //mrb_cEncodingConverter = rb_define_class_under(mrb_cEncoding, "Converter", rb_cData);
   //mrb_define_alloc_func(mrb_cEncodingConverter, econv_s_allocate);
   mrb_define_class_method(mrb, c, "asciicompat_encoding",      econv_s_asciicompat_encoding,    ARGS_REQ(1)); /* 1  */

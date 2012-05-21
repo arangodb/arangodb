@@ -1,6 +1,6 @@
 /*
 ** variable.h - mruby variables
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -44,4 +44,4 @@ mrb_value mrb_f_global_variables(mrb_state *mrb, mrb_value self);
 mrb_value mrb_gv_get(mrb_state *mrb, mrb_sym sym);
 void mrb_gv_set(mrb_state *mrb, mrb_sym sym, mrb_value val);
 
-#endif	/* MRUBY_VARIABLE_H */
+#endif  /* MRUBY_VARIABLE_H */

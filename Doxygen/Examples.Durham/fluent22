@@ -1,5 +1,0 @@
-arango> id = db.examples.save({ Hallo : "World" });
-"148759:5437094"
-
-arango> db.examples.document(id);
-{ "Hallo" : "World", "_id" : "148759:5437094" }

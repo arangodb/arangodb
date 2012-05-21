@@ -84,11 +84,11 @@ int st_strncasecmp(const char *s1, const char *s2, size_t n);
 #define STRCASECMP(s1, s2) (st_strcasecmp(s1, s2))
 #define STRNCASECMP(s1, s2, n) (st_strncasecmp(s1, s2, n))
 
-#define ST_NUMCMP	((int (*)()) 0)
-#define ST_NUMHASH	((int (*)()) -2)
+#define ST_NUMCMP       ((int (*)()) 0)
+#define ST_NUMHASH      ((int (*)()) -2)
 
-#define st_numcmp	ST_NUMCMP
-#define st_numhash	ST_NUMHASH
+#define st_numcmp       ST_NUMCMP
+#define st_numhash      ST_NUMHASH
 
 int st_strhash();
 

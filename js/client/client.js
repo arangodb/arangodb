@@ -394,8 +394,8 @@ ModuleCache["/internal"].exports.ArangoDatabase = ArangoDatabase;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
-'ArangoDatabase constructor:                                        ' + "\n" +
-' > db = new ArangoDatabase(connection);                            ' + "\n" +
+'ArangoDatabase constructor:                                         ' + "\n" +
+' > db = new ArangoDatabase(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -516,6 +516,10 @@ ArangoDatabase.prototype._create = function (name, properties) {
 
     if (properties.hasOwnProperty("journalSize")) {
       body.journalSize = properties.journalSize;
+    }
+
+    if (properties.hasOwnProperty("isSystem")) {
+      body.isSystem = properties.isSystem;
     }
   }
 
@@ -826,8 +830,8 @@ ModuleCache["/internal"].exports.ArangoEdges = ArangoEdges;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdges = TRI_CreateHelpHeadline("ArangoEdges help") +
-'ArangoEdges constructor:                                           ' + "\n" +
-' > edges = new ArangoEdges(connection);                            ' + "\n" +
+'ArangoEdges constructor:                                            ' + "\n" +
+' > edges = new ArangoEdges(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -954,7 +958,7 @@ ArangoCollection.STATUS_DELETED = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoCollection = TRI_CreateHelpHeadline("ArangoCollection help") +
-'ArangoCollection constructor:                                      ' + "\n" +
+'ArangoCollection constructor:                                       ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1234,6 +1238,90 @@ ArangoCollection.prototype.ensureCapConstraint = function (size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a unique skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "skiplist", unique : true, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "skiplist", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : true, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an geo index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1286,6 +1374,35 @@ ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull)
   }
 
   var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries by example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
+  var body;
+
+  limit = limit || null;
+  skip = skip || null;
+
+  if (index.hasOwnProperty("id")) {
+    index = index.id;
+  }
+
+  body = { collection : this._id, index : index, skip : skip, limit : limit, example : {} };
+
+  for (var key in example) {
+    if (example.hasOwnProperty(key)) {
+      body.example[key] = example[key];
+    }
+  }
+
+  var requestResult = this._database._connection.PUT("/_api/simple/BY-EXAMPLE-HASH", JSON.stringify(body));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1594,7 +1711,7 @@ ModuleCache["/internal"].exports.ArangoEdgesCollection = ArangoEdgesCollection;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdgesCollection = TRI_CreateHelpHeadline("ArangoEdgesCollection help") +
-'ArangoEdgesCollection constructor:                                 ' + "\n" +
+'ArangoEdgesCollection constructor:                                  ' + "\n" +
 ' > col = edges.mycoll;                                              ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1828,7 +1945,7 @@ function ArangoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoQueryCursor = TRI_CreateHelpHeadline("ArangoQueryCursor help") +
-'ArangoQueryCursor constructor:                                     ' + "\n" +
+'ArangoQueryCursor constructor:                                      ' + "\n" +
 ' > cu1 = qi1.execute();                                             ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  hasMore();                            returns true if there       ' + "\n" +
@@ -2045,8 +2162,8 @@ function ArangoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
-'ArangoStatement constructor:                                       ' + "\n" +
-' > st = new ArangoStatement({ "query" : "for ..." });              ' + "\n" +
+'ArangoStatement constructor:                                        ' + "\n" +
+' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
 ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
@@ -2066,7 +2183,7 @@ helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
 '  _database                      database object                    ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
-'                              c.x = @a@ && c.y = @b@ return c" });  ' + "\n" +
+'                              c.x == @a && c.y == @b return c" });  ' + "\n" +
 ' > st.bind("a", "hello");                                           ' + "\n" +
 ' > st.bind("b", "world");                                           ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
@@ -2258,8 +2375,8 @@ ArangoStatement.prototype.execute = function () {
 
 HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
-'  arango:                               ArangoConnection          ' + "\n" +
-'  db:                                    ArangoDatabase            ' + "\n" +
+'  arango:                                ArangoConnection           ' + "\n" +
+'  db:                                    ArangoDatabase             ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
@@ -2276,7 +2393,7 @@ HELP = TRI_CreateHelpHeadline("Help") +
 
 helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
-' > st = new ArangoStatement(db, { "query" : "for..." });           ' + "\n" +
+' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
 ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
 'Set query options:                                                  ' + "\n" +
 ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +

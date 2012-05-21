@@ -1,8 +1,14 @@
+##
+# String
 #
-#  String
-#
+# ISO 15.2.10
 class String
-  # 15.2.10.5.15
+
+  ##
+  # Calls the given block for each line
+  # and pass the respective line.
+  #
+  # ISO 15.2.10.5.15
   def each_line(&block)
     # expect that str.index accepts an Integer for 1st argument as a byte data
     offset = 0
@@ -14,7 +20,13 @@ class String
     self
   end
 
-  # 15.2.10.5.18
+  ##
+  # Replace all matches of +pattern+ with +replacement+.
+  # Call block (if given) for each match and replace
+  # +pattern+ with the value of the block. Return the
+  # final value.
+  #
+  # ISO 15.2.10.5.18
   def gsub(*args, &block)
     unless (args.size == 1 && block) || args.size == 2
       raise ArgumentError, "wrong number of arguments"
@@ -23,7 +35,13 @@ class String
     ### *** TODO *** ###
   end
 
-  # 15.2.10.5.19
+  ##
+  # Replace all matches of +pattern+ with +replacement+.
+  # Call block (if given) for each match and replace
+  # +pattern+ with the value of the block. Modify 
+  # +self+ with the final value.
+  #
+  # ISO 15.2.10.5.19
   def gsub!(*args, &block)
     str = self.gsub(*args, &block)
     if str != self
@@ -34,12 +52,23 @@ class String
     end
   end
 
-  # 15.2.10.5.32
+  ##
+  # Calls the given block for each match of +pattern+
+  # If no block is given return an array with all
+  # matches of +pattern+.
+  # 
+  # ISO 15.2.10.5.32
   def scan(reg, &block)
     ### *** TODO *** ###
   end
 
-  # 15.2.10.5.36
+  ##
+  # Replace only the first match of +pattern+ with 
+  # +replacement+. Call block (if given) for each 
+  # match and replace +pattern+ with the value of the
+  # block. Return the final value.
+  #
+  # ISO 15.2.10.5.36
   def sub(*args, &block)
     unless (args.size == 1 && block) || args.size == 2
       raise ArgumentError, "wrong number of arguments"
@@ -48,7 +77,13 @@ class String
     ### *** TODO *** ###
   end
 
-  # 15.2.10.5.37
+  ##
+  # Replace only the first match of +pattern+ with   
+  # +replacement+. Call block (if given) for each 
+  # match and replace +pattern+ with the value of the 
+  # block. Modify +self+ with the final value.
+  #
+  # ISO 15.2.10.5.37
   def sub!(*args, &block)
     str = self.sub(*args, &block)
     if str != self
@@ -59,6 +94,9 @@ class String
     end
   end
 
+  ##
+  # Call the given block for each character of
+  # +self+.
   def each_char(&block)
     pos = 0
     while(pos < self.size)
@@ -68,6 +106,8 @@ class String
     self
   end
 
+  ##
+  # Call the given block for each byte of +self+.
   def each_byte(&block)
     bytes = self.unpack("C*")
     pos = 0
@@ -78,6 +118,9 @@ class String
     self
   end
 
+  ##
+  # Modify +self+ by replacing the content of +self+
+  # at the position +pos+ with +value+.
   def []=(pos, value)
     b = self[0, pos]
     a = self[pos+1..-1]
@@ -86,7 +129,10 @@ class String
   end
 end
 
-# include modules
+##
+# String is comparable
+#
+# ISO 15.2.10.3
 module Comparable; end
 class String
   include Comparable

@@ -30,13 +30,11 @@
 
 #include "Utilities/LineEditor.h"
 
+#include "MRuby/mr-utils.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
-
-extern "C" {
-  struct mrb_state;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class MRLineEditor
@@ -71,7 +69,7 @@ class MRLineEditor : public LineEditor {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    MRLineEditor (struct mrb_state*, std::string const& history);
+    MRLineEditor (MR_state_t*, std::string const& history);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -138,7 +136,7 @@ class MRLineEditor : public LineEditor {
 /// @brief ruby state
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct mrb_state* _mrb;
+    MR_state_t* _mrs;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

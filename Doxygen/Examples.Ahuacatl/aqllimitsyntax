@@ -1,0 +1,2 @@
+LIMIT count
+LIMIT offset, count

@@ -54,34 +54,34 @@ function ahuacatlOperatorsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testKeys : function () {
-      assertEqual([ ], AHUACATL_KEYS([ ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 0, 1, 2 ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 1, 2, 3 ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 5, 6, 9 ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ false, false, false ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ -1, -1, 'zang' ]));
-      assertEqual([ 0, 1, 2, 3 ], AHUACATL_KEYS([ 99, 99, 99, 99 ]));
-      assertEqual([ 0 ], AHUACATL_KEYS([ [ ] ]));
-      assertEqual([ 0 ], AHUACATL_KEYS([ [ 1 ] ]));
-      assertEqual([ 0, 1 ], AHUACATL_KEYS([ [ 1 ], 1 ]));
-      assertEqual([ 0, 1 ], AHUACATL_KEYS([ [ 1 ], [ 1 ] ]));
-      assertEqual([ 0 ], AHUACATL_KEYS([ [ 1 , 2 ] ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ [ 1 , 2 ], [ ], 3 ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ { }, { }, { } ]));
-      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ { 'a' : true, 'b' : false }, { }, { } ]));
-      assertEqual([ ], AHUACATL_KEYS({ }));
-      assertEqual([ '0' ], AHUACATL_KEYS({ '0' : false }));
-      assertEqual([ '0' ], AHUACATL_KEYS({ '0' : undefined }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'a' : true, 'b' : true, 'c' : true }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'a' : true, 'c' : true, 'b' : true }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'b' : true, 'a' : true, 'c' : true }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'b' : true, 'c' : true, 'a' : true }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'c' : true, 'a' : true, 'b' : true }));
-      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'c' : true, 'b' : true, 'a' : true }));
-      assertEqual([ '0', '1', '2' ], AHUACATL_KEYS({ '0' : true, '1' : true, '2' : true }));
-      assertEqual([ '0', '1', '2' ], AHUACATL_KEYS({ '1' : true, '2' : true, '0' : true }));
-      assertEqual([ 'a1', 'a2', 'a3' ], AHUACATL_KEYS({ 'a1' : true, 'a2' : true, 'a3' : true }));
-      assertEqual([ 'a1', 'a10', 'a20', 'a200', 'a21' ], AHUACATL_KEYS({ 'a200' : true, 'a21' : true, 'a20' : true, 'a10' : false, 'a1' : null }));
+      assertEqual([ ], AHUACATL_KEYS([ ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 0, 1, 2 ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 1, 2, 3 ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ 5, 6, 9 ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ false, false, false ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ -1, -1, 'zang' ], true));
+      assertEqual([ 0, 1, 2, 3 ], AHUACATL_KEYS([ 99, 99, 99, 99 ], true));
+      assertEqual([ 0 ], AHUACATL_KEYS([ [ ] ], true));
+      assertEqual([ 0 ], AHUACATL_KEYS([ [ 1 ] ], true));
+      assertEqual([ 0, 1 ], AHUACATL_KEYS([ [ 1 ], 1 ], true));
+      assertEqual([ 0, 1 ], AHUACATL_KEYS([ [ 1 ], [ 1 ] ], true));
+      assertEqual([ 0 ], AHUACATL_KEYS([ [ 1 , 2 ] ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ [ 1 , 2 ], [ ], 3 ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ { }, { }, { } ], true));
+      assertEqual([ 0, 1, 2 ], AHUACATL_KEYS([ { 'a' : true, 'b' : false }, { }, { } ], true));
+      assertEqual([ ], AHUACATL_KEYS({ }, true));
+      assertEqual([ '0' ], AHUACATL_KEYS({ '0' : false }, true));
+      assertEqual([ '0' ], AHUACATL_KEYS({ '0' : undefined }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'a' : true, 'b' : true, 'c' : true }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'a' : true, 'c' : true, 'b' : true }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'b' : true, 'a' : true, 'c' : true }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'b' : true, 'c' : true, 'a' : true }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'c' : true, 'a' : true, 'b' : true }, true));
+      assertEqual([ 'a', 'b', 'c' ], AHUACATL_KEYS({ 'c' : true, 'b' : true, 'a' : true }, true));
+      assertEqual([ '0', '1', '2' ], AHUACATL_KEYS({ '0' : true, '1' : true, '2' : true }, true));
+      assertEqual([ '0', '1', '2' ], AHUACATL_KEYS({ '1' : true, '2' : true, '0' : true }, true));
+      assertEqual([ 'a1', 'a2', 'a3' ], AHUACATL_KEYS({ 'a1' : true, 'a2' : true, 'a3' : true }, true));
+      assertEqual([ 'a1', 'a10', 'a20', 'a200', 'a21' ], AHUACATL_KEYS({ 'a200' : true, 'a21' : true, 'a20' : true, 'a10' : false, 'a1' : null }, true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,6 +890,8 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_EQUAL('undefined', 'undefined'));
       assertTrue(AHUACATL_RELATIONAL_EQUAL('null', 'null'));
       assertTrue(AHUACATL_RELATIONAL_EQUAL([ ], [ ]));
+      assertTrue(AHUACATL_RELATIONAL_EQUAL([ null ], [ ]));
+      assertTrue(AHUACATL_RELATIONAL_EQUAL([ ], [ null ]));
       assertTrue(AHUACATL_RELATIONAL_EQUAL([ 0 ], [ 0 ]));
       assertTrue(AHUACATL_RELATIONAL_EQUAL([ 0, 1 ], [ 0, 1 ]));
       assertTrue(AHUACATL_RELATIONAL_EQUAL([ 0, 1, 4 ], [ 0, 1, 4 ]));
@@ -939,11 +941,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ 0 ], undefined));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ 0, 1 ], undefined));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ 1, 2 ], undefined));
+      assertFalse(AHUACATL_RELATIONAL_EQUAL([ ], null));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ }, undefined));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ 'a' : 0 }, undefined));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ 'a' : 1 }, undefined));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ '0' : false }, undefined));
-
       assertFalse(AHUACATL_RELATIONAL_EQUAL(1, 0));
       assertFalse(AHUACATL_RELATIONAL_EQUAL(0, 1));
       assertFalse(AHUACATL_RELATIONAL_EQUAL(0, false));
@@ -1038,9 +1040,7 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ true ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ true ], [ false ]));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ false ], [ ]));
-      assertFalse(AHUACATL_RELATIONAL_EQUAL([ null ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ null ], [ false ]));
-      assertFalse(AHUACATL_RELATIONAL_EQUAL([ ], null));
       assertFalse(AHUACATL_RELATIONAL_EQUAL([ ], ''));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ }, { 'a' : false }));
       assertFalse(AHUACATL_RELATIONAL_EQUAL({ 'a' : false }, { }));
@@ -1190,7 +1190,6 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ true ], [ ]));
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ true ], [ false ]));
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ false ], [ ]));
-      assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ null ], [ ]));
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ null ], [ false ]));
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ ], null));
       assertTrue(AHUACATL_RELATIONAL_UNEQUAL([ ], ''));
@@ -1242,6 +1241,8 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL('undefined', 'undefined'));
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL('null', 'null'));
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ ], [ ]));
+      assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ null ], [ ]));
+      assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ ], [ null ]));
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ 0 ], [ 0 ]));
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ 0, 1 ], [ 0, 1 ]));
       assertFalse(AHUACATL_RELATIONAL_UNEQUAL([ 0, 1, 4 ], [ 0, 1, 4 ]));
@@ -1419,8 +1420,6 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_LESS([ 0, 1, 4 ], [ 1 ]));
       assertTrue(AHUACATL_RELATIONAL_LESS([ 15, 99 ], [ 110 ]));
       assertTrue(AHUACATL_RELATIONAL_LESS([ 15, 99 ], [ 15, 100 ]));
-      assertTrue(AHUACATL_RELATIONAL_LESS([ ], [ undefined ]));
-      assertTrue(AHUACATL_RELATIONAL_LESS([ ], [ null ]));
       assertTrue(AHUACATL_RELATIONAL_LESS([ ], [ false ]));
       assertTrue(AHUACATL_RELATIONAL_LESS([ ], [ true ]));
       assertTrue(AHUACATL_RELATIONAL_LESS([ ], [ 0 ]));
@@ -1480,11 +1479,8 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_LESS([ 5, 6, 9, 9 ], [ 5, 6, { } ]));
       assertTrue(AHUACATL_RELATIONAL_LESS({ }, { 'a' : 0 }));
       assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : 1 }, { 'a' : 2 }));
-      assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : 1 }, { 'A' : 2 }));
-      assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : 2 }, { 'A' : 1 }));
-      assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : 1, 'b' : 2 }, { 'a' : 1, 'b' : 2, 'c' : null }));
-      assertTrue(AHUACATL_RELATIONAL_LESS({ 'b' : 1 }, { 'a' : 1 }));
-      assertTrue(AHUACATL_RELATIONAL_LESS({ 'b' : 2, 'a' : 1 }, { 'a' : 1, 'b' : 2, 'c' : null }));
+      assertTrue(AHUACATL_RELATIONAL_LESS({ 'b' : 2 }, { 'a' : 1 }));
+      assertTrue(AHUACATL_RELATIONAL_LESS({ 'z' : 1 }, { 'c' : 1 }));
       assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : [ 9 ], 'b' : false }, { 'a' : [ 10 ], 'b' : true }));
       assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : [ 9 ], 'b' : true }, { 'a' : [ 10 ], 'b' : true }));
       assertTrue(AHUACATL_RELATIONAL_LESS({ 'a' : [ ], 'b' : true }, { 'a' : [ 10 ], 'b' : true }));
@@ -1512,6 +1508,8 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_LESS('0', undefined));
       assertFalse(AHUACATL_RELATIONAL_LESS('1', undefined));
       assertFalse(AHUACATL_RELATIONAL_LESS([ ], undefined));
+      assertFalse(AHUACATL_RELATIONAL_LESS([ ], [ undefined ]));
+      assertFalse(AHUACATL_RELATIONAL_LESS([ ], [ null ]));
       assertFalse(AHUACATL_RELATIONAL_LESS([ 0 ], undefined));
       assertFalse(AHUACATL_RELATIONAL_LESS([ 0, 1 ], undefined));
       assertFalse(AHUACATL_RELATIONAL_LESS([ 1, 2 ], undefined));
@@ -1716,6 +1714,8 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_LESS({ 'a' : false }, [ 'abcd' ]));
       assertFalse(AHUACATL_RELATIONAL_LESS({ 'a' : false }, [ 5 ]));
       assertFalse(AHUACATL_RELATIONAL_LESS({ 'a' : 2, 'b' : 2 }, [ 5, 6 ]));
+      assertFalse(AHUACATL_RELATIONAL_LESS({ 'a' : 1, 'b' : 2 }, { 'a' : 1, 'b' : 2, 'c' : null }));
+      assertFalse(AHUACATL_RELATIONAL_LESS({ 'b' : 2, 'a' : 1 }, { 'a' : 1, 'b' : 2, 'c' : null }));
       assertFalse(AHUACATL_RELATIONAL_LESS({ }, [ 5, 6, 7 ]));
       assertFalse(AHUACATL_RELATIONAL_LESS([ 5, 6, true ], [ 5, 6, false ]));
       assertFalse(AHUACATL_RELATIONAL_LESS([ 5, 6, 0 ], [ 5, 6, true ]));
@@ -1880,8 +1880,6 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_GREATER([ 1 ], [ 0, 1, 4 ]));
       assertTrue(AHUACATL_RELATIONAL_GREATER([ 110 ], [ 15, 99 ]));
       assertTrue(AHUACATL_RELATIONAL_GREATER([ 15, 100 ], [ 15, 99 ]));
-      assertTrue(AHUACATL_RELATIONAL_GREATER([ undefined ], [ ]));
-      assertTrue(AHUACATL_RELATIONAL_GREATER([ null ], [ ]));
       assertTrue(AHUACATL_RELATIONAL_GREATER([ false ], [ ]));
       assertTrue(AHUACATL_RELATIONAL_GREATER([ true ], [ ]));
       assertTrue(AHUACATL_RELATIONAL_GREATER([ 0 ], [ ]));
@@ -1919,9 +1917,7 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : 2 }, { 'a' : 1 }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'A' : 2 }, { 'a' : 1 }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'A' : 1 }, { 'a' : 2 }));
-      assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c' : null }, { 'a' : 1, 'b' : 2 }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : 1 }, { 'b' : 1 }));
-      assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c': null }, { 'b' : 2, 'a' : 1 }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : false }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : true }));
       assertTrue(AHUACATL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ ], 'b' : true }));
@@ -1945,7 +1941,6 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_GREATER(NaN, true));
       assertFalse(AHUACATL_RELATIONAL_GREATER(NaN, ''));
       assertFalse(AHUACATL_RELATIONAL_GREATER(NaN, 0));
-
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, true));
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, false));
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, 0.0));
@@ -1962,7 +1957,6 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, { 'a' : 0 }));
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, { 'a' : 1 }));
       assertFalse(AHUACATL_RELATIONAL_GREATER(undefined, { '0' : false }));
-
       assertFalse(AHUACATL_RELATIONAL_GREATER(null, false));
       assertFalse(AHUACATL_RELATIONAL_GREATER(null, true));
       assertFalse(AHUACATL_RELATIONAL_GREATER(null, 0));
@@ -2121,6 +2115,8 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_GREATER([ null ], [ true ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ null ], [ 0 ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ null ], [ [ ] ]));
+      assertFalse(AHUACATL_RELATIONAL_GREATER([ undefined ], [ ]));
+      assertFalse(AHUACATL_RELATIONAL_GREATER([ null ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ false ], [ true ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ false ], [ 0 ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ false ], [ -1 ]));
@@ -2140,6 +2136,8 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_GREATER([ false, false ], [ false, true ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ false, false ], [ false, 0 ]));
       assertFalse(AHUACATL_RELATIONAL_GREATER([ null, null ], [ null, false ]));
+      assertFalse(AHUACATL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c': null }, { 'b' : 2, 'a' : 1 }));
+      assertFalse(AHUACATL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c' : null }, { 'a' : 1, 'b' : 2 }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2174,7 +2172,6 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(NaN, undefined));
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(null, NaN));
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(undefined, NaN));
-
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(null, false));
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(null, true));
       assertTrue(AHUACATL_RELATIONAL_LESSEQUAL(null, 0));
@@ -2424,7 +2421,6 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL(true, NaN));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL('', NaN));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL(0, NaN));
-
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL(false, null));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL(true, null));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL(0, null));
@@ -2550,8 +2546,6 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ 1 ], [ 0, 1, 4 ]));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ 110 ], [ 15, 99 ]));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ 15, 100 ], [ 15, 99 ]));
-      assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ undefined ], [ ]));
-      assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ null ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ false ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ true ], [ ]));
       assertFalse(AHUACATL_RELATIONAL_LESSEQUAL([ 0 ], [ ]));
@@ -2811,6 +2805,10 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 15, 99 ]));
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ null ], [ null ]));
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ [ [ null, 1, 9 ], [ 12, "true", false ] ] , 0 ], [ [ [ null, 1, 9 ], [ 12, "true", false ] ] ,0 ]));
+      assertTrue(AHUACATL_RELATIONAL_LESSEQUAL([ undefined ], [ ]));
+      assertTrue(AHUACATL_RELATIONAL_LESSEQUAL([ null ], [ ]));
+      assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ undefined ]));
+      assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ null ]));
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ false ], [ false ]));
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL([ false, true ], [ false, true ]));
       assertTrue(AHUACATL_RELATIONAL_GREATEREQUAL({ }, [ ]));
@@ -3005,8 +3003,6 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ 0, 1, 4 ], [ 1 ]));
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 110 ]));
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 15, 100 ]));
-      assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ undefined ]));
-      assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ null ]));
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ false ]));
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ true ]));
       assertFalse(AHUACATL_RELATIONAL_GREATEREQUAL([ ], [ 0 ]));
@@ -4018,7 +4014,18 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', 'x'));
       assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', null, 'x'));
       assertEqual('fux', AHUACATL_STRING_CONCAT(null, 'f', null, 'u', null, 'x', null));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AHUACATL_TERNARY_OPERATOR function
+////////////////////////////////////////////////////////////////////////////////
+
+    testTernaryOperator : function () {
+      assertEqual(2, AHUACATL_TERNARY_OPERATOR(true, 2, -1));
+      assertEqual(-1, AHUACATL_TERNARY_OPERATOR(false, 1, -1));
+      assertException(function() { AHUACATL_TERNARY_OPERATOR(0, 1, 1); } );
     }
+
   };
 }
 

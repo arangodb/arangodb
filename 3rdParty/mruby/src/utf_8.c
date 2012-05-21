@@ -86,7 +86,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     /* d */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     /* e */ 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3,
-    /* f */ 5, 6, 6, 6, 7, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ 5, 6, 6, 6, 7, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S1   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -104,7 +104,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S2   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -122,7 +122,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S3   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -140,7 +140,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S4   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -158,7 +158,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S5   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -176,7 +176,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S6   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -194,7 +194,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
   { /* S7   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
     /* 0 */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -212,7 +212,7 @@ static const signed char trans[][0x100] = {
     /* c */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* d */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
     /* e */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
-    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F 
+    /* f */ F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F
   },
 };
 #undef A
@@ -255,11 +255,11 @@ is_mbc_newline(const UChar* p, const UChar* end, OnigEncoding enc)
 #endif
     if (p + 1 < end) {
       if (*(p+1) == 0x85 && *p == 0xc2) /* U+0085 */
-	return 1;
+        return 1;
       if (p + 2 < end) {
-	if ((*(p+2) == 0xa8 || *(p+2) == 0xa9)
-	    && *(p+1) == 0x80 && *p == 0xe2)  /* U+2028, U+2029 */
-	  return 1;
+        if ((*(p+2) == 0xa8 || *(p+2) == 0xa9)
+            && *(p+1) == 0x80 && *p == 0xe2)  /* U+2028, U+2029 */
+          return 1;
       }
     }
 #endif
@@ -371,7 +371,7 @@ code_to_mbc(OnigCodePoint code, UChar *buf, OnigEncoding enc ARG_UNUSED)
 
 static int
 mbc_case_fold(OnigCaseFoldType flag, const UChar** pp,
-		   const UChar* end, UChar* fold, OnigEncoding enc)
+                   const UChar* end, UChar* fold, OnigEncoding enc)
 {
   const UChar* p = *pp;
 
@@ -379,10 +379,10 @@ mbc_case_fold(OnigCaseFoldType flag, const UChar** pp,
 #ifdef USE_UNICODE_CASE_FOLD_TURKISH_AZERI
     if ((flag & ONIGENC_CASE_FOLD_TURKISH_AZERI) != 0) {
       if (*p == 0x49) {
-	*fold++ = 0xc4;
-	*fold   = 0xb1;
-	(*pp)++;
-	return 2;
+        *fold++ = 0xc4;
+        *fold   = 0xb1;
+        (*pp)++;
+        return 2;
       }
     }
 #endif
@@ -399,7 +399,7 @@ mbc_case_fold(OnigCaseFoldType flag, const UChar** pp,
 
 static int
 get_ctype_code_range(OnigCtype ctype, OnigCodePoint *sb_out,
-			  const OnigCodePoint* ranges[], OnigEncoding enc ARG_UNUSED)
+                          const OnigCodePoint* ranges[], OnigEncoding enc ARG_UNUSED)
 {
   *sb_out = 0x80;
   return onigenc_unicode_ctype_code_range(ctype, ranges);

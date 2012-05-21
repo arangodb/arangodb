@@ -640,7 +640,8 @@ int ArangoServer::startupServer () {
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
 
-    _applicationAdminServer->addBasicHandlers(factory);
+    // add /version URL
+    _applicationAdminServer->addBasicHandlers(factory, "/_api");
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
@@ -651,6 +652,9 @@ int ArangoServer::startupServer () {
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     if (shareAdminPort) {
+      // add /version URL
+      _applicationAdminServer->addBasicHandlers(factory, "/_admin");
+
       _applicationAdminServer->addHandlers(factory, "/_admin");
       _applicationUserManager->addHandlers(factory, "/_admin");
       allowedQueuesHttp.insert("SYSTEM");
@@ -680,7 +684,10 @@ int ArangoServer::startupServer () {
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
-    _applicationAdminServer->addBasicHandlers(adminFactory);
+    // add /version URL
+    _applicationAdminServer->addBasicHandlers(adminFactory, "/_admin");
+    _applicationAdminServer->addBasicHandlers(adminFactory, "/_api");
+
     _applicationAdminServer->addHandlers(adminFactory, "/_admin");
     _applicationUserManager->addHandlers(adminFactory, "/_admin");
 
@@ -837,7 +844,7 @@ int ArangoServer::executeShell (bool tests) {
 
     // run tests
     char const* input = "require(\"jsunity\").runCommandLineTests();";
-    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+    TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
@@ -858,10 +865,10 @@ int ArangoServer::executeShell (bool tests) {
       while(! v8::V8::IdleNotification()) {
       }
 
-      char* input = console->prompt("arango> ");
+      char* input = console->prompt("arangod> ");
 
       if (input == 0) {
-        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! さようなら\n");
+        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
         break;
       }
 
@@ -875,7 +882,7 @@ int ArangoServer::executeShell (bool tests) {
       v8::HandleScope scope;
       v8::TryCatch tryCatch;
 
-      TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+      TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       
       if (tryCatch.HasCaught()) {
@@ -963,6 +970,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
 
 int ArangoServer::executeRubyShell () {
   struct mrb_parser_state* p;
+  MR_state_t mrs;
   mrb_state* mrb;
   int n;
 
@@ -977,8 +985,10 @@ int ArangoServer::executeRubyShell () {
   // create a new ruby shell
   mrb = mrb_open();
 
+  memcpy(&mrs, mrb, sizeof(mrb_state));
+
   // create a line editor
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(&mrs, ".arango-mrb");
 
   // setup the classes
 #if 0

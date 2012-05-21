@@ -81,6 +81,7 @@ libarango_a_SOURCES = \
 	UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp \
 	Utilities/LineEditor.cpp \
+	Utilities/ScriptLoader.cpp \
 	V8/JSLoader.cpp \
 	V8/V8LineEditor.cpp \
 	V8/v8-conv.cpp \
@@ -111,6 +112,7 @@ libarango_a_SOURCES = \
 
 if ENABLE_MRUBY
 libarango_a_SOURCES += \
+	MRuby/MRLoader.cpp \
 	MRuby/MRLineEditor.cpp \
 	MRuby/mr-utils.cpp
 endif
@@ -158,13 +160,14 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen-js.c \
+	Ahuacatl/ahuacatl-codegen.c \
         Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-index.c \
         Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
@@ -342,16 +345,17 @@ DOXYGEN = \
 WIKI = \
 	Actions \
 	ArangoErrors \
-	ArangoScript \
 	CommandLine \
-	CommandLineArango \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
 	Compiling \
 	DBAdmin \
+	DbaManual \
+	DbaManualBasics \
 	DefineAction \
 	ExamplesSetup \
+	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
 	Home \
@@ -369,7 +373,7 @@ WIKI = \
 	IndexHash \
 	IndexHashHttp \
 	IndexSkiplist \
-	Indexes \
+	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
@@ -388,8 +392,7 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
-	UserManualServer \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManual \
+	UserManualBasics \
+        Aql \
 	jsUnity

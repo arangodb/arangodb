@@ -1,6 +1,6 @@
 /*
 ** print.c - Kernel.#p
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

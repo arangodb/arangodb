@@ -1,6 +1,6 @@
 /*
 ** symbol.c - Symbol class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -16,12 +16,6 @@
 #include "mruby/variable.h"
 #include <stdio.h>
 
-#ifdef INCLUDE_REGEXP
-#include "re.h"
-#include "regex.h"
-#include "st.h"
-#endif
-
 /* ------------------------------------------------------ */
 KHASH_MAP_INIT_INT(s2n, const char*);
 KHASH_MAP_INIT_STR(n2s, mrb_sym);
@@ -32,7 +26,6 @@ mrb_intern(mrb_state *mrb, const char *name)
   khash_t(n2s) *h = mrb->name2sym;
   khash_t(s2n) *rh = mrb->sym2name;
   khiter_t k;
-  int r;
   size_t len;
   char *p;
   mrb_sym sym;
@@ -46,10 +39,10 @@ mrb_intern(mrb_state *mrb, const char *name)
   p = mrb_malloc(mrb, len+1);
   memcpy(p, name, len);
   p[len] = 0;
-  k = kh_put(n2s, h, p, &r);
+  k = kh_put(n2s, h, p);
   kh_value(h, k) = sym;
 
-  k = kh_put(s2n, rh, sym, &r);
+  k = kh_put(s2n, rh, sym);
   kh_value(rh, k) = p;
 
   return sym;

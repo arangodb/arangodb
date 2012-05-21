@@ -20,6 +20,7 @@ publish-html:
 	@for w in $(WIKI); do scp Doxygen/html/$$w.html $(MANUAL_DST); done
 
 publish-pdf:
-	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
-	scp Doxygen/latex/user-manual-server.pdf $(MANUAL_DST)
+	scp Doxygen/latex/dba-manual.pdf $(MANUAL_DST)
 	scp Doxygen/latex/implementor-manual.pdf $(MANUAL_DST)
+	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
+	scp Doxygen/latex/user-manual.pdf $(MANUAL_DST)

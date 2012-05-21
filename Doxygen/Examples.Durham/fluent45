@@ -1,8 +1,0 @@
-arango> db.names.save( { name : "Meier", first_name : "Hugo", age : 30 } );
-"144723:1935857"
-
-arango> db.names.save( { name : "Meier", first_name : "Egon", age : 29 } );
-"144723:2001393"
-
-arango> db.names.save( { name : "Meier", first_name : "Meier", age : 51 } );
-"144723:2066929"

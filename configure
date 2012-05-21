@@ -9037,7 +9037,7 @@ fi
 if test "${enable_mruby+set}" = set; then :
   enableval=$enable_mruby; tr_MRUBY="${enableval:-yes}"
 else
-  tr_MRUBY=yes
+  tr_MRUBY=no
 
 fi
 
@@ -9045,9 +9045,9 @@ fi
 if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
   MRUBY_LDFLAGS=""
-  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-04-27"
+  TRI_MRUBY_VERSION="2012-05-16 (a3a9d136aa4835eb50f4be92fbbce1ad503ec4c7)"
 
 
 cat >>confdefs.h <<_ACEOF

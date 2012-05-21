@@ -243,6 +243,28 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether an index supports full coverage only
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
+  // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
+  switch (idx->_type) {
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_HASH_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return true;
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return false;
+  }
+
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1794,6 +1816,22 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set returned by a hash index query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeResultHashIndex (const TRI_index_t* const idx, 
+                              TRI_hash_index_elements_t* const result) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    HashIndex_freeResult(result);
+  }
+  else {
+    MultiHashIndex_freeResult(result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given a JSON list
 ///
 /// @warning who ever calls this function is responsible for destroying
@@ -2682,47 +2720,12 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
   }
 }
 
-
-static void UnFillLookupSLOperator(TRI_sl_operator_t* slOperator) {
-  TRI_sl_relation_operator_t* relationOperator;
-  TRI_sl_logical_operator_t*  logicalOperator;
-
-  if (slOperator == NULL) {
-    return;
-  }
-  
-  switch (slOperator->_type) {
-    case TRI_SL_AND_OPERATOR: 
-    case TRI_SL_NOT_OPERATOR:
-    case TRI_SL_OR_OPERATOR: {
-      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
-      UnFillLookupSLOperator(logicalOperator->_left);
-      UnFillLookupSLOperator(logicalOperator->_right);
-      break;
-    }
-    
-    case TRI_SL_EQ_OPERATOR: 
-    case TRI_SL_GE_OPERATOR: 
-    case TRI_SL_GT_OPERATOR: 
-    case TRI_SL_NE_OPERATOR: 
-    case TRI_SL_LE_OPERATOR: 
-    case TRI_SL_LT_OPERATOR: {
-      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
-      if (relationOperator->_fields != NULL) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields); // don't require storage anymore
-        relationOperator->_fields = NULL;
-      }
-      relationOperator->_numFields = 0;
-      break;
-    }
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
+// Note: this function will destroy the passed slOperator before it returns
 // Warning: who ever calls this function is responsible for destroying
 // TRI_skiplist_iterator_t* results
 // .............................................................................
@@ -2750,14 +2753,13 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
   }
 
   // .........................................................................
-  // we must deallocated any memory we allocated in FillLookupSLOperator
+  // we must deallocate any memory we allocated in FillLookupSLOperator
   // .........................................................................
   
-  UnFillLookupSLOperator(slOperator); 
+  TRI_FreeSLOperator(slOperator); 
   
   return result;  
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for skiplist methods
@@ -2971,7 +2973,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief describes a skiplist  index as a json object
+/// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {

@@ -102,7 +102,7 @@ UnitTests/basics_suite
 VC++
 /nbproject/private/
 UnitTests/geo_suite
-Doxygen/web
+Doxygen/web/*.html
 arangod
 arangosh
 arangoimp

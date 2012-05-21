@@ -1,0 +1,3 @@
+FOR u IN users
+  FOR l IN locations
+    RETURN { "user" : u, "location" : l }

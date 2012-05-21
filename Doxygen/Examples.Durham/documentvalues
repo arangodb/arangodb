@@ -1,3 +1,0 @@
-{ name : "Fox" }
-{ name : "Fox", age : 15 }
-{ name : "Fox", age : 15, is15: true, likes: { name : "Bird", type : "Robin" } }

@@ -41,31 +41,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineLoggingTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineLoggingGeneral
-///   <ol>
+///   <ul>
 ///    <li>@ref CommandLineLoggingLogFile "log.file"</li>
 ///    <li>@ref CommandLineLoggingLogSeverity "log.severity"</li>
 ///    <li>@ref CommandLineLoggingLogSyslog "log.syslog"</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref CommandLineLoggingHuman
-///   <ol>
+///   <ul>
 ///    <li>@ref CommandLineLoggingLogLevel "log.level"</li>
 ///    <li>@ref CommandLineLoggingLogLineNumber "log.line-number"</li>
 ///    <li>@ref CommandLineLoggingLogPrefix "log.prefix"</li>
 ///    <li>@ref CommandLineLoggingLogThread "log.thread"</li>
-///   </ol>
+///   </ul>
 ///  </li>
 ///  <li>@ref CommandLineLoggingMachine
-///   <ol>
+///   <ul>
 ///    <li>@ref CommandLineLoggingLogApplication "log.application"</li>
 ///    <li>@ref CommandLineLoggingLogFacility "log.facility"</li>
 ///    <li>@ref CommandLineLoggingLogFormat "log.format"</li>
 ///    <li>@ref CommandLineLoggingLogHostName "log.hostname"</li>
-///   </ol>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,20 +77,14 @@
 /// are used to provide statistics about executed requests and timings about
 /// computation steps.
 ///
-/// <hr>
-/// @copydoc CommandLineLoggingTOC
-/// <hr>
-///
 /// @section CommandLineLoggingGeneral General Logging Options
 //////////////////////////////////////////////////////////////
 ///
 /// @anchor CommandLineLoggingLogFile
 /// @copydetails triagens::rest::ApplicationServerImpl::logFile
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogSeverity
 /// @copydetails triagens::rest::ApplicationServerImpl::logSeverity
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogSyslog
 /// @copydetails triagens::rest::ApplicationServerImpl::logSyslog
@@ -100,34 +94,27 @@
 ///
 /// @anchor CommandLineLoggingLogLevel
 /// @copydetails triagens::rest::ApplicationServerImpl::logLevel
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogLineNumber
 /// @copydetails triagens::rest::ApplicationServerImpl::logLineNumber
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogPrefix
 /// @copydetails triagens::rest::ApplicationServerImpl::logPrefix
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogThread
 /// @copydetails triagens::rest::ApplicationServerImpl::logThreadId
-/// <hr>
 ///
 /// @section CommandLineLoggingMachine Maschine Readable Logging
 ////////////////////////////////////////////////////////////////
 ///
 /// @anchor CommandLineLoggingLogApplication
 /// @copydetails triagens::rest::ApplicationServerImpl::logApplicationName
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogFacility
 /// @copydetails triagens::rest::ApplicationServerImpl::logFacility
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogFormat
 /// @copydetails triagens::rest::ApplicationServerImpl::logFormat
-/// <hr>
 ///
 /// @anchor CommandLineLoggingLogHostName
 /// @copydetails triagens::rest::ApplicationServerImpl::logHostName
@@ -136,18 +123,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineRandomTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref CommandLineRandomGenerator "random.generator"</li>
 ///  <li>@ref CommandLineRandomGenerator "random.no-seed"</li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineRandom Command-Line Options for Random Numbers
-///
-/// <hr>
-/// @copydoc CommandLineRandomTOC
-/// <hr>
 ///
 /// @anchor CommandLineRandomGenerator
 /// @copydetails triagens::rest::ApplicationServerImpl::randomGenerator
@@ -664,8 +647,6 @@ namespace triagens {
 /// number generator using an implication of the Mersenne Twister MT19937
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
-///
-/// <hr>
 ///
 /// @CMDOPT{--random.no-seed}
 ///

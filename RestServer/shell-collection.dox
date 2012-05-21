@@ -28,51 +28,58 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellCollectionTOC
 ///
-/// <ol>
-///  <li>@ref ShellCollectionIntro</li>
-///  <li>@ref ShellCollectionResource</li>
-///  <li>@ref ShellCollectionShell
-///   @copydetails ShellCollectionCallsTOC
+/// <ul>
+///  <li>@ref ShellCollection
+///   <ul>
+///    <li>@ref ShellCollectionIntro</li>
+///    <li>@ref ShellCollectionResource</li>
+///    <li>@ref ShellCollectionShell
+///     @copydetails ShellCollectionCallsTOC
+///    </li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellCollectionCallsTOC
 ///
-/// <ol>
+/// <ul>
 ///  <li>@ref ShellCollectionCollectionMethods
-///   <ol>
-///    <li>@ref ShellCollectionDrop "collection.drop()"</li>
-///    <li>@ref ShellCollectionTruncate "collection.truncate()"</li>
-///    <li>@ref ShellCollectionProperties "collection.properties()"</li>
-///    <li>@ref ShellCollectionFigures "collection.figures()"</li>
-///    <li>@ref ShellCollectionLoad "collection.load()"</li>
-///    <li>@ref ShellCollectionUnload "collection.unload()"</li>
-///    <li>@ref ShellCollectionUnload "collection.rename(new-name)"</li>
-///   </ol>
+///   <ul>
+///    <li>@ref ShellCollectionDrop "collection.drop"</li>
+///    <li>@ref ShellCollectionTruncate "collection.truncate"</li>
+///    <li>@ref ShellCollectionProperties "collection.properties"</li>
+///    <li>@ref ShellCollectionFigures "collection.figures"</li>
+///    <li>@ref ShellCollectionLoad "collection.load"</li>
+///    <li>@ref ShellCollectionUnload "collection.unload"</li>
+///    <li>@ref ShellCollectionUnload "collection.rename"</li>
+///   </ul>
 ///  </li>
 ///  <li>@ref ShellCollectionDatabaseMethods
-///   <ol>
-///    <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
-///    <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
-///    <li>@ref ShellCollectionReadAll "db._collections()"</li>
+///   <ul>
+///    <li>@ref ShellCollectionRead "db._collection"</li>
+///    <li>@ref ShellCollectionCreate "db._create"</li>
+///    <li>@ref ShellCollectionReadAll "db._collections"</li>
 ///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
-///    <li>@ref ShellCollectionDropDb "db._drop(collection)"</li>
-///    <li>@ref ShellCollectionTruncateDb "db._truncate(collection)"</li>
-///   </ol>
+///    <li>@ref ShellCollectionDropDb "db._drop"</li>
+///    <li>@ref ShellCollectionTruncateDb "db._truncate"</li>
+///   </ul>
 ///  </li>
-/// </ol>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ShellCollection ArangoDB Interface for Collections
+/// @page ShellCollection Handling Collections
 ///
-/// This is an introduction to ArangoDB's interface for collections.
+/// This is an introduction to ArangoDB's interface for collections and how
+/// handle collections from the JavaScript shell @LIT{arangosh}. For other
+/// languages see the corresponding language API.
 ///
-/// <hr>
-/// @copydoc ShellCollectionTOC
-/// <hr>
+/// The most import call is the call to create a new collection, see
+/// @ref ShellCollectionCreate "_create".
+///
+/// @EMBEDTOC{ShellCollectionTOC}
 ///
 /// @section ShellCollectionIntro Collections
 /////////////////////////////////////////////
@@ -87,10 +94,9 @@
 ////////////////////////////////////////////////////////////
 ///
 /// All collections in ArangoDB have an unique identifier. This collection
-/// identifier identifies a collection and is managed by
-/// ArangoDB. Each collection, in addition, has a unique name. This
-/// name is managed by the user. The interface allows you to access
-/// the collections as:
+/// identifier identifies a collection and is managed by ArangoDB. Each
+/// collection, in addition, has a unique name. This name is managed by the
+/// user. The interface allows you to access the collections as:
 ///
 /// @LIT{db._collection(@FA{collection-identifier})}
 ///
@@ -98,9 +104,11 @@
 ///
 /// @LIT{db._collection(@FA{collection-name})}
 ///
-/// For example: Assume that the collection identifier is
-/// @LIT{7254820} and the name is @LIT{demo}, then the collection can
-/// be accessed as:
+/// A collection is created by a @FN{db._create} call, see @ref
+/// ShellCollectionCreate "_create".
+///
+/// For example: Assume that the collection identifier is @LIT{7254820} and the
+/// name is @LIT{demo}, then the collection can be accessed as:
 ///
 /// @LIT{db._collection("demo")}
 ///
@@ -127,54 +135,42 @@
 ///
 /// @anchor ShellCollectionDrop
 /// @copydetails JS_DropVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellCollectionTruncate
 /// @copydetails JSF_ArangoCollection_prototype_truncate
-/// <hr>
 ///
 /// @anchor ShellCollectionProperties
 /// @copydetails JS_PropertiesVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellCollectionFigures
 /// @copydetails JS_FiguresVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellCollectionLoad
 /// @copydetails JS_LoadVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellCollectionUnload
 /// @copydetails JS_UnloadVocbaseCol
-/// <hr>
 ///
 /// @anchor ShellCollectionRename
 /// @copydetails JS_RenameVocbaseCol
-/// <hr>
 ///
 /// @subsection ShellCollectionDatabaseMethods Database Methods
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
-/// <hr>
 ///
 /// @anchor ShellCollectionCreate
 /// @copydetails JS_CreateVocBase
-/// <hr>
 ///
 /// @anchor ShellCollectionReadAll
 /// @copydetails JS_CollectionsVocBase
-/// <hr>
 ///
 /// @anchor ShellCollectionReadShortCut
 /// @copydetails MapGetVocBase
-/// <hr>
 ///
 /// @anchor ShellCollectionDropDb
 /// @copydetails JSF_ArangoDatabase_prototype__drop
-/// <hr>
 ///
 /// @anchor ShellCollectionTruncateDb
 /// @copydetails JSF_ArangoDatabase_prototype__truncate

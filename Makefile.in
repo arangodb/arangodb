@@ -98,6 +98,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
 @ENABLE_MRUBY_TRUE@am__append_4 = \
+@ENABLE_MRUBY_TRUE@	MRuby/MRLoader.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.cpp
 
@@ -200,9 +201,9 @@ am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
-	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
-	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Utilities/ScriptLoader.cpp V8/JSLoader.cpp V8/V8LineEditor.cpp \
+	V8/v8-conv.cpp V8/v8-execution.cpp V8/v8-json.cpp \
+	V8/v8-shell.cpp V8/v8-utils.cpp Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
 	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
 	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
@@ -212,10 +213,11 @@ am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	Variant/VariantObject.cpp Variant/VariantString.cpp \
 	Variant/VariantUInt16.cpp Variant/VariantUInt32.cpp \
 	Variant/VariantUInt64.cpp Variant/VariantUInt8.cpp \
-	Variant/VariantVector.cpp MRuby/MRLineEditor.cpp \
-	MRuby/mr-utils.cpp
+	Variant/VariantVector.cpp MRuby/MRLoader.cpp \
+	MRuby/MRLineEditor.cpp MRuby/mr-utils.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLineEditor.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLoader.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
 am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
@@ -264,7 +266,8 @@ am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	UserManager/SessionHandler.$(OBJEXT) \
 	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
 	UserManager/UsersHandler.$(OBJEXT) \
-	Utilities/LineEditor.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	Utilities/LineEditor.$(OBJEXT) \
+	Utilities/ScriptLoader.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/V8LineEditor.$(OBJEXT) V8/v8-conv.$(OBJEXT) \
 	V8/v8-execution.$(OBJEXT) V8/v8-json.$(OBJEXT) \
 	V8/v8-shell.$(OBJEXT) V8/v8-utils.$(OBJEXT) \
@@ -352,13 +355,14 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
 	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
-	Ahuacatl/ahuacatl-codegen-js.$(OBJEXT) \
+	Ahuacatl/ahuacatl-codegen.$(OBJEXT) \
 	Ahuacatl/ahuacatl-collections.$(OBJEXT) \
 	Ahuacatl/ahuacatl-context.$(OBJEXT) \
 	Ahuacatl/ahuacatl-conversions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
+	Ahuacatl/ahuacatl-index.$(OBJEXT) \
 	Ahuacatl/ahuacatl-optimiser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
@@ -724,9 +728,9 @@ libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 	UserManager/Session.cpp UserManager/SessionHandler.cpp \
 	UserManager/User.cpp UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp V8/V8LineEditor.cpp V8/v8-conv.cpp \
-	V8/v8-execution.cpp V8/v8-json.cpp V8/v8-shell.cpp \
-	V8/v8-utils.cpp Variant/VariantArray.cpp \
+	Utilities/ScriptLoader.cpp V8/JSLoader.cpp V8/V8LineEditor.cpp \
+	V8/v8-conv.cpp V8/v8-execution.cpp V8/v8-json.cpp \
+	V8/v8-shell.cpp V8/v8-utils.cpp Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp Variant/VariantBoolean.cpp \
 	Variant/VariantDate.cpp Variant/VariantDatetime.cpp \
 	Variant/VariantDouble.cpp Variant/VariantFloat.cpp \
@@ -778,13 +782,14 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen-js.c \
+	Ahuacatl/ahuacatl-codegen.c \
         Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-index.c \
         Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
@@ -935,16 +940,17 @@ DOXYGEN = \
 WIKI = \
 	Actions \
 	ArangoErrors \
-	ArangoScript \
 	CommandLine \
-	CommandLineArango \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
 	Compiling \
 	DBAdmin \
+	DbaManual \
+	DbaManualBasics \
 	DefineAction \
 	ExamplesSetup \
+	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
 	Home \
@@ -962,7 +968,7 @@ WIKI = \
 	IndexHash \
 	IndexHashHttp \
 	IndexSkiplist \
-	Indexes \
+	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
@@ -981,10 +987,9 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
-	UserManualServer \
-	UserManualServerBasics \
-	UserManualShell \
-	UserManualShellStartStop \
+	UserManual \
+	UserManualBasics \
+        Aql \
 	jsUnity
 
 FORCE = 0
@@ -1031,7 +1036,9 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js
+               @srcdir@/js/common/tests/shell-cap-constraint.js \
+               @srcdir@/js/common/tests/shell-unique-constraint.js \
+               @srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
@@ -1041,8 +1048,17 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-bind.js \
+			@srcdir@/js/server/tests/ahuacatl-complex.js \
+			@srcdir@/js/server/tests/ahuacatl-logical.js \
+			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@srcdir@/js/server/tests/ahuacatl-relational.js \
+			@srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@srcdir@/js/server/tests/ahuacatl-parse.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
@@ -1349,6 +1365,8 @@ Utilities/$(DEPDIR)/$(am__dirstamp):
 	@: > Utilities/$(DEPDIR)/$(am__dirstamp)
 Utilities/LineEditor.$(OBJEXT): Utilities/$(am__dirstamp) \
 	Utilities/$(DEPDIR)/$(am__dirstamp)
+Utilities/ScriptLoader.$(OBJEXT): Utilities/$(am__dirstamp) \
+	Utilities/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1416,6 +1434,8 @@ MRuby/$(am__dirstamp):
 MRuby/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) MRuby/$(DEPDIR)
 	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/MRLoader.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
@@ -1708,7 +1728,7 @@ Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+Ahuacatl/ahuacatl-codegen.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-collections.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -1721,6 +1741,8 @@ Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-index.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-optimiser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -1939,13 +1961,14 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-ast-node.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT)
-	-rm -f Ahuacatl/ahuacatl-codegen-js.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-codegen.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-collections.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-context.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-conversions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-grammar.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-index.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-optimiser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
@@ -2037,6 +2060,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f MRClient/arangoirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
+	-rm -f MRuby/MRLoader.$(OBJEXT)
 	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
@@ -2108,6 +2132,7 @@ mostlyclean-compile:
 	-rm -f UserManager/UserHandler.$(OBJEXT)
 	-rm -f UserManager/UsersHandler.$(OBJEXT)
 	-rm -f Utilities/LineEditor.$(OBJEXT)
+	-rm -f Utilities/ScriptLoader.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -2169,13 +2194,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-access-optimiser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-ast-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-bind-parameter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-codegen-js.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-codegen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-collections.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-context.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-conversions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-optimiser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@
@@ -2267,6 +2293,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
@@ -2338,6 +2365,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
@@ -2937,14 +2965,17 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManualServer.tex > Doxygen/latex/UserManualServer.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual-server.tex || true
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
 
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
 .setup-directories:
 	@test -d js || mkdir js
@@ -2982,7 +3013,7 @@ unittests-brief: \
 unittests-verbose:
 	@echo "################################################################################"
 	@echo "##                                                                            ##"
-	@echo "## ArangoDB Unit-Tests                                                       ##"
+	@echo "## ArangoDB Unit-Tests                                                        ##"
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"

@@ -1,6 +1,6 @@
 /*
 ** version.h - version information
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

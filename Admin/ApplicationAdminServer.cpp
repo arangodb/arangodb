@@ -175,12 +175,12 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 /// Note that the server does not claim ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory) {
+void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
   if (_allowVersion) {
     if (!_versionData) {
       _versionData = new pair<string, string>(_name, _version);
     }
-    factory->addHandler("/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string, string> const*>, (void*) _versionData);
+    factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string, string> const*>, (void*) _versionData);
   }
 }
 

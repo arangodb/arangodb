@@ -75,7 +75,7 @@ namespace triagens {
 
       // connect to server and get version number
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/version", 0, 0, headerFields);
+      SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
 
       if (!result->isComplete()) {
         // save error message

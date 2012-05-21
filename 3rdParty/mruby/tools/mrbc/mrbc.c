@@ -4,7 +4,7 @@
 #include "mruby/cdump.h"
 #include "compile.h"
 #include <stdio.h>
-#include <memory.h>
+#include <string.h>
 #include <stdlib.h>
 
 #define RITEBIN_EXT ".mrb"
