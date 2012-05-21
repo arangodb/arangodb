@@ -4014,7 +4014,18 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', 'x'));
       assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', null, 'x'));
       assertEqual('fux', AHUACATL_STRING_CONCAT(null, 'f', null, 'u', null, 'x', null));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AHUACATL_TERNARY_OPERATOR function
+////////////////////////////////////////////////////////////////////////////////
+
+    testTernaryOperator : function () {
+      assertEqual(2, AHUACATL_TERNARY_OPERATOR(true, 2, -1));
+      assertEqual(-1, AHUACATL_TERNARY_OPERATOR(false, 1, -1));
+      assertException(function() { AHUACATL_TERNARY_OPERATOR(0, 1, 1); } );
     }
+
   };
 }
 

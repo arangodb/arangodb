@@ -1,2 +1,0 @@
-select { name : nvl(u.name, "unknown") }
-from Users u

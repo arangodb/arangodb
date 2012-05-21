@@ -1,2 +1,0 @@
-concat('a', 'b')
-concat('Mr ', concat('Foxx', concat(' goes', ' fishing')))

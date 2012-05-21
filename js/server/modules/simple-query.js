@@ -84,6 +84,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 
 function ByExample (collection, example, skip, limit) {
   var unique = true;
+  var documentId = null;
   var attributes = [];
 
   for (var k in example) {
@@ -93,7 +94,24 @@ function ByExample (collection, example, skip, limit) {
       if (example[k] == null) {
         unique = false;
       }
+      else if (k == '_id') {
+        // example contains the document id in attribute "_id"
+        documentId = example[k];
+        break;
+      }
     }
+  }
+
+  if (documentId !== null) {
+    // we can use the collection's primary index
+    var doc;
+    try {
+      // look up document by id
+      doc = collection.document(documentId);
+    }
+    catch (e) {
+    }
+    return { "total" : doc ? 1 : 0, "count" : doc ? 1 : 0, "documents" : doc ? [ doc ] : [ ] };
   }
 
   var idx = collection.lookupHashIndex.apply(collection, attributes);
@@ -110,9 +128,11 @@ function ByExample (collection, example, skip, limit) {
   }
 
   if (idx != null) {
+    // use hash index
     return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
   }
   else {
+    // use full collection scan
     return collection.BY_EXAMPLE(example, skip, limit);
   }
 }

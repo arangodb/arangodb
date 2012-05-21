@@ -355,7 +355,7 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
 	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
-	Ahuacatl/ahuacatl-codegen-js.$(OBJEXT) \
+	Ahuacatl/ahuacatl-codegen.$(OBJEXT) \
 	Ahuacatl/ahuacatl-collections.$(OBJEXT) \
 	Ahuacatl/ahuacatl-context.$(OBJEXT) \
 	Ahuacatl/ahuacatl-conversions.$(OBJEXT) \
@@ -782,7 +782,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen-js.c \
+	Ahuacatl/ahuacatl-codegen.c \
         Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \
@@ -1047,8 +1047,16 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-bind.js \
+			@srcdir@/js/server/tests/ahuacatl-complex.js \
+			@srcdir@/js/server/tests/ahuacatl-logical.js \
+			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@srcdir@/js/server/tests/ahuacatl-relational.js \
+			@srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@srcdir@/js/server/tests/ahuacatl-parse.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
@@ -1718,7 +1726,7 @@ Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+Ahuacatl/ahuacatl-codegen.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-collections.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -1951,7 +1959,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-ast-node.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT)
-	-rm -f Ahuacatl/ahuacatl-codegen-js.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-codegen.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-collections.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-context.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-conversions.$(OBJEXT)
@@ -2184,7 +2192,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-access-optimiser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-ast-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-bind-parameter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-codegen-js.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-codegen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-collections.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-context.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-conversions.Po@am__quote@

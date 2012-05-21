@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H
-#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_JS_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_H
+#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
@@ -37,6 +37,7 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
+#include "VocBase/simple-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,9 +94,10 @@ typedef struct TRI_aql_codegen_scope_s {
   TRI_aql_codegen_register_t _ownRegister;
   TRI_aql_codegen_register_t _resultRegister;
   TRI_associative_pointer_t _variables; // list of variables in scope
-  const char* _variableName; // name of for variable TODO: check if this is needed
-  const char* _name; // for debugging purposes only
   char* _prefix; // prefix for variable names, used in FUNCTION scopes only
+#ifdef TRI_DEBUG_AQL
+  const char* _name; // for debugging purposes only
+#endif
 }
 TRI_aql_codegen_scope_t;
 
@@ -104,6 +106,7 @@ TRI_aql_codegen_scope_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_js_s {  
+  TRI_aql_context_t* _context;
   TRI_string_buffer_t _buffer;
   TRI_string_buffer_t _functionBuffer;
   TRI_vector_pointer_t _scopes;
@@ -131,7 +134,7 @@ TRI_aql_codegen_js_t;
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (const void* const);
+char* TRI_GenerateCodeAql (TRI_aql_context_t* const, const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

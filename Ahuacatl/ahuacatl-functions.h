@@ -33,6 +33,9 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/strings.h>
 
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,10 +52,11 @@ extern "C" {
 typedef struct TRI_aql_function_s {
   char* _externalName;
   char* _internalName;
-  int _minArgs;
-  int _maxArgs;
   bool _isDeterministic;
   bool _isGroup;
+  const char* _argPattern;
+  size_t _minArgs;
+  size_t _maxArgs;
 }
 TRI_aql_function_t;
 
@@ -76,10 +80,11 @@ TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t*,
                                         const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a function name is valid
+/// @brief return a function, looked up by its external name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidFunctionAql (TRI_associative_pointer_t*, const char* const);
+TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*,
+                                                      const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get internal function name for an external one
@@ -96,8 +101,15 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t*,
                               const char* const, 
                               const bool,
                               const bool,
-                              const int, 
-                              const int);
+                              const char* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the arguments passed to a function
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const,
+                                  const TRI_aql_function_t* const,
+                                  const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

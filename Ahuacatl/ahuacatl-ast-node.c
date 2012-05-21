@@ -205,6 +205,14 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return true if a node is a list node
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
+  return (node->_type == AQL_NODE_LIST);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -399,14 +407,15 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   if (!name) {
     ABORT_OOM
   }
+
+  if (strlen(name) == 0) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+    return NULL;
+  }
   
   TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  // duplicates are not a problem here, we simply ignore them
-  TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
-  
-  if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+  if (!TRI_AddCollectionAql(context, name)) {
     return NULL;
   }
 
@@ -941,21 +950,12 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
   {
     TRI_aql_function_t* function;
     TRI_associative_pointer_t* functions;
-    char* upperName;
-    size_t actualCount;
 
     assert(context->_vocbase);
     functions = context->_vocbase->_functions;
     assert(functions);
 
-    // normalize the name by upper-casing it
-    upperName = TRI_UpperAsciiString(name);
-    if (!upperName) {
-      ABORT_OOM
-    }
-
-    function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
+    function = TRI_GetByExternalNameFunctionAql(functions, name);
 
     if (!function) {
       // function name is unknown
@@ -963,11 +963,8 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
       return NULL;
     }
 
-    // validate number of function call arguments
-    assert(parameters->_type == AQL_NODE_LIST);
-    actualCount = parameters->_members._length;
-    if (actualCount < function->_minArgs || actualCount > function->_maxArgs) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, name);
+    // validate function call arguments
+    if (!TRI_ValidateArgsFunctionAql(context, function, parameters)) {
       return NULL;
     }
 
@@ -1028,14 +1025,27 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
     return false;
   }
 
-  if (node->_type == AQL_NODE_LIST || node->_type == AQL_NODE_ARRAY) {
+  if (node->_type == AQL_NODE_LIST) {
     size_t i;
     size_t n = node->_members._length;
 
     for (i = 0; i < n; ++i) {
-      TRI_aql_node_t* member = (TRI_aql_node_t*) node->_members._buffer[i];
+      TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
 
       if (!TRI_IsConstantValueNodeAql(member)) {
+        return false;
+      }
+    }
+  }
+  else if (node->_type == AQL_NODE_ARRAY) {
+    size_t i;
+    size_t n = node->_members._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
+      TRI_aql_node_t* value = TRI_AQL_NODE_MEMBER(member, 0);
+
+      if (!TRI_IsConstantValueNodeAql(value)) {
         return false;
       }
     }

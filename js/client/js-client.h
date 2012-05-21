@@ -2142,7 +2142,7 @@ static string JS_client_client =
   "'  _database                      database object                    ' + \"\\n\" +\n"
   "'Example:                                                            ' + \"\\n\" +\n"
   "' > st = db._createStatement({ \"query\" : \"for c in coll filter       ' + \"\\n\" +\n"
-  "'                              c.x = @a@ && c.y = @b@ return c\" });  ' + \"\\n\" +\n"
+  "'                              c.x == @a && c.y == @b return c\" });  ' + \"\\n\" +\n"
   "' > st.bind(\"a\", \"hello\");                                           ' + \"\\n\" +\n"
   "' > st.bind(\"b\", \"world\");                                           ' + \"\\n\" +\n"
   "' > c = st.execute();                                                ' + \"\\n\" +\n"

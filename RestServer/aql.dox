@@ -33,6 +33,8 @@
 ///   <ul>
 ///    <li>@ref AqlPurpose
 ///    </li>
+///    <li>@ref AqlQueryResults
+///    </li>
 ///    <li>@ref AqlBasics
 ///     <ul>
 ///      <li>@ref AqlWhitespace</li>
@@ -99,6 +101,70 @@
 /// avoid any confusion between the two languages, the keywords in AQL have 
 /// been chosen to be different from the keywords used in SQL.
 ///
+/// AQL currently supports reading data only. That means you can use the language
+/// to issue read-requests on your database, but modifying data via AQL is
+/// currently not supported.
+///
+/// @section AqlQueryResults Query results
+///
+/// @subsection AqlQueryResultsSet Result sets
+///
+/// The result of an AQL query is a list of values. The individual values in the
+/// result list may or may not have a homogenuous structure, depending on what
+/// is actually queried.
+///
+/// For example, when returning data from a collection with inhomogenuous documents
+/// (the individual documents in the collection have different attribute names) 
+/// without modification, the result values will as well have an inhomogenuous
+/// structure. Each result value itself is a document:
+///
+/// @EXAMPLE{aqlqueryresultinhomogenuous,inhomogenuous result set}
+///
+/// However, if a fixed set of attributes from the collection is queried, then the 
+/// query result values will have a homogenuous structure. Each result value is
+/// still a document:
+///
+/// @EXAMPLE{aqlqueryresulthomogenuous,homogenuous result set}
+///
+/// It is also possible to query just scalar values. In this case, the result set
+/// is a list of scalars, and each result value is a scalar value:
+///
+/// @EXAMPLE{aqlqueryresultscalar,result set with scalars}
+///
+/// If a query does not produce any results because no matching data can be
+/// found, it will produce an empty result list:
+///
+/// @EXAMPLE{aqlqueryresultempty,empty result set}
+///
+/// @subsection AqlQueryResultsErrors Errors
+///
+/// Issuing an invalid query to the server will result in a parse error if the
+/// query is syntactically invalid. ArangoDB will detect such errors during
+/// query inspection and abort further processing. Instead, the error number and
+/// an error message are returned so that the errors can be fixed.
+///
+/// If a query passes the parsing stage, all collections referenced in the query
+/// will be opened. If any of the referenced collections is not present, query
+/// execution will again be aborted and an appropriate error message will be 
+/// returned. 
+///
+/// Executing a query might also produce run-time errors under some circumstances
+/// that cannot be predicted from inspecting the query text alone. This is because
+/// queries might use data from collections that might also be inhomogenuous.
+/// Some examples that will cause run-time errors are:
+/// - division by zero: will be triggered when an attempt is made to use the value 0
+///   as the divisor in an arithmetic division or modulus operation
+/// - invalid operands for arithmetic operations: will be triggered when an attempt
+///   is made to use any non-numeric values as operands in arithmetic operations. 
+///   This includes unary (unary minus, unary plus) and binary operations (plus,
+///   minus, multiplication, division, and modulus)
+/// - invalid operands for logical operations: will be triggered when an attempt is
+///   made to use any non-boolean values as operand(s) in logical operations. This
+///   includes unary (logical not/negation), binary (logical and, logical or), and
+///   the ternary operators.
+///
+/// Please refer to the @ref ArangoErrors page for a list of error codes and meanings.
+/// 
 /// @section AqlBasics Language basics
 ///
 /// @subsection AqlWhitespace Whitespace
@@ -293,6 +359,12 @@
 /// 
 /// @verbinclude aqllistvalues
 ///
+/// Individual list values can later be accesses by their positions using the
+/// @LIT{[]} accessor. The position of the accessed element must be a numeric
+/// value. Positions start at 0.
+///
+/// @verbinclude aqllistaccess
+///
 /// @subsubsection AqlCompoundDocuments Documents
 ///
 /// The other supported compound type is the document type. Documents are a 
@@ -318,6 +390,12 @@
 ///
 /// @verbinclude aqlnamedattributes
 ///
+/// Individual document attributes can later be accesses by their names using the
+/// @LIT{.} accessor. If a non-existing attribute is accessed, the result is
+/// @LIT{null}.
+///
+/// @verbinclude aqldocumentaccess
+///
 /// @subsection AqlParameter Bind parameters
 ///
 /// AQL supports the usage of bind parameters, thus allowing to separate the
@@ -331,10 +409,24 @@
 /// Bind parameters can be used everywhere in a query where literals can be used.
 ///
 /// The syntax for bind parameters is @LIT{\@name} where @LIT{name} is the actual
-/// parameter name. The bind parameter values need to be passed when the query
-/// is executed, but not as part of the query text but in a separate data structure.
+/// parameter name. The bind parameter values need to be passed along with the query
+/// when it is executed, but not as part of the query text itself. Please refer
+/// to the @ref HttpCursorHttp manual section for information about how to pass 
+/// the bind parameter values to the server.
 ///
 /// @EXAMPLE{aqlbind,using a bind variable}
+///
+/// Bind parameter names must start with any of the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case) or a digit (@LIT{0} to @LIT{9}), and can be 
+/// followed by any letter, digit, or the underscore symbol. 
+///
+/// A special type of bind parameter exists for injecting collection names. This
+/// type of bind parameter has a name prefixed with an additional @LIT{\@} symbol
+/// (thus when using the bind parameter in a query, two @LIT{\@} symbols must be
+/// used.
+///
+/// @EXAMPLE{aqlbindcollection,using a collection bind variable}
+/// 
 ///
 /// @subsection AqlTypeOrder Type and value order
 ///
@@ -472,6 +564,10 @@
 /// can be evaluated and returns @LIT{true} if the comparison evaluates to true,
 /// and @LIT{false} otherwise.
 ///
+/// Some examples for comparison operations in AQL:
+///
+/// @verbinclude aqlcomparison
+///
 /// @subsubsection AqlOperatorsLogical Logical operators
 ///
 /// Logical operators combine two boolean operands in a logical operation and 
@@ -482,6 +578,8 @@
 /// - @LIT{&&} logical and operator
 /// - @LIT{||} logical or operator
 /// - @LIT{!} logical not/negation operator
+///
+/// Some examples for logical operations in AQL:
 ///
 /// @verbinclude aqllogical
 ///
@@ -517,6 +615,8 @@
 ///
 /// The unary plus and unary minus are supported as well.
 ///
+/// Some example arithmetic operations:
+///
 /// @verbinclude aqlarithmetic
 ///
 /// @subsubsection AQLOperatorTernary Ternary operator
@@ -549,7 +649,7 @@
 /// - @LIT{.} member access
 /// - @LIT{[]} indexed value access
 ///
-/// Parentheses (@LIT{(} and @LIT{)}) can be used to enforce a different
+/// The parentheses @LIT{(} and @LIT{)} can be used to enforce a different operator
 /// evaluation order.
 ///
 /// @subsection AqlFunctions Functions
@@ -844,17 +944,22 @@
 /// is a query part that can introduce its own local variables without affecting
 /// variables and values in its outer scope(s).
 ///
+/// It is required that subqueries be put inside parentheses @LIT{(} and @LIT{)} to
+/// explicitly mark their start and end points:
+///
 /// @verbinclude aqlsubquery
+///
+/// Subqueries might also include other subqueries themselves.
 ///
 /// @subsection AqlExpansion Variable expansion
 ///
 /// In order to access a named attribute from all elements in a list easily, 
-/// AQL offers the shortcut operator @LIT{[*]} for variable expansion.
+/// AQL offers the shortcut operator @LIT{[\*]} for variable expansion.
 ///
-/// Using the @LIT{[*]} operator with a variable will iterate over all elements
+/// Using the @LIT{[\*]} operator with a variable will iterate over all elements
 /// in the variable thus allowing to access a particular attribute of each element.
 /// It is required that the expanded variable is a list.
-/// The result of the @LIT{[*]} operator is again a list.
+/// The result of the @LIT{[\*]} operator is again a list.
 /// 
 /// @verbinclude aqlexpansion
 ///

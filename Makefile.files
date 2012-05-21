@@ -160,7 +160,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-access-optimiser.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen-js.c \
+	Ahuacatl/ahuacatl-codegen.c \
         Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-conversions.c \

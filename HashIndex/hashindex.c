@@ -37,6 +37,21 @@
 
 #include "hashindex.h"
 
+// -----------------------------------------------------------------------------
+//                                                             private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a hash index results list
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeResults (TRI_hash_index_elements_t* list) {
+  if (list->_elements) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list->_elements);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+}
 
 
 // -----------------------------------------------------------------------------
@@ -66,6 +81,13 @@ void HashIndex_free(HashIndex* hashIndex) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set allocated by HashIndex_find
+////////////////////////////////////////////////////////////////////////////////
+
+void HashIndex_freeResult(TRI_hash_index_elements_t* const list) {
+  FreeResults(list);
+}
 
 
 
@@ -240,6 +262,13 @@ void MultiHashIndex_free(HashIndex* hashIndex) {
   HashIndex_free(hashIndex);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result set allocated by MultiHashIndex_find
+////////////////////////////////////////////////////////////////////////////////
+
+void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const list) {
+  FreeResults(list);
+}
 
 // -----------------------------------------------------------------------------
 // constructors public functions
@@ -292,7 +321,6 @@ int MultiHashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   return -1;
 }
 
-
 // ...............................................................................
 // Locates an entry within the associative array
 // ...............................................................................
@@ -332,6 +360,7 @@ TRI_hash_index_elements_t* MultiHashIndex_find(HashIndex* hashIndex, HashIndexEl
     }  
   }
   TRI_DestroyVectorPointer(&result);
+
   return results;
 }
 
@@ -366,3 +395,4 @@ int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement,
   assert(false);
   return TRI_ERROR_INTERNAL;
 }
+

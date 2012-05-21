@@ -40,8 +40,46 @@
 /// @brief shorthand to register a query function and process the result
 ////////////////////////////////////////////////////////////////////////////////
 
-#define REGISTER_FUNCTION(internalName, externalName, deterministic, group, minArgs, maxArgs) \
-  result &= TRI_RegisterFunctionAql (functions, internalName, "AHUACATL_" externalName, deterministic, group, minArgs, maxArgs);
+#define REGISTER_FUNCTION(internalName, externalName, deterministic, group, argPattern) \
+  result &= TRI_RegisterFunctionAql(functions, internalName, "AHUACATL_" externalName, deterministic, group, argPattern);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shorthand to check an argument and return an error if it is invalid
+////////////////////////////////////////////////////////////////////////////////
+
+#define ARG_CHECK                                                                                                   \
+  if (!CheckArgumentType(parameter, &allowed)) {                                                                    \
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, function->_externalName);      \
+    return false;                                                                                                   \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameter type holder
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct param_s {
+  bool _null       : 1;
+  bool _bool       : 1;
+  bool _number     : 1;
+  bool _string     : 1;
+  bool _list       : 1;
+  bool _array      : 1;
+  bool _collection : 1;
+} 
+param_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -55,6 +93,195 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a param_t structure with all bits set to 0
+////////////////////////////////////////////////////////////////////////////////
+
+static param_t InitParam (void) {
+  param_t param;
+
+  param._null = false;
+  param._bool = false;
+  param._number = false;
+  param._string = false;
+  param._list = false;
+  param._array = false;
+  param._collection = false;
+
+  return param;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check the type of an argument for a function call
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckArgumentType (TRI_aql_node_t* parameter, 
+                               const param_t* const allowed) {
+  param_t found = InitParam(); 
+
+  if (parameter->_type == AQL_NODE_PARAMETER) {
+    // node is a bind parameter
+    char* name = TRI_AQL_NODE_STRING(parameter);
+
+    if (*name == '@') {
+      // collection bind parameter. this is an error
+      found._collection = true;
+    }
+    else {
+      // regular bind parameter
+      found._null = true;
+      found._bool = true;
+      found._number = true;
+      found._string = true;
+      found._list = true;
+      found._array = true;
+    }
+  }
+  else if (parameter->_type == AQL_NODE_VALUE) {
+    switch (parameter->_value._type) {
+      case AQL_TYPE_FAIL:
+      case AQL_TYPE_NULL:
+        found._null = true;
+        break;
+      case AQL_TYPE_BOOL:
+        found._bool = true;
+        break;
+      case AQL_TYPE_INT:
+      case AQL_TYPE_DOUBLE:
+        found._number = true;
+        break;
+      case AQL_TYPE_STRING:
+        found._string = true;
+        break;
+    }
+  }
+  else if (parameter->_type == AQL_NODE_LIST) {
+    // actual parameter is a list
+    found._list = true;
+  }
+  else if (parameter->_type == AQL_NODE_ARRAY) {
+    // actual parameter is an array
+    found._array = true;
+  }
+  else if (parameter->_type == AQL_NODE_COLLECTION) {
+    // actual parameter is a collection
+    found._collection = true;
+  }
+  else {
+    // we cannot yet determine the type of the parameter
+    // this is the case if the argument is an expression, a function call etc.
+
+    if (!allowed->_collection) {
+      // if we do require anything else but collection, we don't know the
+      // type and must exit here
+      return true;
+    }
+
+    // if we require a collection, it must be passed in a form that we know
+    // the collection name at parse time. otherwise, an error will be raised
+  }
+
+
+  if (allowed->_null && found._null) {
+    // argument is a null value, and this is allowed
+    return true;
+  }
+
+  if (allowed->_bool && found._bool) {
+    // argument is a bool value, and this is allowed
+    return true;
+  }
+  
+  if (allowed->_number && found._number) {
+    // argument is a numeric value, and this is allowed
+    return true;
+  }
+  
+  if (allowed->_string && found._string) {
+    // argument is a string value, and this is allowed
+    return true;
+  }
+  
+  if (allowed->_list && found._list) {
+    // argument is a list, and this is allowed
+    return true;
+  }
+
+  if (allowed->_array && found._array) {
+    // argument is an array, and this is allowed
+    return true;
+  }
+
+  if (allowed->_collection && found._collection) {
+    // argument is a collection, and this is allowed
+    return true;
+  }
+
+  return false;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine minimum and maximum argument number for argument pattern
+////////////////////////////////////////////////////////////////////////////////
+
+static void SetArgumentCount (TRI_aql_function_t* const function) {
+  const char* pattern;
+  char c;
+  size_t minArgs = 0;
+  size_t maxArgs = 0;
+  bool inOptional = false;
+  bool foundArg = false;
+  bool parse = true;
+
+  assert(function);
+ 
+  pattern = function->_argPattern;
+  while (parse) {
+    c = *pattern++;
+
+    switch (c) {
+      case '\0':
+        if (foundArg) {
+          if (!inOptional) {
+            ++minArgs;
+          }
+          ++maxArgs;
+        }
+        parse = false;
+        break;
+      case '|':
+        assert(!inOptional);
+        if (foundArg) {
+          ++minArgs;
+          ++maxArgs;
+        }
+        inOptional = true;
+        foundArg = false;
+        break;
+      case ',':
+        assert(foundArg);
+        if (!inOptional) {
+          ++minArgs;
+        }
+        ++maxArgs;
+        foundArg = false;
+        break;
+      case '+':
+        assert(inOptional);
+        maxArgs = 256;
+        parse = false;
+        break;
+      default:
+        foundArg = true;
+    }
+  }
+
+  function->_minArgs = minArgs;
+  function->_maxArgs = maxArgs;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function used to hash function struct
@@ -113,44 +340,60 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
                              EqualName, 
                              NULL); 
 
-  // cast functions
-  REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, false, 1, 1);
-  REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, false, 1, 1);
-  REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, false, 1, 1);
-  REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, 1, 1);
+  // . = argument of any type (except collection)
+  // c = collection
+  // b = bool
+  // n = number
+  // s = string
+  // p = primitive
+  // l = list
+  // a = array
 
-  // string concat
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, 2, 256); 
-  REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, 3, 256); 
-  REGISTER_FUNCTION("CHARLENGTH", "STRING_LENGTH", true, false, 1, 1); 
-  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, 1, 1); 
-  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, 1, 1); 
-  REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, 2, 3);
+  // cast functions
+  REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, false, ".");
+  REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, false, ".");
+  REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, false, ".");
+  REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, ".");
+
+  // string functions
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "s,s|+"); 
+  REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,s,s|+"); 
+  REGISTER_FUNCTION("CHARLENGTH", "STRING_LENGTH", true, false, "s"); 
+  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s"); 
+  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
+  REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n");
 
   // type check functions
-  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, 1, 1);
-  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, 1, 1);
-  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, 1, 1);
-  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, 1, 1);
-  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, 1, 1);
-  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, 1, 1);
+  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, ".");
+  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, ".");
+  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, ".");
+  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, ".");
+  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, ".");
+  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, ".");
 
   // numeric functions 
-  REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, 1, 1);
-  REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, 1, 1);
-  REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, 1, 1);
-  REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, 1, 1);
-  REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, 0, 0);
-  
-  // string functions
+  REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n");
+  REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, "n");
+  REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, "n");
+  REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, "n");
+  REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, "");
+
+  // geo functions
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "c,n,n,n|s");
+  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "c,n,n,n|s");
   
   // misc functions
-  REGISTER_FUNCTION("MERGE", "MERGE", true, false, 2, 256);
-  REGISTER_FUNCTION("UNION", "UNION", true, false, 2, 256);
-  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, 1, 1);
-  REGISTER_FUNCTION("MIN", "MIN", true, true, 1, 256);
-  REGISTER_FUNCTION("MAX", "MAX", true, true, 1, 256);
-  REGISTER_FUNCTION("SUM", "SUM", true, true, 1, 256);
+  REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
+  REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
+
+  REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
+
+  // list functions
+  REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+");
+  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "l");
+  REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
+  REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
+  REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
@@ -197,16 +440,27 @@ TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t* functions,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a function name is valid
+/// @brief return a function, looked up by its external name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidFunctionAql (TRI_associative_pointer_t* functions,
-                             const char* const externalName) {
-  if (TRI_LookupByKeyAssociativePointer(functions, externalName)) {
-    return true;
+TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t* functions,
+                                                      const char* const externalName) {
+  TRI_aql_function_t* function;
+  char* upperName;
+
+  assert(functions);
+  assert(externalName);
+
+  // normalize the name by upper-casing it
+  upperName = TRI_UpperAsciiString(externalName);
+  if (!upperName) {
+    return NULL;
   }
 
-  return false;
+  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
+  TRI_Free(TRI_CORE_MEM_ZONE, upperName);
+
+  return function;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,8 +480,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
                               const char* const internalName, 
                               const bool isDeterministic,
                               const bool isGroup,
-                              const int minArgs, 
-                              const int maxArgs) {
+                              const char* const argPattern) {
   TRI_aql_function_t* function;
   
   function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t), false);
@@ -250,17 +503,143 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     return false;
   }
 
-  function->_isDeterministic = isDeterministic; 
-  function->_isGroup = isGroup; 
-  function->_minArgs = minArgs; 
-  function->_maxArgs = maxArgs; 
-
   if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
     // function already registered
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
+  }
+
+  function->_isDeterministic = isDeterministic; 
+  function->_isGroup = isGroup; 
+  function->_argPattern = argPattern;
+
+  // set minArgs and maxArgs
+  SetArgumentCount(function);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the arguments passed to a function
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
+                                  const TRI_aql_function_t* const function,
+                                  const TRI_aql_node_t* const parameters) {
+  param_t allowed;
+  const char* pattern;
+  size_t i, n;
+  bool eof = false;
+  bool parse = true;
+  bool repeat = false;
+  bool foundArg = false;
+
+  assert(function);
+  assert(parameters);
+  assert(parameters->_type == AQL_NODE_LIST);
+
+  n = parameters->_members._length;
+
+  // validate number of arguments
+  if (n < function->_minArgs || n > function->_maxArgs) {
+    // invalid number of arguments
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, function->_externalName);
+    return false;
+  }
+
+  pattern = function->_argPattern;
+
+  // validate argument types
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* parameter = (TRI_aql_node_t*) TRI_AQL_NODE_MEMBER(parameters, i);
+
+    if (repeat) {
+      // last argument is repeated
+      ARG_CHECK
+    }
+    else {
+      // last argument is not repeated
+      allowed = InitParam();
+
+      foundArg = false;
+
+      while (parse) {
+        char c = *pattern++;
+        
+        assert(!eof);
+
+        switch (c) {
+          case '\0':
+            parse = false;
+            eof = true;
+            if (foundArg) {
+              ARG_CHECK
+            }
+            break;
+          case '|': // optional marker
+            if (foundArg) {
+              parse = false;
+              ARG_CHECK
+              break;
+            }
+            break;
+          case ',': // next argument
+            assert(foundArg);
+            foundArg = false;
+            parse = false;
+            ARG_CHECK
+            break;
+          case '+': // repeat last argument
+            assert(foundArg);
+            repeat = true;
+            parse = false;
+            ARG_CHECK
+            break;
+          case '.': // any type except collections
+            allowed._list = true;
+            allowed._array = true;
+            // break intentionally missing!!
+          case 'p': // primitive types
+            allowed._null = true;
+            allowed._bool = true;
+            allowed._number = true;
+            allowed._string = true;
+            foundArg = true;
+            break;
+          case 'z': // null
+            allowed._null = true;
+            foundArg = true;
+            break;
+          case 'b': // bool
+            allowed._bool = true;
+            foundArg = true;
+            break;
+          case 'n': // number
+            allowed._number = true;
+            foundArg = true;
+            break;
+          case 's': // string
+            allowed._string = true;
+            foundArg = true;
+            break;
+          case 'l': // list
+            allowed._list = true;
+            foundArg = true;
+            break;
+          case 'a': // array
+            allowed._array = true;
+            foundArg = true;
+            break;
+          case 'c': // collection
+            allowed._collection = true;
+            foundArg = true;
+            break;
+        }
+      }
+    }
+
   }
 
   return true;
