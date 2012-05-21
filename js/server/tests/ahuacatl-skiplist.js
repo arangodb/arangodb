@@ -203,7 +203,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with equality 
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqMultiAll : function () {
@@ -218,7 +218,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqGt1 : function () {
@@ -228,7 +228,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqGt2 : function () {
@@ -238,7 +238,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqLt1 : function () {
@@ -248,7 +248,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqLt2 : function () {
@@ -258,7 +258,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqLe1 : function () {
@@ -268,7 +268,7 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test two skiplist index fields with different operators
+/// @brief test multiple skiplist fields with multiple operators
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqLe2 : function () {
@@ -276,6 +276,227 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 5 && v.b <= 4 SORT v.b RETURN [ v.a, v.b ]");
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtlt : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a < 3 && v.b < 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeLe : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 2, 1 ], [ 2, 2 ], [ 2, 3 ], [ 3, 1 ], [ 3, 2 ], [ 3, 3 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a <= 3 && v.b <= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtLe : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 2, 1 ], [ 2, 2 ], [ 2, 3 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a < 3 && v.b <= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeLt : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ], [ 3, 1 ], [ 3, 2 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a <= 3 && v.b < 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtEq : function () {
+      var expected = [ [ 1, 4 ], [ 2, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a < 3 && v.b == 4 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeEq : function () {
+      var expected = [ [ 1, 4 ], [ 2, 4 ], [ 3, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a <= 3 && v.b == 4 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtGt : function () {
+      var expected = [ [ 1, 4 ], [ 1, 5 ], [ 2, 4 ], [ 2, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a < 3 && v.b > 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeGe : function () {
+      var expected = [ [ 1, 3 ], [ 1, 4 ], [ 1, 5 ], [ 2, 3 ], [ 2, 4 ], [ 2, 5 ], [ 3, 3 ], [ 3, 4 ], [ 3, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a <= 3 && v.b >= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtGe : function () {
+      var expected = [ [ 1, 3 ], [ 1, 4 ], [ 1, 5 ], [ 2, 3 ], [ 2, 4 ], [ 2, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a < 3 && v.b >= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeGt : function () {
+      var expected = [ [ 1, 4 ], [ 1, 5 ], [ 2, 4 ], [ 2, 5 ], [ 3, 4 ], [ 3, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a <= 3 && v.b > 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGtlt : function () {
+      var expected = [ [ 4, 1 ], [ 4, 2 ], [ 5, 1 ], [ 5, 2 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 3 && v.b < 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeLe : function () {
+      var expected = [ [ 3, 1 ], [ 3, 2 ], [ 3, 3 ], [ 4, 1 ], [ 4, 2 ], [ 4, 3 ], [ 5, 1 ], [ 5, 2 ], [ 5, 3 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 3 && v.b <= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGtLe : function () {
+      var expected = [ [ 4, 1 ], [ 4, 2 ], [ 4, 3 ], [ 5, 1 ], [ 5, 2 ], [ 5, 3 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 3 && v.b <= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeLt : function () {
+      var expected = [ [ 3, 1 ], [ 3, 2 ], [ 4, 1 ], [ 4, 2 ], [ 5, 1 ], [ 5, 2 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 3 && v.b < 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGtEq : function () {
+      var expected = [ [ 4, 4 ], [ 5, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 3 && v.b == 4 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeEq : function () {
+      var expected = [ [ 3, 4 ], [ 4, 4 ], [ 5, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 3 && v.b == 4 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGtGt : function () {
+      var expected = [ [ 4, 4 ], [ 4, 5 ], [ 5, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 3 && v.b > 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeGe : function () {
+      var expected = [ [ 3, 3 ], [ 3, 4 ], [ 3, 5 ], [ 4, 3 ], [ 4, 4 ], [ 4, 5 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 3 && v.b >= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGtGe : function () {
+      var expected = [ [ 4, 3 ], [ 4, 4 ], [ 4, 5 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 3 && v.b >= 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeGt : function () {
+      var expected = [ [ 3, 4 ], [ 3, 5 ], [ 4, 4 ], [ 4, 5 ], [ 5, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 3 && v.b > 3 SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
   };
 }
 
