@@ -51,6 +51,7 @@
 /// <ul>
 ///   <li>@ref UserManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref DbaManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/dba-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/imp-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
