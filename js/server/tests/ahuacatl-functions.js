@@ -118,6 +118,223 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirst1 : function () {
+      var expected = [ { "the fox" : "jumped" } ];
+      var actual = getQueryResults("RETURN FIRST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirst2 : function () {
+      var expected = [ "over" ];
+      var actual = getQueryResults("RETURN FIRST([ \"over\", [ \"the dog\" ] ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirst3 : function () {
+      var expected = [ [ "the dog" ] ];
+      var actual = getQueryResults("RETURN FIRST([ [ \"the dog\" ] ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirst4 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST([ ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST([ ], [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST(true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST(4)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN FIRST({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testlast1 : function () {
+      var expected = [ [ "the dog" ] ];
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testlast2 : function () {
+      var expected = [ "over" ];
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\" ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testlast3 : function () {
+      var expected = [ { "the fox" : "jumped" } ];
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" } ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testlast4 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN LAST([ ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testlastInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST([ ], [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST(true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST(4)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LAST({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverse1 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN REVERSE([ ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverse2 : function () {
+      var expected = [ [ "fox" ] ];
+      var actual = getQueryResults("RETURN REVERSE([ \"fox\" ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverse3 : function () {
+      var expected = [ [ false, [ "fox", "jumped" ], { "quick" : "brown" }, "the" ] ];
+      var actual = getQueryResults("RETURN REVERSE([ \"the\", { \"quick\" : \"brown\" }, [ \"fox\", \"jumped\" ], false ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE([ ], [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE(true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE(4)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN REVERSE({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnique1 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN UNIQUE([ ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnique2 : function () {
+      var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, "fox", "FOX", "Fox", "FoX", [0], [1], { "the fox" : "jumped" } ] ];
+      var actual = getQueryResults("RETURN UNIQUE([ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, \"fox\", \"FOX\", \"Fox\", \"FoX\", [ 0 ], [ 1 ], { \"the fox\" : \"jumped\" } ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnique3 : function () {
+      var expected = [ [ 1, 2, 3, 4, 5, 7, 9, 42, -1, -33 ] ];
+      var actual = getQueryResults("RETURN UNIQUE([ 1, -1, 1, 2, 3, -1, 2, 3, 4, 5, 1, 3, 9, 2, -1, 9, -33, 42, 7 ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnique4 : function () {
+      var expected = [ [ [1, 2, 3], [3, 2, 1], [2, 1, 3], [2, 3, 1], [1, 3, 2], [3, 1, 2] ] ];
+      var actual = getQueryResults("RETURN UNIQUE([ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 2, 1, 3 ], [ 2, 3, 1 ], [ 1, 2, 3 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 3, 1, 2 ], [ 2 , 1, 3 ] ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnique5 : function () {
+      var expected = [ [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" }]]
+
+      var actual = getQueryResults("RETURN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniqueInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE([ ], [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE(true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE(4)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNIQUE({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,6 +360,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLengthInvalid : function () {
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LENGTH()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LENGTH([ ], [ ])"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LENGTH(null)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LENGTH(true)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN LENGTH(4)"); } ));
@@ -709,7 +927,7 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
+/// @brief test max function
 ////////////////////////////////////////////////////////////////////////////////
     
     testMax3 : function () {
@@ -719,7 +937,7 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
+/// @brief test max function
 ////////////////////////////////////////////////////////////////////////////////
 
     testMaxInvalid : function () {
@@ -730,6 +948,46 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN MAX(3)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN MAX(\"yes\")"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN MAX({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHas1 : function () {
+      var expected = [ true, true, true, false, true ]; 
+      var actual = getQueryResults("FOR u IN [ { \"the fox\" : true }, { \"the fox\" : false }, { \"the fox\" : null }, { \"the FOX\" : true }, { \"the FOX\" : true, \"the fox\" : false } ] return HAS(u, \"the fox\")", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHas2 : function () {
+      var expected = [ false, false, false ];
+      var actual = getQueryResults("FOR u IN [ { \"the foxx\" : { \"the fox\" : false } }, { \" the fox\" : false }, null ] return HAS(u, \"the fox\")", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+
+    testHasInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ })"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, \"fox\", true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS(false, \"fox\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS(3, \"fox\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS(\"yes\", \"fox\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS([ ], \"fox\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, false)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, true)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, 1)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN HAS({ }, { })"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
