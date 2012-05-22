@@ -445,6 +445,20 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get names of all collections
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_COLLECTIONS () {
+  var collections = internal.db._collections();
+  var result = [ ];
+
+  for (var i = 0; i < collections.length; ++i) {
+    result.push({ "_id" : collections[i]._id, "name" : collections[i].name() });
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
