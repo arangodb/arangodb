@@ -3940,6 +3940,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle
+///
+/// @note this will lock (aka "use") the collection. You must release the
+/// collection yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
@@ -3980,6 +3983,12 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a revision identifier in _rev"));
     }
+  }
+
+  // give up
+  else {
+    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD, 
+                                             "<document-handle> must be a document-handle"));
   }
 
   // lookup the collection
