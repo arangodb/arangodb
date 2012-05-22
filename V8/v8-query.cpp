@@ -1096,6 +1096,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     }
   }
 
+  TRI_DestroyVector(&filtered);
+
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................

@@ -92,7 +92,7 @@ static void TRI_DestroySkipListNode (TRI_skiplist_base_t* skiplist, TRI_skiplist
 /// @brief Grow the node at the height specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
+static bool GrowNodeHeight (TRI_skiplist_node_t* node, uint32_t newHeight) {
                            
   TRI_skiplist_nb_t* oldColumn = node->_column;
   uint32_t j;
