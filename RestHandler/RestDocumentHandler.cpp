@@ -156,9 +156,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
 ///
-/// @RESTHEADER{POST /document,creates a document}
+/// @RESTHEADER{POST /_api/document,creates a document}
 ///
-/// @REST{POST /document?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/document?collection=@FA{collection-identifier}}
 ///
 /// Creates a new document in the collection identified by the
 /// @FA{collection-identifier}.  A JSON representation of the document must be
@@ -183,15 +183,12 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
-/// @REST{POST /document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create}}
+/// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create}}
 ///
 /// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
 /// used. If @FA{createCollection} is true, then the collection is created if it
 /// does not exists.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
 /// Create a document given a collection identifier @LIT{161039} for the collection
@@ -199,27 +196,27 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// the last part of the document handle. It generally will be equal, but there is
 /// no guaranty.
 ///
-/// @EXAMPLE{rest_create-document,create a document}
+/// @EXAMPLE{rest-create-document,create a document}
 ///
 /// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
 ///
-/// @EXAMPLE{rest_create-document-accept,accept a document}
+/// @EXAMPLE{rest-create-document-accept,accept a document}
 ///
 /// Create a document in a known, named collection
 ///
-/// @verbinclude rest_create-document-named-collection
+/// @verbinclude rest-create-document-named-collection
 ///
 /// Create a document in a new, named collection
 ///
-/// @verbinclude rest_create-document-create-collection
+/// @verbinclude rest-create-document-create-collection
 ///
 /// Unknown collection identifier:
 ///
-/// @verbinclude rest_create-document-unknown-cid
+/// @verbinclude rest-create-document-unknown-cid
 ///
 /// Illegal document:
 ///
-/// @verbinclude rest_create-document-bad-json
+/// @verbinclude rest-create-document-bad-json
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
@@ -334,7 +331,7 @@ bool RestDocumentHandler::readDocument () {
     case 1:
       generateError(HttpResponse::BAD, 
                     TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /document/<document-handle>");
+                    "expecting GET /_api/document/<document-handle>");
       return false;
 
     case 2:
@@ -343,7 +340,7 @@ bool RestDocumentHandler::readDocument () {
     default:
       generateError(HttpResponse::BAD, 
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /document/<document-handle> or GET /document?collection=<collection-identifier>");
+                    "expecting GET /_api/document/<document-handle> or GET /_api/document?collection=<collection-identifier>");
       return false;
   }
 }
@@ -351,9 +348,9 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /document,reads a document}
+/// @RESTHEADER{GET /_api/document,reads a document}
 ///
-/// @REST{GET /document/@FA{document-handle}}
+/// @REST{GET /_api/document/@FA{document-handle}}
 ///
 /// Returns the document identified by @FA{document-handle}. The returned
 /// document contains two special attributes: @LIT{_id} containing the document
@@ -374,22 +371,19 @@ bool RestDocumentHandler::readDocument () {
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
 /// Use a document handle:
 ///
-/// @verbinclude rest_read-document
+/// @verbinclude rest-read-document
 ///
 /// Use a document handle and an etag:
 ///
-/// @verbinclude rest_read-document-if-none-match
+/// @verbinclude rest-read-document-if-none-match
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest_read-document-unknown-handle
+/// @verbinclude rest-read-document-unknown-handle
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
@@ -477,21 +471,18 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents
 ///
-/// @RESTHEADER{GET /document,reads all document}
+/// @RESTHEADER{GET /_api/document,reads all document}
 ///
-/// @REST{GET /document?collection=@FA{collection-identifier}}
+/// @REST{GET /_api/document?collection=@FA{collection-identifier}}
 ///
 /// Returns a list of all URI for all documents from the collection identified
 /// by @FA{collection-identifier}.
 ///
 /// Instead of a @FA{collection-identifier}, a collection name can be given.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
-/// @verbinclude rest_read-document-all
+/// @verbinclude rest-read-document-all
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -586,20 +577,17 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /document,reads a document header}
+/// @RESTHEADER{HEAD /_api/document,reads a document header}
 ///
-/// @REST{HEAD /document/@FA{document-handle}}
+/// @REST{HEAD /_api/document/@FA{document-handle}}
 ///
 /// Like @FN{GET}, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
-/// @verbinclude rest_read-document-head
+/// @verbinclude rest-read-document-head
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -608,7 +596,7 @@ bool RestDocumentHandler::checkDocument () {
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting URI /document/<document-handle>");
+                  "expecting URI /_api/document/<document-handle>");
     return false;
   }
 
@@ -618,9 +606,9 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PUT /document,updates a document}
+/// @RESTHEADER{PUT /_api/document,updates a document}
 ///
-/// @REST{PUT /document/@FA{document-handle}}
+/// @REST{PUT /_api/document/@FA{document-handle}}
 ///
 /// Updates the document identified by @FA{document-handle}. If the document exists
 /// and can be updated, then a @LIT{HTTP 201} is returned and the "ETag" header
@@ -645,41 +633,38 @@ bool RestDocumentHandler::checkDocument () {
 /// mismatch, then a @LIT{HTTP 409} conflict is returned and no update is
 /// performed.
 ///
-/// @REST{PUT /document/@FA{document-handle}?policy=@FA{policy}}
+/// @REST{PUT /_api/document/@FA{document-handle}?policy=@FA{policy}}
 ///
 /// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last},
 /// then the last write will win.
 ///
-/// @REST{PUT /document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
+/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
 ///
 /// You can also supply the etag using the parameter @LIT{rev} instead of an "ETag"
 /// header. You must never supply both the "ETag" header and the @LIT{rev}
 /// parameter.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest_update-document
+/// @verbinclude rest-update-document
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest_update-document-unknown-handle
+/// @verbinclude rest-update-document-unknown-handle
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest_update-document-if-match-other
+/// @verbinclude rest-update-document-if-match-other
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest_update-document-if-match-other-last-write
+/// @verbinclude rest-update-document-if-match-other-last-write
 ///
 /// Alternative to header field:
 ///
-/// @verbinclude rest_update-document-rev-other
+/// @verbinclude rest-update-document-rev-other
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
@@ -688,7 +673,7 @@ bool RestDocumentHandler::updateDocument () {
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting UPDATE /document/<document-handle>");
+                  "expecting UPDATE /_api/document/<document-handle>");
     return false;
   }
 
@@ -781,9 +766,9 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /document,deletes a document}
+/// @RESTHEADER{DELETE /_api/document,deletes a document}
 ///
-/// @REST{DELETE /document/@FA{document-handle}}
+/// @REST{DELETE /_api/document/@FA{document-handle}}
 ///
 /// Deletes the document identified by @FA{document-handle}. If the document
 /// exists and could be deleted, then a @LIT{HTTP 204} is returned.
@@ -801,33 +786,30 @@ bool RestDocumentHandler::updateDocument () {
 /// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
 /// performed.
 ///
-/// @REST{DELETE /document/@FA{document-handle}?policy=@FA{policy}}
+/// @REST{DELETE /_api/document/@FA{document-handle}?policy=@FA{policy}}
 ///
 /// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last}, then
 /// the last write will win.
 ///
-/// @REST{DELETE /document/@FA{document-handle}?rev=@FA{etag}}
+/// @REST{DELETE /_api/document/@FA{document-handle}?rev=@FA{etag}}
 ///
 /// You can also supply the etag using the parameter @LIT{rev} instead of an
 /// "If-Match" header. You must never supply both the "If-Match" header and the
 /// @LIT{rev} parameter.
 ///
-/// @note If you are implementing a client api, then you should use the
-/// alternative path @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest_delete-document
+/// @verbinclude rest-delete-document
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest_delete-document-unknown-handle
+/// @verbinclude rest-delete-document-unknown-handle
 ///
 /// Revision conflict:
 ///
-/// @verbinclude rest_delete-document-if-match-other
+/// @verbinclude rest-delete-document-if-match-other
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
@@ -836,7 +818,7 @@ bool RestDocumentHandler::deleteDocument () {
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /document/<document-handle>");
+                  "expecting DELETE /_api/document/<document-handle>");
     return false;
   }
 

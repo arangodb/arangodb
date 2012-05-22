@@ -1,4 +1,4 @@
-> curl --data @- -X POST --dump - http://localhost:8529/document?collection=UnitTestsCollectionNamed1332797687&createCollection=true
+> curl --data @- -X POST --dump - http://localhost:8529/_api/document?collection=example&createCollection=true
 { "Hallo" : "World" }
 
 HTTP/1.1 202 Accepted
