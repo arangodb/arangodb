@@ -54,6 +54,12 @@
 ///
 /// <ul>
 ///  <li>@ref DbaManualBasics
+///   <ul>
+///    <li>@ref DbaManualBasicsDurability</li>
+///    <li>@ref DbaManualBasicsMvcc</li>
+///    <li>@ref DbaManualBasicsConfig</li>
+///   </ul>
+///  </li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,6 +67,32 @@
 /// @page DbaManualBasics Administrating ArangoDB
 ///
 /// @EMBEDTOC{DbaManualBasicsTOC}
+///
+/// @section DbaManualBasicsDurability Mostly Memory/Durability
+///////////////////////////////////////////////////////////////
+///
+/// Database documents are stored in memory-mapped files. Per default, these
+/// memory-mapped files are synced frequently - storing all documents securely
+/// at once (durability).
+///
+/// @section DbaManualBasicsMvcc AppendOnly/MVCC
+////////////////////////////////////////////////
+/// 
+/// Instead of overwriting existing documents, a completely new version of the
+/// document is generated. The two benefits are:
+///
+/// - Objects can be stored coherently and compactly in the main memory.
+/// - Objects are preserved-isolated writing and reading transactions allow
+///   accessing these objects for parallel operations.
+///
+/// The system collects obsolete versions as garbage, recognizing them as
+/// forsaken. Garbage collection is asynchronous and runs parallel to other
+/// processes.
+///
+/// @section DbaManualBasicsConfig Configuration
+////////////////////////////////////////////////
+///
+/// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
