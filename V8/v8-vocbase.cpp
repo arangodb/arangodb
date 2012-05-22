@@ -1006,8 +1006,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   }
  
   // execute code  
-  v8::Handle<v8::Value> result;
-  result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
+  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
   // return the result as a javascript array
@@ -1024,8 +1023,14 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
                                                          const bool doCount, 
                                                          const uint32_t batchSize) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   v8::Handle<v8::Value> result = ExecuteQueryNativeAhuacatl(context, parameters);
+
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+
   if (!result->IsArray()) {
     // rethrow
     return scope.Close(result);
@@ -3977,7 +3982,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     }
   }
 
-  // lockup the collection
+  // lookup the collection
   if (collection == 0) {
     TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
 
@@ -4054,7 +4059,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     }
   }
 
-  // lockup the collection
+  // lookup the collection
   if (collection == 0) {
     TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
 

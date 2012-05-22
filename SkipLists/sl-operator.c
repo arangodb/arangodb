@@ -69,13 +69,12 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
                                         void* collection) {
 
   TRI_sl_operator_t*          newOperator;
-  TRI_sl_logical_operator_t*  newLogicalOperator;
-  TRI_sl_relation_operator_t* newRelationOperator;
   
   switch (operatorType) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: {
+      TRI_sl_logical_operator_t*  newLogicalOperator;
     
       newLogicalOperator = (TRI_sl_logical_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false);
 
@@ -97,7 +96,8 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
-    
+      TRI_sl_relation_operator_t* newRelationOperator;
+
       newRelationOperator = (TRI_sl_relation_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false);
 
       if (!newRelationOperator) {
@@ -105,7 +105,7 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
       }
 
       newRelationOperator->_base._type = operatorType;
-      newLogicalOperator->_base._shaper = shaper;
+      newRelationOperator->_base._shaper = shaper;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
       newRelationOperator->_numFields  = numFields;
@@ -132,13 +132,6 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
 
   TRI_sl_operator_t*          newOperator;
   
-  TRI_sl_logical_operator_t*  newLogicalOperator;
-  TRI_sl_logical_operator_t*  oldLogicalOperator;
-  
-  TRI_sl_relation_operator_t* newRelationOperator;
-  TRI_sl_relation_operator_t* oldRelationOperator;
-  
-  
   newOperator = NULL;
   
   if (slOperator == NULL) {
@@ -149,6 +142,8 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: {
+      TRI_sl_logical_operator_t*  newLogicalOperator;
+      TRI_sl_logical_operator_t*  oldLogicalOperator;
     
       oldLogicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
       newLogicalOperator = (TRI_sl_logical_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false));
@@ -169,6 +164,8 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
+      TRI_sl_relation_operator_t* newRelationOperator;
+      TRI_sl_relation_operator_t* oldRelationOperator;
     
       oldRelationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       newRelationOperator = (TRI_sl_relation_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false));
@@ -196,9 +193,6 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSLOperator (TRI_sl_operator_t* slOperator) {
-  TRI_sl_relation_operator_t* relationOperator;
-  TRI_sl_logical_operator_t*  logicalOperator;
-
   if (slOperator == NULL) {
     return;
   }
@@ -207,6 +201,8 @@ void TRI_FreeSLOperator (TRI_sl_operator_t* slOperator) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: {
+      TRI_sl_logical_operator_t*  logicalOperator;
+
       logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
       TRI_FreeSLOperator(logicalOperator->_left);
       TRI_FreeSLOperator(logicalOperator->_right);
@@ -221,6 +217,8 @@ void TRI_FreeSLOperator (TRI_sl_operator_t* slOperator) {
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
+      TRI_sl_relation_operator_t* relationOperator;
+
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
 
       if (relationOperator->_parameters != NULL) {
