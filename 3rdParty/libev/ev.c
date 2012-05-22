@@ -1251,7 +1251,11 @@ typedef struct
   #include "ev_wrap.h"
 
   static struct ev_loop default_loop_struct;
+#ifdef EV_API_STATIC
   EV_API_DECL struct ev_loop *ev_default_loop_ptr = 0; /* needs to be initialised to make it a definition despite extern */
+#else
+  struct ev_loop *ev_default_loop_ptr = 0; /* needs to be initialised to make it a definition despite extern */
+#endif
 
 #else
 
@@ -1378,23 +1382,23 @@ array_realloc (int elem, void *base, int *cur, int cnt)
   return ev_realloc (base, elem * *cur);
 }
 
-#define array_init_zero(base,count)	\
+#define array_init_zero(base,count)     \
   memset ((void *)(base), 0, sizeof (*(base)) * (count))
 
-#define array_needsize(type,base,cur,cnt,init)			\
-  if (expect_false ((cnt) > (cur)))				\
-    {								\
-      int ecb_unused ocur_ = (cur);					\
-      (base) = (type *)array_realloc				\
-         (sizeof (type), (base), &(cur), (cnt));		\
-      init ((base) + (ocur_), (cur) - ocur_);			\
+#define array_needsize(type,base,cur,cnt,init)                  \
+  if (expect_false ((cnt) > (cur)))                             \
+    {                                                           \
+      int ecb_unused ocur_ = (cur);                                     \
+      (base) = (type *)array_realloc                            \
+         (sizeof (type), (base), &(cur), (cnt));                \
+      init ((base) + (ocur_), (cur) - ocur_);                   \
     }
 
 #if 0
-#define array_slim(type,stem)					\
-  if (stem ## max < array_roundsize (stem ## cnt >> 2))		\
-    {								\
-      stem ## max = array_roundsize (stem ## cnt >> 1);		\
+#define array_slim(type,stem)                                   \
+  if (stem ## max < array_roundsize (stem ## cnt >> 2))         \
+    {                                                           \
+      stem ## max = array_roundsize (stem ## cnt >> 1);         \
       base = (type *)ev_realloc (base, sizeof (type) * (stem ## max));\
       fprintf (stderr, "slimmed down " # stem " to %d\n", stem ## max);/*D*/\
     }
