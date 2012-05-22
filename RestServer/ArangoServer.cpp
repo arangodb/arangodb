@@ -701,6 +701,8 @@ int ArangoServer::startupServer () {
                                    RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
                                    (void*) &handlerDataAdmin);
 
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
     _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
   }
 
