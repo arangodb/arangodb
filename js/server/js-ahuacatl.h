@@ -443,6 +443,7 @@ static string JS_server_ahuacatl =
   "    }\n"
   "  }\n"
   "\n"
+  "\n"
   "  return result;\n"
   "}\n"
   "\n"

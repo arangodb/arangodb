@@ -3041,10 +3041,10 @@ start-server:
 
 	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
 
 	curl -sS http://$(VOCHOST):$(VOCPORT)/version
 
@@ -3064,8 +3064,8 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_TRUE@	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
-@ENABLE_BOOST_TEST_TRUE@	test $(SKIP_GEO) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
+@ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
+@ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -3094,7 +3094,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -3112,7 +3112,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -3129,7 +3129,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
@@ -3152,7 +3152,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
