@@ -765,13 +765,15 @@ var logTable = $('#logTableID').dataTable({
     else {
       var collectionID; 
       var boxContent = $('#documentEditSourceBox').val();
-      var jsonContent = JSON.parse(boxContent);
       collectionID = globalCollectionID;  
+
+      boxContent = stateReplace(boxContent);
+      parsedContent = JSON.parse(boxContent); 
 
       $.ajax({
         type: "PUT",
         url: "/document/" + collectionID,
-        data: JSON.stringify(jsonContent), 
+        data: JSON.stringify(parsedContent), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
