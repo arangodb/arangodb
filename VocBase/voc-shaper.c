@@ -617,6 +617,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
 
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+  size_t i;
   
   assert(shaper);
   assert(shaper->_collection);
@@ -627,6 +628,13 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
   TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
   TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+
+  for (i = 0; i < shaper->_accessors._nrAlloc; ++i) {
+    TRI_shape_access_t* accessor = (TRI_shape_access_t*) shaper->_accessors._table[i];
+    if (accessor != NULL) {
+      TRI_FreeShapeAccessor(accessor);
+    }
+  }
   TRI_DestroyAssociativePointer(&shaper->_accessors);
 
   TRI_DestroyMutex(&shaper->_shapeLock);

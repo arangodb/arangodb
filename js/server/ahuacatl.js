@@ -442,7 +442,6 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
     }
   }
 
-
   return result;
 }
 
