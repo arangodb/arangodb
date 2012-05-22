@@ -406,7 +406,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "GET",
-        url: "/document/" + collectiondocID,
+        url: "/_api/document/" + collectiondocID,
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -748,7 +748,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "PUT",
-        url: "/document/" + JSON.parse(collectionID),
+        url: "/_api/document/" + JSON.parse(collectionID),
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
@@ -770,7 +770,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "PUT",
-        url: "/document/" + collectionID,
+        url: "/_api/document/" + collectionID,
         data: JSON.stringify(jsonContent), 
         contentType: "application/json",
         processData: false, 
@@ -838,7 +838,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "POST",
-        url: "/document?collection=" + collID, 
+        url: "/_api/document?collection=" + collID, 
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
@@ -864,7 +864,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "POST",
-        url: "/document?collection=" + collID, 
+        url: "/_api/document?collection=" + collID, 
         data: JSON.stringify(jsonContent), 
         contentType: "application/json",
         processData: false, 
@@ -1227,7 +1227,7 @@ var logTable = $('#logTableID').dataTable({
       $.ajax({ 
         type: 'DELETE', 
         contentType: "application/json",
-        url: "/document/" + documentID 
+        url: "/_api/document/" + documentID 
       });
     }
 

@@ -598,10 +598,10 @@ ArangoDatabase.prototype._document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.get("/document/" + id);
+    requestResult = this._connection.get("/_api/document/" + id);
   }
   else {
-    requestResult = this._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.get("/_api/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -644,10 +644,10 @@ ArangoDatabase.prototype._delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.delete("/document/" + id + policy);
+    requestResult = this._connection.delete("/_api/document/" + id + policy);
   }
   else {
-    requestResult = this._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.delete("/_api/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -694,10 +694,10 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._connection.put("/_api/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.put("/_api/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1199,10 +1199,10 @@ ArangoCollection.prototype.document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.get("/document/" + id);
+    requestResult = this._database._connection.get("/_api/document/" + id);
   }
   else {
-    requestResult = this._database._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.get("/_api/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -1230,7 +1230,7 @@ ArangoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.save = function (data) {    
-  var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
+  var requestResult = this._database._connection.post("/_api/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1260,10 +1260,10 @@ ArangoCollection.prototype.delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.delete("/document/" + id + policy);
+    requestResult = this._database._connection.delete("/_api/document/" + id + policy);
   }
   else {
-    requestResult = this._database._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.delete("/_api/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1313,10 +1313,10 @@ ArangoCollection.prototype.replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._database._connection.put("/_api/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.put("/_api/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
