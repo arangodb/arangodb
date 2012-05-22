@@ -961,6 +961,8 @@ WIKI = \
 	HttpSimple \
 	HttpSystem \
 	ImplementorManual \
+	ImpManual \
+	ImpManualBasics \
 	IndexCap \
 	IndexCapHttp \
 	IndexGeo \
@@ -2977,6 +2979,9 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
 .setup-directories:
 	@test -d js || mkdir js
 	@test -d js/bootstrap || mkdir js/bootstrap
@@ -3046,7 +3051,7 @@ start-server:
 	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
 
-	curl -sS http://$(VOCHOST):$(VOCPORT)/version
+	curl -sS http://$(VOCHOST):$(VOCPORT)/_api/version
 
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
