@@ -1,4 +1,4 @@
-> curl -X DELETE --dump - http://localhost:8529/document/73482/30967598
+> curl -X DELETE --dump - http://localhost:8529/_api/document/73482/30967598
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

@@ -70,9 +70,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
 ///
-/// @RESTHEADER{POST /edge,creates an edge}
+/// @RESTHEADER{POST /_api/edge,creates an edge}
 ///
-/// @REST{POST /edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
+/// @REST{POST /_api/edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
 ///
 /// Creates a new edge in the collection identified by the
 /// @FA{collection-identifier}.  A JSON representation of the document must be
@@ -86,18 +86,15 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// If you request such an edge, the returned document will also contain the
 /// attributes @LIT{_from} and @LIT{_to}.
 ///
-/// @note If you are implementing a client api then you should use the path
-/// @LIT{/_api/document}.
-/// 
 /// @EXAMPLES
 ///
 /// Create an edge:
 ///
-/// @verbinclude rest_edge-create-edge
+/// @verbinclude rest-edge-create-edge
 ///
 /// Read an edge:
 ///
-/// @verbinclude rest_edge-read-edge
+/// @verbinclude rest-edge-read-edge
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestEdgeHandler::createDocument () {

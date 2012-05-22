@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("actions");
-var API = "edges";
+var API = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoAPI
@@ -36,19 +36,19 @@ var API = "edges";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
 ///
-/// @RESTHEADER{GET /edges,reads in- or outbound edges}
+/// @RESTHEADER{GET /_api/edges,reads in- or outbound edges}
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
 ///
 /// Returns the list of edges starting or ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
 ///
 /// Returns the list of edges ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
 ///
 /// Returns the list of edges starting in the vertex identified by
 /// @FA{vertex-handle}.
@@ -57,15 +57,15 @@ var API = "edges";
 ///
 /// Any direction
 ///
-/// @verbinclude rest_edge-read-edges-any
+/// @verbinclude rest-edge-read-edges-any
 ///
 /// In edges
 ///
-/// @verbinclude rest_edge-read-edges-in
+/// @verbinclude rest-edge-read-edges-in
 ///
 /// Out edges
 ///
-/// @verbinclude rest_edge-read-edges-out
+/// @verbinclude rest-edge-read-edges-out
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_edges (req, res) {
