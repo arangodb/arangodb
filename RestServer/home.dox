@@ -67,7 +67,7 @@
 /// 
 /// <ul>
 ///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref RefManual</li>
+///   <li>@ref RefManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/ref-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 

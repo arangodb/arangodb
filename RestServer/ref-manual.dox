@@ -30,20 +30,17 @@
 ///
 /// @if LATEX
 /// <ul>
-///  <li>@ref RestDocument</li>
-///  <li>@ref RestEdge</li>
-///  <li>@ref HttpCursor</li>
-///  <li>@ref HttpSimple</li>
-///  <li>@ref HttpCollection</li>
-///  <li>@ref HttpIndex</li>
-///  <li>@ref HttpSystem</li>
-///  <li>@ref Glossary</li>
+///  <li>@ref JSModules</li>
+///  <li>@ref JSModuleGraph</li>
+///  <li>@ref JSModuleActions</li>
+///  <li>@ref JSModuleConsole</li>
+///  <li>@ref JSModuleFs</li>
+///  <li>@ref JSModuleInternal</li>
+///  <li>@ref ArangoErrors</li>
+///  <li>@ref jsUnity</li>
 /// </ul>
 /// @else
 /// <ul>
-///  <li>@ref CommandLine
-///   @copydetails CommandLineSubTOC
-///  </li>
 ///  <li>@ref JSModules
 ///   <ul>
 ///    <li>User Modules
@@ -61,59 +58,9 @@
 ///    </li>
 ///   </ul>
 ///  </li>
-///  <li>@ref Aql
-///  </li>
-///  <li>Over the wire protocol
-///   <ul>
-///    <li>REST Interface
-///     <ul>
-///      <li>@ref RestDocument</li>
-///      <li>@ref RestEdge</li>
-///     </ul>
-///    </li>
-///    <li>Light-Weight HTTP Interface for Queries
-///     <ul>
-///      <li>@ref HttpCursor</li>
-///      <li>@ref HttpSimple</li>
-///     </ul>
-///    </li>
-///    <li>Light-Weight HTTP Interface for Administration
-///     <ul>
-///      <li>@ref HttpCollection</li>
-///      <li>@ref HttpIndex</li>
-///      <li>@ref HttpSystem</li>
-///     </ul>
-///    </li>
-///   </ul>
-///  </li>
-///  <li>Shell Commands
-///   <ul>
-///      <li>@ref ShellDocument</li>
-///      <li>@ref ShellEdge</li>
-///      <li>@ref ShellCollection</li>
-///      <li>@ref ShellIndex</li>
-///   </ul>
-///  </li>
-///  <li>Indexes
-///   @copydetails IndexesTOC
-///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
 ///    <li>@ref ArangoErrors
-///    </li>
-///    <li>@ref DBAdmin
-///     <ul>
-///      <li>@ref DBAdminDurability
-///      </li>
-///     </ul>
-///    </li>
-///    <li>Actions
-///     <ul>
-///      <li>@ref Actions
-///      </li>
-///      <li>@ref DefineAction
-///      </li>
-///     </ul>
 ///    </li>
 ///    <li>@ref jsUnity
 ///    </li>
@@ -121,54 +68,6 @@
 ///  </li>
 /// </ul>
 /// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page DBAdminTOC
-///
-/// <ul>
-///  <li>@ref DBAdminDurability
-///  </li>
-/// </ul>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page DBAdmin Database Administration
-///
-/// <hr>
-/// @copydetails DBAdminTOC
-/// <hr>
-///
-/// @section DBAdminDurability Durability
-/////////////////////////////////////////
-///
-/// @subsection DBAdminDurability1 Mostly Memory/Durability
-///////////////////////////////////////////////////////////
-///
-/// Database documents are stored in the memory-memory-mapped files are used to
-/// store them. The operating system has the advantageous option to decide
-/// swapping sparsely used areas out of the main memory. Per default, these
-/// memory-mapped files are synced frequently - advantageously storing all
-/// documents securely at once (durability).
-///
-/// @subsection DBAdminDurability2 AppendOnly/MVCC
-//////////////////////////////////////////////////
-/// 
-/// Instead of overwriting existing documents, a completely new version of the
-/// document is generated. The two benefits are:
-///
-/// - Objects can be stored coherently and compactly in the main memory.
-/// - Objects are preserved-isolated writing and reading transactions allow
-///   accessing these objects for parallel operations.
-///
-/// The system collects obsolete versions as garbage, recognizing them as
-/// forsaken. Garbage collection is asynchronous and runs parallel to other
-/// processes.
-///
-/// @subsection DBAdminDurability3 Configuration
-////////////////////////////////////////////////
-///
-/// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
