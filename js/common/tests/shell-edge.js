@@ -346,7 +346,7 @@ function CollectionEdgeSuite () {
         var e = edge.edges(1);
       } 
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
