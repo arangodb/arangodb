@@ -57,6 +57,7 @@
 ///   @copydetails IndexCapHttpTOC
 ///   @copydetails IndexGeoHttpTOC
 ///   @copydetails IndexHashHttpTOC
+///   @copydetails IndexSkiplistHttpTOC
 ///  </li>
 ///  <li>Light-Weight HTTP for Administration
 ///   @copydetails HttpCollectionTOC

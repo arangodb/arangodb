@@ -583,9 +583,7 @@ SkiplistIndex* SkiplistIndex_new() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex_add(SkiplistIndex* skiplistIndex, SkiplistIndexElement* element) {
-  bool result;
-  result = TRI_InsertKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, element, element, false);  
-  return result;
+  return TRI_InsertKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, element, element, false);  
 }
 
 

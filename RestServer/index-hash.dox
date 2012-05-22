@@ -59,7 +59,7 @@
 /// O(1) operations. If the hash is unique, then no two documents are allowed
 /// to have the same set of attribute values.
 ///
-/// @section IndexHashShell Accessing hash Indexes from the Shell
+/// @section IndexHashShell Accessing Hash Indexes from the Shell
 /////////////////////////////////////////////////////////////////
 ///
 /// @anchor IndexHashShellEnsureUniqueConstraint
@@ -75,7 +75,9 @@
 /// <ul>
 ///  <li>@ref IndexHashHttp
 ///   <ul>
-///    <li>@ref IndexHashHttpEnsureUniqueConstraint "POST /_api/index"</li>
+///    <li>@ref IndexHashHttpEnsureHash "POST /_api/index"</li>
+///    <li>@ref IndexHashHttpByExample "POST /_api/simple/by-example"</li>
+///    <li>@ref IndexHashHttpFirstExample "POST /_api/simple/first-example"</li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -85,13 +87,19 @@
 /// @page IndexHashHttp Accessing Hash Indexes via Http
 ///
 /// If a suitable hash index exists, then @ref HttpSimpleByExample
-/// "/_api/simple/by-example" will use this index to execute the
+/// "/_api/simple/by-example" will use this index to execute a
 /// query-by-example.
 ///
 /// @EMBEDTOC{IndexHashHttpTOC}
 ///
-/// @anchor IndexHashHttpEnsureUniqueConstraint
+/// @anchor IndexHashHttpEnsureHash
 /// @copydetails JSF_POST_api_index_hash
+///
+/// @anchor IndexHashHttpByExample
+/// @copydetails JSA_PUT_api_simple_by_example
+///
+/// @anchor IndexHashHttpFirstExample
+/// @copydetails JSA_PUT_api_simple_first_example
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

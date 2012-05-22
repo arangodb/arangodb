@@ -228,15 +228,15 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   TRI_sl_operator_t* lastOperator = 0;
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
-  size_t numNonEq = 0; 
+  size_t lastNonEq = 0; 
   
   if (parameters == 0) {
     return 0;
   }
 
   // iterate over all index fields
-  for (size_t i = 0; i < idx->_fields._length; ++i) {
-    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
+  for (size_t i = 1; i <= idx->_fields._length; ++i) {
+    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i - 1]);
 
     if (!conditions->HasOwnProperty(key)) {
       break;
@@ -283,7 +283,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
       if (opValue == "==") { 
         // equality comparison
 
-        if (numNonEq > 0) {
+        if (lastNonEq > 0) {
           goto MEM_ERROR;
         }
     
@@ -293,6 +293,12 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         break;
       }
       else {
+        if (lastNonEq > 0 && lastNonEq != i) {
+          // if we already had a range condition and a previous field, we cannot continue
+          // because the skiplist interface does not support such queries
+          goto MEM_ERROR;
+        }
+
         TRI_sl_operator_type_e opType; 
         if (opValue == ">") {
           opType = TRI_SL_GT_OPERATOR;
@@ -311,7 +317,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           goto MEM_ERROR;
         }
         
-        ++numNonEq;
+        lastNonEq = i;
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
         if (cloned == 0) {
@@ -363,7 +369,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   if (numEq) {
     // create equality operator if one is in queue
     assert(lastOperator == 0);
-    assert(numNonEq == 0);
+    assert(lastNonEq == 0);
     
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     if (clonedParams == 0) {
@@ -752,22 +758,22 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       case TRI_EDGE_UNUSED:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: edge(<vertices>)")));
+                                                   "usage: edges(<vertices>)")));
 
       case TRI_EDGE_IN:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: inEdge(<vertices>)")));
+                                                   "usage: inEdges(<vertices>)")));
 
       case TRI_EDGE_OUT:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: outEdge(<vertices>)")));
+                                                   "usage: outEdges(<vertices>)")));
 
       case TRI_EDGE_ANY:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                                   "usage: edge(<vertices>)")));
+                                                   "usage: edges(<vertices>)")));
     }
   }
 
@@ -788,7 +794,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
     uint32_t len = vertices->Length();
 
-    for (uint32_t i = 0;  i < len;  ++i) {
+    for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
       TRI_voc_cid_t cid;
       TRI_voc_did_t did;
@@ -796,7 +802,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       
       TRI_vocbase_col_t const* vertexCollection = 0;
       v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
-      
+     
       if (! errMsg.IsEmpty()) {
         if (vertexCollection != 0) {
           TRI_ReleaseCollection(vertexCollection);
@@ -833,8 +839,6 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
       
     if (! errMsg.IsEmpty()) {
-      collection->_collection->endRead(collection->_collection);
-
       if (vertexCollection != 0) {
         TRI_ReleaseCollection(vertexCollection);
       }
@@ -973,7 +977,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     }
 
     // limit
-    for (;  ptr < end && (TRI_voc_ssize_t) count < limit;  ++ptr) {
+    for (;  ptr < end && (TRI_voc_size_t) count < limit; ++ptr) {
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
           
@@ -1091,6 +1095,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       ++count;
     }
   }
+
+  TRI_DestroyVector(&filtered);
 
   collection->_collection->endRead(collection->_collection);
 

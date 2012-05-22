@@ -968,6 +968,7 @@ WIKI = \
 	IndexHash \
 	IndexHashHttp \
 	IndexSkiplist \
+	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
@@ -1054,6 +1055,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 			@srcdir@/js/server/tests/ahuacatl-relational.js \
 			@srcdir@/js/server/tests/ahuacatl-ternary.js \
 			@srcdir@/js/server/tests/ahuacatl-parse.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
