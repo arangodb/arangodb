@@ -122,7 +122,7 @@ function AHUACATL_CLONE (obj) {
 /// @brief validate function call argument
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName, argument) {
+function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName) {
   if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
   }
@@ -1162,7 +1162,7 @@ function AHUACATL_STRING_CONCAT () {
       continue;
     }
 
-    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT", i + 1);
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT");
 
     result += element;
   }
@@ -1188,7 +1188,7 @@ function AHUACATL_STRING_CONCAT_SEPARATOR () {
       continue;
     }
     
-    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT_SEPARATOR", i + 1);
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT_SEPARATOR");
 
     if (i == 0) {
       separator = element;
@@ -1213,7 +1213,7 @@ function AHUACATL_STRING_CONCAT_SEPARATOR () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_LENGTH (value) {
-  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "STRING_LENGTH", 1);
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "STRING_LENGTH");
 
   return value.length;
 }
@@ -1225,7 +1225,7 @@ function AHUACATL_STRING_LENGTH (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_LOWER (value) {
-  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "LOWER", 1);
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "LOWER");
 
   return value.toLowerCase();
 }
@@ -1237,7 +1237,7 @@ function AHUACATL_STRING_LOWER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_UPPER (value) {
-  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "UPPER", 1);
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "UPPER");
 
   return value.toUpperCase();
 }
@@ -1249,8 +1249,8 @@ function AHUACATL_STRING_UPPER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_SUBSTRING (value, offset, count) {
-  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "SUBSTRING", 1);
-  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_NUMBER, "SUBSTRING", 2);
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "SUBSTRING");
+  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_NUMBER, "SUBSTRING");
 
   return value.substr(offset, count);
 }
@@ -1783,6 +1783,177 @@ function AHUACATL_GEO_WITHIN () {
   }
 
   return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   graph functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GRAPH_PATHS () {
+  var collection = arguments[0];
+  var edgeType = arguments[1];
+  var minLength = arguments[2] != undefined ? arguments[2] : 1;
+  var maxLength = arguments[3] != undefined ? arguments[3] : 10;
+  var followCycles = arguments[4] ? arguments[4] : false;
+  var direction;
+
+  // validate arguments
+  if (edgeType == "outbound") {
+    direction = 1;
+  }
+  else if (edgeType == "inbound") {
+    direction = 2;
+  }
+  else if (edgeType == "any") {
+    direction = 3;
+  }
+  else {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+  }
+
+  if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+  }
+
+  var edgeCollection = internal.edges[collection];
+  var searchAttributes = { 
+    "edgeCollection" : edgeCollection, 
+    "minLength" : minLength, 
+    "maxLength" : maxLength, 
+    "direction" : direction,
+    "followCycles" : followCycles,
+  };
+
+  var allEdges = edgeCollection.all().toArray();
+  // TODO: restrict allEdges to edges with certain _from values etc.
+
+  var result = [ ];
+  var n = allEdges.length;
+  for (var i = 0; i < n; ++i) {
+
+    var edge = allEdges[i];
+    var _from = edge._from; 
+    var _to = edge._to; 
+    var sources = [ ];
+
+    if (searchAttributes.direction & 1) {
+      sources.push(_from);
+    }
+    if (searchAttributes.direction & 2) {
+      sources.push(_to);
+    }
+
+    for (var j = 0; j < sources.length; ++j) {
+      var visited = { };
+      var vertices = [ ];
+      var edges = [ ];
+
+      var source = sources[j];
+      var next = internal.db._document(source);
+      vertices.push(next);
+      if (!searchAttributes.followCycles) {
+        visited[source] = true;
+      }
+    
+      if (searchAttributes.minLength == 0) {
+        var copy = AHUACATL_CLONE(vertices);
+        result.push({ "vertices" : copy, "edges" : [ ], "source" : copy[0], "destination" : copy[copy.length - 1] });
+      }
+
+      if (searchAttributes.maxLength > 0) {
+        var subResult = AHUACATL_GRAPH_SUBNODES(searchAttributes, AHUACATL_CLONE(visited), edges, vertices, edge, 0);
+        for (var k = 0; k < subResult.length; ++k) {
+          result.push(subResult[k]);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GRAPH_SUBNODES (searchAttributes, visited, edges, vertices, edge, level) {
+  var result = [ ];
+
+  var _from = edge._from; 
+  var _to = edge._to;
+  var targets = [ ];
+
+  if (searchAttributes.direction & 1) {
+    targets.push(_to);
+  }
+  if (searchAttributes.direction & 2) {
+    targets.push(_from);
+  }
+
+  for (var i = 0; i < targets.length; ++i) {
+    var target = targets[i];
+
+    if (!searchAttributes.followCycles && visited[target]) {
+      continue;
+    }
+
+    var clonedEdges = AHUACATL_CLONE(edges);
+    var clonedVertices = AHUACATL_CLONE(vertices);
+
+    clonedEdges.push(edge);
+    var vertex = internal.db._document(target);
+    clonedVertices.push(vertex);
+      
+    if (level + 1 >= searchAttributes.minLength) {
+      result.push({ "vertices" : clonedVertices, "edges" : clonedEdges, "source" : clonedVertices[0], "destination" : clonedVertices[clonedVertices.length - 1] });
+    }
+
+    if (level + 1 < searchAttributes.maxLength) {
+      // recursion
+
+      if (!searchAttributes.followCycles) {
+        visited[target] = true;
+      }
+
+      var subEdges;
+      if (searchAttributes.direction == 1) {
+        subEdges = searchAttributes.edgeCollection.outEdges(vertex);
+      }
+      else if (searchAttributes.direction == 2) {
+        subEdges = searchAttributes.edgeCollection.inEdges(vertex);
+      }
+      else if (searchAttributes.direction == 3) {
+        subEdges = searchAttributes.edgeCollection.edges(vertex);
+      }
+
+      for (var j = 0; j < subEdges.length; ++j) {
+        var subResult = AHUACATL_GRAPH_SUBNODES(searchAttributes, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, subEdges[j], level + 1);
+
+        for (var k = 0; k < subResult.length; ++k) {
+          result.push(subResult[k]);
+        }
+      }
+
+      if (!searchAttributes.followCycles) {
+        delete visited[target];
+      }
+    }
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
