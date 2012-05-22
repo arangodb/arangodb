@@ -9,7 +9,7 @@ echo
 
 OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
-RESULTS="arango avocsh avocirb"
+RESULTS="arangod arangosh arangoimp"
 
 export CPPFLAGS=""
 export LDFLAGS=""
@@ -28,18 +28,21 @@ case $TRI_OS_LONG in
     echo "Using configuration for openSuSE 11.4"
     OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test"
     LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-11*)
     echo "Using configuration for openSuSE 11"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian*)
@@ -58,12 +61,14 @@ case $TRI_OS_LONG in
     echo "Using configuration for Ubuntu"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   Darwin*)
@@ -71,6 +76,7 @@ case $TRI_OS_LONG in
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
     OPTIONS="$OPTIONS --enable-all-in-one"
+    RESULTS="$RESULTS arangoirb"
     ;;
 
   *)
