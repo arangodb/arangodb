@@ -1886,7 +1886,7 @@ function AHUACATL_GRAPH_PATHS () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph
+/// @brief find all paths through a graph, internal part called recursively
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GRAPH_SUBNODES (searchAttributes, visited, edges, vertices, edge, level) {

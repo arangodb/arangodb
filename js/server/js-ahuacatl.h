@@ -1887,7 +1887,7 @@ static string JS_server_ahuacatl =
   "}\n"
   "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief find all paths through a graph\n"
+  "/// @brief find all paths through a graph, internal part called recursively\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
   "function AHUACATL_GRAPH_SUBNODES (searchAttributes, visited, edges, vertices, edge, level) {\n"
