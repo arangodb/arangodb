@@ -26,14 +26,14 @@ describe ArangoDB do
       it "does not create the index in case of violation" do
 	
 	# create a document
-	cmd1 = "/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cid}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
 	doc.code.should eq(201)
 
 	# create another document
-	cmd1 = "/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cid}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
@@ -78,7 +78,7 @@ describe ArangoDB do
 	doc.parsed_response['unique'].should eq(true)
       
 	# create a document
-	cmd1 = "/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cid}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
@@ -91,7 +91,7 @@ describe ArangoDB do
 	rev1.should be_kind_of(Integer)
 
 	# check it
-	cmd2 = "/document/#{id1}"
+	cmd2 = "/_api/document/#{id1}"
 	doc = ArangoDB.log_get("#{prefix}", cmd2)
 
 	doc.code.should eq(200)
@@ -183,7 +183,7 @@ describe ArangoDB do
 	doc.parsed_response['unique'].should eq(true)
       
 	# create a document
-	cmd1 = "/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cid}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-update2", cmd1, :body => body)
 
@@ -196,7 +196,7 @@ describe ArangoDB do
 	rev1.should be_kind_of(Integer)
 
 	# check it
-	cmd2 = "/document/#{id1}"
+	cmd2 = "/_api/document/#{id1}"
 	doc = ArangoDB.log_get("#{prefix}", cmd2)
 
 	doc.code.should eq(200)
@@ -236,7 +236,7 @@ describe ArangoDB do
 	rev3.should be_kind_of(Integer)
 
 	# check second document again
-	cmd3 = "/document/#{id2}"
+	cmd3 = "/_api/document/#{id2}"
 	doc = ArangoDB.log_get("#{prefix}", cmd3)
 
 	doc.code.should eq(200)

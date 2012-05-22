@@ -72,7 +72,7 @@ describe ArangoDB do
 	@cid = ArangoDB.create_collection(@cn, false)
 
 	(0...10).each{|i|
-	  ArangoDB.post("/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
+	  ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
 	}
       end
 

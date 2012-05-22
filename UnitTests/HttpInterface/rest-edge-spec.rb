@@ -4,7 +4,7 @@ require 'rspec'
 require './arangodb.rb'
 
 describe ArangoDB do
-  prefix = "rest_edge"
+  prefix = "rest-edge"
 
   context "creating an edge:" do
 
@@ -15,7 +15,7 @@ describe ArangoDB do
     context "error handling:" do
       it "returns an error if url is missing from" do
 	cn = "UnitTestsCollectionEdge"
-	cmd = "/edge?collection=#{cn}&createCollection=true"
+	cmd = "/_api/edge?collection=#{cn}&createCollection=true"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-missing-from-to", cmd, :body => body)
 
@@ -30,7 +30,7 @@ describe ArangoDB do
 
       it "returns an error if from/to are malformed" do
 	cn = "UnitTestsCollectionEdge"
-	cmd = "/edge?collection=#{cn}&createCollection=true&from=1&to=1"
+	cmd = "/_api/edge?collection=#{cn}&createCollection=true&from=1&to=1"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-bad-from-to", cmd, :body => body)
 
@@ -45,7 +45,7 @@ describe ArangoDB do
 
       it "returns an error if vertex-handle is missing" do
 	cn = "UnitTestsCollectionEdge"
-	cmd = "/edges/#{@cid}?vertex="
+	cmd = "/_api/edges/#{@cid}?vertex="
         doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
 
 	doc.code.should eq(400)
@@ -73,7 +73,7 @@ describe ArangoDB do
       end
 
       it "creating an edge" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 
 	# create first vertex
 	body = "{ \"a\" : 1 }"
@@ -96,7 +96,7 @@ describe ArangoDB do
 	id2 = doc.parsed_response['_id']
 
 	# create edge
-	cmd = "/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -107,7 +107,7 @@ describe ArangoDB do
 	id3 = doc.parsed_response['_id']
 
 	# check edge
-	cmd = "/edge/#{id3}"
+	cmd = "/_api/edge/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
@@ -117,7 +117,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
 	# create another edge
-	cmd = "/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
 	body = "{ \"e\" : 1 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -128,7 +128,7 @@ describe ArangoDB do
 	id4 = doc.parsed_response['_id']
 
 	# check edge
-	cmd = "/edge/#{id4}"
+	cmd = "/_api/edge/#{id4}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
@@ -139,7 +139,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# create third edge
-	cmd = "/edge?collection=#{@cid}&from=#{id2}&to=#{id1}"
+	cmd = "/_api/edge?collection=#{@cid}&from=#{id2}&to=#{id1}"
 	body = "{ \"e\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -150,7 +150,7 @@ describe ArangoDB do
 	id5 = doc.parsed_response['_id']
 
 	# check edge
-	cmd = "/edge/#{id5}"
+	cmd = "/_api/edge/#{id5}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
 	doc.code.should eq(200)
@@ -161,7 +161,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# check ANY edges
-	cmd = "/edges/#{@cid}?vertex=#{id1}"
+	cmd = "/_api/edges/#{@cid}?vertex=#{id1}"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-any", cmd);
 
 	doc.code.should eq(200)
@@ -169,7 +169,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(3)
 
 	# check IN edges
-	cmd = "/edges/#{@cid}?vertex=#{id1}&direction=in"
+	cmd = "/_api/edges/#{@cid}?vertex=#{id1}&direction=in"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-in", cmd);
 
 	doc.code.should eq(200)
@@ -177,7 +177,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(1)
 
 	# check OUT edges
-	cmd = "/edges/#{@cid}?vertex=#{id1}&direction=out"
+	cmd = "/_api/edges/#{@cid}?vertex=#{id1}&direction=out"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-out", cmd);
 
 	doc.code.should eq(200)
