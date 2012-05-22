@@ -389,6 +389,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
+  REGISTER_FUNCTION("HAS", "HAS", false, false, "a,s"); 
 
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
 
@@ -398,6 +399,9 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
   REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
+  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l");
+  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l");
+  REGISTER_FUNCTION("LAST", "LAST", true, false, "l");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
