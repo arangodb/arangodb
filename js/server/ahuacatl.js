@@ -86,6 +86,47 @@ function AHUACATL_INDEX (collection, indexTypes) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a value for comparison, sorting etc.
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NORMALIZE (value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof(value) !== "object") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    var result = [ ];
+    var length = value.length;
+    for (var i = 0; i < length; ++i) {
+      result.push(AHUACATL_NORMALIZE(value[i]));
+    }
+  
+    return result;
+  } 
+  else {
+    var attributes = [ ];
+    for (var attribute in value) {
+      if (!value.hasOwnProperty(attribute)) {
+        continue;
+      }
+      attributes.push(attribute);
+    }
+    attributes.sort();
+
+    var result = { };
+    var length = attributes.length;
+    for (var i = 0; i < length; ++i) {
+      result[attributes[i]] = AHUACATL_NORMALIZE(value[attributes[i]]);
+    }
+
+    return result;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1656,7 +1697,8 @@ function AHUACATL_UNIQUE () {
   var length = value.length;
   var keys = { };
   for (var i = 0; i < length; ++i) {
-    keys[JSON.stringify(value[i])] = value[i];
+    var normalized = AHUACATL_NORMALIZE(value[i]);
+    keys[JSON.stringify(normalized)] = normalized;
   }
 
   var result = [];
@@ -2043,6 +2085,10 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, visited, edges, vertices, ed
 function AHUACATL_HAS () {
   var element = arguments[0];
   var name = arguments[1];
+  
+  if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+    return false;
+  }
 
   if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
