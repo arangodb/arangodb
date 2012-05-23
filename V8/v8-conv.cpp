@@ -662,7 +662,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   a = (TRI_array_shape_t*) (ptr = (char*) TRI_Allocate(shaper->_memoryZone, i, true));
 
   if (ptr == NULL) {
-    // TODO FIXME: my compiler complains about e being potentially undefined. what to do?
+    e = values + n;
+
     for (p = values;  p < e;  ++p) {
       if (p->_value != NULL) {
         TRI_Free(shaper->_memoryZone, p->_value);
@@ -1340,7 +1341,7 @@ bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value> value, TRI_voc_cid_t&
   did = 0;
 
   if (value->IsNumber() || value->IsNumberObject()) {
-    did = TRI_ObjectToDouble(value, error);
+    did = (TRI_voc_did_t) TRI_ObjectToDouble(value, error);
     return ! error;
   }
 
