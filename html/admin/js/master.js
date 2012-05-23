@@ -334,8 +334,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 12) == "#collection?" ) {
       tableView = true; 
-      var img = $('#toggleNewDocButton').find('img'); 
-      img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+      $('#toggleNewDocButtonText').text('Edit Source'); 
       
       var collectionID = location.hash.substr(12, location.hash.length); 
       var collID = collectionID.split("=");
@@ -376,8 +375,8 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
-      var img = $('#toggleEditedDocButton').find('img'); 
-      img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+      $('#toggleEditedDocButton').val('Edit Source'); 
+      
       
       $('#documentEditSourceView').hide();
       $('#documentEditTableView').show();
@@ -779,10 +778,9 @@ var logTable = $('#logTableID').dataTable({
           processData: false, 
           success: function(data) {
             tableView = true;
+            $('#toggleEditedDocButton').val('Edit Source'); 
             var collID = collectionID.split("/");  
             window.location.href = "#showCollection?" + collID[0];  
-            var img = $('#toggleEditedDocButton').find('img'); 
-            img.attr('src', '/_admin/html/media/icons/off_icon16.png');
           },
           error: function(data) {
            alert(JSON.stringify(data)); 
@@ -933,8 +931,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditTableView').toggle();
         $('#documentEditSourceView').toggle();
         tableView = false; 
-        var img = $(this).find('img'); 
-        img.attr('src', '/_admin/html/media/icons/on_icon16.png');
+        $('#toggleEditedDocButtonText').text('Edit Table'); 
     }
     else {
       try {
@@ -953,8 +950,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditTableView').toggle();
         $('#documentEditSourceView').toggle();
         tableView = true; 
-        var img = $(this).find('img'); 
-        img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+        $('#toggleEditedDocButtonText').text('Edit Source'); 
       }
  
       catch(e) {
@@ -1058,8 +1054,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentTableView').toggle();
         $('#NewDocumentSourceView').toggle();
         tableView = false; 
-        var img = $(this).find('img'); 
-        img.attr('src', '/_admin/html/media/icons/on_icon16.png');
+        $('#toggleNewDocButtonText').text('Edit Table'); 
       }
   
       catch(e) {
