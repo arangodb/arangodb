@@ -366,8 +366,8 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#newDocumentView').show();
-      $('#newDocumentTableView').show();
-      $('#newDocumentSourceView').hide();
+      $('#NewDocumentTableView').show();
+      $('#NewDocumentSourceView').hide();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1504,12 +1504,12 @@ function drawCollectionsTable () {
         tempStatus = "new born collection";
       }
       else if (tempStatus == 2) {
-        tempStatus = "unloaded";
+        tempStatus = "<font color=orange>unloaded</font>";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
       else if (tempStatus == 3) {
-        tempStatus = "loaded";
+        tempStatus = "<font color=green>loaded</font>";
         var alive; 
         var size; 
       
