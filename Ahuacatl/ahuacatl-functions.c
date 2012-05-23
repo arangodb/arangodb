@@ -128,6 +128,7 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     if (*name == '@') {
       // collection bind parameter. this is an error
       found._collection = true;
+      found._list = true; // a collection is a list of documents
     }
     else {
       // regular bind parameter
@@ -168,13 +169,14 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
   else if (parameter->_type == AQL_NODE_COLLECTION) {
     // actual parameter is a collection
     found._collection = true;
+    found._list = true; // a collection is a list of documents
   }
   else {
     // we cannot yet determine the type of the parameter
     // this is the case if the argument is an expression, a function call etc.
 
     if (!allowed->_collection) {
-      // if we do require anything else but collection, we don't know the
+      // if we do require anything else but a collection, we don't know the
       // type and must exit here
       return true;
     }
@@ -341,7 +343,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
                              NULL); 
 
   // . = argument of any type (except collection)
-  // c = collection
+  // c = collection name, will be converted into list with documents
+  // h = collection name, will be converted into string
   // z = null
   // b = bool
   // n = number
@@ -380,11 +383,11 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, "");
 
   // geo functions
-  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "c,n,n,n|s");
-  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "c,n,n,n|s");
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s");
+  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s");
 
   // graph functions
-  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,c|s,b");
+  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b");
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
@@ -532,6 +535,45 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a function argument must be converted to another type
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
+                                      const size_t checkArg) {
+  const char* pattern;
+  char c;
+  size_t i = 0;
+  bool foundArg = false;
+
+  assert(function);
+
+  i = 0; 
+  pattern = function->_argPattern;
+  while ((c = *pattern++)) {
+    switch (c) {
+      case '|':
+      case ',':
+        if (foundArg) {
+          if (++i > checkArg) {
+            return false;
+          }
+        }
+        foundArg = false;
+        break;
+      case 'h': 
+        if (i == checkArg) {
+          return true;
+        }
+        // break intentionally missing
+      default:
+        foundArg = true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validate the arguments passed to a function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -642,7 +684,11 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
             allowed._array = true;
             foundArg = true;
             break;
-          case 'c': // collection
+          case 'c': // collection name => list
+            allowed._collection = true;
+            foundArg = true;
+            break;
+          case 'h': // collection name => string
             allowed._collection = true;
             foundArg = true;
             break;
