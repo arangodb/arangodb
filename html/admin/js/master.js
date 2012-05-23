@@ -771,7 +771,6 @@ var logTable = $('#logTableID').dataTable({
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
-<<<<<<< HEAD
         $.ajax({
           type: "PUT",
           url: "/document/" + collectionID,
@@ -794,25 +793,6 @@ var logTable = $('#logTableID').dataTable({
         console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
-=======
-      $.ajax({
-        type: "PUT",
-        url: "/_api/document/" + collectionID,
-        data: JSON.stringify(parsedContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          var collID = collectionID.split("/");  
-          window.location.href = "#showCollection?" + collID[0];  
-          var img = $('#toggleEditedDocButton').find('img'); 
-          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
->>>>>>> f1564a6ac6a43fdab5760955da0b20fa3af1a3ee
     }
   });
 
@@ -881,7 +861,6 @@ var logTable = $('#logTableID').dataTable({
     }
     else {
 
-<<<<<<< HEAD
       try {
         var collectionID = location.hash.substr(12, location.hash.length); 
         var collID = collectionID.split("="); 
@@ -912,22 +891,6 @@ var logTable = $('#logTableID').dataTable({
         console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
-=======
-      $.ajax({
-        type: "POST",
-        url: "/_api/document?collection=" + collID, 
-        data: JSON.stringify(jsonContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          window.location.href = "#showCollection?" + collID;  
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
->>>>>>> f1564a6ac6a43fdab5760955da0b20fa3af1a3ee
     }
   });
 
