@@ -226,7 +226,7 @@ var critLogTable = $('#critLogTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1,
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sWidth": "100px"}, {"bSortable":false}], 
+    "aoColumns": [{ "sClass":"center", "sWidth": "100px", "bSortable":false}, {"bSortable":false}], 
     "oLanguage": {"sEmptyTable": "No critical logfiles available"}
   });
 
@@ -242,7 +242,7 @@ var warnLogTable = $('#warnLogTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1,
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sWidth": "100px"}, {"bSortable":false}],
+    "aoColumns": [{ "sClass":"center", "sWidth": "100px", "bSortable":false}, {"bSortable":false}],
     "oLanguage": {"sEmptyTable": "No warning logfiles available"}
   });
 ///////////////////////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@ var infoLogTable = $('#infoLogTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1,
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sWidth": "100px"}, {"bSortable":false}],
+    "aoColumns": [{ "sClass":"center", "sWidth": "100px", "bSortable":false}, {"bSortable":false}],
     "oLanguage": {"sEmptyTable": "No info logfiles available"}
   });
 
@@ -273,7 +273,7 @@ var debugLogTable = $('#debugLogTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1,
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sWidth": "100px"}, {"bSortable":false}], 
+    "aoColumns": [{ "sClass":"center", "sWidth": "100px", "bSortable":false}, {"bSortable":false}], 
     "oLanguage": {"sEmptyTable": "No debug logfiles available"}
   });
 
@@ -289,7 +289,7 @@ var logTable = $('#logTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1,
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sWidth": "100px"}, {"bSortable":false}], 
+    "aoColumns": [{ "sClass":"center", "sWidth": "100px", "bSortable":false}, {"bSortable":false}], 
     "oLanguage": {"sEmptyTable": "No logfiles available"}
   });
 
