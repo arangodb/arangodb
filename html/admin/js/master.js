@@ -687,6 +687,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#query") {
       hideAllSubDivs(); 
+      $('#queryContent').val('');
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
@@ -699,6 +700,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#avocsh") {
       hideAllSubDivs(); 
+      $('#avocshContent').val('');
       $('#collectionsView').hide();
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
