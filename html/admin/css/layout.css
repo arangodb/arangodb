@@ -2,6 +2,10 @@
   padding-right: 15px; 
 }
 
+#deleteDoc {
+  margin-right: 15px; 
+}
+
 button {
   padding: 0; 
 }

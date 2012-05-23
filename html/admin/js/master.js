@@ -366,8 +366,8 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#newDocumentView').show();
-      $('#newDocumentTableView').show();
-      $('#newDocumentSourceView').hide();
+      $('#NewDocumentTableView').show();
+      $('#NewDocumentSourceView').hide();
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -763,30 +763,36 @@ var logTable = $('#logTableID').dataTable({
       });
     }
     else {
-      var collectionID; 
-      var boxContent = $('#documentEditSourceBox').val();
-      collectionID = globalCollectionID;  
+      try {
+        var collectionID; 
+        var boxContent = $('#documentEditSourceBox').val();
+        collectionID = globalCollectionID;  
 
-      boxContent = stateReplace(boxContent);
-      parsedContent = JSON.parse(boxContent); 
+        boxContent = stateReplace(boxContent);
+        parsedContent = JSON.parse(boxContent); 
 
-      $.ajax({
-        type: "PUT",
-        url: "/_api/document/" + collectionID,
-        data: JSON.stringify(parsedContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          var collID = collectionID.split("/");  
-          window.location.href = "#showCollection?" + collID[0];  
-          var img = $('#toggleEditedDocButton').find('img'); 
-          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
+        $.ajax({
+          type: "PUT",
+          url: "/document/" + collectionID,
+          data: JSON.stringify(parsedContent), 
+          contentType: "application/json",
+          processData: false, 
+          success: function(data) {
+            tableView = true;
+            var collID = collectionID.split("/");  
+            window.location.href = "#showCollection?" + collID[0];  
+            var img = $('#toggleEditedDocButton').find('img'); 
+            img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+          },
+          error: function(data) {
+           alert(JSON.stringify(data)); 
+          }
+        });
+      }
+      catch(e) {
+        console.log(e); 
+        alert("Please make sure the entered value is a valid json string."); 
+      }
     }
   });
 
@@ -854,30 +860,37 @@ var logTable = $('#logTableID').dataTable({
       });
     }
     else {
-      var collectionID = location.hash.substr(12, location.hash.length); 
-      var collID = collectionID.split("="); 
-      var boxContent = $('#NewDocumentSourceBox').val();
-      var jsonContent = JSON.parse(boxContent);
-      $.each(jsonContent, function(row1, row2) {
-        if ( row1 == '_id') {
-          collectionID = row2; 
-        } 
-      });
 
-      $.ajax({
-        type: "POST",
-        url: "/_api/document?collection=" + collID, 
-        data: JSON.stringify(jsonContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          window.location.href = "#showCollection?" + collID;  
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
+      try {
+        var collectionID = location.hash.substr(12, location.hash.length); 
+        var collID = collectionID.split("="); 
+        var boxContent = $('#NewDocumentSourceBox').val();
+        var jsonContent = JSON.parse(boxContent);
+        $.each(jsonContent, function(row1, row2) {
+          if ( row1 == '_id') {
+            collectionID = row2; 
+          } 
+        });
+
+        $.ajax({
+          type: "POST",
+          url: "/document?collection=" + collID, 
+          data: JSON.stringify(jsonContent), 
+          contentType: "application/json",
+          processData: false, 
+          success: function(data) {
+            tableView = true;
+            window.location.href = "#showCollection?" + collID;  
+          },
+          error: function(data) {
+            alert(JSON.stringify(data)); 
+          }
+        });
+      }
+      catch(e) {
+        console.log(e); 
+        alert("Please make sure the entered value is a valid json string."); 
+      }
     }
   });
 
@@ -1163,10 +1176,10 @@ var logTable = $('#logTableID').dataTable({
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
-    var client = "arangodb:" + data;
+    var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-    hansmann(data);
+    evaloutput(data);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
@@ -1491,12 +1504,12 @@ function drawCollectionsTable () {
         tempStatus = "new born collection";
       }
       else if (tempStatus == 2) {
-        tempStatus = "unloaded";
+        tempStatus = "<font color=orange>unloaded</font>";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
       else if (tempStatus == 3) {
-        tempStatus = "loaded";
+        tempStatus = "<font color=green>loaded</font>";
         var alive; 
         var size; 
       
@@ -2270,7 +2283,7 @@ function hideLogPagination() {
   $('#logToolbarInfo').hide(); 
 }
 
-function hansmann (data) {
+function evaloutput (data) {
   try {
     var result = eval(data); 
 
