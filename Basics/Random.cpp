@@ -246,9 +246,9 @@ namespace RandomHelper {
 
 
 
-  RandomDevice* randomDevice;
-  RandomDevice* urandomDevice;
-  RandomDevice* combinedDevice;
+  RandomDevice* randomDevice = 0;
+  RandomDevice* urandomDevice = 0;
+  RandomDevice* combinedDevice = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -564,14 +564,17 @@ namespace triagens {
       void shutdown () {
         if (RandomHelper::randomDevice != 0) {
           delete RandomHelper::randomDevice;
+          RandomHelper::randomDevice = 0;
         }
 
         if (RandomHelper::urandomDevice != 0) {
           delete RandomHelper::urandomDevice;
+          RandomHelper::urandomDevice = 0;
         }
 
         if (RandomHelper::combinedDevice != 0) {
           delete RandomHelper::combinedDevice;
+          RandomHelper::combinedDevice = 0;
         }
       }
 
