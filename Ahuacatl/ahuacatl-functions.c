@@ -342,6 +342,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
   // . = argument of any type (except collection)
   // c = collection
+  // z = null
   // b = bool
   // n = number
   // s = string
@@ -356,8 +357,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, ".");
 
   // string functions
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "s,s|+"); 
-  REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,s,s|+"); 
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+"); 
+  REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+"); 
   REGISTER_FUNCTION("CHARLENGTH", "STRING_LENGTH", true, false, "s"); 
   REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s"); 
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
@@ -381,11 +382,15 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // geo functions
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "c,n,n,n|s");
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "c,n,n,n|s");
+
+  // graph functions
+  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,s|n,n,b");
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
+  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s"); 
 
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
 
@@ -395,6 +400,10 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
   REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
+  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l");
+  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l");
+  REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l");
+  REGISTER_FUNCTION("LAST", "LAST", true, false, "l");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
@@ -533,9 +542,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   const char* pattern;
   size_t i, n;
   bool eof = false;
-  bool parse = true;
   bool repeat = false;
-  bool foundArg = false;
 
   assert(function);
   assert(parameters);
@@ -555,6 +562,8 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate argument types
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* parameter = (TRI_aql_node_t*) TRI_AQL_NODE_MEMBER(parameters, i);
+    bool parse = true;
+    bool foundArg = false;
 
     if (repeat) {
       // last argument is repeated
@@ -566,11 +575,9 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
 
       foundArg = false;
 
-      while (parse) {
+      while (parse && !eof) {
         char c = *pattern++;
         
-        assert(!eof);
-
         switch (c) {
           case '\0':
             parse = false;
@@ -583,19 +590,21 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
             if (foundArg) {
               parse = false;
               ARG_CHECK
-              break;
+              if (*pattern == '+') {
+                repeat = true;
+                eof = true;
+              }
             }
             break;
           case ',': // next argument
             assert(foundArg);
-            foundArg = false;
             parse = false;
             ARG_CHECK
             break;
           case '+': // repeat last argument
-            assert(foundArg);
             repeat = true;
             parse = false;
+            eof = true;
             ARG_CHECK
             break;
           case '.': // any type except collections
