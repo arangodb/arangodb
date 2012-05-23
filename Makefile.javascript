@@ -25,6 +25,12 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
+html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js
+	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+
+html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js
+	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+
 ################################################################################
 ## CLEANUP
 ################################################################################
