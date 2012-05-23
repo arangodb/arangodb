@@ -87,10 +87,8 @@ static char WordBreakCharacters[] = {
 /// @brief completion generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* CompletionGenerator (char const* text, int state) {
-  return 0;
-
 #if 0
+static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
   static vector<string> result;
   char* prefix;
@@ -194,8 +192,8 @@ static char* CompletionGenerator (char const* text, int state) {
     result.clear();
     return 0;
   }
-#endif
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempted completion
