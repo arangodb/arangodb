@@ -2279,34 +2279,19 @@ function hideLogPagination() {
 }
 
 function evaloutput (data) {
-        try {
-                var server = eval(data); 
-                if (server !== undefined) {
-                        var resultung = "";
-                        if (server === null) {
-                                resultung = "null";
-                        }
-                        else if (typeof(server) == "string") {
-                                resultung = server;
-                        }
-                        else if (typeof(server) == "number" || typeof(server) == "boolean") {
-                                resultung = "" + server;
-                        }
-                        else if (typeof(server) == "object") {
-                                try {
-                                        resultung = JSON.stringify(server);
-                                }
-                                catch (err) {
-                                        resultung = server.toString();
-                                }
-                        }
+  try {
+    var result = eval(data); 
 
-                        $('#avocshWindow').append('<p class="avocshSuccess">' + resultung + '</p>'); 
-                }
-        }
-        catch(e) {
-                $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
-        }
+    if (result !== undefined) {
+      print(result);
+    }
+    else {
+      print();
+    }
+  }
+  catch(e) {
+    $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
+  }
 }
 
 function validate(evt) {
