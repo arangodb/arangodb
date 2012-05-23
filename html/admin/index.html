@@ -96,8 +96,16 @@
           <td>
             <input type="text" class="smallInput" id="createCollName"></input>
           </td>
-          <td class="longTD">Enter new collection name here</td>
+          <td class="longTD">New collection name.</td>
           </tr>
+        </tr>
+        <tr><td>journalSize:</td></td>
+        <td>
+          <input type="text" onkeypress='validate(event)'class="smallInput" id="createCollSize"></input>
+        </td>
+        <td class="longTD">
+          (MB) The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
+        </td></tr>
           <tr><td>waitForSync:</td><td>
             <form action="#" id="waitForSyncForm">
               <input type="radio" name="waitForSync" value=true>yes</input>
@@ -115,10 +123,6 @@
           </td> 
           <td class="longTD">If true, create a system collection. In this case collection-name should start with an underscore.
           </td>
-        </tr>
-        <tr><td>journalSize:</td></td><td></td><td class="longTD">
-          The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
-        </td></tr>
         </table>
 
       </div>

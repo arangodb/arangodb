@@ -1314,7 +1314,9 @@ var logTable = $('#logTableID').dataTable({
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
       var systemcheck = $('input:radio[name=isSystem]:checked').val();
       var collName = $('#createCollName').val(); 
-
+      var collSize = $('#createCollSize').val(); 
+      collSize = JSON.parse(collSize) * 1024 * 1024; 
+ 
       if (collName == '') {
         alert("Nothing to do..."); 
         return 0; 
@@ -1323,7 +1325,7 @@ var logTable = $('#logTableID').dataTable({
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+'}',
+        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+',"journalSize":' + collSize + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -2299,4 +2301,13 @@ function hansmann (data) {
 	}
 }
 
-
+function validate(evt) {
+  var theEvent = evt || window.event;
+  var key = theEvent.keyCode || theEvent.which;
+  key = String.fromCharCode( key );
+  var regex = /[0-9]|\./;
+  if( !regex.test(key) ) {
+    theEvent.returnValue = false;
+    if(theEvent.preventDefault) theEvent.preventDefault();
+  }
+}
