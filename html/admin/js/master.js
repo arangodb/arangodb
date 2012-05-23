@@ -406,7 +406,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "GET",
-        url: "/document/" + collectiondocID,
+        url: "/_api/document/" + collectiondocID,
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -748,7 +748,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "PUT",
-        url: "/document/" + JSON.parse(collectionID),
+        url: "/_api/document/" + JSON.parse(collectionID),
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
@@ -771,6 +771,7 @@ var logTable = $('#logTableID').dataTable({
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
+<<<<<<< HEAD
         $.ajax({
           type: "PUT",
           url: "/document/" + collectionID,
@@ -793,6 +794,25 @@ var logTable = $('#logTableID').dataTable({
         console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
+=======
+      $.ajax({
+        type: "PUT",
+        url: "/_api/document/" + collectionID,
+        data: JSON.stringify(parsedContent), 
+        contentType: "application/json",
+        processData: false, 
+        success: function(data) {
+          tableView = true;
+          var collID = collectionID.split("/");  
+          window.location.href = "#showCollection?" + collID[0];  
+          var img = $('#toggleEditedDocButton').find('img'); 
+          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+        },
+        error: function(data) {
+          alert(JSON.stringify(data)); 
+        }
+      });
+>>>>>>> f1564a6ac6a43fdab5760955da0b20fa3af1a3ee
     }
   });
 
@@ -846,7 +866,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "POST",
-        url: "/document?collection=" + collID, 
+        url: "/_api/document?collection=" + collID, 
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
@@ -861,6 +881,7 @@ var logTable = $('#logTableID').dataTable({
     }
     else {
 
+<<<<<<< HEAD
       try {
         var collectionID = location.hash.substr(12, location.hash.length); 
         var collID = collectionID.split("="); 
@@ -891,6 +912,22 @@ var logTable = $('#logTableID').dataTable({
         console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
+=======
+      $.ajax({
+        type: "POST",
+        url: "/_api/document?collection=" + collID, 
+        data: JSON.stringify(jsonContent), 
+        contentType: "application/json",
+        processData: false, 
+        success: function(data) {
+          tableView = true;
+          window.location.href = "#showCollection?" + collID;  
+        },
+        error: function(data) {
+          alert(JSON.stringify(data)); 
+        }
+      });
+>>>>>>> f1564a6ac6a43fdab5760955da0b20fa3af1a3ee
     }
   });
 
@@ -1024,9 +1061,9 @@ var logTable = $('#logTableID').dataTable({
 
         /*animation*/
         $('#movetologinButton').text("Login");
-	$('#footerSlideContent').animate({ height: '25px' });
-	$('#footerSlideButton').css('backgroundPosition', 'top left');
-	open = false;
+        $('#footerSlideContent').animate({ height: '25px' });
+        $('#footerSlideButton').css('backgroundPosition', 'top left');
+        open = false;
 
         return false; 
       },
@@ -1235,7 +1272,7 @@ var logTable = $('#logTableID').dataTable({
       $.ajax({ 
         type: 'DELETE', 
         contentType: "application/json",
-        url: "/document/" + documentID 
+        url: "/_api/document/" + documentID 
       });
     }
 
@@ -1526,7 +1563,7 @@ function drawCollectionsTable () {
           error: function(data) {
           }
         });
-	
+        
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
@@ -2284,34 +2321,34 @@ function hideLogPagination() {
 }
 
 function hansmann (data) {
-	try {
-		var server = eval(data); 
-		if (server !== undefined) {
-			var resultung = "";
-			if (server === null) {
-				resultung = "null";
-			}
-			else if (typeof(server) == "string") {
-				resultung = server;
-			}
-			else if (typeof(server) == "number" || typeof(server) == "boolean") {
-				resultung = "" + server;
-			}
-			else if (typeof(server) == "object") {
-				try {
-					resultung = JSON.stringify(server);
-				}
-				catch (err) {
-					resultung = server.toString();
-				}
-			}
+        try {
+                var server = eval(data); 
+                if (server !== undefined) {
+                        var resultung = "";
+                        if (server === null) {
+                                resultung = "null";
+                        }
+                        else if (typeof(server) == "string") {
+                                resultung = server;
+                        }
+                        else if (typeof(server) == "number" || typeof(server) == "boolean") {
+                                resultung = "" + server;
+                        }
+                        else if (typeof(server) == "object") {
+                                try {
+                                        resultung = JSON.stringify(server);
+                                }
+                                catch (err) {
+                                        resultung = server.toString();
+                                }
+                        }
 
-			$('#avocshWindow').append('<p class="avocshSuccess">' + resultung + '</p>'); 
-		}
-	}
-	catch(e) {
-		$('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
-	}
+                        $('#avocshWindow').append('<p class="avocshSuccess">' + resultung + '</p>'); 
+                }
+        }
+        catch(e) {
+                $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
+        }
 }
 
 function validate(evt) {

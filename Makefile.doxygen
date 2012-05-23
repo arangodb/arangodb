@@ -97,6 +97,9 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
 ################################################################################
 ## CLEANUP
 ################################################################################

@@ -1,9 +1,9 @@
-> curl --data @- -X POST --dump - http://localhost:8529/document?collection=UnitTestsCollectionBasics
+> curl --data @- -X POST --dump - http://localhost:8529/_api/document?collection=example
 { "Hallo" : "World" }
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-location: /document/73482/26707758
+location: /_api/document/73482/26707758
 etag: "26707758"
 
 {

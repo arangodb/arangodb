@@ -1,4 +1,4 @@
-> curl -X DELETE '-H if-match: "31098669"' --dump - http://localhost:8529/document/73482/31098670
+> curl -X DELETE '-H if-match: "31098669"' --dump - http://localhost:8529/_api/document/73482/31098670
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8

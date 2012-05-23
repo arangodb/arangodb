@@ -4,7 +4,7 @@ require 'rspec'
 require './arangodb.rb'
 
 describe ArangoDB do
-  prefix = "rest_delete-document"
+  prefix = "rest-delete-document"
 
   context "delete a document:" do
 
@@ -23,7 +23,7 @@ describe ArangoDB do
       end
 
       it "returns an error if document handle is missing" do
-	cmd = "/document"
+	cmd = "/_api/document"
         doc = ArangoDB.log_delete("#{prefix}-missing-handle", cmd)
 
 	doc.code.should eq(400)
@@ -34,7 +34,7 @@ describe ArangoDB do
       end
 
       it "returns an error if document handle is corrupted" do
-	cmd = "/document/123456"
+	cmd = "/_api/document/123456"
         doc = ArangoDB.log_delete("#{prefix}-bad-handle", cmd)
 
 	doc.code.should eq(400)
@@ -45,7 +45,7 @@ describe ArangoDB do
       end
 
       it "returns an error if document handle is corrupted" do
-	cmd = "/document//123456"
+	cmd = "/_api/document//123456"
         doc = ArangoDB.log_delete("#{prefix}-bad-handle2", cmd)
 
 	doc.code.should eq(400)
@@ -56,7 +56,7 @@ describe ArangoDB do
       end
 
       it "returns an error if collection identifier is unknown" do
-	cmd = "/document/123456/234567"
+	cmd = "/_api/document/123456/234567"
         doc = ArangoDB.log_delete("#{prefix}-unknown-cid", cmd)
 
 	doc.code.should eq(404)
@@ -67,7 +67,7 @@ describe ArangoDB do
       end
 
       it "returns an error if document handle is unknown" do
-	cmd = "/document/#{@cid}/234567"
+	cmd = "/_api/document/#{@cid}/234567"
         doc = ArangoDB.log_delete("#{prefix}-unknown-handle", cmd)
 
 	doc.code.should eq(404)
@@ -78,7 +78,7 @@ describe ArangoDB do
       end
 
       it "returns an error if the policy parameter is bad" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -91,7 +91,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/document/#{did}?policy=last-write"
+	cmd = "/_api/document/#{did}?policy=last-write"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
         doc = ArangoDB.log_delete("#{prefix}-policy-bad", cmd, :headers => hdr)
 
@@ -120,7 +120,7 @@ describe ArangoDB do
       end
 
       it "create a document and delete it" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -133,7 +133,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document
-	cmd = "/document/#{did}"
+	cmd = "/_api/document/#{did}"
         doc = ArangoDB.log_delete("#{prefix}", cmd)
 
 	doc.code.should eq(200)
@@ -152,7 +152,7 @@ describe ArangoDB do
       end
 
       it "create a document and delete it, using if-match" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -165,7 +165,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/document/#{did}"
+	cmd = "/_api/document/#{did}"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
         doc = ArangoDB.log_delete("#{prefix}-if-match-other", cmd, :headers => hdr)
 
@@ -182,7 +182,7 @@ describe ArangoDB do
 	rev2.should eq(rev)
 
 	# delete document, same revision
-	cmd = "/document/#{did}"
+	cmd = "/_api/document/#{did}"
 	hdr = { "if-match" => "\"#{rev}\"" }
         doc = ArangoDB.log_delete("#{prefix}-if-match", cmd, :headers => hdr)
 
@@ -202,7 +202,7 @@ describe ArangoDB do
       end
 
       it "create a document and delete it, using if-match and last-write wins" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -215,7 +215,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/document/#{did}?policy=last"
+	cmd = "/_api/document/#{did}?policy=last"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
         doc = ArangoDB.log_delete("#{prefix}-if-match-other-last-write", cmd, :headers => hdr)
 
@@ -235,7 +235,7 @@ describe ArangoDB do
       end
 
       it "create a document and delete it, using rev" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -248,7 +248,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/document/#{did}?rev=#{rev-1}"
+	cmd = "/_api/document/#{did}?rev=#{rev-1}"
         doc = ArangoDB.log_delete("#{prefix}-rev-other", cmd)
 
 	doc.code.should eq(412)
@@ -264,7 +264,7 @@ describe ArangoDB do
 	rev2.should eq(rev)
 
 	# delete document, same revision
-	cmd = "/document/#{did}?rev=#{rev}"
+	cmd = "/_api/document/#{did}?rev=#{rev}"
         doc = ArangoDB.log_delete("#{prefix}-rev", cmd)
 
 	doc.code.should eq(200)
@@ -284,7 +284,7 @@ describe ArangoDB do
       end
 
       it "create a document and delete it, using rev and last-write wins" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.post(cmd, :body => body)
 
@@ -297,7 +297,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/document/#{did}?policy=last"
+	cmd = "/_api/document/#{did}?policy=last"
 	hdr = { "rev" => "\"#{rev-1}\"" }
         doc = ArangoDB.log_delete("#{prefix}-rev-other-last-write", cmd, :headers => hdr)
 

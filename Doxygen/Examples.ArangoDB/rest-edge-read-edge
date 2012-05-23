@@ -1,4 +1,4 @@
-> curl -X GET --dump - http://localhost:8529/edge/7848004/9683012
+> curl -X GET --dump - http://localhost:8529/_api/edge/7848004/9683012
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
