@@ -101,7 +101,6 @@ namespace RandomHelper {
       }
 
 
-
       uint32_t random () {
         if (pos >= N) {
           fillBuffer();
@@ -548,7 +547,8 @@ namespace triagens {
 
             break;
 
-          default: THROW_INTERNAL_ERROR("unknown random generator");
+          default: 
+            THROW_INTERNAL_ERROR("unknown random generator");
         }
 
         return oldVersion;
@@ -560,6 +560,20 @@ namespace triagens {
         return version;
       }
 
+      
+      void shutdown () {
+        if (RandomHelper::randomDevice != 0) {
+          delete RandomHelper::randomDevice;
+        }
+
+        if (RandomHelper::urandomDevice != 0) {
+          delete RandomHelper::urandomDevice;
+        }
+
+        if (RandomHelper::combinedDevice != 0) {
+          delete RandomHelper::combinedDevice;
+        }
+      }
 
 
       bool isBlocking () {
