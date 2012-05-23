@@ -1,3 +1,7 @@
+#delete {
+  padding-right: 15px; 
+}
+
 button {
   padding: 0; 
 }
@@ -352,6 +356,7 @@ form {
   margin-top: 0px;  
   background-color: white;  
   height: 70%; 
+  word-wrap: break-word; 
   overflow-y: auto; 
   width:100%;
 }
