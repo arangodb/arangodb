@@ -52,6 +52,7 @@ $(LIBR) : $(MRBC) $(MLIB)
 # Compile mrblib source
 $(MLIB) : $(CLIB)
 	$(CC) $(ALL_CFLAGS) -MMD $(INCLUDES) -c $(CLIB) -o $(MLIB)
+	$(AR) r $(LIBR) $(MLIB)
 
 # Compile C source from merged mruby source
 $(CLIB) : $(RLIB) $(MRBC)
