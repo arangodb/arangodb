@@ -1176,7 +1176,7 @@ var logTable = $('#logTableID').dataTable({
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
-    var client = "arangodb:" + data;
+    var client = "arangosh> " + data;
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(data);
