@@ -149,11 +149,11 @@ static mrb_value MR_Time (mrb_state* mrb, mrb_value self) {
 static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
   char* errmsg;
   char* s;
-  int res;
+  /* int res; */
   size_t l;
   TRI_json_t* json;
 
-  res = mrb_get_args(mrb, "s", &s, &l);
+  /* res = */ mrb_get_args(mrb, "s", &s, &l);
 
   if (s == NULL) {
     return mrb_nil_value();

@@ -905,6 +905,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (ptr == NULL) {
+    e = values + n;
+
     for (p = values;  p < e;  ++p) {
       if (p->_value != NULL) {
         TRI_Free(shaper->_memoryZone, p->_value);
