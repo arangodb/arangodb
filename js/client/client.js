@@ -138,6 +138,7 @@ function print_plain (data) {
   var p = PRETTY_PRINT;
   PRETTY_PRINT = false;
   var c;
+
   if (typeof(COLOR_OUTPUT) != undefined) {
     c = COLOR_OUTPUT;
     COLOR_OUTPUT = undefined;
@@ -164,8 +165,11 @@ function print_plain (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function start_pretty_print () {
-  print("use pretty printing");
-  PRETTY_PRINT=true;
+  if (! PRETTY_PRINT) {
+    print("use pretty printing");
+    PRETTY_PRINT=true;
+  }
+
   return undefined;
 }
 
@@ -174,8 +178,11 @@ function start_pretty_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function stop_pretty_print () {
-  print("stop pretty printing");
-  PRETTY_PRINT=false;
+  if (PRETTY_PRINT) {
+    PRETTY_PRINT=false;
+    print("stop pretty printing");
+  }
+
   return undefined;
 }
 
@@ -2366,6 +2373,7 @@ HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
 '  arango:                                ArangoConnection           ' + "\n" +
 '  db:                                    ArangoDatabase             ' + "\n" +
+'  edges:                                 ArangoEdges                ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
