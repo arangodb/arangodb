@@ -170,8 +170,8 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false,  },
-                  {"bVisible": false}], 
+                  {"sClass":"writeable", "bSortable": false },
+                  {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
 
@@ -191,7 +191,7 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
                   {"sClass":"writeable", "bSortable": false },
-                  {"bVisible": false}] 
+                  {"bVisible": false } ] 
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1899,28 +1899,11 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  var userScreenSize = $(window).width();  
-  var content; 
-  var escapedContent = escaped(string); 
-  var userContent; 
-
-  if (userScreenSize <= 1024) {
-    userContent = 150; 
+  // TODO: remove this function and replace with css functionality (text-overflow: ellipsis)
+  if (string.length > 150) {
+    return escaped(string.substr(0, 150)) + '...';
   }
-  else if (userScreenSize > 1024 && userScreenSize < 1680) {
-    userContent = 200; 
-  }
-  else if (userScreenSize > 1680) {
-    userContent = 310; 
-  }
-
-  if (escapedContent.length > userContent) { 
-    content = escapedContent.substr(0,(userContent-3))+'...';   
-  }
-  else {
-    content = escapedContent; 
-  }
-  return content; 
+  return escaped(string);
 }
 
 function createFirstPagination () {
