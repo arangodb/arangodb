@@ -592,7 +592,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
 
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+  TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
 
@@ -606,6 +606,10 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
     ++total;
 
     if (total > skip && count < limit) {
+      if (barrier == 0) {
+        barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+      }
+      // TODO: barrier might be 0
       documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier));
       ++count;
     }
@@ -707,6 +711,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   SortGeoCoordinates(tmp, gnd);
 
   barrier = TRI_CreateBarrierElement(&((TRI_doc_collection_t*) collection->_collection)->_barrierList);
+  // TODO: barrier might be 0
 
   // copy the documents
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
@@ -820,6 +825,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
         }
+        // TODO: barrier might be 0
         
         documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
       }
@@ -858,6 +864,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
       }
+      // TODO: barrier might be 0
         
       documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
     }
@@ -985,6 +992,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
           if (barrier == 0) {
             barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
           }
+          // TODO: barrier might be 0
             
           documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
           ++count;
@@ -1086,6 +1094,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     CalculateSkipLimitSlice(filtered._length, skip, limit, s, e);
 
     TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+    // TODO: barrier might be 0
 
     for (size_t j = s;  j < e;  ++j) {
       TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
@@ -1213,6 +1222,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
     if (s < e) {
       TRI_barrier_t* barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+      // TODO: barrier might be 0
 
       for (size_t i = s;  i < e;  ++i) {
         documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier));
