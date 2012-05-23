@@ -175,6 +175,14 @@
 /// separates individual tokens in the query. Whitespace within strings or
 /// names must be enclosed in quotes in order to be preserved.
 ///
+/// @subsection AqlComments Comments
+///
+/// Comments can be embedded at any position in a query. The text contained in the 
+/// comment is ignored by the language parser. Comments cannot be nested, meaning the 
+/// comment text may not contain another comment.
+///
+/// @EXAMPLE{aqlcomments,comments}
+///
 /// @subsection AqlKeywords Keywords
 ///
 /// On the top level, AQL offers the following operations:
