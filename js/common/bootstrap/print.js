@@ -50,7 +50,7 @@ var internal = require("internal");
 /// @verbinclude fluent40
 ////////////////////////////////////////////////////////////////////////////////
 
-function print () {
+function TRI_PRINT_FUNCTION () {
   for (var i = 0;  i < arguments.length;  ++i) {
     if (0 < i) {
       internal.output(" ");
@@ -60,7 +60,7 @@ function print () {
       internal.output(arguments[i]);      
     } 
     else {
-      PRINT(arguments[i], [], "~", [], 0);
+      TRI_PRINT(arguments[i], [], "~", [], 0);
     }
   }
 
@@ -69,9 +69,16 @@ function print () {
   }
 
   internal.output("\n");
-}
+};
 
-var characterQuoteCache = {
+// must be a variable definition for the browser
+var print = TRI_PRINT_FUNCTION;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quote cache
+////////////////////////////////////////////////////////////////////////////////
+
+var TRI_CharacterQuoteCache = {
   '\b': '\\b', // ASCII 8, Backspace
   '\t': '\\t', // ASCII 9, Tab
   '\n': '\\n', // ASCII 10, Newline
@@ -81,32 +88,43 @@ var characterQuoteCache = {
   '\\': '\\\\'
 };
 
-function QuoteSingleJSONCharacter(c) {
-  if (c in characterQuoteCache) {
-    return characterQuoteCache[c];
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quotes a single character
+////////////////////////////////////////////////////////////////////////////////
+
+function QuoteSingleJSONCharacter (c) {
+  if (c in TRI_CharacterQuoteCache) {
+    return TRI_CharacterQuoteCache[c];
   }
+
   var charCode = c.charCodeAt(0);
   var result;
+
   if (charCode < 16) result = '\\u000';
   else if (charCode < 256) result = '\\u00';
   else if (charCode < 4096) result = '\\u0';
   else result = '\\u';
+
   result += charCode.toString(16);
-  characterQuoteCache[c] = result;
+  TRI_CharacterQuoteCache[c] = result;
+
   return result;
 }
 
-function QuoteJSONString(str) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quotes a string character
+////////////////////////////////////////////////////////////////////////////////
+
+function QuoteJSONString (str) {
  var quotable = /[\\\"\x00-\x1f]/g;
  return '"' + str.replace(quotable, QuoteSingleJSONCharacter) + '"';
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT (value, seen, path, names, level) {
+function TRI_PRINT (value, seen, path, names, level) {
   var p;
 
   if (seen === undefined) {
@@ -129,14 +147,17 @@ function PRINT (value, seen, path, names, level) {
       if ('_PRINT' in value) {
         value._PRINT(seen, path, names, level);
       }
+      else if (value instanceof Array) {
+        TRI_PRINT_ARRAY(value, seen, path, names, level);
+      }
       else if (value.__proto__ === Object.prototype) {
-        PRINT_OBJECT(value, seen, path, names, level);
+        TRI_PRINT_OBJECT(value, seen, path, names, level);
       }
       else if ('toString' in value) {
         internal.output(value.toString());
       }
       else {
-        PRINT_OBJECT(value, seen, path, names, level);
+        TRI_PRINT_OBJECT(value, seen, path, names, level);
       }
     }
     else if (value === undefined) {
@@ -170,8 +191,8 @@ function PRINT (value, seen, path, names, level) {
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype._PRINT = function(seen, path, names, level) {
-  if (this.length == 0) {
+function TRI_PRINT_ARRAY (object, seen, path, names, level) {
+  if (object.length == 0) {
     internal.output("[ ]");
   }
   else {
@@ -181,12 +202,12 @@ Array.prototype._PRINT = function(seen, path, names, level) {
     
     var newLevel = level + 1;
     
-    for (var i = 0;  i < this.length;  i++) {
+    for (var i = 0;  i < object.length;  i++) {
       internal.output(sep);
       
       printIdent(newLevel);
       
-      PRINT(this[i], seen, path + "[" + i + "]", names, newLevel);
+      TRI_PRINT(object[i], seen, path + "[" + i + "]", names, newLevel);
       sep = ", ";
     }
 
@@ -231,10 +252,10 @@ Function.prototype._PRINT = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of an object
+/// @brief prints an object
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT_OBJECT (object, seen, path, names, level) {
+function TRI_PRINT_OBJECT (object, seen, path, names, level) {
   var sep = " ";
 
   internal.output("{");
@@ -249,13 +270,14 @@ function PRINT_OBJECT (object, seen, path, names, level) {
       
       printIdent(newLevel);
       
-      if ( typeof(COLOR_OUTPUT) != "undefined") {
+      if (typeof(COLOR_OUTPUT) != "undefined") {
         internal.output(COLOR_OUTPUT, k, COLOR_OUTPUT_RESET, " : ");
       }
       else {
         internal.output(QuoteJSONString(k), " : ");        
       }
-      PRINT(val, seen, path + "[" + k + "]", names, newLevel);
+
+      TRI_PRINT(val, seen, path + "[" + k + "]", names, newLevel);
       sep = ", ";
     }
   }
@@ -283,9 +305,10 @@ function PRINT_OBJECT (object, seen, path, names, level) {
 /// Only available in shell mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-function printIdent(level) {
+function printIdent (level) {
   if (typeof(PRETTY_PRINT) != "undefined" && PRETTY_PRINT) {
-      internal.output("\n");    
+      internal.output("\n");
+
       for (var j = 0; j < level; ++j) {
         internal.output("  ");    
       }    
