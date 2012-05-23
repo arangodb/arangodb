@@ -2285,9 +2285,6 @@ function evaloutput (data) {
     if (result !== undefined) {
       print(result);
     }
-    else {
-      print();
-    }
   }
   catch(e) {
     $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');

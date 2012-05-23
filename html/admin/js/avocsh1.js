@@ -389,28 +389,31 @@ function TRI_SYS_OUTPUT () {
 /// @brief outputs text to shell window
 ////////////////////////////////////////////////////////////////////////////////
 
-var print = function () {
+// must be a variable definition for the browser
+function TRI_PRINT_BROWSER () {
   for (var i = 0;  i < arguments.length;  ++i) {
-    var value = arguments[i];
-
     if (0 < i) {
       TRI_SYS_OUTPUT(" ");
     }
 
-    if (typeof(value) == "object" && ("_PRINT" in value)) {
-      value._PRINT();
-    }
+    if (typeof(arguments[i]) === "string") {
+      TRI_SYS_OUTPUT(arguments[i]);      
+    } 
     else {
-      TRI_SYS_OUTPUT(value);
+      TRI_PRINT(arguments[i], [], "~", [], 0);
     }
   }
+
+  TRI_SYS_OUTPUT("\n");
 
   // flush buffer
   $('#avocshWindow').append('<p class="avocshSuccess">' + TRI_OutputBuffer + '</p>'); 
   TRI_OutputBuffer = "";
 
   return undefined;
-}
+};
+
+print = TRI_PRINT_BROWSER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
