@@ -1327,7 +1327,7 @@ var logTable = $('#logTableID').dataTable({
       collSize = JSON.parse(collSize) * 1024 * 1024; 
  
       if (collName == '') {
-        alert("Nothing to do..."); 
+        alert("No collection name entered. Aborting..."); 
         return 0; 
       } 
       
@@ -1345,7 +1345,13 @@ var logTable = $('#logTableID').dataTable({
           drawCollectionsTable(); 
         },
         error: function(data) {
-          alert(JSON.stringify(data));  
+          try {
+            var responseText = JSON.parse(data.responseText);
+            alert(responseText.errorMessage);
+          }
+          catch (e) {
+            alert(data.responseText);
+          }
         }
       });
   }); 
@@ -2278,8 +2284,12 @@ function evaloutput (data) {
 function validate(evt) {
   var theEvent = evt || window.event;
   var key = theEvent.keyCode || theEvent.which;
+
+  if ((key == 37 || key == 39) && !theEvent.shiftKey) {
+    return;
+  }
   key = String.fromCharCode( key );
-  var regex = /[0-9]|\./;
+  var regex = /[0-9\.\b]/;
   if( !regex.test(key) ) {
     theEvent.returnValue = false;
     if(theEvent.preventDefault) theEvent.preventDefault();
