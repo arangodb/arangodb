@@ -719,7 +719,8 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#createCollectionView').show();
       $('#createCollName').focus();
-
+      $('#createCollName').val('');
+      $('#createCollSize').val('');
     }
   });
 
