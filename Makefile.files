@@ -280,6 +280,16 @@ JAVASCRIPT_HEADER = \
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
 ################################################################################
+## JavaScript modules for browser
+################################################################################
+
+JAVASCRIPT_BROWSER = \
+	html/admin/js/modules/simple-query-basics.js \
+	html/admin/js/modules/simple-query.js
+
+BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
+
+################################################################################
 ## FLEX
 ################################################################################
 
