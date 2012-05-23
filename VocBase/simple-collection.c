@@ -331,7 +331,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
       sim->base.endWrite(&sim->base);
     }
 
-    mptr._did = 0;
+    memset(&mptr, 0, sizeof(mptr));
     return mptr;
   }
 
@@ -562,7 +562,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
           }
 
           TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
-          mptr._did = 0;
+          memset(&mptr, 0, sizeof(mptr));
           return mptr;
         }
       }
@@ -1012,7 +1012,7 @@ static TRI_doc_mptr_t ReadShapedJson (TRI_doc_collection_t* document,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &did);
 
   if (header == NULL || header->_deletion != 0) {
-    result._did = 0;
+    memset(&result, 0, sizeof(result));
     return result;
   }
   else {
@@ -1048,7 +1048,7 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
     }
 
     TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    mptr._did = 0;
+    memset(&mptr, 0, sizeof(mptr));
     return mptr;
   }
 

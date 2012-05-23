@@ -10,8 +10,8 @@
 typedef struct global_variable {
     int   counter;
     mrb_value *data;
-    mrb_value (*getter)();
-    void  (*setter)();
+    mrb_value (*getter)(void);
+    void  (*setter)(void);
     //void  (*marker)();
     //int block_trace;
     //struct trace_var *trace;
