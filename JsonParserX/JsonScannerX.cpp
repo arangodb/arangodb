@@ -838,7 +838,6 @@ static void yy_flex_strncpy (char *,yyconst char *,int ,yyscan_t yyscanner);
 static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
 #endif
 
-#define YY_NO_INPUT
 #ifndef YY_NO_INPUT
 /* %if-c-only Standard (non-C++) definition */
 /* %not-for-header */
@@ -1683,7 +1682,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 
 		/* Read in more data. */
 		YY_INPUT( (&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move]),
-			yyg->yy_n_chars, (size_t) num_to_read );
+			yyg->yy_n_chars, (int) num_to_read );
 
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars = yyg->yy_n_chars;
 		}
