@@ -62,11 +62,13 @@ using namespace std;
 /// @brief word break characters
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@', 
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
 };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -199,6 +201,7 @@ static char* CompletionGenerator (char const* text, int state) {
 /// @brief attempted completion
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static char** AttemptedCompletion (char const* text, int start, int end) {
   char** result;
 
@@ -219,6 +222,7 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 
   return result;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -281,7 +285,7 @@ bool MRLineEditor::open (const bool autoComplete) {
 
 bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t column) {
  
-#ifdef TRI_ENABLE_MRUBY	
+#ifdef TRI_ENABLE_MRUBY 
   char const* msg = "syntax error, unexpected $end";
   char* text = TRI_DuplicateString(source.c_str());
 

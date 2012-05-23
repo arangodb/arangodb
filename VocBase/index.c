@@ -434,6 +434,9 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCapConstraint (TRI_index_t* idx) {
+  TRI_cap_constraint_t* cap = (TRI_cap_constraint_t*) idx;
+
+  TRI_DestroyLinkedArray(&cap->_array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

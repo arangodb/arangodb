@@ -48,7 +48,7 @@ The ArangoDB shell will be install as
 Start the server:
 
     > mkdir /tmp/vocbase
-    > ./arango /tmp/vocbase
+    > ./arangod /tmp/vocbase
     2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 0.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO HTTP client port: 127.0.0.1:8529
     2012-03-30T12:54:19Z [11794] INFO HTTP admin port: 127.0.0.1:8530
@@ -56,7 +56,7 @@ Start the server:
 
 Start the shell in another windows:
 
-    > ./avocsh
+    > ./arangosh
                                            _     
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
@@ -64,19 +64,19 @@ Start the shell in another windows:
      \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
                            |___/                 
 
-    Welcome to avocsh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
+    Welcome to arangosh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
     Using Google V8 3.9.4.0 JavaScript engine.
     Using READLINE 6.1.
 
     Connected to Arango DB 127.0.0.1:8529 Version 0.3.5
 
-    avocsh> db._create("examples")
+    arangosh> db._create("examples")
     [ArangoCollection 106097, "examples]
 
-    avocsh> db.examples.save({ Hallo: "World" });
+    arangosh> db.examples.save({ Hallo: "World" });
     {"error":false,"_id":"106097/2333739","_rev":2333739}
 
-    avocsh> db.examples.all();
+    arangosh> db.examples.all();
     [{ _id : "82883/1524675", _rev : 1524675, Hallo : "World" }]
 
 ## Caveat

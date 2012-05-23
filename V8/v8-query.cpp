@@ -977,7 +977,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     }
 
     // limit
-    for (;  ptr < end && (TRI_voc_ssize_t) count < limit;  ++ptr) {
+    for (;  ptr < end && count < limit;  ++ptr) {
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
           
@@ -1095,6 +1095,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       ++count;
     }
   }
+
+  TRI_DestroyVector(&filtered);
 
   collection->_collection->endRead(collection->_collection);
 

@@ -765,13 +765,15 @@ var logTable = $('#logTableID').dataTable({
     else {
       var collectionID; 
       var boxContent = $('#documentEditSourceBox').val();
-      var jsonContent = JSON.parse(boxContent);
       collectionID = globalCollectionID;  
+
+      boxContent = stateReplace(boxContent);
+      parsedContent = JSON.parse(boxContent); 
 
       $.ajax({
         type: "PUT",
         url: "/_api/document/" + collectionID,
-        data: JSON.stringify(jsonContent), 
+        data: JSON.stringify(parsedContent), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -1009,9 +1011,9 @@ var logTable = $('#logTableID').dataTable({
 
         /*animation*/
         $('#movetologinButton').text("Login");
-	$('#footerSlideContent').animate({ height: '25px' });
-	$('#footerSlideButton').css('backgroundPosition', 'top left');
-	open = false;
+        $('#footerSlideContent').animate({ height: '25px' });
+        $('#footerSlideButton').css('backgroundPosition', 'top left');
+        open = false;
 
         return false; 
       },
@@ -1164,14 +1166,7 @@ var logTable = $('#logTableID').dataTable({
     var client = "arangodb:" + data;
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-  
-    try {
-      var server = "" + eval(data); 
-      $('#avocshWindow').append('<p class="avocshSuccess">' + server + '</p>');
-    }
-    catch(e) {
-      $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
-    }
+    hansmann(data);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
@@ -1190,14 +1185,14 @@ var logTable = $('#logTableID').dataTable({
       contentType: "application/json",
       processData: false, 
       success: function(data) {
-        var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=green>' + JSON.stringify(temp.errorMessage) + '</font>'); 
+        $("#queryOutput").append('<font color=green>' + JSON.stringify(data.result) + '</font>'); 
       },
       error: function(data) {
+        console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=red>' + JSON.stringify(temp.errorMessage) + '</font>'); 
+        $("#queryOutput").append('<font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font>'); 
       }
     });
   });
@@ -1516,7 +1511,7 @@ function drawCollectionsTable () {
           error: function(data) {
           }
         });
-	
+        
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
       }
@@ -2272,4 +2267,36 @@ function hideLogPagination() {
   $('#logToolbarDebu').hide(); 
   $('#logToolbarInfo').hide(); 
 }
+
+function hansmann (data) {
+        try {
+                var server = eval(data); 
+                if (server !== undefined) {
+                        var resultung = "";
+                        if (server === null) {
+                                resultung = "null";
+                        }
+                        else if (typeof(server) == "string") {
+                                resultung = server;
+                        }
+                        else if (typeof(server) == "number" || typeof(server) == "boolean") {
+                                resultung = "" + server;
+                        }
+                        else if (typeof(server) == "object") {
+                                try {
+                                        resultung = JSON.stringify(server);
+                                }
+                                catch (err) {
+                                        resultung = server.toString();
+                                }
+                        }
+
+                        $('#avocshWindow').append('<p class="avocshSuccess">' + resultung + '</p>'); 
+                }
+        }
+        catch(e) {
+                $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
+        }
+}
+
 
