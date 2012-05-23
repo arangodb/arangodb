@@ -1912,22 +1912,25 @@ function AHUACATL_GEO_WITHIN () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GRAPH_PATHS () {
-  var collection = arguments[0];
-  var edgeType = arguments[1] != undefined ? arguments[1] : "outbound";
-  var minLength = arguments[2] != undefined ? arguments[2] : 1;
-  var maxLength = arguments[3] != undefined ? arguments[3] : 10;
-  var followCycles = arguments[4] ? arguments[4] : false;
-  var direction;
+  var collection1 = arguments[0];
+  var collection2 = arguments[1];
+  var direction = arguments[2] != undefined ? arguments[2] : "outbound";
+  var followCycles = arguments[3] ? arguments[3] : false;
+
+  var minLength = 0;
+  var maxLength = 10;
+  var searchDirection;
 
   // validate arguments
-  if (edgeType == "outbound") {
-    direction = 1;
+  if (direction == "outbound") {
+    searchDirection = 1;
   }
-  else if (edgeType == "inbound") {
-    direction = 2;
+  else if (direction == "inbound") {
+    searchDirection = 2;
   }
-  else if (edgeType == "any") {
-    direction = 3;
+  else if (direction == "any") {
+    searchDirection = 3;
+    maxLength = 3;
   }
   else {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
@@ -1937,57 +1940,29 @@ function AHUACATL_GRAPH_PATHS () {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
   }
 
-  var edgeCollection = internal.edges[collection];
+  var vertexCollection = internal.db[collection1];
+  var edgeCollection = internal.edges[collection2];
   var searchAttributes = { 
+    "vertexCollection" : vertexCollection, 
     "edgeCollection" : edgeCollection, 
     "minLength" : minLength, 
     "maxLength" : maxLength, 
-    "direction" : direction,
+    "direction" : searchDirection,
     "followCycles" : followCycles,
   };
 
-  var allEdges = edgeCollection.all().toArray();
+  var vertices = vertexCollection.all().toArray();
   // TODO: restrict allEdges to edges with certain _from values etc.
 
   var result = [ ];
-  var n = allEdges.length;
+  var n = vertices.length;
   for (var i = 0; i < n; ++i) {
-
-    var edge = allEdges[i];
-    var _from = edge._from; 
-    var _to = edge._to; 
-    var sources = [ ];
-
-    if (searchAttributes.direction & 1) {
-      sources.push(_from);
-    }
-    if (searchAttributes.direction & 2) {
-      sources.push(_to);
-    }
-
-    for (var j = 0; j < sources.length; ++j) {
-      var visited = { };
-      var vertices = [ ];
-      var edges = [ ];
-
-      var source = sources[j];
-      var next = internal.db._document(source);
-      vertices.push(next);
-      if (!searchAttributes.followCycles) {
-        visited[source] = true;
-      }
-    
-      if (searchAttributes.minLength == 0) {
-        var copy = AHUACATL_CLONE(vertices);
-        result.push({ "vertices" : copy, "edges" : [ ], "source" : copy[0], "destination" : copy[copy.length - 1] });
-      }
-
-      if (searchAttributes.maxLength > 0) {
-        var subResult = AHUACATL_GRAPH_SUBNODES(searchAttributes, AHUACATL_CLONE(visited), edges, vertices, edge, 0);
-        for (var k = 0; k < subResult.length; ++k) {
-          result.push(subResult[k]);
-        }
-      }
+    var vertex = vertices[i];
+    var visited = { };
+    visited[vertex._id] = true;
+    var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+    for (j = 0; j < connected.length; ++j) {
+      result.push(connected[j]);
     }
   }
 
@@ -1998,66 +1973,67 @@ function AHUACATL_GRAPH_PATHS () {
 /// @brief find all paths through a graph, internal part called recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_GRAPH_SUBNODES (searchAttributes, visited, edges, vertices, edge, level) {
+function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
   var result = [ ];
 
-  var _from = edge._from; 
-  var _to = edge._to;
-  var targets = [ ];
-
-  if (searchAttributes.direction & 1) {
-    targets.push(_to);
-  }
-  if (searchAttributes.direction & 2) {
-    targets.push(_from);
+  if (level >= searchAttributes.minLength) {
+    result.push({ 
+        "vertices" : vertices, 
+        "edges" : edges,
+        "source" : vertices[0],
+        "destination" : vertices[vertices.length - 1],
+        });
   }
 
-  for (var i = 0; i < targets.length; ++i) {
-    var target = targets[i];
+  if (level + 1 > searchAttributes.maxLength) {
+    return result;
+  }
 
-    if (!searchAttributes.followCycles && visited[target]) {
-      continue;
+  var subEdges;
+
+  if (searchAttributes.direction == 1) {
+    subEdges = searchAttributes.edgeCollection.outEdges(vertexId);
+  }
+  else if (searchAttributes.direction == 2) {
+    subEdges = searchAttributes.edgeCollection.inEdges(vertexId);
+  }
+  else if (searchAttributes.direction == 3) {
+    subEdges = searchAttributes.edgeCollection.edges(vertexId);
+  }
+
+  for (var i = 0; i < subEdges.length; ++i) {
+    var subEdge = subEdges[i];
+    var targets = [ ];
+
+    if (searchAttributes.direction & 1) {
+      targets.push(subEdge._to);
+    }
+    if (searchAttributes.direction & 2) {
+      targets.push(subEdge._from);
     }
 
-    var clonedEdges = AHUACATL_CLONE(edges);
-    var clonedVertices = AHUACATL_CLONE(vertices);
-
-    clonedEdges.push(edge);
-    var vertex = internal.db._document(target);
-    clonedVertices.push(vertex);
+    for (var j = 0; j < targets.length; ++j) {
+      var targetId = targets[j];
       
-    if (level + 1 >= searchAttributes.minLength) {
-      result.push({ "vertices" : clonedVertices, "edges" : clonedEdges, "source" : clonedVertices[0], "destination" : clonedVertices[clonedVertices.length - 1] });
-    }
-
-    if (level + 1 < searchAttributes.maxLength) {
-      // recursion
-
       if (!searchAttributes.followCycles) {
-        visited[target] = true;
-      }
-
-      var subEdges;
-      if (searchAttributes.direction == 1) {
-        subEdges = searchAttributes.edgeCollection.outEdges(vertex);
-      }
-      else if (searchAttributes.direction == 2) {
-        subEdges = searchAttributes.edgeCollection.inEdges(vertex);
-      }
-      else if (searchAttributes.direction == 3) {
-        subEdges = searchAttributes.edgeCollection.edges(vertex);
-      }
-
-      for (var j = 0; j < subEdges.length; ++j) {
-        var subResult = AHUACATL_GRAPH_SUBNODES(searchAttributes, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, subEdges[j], level + 1);
-
-        for (var k = 0; k < subResult.length; ++k) {
-          result.push(subResult[k]);
+        if (visited[targetId]) {
+          continue;
         }
+        visited[targetId] = true;
+      }
+
+      var clonedEdges = AHUACATL_CLONE(edges);
+      var clonedVertices = AHUACATL_CLONE(vertices);
+      clonedEdges.push(subEdge);
+      clonedVertices.push(internal.db._document(targetId));
+      
+      var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
+      for (k = 0; k < connected.length; ++k) {
+        result.push(connected[k]);
       }
 
       if (!searchAttributes.followCycles) {
-        delete visited[target];
+        delete visited[targetId];
       }
     }
   }
