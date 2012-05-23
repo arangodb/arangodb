@@ -143,7 +143,7 @@ mrb_obj_value(void *p)
 }
 
 static inline mrb_value
-mrb_false_value()
+mrb_false_value(void)
 {
   mrb_value v;
 
@@ -153,7 +153,7 @@ mrb_false_value()
 }
 
 static inline mrb_value
-mrb_nil_value()
+mrb_nil_value(void)
 {
   mrb_value v;
 
@@ -163,7 +163,7 @@ mrb_nil_value()
 }
 
 static inline mrb_value
-mrb_true_value()
+mrb_true_value(void)
 {
   mrb_value v;
 
@@ -173,7 +173,7 @@ mrb_true_value()
 }
 
 static inline mrb_value
-mrb_undef_value()
+mrb_undef_value(void)
 {
   mrb_value v;
 
