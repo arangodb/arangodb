@@ -92,7 +92,7 @@ static string JS_server_server =
   "\n"
   "ShapedJson.prototype._PRINT = function(seen, path, names, level) {\n"
   "  if (this instanceof ShapedJson) {\n"
-  "    PRINT_OBJECT(this, seen, path, names, level);\n"
+  "    TRI_PRINT_OBJECT(this, seen, path, names, level);\n"
   "  }\n"
   "  else {\n"
   "    internal.output(this.toString());\n"
