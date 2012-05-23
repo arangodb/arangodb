@@ -333,7 +333,7 @@ form {
 
 #queryOutput {
   height:40%; 
-  yoverflow-y: auto; 
+  overflow-y: auto; 
   border: 1px solid black;
   background: white;  
   font-family: "courier"; 
