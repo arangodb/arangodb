@@ -71,7 +71,7 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
 
   if (shaped == 0) {
     collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    result._did = 0;
+    memset(&result, 0, sizeof(result));
     return result;
   }
 
@@ -123,7 +123,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
 
   if (shaped == 0) {
     collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    result._did = 0;
+    memset(&result, 0, sizeof(result));
     return result;
   }
 
