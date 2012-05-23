@@ -1912,14 +1912,16 @@ function AHUACATL_GEO_WITHIN () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GRAPH_PATHS () {
-  var collection1 = arguments[0];
-  var collection2 = arguments[1];
+  var vertices = arguments[0];
+  var edgeCollection = arguments[1];
   var direction = arguments[2] != undefined ? arguments[2] : "outbound";
   var followCycles = arguments[3] ? arguments[3] : false;
 
   var minLength = 0;
   var maxLength = 10;
   var searchDirection;
+
+  AHUACATL_LIST(vertices);
 
   // validate arguments
   if (direction == "outbound") {
@@ -1940,18 +1942,14 @@ function AHUACATL_GRAPH_PATHS () {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
   }
 
-  var vertexCollection = internal.db[collection1];
-  var edgeCollection = internal.edges[collection2];
   var searchAttributes = { 
-    "vertexCollection" : vertexCollection, 
-    "edgeCollection" : edgeCollection, 
+    "edgeCollection" : internal.edges[edgeCollection],
     "minLength" : minLength, 
     "maxLength" : maxLength, 
     "direction" : searchDirection,
     "followCycles" : followCycles,
   };
 
-  var vertices = vertexCollection.all().toArray();
   // TODO: restrict allEdges to edges with certain _from values etc.
 
   var result = [ ];
