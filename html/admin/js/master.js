@@ -763,30 +763,36 @@ var logTable = $('#logTableID').dataTable({
       });
     }
     else {
-      var collectionID; 
-      var boxContent = $('#documentEditSourceBox').val();
-      collectionID = globalCollectionID;  
+      try {
+        var collectionID; 
+        var boxContent = $('#documentEditSourceBox').val();
+        collectionID = globalCollectionID;  
 
-      boxContent = stateReplace(boxContent);
-      parsedContent = JSON.parse(boxContent); 
+        boxContent = stateReplace(boxContent);
+        parsedContent = JSON.parse(boxContent); 
 
-      $.ajax({
-        type: "PUT",
-        url: "/document/" + collectionID,
-        data: JSON.stringify(parsedContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          var collID = collectionID.split("/");  
-          window.location.href = "#showCollection?" + collID[0];  
-          var img = $('#toggleEditedDocButton').find('img'); 
-          img.attr('src', '/_admin/html/media/icons/off_icon16.png');
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
+        $.ajax({
+          type: "PUT",
+          url: "/document/" + collectionID,
+          data: JSON.stringify(parsedContent), 
+          contentType: "application/json",
+          processData: false, 
+          success: function(data) {
+            tableView = true;
+            var collID = collectionID.split("/");  
+            window.location.href = "#showCollection?" + collID[0];  
+            var img = $('#toggleEditedDocButton').find('img'); 
+            img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+          },
+          error: function(data) {
+           alert(JSON.stringify(data)); 
+          }
+        });
+      }
+      catch(e) {
+        console.log(e); 
+        alert("Please make sure the entered value is a valid json string."); 
+      }
     }
   });
 
@@ -854,30 +860,37 @@ var logTable = $('#logTableID').dataTable({
       });
     }
     else {
-      var collectionID = location.hash.substr(12, location.hash.length); 
-      var collID = collectionID.split("="); 
-      var boxContent = $('#NewDocumentSourceBox').val();
-      var jsonContent = JSON.parse(boxContent);
-      $.each(jsonContent, function(row1, row2) {
-        if ( row1 == '_id') {
-          collectionID = row2; 
-        } 
-      });
 
-      $.ajax({
-        type: "POST",
-        url: "/document?collection=" + collID, 
-        data: JSON.stringify(jsonContent), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          window.location.href = "#showCollection?" + collID;  
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
+      try {
+        var collectionID = location.hash.substr(12, location.hash.length); 
+        var collID = collectionID.split("="); 
+        var boxContent = $('#NewDocumentSourceBox').val();
+        var jsonContent = JSON.parse(boxContent);
+        $.each(jsonContent, function(row1, row2) {
+          if ( row1 == '_id') {
+            collectionID = row2; 
+          } 
+        });
+
+        $.ajax({
+          type: "POST",
+          url: "/document?collection=" + collID, 
+          data: JSON.stringify(jsonContent), 
+          contentType: "application/json",
+          processData: false, 
+          success: function(data) {
+            tableView = true;
+            window.location.href = "#showCollection?" + collID;  
+          },
+          error: function(data) {
+            alert(JSON.stringify(data)); 
+          }
+        });
+      }
+      catch(e) {
+        console.log(e); 
+        alert("Please make sure the entered value is a valid json string."); 
+      }
     }
   });
 
