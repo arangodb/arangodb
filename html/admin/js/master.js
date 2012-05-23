@@ -1179,7 +1179,7 @@ var logTable = $('#logTableID').dataTable({
     var client = "arangodb:" + data;
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-    hansmann(data);
+    evaloutput(data);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
@@ -2283,7 +2283,7 @@ function hideLogPagination() {
   $('#logToolbarInfo').hide(); 
 }
 
-function hansmann (data) {
+function evaloutput (data) {
         try {
                 var server = eval(data); 
                 if (server !== undefined) {
