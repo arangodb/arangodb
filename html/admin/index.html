@@ -204,8 +204,8 @@
             <a>Add row</a>
           </button>
         <button class="minimal enabled" id="toggleEditedDocButton">
-            <a>Source</a>
-            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
+            <a id="toggleEditedDocButtonText">Edit Source</a>
           </button>
         <div id="documentEditTableView">
           <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%">
@@ -238,8 +238,8 @@
             <a>Add row</a>
           </button>
           <button class="minimal enabled" id="toggleNewDocButton">
-            <a>Source</a>
-            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
+            <a id="toggleNewDocButtonText">Edit Source</a>
           </button>
           <div id="NewDocumentTableView">
             <table cellpadding="0" cellspacing="0" border="0" class="display" id="NewDocumentTableID" width="100%">
@@ -399,15 +399,6 @@
                          |___/                                                                
   
   Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH.
-
-  ------------------------------------- Help -------------------------------------
-  Example:                                                            
-   > db._collections();         list all collections       
-   > db.<coll_name>.all();                 list all documents         
-   > id = db.<coll_name>.save({ ... });    save a document            
-   > db.<coll_name>.remove(<_id>);         delete a document          
-   > db.<coll_name>.document(<_id>);       get a document             
-   > help                       show help pages            
           </pre><br><br> 
         </div>
         <form>
