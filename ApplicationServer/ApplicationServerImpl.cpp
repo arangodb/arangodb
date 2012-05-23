@@ -78,8 +78,6 @@ namespace triagens {
 
     ApplicationServerImpl::~ApplicationServerImpl () {
       for_each(features.begin(), features.end(), DeleteObject());
-
-      Random::shutdown();
     }
 
     // -----------------------------------------------------------------------------
@@ -219,6 +217,7 @@ namespace triagens {
 
 
     void ApplicationServerImpl::beginShutdown () {
+      Random::shutdown();
     }
 
 

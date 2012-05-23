@@ -106,7 +106,8 @@ ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
     _context(),
     _actionQueue(actionQueue),
     _actionLoader(actionLoader),
-    _gc(0) {
+    _gc(0),
+    _v8g(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +115,9 @@ ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
 ////////////////////////////////////////////////////////////////////////////////
 
 ActionDispatcherThread::~ActionDispatcherThread () {
+  if (_v8g) {
+    delete _v8g;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +256,7 @@ void ActionDispatcherThread::initialise () {
 
   _context->Enter();
 
-  TRI_InitV8VocBridge(_context, _vocbase);
+  _v8g = TRI_InitV8VocBridge(_context, _vocbase);
   TRI_InitV8Queries(_context);
   TRI_InitV8Actions(_context, _actionQueue.c_str());
   TRI_InitV8Conversions(_context);
@@ -267,6 +271,7 @@ void ActionDispatcherThread::initialise () {
       LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
       _context->Exit();
       _isolate->Exit();
+
       TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
