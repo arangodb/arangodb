@@ -1914,7 +1914,7 @@ static string JS_server_ahuacatl =
   "\n"
   "function AHUACATL_GRAPH_PATHS () {\n"
   "  var collection = arguments[0];\n"
-  "  var edgeType = arguments[1];\n"
+  "  var edgeType = arguments[1] != undefined ? arguments[1] : \"outbound\";\n"
   "  var minLength = arguments[2] != undefined ? arguments[2] : 1;\n"
   "  var maxLength = arguments[3] != undefined ? arguments[3] : 10;\n"
   "  var followCycles = arguments[4] ? arguments[4] : false;\n"
