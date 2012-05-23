@@ -384,7 +384,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "c,n,n,n|s");
 
   // graph functions
-  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,s|n,n,b");
+  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c|s,n,n,b");
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!

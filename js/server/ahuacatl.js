@@ -1913,7 +1913,7 @@ function AHUACATL_GEO_WITHIN () {
 
 function AHUACATL_GRAPH_PATHS () {
   var collection = arguments[0];
-  var edgeType = arguments[1];
+  var edgeType = arguments[1] != undefined ? arguments[1] : "outbound";
   var minLength = arguments[2] != undefined ? arguments[2] : 1;
   var maxLength = arguments[3] != undefined ? arguments[3] : 10;
   var followCycles = arguments[4] ? arguments[4] : false;
