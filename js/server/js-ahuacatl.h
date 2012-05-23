@@ -1931,7 +1931,7 @@ static string JS_server_ahuacatl =
   "  }\n"
   "  else if (direction == \"any\") {\n"
   "    searchDirection = 3;\n"
-  "    maxLength = 2;\n"
+  "    maxLength = 3;\n"
   "  }\n"
   "  else {\n"
   "    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, \"PATHS\");\n"
