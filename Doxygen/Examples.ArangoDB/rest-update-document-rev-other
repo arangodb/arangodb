@@ -1,4 +1,4 @@
-> curl --data @- -X PUT --dump - http://localhost:8529/document/73482/30443310?rev=30443309
+> curl --data @- -X PUT --dump - http://localhost:8529/_api/document/73482/30443310?rev=30443309
 { "World" : "Hallo" }
 
 HTTP/1.1 412 Precondition Failed

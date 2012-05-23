@@ -45,12 +45,12 @@
 /// @page RestDocumentCallsTOC
 ///
 /// <ul>
-///  <li>@ref RestDocumentRead "GET /document/document-handle"</li>
-///  <li>@ref RestDocumentCreate "POST /document?collection=collection-identifier"</li>
-///  <li>@ref RestDocumentUpdate "PUT /document/document-handle"</li>
-///  <li>@ref RestDocumentDelete "DELETE /document/document-handle"</li>
-///  <li>@ref RestDocumentHead "HEAD /document/document-handle"</li>
-///  <li>@ref RestDocumentReadAll "GET /document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentRead "GET /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentCreate "POST /_api/document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentUpdate "PUT /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentDelete "DELETE /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentHead "HEAD /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentReadAll "GET /_api/document?collection=collection-identifier"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -97,13 +97,13 @@
 /// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI:
 ///
-/// @LIT{http://@FA{server}:@FA{port}/document/@FA{document-handle}}
+/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
 ///
 /// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
 /// then the URL of that document is:
 ///
-/// @LIT{http://localhost:8529/document/7254820/362549736}
+/// @LIT{http://localhost:8529/_api/document/7254820/362549736}
 ///
 /// Each document also has a document revision or etag with is returned
 /// in the "ETag" header field when requesting a document.

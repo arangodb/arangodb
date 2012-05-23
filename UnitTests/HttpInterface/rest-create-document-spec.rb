@@ -4,7 +4,7 @@ require 'rspec'
 require './arangodb.rb'
 
 describe ArangoDB do
-  prefix = "rest_create-document"
+  prefix = "rest-create-document"
 
   context "creating a document:" do
 
@@ -14,7 +14,7 @@ describe ArangoDB do
 
     context "error handling:" do
       it "returns an error if url contains a suffix" do
-	cmd = "/document/123456"
+	cmd = "/_api/document/123456"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-superfluous-suffix", cmd, :body => body)
 
@@ -26,7 +26,7 @@ describe ArangoDB do
       end
 
       it "returns an error if collection idenifier is missing" do
-	cmd = "/document"
+	cmd = "/_api/document"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-missing-cid", cmd, :body => body)
 
@@ -38,7 +38,7 @@ describe ArangoDB do
       end
 
       it "returns an error if the collection identifier is unknown" do
-	cmd = "/document?collection=123456"
+	cmd = "/_api/document?collection=123456"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-unknown-cid", cmd, :body => body)
 
@@ -50,7 +50,7 @@ describe ArangoDB do
       end
 
       it "returns an error if the collection name is unknown" do
-	cmd = "/document?collection=unknown_collection"
+	cmd = "/_api/document?collection=unknown_collection"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-unknown-name", cmd, :body => body)
 
@@ -68,7 +68,7 @@ describe ArangoDB do
 	id.should be_kind_of(Integer)
 	id.should_not be_zero
 
-	cmd = "/document?collection=#{id}"
+	cmd = "/_api/document?collection=#{id}"
 	body = "{ 1 : 2 }"
         doc = ArangoDB.log_post("#{prefix}-bad-json", cmd, :body => body)
 
@@ -99,7 +99,7 @@ describe ArangoDB do
       end
 
       it "creating a new document" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
@@ -124,7 +124,7 @@ describe ArangoDB do
 	match[1].should eq("#{@cid}")
 
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
@@ -132,7 +132,7 @@ describe ArangoDB do
       end
 
       it "creating a new document complex body" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
 	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
@@ -157,9 +157,9 @@ describe ArangoDB do
 	match[1].should eq("#{@cid}")
 
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
-	cmd = "/document/#{did}"
+	cmd = "/_api/document/#{did}"
 	doc = ArangoDB.log_get("#{prefix}-complex", cmd)
 
 	doc.code.should eq(200)
@@ -172,7 +172,7 @@ describe ArangoDB do
       end
 
       it "creating a new umlaut document" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
 	doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
 
@@ -197,9 +197,9 @@ describe ArangoDB do
 	match[1].should eq("#{@cid}")
 
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
-	cmd = "/document/#{did}"
+	cmd = "/_api/document/#{did}"
 	doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
 
 	doc.code.should eq(200)
@@ -233,7 +233,7 @@ describe ArangoDB do
       end
 
       it "creating a new document" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)
 
@@ -258,7 +258,7 @@ describe ArangoDB do
 	match[1].should eq("#{@cid}")
 
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
@@ -281,7 +281,7 @@ describe ArangoDB do
       end
 
       it "creating a new document" do
-	cmd = "/document?collection=#{@cn}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-named-collection", cmd, :body => body)
 
@@ -306,7 +306,7 @@ describe ArangoDB do
 	match[1].should eq("#{@cid}")
 
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
@@ -328,7 +328,7 @@ describe ArangoDB do
       end
 
       it "returns an error if collection is unknown" do
-	cmd = "/document?collection=#{@cn}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-unknown-collection-name", cmd, :body => body)
 
@@ -340,7 +340,7 @@ describe ArangoDB do
       end
 
       it "create the collection and the document" do
-	cmd = "/document?collection=#{@cn}&createCollection=true"
+	cmd = "/_api/document?collection=#{@cn}&createCollection=true"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
 
@@ -361,7 +361,7 @@ describe ArangoDB do
 	did.should be_kind_of(String)
 	
 	etag.should eq("\"#{rev}\"")
-	location.should eq("/document/#{did}")
+	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 

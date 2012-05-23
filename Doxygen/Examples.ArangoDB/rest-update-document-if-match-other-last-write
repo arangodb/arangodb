@@ -1,4 +1,4 @@
-> curl --data @- -X PUT '-H if-match: "30246701"' --dump - http://localhost:8529/document/73482/30246702?policy=last
+> curl --data @- -X PUT '-H if-match: "30246701"' --dump - http://localhost:8529/_api/document/73482/30246702?policy=last
 { "World" : "Hallo" }
 
 HTTP/1.1 200 OK

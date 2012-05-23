@@ -1,4 +1,4 @@
-> curl -X GET --dump - http://localhost:8529/edges/17501660?vertex=17501660/18419164&direction=in
+> curl -X GET --dump - http://localhost:8529/_api/edges/17501660?vertex=17501660/18419164&direction=in
 
 HTTP/1.1 200 OK
 content-type: application/json
