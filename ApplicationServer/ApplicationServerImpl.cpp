@@ -78,6 +78,8 @@ namespace triagens {
 
     ApplicationServerImpl::~ApplicationServerImpl () {
       for_each(features.begin(), features.end(), DeleteObject());
+
+      Random::shutdown();
     }
 
     // -----------------------------------------------------------------------------
