@@ -28,7 +28,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -768,13 +768,14 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_node) {
-  var pathes = {}, // {ID => [Node]}
+  var pathes = {},        // {ID => [Node]}
     determined_list = [], // [ID]
-    todo_list = [], // [ID]
-    i,
-    current_node_id,
-    neighbor_list = [],
-    current_neighbor;
+    todo_list = [],       // [ID]
+    i,                    // Number
+    current_node_id,      // ID
+    neighbor_list = [],   // [ID]
+    new_path = [],        // [Node]
+    current_neighbor;     // ID
 
   this._pushNeigborsToArray(todo_list);
 
@@ -792,11 +793,16 @@ Vertex.prototype.pathTo = function (target_node) {
     for (i = 0; i < neighbor_list.length; i++) {
       current_neighbor = neighbor_list[i];
 
-      pathes[current_neighbor] = []
+      new_path = []
         .concat(pathes[current_node_id])
         .concat(this._graph.getVertex(current_neighbor));
-      if (determined_list.lastIndexOf(neighbor_list[i]) === -1) {
-        todo_list.push(neighbor_list[i]);
+
+      if (pathes[current_neighbor] === undefined || (new_path.length < pathes[current_neighbor].length)) {
+        pathes[current_neighbor] = new_path;
+
+        if (determined_list.lastIndexOf(neighbor_list[i]) === -1) {
+          todo_list.push(neighbor_list[i]);
+        }
       }
     }
 
@@ -1190,6 +1196,20 @@ Graph.prototype.getVertex = function (id) {
 
   return vertex;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a vertex from the graph, create it if it doesn't exist
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getOrAddVertex = function (id) {
+  var v = this.getVertex(id);
+  if (v === null) {
+    v = this.addVertex(id);
+  }
+  return v;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for all vertices
