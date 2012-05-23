@@ -672,6 +672,7 @@ int TRI_CreateLockFile (char const* filename) {
 
   pid = TRI_CurrentProcessId();
   buf = TRI_StringUInt32(pid);
+  // TODO: buf might be NULL
 
   rv = TRI_WRITE(fd, buf, strlen(buf));
 
@@ -690,6 +691,8 @@ int TRI_CreateLockFile (char const* filename) {
   TRI_CLOSE(fd);
 
   fd = TRI_OPEN(filename, O_RDONLY);
+  // TODO: return value of fd is not checked
+
   rv = flock(fd, LOCK_EX);
 
   if (rv == -1) { // file may be locked already
@@ -701,9 +704,10 @@ int TRI_CreateLockFile (char const* filename) {
     return TRI_errno();
   }
 
-  //  close(fd); file descriptor has to be valid for file locking
+  // TODO: fd is never closed from here on, resource is lost 
 
   fn = TRI_DuplicateString(filename);
+  // TODO: fn might be NULL
 
   TRI_WriteLockReadWriteLock(&LockFileNames);
   TRI_PushBackVectorString(&FileNames, fn);
