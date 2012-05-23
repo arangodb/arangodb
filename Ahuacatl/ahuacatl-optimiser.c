@@ -811,8 +811,12 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
   }
+  else {
+    value = 0.0;
+  }
   
   node = TRI_CreateNodeValueDoubleAql(context, value);
+
   if (!node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
