@@ -93,6 +93,17 @@ function ahuacatlSkiplistTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first skiplist index field without results
+////////////////////////////////////////////////////////////////////////////////
+
+    testEqSingleVoid : function () {
+      var expected = [ ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 99 RETURN v");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test the first skiplist index field with equality
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -198,6 +209,28 @@ function ahuacatlSkiplistTestSuite () {
     testRangeSingle3 : function () {
       var expected = [ [ 2, 1 ], [ 2, 2 ], [ 2, 3 ], [ 2, 4 ], [ 2, 5 ] ];
       var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a > 1 && v.a <= 2 SORT v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testEqMultiVoid1 : function () {
+      var expected = [ ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 99 && v.b == 1 RETURN v");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple skiplist fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testEqMultiVoid2 : function () {
+      var expected = [ ];
+      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 1 && v.b == 99 RETURN v");
 
       assertEqual(expected, actual);
     },
