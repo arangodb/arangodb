@@ -142,10 +142,10 @@ function TRI_CreateHelpHeadline (text) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief turn off pretty print2ing
+/// @brief turn off pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function print2_plain (data) {
+function print_plain (data) {
   var p = PRETTY_PRINT;
   PRETTY_PRINT = false;
   var c;
@@ -155,7 +155,7 @@ function print2_plain (data) {
   }
   
   try {
-    print2(data);
+    print(data);
     PRETTY_PRINT = p;
     if (typeof(c) != undefined) {
       COLOR_OUTPUT = c;
@@ -171,62 +171,62 @@ function print2_plain (data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty print2ing
+/// @brief start pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_pretty_print2 () {
-  print2("use pretty print2ing");
+function start_pretty_print () {
+  print("use pretty printing");
   PRETTY_PRINT=true;
   return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty print2ing
+/// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_pretty_print2 () {
-  print2("stop pretty print2ing");
+function stop_pretty_print () {
+  print("stop pretty printing");
   PRETTY_PRINT=false;
   return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty print2ing with optional color
+/// @brief start pretty printing with optional color
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_color_print2 (color) {
+function start_color_print (color) {
   if (typeof(color) == "string") {
     COLOR_OUTPUT = color;
   }
   else {
     COLOR_OUTPUT = COLOR_BRIGHT;
   }
-  print2("start " + COLOR_OUTPUT + "color" + COLOR_OUTPUT_RESET + " print2ing");
+  print("start " + COLOR_OUTPUT + "color" + COLOR_OUTPUT_RESET + " printing");
   return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty print2ing
+/// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_color_print2 () {
-  print2("stop color print2ing");
+function stop_color_print () {
+  print("stop color printing");
   COLOR_OUTPUT = undefined;
   return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the overall help
+/// @brief print the overall help
 ////////////////////////////////////////////////////////////////////////////////
 
 function help () {
-  print2(HELP);
-  print2(helpQueries);
-  print2(helpArangoDatabase);
-  print2(helpArangoCollection);
-  print2(helpArangoStatement);
-  print2(helpArangoQueryCursor);
-  print2(helpExtended);
+  print(HELP);
+  print(helpQueries);
+  print(helpArangoDatabase);
+  print(helpArangoCollection);
+  print(helpArangoStatement);
+  print(helpArangoQueryCursor);
+  print(helpExtended);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@ function help () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change internal.output to shell output
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
 ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +267,7 @@ ModuleCache["/internal"].exports.start_pager = SYS_START_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,10 +290,12 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoError (error) {
-  this.error = error.error;
-  this.code = error.code;
-  this.errorNum = error.errorNum;
-  this.errorMessage = error.errorMessage;
+  if (error != null) {
+    this.error = error.error;
+    this.code = error.code;
+    this.errorNum = error.errorNum;
+    this.errorMessage = error.errorMessage;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +312,7 @@ function ArangoError (error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2s an error
+/// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoError.prototype._PRINT = function() {
@@ -336,7 +338,7 @@ ArangoError.prototype.toString = function() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2s an error
+/// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoError.prototype.toString = function() {
@@ -372,6 +374,8 @@ function ArangoDatabase (connection) {
   this._collectionConstructor = ArangoCollection;
 }
 
+ModuleCache["/internal"].exports.ArangoDatabase = ArangoDatabase;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,8 +394,8 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
-'ArangoDatabase constructor:                                        ' + "\n" +
-' > db = new ArangoDatabase(connection);                            ' + "\n" +
+'ArangoDatabase constructor:                                         ' + "\n" +
+' > db = new ArangoDatabase(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -406,7 +410,7 @@ helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
 'Document Functions:                                                 ' + "\n" +
 '  _document(<id>)                 get document by handle            ' + "\n" +
 '  _replace(<id>, <data>)          over-writes document              ' + "\n" +
-'  _delete(<id>)                   deletes document                  ' + "\n" +
+'  _remove(<id>)                   deletes document                  ' + "\n" +
 '                                                                    ' + "\n" +
 'Query Functions:                                                    ' + "\n" +
 '  _createStatement(<data>);      create and return select query     ' + "\n" +
@@ -415,11 +419,11 @@ helpArangoDatabase = TRI_CreateHelpHeadline("ArangoDatabase help") +
 '  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for ArangoDatabase
+/// @brief print the help for ArangoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._help = function () {  
-  print2(helpArangoDatabase);
+  print(helpArangoDatabase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +452,7 @@ ArangoDatabase.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.get("/_api/collection");
+  var requestResult = this._connection.GET("/_api/collection");
   
   TRI_CheckRequestResult(requestResult);
 
@@ -475,7 +479,7 @@ ArangoDatabase.prototype._collections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._collection = function (id) {
-  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
+  var requestResult = this._connection.GET("/_api/collection/" + encodeURIComponent(id));
   
   // return null in case of not found
   if (requestResult != null
@@ -513,9 +517,13 @@ ArangoDatabase.prototype._create = function (name, properties) {
     if (properties.hasOwnProperty("journalSize")) {
       body.journalSize = properties.journalSize;
     }
+
+    if (properties.hasOwnProperty("isSystem")) {
+      body.isSystem = properties.isSystem;
+    }
   }
 
-  var requestResult = this._connection.post("/_api/collection", JSON.stringify(body));
+  var requestResult = this._connection.POST("/_api/collection", JSON.stringify(body));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -569,6 +577,44 @@ ArangoDatabase.prototype._drop = function (id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns one index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._index = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var requestResult = this._connection.GET("/_api/index/" + id);
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes one index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropIndex = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var requestResult = this._connection.DELETE("/_api/index/" + id);
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
+    return false;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -598,10 +644,10 @@ ArangoDatabase.prototype._document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.get("/document/" + id);
+    requestResult = this._connection.GET("/document/" + id);
   }
   else {
-    requestResult = this._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -625,7 +671,7 @@ ArangoDatabase.prototype._document = function (id) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._delete = function (id, overwrite) {
+ArangoDatabase.prototype._remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -644,10 +690,10 @@ ArangoDatabase.prototype._delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.delete("/document/" + id + policy);
+    requestResult = this._connection.DELETE("/document/" + id + policy);
   }
   else {
-    requestResult = this._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -694,10 +740,10 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -764,6 +810,8 @@ function ArangoEdges (connection) {
 
 ArangoEdges.prototype = new ArangoDatabase();
 
+ModuleCache["/internal"].exports.ArangoEdges = ArangoEdges;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -782,8 +830,8 @@ ArangoEdges.prototype = new ArangoDatabase();
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdges = TRI_CreateHelpHeadline("ArangoEdges help") +
-'ArangoEdges constructor:                                           ' + "\n" +
-' > edges = new ArangoEdges(connection);                            ' + "\n" +
+'ArangoEdges constructor:                                            ' + "\n" +
+' > edges = new ArangoEdges(connection);                             ' + "\n" +
 '                                                                    ' + "\n" +
 'Administration Functions:                                           ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
@@ -792,11 +840,11 @@ helpArangoEdges = TRI_CreateHelpHeadline("ArangoEdges help") +
 '  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for ArangoEdges
+/// @brief print the help for ArangoEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoEdges.prototype._help = function () {  
-  print2(helpArangoEdges);
+  print(helpArangoEdges);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -840,6 +888,8 @@ function ArangoCollection (database, data) {
     this._status = data.status;
   }
 }
+
+ModuleCache["/internal"].exports.ArangoCollection = ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -908,7 +958,7 @@ ArangoCollection.STATUS_DELETED = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoCollection = TRI_CreateHelpHeadline("ArangoCollection help") +
-'ArangoCollection constructor:                                      ' + "\n" +
+'ArangoCollection constructor:                                       ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -944,7 +994,7 @@ ArangoCollection.prototype.toString = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2s the collection
+/// @brief prints the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._PRINT = function () {  
@@ -963,11 +1013,11 @@ ArangoCollection.prototype._PRINT = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for ArangoCollection
+/// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._help = function () {  
-  print2(helpArangoCollection);
+  print(helpArangoCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1065,7 @@ ArangoCollection.prototype.properties = function (properties) {
   var requestResult;
 
   if (properties == null) {
-    requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
+    requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
 
     TRI_CheckRequestResult(requestResult);
   }
@@ -1026,7 +1076,7 @@ ArangoCollection.prototype.properties = function (properties) {
       body.waitForSync = properties.waitForSync;
     }
 
-    requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
+    requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
 
     TRI_CheckRequestResult(requestResult);
   }
@@ -1042,7 +1092,7 @@ ArangoCollection.prototype.properties = function (properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1054,7 +1104,7 @@ ArangoCollection.prototype.figures = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.drop = function () {
-  var requestResult = this._database._connection.delete("/_api/collection/" + encodeURIComponent(this._id));
+  var requestResult = this._database._connection.DELETE("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1076,11 +1126,295 @@ ArangoCollection.prototype.drop = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all documents
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.toArray = function () {
+  return this.all().toArray();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.getIndexes = function () {
+  var requestResult = this._database._connection.GET("/_api/index?collection=" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult.indexes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns one index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.index = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var s = id.split("/");
+
+  if (s.length != 2) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
+    }
+
+    throw new ArangoError(requestResult);
+  }
+  else if (s[0] != this._id) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+    }
+
+    throw new ArangoError(requestResult);
+  }
+
+  var requestResult = this._database._connection.GET("/_api/index/" + id);
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes one index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.dropIndex = function (id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var s = id.split("/");
+
+  if (s.length != 2) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
+    }
+
+    throw new ArangoError(requestResult);
+  }
+  else if (s[0] != this._id) {
+    var requestResult = {
+      errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+    }
+
+    throw new ArangoError(requestResult);
+  }
+
+  var requestResult = this._database._connection.DELETE("/_api/index/" + id);
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
+    return false;
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureCapConstraint = function (size) {
+  var body;
+
+  body = { type : "cap", size : size };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a unique skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "skiplist", unique : true, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "skiplist", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : true, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  var body;
+  var fields = [];
+  
+  for (var i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "hash", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an geo index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+  var body;
+
+  if (typeof lon == "boolean") {
+    body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : false };
+  }
+  else if (lon == undefined) {
+    body = { type : "geo", fields : [ lat ], geoJson : false, constraint : false };
+  }
+  else {
+    body = { type : "geo", fields : [ lat, lon ], constraint : false };
+  }
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an geo constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
+  var body;
+
+  // only two parameter
+  if (ignoreNull == undefined) {
+    ignoreNull = lon;
+
+    if (typeof ignoreNull != "boolean") {
+      throw "usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>) or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
+    }
+
+    body = { type : "geo", fields : [ lat ], geoJson : false, constraint : true, ignoreNull : ignoreNull };
+  }
+
+  // three parameter
+  else {
+    if (typeof lon == "boolean") {
+      body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : true, ignoreNull : ignoreNull };
+    }
+    else {
+      body = { type : "geo", fields : [ lat, lon ], constraint : true, ignoreNull : ignoreNull };
+    }
+  }
+
+  var requestResult = this._database._connection.POST("/_api/index?collection=" + encodeURIComponent(this._id), JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries by example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
+  var body;
+
+  limit = limit || null;
+  skip = skip || null;
+
+  if (index.hasOwnProperty("id")) {
+    index = index.id;
+  }
+
+  body = { collection : this._id, index : index, skip : skip, limit : limit, example : {} };
+
+  for (var key in example) {
+    if (example.hasOwnProperty(key)) {
+      body.example[key] = example[key];
+    }
+  }
+
+  var requestResult = this._database._connection.PUT("/_api/simple/BY-EXAMPLE-HASH", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.truncate = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1092,7 +1426,7 @@ ArangoCollection.prototype.truncate = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.load = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1104,7 +1438,7 @@ ArangoCollection.prototype.load = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.unload = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1117,7 +1451,7 @@ ArangoCollection.prototype.unload = function () {
 
 ArangoCollection.prototype.rename = function (name) {
   var body = { name : name };
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1133,7 +1467,7 @@ ArangoCollection.prototype.rename = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id));
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1159,27 +1493,11 @@ ArangoCollection.prototype.refresh = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.count = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/count");
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/count");
 
   TRI_CheckRequestResult(requestResult);
 
   return requestResult["count"];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all documents from the collection
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.all = function () {
-  var data = {
-    collection : this._id
-  }  
-  
-  var requestResult = this._database._connection.put("/_api/simple/all", JSON.stringify(data));
-
-  TRI_CheckRequestResult(requestResult);
-
-  return requestResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1199,10 +1517,10 @@ ArangoCollection.prototype.document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.get("/document/" + id);
+    requestResult = this._database._connection.GET("/document/" + id);
   }
   else {
-    requestResult = this._database._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -1230,7 +1548,7 @@ ArangoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.save = function (data) {    
-  var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
+  var requestResult = this._database._connection.POST("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1241,7 +1559,7 @@ ArangoCollection.prototype.save = function (data) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.delete = function (id, overwrite) {
+ArangoCollection.prototype.remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -1260,10 +1578,10 @@ ArangoCollection.prototype.delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.delete("/document/" + id + policy);
+    requestResult = this._database._connection.DELETE("/document/" + id + policy);
   }
   else {
-    requestResult = this._database._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1313,10 +1631,10 @@ ArangoCollection.prototype.replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1373,6 +1691,8 @@ function ArangoEdgesCollection (database, data) {
 
 ArangoEdgesCollection.prototype = new ArangoCollection();
 
+ModuleCache["/internal"].exports.ArangoEdgesCollection = ArangoEdgesCollection;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1391,7 +1711,7 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoEdgesCollection = TRI_CreateHelpHeadline("ArangoEdgesCollection help") +
-'ArangoEdgesCollection constructor:                                 ' + "\n" +
+'ArangoEdgesCollection constructor:                                  ' + "\n" +
 ' > col = edges.mycoll;                                              ' + "\n" +
 ' > col = db._create("mycoll");                                      ' + "\n" +
 '                                                                    ' + "\n" +
@@ -1408,7 +1728,7 @@ ArangoEdgesCollection.prototype.toString = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2s the collection
+/// @brief prints the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoEdgesCollection.prototype._PRINT = function () {  
@@ -1427,11 +1747,11 @@ ArangoEdgesCollection.prototype._PRINT = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for ArangoCollection
+/// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoEdgesCollection.prototype._help = function () {  
-  print2(helpArangoEdgesCollection);
+  print(helpArangoEdgesCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,7 +1784,7 @@ ArangoEdgesCollection.prototype.save = function (from, to, data) {
           + "&from=" + encodeURIComponent(from)
           + "&to=" + encodeURIComponent(to);
 
-  var requestResult = this._database._connection.post(url, JSON.stringify(data));
+  var requestResult = this._database._connection.POST(url, JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1495,7 +1815,7 @@ ArangoEdgesCollection.prototype.edges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1526,7 +1846,7 @@ ArangoEdgesCollection.prototype.inEdges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1557,7 +1877,7 @@ ArangoEdgesCollection.prototype.outEdges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1593,7 +1913,7 @@ function ArangoQueryCursor (database, data) {
   this._pos = 0;
   this._count = 0;
   this._total = 0;
-  
+ 
   if (data.result != undefined) {
     this._count = data.result.length;
     
@@ -1625,7 +1945,7 @@ function ArangoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoQueryCursor = TRI_CreateHelpHeadline("ArangoQueryCursor help") +
-'ArangoQueryCursor constructor:                                     ' + "\n" +
+'ArangoQueryCursor constructor:                                      ' + "\n" +
 ' > cu1 = qi1.execute();                                             ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  hasMore();                            returns true if there       ' + "\n" +
@@ -1636,18 +1956,18 @@ helpArangoQueryCursor = TRI_CreateHelpHeadline("ArangoQueryCursor help") +
 'Attributes:                                                         ' + "\n" +
 '  _database                             database object             ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a" });  ' + "\n" +
+' > st = db._createStatement({ "query" : "for c in coll return c" });' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
 ' > documents = c.elements();                                        ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
-' > while (c.hasNext()) { print2( c.next() ); }                       ';
+' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for the cursor
+/// @brief print the help for the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype._help = function () {
-  print2(helpArangoQueryCursor);
+  print(helpArangoQueryCursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1699,12 +2019,12 @@ ArangoQueryCursor.prototype.next = function () {
     this._hasNext = false;
     this._pos = 0;
     
-    if (this._hasMore && this.data._id) {
+    if (this._hasMore && this.data.id) {
       this._hasMore = false;
       
       // load more results      
-      var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
-    
+      var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data.id),  "");
+
       TRI_CheckRequestResult(requestResult);
       
       this.data = requestResult;
@@ -1750,16 +2070,16 @@ ArangoQueryCursor.prototype.elements = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data._id) {
+  if (!this.data.id) {
     // client side only cursor
     return;
   }
 
-  var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
+  var requestResult = this._database._connection.DELETE("/_api/cursor/"+ encodeURIComponent(this.data.id), "");
     
   TRI_CheckRequestResult(requestResult);
 
-  this.data._id = undefined;
+  this.data.id = undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1773,7 +2093,7 @@ ArangoQueryCursor.prototype.dispose = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.count = function () {
-  if (!this.data._id) {
+  if (!this.data.id) {
     throw "cursor has been disposed";
   }
 
@@ -1842,9 +2162,9 @@ function ArangoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
-'ArangoStatement constructor:                                       ' + "\n" +
-' > st = new ArangoStatement({ "query" : "select..." });            ' + "\n" +
-' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
+'ArangoStatement constructor:                                        ' + "\n" +
+' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
+' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
 '  bind(<values>);                bind multiple variables            ' + "\n" +
@@ -1862,19 +2182,19 @@ helpArangoStatement = TRI_CreateHelpHeadline("ArangoStatement help") +
 'Attributes:                                                         ' + "\n" +
 '  _database                      database object                    ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a       ' + "\n" +
-'                              where a.x = @a@ and a.y = @b@" });    ' + "\n" +
+' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
+'                              c.x == @a && c.y == @b return c" });  ' + "\n" +
 ' > st.bind("a", "hello");                                           ' + "\n" +
 ' > st.bind("b", "world");                                           ' + "\n" +
 ' > c = st.execute();                                                ' + "\n" +
-' > print2(c.elements());                                             ';
+' > print(c.elements());                                             ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print2 the help for ArangoStatement
+/// @brief print the help for ArangoStatement
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype._help = function () {
-  print2(helpArangoStatement);
+  print(helpArangoStatement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2008,7 +2328,7 @@ ArangoStatement.prototype.parse = function () {
     "query" : this._query,
   }
 
-  var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
+  var requestResult = this._database._connection.POST("/_api/query", JSON.stringify(body));
     
   TRI_CheckRequestResult(requestResult);
 
@@ -2020,7 +2340,7 @@ ArangoStatement.prototype.parse = function () {
 ///
 /// Invoking execute() will transfer the query and all bind parameters to the
 /// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be print2ed
+/// In case of an error, the error will be printed
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
@@ -2034,8 +2354,7 @@ ArangoStatement.prototype.execute = function () {
     body["batchSize"] = this._batchSize;
   }
 
-  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-    
+  var requestResult = this._database._connection.POST("/_api/cursor", JSON.stringify(body));
   TRI_CheckRequestResult(requestResult);
 
   return new ArangoQueryCursor(this._database, requestResult);
@@ -2055,13 +2374,13 @@ ArangoStatement.prototype.execute = function () {
 
 HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
-'  arango:                               ArangoConnection          ' + "\n" +
-'  db:                                    ArangoDatabase            ' + "\n" +
+'  arango:                                ArangoConnection           ' + "\n" +
+'  db:                                    ArangoDatabase             ' + "\n" +
 'Example:                                                            ' + "\n" +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
 ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
-' > db.<coll_name>.delete(<_id>);         delete a document          ' + "\n" +
+' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
 ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
 ' > help                                  show help pages            ' + "\n" +
 ' > helpQueries                           query help                 ' + "\n" +
@@ -2073,8 +2392,8 @@ HELP = TRI_CreateHelpHeadline("Help") +
 
 helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
-' > st = new ArangoStatement(db, { "query" : "select..." });        ' + "\n" +
-' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
+' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
+' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
 'Set query options:                                                  ' + "\n" +
 ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
@@ -2095,7 +2414,7 @@ helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Get all results in an array:                                        ' + "\n" +
 ' > e = c.elements();                                                ' + "\n" +
 'Or loop over the result set:                                        ' + "\n" +
-' > while (c.hasNext()) { print2( c.next() ); }                       ';
+' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extended help
@@ -2105,16 +2424,16 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 'Pager:                                                              ' + "\n" +
 ' > internal.stop_pager()               stop the pager output        ' + "\n" +
 ' > internal.start_pager()              start the pager              ' + "\n" +
-'Pretty print2ing:                                                    ' + "\n" +
-' > stop_pretty_print2()                 stop pretty print2ing         ' + "\n" +
-' > start_pretty_print2()                start pretty print2ing        ' + "\n" +
+'Pretty printing:                                                    ' + "\n" +
+' > stop_pretty_print()                 stop pretty printing         ' + "\n" +
+' > start_pretty_print()                start pretty printing        ' + "\n" +
 'Color output:                                                       ' + "\n" +
-' > stop_color_print2()                  stop color print2ing          ' + "\n" +
-' > start_color_print2()                 start color print2ing         ' + "\n" +
-' > start_color_print2(COLOR_BLUE)       set color                    ' + "\n" +
+' > stop_color_print()                  stop color printing          ' + "\n" +
+' > start_color_print()                 start color printing         ' + "\n" +
+' > start_color_print(COLOR_BLUE)       set color                    ' + "\n" +
 'Print function:                                                     ' + "\n" +
-' > print2(x)                            std. print2 function          ' + "\n" +
-' > print2_plain(x)                      print2 without pretty print2ing' + "\n" +
+' > print(x)                            std. print function          ' + "\n" +
+' > print_plain(x)                      print without pretty printing' + "\n" +
 '                                       and without colors           ';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2122,23 +2441,28 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 ////////////////////////////////////////////////////////////////////////////////
 
 try {
+  if (typeof arango !== 'undefined') {
 
-  // default databases
-  db = new ArangoDatabase(arango);
-  edges = new ArangoEdges(arango);
+    // default databases
+    db = new ArangoDatabase(arango);
+    edges = new ArangoEdges(arango);
 
-  // load collection data
-  db._collections();
-  edges._collections();
+    // load collection data
+    db._collections();
+    edges._collections();
 
-  // export to internal
-  ModuleCache["/internal"].exports.db = db;
-  ModuleCache["/internal"].exports.edges = db;
+    // export to internal
+    ModuleCache["/internal"].exports.db = db;
+    ModuleCache["/internal"].exports.edges = db;
 
-  print2(HELP);
+    // load simple queries
+    require("simple-query");
+
+    print(HELP);
+  }
 }
 catch (err) {
-  console.log(err);
+  print(err);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

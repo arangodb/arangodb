@@ -1166,14 +1166,7 @@ var logTable = $('#logTableID').dataTable({
     var client = "arangodb:" + data;
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-  
-    try {
-      var server = "" + eval(data); 
-      $('#avocshWindow').append('<p class="avocshSuccess">' + server + '</p>');
-    }
-    catch(e) {
-      $('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
-    }
+    hansmann(data);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
@@ -1192,14 +1185,14 @@ var logTable = $('#logTableID').dataTable({
       contentType: "application/json",
       processData: false, 
       success: function(data) {
-        var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=green>' + JSON.stringify(temp.errorMessage) + '</font>'); 
+        $("#queryOutput").append('<font color=green>' + JSON.stringify(data.result) + '</font>'); 
       },
       error: function(data) {
+        console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=red>' + JSON.stringify(temp.errorMessage) + '</font>'); 
+        $("#queryOutput").append('<font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font>'); 
       }
     });
   });
@@ -2274,4 +2267,36 @@ function hideLogPagination() {
   $('#logToolbarDebu').hide(); 
   $('#logToolbarInfo').hide(); 
 }
+
+function hansmann (data) {
+	try {
+		var server = eval(data); 
+		if (server !== undefined) {
+			var resultung = "";
+			if (server === null) {
+				resultung = "null";
+			}
+			else if (typeof(server) == "string") {
+				resultung = server;
+			}
+			else if (typeof(server) == "number" || typeof(server) == "boolean") {
+				resultung = "" + server;
+			}
+			else if (typeof(server) == "object") {
+				try {
+					resultung = JSON.stringify(server);
+				}
+				catch (err) {
+					resultung = server.toString();
+				}
+			}
+
+			$('#avocshWindow').append('<p class="avocshSuccess">' + resultung + '</p>'); 
+		}
+	}
+	catch(e) {
+		$('#avocshWindow').append('<p class="avocshError">Error:' + e + '</p>');
+	}
+}
+
 

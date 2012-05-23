@@ -1,14 +1,20 @@
+var ModuleCache = { "/internal" : { "exports": { } } };
+
+var SYS_START_PAGER = function() { };
+var SYS_STOP_PAGER = function() { };
+var TRI_SYS_OUTPUT = function() { };
+
+var print = function (value) {
+  hansmann(value); 
+};
+
 function ArangoConnection () {
   
 }
 
-function TRI_SYS_OUTPUT (a, b, c, d, e, f, g, h) {
-  return true;    
-}
-
 var arango = new ArangoConnection();
 
-ArangoConnection.prototype.get = function (url, obj) {
+ArangoConnection.prototype.get = function (url) {
 var msg; 
   $.ajax({
     async: false, 
@@ -24,10 +30,9 @@ var msg;
     }
   });
   return msg;  
-}
+};
 
-
-ArangoConnection.prototype.delete = function (url, obj) {
+ArangoConnection.prototype.delete = function (url) {
 var msg; 
   $.ajax({
     async: false, 
@@ -43,39 +48,40 @@ var msg;
     }
   });
   return msg;  
-}
+};
 
 
-ArangoConnection.prototype.post = function (url, body, obj) {
-var msg; 
+ArangoConnection.prototype.post = function (url, body) {
+var msg;
   $.ajax({
     async: false, 
     type: "POST",
     url: url, 
-    data: obj, 
+    data: body, 
     contentType: "application/json",
     processData: false, 
     success: function(data) {
-      msg = JSON.stringify(data); 
+      msg = data; //JSON.stringify(data); 
     },
     error: function(data) {
       msg = JSON.stringify(data);  
     }
   });
   return msg;  
-}
+};
 
 
-ArangoConnection.prototype.put = function (url, body, obj) {
+ArangoConnection.prototype.put = function (url, body) {
 var msg; 
   $.ajax({
     async: false, 
     type: "PUT",
     url: url, 
-    data: obj, 
+    data: body, 
     contentType: "application/json",
     processData: false, 
     success: function(data) {
+return data;
       msg = JSON.stringify(data); 
     },
     error: function(data) {
@@ -83,4 +89,9 @@ var msg;
     }
   });
   return msg;  
-}
+};
+
+ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
+ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
+ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
+ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
