@@ -504,7 +504,8 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
   else {
     TRI_doc_mptr_t mptr;
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    mptr._did = 0;
+
+    memset(&mptr, 0, sizeof(mptr));
     return mptr;
   }
 
