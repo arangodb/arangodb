@@ -2456,7 +2456,9 @@ try {
     // load simple queries
     require("simple-query");
 
-    print(HELP);
+    if (typeof ARANGO_QUITE === "boolean" && ARANGO_QUITE === false) {
+      print(HELP);
+    }
   }
 }
 catch (err) {
