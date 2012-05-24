@@ -407,4 +407,5 @@ WIKI = \
 	UserManual \
 	UserManualBasics \
         Aql \
+        AqlExamples \
 	jsUnity

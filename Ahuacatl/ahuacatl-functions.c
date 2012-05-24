@@ -354,23 +354,22 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // a = array
 
   // type check functions
-  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, ".");
-  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, ".");
-  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, ".");
-  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, ".");
-  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, ".");
-  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, ".");
+  REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".");
+  REGISTER_FUNCTION("IS_BOOL", "IS_BOOL", true, false, ".");
+  REGISTER_FUNCTION("IS_NUMBER", "IS_NUMBER", true, false, ".");
+  REGISTER_FUNCTION("IS_STRING", "IS_STRING", true, false, ".");
+  REGISTER_FUNCTION("IS_LIST", "IS_LIST", true, false, ".");
+  REGISTER_FUNCTION("IS_DOCUMENT", "IS_DOCUMENT", true, false, ".");
 
   // cast functions
-  REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, false, ".");
-  REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, false, ".");
-  REGISTER_FUNCTION("TOBOOL", "CAST_BOOL", true, false, ".");
-  REGISTER_FUNCTION("TONULL", "CAST_NULL", true, false, ".");
+  REGISTER_FUNCTION("TO_NUMBER", "CAST_NUMBER", true, false, ".");
+  REGISTER_FUNCTION("TO_STRING", "CAST_STRING", true, false, ".");
+  REGISTER_FUNCTION("TO_BOOL", "CAST_BOOL", true, false, ".");
 
   // string functions
   REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+"); 
-  REGISTER_FUNCTION("CONCATSEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+"); 
-  REGISTER_FUNCTION("CHARLENGTH", "STRING_LENGTH", true, false, "s"); 
+  REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+"); 
+  REGISTER_FUNCTION("CHAR_LENGTH", "STRING_LENGTH", true, false, "s"); 
   REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s"); 
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n");
@@ -408,6 +407,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
+  REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".,.");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
