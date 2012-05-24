@@ -106,6 +106,8 @@
 /// to issue read-requests on your database, but modifying data via AQL is
 /// currently not supported.
 ///
+/// For some example queries, please refer to the page @ref AqlExamples.
+///
 /// @section AqlQueryResults Query results
 ///
 /// @subsection AqlQueryResultsSet Result sets
@@ -695,25 +697,23 @@
 /// This helps avoiding unexpected results. All type casts have to be performed
 /// by invoking a type cast function. AQL offers several type cast functions for this
 /// task. Each of the these functions takes an operand of any data type and returns a 
-/// result value of type corresponding to the function name (e.g. @LIT{TONUMBER()} will
+/// result value of type corresponding to the function name (e.g. @LIT{TO_NUMBER()} will
 /// return a number value):
 ///
-/// - @FN{TONULL(@FA{value})}: converts the @FA{value} into a @LIT{null} value. This
-///   function will always return @LIT{null}.
-/// - @FN{TOBOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
+/// - @FN{TO_BOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into the appropriate boolean value as follows:
 ///   - @LIT{null} is converted to false.
 ///   - Numbers are converted to true if they are unequal to 0, and to false otherwise. 
 ///   - Strings are converted to true if they are non-empty, and to false otherwise. 
 ///   - Lists are converted to true if they are non-empty, and to false otherwise.
 ///   - Documents are converted to true if they are non-empty, and to false otherwise.
-/// - @FN{TONUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
+/// - @FN{TO_NUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a numeric value as follows:
 ///   - @LIT{null}, false, lists, and documents are converted to the value @LIT{0}.
 ///   - true is converted to @LIT{1}.
 ///   - Strings are converted to their numeric equivalent if the full string content is
 ///     is a valid number, and to @LIT{0} otherwise.
-/// - @FN{TOSTRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
+/// - @FN{TO_STRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a string value as follows:
 ///   - @LIT{null} is converted to the string @LIT{"null"}
 ///   - false is converted to the string @LIT{"false"}, true to the string @LIT{"true"}
@@ -728,12 +728,12 @@
 ///
 /// The following type check functions are available:
 ///
-/// - @FN{ISNULL(@FA{value})}: checks whether @FA{value} is a @LIT{null} value
-/// - @FN{ISBOOL(@FA{value})}: checks whether @FA{value} is a boolean value
-/// - @FN{ISNUMBER(@FA{value})}: checks whether @FA{value} is a numeric value
-/// - @FN{ISSTRING(@FA{value})}: checks whether @FA{value} is a string value
-/// - @FN{ISLIST(@FA{value})}: checks whether @FA{value} is a list value
-/// - @FN{ISDOCUMENT(@FA{value})}: checks whether @FA{value} is a document value
+/// - @FN{IS_NULL(@FA{value})}: checks whether @FA{value} is a @LIT{null} value
+/// - @FN{IS_BOOL(@FA{value})}: checks whether @FA{value} is a boolean value
+/// - @FN{IS_NUMBER(@FA{value})}: checks whether @FA{value} is a numeric value
+/// - @FN{IS_STRING(@FA{value})}: checks whether @FA{value} is a string value
+/// - @FN{IS_LIST(@FA{value})}: checks whether @FA{value} is a list value
+/// - @FN{IS_DOCUMENT(@FA{value})}: checks whether @FA{value} is a document value
 ///
 /// @subsubsection AqlFunctionsString String functions
 ///
@@ -741,10 +741,10 @@
 ///
 /// - @FN{CONCAT(@FA{value1}\, @FA{value2}\, ... @FA{valuen})}: concatenate the strings 
 ///   passed as in @FA{value1} to @FA{valuen}. @LIT{null} values are ignored.
-/// - @FN{CONCATSEPARATOR(@FA{separator}\, @FA{value1}\, @FA{value2}\, ... @FA{valuen})}: 
+/// - @FN{CONCAT_SEPARATOR(@FA{separator}\, @FA{value1}\, @FA{value2}\, ... @FA{valuen})}: 
 ///   concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
 ///   @FA{separator} string. @LIT{null} values are ignored.
-/// - @FN{CHARLENGTH(@FA{value})}: return the number of characters in @FA{value}
+/// - @FN{CHAR_LENGTH(@FA{value})}: return the number of characters in @FA{value}
 /// - @FN{LOWER(@FA{value})}: lower-case @FA{value}
 /// - @FN{UPPER(@FA{value})}: upper-case @FA{value}
 /// - @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
@@ -756,33 +756,33 @@
 /// AQL offers some numeric functions for calculations. The following functions are
 /// supported:
 ///
-/// - @LIT{FLOOR(@FA{value})}: returns the integer closest but not greater to @FA{value}
-/// - @LIT{CEIL(@FA{value})}: returns the integer closest but not less than @FA{value}
-/// - @LIT{ROUND(@FA{value})}: returns the integer closest to @FA{value}
-/// - @LIT{ABS(@FA{value})}: returns the absolute part of @FA{value}
-/// - @LIT{RAND()}: returns a random number between 0 and 1
+/// - @FN{FLOOR(@FA{value})}: returns the integer closest but not greater to @FA{value}
+/// - @FN{CEIL(@FA{value})}: returns the integer closest but not less than @FA{value}
+/// - @FN{ROUND(@FA{value})}: returns the integer closest to @FA{value}
+/// - @FN{ABS(@FA{value})}: returns the absolute part of @FA{value}
+/// - @FN{RAND()}: returns a pseudo-random number between 0 and 1
 ///
 /// @subsubsection AqlFunctionsList List functions
 ///
 /// AQL supports the following functions to operate on list values:
 ///
-/// - @LIT{LENGTH(@FA{list})}: returns the length (number of elements) of @FA{list}
-/// - @LIT{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
+/// - @FN{LENGTH(@FA{list})}: returns the length (number of elements) of @FA{list}
+/// - @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.
-/// - @LIT{MAX(@FA{list})}: returns the greatest element of @FA{list}. @LIT{null} values
+/// - @FN{MAX(@FA{list})}: returns the greatest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.
-/// - @LIT{SUM(@FA{list})}: returns the sum of values of the elements in @FA{list}. This
+/// - @FN{SUM(@FA{list})}: returns the sum of values of the elements in @FA{list}. This
 ///   requires the elements in @FA{list} to be numbers. @LIT{null} values are ignored. 
 ///   If the list is empty or only @LIT{null} are contained in the list, the  function 
 ///   will return @LIT{null}.
-/// - @LIT{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
-/// - @LIT{FIRST(@FA{list})}: returns the first element in @FA{list} or @LIT{null} if the
+/// - @FN{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
+/// - @FN{FIRST(@FA{list})}: returns the first element in @FA{list} or @LIT{null} if the
 ///   list is empty.
-/// - @LIT{LAST(@FA{list})}: returns the last element in @FA{list} or @LIT{null} if the
+/// - @FN{LAST(@FA{list})}: returns the last element in @FA{list} or @LIT{null} if the
 ///   list is empty.
-/// - @LIT{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
+/// - @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
 ///   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
 ///   Calling this function might return the unique elements in any order.
 ///
@@ -793,18 +793,18 @@
 ///
 /// AQL supports the following functions to operate on document values:
 ///
-/// - @LIT{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
+/// - @FN{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
 ///   in @FA{document1} to @FA{documentn} into a single document. If document attribute
 ///   keys are ambigious, the merged result will contain the values of the documents 
 ///   contained later in the argument list.
-/// - @LIT{HAS(@FA{document}\, @FA{attributename})}: returns true if @FA{document} has an
+/// - @FN{HAS(@FA{document}\, @FA{attributename})}: returns true if @FA{document} has an
 ///   attribute named @FA{attributename}, and false otherwise.
 ///
 /// @subsubsection AqlFunctionsGeo Geo functions
 ///
 /// AQL offers the following functions to filter data based on geo indexes:
 ///
-/// - @LIT{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
+/// - @FN{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
 ///   returns at most @FA{limit} documents from collection @FA{collection} that are near
 ///   @FA{latitude} and @FA{longitude}. The result contains at @FA{limit} documents, returned in
 ///   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
@@ -813,7 +813,7 @@
 ///   To make use of that, an attribute name for the distance result has to be specified in
 ///   the @FA{distancename} argument. The result documents will contain the distance value in
 ///   an attribute of that name.
-/// - @LIT{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
+/// - @FN{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
 ///   returns all documents from collection @FA{collection} that are within a radius of
 ///   @FA{radius} around that specified coordinate (@FA{latitude} and @FA{longitude}). The order
 ///   in which the result documents are returned is undefined. Optionally, the distance between the
@@ -829,7 +829,7 @@
 ///
 /// AQL has the following functions to traverse graphs:
 ///
-/// - @LIT{PATHS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{direction}\, @FA{followcycles})}: 
+/// - @FN{PATHS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{direction}\, @FA{followcycles})}: 
 ///   returns a list of paths through the graph defined by the nodes in the collection 
 ///   @FA{vertexcollection} and edges in the collection @FA{edgecollection}. For each vertex
 ///   in @FA{vertexcollection}, it will determine the paths through the graph depending on the
@@ -852,12 +852,19 @@
 ///
 /// @verbinclude aqlpaths
 ///
+/// @subsubsection AqlFunctionsControl Control flow functions
+///
+/// AQL offers the following functions to let the user control the flow of operations:
+///
+/// - @FN{NOT_NULL(@FA{condition}\, @FA{alternative})}: returns @FA{condition} if it is not
+///   @LIT{null}, and @FA{alternative} otherwise. 
+///
 /// @subsubsection AqlFunctionsMisc Miscellaneous functions
 ///
 /// Finally, AQL supports the following functions that do not belong to any of the other
 /// function categories:
 ///
-/// - @LIT{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
+/// - @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
 ///   with attributes @LIT{name} and @LIT{_id}.
 ///
 /// @section AqlOperations High-level operations

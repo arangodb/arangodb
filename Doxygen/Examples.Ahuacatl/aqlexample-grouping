@@ -1,0 +1,45 @@
+/* group users by age */
+FOR u IN users 
+  FILTER u.active == true
+  COLLECT age = u.age INTO group
+  SORT age DESC
+  RETURN { "age" : age, "users" : group }
+
+[ { "age" : 37, "users" : ["Sophia", "John"] }, 
+  { "age" : 36, "users" : ["Emma", "Fred"] }, 
+  { "age" : 34, "users" : ["Madison"] }, 
+  { "age" : 33, "users" : ["Chloe", "Michael"] }, 
+  { "age" : 32, "users" : ["Alexander"] }, 
+  { "age" : 31, "users" : ["Abigail", "Daniel"] }, 
+  { "age" : 30, "users" : ["Isabella", "Anthony"] }, 
+  { "age" : 29, "users" : ["Mary", "Jim"] }, 
+  { "age" : 28, "users" : ["Mariah", "Diego"] } ]
+
+
+/* group users by agegroup and gender */
+FOR u IN users 
+  FILTER u.active == true
+  COLLECT ageGroup = FLOOR(u.age/5) * 5, gender = u.gender INTO group
+  SORT ageGroup DESC
+  RETURN { "ageGroup" : ageGroup, "gender" : gender, "numUsers" : LENGTH(group) }
+
+[ { "ageGroup" : 35, "gender" : "f", "numUsers" : 2 }, 
+  { "ageGroup" : 35, "gender" : "m", "numUsers" : 2 }, 
+  { "ageGroup" : 30, "gender" : "f", "numUsers" : 4 }, 
+  { "ageGroup" : 30, "gender" : "m", "numUsers" : 4 }, 
+  { "ageGroup" : 25, "gender" : "f", "numUsers" : 2 }, 
+  { "ageGroup" : 25, "gender" : "m", "numUsers" : 2 } ]
+
+
+/* get the 3 agegroups with most users */
+FOR u IN users 
+  FILTER u.active == true
+  COLLECT ageGroup = FLOOR(u.age/5) * 5 INTO group
+  FILTER LENGTH(group) > 2 /* group must contain at least 3 users */
+  SORT LENGTH(group) DESC
+  LIMIT 0, 3
+  RETURN { "ageGroup" : ageGroup, "numUsers" : LENGTH(group), "users" : group[*].u.name }
+
+[ { "ageGroup" : 30, "numUsers" : 8, "users" : ["Alexander", "Isabella", "Michael", "Abigail", "Anthony", "Daniel", "Madison", "Chloe"] }, 
+  { "ageGroup" : 25, "numUsers" : 4, "users" : ["Mariah", "Mary", "Jim", "Diego"] }, 
+  { "ageGroup" : 35, "numUsers" : 4, "users" : ["Emma", "Sophia", "Fred", "John"] } ]

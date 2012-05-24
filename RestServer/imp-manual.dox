@@ -58,7 +58,7 @@
 ///
 /// @EMBEDTOC{ImpManualBasicsTOC}
 ///
-/// The most convenient method to import a lot of data into AvocadoDB is to use
+/// The most convenient method to import a lot of data into ArangoDB is to use
 /// the @LIT{arangoimp} command-line tool. It allows you to import data records
 /// from a file into an existing database collection.
 ///
@@ -114,7 +114,7 @@
 /// @LIT{arangoimp --file "data.csv" --type csv --collection "users"}
 ///
 /// Note that the quote and separator characters can be adjusted via the
-/// @CA{--quote} and @CA{--separator} arguments when invoking avocimp.
+/// @CA{--quote} and @CA{--separator} arguments when invoking arangoimp.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

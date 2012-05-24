@@ -2,6 +2,15 @@
 /// master.js 
 /// arangodb js api  
 ///////////////////////////////////////////////////////////////////////////////
+var welcomeMSG = "" 
++ "                                        _      \n"
++ "   __ _ _ __ __ _ _ __   __ _  ___  ___| |__   \n"
++ "  / _` | '__/ _` | '_ \\ / _` |/ _ \\/ __| '_ \\  \n"
++ " | (_| | | | (_| | | | | (_| | (_) \\__ \\ | | | \n"
++ "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
++ "                        |___/                  \n"
++ "                                               \n"
++ "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
 
 // documents global vars
 var collectionCount;
@@ -11,6 +20,7 @@ var globalCollectionName;
 var globalCollectionID;
 var globalCollectionRev;
 var checkCollectionName; 
+var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
 
@@ -378,7 +388,6 @@ var logTable = $('#logTableID').dataTable({
       tableView = true; 
       $('#toggleEditedDocButton').val('Edit Source'); 
       
-      
       $('#documentEditSourceView').hide();
       $('#documentEditTableView').show();
       var collectiondocID = location.hash.substr(14, location.hash.length); 
@@ -706,6 +715,10 @@ var logTable = $('#logTableID').dataTable({
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
+      if (printedHelp === false) {
+        print(welcomeMSG + HELP);
+        printedHelp = true; 
+      }
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -930,7 +943,7 @@ var logTable = $('#logTableID').dataTable({
         delete result._id;
         delete result._rev;
 
-        var myFormattedString = FormatJSON(result)
+        var myFormattedString = FormatJSON(result);
         $('#documentEditSourceBox').val(myFormattedString); 
         $('#documentEditTableView').toggle();
         $('#documentEditSourceView').toggle();
@@ -1175,6 +1188,15 @@ var logTable = $('#logTableID').dataTable({
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
+
+    if (data == "help") {
+       data = "help()";
+    }
+    if (data == "exit") {
+       location.reload();
+       return false;  
+    }
+
     var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
@@ -1184,12 +1206,19 @@ var logTable = $('#logTableID').dataTable({
     return false; 
   });
 
+
+
+  $('#refreshShell').live('click', function () {
+    location.reload(); 
+    return false; 
+  });
 ///////////////////////////////////////////////////////////////////////////////
 /// submit query content 
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#submitQuery').live('click', function () {
       var data = {query:$('#queryContent').val()};
+      var formattedJSON; 
     $.ajax({
       type: "POST",
       url: "/_api/cursor",
@@ -1198,7 +1227,14 @@ var logTable = $('#logTableID').dataTable({
       processData: false, 
       success: function(data) {
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=green>' + JSON.stringify(data.result) + '</font>'); 
+        
+        var formatQuestion = JSON.parse($('input:radio[name=formatJSONyesno]:checked').val());
+        if (formatQuestion === true) {
+          $("#queryOutput").append('<pre><font color=green>' + FormatJSON(data.result) + '</font></pre>'); 
+        }
+        else {
+          $("#queryOutput").append('<font color=green>' + JSON.stringify(data.result) + '</font>'); 
+        }
       },
       error: function(data) {
         console.log(data); 
@@ -1912,7 +1948,6 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  // TODO: remove this function and replace with css functionality (text-overflow: ellipsis)
   if (string.length > 150) {
     return escaped(string.substr(0, 150)) + '...';
   }

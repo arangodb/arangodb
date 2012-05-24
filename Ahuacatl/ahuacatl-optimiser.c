@@ -122,6 +122,10 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
       continue;
     } 
     
+    if (!scope->_ranges) {
+      continue;
+    } 
+    
     // we found a for loop, inspect it
     prefix = TRI_Concatenate2String(scope->_variableName, ".");
 
@@ -130,7 +134,7 @@ static void PatchForLoops (TRI_aql_context_t* const context) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
-  
+ 
     // iterate over all possible field accesses we found in this scope
     len = scope->_ranges->_length;
     for (j = 0; j < len; ++j) {

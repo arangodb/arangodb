@@ -1021,7 +1021,8 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
                                                          TRI_aql_context_t* const context, 
                                                          const TRI_json_t* const parameters, 
                                                          const bool doCount, 
-                                                         const uint32_t batchSize) {
+                                                         const uint32_t batchSize,
+                                                         const bool allowDirectReturn) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
@@ -1031,8 +1032,8 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (!result->IsArray()) {
-    // rethrow
+  if (allowDirectReturn || !result->IsArray()) {
+    // return the value we got as it is. this is a performance optimisation
     return scope.Close(result);
   }
 
@@ -1710,8 +1711,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
   const uint32_t argc = argv.Length();
 
-  if (argc < 1 || argc > 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <max>)")));
+  if (argc < 1 || argc > 5) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <max>, <allowDirectReturn>)")));
   }
  
   TRI_vocbase_t* vocbase = GetContextVocBase(); 
@@ -1735,12 +1736,17 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   bool doCount = false;
   // maximum number of results to return at once
   uint32_t batchSize = 1000;
+  // directly return the results as a javascript array instrad of a cursor (performance optimisation)
+  bool allowDirectReturn = false;
   if (argc > 2) {
     doCount = TRI_ObjectToBoolean(argv[2]);
     if (argc > 3) {
       double maxValue = TRI_ObjectToDouble(argv[3]);
       if (maxValue >= 1.0) {
         batchSize = (uint32_t) maxValue;
+      }
+      if (argc > 4) {
+        allowDirectReturn = TRI_ObjectToBoolean(argv[4]);
       }
     }
   }
@@ -1756,7 +1762,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Value> result;
-  result = ExecuteQueryCursorAhuacatl(vocbase, context, parameters.ptr(), doCount, batchSize);
+  result = ExecuteQueryCursorAhuacatl(vocbase, context, parameters.ptr(), doCount, batchSize, allowDirectReturn);
   TRI_FreeContextAql(context);
 
   if (tryCatch.HasCaught()) {

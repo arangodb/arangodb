@@ -84,7 +84,6 @@ html.busy, html.busy * {
 .snippet-no-num {
   font-size: 1em;
   font-weight: normal; 
-  font-; 
   font-family: Verdana, Arial, sans-serif; 
 }
 
@@ -342,14 +341,34 @@ form {
   height:20px;  
 }
 
+#submitQuery, #refreshShell {
+  height:30px !important;
+  float:right;
+}
+
+#formatJSONyesno {
+  margin-top: -40px;  
+  float:right; 
+  margin-right: 120px;  
+  color: #797979;
+}
+
+#aqlinfo {
+  line-height: 150%;     
+}
+
 #submitQuery {
   height:30px !important;
   width: 100px !important;
-  float:right; 
+}
+#refreshShell{
+  padding-bottom: 3px;
+  margin-top: -10px;  
+  width: 9.5% !important;
 }
 
 #queryOutput {
-  height:40%; 
+  height:60%; 
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
@@ -357,7 +376,7 @@ form {
 }
 
 #queryContent {
-  height: 40%; 
+  height: 20%; 
   font-family: "courier";
   width: 100%;
   resize: none; 
@@ -378,14 +397,9 @@ form {
   width:100%;
 }
 
-#welcomemsg {
-  padding-left: 10px; 
-  padding-top: 10px; 
-  font-family: "courier"; 
-}
-
 #avocshWindow p {
-  margin-top: 10px; 
+  margin-top: 0px; 
+  margin-bottom: 0px; 
   padding-left: 30px; 
   padding-right: 30px; 
 }

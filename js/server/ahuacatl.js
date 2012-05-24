@@ -1001,13 +1001,10 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
-  
-  var r = AHUACATL_KEYS(rhs, false);
-  var numRight = r.length;
 
+  var numRight = rhs.length;
   for (var i = 0; i < numRight; ++i) {
-    var key = r[i];
-    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[key])) {
+    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[i])) {
       return true;
     }
   }
@@ -1308,16 +1305,6 @@ function AHUACATL_STRING_SUBSTRING (value, offset, count) {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to null
-///
-/// the operand can have any type, always returns null
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_CAST_NULL (value) {
-  return null;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a bool
@@ -2051,6 +2038,20 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return value if it's not null, otherwise return alternative
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NOT_NULL (value, alternative) {
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL) {
+    return alternative;
+  }
+
+  return value;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a document has an attribute
