@@ -52,7 +52,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoError (error) {
-  if (error !== null) {
+  if (error !== undefined) {
     this.error = error.error;
     this.code = error.code;
     this.errorNum = error.errorNum;
@@ -904,12 +904,19 @@ function ArangoCollection (database, data) {
   this._database = database;
 
   if (typeof data === "string") {
+    this._id = null;
     this._name = data;
+    this._status = null;
   }
   else if (data !== undefined) {
     this._id = data.id;
     this._name = data.name;
     this._status = data.status;
+  }
+  else {
+    this._id = null;
+    this._name = null;
+    this._status = null;
   }
 }
 
@@ -1098,7 +1105,7 @@ function ArangoCollection (database, data) {
   ArangoCollection.prototype.properties = function (properties) {
     var requestResult;
 
-    if (properties === null) {
+    if (properties === undefined) {
       requestResult = this._database._connection.GET(
         "/_api/collection/" + encodeURIComponent(this._id) + "/properties");
 
@@ -1949,7 +1956,7 @@ function ArangoDatabase (connection) {
       "name" : name
     };
 
-    if (properties !== null) {
+    if (properties !== undefined) {
       if (properties.hasOwnProperty("waitForSync")) {
         body.waitForSync = properties.waitForSync;
       }

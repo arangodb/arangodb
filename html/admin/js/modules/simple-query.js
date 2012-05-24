@@ -27,6 +27,7 @@ module.define("simple-query", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var client = require("arangosh");
 var SQ = require("simple-query-basics");
 
 // -----------------------------------------------------------------------------
@@ -64,7 +65,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
 
-    TRI_CheckRequestResult(requestResult);
+    client.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -114,7 +115,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
 
-    TRI_CheckRequestResult(requestResult);
+    client.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -171,7 +172,7 @@ ArangoCollection.prototype.firstExample = function () {
     return null;
   }
 
-  TRI_CheckRequestResult(requestResult);
+  client.checkRequestResult(requestResult);
 
   return requestResult.document;
 }
@@ -221,7 +222,7 @@ SQ.SimpleQueryRange.prototype.execute = function () {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
 
-    TRI_CheckRequestResult(requestResult);
+    client.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -280,7 +281,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
 
-    TRI_CheckRequestResult(requestResult);
+    client.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -340,7 +341,7 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));
 
-    TRI_CheckRequestResult(requestResult);
+    client.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
