@@ -1,6 +1,6 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 80,
+         maxlen: 100,
          sloppy: true,
          vars: true,
          white: true,
@@ -86,7 +86,7 @@ Module.prototype.require = function (path) {
   raw = ModuleCache["/internal"].exports.readFile(path);
 
   // create a new sandbox and execute
-  ModuleCache[path] = module = new Module(path);
+  module = ModuleCache[path] = new Module(path);
 
   content = "(function (module, exports, require, print) {"
           + raw.content 
@@ -147,18 +147,14 @@ Module.prototype.normalise = function (path) {
   for (i = 0;  i < q.length;  ++i) {
     x = q[i];
 
-    if (x === "") {
-    }
-    else if (x === ".") {
-    }
-    else if (x === "..") {
+    if (x === "..") {
       if (n.length === 0) {
         throw "cannot cross module top";
       }
 
       n.pop();
     }
-    else {
+    else if (x !== "" && x !== ".") {
       n.push(x);
     }
   }
@@ -191,7 +187,7 @@ Module.prototype.unload = function (path) {
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/"] = module = new Module("/");
+module = ModuleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
@@ -268,6 +264,7 @@ ModuleCache["/internal"] = new Module("/internal");
   var internal = ModuleCache["/internal"].exports;
   var fs = ModuleCache["/fs"].exports;
 
+  // system functions
   internal.execute = SYS_EXECUTE;
   internal.load = SYS_LOAD;
   internal.log = SYS_LOG;
@@ -277,17 +274,55 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.read = SYS_READ;
   internal.sprintf = SYS_SPRINTF;
   internal.time = SYS_TIME;
-  internal.start_pager = SYS_START_PAGER || (function() {});
-  internal.stop_pager = SYS_STOP_PAGER || (function() {});
 
-  internal.ARANGO_QUITE = ARANGO_QUITE || false;
-  internal.MODULES_PATH = MODULES_PATH;
 
-  internal.COLOR_OUTPUT = COLOR_OUTPUT;
-  internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET || "";
-  internal.COLOR_BRIGHT = COLOR_BRIGHT;
+  // command line parameter
+  internal.MODULES_PATH = "";
 
-  internal.PRETTY_PRINT = PRETTY_PRINT || false;
+  if (typeof MODULES_PATH !== "undefined") {
+    internal.MODULES_PATH = MODULES_PATH;
+  }
+
+
+  // output 
+  internal.start_pager = function() {};
+  internal.stop_pager = function() {};
+
+  internal.ARANGO_QUITE = false;
+
+  internal.COLOR_OUTPUT = undefined;
+  internal.COLOR_OUTPUT_RESET = "";
+  internal.COLOR_BRIGHT = "";
+
+  internal.PRETTY_PRINT = false;
+
+  if (typeof SYS_START_PAGER !== "undefined") {
+    internal.start_pager = SYS_START_PAGER;
+  }
+
+  if (typeof SYS_STOP_PAGER !== "undefined") {
+    internal.stop_pager = SYS_STOP_PAGER;
+  }
+
+  if (typeof ARANGO_QUITE !== "undefined") {
+    internal.stop_pager = ARANGO_QUITE;
+  }
+
+  if (typeof COLOR_OUTPUT !== "undefined") {
+    internal.COLOR_OUTPUT = COLOR_OUTPUT;
+  }
+
+  if (typeof COLOR_OUTPUT_RESET !== "undefined") {
+    internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET;
+  }
+
+  if (typeof COLOR_BRIGHT !== "undefined") {
+    internal.COLOR_BRIGHT = COLOR_BRIGHT;
+  }
+
+  if (typeof PRETTY_PRINT !== "undefined") {
+    internal.PRETTY_PRINT = PRETTY_PRINT;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file
@@ -375,6 +410,7 @@ ModuleCache["/internal"] = new Module("/internal");
 ModuleCache["/console"] = new Module("/console");
 
 (function () {
+  var internal = ModuleCache["/internal"].exports;
   var console = ModuleCache["/console"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
