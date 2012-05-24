@@ -221,7 +221,7 @@ function ArangoConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.get = function (url) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
@@ -247,7 +247,7 @@ ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.delete = function (url) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
@@ -274,7 +274,7 @@ ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.post = function (url, body) {
-  var msg;
+  var msg = null;
 
   $.ajax({
     async: false, 
@@ -301,7 +301,7 @@ ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.put = function (url, body) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
