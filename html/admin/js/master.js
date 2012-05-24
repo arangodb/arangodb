@@ -2,6 +2,15 @@
 /// master.js 
 /// arangodb js api  
 ///////////////////////////////////////////////////////////////////////////////
+var welcomeMSG = "" 
++ "                                        _      \n"
++ "   __ _ _ __ __ _ _ __   __ _  ___  ___| |__   \n"
++ "  / _` | '__/ _` | '_ \\ / _` |/ _ \\/ __| '_ \\  \n"
++ " | (_| | | | (_| | | | | (_| | (_) \\__ \\ | | | \n"
++ "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
++ "                        |___/                  \n"
++ "                                               \n"
++ "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
 
 // documents global vars
 var collectionCount;
@@ -11,6 +20,7 @@ var globalCollectionName;
 var globalCollectionID;
 var globalCollectionRev;
 var checkCollectionName; 
+var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
 
@@ -706,6 +716,10 @@ var logTable = $('#logTableID').dataTable({
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
+      if (printedHelp === false) {
+        print(welcomeMSG + HELP);
+        printedHelp = true; 
+      }
     }
 
 ///////////////////////////////////////////////////////////////////////////////
