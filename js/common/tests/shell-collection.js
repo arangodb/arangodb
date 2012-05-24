@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -36,7 +37,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionSuiteErrorHandling () {
-  var ERRORS = require("internal").errors;
+  var ERRORS = internal.errors;
 
   return {
 

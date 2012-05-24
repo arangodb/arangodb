@@ -34,6 +34,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var internal = require("internal");
+
 var SQB = require("simple-query-basics");
 
 require("simple-query");
