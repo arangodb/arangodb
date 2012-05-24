@@ -88,6 +88,12 @@ static size_t DEFAULT_RETRIES = 5;
 static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief quite start
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Quite = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path for JavaScript bootstrap files
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -518,6 +524,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("help,h", "help message")
+    ("quite,s", "no banner")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
     ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
@@ -578,6 +585,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   if (options.has("use-pager")) {
     usePager = true;
+  }
+
+  if (options.has("quite")) {
+    Quite = true;
   }
 
   // set V8 options
@@ -912,9 +923,6 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   return scope.Close(v8::String::New(connection->getVersion().c_str()));
 }
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
@@ -976,7 +984,13 @@ static void RunShell (v8::Handle<v8::Context> context) {
   }
 
   console->close();
-  printf("\nBye Bye! Auf Wiedersehen!\n");
+
+  if (! Quite) {
+    printf("\nBye Bye! Auf Wiedersehen!\n");
+  }
+  else {
+    printf("\n");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1228,7 +1242,7 @@ int main (int argc, char* argv[]) {
   
   
   // http://www.network-science.de/ascii/   Font: ogre
-  {
+  if (! Quite) {
     char const* g = DEF_GREEN;
     char const* r = DEF_RED;
     char const* z = DEF_RESET;
@@ -1245,30 +1259,30 @@ int main (int argc, char* argv[]) {
     printf("%s| (_| | | | (_| | | | | (_| | (_) %s\\__ \\ | | |%s\n", g, r, z);
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
-  }
 
-  printf("\n");
-  printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    printf("\n");
+    printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
-  printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
+    printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
 #else
-  printf("Using Google V8 JavaScript engine.\n\n");
+    printf("Using Google V8 JavaScript engine.\n\n");
 #endif
   
 #ifdef TRI_READLINE_VERSION
-  printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
 #endif
 
-  printf("\n");
+    printf("\n");
 
-  // set up output
-  if (usePager) {
-    printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
-  }
+    // set up output
+    if (usePager) {
+      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+    }
 
-  if (prettyPrint) {
-    printf("Pretty print values.\n");    
+    if (prettyPrint) {
+      printf("Pretty print values.\n");    
+    }
   }
 
   // set pretty print default: (used in print.js)
@@ -1280,10 +1294,12 @@ int main (int argc, char* argv[]) {
   // set up connection
   if (useServer) {
     if (clientConnection->isConnected()) {
-      printf("Connected to Arango DB %s:%d Version %s\n", 
-              clientConnection->getHostname().c_str(), 
-              clientConnection->getPort(), 
-              clientConnection->getVersion().c_str());
+      if (! Quite) {
+        printf("Connected to Arango DB %s:%d Version %s\n", 
+               clientConnection->getHostname().c_str(), 
+               clientConnection->getPort(), 
+               clientConnection->getVersion().c_str());
+      }
 
       // add the client connection to the context:
       context->Global()->Set(v8::String::New("arango"), 
@@ -1328,9 +1344,15 @@ int main (int argc, char* argv[]) {
     }
   }
   
+  // add the client connection to the context:
+  context->Global()->Set(v8::String::New("ARANGO_QUITE"), Quite ? v8::True() : v8::False(), v8::ReadOnly);
+
+  // run normal shell
   if (UnitTests.empty()) {
     RunShell(context);
   }
+
+  // run unit tests
   else {
     bool ok = RunUnitTests(context);
     
@@ -1339,6 +1361,7 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  // cleanup
   context->Exit();
   context.Dispose();
 
