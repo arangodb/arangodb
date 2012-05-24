@@ -151,6 +151,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -170,8 +171,8 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false,  },
-                  {"bVisible": false}], 
+                  {"sClass":"writeable", "bSortable": false },
+                  {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
 
@@ -191,7 +192,7 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
                   {"sClass":"writeable", "bSortable": false },
-                  {"bVisible": false}] 
+                  {"bVisible": false } ] 
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -687,6 +688,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#query") {
       hideAllSubDivs(); 
+      $('#queryContent').val('');
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
@@ -699,6 +701,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#avocsh") {
       hideAllSubDivs(); 
+      $('#avocshContent').val('');
       $('#collectionsView').hide();
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
@@ -719,7 +722,8 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#createCollectionView').show();
       $('#createCollName').focus();
-
+      $('#createCollName').val('');
+      $('#createCollSize').val('');
     }
   });
 
@@ -1265,6 +1269,9 @@ var logTable = $('#logTableID').dataTable({
     if (this.id == "Configuration") {
       window.location.href = "#config";
     }
+    if (this.id == "Documentation") {
+      return 0; 
+    }
     if (this.id == "Query") {
       window.location.href = "#query";
     }
@@ -1326,7 +1333,7 @@ var logTable = $('#logTableID').dataTable({
       collSize = JSON.parse(collSize) * 1024 * 1024; 
  
       if (collName == '') {
-        alert("Nothing to do..."); 
+        alert("No collection name entered. Aborting..."); 
         return 0; 
       } 
       
@@ -1344,7 +1351,13 @@ var logTable = $('#logTableID').dataTable({
           drawCollectionsTable(); 
         },
         error: function(data) {
-          alert(JSON.stringify(data));  
+          try {
+            var responseText = JSON.parse(data.responseText);
+            alert(responseText.errorMessage);
+          }
+          catch (e) {
+            alert(data.responseText);
+          }
         }
       });
   }); 
@@ -1899,28 +1912,11 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  var userScreenSize = $(window).width();  
-  var content; 
-  var escapedContent = escaped(string); 
-  var userContent; 
-
-  if (userScreenSize <= 1024) {
-    userContent = 150; 
+  // TODO: remove this function and replace with css functionality (text-overflow: ellipsis)
+  if (string.length > 150) {
+    return escaped(string.substr(0, 150)) + '...';
   }
-  else if (userScreenSize > 1024 && userScreenSize < 1680) {
-    userContent = 200; 
-  }
-  else if (userScreenSize > 1680) {
-    userContent = 310; 
-  }
-
-  if (escapedContent.length > userContent) { 
-    content = escapedContent.substr(0,(userContent-3))+'...';   
-  }
-  else {
-    content = escapedContent; 
-  }
-  return content; 
+  return escaped(string);
 }
 
 function createFirstPagination () {
@@ -2294,8 +2290,12 @@ function evaloutput (data) {
 function validate(evt) {
   var theEvent = evt || window.event;
   var key = theEvent.keyCode || theEvent.which;
+
+  if ((key == 37 || key == 39) && !theEvent.shiftKey) {
+    return;
+  }
   key = String.fromCharCode( key );
-  var regex = /[0-9]|\./;
+  var regex = /[0-9\.\b]/;
   if( !regex.test(key) ) {
     theEvent.returnValue = false;
     if(theEvent.preventDefault) theEvent.preventDefault();

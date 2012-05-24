@@ -91,7 +91,7 @@ catch (err) {
 
 ShapedJson.prototype._PRINT = function(seen, path, names, level) {
   if (this instanceof ShapedJson) {
-    PRINT_OBJECT(this, seen, path, names, level);
+    TRI_PRINT_OBJECT(this, seen, path, names, level);
   }
   else {
     internal.output(this.toString());

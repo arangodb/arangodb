@@ -217,6 +217,7 @@ namespace triagens {
 
 
     void ApplicationServerImpl::beginShutdown () {
+      Random::shutdown();
     }
 
 

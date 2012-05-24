@@ -1,0 +1,3 @@
+HAS(user, "name")
+LENGTH(friends)
+COLLECTIONS()

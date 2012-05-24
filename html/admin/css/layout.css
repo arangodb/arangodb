@@ -1,3 +1,11 @@
+.DataTables_sort_wrapper {
+  text-align: center !important; 
+}
+
+.alignRight { 
+  text-align: right; 
+}
+
 .writeable {
   width: 100%; 
   word-wrap: break-word; 
