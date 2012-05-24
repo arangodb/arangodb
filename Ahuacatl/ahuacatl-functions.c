@@ -353,6 +353,14 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // l = list
   // a = array
 
+  // type check functions
+  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, ".");
+  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, ".");
+  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, ".");
+  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, ".");
+  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, ".");
+  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, ".");
+
   // cast functions
   REGISTER_FUNCTION("TONUMBER", "CAST_NUMBER", true, false, ".");
   REGISTER_FUNCTION("TOSTRING", "CAST_STRING", true, false, ".");
@@ -367,20 +375,27 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n");
 
-  // type check functions
-  REGISTER_FUNCTION("ISNULL", "IS_NULL", true, false, ".");
-  REGISTER_FUNCTION("ISBOOL", "IS_BOOL", true, false, ".");
-  REGISTER_FUNCTION("ISNUMBER", "IS_NUMBER", true, false, ".");
-  REGISTER_FUNCTION("ISSTRING", "IS_STRING", true, false, ".");
-  REGISTER_FUNCTION("ISLIST", "IS_LIST", true, false, ".");
-  REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, false, ".");
-
   // numeric functions 
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n");
   REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, "n");
   REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, "n");
   REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, "n");
   REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, "");
+
+  // list functions
+  REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+");
+  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "l");
+  REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
+  REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
+  REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
+  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l");
+  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l");
+  REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l");
+  REGISTER_FUNCTION("LAST", "LAST", true, false, "l");
+  
+  // document functions
+  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s"); 
+  REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
 
   // geo functions
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s");
@@ -393,20 +408,6 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
-  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s"); 
-
-  REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
-
-  // list functions
-  REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+");
-  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "l");
-  REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
-  REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
-  REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
-  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l");
-  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l");
-  REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l");
-  REGISTER_FUNCTION("LAST", "LAST", true, false, "l");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);

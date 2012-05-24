@@ -1334,7 +1334,7 @@ function AHUACATL_CAST_BOOL (value) {
     case AHUACATL_TYPEWEIGHT_NUMBER:
       return (value != 0);
     case AHUACATL_TYPEWEIGHT_STRING: 
-      return (value != '');
+      return (value !== '');
     case AHUACATL_TYPEWEIGHT_LIST:
       return (value.length > 0);
     case AHUACATL_TYPEWEIGHT_DOCUMENT:
