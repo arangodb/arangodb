@@ -35,6 +35,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
+#include "Basics/Random.h"
 #include "Basics/safe_cast.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
@@ -795,7 +796,7 @@ int ArangoServer::executeShell (bool tests) {
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
-  TRI_InitV8VocBridge(context, _vocbase);
+  TRI_v8_global_t* v8g = TRI_InitV8VocBridge(context, _vocbase);
   TRI_InitV8Queries(context);
   TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, _startupModules);
@@ -895,8 +896,13 @@ int ArangoServer::executeShell (bool tests) {
   context->Exit();
   isolate->Exit();
 
+  if (v8g) {
+    delete v8g;
+  }
+
   // close the database
   closeDatabase();
+  Random::shutdown();
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -1051,6 +1057,8 @@ int ArangoServer::executeRubyShell () {
       mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
     }
   }
+  
+  Random::shutdown();
 
   return EXIT_SUCCESS;
 }

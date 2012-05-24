@@ -38,6 +38,7 @@
 ///    <li>@ref AqlBasics
 ///     <ul>
 ///      <li>@ref AqlWhitespace</li>
+///      <li>@ref AqlComments</li>
 ///      <li>@ref AqlKeywords</li>
 ///      <li>@ref AqlNames</li>
 ///      <li>@ref AqlTypes</li>
@@ -174,6 +175,14 @@
 /// feeds, and tab stops) does not have any special meaning except that it
 /// separates individual tokens in the query. Whitespace within strings or
 /// names must be enclosed in quotes in order to be preserved.
+///
+/// @subsection AqlComments Comments
+///
+/// Comments can be embedded at any position in a query. The text contained in the 
+/// comment is ignored by the language parser. Comments cannot be nested, meaning the 
+/// comment text may not contain another comment.
+///
+/// @EXAMPLE{aqlcomments,comments}
 ///
 /// @subsection AqlKeywords Keywords
 ///
@@ -660,11 +669,16 @@
 ///
 /// @verbinclude aqlfunctionsyntax
 ///
-/// @LIT{FUNCTIONNAME} is the name of the function to be called, and @LIT{arguments} 
+/// where @LIT{FUNCTIONNAME} is the name of the function to be called, and @LIT{arguments} 
 /// is a comma-separated list of function arguments. If a function does not need any 
 /// arguments, the argument list can be left empty. However, even if the argument list 
 /// is empty the parentheses around it are still mandatory to make function calls 
-/// distinguishable from variable names. 
+/// distinguishable from variable names.
+///
+/// Some example function calls:
+///
+/// @verbinclude aqlfunctions
+///
 /// Function names are not case-sensitive.
 ///
 /// @subsubsection AqlFunctionsCasting Type cast functions
@@ -679,70 +693,172 @@
 ///
 /// In an AQL query, type casts are performed only upon request and not implicitly.
 /// This helps avoiding unexpected results. All type casts have to be performed
-/// by invoking a type cast function. The following type cast functions are
-/// available:
+/// by invoking a type cast function. AQL offers several type cast functions for this
+/// task. Each of the these functions takes an operand of any data type and returns a 
+/// result value of type corresponding to the function name (e.g. @LIT{TONUMBER()} will
+/// return a number value):
 ///
-/// - @LIT{TONULL}: takes an input operand of any type and returns a @LIT{null} value
-/// - @LIT{TOBOOL}: takes an input operand of any type and converts it into the appropriate 
-///   boolean value
-/// - @LIT{TONUMBER}: takes an input operand of any type and converts it into
-///   a numeric value
-/// - @LIT{TOSTRING}: takes an input operand of any type and converts it into a string
-///   value
-///
-/// Each of the above functions takes an operand of any data type and returns a result
-/// value of the requested type.
+/// - @FN{TONULL(@FA{value})}: converts the @FA{value} into a @LIT{null} value. This
+///   function will always return @LIT{null}.
+/// - @FN{TOBOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
+///   into the appropriate boolean value as follows:
+///   - @LIT{null} is converted to false.
+///   - Numbers are converted to true if they are unequal to 0, and to false otherwise. 
+///   - Strings are converted to true if they are non-empty, and to false otherwise. 
+///   - Lists are converted to true if they are non-empty, and to false otherwise.
+///   - Documents are converted to true if they are non-empty, and to false otherwise.
+/// - @FN{TONUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
+///   into a numeric value as follows:
+///   - @LIT{null}, false, lists, and documents are converted to the value @LIT{0}.
+///   - true is converted to @LIT{1}.
+///   - Strings are converted to their numeric equivalent if the full string content is
+///     is a valid number, and to @LIT{0} otherwise.
+/// - @FN{TOSTRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
+///   into a string value as follows:
+///   - @LIT{null} is converted to the string @LIT{"null"}
+///   - false is converted to the string @LIT{"false"}, true to the string @LIT{"true"}
+///   - numbers, lists, and documents are converted to their string equivalents. 
 ///
 /// @subsubsection AqlFunctionsChecking Type check functions
 ///
 /// AQL also offers functions to check the data type of a value at runtime. The 
-/// following type check functions are available:
+/// following type check functions are available. Each of these functions takes an
+/// argument of any data type and returns true if the value has the type that is checked
+/// for, and false otherwise.
 ///
-/// - @LIT{ISNULL}: checks whether the argument is a @LIT{null} value
-/// - @LIT{ISBOOL}: checks whether the argument is a boolean value
-/// - @LIT{ISNUMBER}: checks whether the argument is a numeric value
-/// - @LIT{ISSTRING}: checks whether the argument is a string value
-/// - @LIT{ISLIST}: checks whether the argument is a list value
-/// - @LIT{ISDOCUMENT}: checks whether the argument is a document value
+/// The following type check functions are available:
 ///
-/// Each of the above functions accepts an operand of any type and returns a boolean
-/// result value. 
+/// - @FN{ISNULL(@FA{value})}: checks whether @FA{value} is a @LIT{null} value
+/// - @FN{ISBOOL(@FA{value})}: checks whether @FA{value} is a boolean value
+/// - @FN{ISNUMBER(@FA{value})}: checks whether @FA{value} is a numeric value
+/// - @FN{ISSTRING(@FA{value})}: checks whether @FA{value} is a string value
+/// - @FN{ISLIST(@FA{value})}: checks whether @FA{value} is a list value
+/// - @FN{ISDOCUMENT(@FA{value})}: checks whether @FA{value} is a document value
+///
+/// @subsubsection AqlFunctionsString String functions
+///
+/// For string processing, AQL offers the following functions:
+///
+/// - @FN{CONCAT(@FA{value1}\, @FA{value2}\, ... @FA{valuen})}: concatenate the strings 
+///   passed as in @FA{value1} to @FA{valuen}. @LIT{null} values are ignored.
+/// - @FN{CONCATSEPARATOR(@FA{separator}\, @FA{value1}\, @FA{value2}\, ... @FA{valuen})}: 
+///   concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
+///   @FA{separator} string. @LIT{null} values are ignored.
+/// - @FN{CHARLENGTH(@FA{value})}: return the number of characters in @FA{value}
+/// - @FN{LOWER(@FA{value})}: lower-case @FA{value}
+/// - @FN{UPPER(@FA{value})}: upper-case @FA{value}
+/// - @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
+///   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
+///   start at position 0.
 ///
 /// @subsubsection AqlFunctionsNumeric Numeric functions
 ///
 /// AQL offers some numeric functions for calculations. The following functions are
 /// supported:
 ///
-/// - @LIT{FLOOR}: returns the integer closest but not greater to the specified value
-/// - @LIT{CEIL}: returns the integer closest but not less than the specified value
-/// - @LIT{ROUND}: returns the integer closest to the specified value
-/// - @LIT{ABS}: returns the absolute value
-/// - @LIT{RAND}: returns a random number between 0 and 1
-///
-/// @subsubsection AqlFunctionsString String functions
-///
-/// AQL offers the following string-related functions:
-///
-/// - @LIT{CONCAT}: concatenate the strings passed as arguments and return the result
-///   string
-/// - @LIT{CONCATSEPARATOR}: concatenate the strings passed as arguments using the
-///   separator string passed in the first argument 
-/// - @LIT{CHARLENGTH}: return the number of characters in a string
-/// - @LIT{LOWER}: lower-case the string passed
-/// - @LIT{UPPER}: upper-case the string passed
-/// - @LIT{SUBSTRING}: return a substring of the string passed, starting at an offset and
-///   with a length of count characters
+/// - @LIT{FLOOR(@FA{value})}: returns the integer closest but not greater to @FA{value}
+/// - @LIT{CEIL(@FA{value})}: returns the integer closest but not less than @FA{value}
+/// - @LIT{ROUND(@FA{value})}: returns the integer closest to @FA{value}
+/// - @LIT{ABS(@FA{value})}: returns the absolute part of @FA{value}
+/// - @LIT{RAND()}: returns a random number between 0 and 1
 ///
 /// @subsubsection AqlFunctionsList List functions
 ///
 /// AQL supports the following functions to operate on list values:
 ///
-/// - @LIT{LENGTH}: returns the length (number of elements) of a list
-/// - @LIT{MIN}: returns the smallest element of a list
-/// - @LIT{MAX}: returns the greatest element of a list
+/// - @LIT{LENGTH(@FA{list})}: returns the length (number of elements) of @FA{list}
+/// - @LIT{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
+///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
+///   function will return @LIT{null}.
+/// - @LIT{MAX(@FA{list})}: returns the greatest element of @FA{list}. @LIT{null} values
+///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
+///   function will return @LIT{null}.
+/// - @LIT{SUM(@FA{list})}: returns the sum of values of the elements in @FA{list}. This
+///   requires the elements in @FA{list} to be numbers. @LIT{null} values are ignored. 
+///   If the list is empty or only @LIT{null} are contained in the list, the  function 
+///   will return @LIT{null}.
+/// - @LIT{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
+/// - @LIT{FIRST(@FA{list})}: returns the first element in @FA{list} or @LIT{null} if the
+///   list is empty.
+/// - @LIT{LAST(@FA{list})}: returns the last element in @FA{list} or @LIT{null} if the
+///   list is empty.
+/// - @LIT{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
+///   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
+///   Calling this function might return the unique elements in any order.
 ///
 /// Apart from these functions, AQL also offers several language constructs (e.g. 
-/// @LIT{FOR}, @LIT{SORT}, @LIT{LIMT}, @LIT{COLLECT}) to operate on lists.
+/// @LIT{FOR}, @LIT{SORT}, @LIT{LIMIT}, @LIT{COLLECT}) to operate on lists.
+///
+/// @subsubsection AqlFunctionsDocument Document functions
+///
+/// AQL supports the following functions to operate on document values:
+///
+/// - @LIT{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
+///   in @FA{document1} to @FA{documentn} into a single document. If document attribute
+///   keys are ambigious, the merged result will contain the values of the documents 
+///   contained later in the argument list.
+/// - @LIT{HAS(@FA{document}\, @FA{attributename})}: returns true if @FA{document} has an
+///   attribute named @FA{attributename}, and false otherwise.
+///
+/// @subsubsection AqlFunctionsGeo Geo functions
+///
+/// AQL offers the following functions to filter data based on geo indexes:
+///
+/// - @LIT{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
+///   returns at most @FA{limit} documents from collection @FA{collection} that are near
+///   @FA{latitude} and @FA{longitude}. The result contains at @FA{limit} documents, returned in
+///   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
+///   documents are returned. Optionally, the distances between the specified coordinate
+///   (@FA{latitude} and @FA{longitude}) and the document coordinates can be returned as well.
+///   To make use of that, an attribute name for the distance result has to be specified in
+///   the @FA{distancename} argument. The result documents will contain the distance value in
+///   an attribute of that name.
+/// - @LIT{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
+///   returns all documents from collection @FA{collection} that are within a radius of
+///   @FA{radius} around that specified coordinate (@FA{latitude} and @FA{longitude}). The order
+///   in which the result documents are returned is undefined. Optionally, the distance between the
+///   coordinate and the document coordinates can be returned as well.
+///   To make use of that, an attribute name for the distance result has to be specified in
+///   the @FA{distancename} argument. The result documents will contain the distance value in
+///   an attribute of that name.
+///
+/// Note: these functions require the collection @FA{collection} to have at least one geo index.
+/// If no geo index can be found, calling this function will fail with an error.
+///
+/// @subsubsection AqlFunctionsGraph Graph functions
+///
+/// AQL has the following functions to traverse graphs:
+///
+/// - @LIT{PATHS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{direction}\, @FA{followcycles})}: 
+///   returns a list of paths through the graph defined by the nodes in the collection 
+///   @FA{vertexcollection} and edges in the collection @FA{edgecollection}. For each vertex
+///   in @FA{vertexcollection}, it will determine the paths through the graph depending on the
+///   value of @FA{direction}:
+///   - @LIT{"outbound"}: follow all paths that start at the current vertex and lead to another vertex
+///   - @LIT{"inbound"}: follow all paths that lead from another vertex to the current vertex
+///   - @LIT{"any"}: combination of @LIT{"outbound"} and @LIT{"inbound"}.
+///   The default value for @FA{direction} is @LIT{"outbound"}.
+///   If @FA{followcycles} is true, cyclic paths will be followed as well. This is turned off by
+///   default.
+///
+///   The result of the function is a list of paths. Paths of length 0 will also be returned. Each 
+///   path is a document consisting of the following attributes:
+///   - @FA{vertices}: list of vertices visited along the path
+///   - @FA{edges}: list of edges visited along the path (might be empty)
+///   - @FA{source}: start vertex of path
+///   - @FA{destination}: destination vertex of path
+///
+/// Example calls:
+///
+/// @verbinclude aqlpaths
+///
+/// @subsubsection AqlFunctionsMisc Miscellaneous functions
+///
+/// Finally, AQL supports the following functions that do not belong to any of the other
+/// function categories:
+///
+/// - @LIT{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
+///   with attributes @LIT{name} and @LIT{_id}.
 ///
 /// @section AqlOperations High-level operations
 ///

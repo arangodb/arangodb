@@ -4258,7 +4258,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase) {
+TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase) {
   v8::HandleScope scope;
 
   v8::Handle<v8::ObjectTemplate> rt;
@@ -4614,6 +4614,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("edges"),
                          TRI_WrapEdges(vocbase),
                          v8::ReadOnly);
+
+  return v8g;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
