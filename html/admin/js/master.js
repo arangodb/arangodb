@@ -151,6 +151,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
