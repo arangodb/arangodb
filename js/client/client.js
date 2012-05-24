@@ -1,11 +1,11 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 80,
+         maxlen: 100,
          sloppy: true,
          vars: true,
          white: true,
          plusplus: true */
-/*global require, ModuleCache, Module */
+/*global require, arango, db, edges, ModuleCache, Module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -382,6 +382,508 @@ function help () {
 }());
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                ArangoQueryCursor
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function ArangoQueryCursor (database, data) {
+  this._database = database;
+  this.data = data;
+  this._hasNext = false;
+  this._hasMore = false;
+  this._pos = 0;
+  this._count = 0;
+  this._total = 0;
+  
+  if (data.result !== undefined) {
+    this._count = data.result.length;
+    
+    if (this._pos < this._count) {
+      this._hasNext = true;
+    }
+    
+    if (data.hasMore !== undefined && data.hasMore) {
+      this._hasMore = true;
+    }    
+  }
+}
+
+(function () {
+  var internal = require("internal");
+  var client = require("arangosh");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for ArangoQueryCursor
+////////////////////////////////////////////////////////////////////////////////
+
+  client.helpArangoQueryCursor = client.createHelpHeadline("ArangoQueryCursor help") +
+  'ArangoQueryCursor constructor:                                      ' + "\n" +
+  ' > cu1 = qi1.execute();                                             ' + "\n" +
+  'Functions:                                                          ' + "\n" +
+  '  hasMore();                            returns true if there       ' + "\n" +
+  '                                        are more results            ' + "\n" +
+  '  next();                               returns the next document   ' + "\n" +
+  '  elements();                           returns all documents       ' + "\n" +
+  '  _help();                              this help                   ' + "\n" +
+  'Attributes:                                                         ' + "\n" +
+  '  _database                             database object             ' + "\n" +
+  'Example:                                                            ' + "\n" +
+  ' > st = db._createStatement({ "query" : "for c in coll return c" });' + "\n" +
+  ' > c = st.execute();                                                ' + "\n" +
+  ' > documents = c.elements();                                        ' + "\n" +
+  ' > c = st.execute();                                                ' + "\n" +
+  ' > while (c.hasNext()) { print( c.next() ); }                       ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype._help = function () {
+    internal.print(client.helpArangoQueryCursor);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.toString = function () {  
+    return client.getIdString(this, "ArangoQueryCursor");
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether there are more results available in the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.hasNext = function () {
+    return this._hasNext;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next result document from the cursor
+///
+/// If no more results are available locally but more results are available on
+/// the server, this function will make a roundtrip to the server
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.next = function () {
+    if (!this._hasNext) {
+      throw "No more results";
+    }
+
+    var result = this.data.result[this._pos];
+    this._pos++;
+
+    // reached last result
+    if (this._pos === this._count) {
+      this._hasNext = false;
+      this._pos = 0;
+
+      if (this._hasMore && this.data.id) {
+        this._hasMore = false;
+
+        // load more results      
+        var requestResult = this._database._connection.PUT(
+          "/_api/cursor/"+ encodeURIComponent(this.data.id),
+          "");
+
+        client.checkRequestResult(requestResult);
+
+        this.data = requestResult;
+        this._count = requestResult.result.length;
+
+        if (this._pos < this._count) {
+          this._hasNext = true;
+        }
+
+        if (requestResult.hasMore !== undefined && requestResult.hasMore) {
+          this._hasMore = true;
+        }                
+      }    
+    }
+
+    return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all remaining result documents from the cursor
+///
+/// If no more results are available locally but more results are available on
+/// the server, this function will make one or multiple roundtrips to the 
+/// server. Calling this function will also fully exhaust the cursor.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.elements = function () {  
+    var result = [];
+
+    while (this.hasNext()) { 
+      result.push( this.next() ); 
+    }
+
+    return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly dispose the cursor
+///
+/// Calling this function will mark the cursor as deleted on the server. It will
+/// therefore make a roundtrip to the server. Using a cursor after it has been
+/// disposed is considered a user error
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.dispose = function () {
+    if (!this.data.id) {
+      // client side only cursor
+      return;
+    }
+
+    var requestResult = this._database._connection.DELETE(
+      "/_api/cursor/"+ encodeURIComponent(this.data.id),
+      "");
+
+    client.checkRequestResult(requestResult);
+
+    this.data.id = undefined;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the total number of documents in the cursor
+///
+/// The number will remain the same regardless how much result documents have
+/// already been fetched from the cursor.
+///
+/// This function will return the number only if the cursor was constructed 
+/// with the "doCount" attribute. Otherwise it will return undefined.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.count = function () {
+    if (!this.data.id) {
+      throw "cursor has been disposed";
+    }
+
+    return this.data.count;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+}());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  ArangoStatement
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function ArangoStatement (database, data) {
+  this._database = database;
+  this._doCount = false;
+  this._batchSize = null;
+  this._bindVars = {};
+  
+  if (!(data instanceof Object)) {
+    throw "ArangoStatement needs initial data";
+  }
+    
+  if (data.query === undefined || data.query === "") {
+    throw "ArangoStatement needs a valid query attribute";
+  }
+  this.setQuery(data.query);
+
+  if (data.count !== undefined) {
+    this.setCount(data.count);
+  }
+  if (data.batchSize !== undefined) {
+    this.setBatchSize(data.batchSize);
+  }
+}
+
+(function () {
+  var internal = require("internal");
+  var client = require("arangosh");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for ArangoStatement
+////////////////////////////////////////////////////////////////////////////////
+
+  client.helpArangoStatement = client.createHelpHeadline("ArangoStatement help") +
+  'ArangoStatement constructor:                                        ' + "\n" +
+  ' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
+  ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
+  'Functions:                                                          ' + "\n" +
+  '  bind(<key>, <value>);          bind single variable               ' + "\n" +
+  '  bind(<values>);                bind multiple variables            ' + "\n" +
+  '  setBatchSize(<max>);           set max. number of results         ' + "\n" +
+  '                                 to be transferred per roundtrip    ' + "\n" +
+  '  setCount(<value>);             set count flag (return number of   ' + "\n" +
+  '                                 results in "count" attribute)      ' + "\n" +
+  '  getBatchSize();                return max. number of results      ' + "\n" +
+  '                                 to be transferred per roundtrip    ' + "\n" +
+  '  getCount();                    return count flag (return number of' + "\n" +
+  '                                 results in "count" attribute)      ' + "\n" +
+  '  getQuery();                    return query string                ' + "\n" +
+  '  execute();                     execute query and return cursor    ' + "\n" +
+  '  _help();                       this help                          ' + "\n" +
+  'Attributes:                                                         ' + "\n" +
+  '  _database                      database object                    ' + "\n" +
+  'Example:                                                            ' + "\n" +
+  ' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
+  '                              c.x == @a && c.y == @b return c" });  ' + "\n" +
+  ' > st.bind("a", "hello");                                           ' + "\n" +
+  ' > st.bind("b", "world");                                           ' + "\n" +
+  ' > c = st.execute();                                                ' + "\n" +
+  ' > print(c.elements());                                             ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for ArangoStatement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype._help = function () {
+    internal.print(client.helpArangoStatement);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.toString = function () {  
+    return client.getIdString(this, "ArangoStatement");
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bind a parameter to the statement
+///
+/// This function can be called multiple times, once for each bind parameter.
+/// All bind parameters will be transferred to the server in one go when 
+/// execute() is called.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.bind = function (key, value) {
+    if (key instanceof Object) {
+      if (value !== undefined) {
+        throw "invalid bind parameter declaration";
+      }
+
+      this._bindVars = key;
+    }
+    else if (typeof(key) === "string") {
+      if (this._bindVars[key] !== undefined) {
+        throw "redeclaration of bind parameter";
+      }
+
+      this._bindVars[key] = value;
+    }
+    else if (typeof(key) === "number") {
+      var strKey = String(parseInt(key));
+
+      if (strKey !== String(key)) {
+        throw "invalid bind parameter declaration";
+      }
+
+      if (this._bindVars[strKey] !== undefined) {
+        throw "redeclaration of bind parameter";
+      }
+
+      this._bindVars[strKey] = value;
+    }
+    else {
+      throw "invalid bind parameter declaration";
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the bind variables already set
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.getBindVariables = function () {
+    return this._bindVars;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the count flag for the statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.getCount = function () {
+    return this._doCount;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the maximum number of results documents the cursor will return
+/// in a single server roundtrip.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.getBatchSize = function () {
+    return this._batchSize;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get query string
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.getQuery = function () {
+    return this._query;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the count flag for the statement
+///
+/// Setting the count flag will make the statement's result cursor return the
+/// total number of result documents. The count flag is not set by default.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.setCount = function (bool) {
+    this._doCount = bool ? true : false;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the maximum number of results documents the cursor will return
+/// in a single server roundtrip.
+/// The higher this number is, the less server roundtrips will be made when
+/// iterating over the result documents of a cursor.
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.setBatchSize = function (value) {
+    if (parseInt(value) > 0) {
+      this._batchSize = parseInt(value);
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query string
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.setQuery = function (query) {
+    this._query = query;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a query and return the results
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.parse = function () {
+    var body = {
+      "query" : this._query,
+    };
+
+    var requestResult = this._database._connection.POST(
+      "/_api/query",
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the query
+///
+/// Invoking execute() will transfer the query and all bind parameters to the
+/// server. It will return a cursor with the query results in case of success.
+/// In case of an error, the error will be printed
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStatement.prototype.execute = function () {
+    var body = {
+      "query" : this._query,
+      "count" : this._doCount,
+      "bindVars" : this._bindVars
+    };
+
+    if (this._batchSize) {
+      body["batchSize"] = this._batchSize;
+    }
+
+    var requestResult = this._database._connection.POST(
+      "/_api/cursor",
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return new ArangoQueryCursor(this._database, requestResult);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+}());
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 ArangoCollection
 // -----------------------------------------------------------------------------
 
@@ -648,8 +1150,9 @@ function ArangoCollection (database, data) {
     this._status = ArangoCollection.STATUS_DELETED;
 
     var database = this._database;
+    var name;
 
-    for (var name in database) {
+    for (name in database) {
       if (database.hasOwnProperty(name)) {
         var collection = database[name];
 
@@ -692,26 +1195,28 @@ function ArangoCollection (database, data) {
       id = id.id;
     }
 
+    var requestResult;
     var s = id.split("/");
 
     if (s.length !== 2) {
-      var requestResult = {
+      requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
         errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
-      }
+      };
 
       throw new ArangoError(requestResult);
     }
     else if (s[0] !== this._id) {
-      var requestResult = {
+      requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
-      }
+        errorMessage: 
+          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+      };
 
       throw new ArangoError(requestResult);
     }
 
-    var requestResult = this._database._connection.GET("/_api/index/" + id);
+    requestResult = this._database._connection.GET("/_api/index/" + id);
 
     client.checkRequestResult(requestResult);
 
@@ -727,30 +1232,33 @@ function ArangoCollection (database, data) {
       id = id.id;
     }
 
+    var requestResult;
     var s = id.split("/");
 
     if (s.length !== 2) {
-      var requestResult = {
+      requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
         errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
-      }
+      };
 
       throw new ArangoError(requestResult);
     }
     else if (s[0] !== this._id) {
-      var requestResult = {
+      requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
-      }
+        errorMessage:
+          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+      };
 
       throw new ArangoError(requestResult);
     }
 
-    var requestResult = this._database._connection.DELETE("/_api/index/" + id);
+    requestResult = this._database._connection.DELETE("/_api/index/" + id);
 
     if (requestResult !== null
         && requestResult.error === true 
-        && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
+        && requestResult.errorNum
+             === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
       return false;
     }
 
@@ -782,10 +1290,11 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+    var i;
     var body;
     var fields = [];
 
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       fields.push(arguments[i]);
     }
 
@@ -805,10 +1314,11 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.ensureSkiplist = function () {
+    var i;
     var body;
     var fields = [];
 
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       fields.push(arguments[i]);
     }
 
@@ -828,10 +1338,11 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.ensureUniqueConstraint = function () {
+    var i;
     var body;
     var fields = [];
 
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       fields.push(arguments[i]);
     }
 
@@ -851,10 +1362,11 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.ensureHashIndex = function () {
+    var i;
     var body;
     var fields = [];
 
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       fields.push(arguments[i]);
     }
 
@@ -877,13 +1389,27 @@ function ArangoCollection (database, data) {
     var body;
 
     if (typeof lon === "boolean") {
-      body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : false };
+      body = { 
+        type : "geo", 
+        fields : [ lat ], 
+        geoJson : lon, 
+        constraint : false
+      };
     }
     else if (lon === undefined) {
-      body = { type : "geo", fields : [ lat ], geoJson : false, constraint : false };
+      body = {
+        type : "geo", 
+        fields : [ lat ],
+        geoJson : false, 
+        constraint : false 
+      };
     }
     else {
-      body = { type : "geo", fields : [ lat, lon ], constraint : false };
+      body = {
+        type : "geo",
+        fields : [ lat, lon ],
+        constraint : false
+      };
     }
 
     var requestResult = this._database._connection.POST(
@@ -911,16 +1437,33 @@ function ArangoCollection (database, data) {
             + " or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
       }
 
-      body = { type : "geo", fields : [ lat ], geoJson : false, constraint : true, ignoreNull : ignoreNull };
+      body = {
+        type : "geo",
+        fields : [ lat ],
+        geoJson : false, 
+        constraint : true,
+        ignoreNull : ignoreNull 
+      };
     }
 
     // three parameter
     else {
       if (typeof lon === "boolean") {
-        body = { type : "geo", fields : [ lat ], geoJson : lon, constraint : true, ignoreNull : ignoreNull };
+        body = {
+          type : "geo",
+          fields : [ lat ],
+          geoJson : lon,
+          constraint : true,
+          ignoreNull : ignoreNull
+        };
       }
       else {
-        body = { type : "geo", fields : [ lat, lon ], constraint : true, ignoreNull : ignoreNull };
+        body = {
+          type : "geo",
+          fields : [ lat, lon ],
+          constraint : true,
+          ignoreNull : ignoreNull
+        };
       }
     }
 
@@ -938,6 +1481,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
+    var key;
     var body;
 
     limit = limit || null;
@@ -947,15 +1491,23 @@ function ArangoCollection (database, data) {
       index = index.id;
     }
 
-    body = { collection : this._id, index : index, skip : skip, limit : limit, example : {} };
+    body = {
+      collection : this._id,
+      index : index,
+      skip : skip,
+      limit : limit,
+      example : {} 
+    };
 
-    for (var key in example) {
+    for (key in example) {
       if (example.hasOwnProperty(key)) {
         body.example[key] = example[key];
       }
     }
 
-    var requestResult = this._database._connection.PUT("/_api/simple/BY-EXAMPLE-HASH", JSON.stringify(body));
+    var requestResult = this._database._connection.PUT(
+      "/_api/simple/BY-EXAMPLE-HASH",
+      JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1309,7 +1861,7 @@ function ArangoDatabase (connection) {
 
   ArangoDatabase.prototype._help = function () {  
     internal.print(client.helpArangoDatabase);
-  }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the database object
@@ -1317,7 +1869,7 @@ function ArangoDatabase (connection) {
 
   ArangoDatabase.prototype.toString = function () {  
     return "[object ArangoDatabase]";
-  }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1344,9 +1896,10 @@ function ArangoDatabase (connection) {
     if (requestResult["collections"] !== undefined) {
       var collections = requestResult["collections"];
       var result = [];
+      var i;
     
       // add all collentions to object
-      for (var i = 0;  i < collections.length;  ++i) {
+      for (i = 0;  i < collections.length;  ++i) {
         var collection = new this._collectionConstructor(this, collections[i]);
 
         this[collection._name] = collection;
@@ -1380,7 +1933,8 @@ function ArangoDatabase (connection) {
     var name = requestResult["name"];
 
     if (name !== undefined) {
-      return this[name] = new this._collectionConstructor(this, requestResult);
+      this[name] = new this._collectionConstructor(this, requestResult);
+      return this[name];
     }
   
     return undefined;
@@ -1415,11 +1969,11 @@ function ArangoDatabase (connection) {
 
     client.checkRequestResult(requestResult);
 
-    var name = requestResult["name"];
+    var nname = requestResult["name"];
 
-    if (name !== undefined) {
-      return this[name]
-        = new this._collectionConstructor(this, requestResult);
+    if (nname !== undefined) {
+      this[nname] = new this._collectionConstructor(this, requestResult);
+      return this[nname];
     }
   
     return undefined;
@@ -1430,7 +1984,9 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._truncate = function (id) {
-    for (var name in this) {
+    var name;
+
+    for (name in this) {
       if (this.hasOwnProperty(name)) {
         var collection = this[name];
 
@@ -1450,7 +2006,9 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._drop = function (id) {
-    for (var name in this) {
+    var name;
+
+    for (name in this) {
       if (this.hasOwnProperty(name)) {
         var collection = this[name];
 
@@ -1687,85 +2245,6 @@ function ArangoDatabase (connection) {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       ArangoEdges
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoEdges (connection) {
-  this._connection = connection;
-  this._collectionConstructor = ArangoEdgesCollection;
-}
-
-ArangoEdges.prototype = new ArangoDatabase();
-
-(function () {
-  var internal = require("internal");
-  var client = require("arangosh");
-
-  internal.ArangoEdges = ArangoEdges;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief help for ArangoEdges
-////////////////////////////////////////////////////////////////////////////////
-
-  client.helpArangoEdges = client.createHelpHeadline("ArangoEdges help") +
-  'ArangoEdges constructor:                                            ' + "\n" +
-  ' > edges = new ArangoEdges(connection);                             ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Administration Functions:                                           ' + "\n" +
-  '  _help();                       this help                          ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  <collection names>             collection with the given name     ';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for ArangoEdges
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdges.prototype._help = function () {  
-    internal.print(client.helpArangoEdges);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the database object
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdges.prototype.toString = function () {  
-    return "[object ArangoEdges]";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-}());
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                            ArangoEdgesCollection
 // -----------------------------------------------------------------------------
 
@@ -1853,7 +2332,11 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
       case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
     }
 
-    internal.output("[ArangoEdgesCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
+    internal.output("[ArangoEdgesCollection ",
+                    this._id,
+                    ", \"",
+                    this.name(),
+                    "\" (status " + status + ")]");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1861,7 +2344,7 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoEdgesCollection.prototype._help = function () {  
-    internal.print(helpArangoEdgesCollection);
+    internal.print(client.helpArangoEdgesCollection);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1894,7 +2377,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
             + "&from=" + encodeURIComponent(from)
             + "&to=" + encodeURIComponent(to);
 
-    var requestResult = this._database._connection.POST(url, JSON.stringify(data));
+    var requestResult = this._database._connection.POST(
+      url,
+      JSON.stringify(data));
 
     client.checkRequestResult(requestResult);
 
@@ -1910,8 +2395,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     // if vertex is a list, iterator and concat
     if (vertex instanceof Array) {
       var edges = [];
+      var i;
 
-      for (var i = 0;  i < vertex.length;  ++i) {
+      for (i = 0;  i < vertex.length;  ++i) {
         var e = this.edges(vertex[i]);
 
         edges.push.apply(edges, e);
@@ -1925,7 +2411,7 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     }
 
     // get the edges
-    requestResult = this._database._connection.GET(
+    var requestResult = this._database._connection.GET(
       "/_api/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
@@ -1942,8 +2428,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     // if vertex is a list, iterator and concat
     if (vertex instanceof Array) {
       var edges = [];
+      var i;
 
-      for (var i = 0;  i < vertex.length;  ++i) {
+      for (i = 0;  i < vertex.length;  ++i) {
         var e = this.inEdges(vertex[i]);
 
         edges.push.apply(edges, e);
@@ -1957,8 +2444,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     }
 
     // get the edges
-    requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
+    var requestResult = this._database._connection.GET(
+      "/_api/edges/" + encodeURIComponent(this._id)
+      + "?direction=in&vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
 
@@ -1974,8 +2462,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     // if vertex is a list, iterator and concat
     if (vertex instanceof Array) {
       var edges = [];
+      var i;
 
-      for (var i = 0;  i < vertex.length;  ++i) {
+      for (i = 0;  i < vertex.length;  ++i) {
         var e = this.outEdges(vertex[i]);
 
         edges.push.apply(edges, e);
@@ -1989,8 +2478,9 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
     }
 
     // get the edges
-    requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
+    var requestResult = this._database._connection.GET(
+      "/_api/edges/" + encodeURIComponent(this._id)
+      + "?direction=out&vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
 
@@ -2004,7 +2494,7 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                ArangoQueryCursor
+// --SECTION--                                                       ArangoEdges
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -2020,31 +2510,18 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor (database, data) {
-  this._database = database;
-  this.data = data;
-  this._hasNext = false;
-  this._hasMore = false;
-  this._pos = 0;
-  this._count = 0;
-  this._total = 0;
-  
-  if (data.result !== undefined) {
-    this._count = data.result.length;
-    
-    if (this._pos < this._count) {
-      this._hasNext = true;
-    }
-    
-    if (data.hasMore !== undefined && data.hasMore) {
-      this._hasMore = true;
-    }    
-  }
+function ArangoEdges (connection) {
+  this._connection = connection;
+  this._collectionConstructor = ArangoEdgesCollection;
 }
+
+ArangoEdges.prototype = new ArangoDatabase();
 
 (function () {
   var internal = require("internal");
   var client = require("arangosh");
+
+  internal.ArangoEdges = ArangoEdges;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -2060,443 +2537,33 @@ function ArangoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief help for ArangoQueryCursor
+/// @brief help for ArangoEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-  client.helpArangoQueryCursor = client.createHelpHeadline("ArangoQueryCursor help") +
-  'ArangoQueryCursor constructor:                                      ' + "\n" +
-  ' > cu1 = qi1.execute();                                             ' + "\n" +
-  'Functions:                                                          ' + "\n" +
-  '  hasMore();                            returns true if there       ' + "\n" +
-  '                                        are more results            ' + "\n" +
-  '  next();                               returns the next document   ' + "\n" +
-  '  elements();                           returns all documents       ' + "\n" +
-  '  _help();                              this help                   ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  _database                             database object             ' + "\n" +
-  'Example:                                                            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for c in coll return c" });' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > documents = c.elements();                                        ' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > while (c.hasNext()) { print( c.next() ); }                       ';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for the cursor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype._help = function () {
-    print(client.helpArangoQueryCursor);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the cursor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.toString = function () {  
-    return client.getIdString(this, "ArangoQueryCursor");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether there are more results available in the cursor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.hasNext = function () {
-    return this._hasNext;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next result document from the cursor
-///
-/// If no more results are available locally but more results are available on
-/// the server, this function will make a roundtrip to the server
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.next = function () {
-    if (!this._hasNext) {
-      throw "No more results";
-    }
-
-    var result = this.data.result[this._pos];
-    this._pos++;
-
-    // reached last result
-    if (this._pos === this._count) {
-      this._hasNext = false;
-      this._pos = 0;
-
-      if (this._hasMore && this.data.id) {
-        this._hasMore = false;
-
-        // load more results      
-        var requestResult = this._database._connection.PUT(
-          "/_api/cursor/"+ encodeURIComponent(this.data.id),
-          "");
-
-        client.checkRequestResult(requestResult);
-
-        this.data = requestResult;
-        this._count = requestResult.result.length;
-
-        if (this._pos < this._count) {
-          this._hasNext = true;
-        }
-
-        if (requestResult.hasMore !== undefined && requestResult.hasMore) {
-          this._hasMore = true;
-        }                
-      }    
-    }
-
-    return result;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all remaining result documents from the cursor
-///
-/// If no more results are available locally but more results are available on
-/// the server, this function will make one or multiple roundtrips to the 
-/// server. Calling this function will also fully exhaust the cursor.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.elements = function () {  
-    var result = [];
-
-    while (this.hasNext()) { 
-      result.push( this.next() ); 
-    }
-
-    return result;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly dispose the cursor
-///
-/// Calling this function will mark the cursor as deleted on the server. It will
-/// therefore make a roundtrip to the server. Using a cursor after it has been
-/// disposed is considered a user error
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.dispose = function () {
-    if (!this.data.id) {
-      // client side only cursor
-      return;
-    }
-
-    var requestResult = this._database._connection.DELETE(
-      "/_api/cursor/"+ encodeURIComponent(this.data.id),
-      "");
-
-    client.checkRequestResult(requestResult);
-
-    this.data.id = undefined;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the total number of documents in the cursor
-///
-/// The number will remain the same regardless how much result documents have
-/// already been fetched from the cursor.
-///
-/// This function will return the number only if the cursor was constructed 
-/// with the "doCount" attribute. Otherwise it will return undefined.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoQueryCursor.prototype.count = function () {
-    if (!this.data.id) {
-      throw "cursor has been disposed";
-    }
-
-    return this.data.count;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-}());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoStatement
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoStatement (database, data) {
-  this._database = database;
-  this._doCount = false;
-  this._batchSize = null;
-  this._bindVars = {};
-  
-  if (!(data instanceof Object)) {
-    throw "ArangoStatement needs initial data";
-  }
-    
-  if (data.query === undefined || data.query === "") {
-    throw "ArangoStatement needs a valid query attribute";
-  }
-  this.setQuery(data.query);
-
-  if (data.count !== undefined) {
-    this.setCount(data.count);
-  }
-  if (data.batchSize !== undefined) {
-    this.setBatchSize(data.batchSize);
-  }
-}
-
-(function () {
-  var internal = require("internal");
-  var client = require("arangosh");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief help for ArangoStatement
-////////////////////////////////////////////////////////////////////////////////
-
-  client.helpArangoStatement = client.createHelpHeadline("ArangoStatement help") +
-  'ArangoStatement constructor:                                        ' + "\n" +
-  ' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
-  'Functions:                                                          ' + "\n" +
-  '  bind(<key>, <value>);          bind single variable               ' + "\n" +
-  '  bind(<values>);                bind multiple variables            ' + "\n" +
-  '  setBatchSize(<max>);           set max. number of results         ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  '  setCount(<value>);             set count flag (return number of   ' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  '  getBatchSize();                return max. number of results      ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  '  getCount();                    return count flag (return number of' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  '  getQuery();                    return query string                ' + "\n" +
-  '  execute();                     execute query and return cursor    ' + "\n" +
+  client.helpArangoEdges = client.createHelpHeadline("ArangoEdges help") +
+  'ArangoEdges constructor:                                            ' + "\n" +
+  ' > edges = new ArangoEdges(connection);                             ' + "\n" +
+  '                                                                    ' + "\n" +
+  'Administration Functions:                                           ' + "\n" +
   '  _help();                       this help                          ' + "\n" +
+  '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
-  '  _database                      database object                    ' + "\n" +
-  'Example:                                                            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
-  '                              c.x == @a && c.y == @b return c" });  ' + "\n" +
-  ' > st.bind("a", "hello");                                           ' + "\n" +
-  ' > st.bind("b", "world");                                           ' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > print(c.elements());                                             ';
+  '  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for ArangoStatement
+/// @brief print the help for ArangoEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoStatement.prototype._help = function () {
-    print(client.helpArangoStatement);
+  ArangoEdges.prototype._help = function () {  
+    internal.print(client.helpArangoEdges);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the statement
+/// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoStatement.prototype.toString = function () {  
-    return client.getIdString(this, "ArangoStatement");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the statement
-///
-/// This function can be called multiple times, once for each bind parameter.
-/// All bind parameters will be transferred to the server in one go when 
-/// execute() is called.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.bind = function (key, value) {
-    if (key instanceof Object) {
-      if (value !== undefined) {
-        throw "invalid bind parameter declaration";
-      }
-
-      this._bindVars = key;
-    }
-    else if (typeof(key) === "string") {
-      if (this._bindVars[key] !== undefined) {
-        throw "redeclaration of bind parameter";
-      }
-
-      this._bindVars[key] = value;
-    }
-    else if (typeof(key) === "number") {
-      var strKey = String(parseInt(key));
-
-      if (strKey !== String(key)) {
-        throw "invalid bind parameter declaration";
-      }
-
-      if (this._bindVars[strKey] !== undefined) {
-        throw "redeclaration of bind parameter";
-      }
-
-      this._bindVars[strKey] = value;
-    }
-    else {
-      throw "invalid bind parameter declaration";
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the bind variables already set
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getBindVariables = function () {
-    return this._bindVars;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the count flag for the statement
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getCount = function () {
-    return this._doCount;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getBatchSize = function () {
-    return this._batchSize;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get query string
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getQuery = function () {
-    return this._query;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the statement
-///
-/// Setting the count flag will make the statement's result cursor return the
-/// total number of result documents. The count flag is not set by default.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setCount = function (bool) {
-    this._doCount = bool ? true : false;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-/// The higher this number is, the less server roundtrips will be made when
-/// iterating over the result documents of a cursor.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setBatchSize = function (value) {
-    if (parseInt(value) > 0) {
-      this._batchSize = parseInt(value);
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the query string
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setQuery = function (query) {
-    this._query = query;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.parse = function () {
-    var body = {
-      "query" : this._query,
-    }
-
-    var requestResult = this._database._connection.POST(
-      "/_api/query",
-      JSON.stringify(body));
-
-    client.checkRequestResult(requestResult);
-
-    return true;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// Invoking execute() will transfer the query and all bind parameters to the
-/// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be printed
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.execute = function () {
-    var body = {
-      "query" : this._query,
-      "count" : this._doCount,
-      "bindVars" : this._bindVars
-    }
-
-    if (this._batchSize) {
-      body["batchSize"] = this._batchSize;
-    }
-
-    var requestResult = this._database._connection.POST(
-      "/_api/cursor",
-      JSON.stringify(body));
-
-    client.checkRequestResult(requestResult);
-
-    return new ArangoQueryCursor(this._database, requestResult);
+  ArangoEdges.prototype.toString = function () {  
+    return "[object ArangoEdges]";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2595,8 +2662,8 @@ function ArangoStatement (database, data) {
     if (typeof arango !== 'undefined') {
 
       // default databases
-      internal.db = db = new ArangoDatabase(arango);
-      internal.edges = edges = new ArangoEdges(arango);
+      db = internal.db = new ArangoDatabase(arango);
+      edges = internal.edges = new ArangoEdges(arango);
 
       // load collection data
       internal.db._collections();
@@ -2606,12 +2673,12 @@ function ArangoStatement (database, data) {
       require("simple-query");
 
       if (! internal.ARANGO_QUITE) {
-        print(client.HELP);
+        internal.print(client.HELP);
       }
     }
   }
   catch (err) {
-    print("" + err);
+    internal.print(String(err));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
