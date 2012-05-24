@@ -1268,6 +1268,9 @@ var logTable = $('#logTableID').dataTable({
     if (this.id == "Configuration") {
       window.location.href = "#config";
     }
+    if (this.id == "Documentation") {
+      return 0; 
+    }
     if (this.id == "Query") {
       window.location.href = "#query";
     }
