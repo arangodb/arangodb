@@ -1057,6 +1057,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
   }
 
   ln = TRI_DuplicateString(locationName);
+  // TODO: ln might be NULL
 
   TRI_InitVectorString(&geo->base._fields, TRI_UNKNOWN_MEM_ZONE);
 
