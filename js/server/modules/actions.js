@@ -389,20 +389,38 @@ function ResultUnsupported (req, res, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultCursor (req, res, cursor, code) {
-  var hasCount = cursor.hasCount();
-  var count = cursor.count();
-  var rows = cursor.getRows();
+  var rows;
+  var count;
+  var hasNext;
+  var hasCount;
+  var cursorId;
 
-  // must come after getRows()
-  var hasNext = cursor.hasNext();
-  var cursorId = null;
-   
-  if (hasNext) {
-    cursor.persist();
-    cursorId = cursor.id(); 
+  if (Array.isArray(cursor)) {
+    // performance optimisation: if the value passed in is an error, we can
+    // use it as it is
+    hasCount = true;
+    count = cursor.length;
+    rows = cursor;
+    hasNext = false;
+    cursorId = null;
   }
   else {
-    cursor.dispose();
+    // cursor is assumed to be an ArangoCursor
+    hasCount = cursor.hasCount();
+    count = cursor.count();
+    rows = cursor.getRows();
+
+    // must come after getRows()
+    hasNext = cursor.hasNext();
+    cursorId = null;
+   
+    if (hasNext) {
+      cursor.persist();
+      cursorId = cursor.id(); 
+    }
+    else {
+      cursor.dispose();
+    }
   }
 
   var result = { 
