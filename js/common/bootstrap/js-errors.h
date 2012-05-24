@@ -3,9 +3,10 @@ static string JS_common_bootstrap_errors =
   "/// @brief auto-generated file generated from errors.dat\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
+  "(function () {\n"
   "var internal = require(\"internal\");\n"
   "\n"
-  "ModuleCache[\"/internal\"].exports.errors = {\n"
+  "internal.errors = {\n"
   "  \"ERROR_NO_ERROR\"               : { \"code\" : 0, \"message\" : \"no error\" }, \n"
   "  \"ERROR_FAILED\"                 : { \"code\" : 1, \"message\" : \"failed\" }, \n"
   "  \"ERROR_SYS_ERROR\"              : { \"code\" : 2, \"message\" : \"system error\" }, \n"
@@ -131,5 +132,6 @@ static string JS_common_bootstrap_errors =
   "  \"WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING\" : { \"code\" : 3302, \"message\" : \"skiplist index update warning - attribute missing in revised document\" }, \n"
   "  \"WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING\" : { \"code\" : 3311, \"message\" : \"skiplist index remove failure - item missing in index\" }, \n"
   "};\n"
+  "}());\n"
   "\n"
 ;

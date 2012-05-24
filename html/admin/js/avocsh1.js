@@ -301,7 +301,7 @@ var arango = new ArangoConnection();
 /// @brief global output buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-var TRI_OutputBuffer = "";
+internal.browserOutputBuffer = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -321,14 +321,14 @@ var TRI_OutputBuffer = "";
 ////////////////////////////////////////////////////////////////////////////////
 
 function SYS_START_PAGER () {
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops pager (dummy)
 ////////////////////////////////////////////////////////////////////////////////
 
 function SYS_STOP_PAGER () {
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes HTML
@@ -379,18 +379,18 @@ function TRI_SYS_OUTPUT () {
       text = "" + value;
     }
 
-    TRI_OutputBuffer += escapeHTML(text);
+    internal.browserOutputBuffer += escapeHTML(text);
   }
 
   return undefined;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs text to shell window
 ////////////////////////////////////////////////////////////////////////////////
 
 // must be a variable definition for the browser
-function TRI_PRINT_BROWSER () {
+internal.printBrowser = function () {
   for (var i = 0;  i < arguments.length;  ++i) {
     if (0 < i) {
       TRI_SYS_OUTPUT(" ");
@@ -407,13 +407,11 @@ function TRI_PRINT_BROWSER () {
   TRI_SYS_OUTPUT("\n");
 
   // flush buffer
-  $('#avocshWindow').append('<p class="avocshSuccess">' + TRI_OutputBuffer + '</p>'); 
-  TRI_OutputBuffer = "";
+  $('#avocshWindow').append('<p class="avocshSuccess">' + internal.browserOutputBuffer + '</p>'); 
+  internal.browserOutputBuffer = "";
 
   return undefined;
 };
-
-print = TRI_PRINT_BROWSER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function

@@ -1170,7 +1170,7 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   // add function SYS_OUTPUT to use pager
-  context->Global()->Set(v8::String::New("TRI_SYS_OUTPUT"),
+  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
                          v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
                          v8::ReadOnly);
   
@@ -1324,6 +1324,9 @@ int main (int argc, char* argv[]) {
     StartupLoader.setDirectory(StartupPath);
   }
 
+  // add the client connection to the context:
+  context->Global()->Set(v8::String::New("ARANGO_QUITE"), Quite ? v8::True() : v8::False(), v8::ReadOnly);
+
   // load all init files
   char const* files[] = {
     "common/bootstrap/modules.js",
@@ -1344,9 +1347,6 @@ int main (int argc, char* argv[]) {
     }
   }
   
-  // add the client connection to the context:
-  context->Global()->Set(v8::String::New("ARANGO_QUITE"), Quite ? v8::True() : v8::False(), v8::ReadOnly);
-
   // run normal shell
   if (UnitTests.empty()) {
     RunShell(context);

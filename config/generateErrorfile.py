@@ -21,9 +21,10 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 # generate javascript file from errors
 def genJsFile(errors):
   out = prologue\
+      + "(function () {\n"\
       + "var internal = require(\"internal\");\n"\
       + "\n"\
-      + "ModuleCache[\"/internal\"].exports.errors = {\n"
+      + "internal.errors = {\n"
   
   # print individual errors
   for e in errors:
@@ -34,6 +35,7 @@ def genJsFile(errors):
 
   out = out\
       + "};\n"\
+      + "}());\n"\
       + "\n"
 
   return out
