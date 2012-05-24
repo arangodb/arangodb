@@ -59,7 +59,7 @@ start-server:
 
 	@rm -f "$(PIDFILE)"
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)"
 
 	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
