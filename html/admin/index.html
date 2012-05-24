@@ -392,19 +392,11 @@
 
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
-          <pre id="welcomemsg" style="font-family: 'courier';">
-                                         _     
-    __ _ _ __ __ _ _ __   __ _  ___  ___| |__   
-   / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \   
-  | (_| | | | (_| | | | | (_| | (_) \__ \ | | | 
-   \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_| 
-                         |___/
-  
-  Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH.</pre><br><br> 
         </div>
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
+          <button class="minimal" id="refreshShell">Refresh</button>
           <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank">ArangoDB Shell - click for more information</a>
       </div>
 
@@ -415,9 +407,14 @@
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>
-          <a href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
+          <a id="aqlinfo" href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
         <br></br>
         </form>   
+            <form action="#" id="formatJSONyesno">
+              Format JSON? 
+              <input type="radio" name="formatJSONyesno" value=true checked>yes</input>
+              <input type="radio" name="formatJSONyesno" value=false>no</input>
+            </form>
 
       </div>
 
