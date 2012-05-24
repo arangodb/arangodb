@@ -2,9 +2,10 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
 var internal = require("internal");
 
-ModuleCache["/internal"].exports.errors = {
+internal.errors = {
   "ERROR_NO_ERROR"               : { "code" : 0, "message" : "no error" }, 
   "ERROR_FAILED"                 : { "code" : 1, "message" : "failed" }, 
   "ERROR_SYS_ERROR"              : { "code" : 2, "message" : "system error" }, 
@@ -130,4 +131,5 @@ ModuleCache["/internal"].exports.errors = {
   "WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING" : { "code" : 3302, "message" : "skiplist index update warning - attribute missing in revised document" }, 
   "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING" : { "code" : 3311, "message" : "skiplist index remove failure - item missing in index" }, 
 };
+}());
 
