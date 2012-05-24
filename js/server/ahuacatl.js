@@ -1001,13 +1001,10 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
-  
-  var r = AHUACATL_KEYS(rhs, false);
-  var numRight = r.length;
 
+  var numRight = rhs.length;
   for (var i = 0; i < numRight; ++i) {
-    var key = r[i];
-    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[key])) {
+    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[i])) {
       return true;
     }
   }
