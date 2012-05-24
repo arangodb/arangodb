@@ -1033,7 +1033,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   if (allowDirectReturn || !result->IsArray()) {
-    // rethrow
+    // return the value we got as it is. this is a performance optimisation
     return scope.Close(result);
   }
 

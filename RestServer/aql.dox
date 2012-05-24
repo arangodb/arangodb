@@ -106,6 +106,8 @@
 /// to issue read-requests on your database, but modifying data via AQL is
 /// currently not supported.
 ///
+/// For some example queries, please refer to the page @ref AqlExamples.
+///
 /// @section AqlQueryResults Query results
 ///
 /// @subsection AqlQueryResultsSet Result sets

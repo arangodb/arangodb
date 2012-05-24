@@ -1,0 +1,49 @@
+/* getting the names of friends (also users) for users. this is achieved by "joining" a relations table */
+FOR u IN users
+  FILTER u.active == true 
+  LET friends = (FOR f IN userRelations 
+    FILTER f.from == u.id 
+    FOR u2 IN users 
+      FILTER f.to == u2.id 
+      RETURN u2.name
+  ) 
+  RETURN { "user" : u.name, "friends" : friends }
+
+[ { "user" : "John", "friends" : ["Diego", "Mary", "Abigail"] }, 
+  { "user" : "Anthony", "friends" : ["Madison"] }, 
+  { "user" : "Fred", "friends" : ["Mariah"] }, 
+  { "user" : "Jim", "friends" : ["Mariah"] }, 
+  { "user" : "Diego", "friends" : ["Mary"] }, 
+  { "user" : "Sophia", "friends" : ["Madison", "John"] }, 
+  { "user" : "Michael", "friends" : ["John", "Jim"] }, 
+  { "user" : "Emma", "friends" : ["Jacob", "Madison"] }, 
+  { "user" : "Alexander", "friends" : ["Michael", "John"] }, 
+  { "user" : "Daniel", "friends" : ["Eva"] }, 
+  { "user" : "Madison", "friends" : ["Anthony", "Daniel"] }, 
+  { "user" : "Chloe", "friends" : ["Alexander"] }, 
+  { "user" : "Abigail", "friends" : ["Daniel", "John", "Jacob", "Jim"] }, 
+  { "user" : "Isabella", "friends" : ["Madison", "Diego"] }, 
+  { "user" : "Mary", "friends" : ["Isabella", "Diego", "Michael"] }, 
+  { "user" : "Mariah", "friends" : ["Madison", "Ethan", "Eva"] } ]
+
+
+/* getting users favorite song names from a joined "songs" collection */
+FOR u IN users 
+  LET likes = (
+    FOR s IN songs
+      FILTER s._id IN u.likes
+      RETURN CONCAT(s.artist, " - ", s.song)
+  )
+  SORT RAND()
+  LIMIT 0, 8
+  RETURN { "user" : u.name, "likes" : likes }
+
+[ { "user" : "Eva", "likes" : ["Chocolate - Ritmo De La Noche", "4 The Cause - Stand By Me", "Tony Carey - Room with a view"] }, 
+  { "user" : "Mary", "likes" : ["Hall and Oates - Maneater", "Elton John - Candle In The Wind", "A-Ha - Crying In The Rain", "Laid Back - Sunshine Reggae", "Cock Robin - The promise you made"] }, 
+  { "user" : "Alexander", "likes" : ["Moby - Feel so real", "Rednex - Old pop in an oak", "2 Unlimited - No Limit"] }, 
+  { "user" : "Michael", "likes" : ["The Kelly Family - David's Song"] }, 
+  { "user" : "Ethan", "likes" : ["Technotronic - Megamix", "Gipsy Kings - Baila me", "Goombay Dance Band - Seven Tears", "Sandra - Hiroshima"] }, { "user" : "Isabella", "likes" : ["Milli Vanilli - Girl, I'm Gonna Miss You", "Technotronic - Get Up", "Right Said Fred - Don't Talk Just Kiss", "Peter Schilling - Major Tom (Völlig losgelöst)"] }, 
+  { "user" : "Abigail", "likes" : ["Tina Turner - Typical male", "Liquido - Narcotic"] }, 
+  { "user" : "Jim", "likes" : ["Berlin - Take my breath away", "Ashford & Simpson - Solid", "Fine Young Cannibals - She drives me cracy", "Cut'N'Move - Give it up", "Cyndi Lauper - Time after time"] }, 
+  { "user" : "Jacob", "likes" : ["Kylie Minogue - The Loco-motion", "Eruption - Runaway"] } ]
+
