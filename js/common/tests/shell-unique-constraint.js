@@ -4,9 +4,6 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    console,
     ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
