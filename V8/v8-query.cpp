@@ -1093,15 +1093,18 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     CalculateSkipLimitSlice(filtered._length, skip, limit, s, e);
 
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
-    // TODO: barrier might be 0
+    if (s < e) {
+      // only go in here if something has to be done, otherwise barrier memory might be lost
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+      // TODO: barrier might be 0
 
-    for (size_t j = s;  j < e;  ++j) {
-      TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
+      for (size_t j = s;  j < e;  ++j) {
+        TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
 
-      documents->Set(count, document);
-      ++count;
+        documents->Set(count, document);
+        ++count;
+      }
     }
   }
 
