@@ -1,0 +1,5 @@
+PATHS(friends, friendrelations, "outbound", false)
+
+FOR p IN PATHS(friends, friendrelations, "outbound") 
+  FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
+  RETURN p.vertices[*].name

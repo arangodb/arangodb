@@ -1335,7 +1335,7 @@ static string JS_server_ahuacatl =
   "    case AHUACATL_TYPEWEIGHT_NUMBER:\n"
   "      return (value != 0);\n"
   "    case AHUACATL_TYPEWEIGHT_STRING: \n"
-  "      return (value != '');\n"
+  "      return (value !== '');\n"
   "    case AHUACATL_TYPEWEIGHT_LIST:\n"
   "      return (value.length > 0);\n"
   "    case AHUACATL_TYPEWEIGHT_DOCUMENT:\n"
