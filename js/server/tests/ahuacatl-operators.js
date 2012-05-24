@@ -350,35 +350,6 @@ function ahuacatlOperatorsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test AHUACATL_CAST_NULL function
-////////////////////////////////////////////////////////////////////////////////
-
-    testCastNull : function () {
-      assertEqual(null, AHUACATL_CAST_NULL(undefined));
-      assertEqual(null, AHUACATL_CAST_NULL(null));
-      assertEqual(null, AHUACATL_CAST_NULL(1));
-      assertEqual(null, AHUACATL_CAST_NULL(2));
-      assertEqual(null, AHUACATL_CAST_NULL(-1));
-      assertEqual(null, AHUACATL_CAST_NULL(0));
-      assertEqual(null, AHUACATL_CAST_NULL(NaN));
-      assertEqual(null, AHUACATL_CAST_NULL(true));
-      assertEqual(null, AHUACATL_CAST_NULL(false));
-      assertEqual(null, AHUACATL_CAST_NULL(''));
-      assertEqual(null, AHUACATL_CAST_NULL(' '));
-      assertEqual(null, AHUACATL_CAST_NULL(' '));
-      assertEqual(null, AHUACATL_CAST_NULL('1'));
-      assertEqual(null, AHUACATL_CAST_NULL('0'));
-      assertEqual(null, AHUACATL_CAST_NULL('-1'));
-      assertEqual(null, AHUACATL_CAST_NULL([ ]));
-      assertEqual(null, AHUACATL_CAST_NULL([ 0 ] ));
-      assertEqual(null, AHUACATL_CAST_NULL([ 0, 1 ] ));
-      assertEqual(null, AHUACATL_CAST_NULL([ 1, 2 ] ));
-      assertEqual(null, AHUACATL_CAST_NULL({ } ));
-      assertEqual(null, AHUACATL_CAST_NULL({ 'a' : true }));
-      assertEqual(null, AHUACATL_CAST_NULL({ 'a' : true, 'b' : 0 }));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test AHUACATL_CAST_BOOL function
 ////////////////////////////////////////////////////////////////////////////////
 
