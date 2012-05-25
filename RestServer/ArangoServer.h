@@ -289,17 +289,6 @@ namespace triagens {
         string _startupModules;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the action directory
-///
-/// @CMDOPT{--action.directory @CA{directory}}
-///
-/// Specifies the @CA{directory} path to user defined Javascript files that
-/// can be invoked as actions.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _actionPath;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
 /// @CMDOPT{--action.system-directory @CA{directory}}
