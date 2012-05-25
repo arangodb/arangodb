@@ -150,32 +150,11 @@ function DefineHttp (options) {
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
-    var use = false;
-
-    if (context == "admin") {
-      if (SYS_ACTION_QUEUE == "SYSTEM") {
-        use = true;
-      }
-    }
-    else if (context == "api") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "user") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "monitoring") {
-      if (SYS_ACTION_QUEUE == "MONITORING") {
-        use = true;
-      }
-    }
+    var use = (internal.allowedActionContexts[context] === true)
 
     if (use) {
       try {
-        internal.defineAction(url, SYS_ACTION_QUEUE, callback, parameter);
+        internal.defineAction(url, callback, parameter);
         console.debug("defining action '%s' in context '%s' using queue '%s'", url, context, SYS_ACTION_QUEUE);
       }
       catch (err) {
