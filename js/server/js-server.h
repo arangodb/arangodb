@@ -68,7 +68,6 @@ static string JS_server_server =
   "  }\n"
   "  else {\n"
   "    var i;\n"
-  "    console.error(SYS_ACTION_CONTEXTS + \", \" + SYS_ACTION_QUEUE);\n"
   "\n"
   "    for (i = 0;  i < SYS_ACTION_CONTEXTS.length;  ++i) {\n"
   "      internal.allowedActionContexts[SYS_ACTION_CONTEXTS[i]] = true;\n"

@@ -67,7 +67,6 @@
   }
   else {
     var i;
-    console.error(SYS_ACTION_CONTEXTS + ", " + SYS_ACTION_QUEUE);
 
     for (i = 0;  i < SYS_ACTION_CONTEXTS.length;  ++i) {
       internal.allowedActionContexts[SYS_ACTION_CONTEXTS[i]] = true;

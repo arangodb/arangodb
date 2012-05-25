@@ -301,7 +301,7 @@ function GET_api_collection (req, res) {
   // /_api/collection
   // .............................................................................
 
-  if (req.suffix.length == 0) {
+  if (req.suffix.length === 0) {
     GET_api_collections(req, res);
     return;
   }
@@ -310,7 +310,7 @@ function GET_api_collection (req, res) {
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -319,21 +319,21 @@ function GET_api_collection (req, res) {
   // /_api/collection/<identifier>
   // .............................................................................
 
-  if (req.suffix.length == 1) {
+  if (req.suffix.length === 1) {
     var result = CollectionRepresentation(collection, false, false, false);
     var headers = { location : "/" + API + "/" + collection._id };
 
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
 
-  else if (req.suffix.length == 2) {
+  else if (req.suffix.length === 2) {
     var sub = decodeURIComponent(req.suffix[1]);
 
     // .............................................................................
     // /_api/collection/<identifier>/figures
     // .............................................................................
 
-    if (sub == "figures") {
+    if (sub === "figures") {
       var result = CollectionRepresentation(collection, true, true, true);
       var headers = { location : "/" + API + "/" + collection._id + "/figures" };
 
@@ -344,7 +344,7 @@ function GET_api_collection (req, res) {
     // /_api/collection/<identifier>/count
     // .............................................................................
 
-    else if (sub == "count") {
+    else if (sub === "count") {
       var result = CollectionRepresentation(collection, true, true, false);
       var headers = { location : "/" + API + "/" + collection._id + "/count" };
 
@@ -355,7 +355,7 @@ function GET_api_collection (req, res) {
     // /_api/collection/<identifier>/properties
     // .............................................................................
 
-    else if (sub == "properties") {
+    else if (sub === "properties") {
       var result = CollectionRepresentation(collection, true, false, false);
       var headers = { location : "/" + API + "/" + collection._id + "/properties" };
 
@@ -366,7 +366,7 @@ function GET_api_collection (req, res) {
     // /_api/collection/<identifier>/parameter (DEPRECATED)
     // .............................................................................
 
-    else if (sub == "parameter") {
+    else if (sub === "parameter") {
       var result = CollectionRepresentation(collection, true, false, false);
       var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
 
@@ -600,33 +600,30 @@ function PUT_api_collection (req, res) {
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
     
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
 
   var sub = decodeURIComponent(req.suffix[1]);
 
-  if (sub == "load") {
+  if (sub === "load") {
     PUT_api_collection_load(req, res, collection);
   }
-  else if (sub == "unload") {
+  else if (sub === "unload") {
     PUT_api_collection_unload(req, res, collection);
   }
-  else if (sub == "truncate") {
+  else if (sub === "truncate") {
     PUT_api_collection_truncate(req, res, collection);
   }
-  else if (sub == "properties") {
+  else if (sub === "properties") {
     PUT_api_collection_properties(req, res, collection);
   }
-  else if (sub == "parameter") { /* DEPRECATED */
-    PUT_api_collection_properties(req, res, collection);
-  }
-  else if (sub == "rename") {
+  else if (sub === "rename") {
     PUT_api_collection_rename(req, res, collection);
   }
   else {
-    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'parameter', 'rename'");
+    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
   }
 }
 
@@ -673,7 +670,7 @@ function DELETE_api_collection (req, res) {
     var id = parseInt(name) || name;
     var collection = internal.db._collection(id);
     
-    if (collection == null) {
+    if (collection === null) {
       actions.collectionNotFound(req, res, name);
     }
     else {
@@ -702,16 +699,16 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType == actions.GET) {
+    if (req.requestType === actions.GET) {
       GET_api_collection(req, res);
     }
-    else if (req.requestType == actions.DELETE) {
+    else if (req.requestType === actions.DELETE) {
       DELETE_api_collection(req, res);
     }
-    else if (req.requestType == actions.POST) {
+    else if (req.requestType === actions.POST) {
       POST_api_collection(req, res);
     }
-    else if (req.requestType == actions.PUT) {
+    else if (req.requestType === actions.PUT) {
       PUT_api_collection(req, res);
     }
     else {
