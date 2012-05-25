@@ -160,7 +160,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px"} ],
     "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
@@ -176,12 +176,11 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bSortable": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"300px" }, 
+                  {"sClass":"writeable", "bSortable": false},
                   {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -218,7 +217,7 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "70px"}, 
+    "aoColumns": [{ "sClass":"read_only","bSortable": false, "sWidth": "80px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "125px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "60px"}, 
                   {"bSortable": false}],
@@ -1948,8 +1947,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 150) {
-    return escaped(string.substr(0, 150)) + '...';
+  if (string.length > 100) {
+    return escaped(string.substr(0, 100)) + '...';
   }
   return escaped(string);
 }
