@@ -233,7 +233,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _startupPath(),
     _startupModules("js/modules"),
     _systemActionPath(),
-    _actionThreads(1),
+    _actionThreads(8),
     _gcInterval(1000),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
