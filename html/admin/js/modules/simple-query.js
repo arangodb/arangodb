@@ -50,16 +50,16 @@ var SQ = require("simple-query-basics");
 SQ.SimpleQueryAll.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     var data = {
       collection : this._collection._id
     }  
 
-    if (this._limit != null) {
+    if (this._limit !== null) {
       data.limit = this._limit;
     }
 
-    if (this._skip != null) {
+    if (this._skip !== null) {
       data.skip = this._skip;
     }
   
@@ -99,17 +99,17 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 SQ.SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     var data = {
       collection : this._collection._id,
       example : this._example
     }  
 
-    if (this._limit != null) {
+    if (this._limit !== null) {
       data.limit = this._limit;
     }
 
-    if (this._skip != null) {
+    if (this._skip !== null) {
       data.skip = this._skip;
     }
   
@@ -166,7 +166,7 @@ ArangoCollection.prototype.firstExample = function () {
 
   var requestResult = this._database._connection.PUT("/_api/simple/first-example", JSON.stringify(data));
 
-  if (requestResult != null
+  if (requestResult !== null
       && requestResult.error == true 
       && requestResult.errorNum == internal.errors.ERROR_HTTP_NOT_FOUND.code) {
     return null;
@@ -203,7 +203,7 @@ ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstE
 SQ.SimpleQueryRange.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     var data = {
       collection : this._collection._id,
       attribute : this._attribute,
@@ -212,11 +212,11 @@ SQ.SimpleQueryRange.prototype.execute = function () {
       closed : this._type == 1
     }  
 
-    if (this._limit != null) {
+    if (this._limit !== null) {
       data.limit = this._limit;
     }
 
-    if (this._skip != null) {
+    if (this._skip !== null) {
       data.skip = this._skip;
     }
   
@@ -256,26 +256,26 @@ SQ.SimpleQueryRange.prototype.execute = function () {
 SQ.SimpleQueryNear.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     var data = {
       collection : this._collection._id,
       latitude : this._latitude,
       longitude : this._longitude
     }  
 
-    if (this._limit != null) {
+    if (this._limit !== null) {
       data.limit = this._limit;
     }
 
-    if (this._skip != null) {
+    if (this._skip !== null) {
       data.skip = this._skip;
     }
 
-    if (this._index != null) {
+    if (this._index !== null) {
       data.geo = this._index;
     }
   
-    if (this._distance != null) {
+    if (this._distance !== null) {
       data.distance = this._distance;
     }
   
@@ -315,7 +315,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 SQ.SimpleQueryWithin.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     var data = {
       collection : this._collection._id,
       latitude : this._latitude,
@@ -323,19 +323,19 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
       radius : this._radius
     }  
 
-    if (this._limit != null) {
+    if (this._limit !== null) {
       data.limit = this._limit;
     }
 
-    if (this._skip != null) {
+    if (this._skip !== null) {
       data.skip = this._skip;
     }
 
-    if (this._index != null) {
+    if (this._index !== null) {
       data.geo = this._index;
     }
   
-    if (this._distance != null) {
+    if (this._distance !== null) {
       data.distance = this._distance;
     }
   

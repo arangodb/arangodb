@@ -74,7 +74,7 @@ function GET_api_indexes (req, res) {
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -122,7 +122,7 @@ function GET_api_index (req, res) {
   // /_api/indexes?collection=<collection-identifier>
   // .............................................................................
 
-  if (req.suffix.length == 0) {
+  if (req.suffix.length === 0) {
     GET_api_indexes(req, res);
   }
 
@@ -130,12 +130,12 @@ function GET_api_index (req, res) {
   // /_api/indexes/<collection-identifier>/<index-identifier>
   // .............................................................................
 
-  else if (req.suffix.length == 2) {
+  else if (req.suffix.length === 2) {
     var name = decodeURIComponent(req.suffix[0]);
     var id = parseInt(name) || name;
     var collection = internal.db._collection(id);
     
-    if (collection == null) {
+    if (collection === null) {
       actions.collectionNotFound(req, res, name);
       return;
     }
@@ -143,7 +143,7 @@ function GET_api_index (req, res) {
     var iid = decodeURIComponent(req.suffix[1]);
     var index = collection.index(collection._id + "/" + iid);
 
-    if (index == null) {
+    if (index === null) {
       actions.indexNotFound(req, res, collection, iid);
       return;
     }
@@ -276,7 +276,7 @@ function POST_api_index_geo (req, res, collection, body) {
   try {
     var index;
 
-    if (fields.length == 1) {
+    if (fields.length === 1) {
 
       // attribute list and geoJson
       if (body.hasOwnProperty("geoJson")) {
@@ -310,7 +310,7 @@ function POST_api_index_geo (req, res, collection, body) {
     }
 
     // attributes
-    else if (fields.length == 2) {
+    else if (fields.length === 2) {
       if (body.hasOwnProperty("constraint") && body.constraint) {
         if (body.hasOwnProperty("ignoreNull")) {
           index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
@@ -517,7 +517,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
-  if (req.suffix.length != 0) {
+  if (req.suffix.length !== 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect POST /" + API + "?collection=<collection-identifer>");
     return;
@@ -527,7 +527,7 @@ function POST_api_index (req, res) {
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -538,16 +538,16 @@ function POST_api_index (req, res) {
     return;
   }
 
-  if (body.type == "cap") {
+  if (body.type === "cap") {
     POST_api_index_cap(req, res, collection, body);
   }
-  else if (body.type == "geo") {
+  else if (body.type === "geo") {
     POST_api_index_geo(req, res, collection, body);
   }
-  else if (body.type == "hash") {
+  else if (body.type === "hash") {
     POST_api_index_hash(req, res, collection, body);
   }
-  else if (body.type == "skiplist") {
+  else if (body.type === "skiplist") {
     POST_api_index_skiplist(req, res, collection, body);
   }
   else {
@@ -571,7 +571,7 @@ function POST_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_index (req, res) {
-  if (req.suffix.length != 2) {
+  if (req.suffix.length !== 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect DELETE /" + API + "/<index-handle>");
     return;
@@ -581,7 +581,7 @@ function DELETE_api_index (req, res) {
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -611,13 +611,13 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType == actions.GET) {
+    if (req.requestType === actions.GET) {
       GET_api_index(req, res);
     }
-    else if (req.requestType == actions.DELETE) {
+    else if (req.requestType === actions.DELETE) {
       DELETE_api_index(req, res);
     }
-    else if (req.requestType == actions.POST) {
+    else if (req.requestType === actions.POST) {
       POST_api_index(req, res);
     }
     else {
