@@ -717,6 +717,7 @@ var logTable = $('#logTableID').dataTable({
       if (printedHelp === false) {
         print(welcomeMSG + require("arangosh").HELP);
         printedHelp = true; 
+        start_pretty_print(); 
       }
     }
 
@@ -1184,6 +1185,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 /// submit avocsh content 
 ///////////////////////////////////////////////////////////////////////////////
+
+var lastFormatQuestion = true;  
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
@@ -1195,7 +1198,18 @@ var logTable = $('#logTableID').dataTable({
        location.reload();
        return false;  
     }
-
+    formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
+    console.log(formatQuestion); 
+    if (formatQuestion != lastFormatQuestion) {
+      if (formatQuestion == true) {
+        start_pretty_print();
+        lastFormatQuestion = true;
+      } 
+      if (formatQuestion == false) {
+        stop_pretty_print(); 
+        lastFormatQuestion = false;
+      }
+    }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
