@@ -1,3 +1,12 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global require, print */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printing
 ///
@@ -25,10 +34,15 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+(function () {
+  var internal = require("internal");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          printing
+// --SECTION--                                                 Module "internal"
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,247 +64,245 @@ var internal = require("internal");
 /// @verbinclude fluent40
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRI_PRINT_FUNCTION () {
-  for (var i = 0;  i < arguments.length;  ++i) {
-    if (0 < i) {
-      internal.output(" ");
+  internal.printShell = function () {
+    var i;
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      if (0 < i) {
+        internal.output(" ");
+      }
+
+      if (typeof(arguments[i]) === "string") {
+        internal.output(arguments[i]);
+      }
+      else {
+        internal.printRecursive(arguments[i], [], "~", [], 0);
+      }
     }
 
-    if (typeof(arguments[i]) === "string") {
-      internal.output(arguments[i]);      
-    } 
-    else {
-      TRI_PRINT(arguments[i], [], "~", [], 0);
+    if (typeof(internal.COLOR_OUTPUT) !== "undefined") {
+      internal.output(internal.COLOR_OUTPUT_RESET);
     }
-  }
 
-  if (typeof(COLOR_OUTPUT) != "undefined" && typeof(COLOR_OUTPUT_RESET) != "undefined") {
-    internal.output(COLOR_OUTPUT_RESET);
-  }
-
-  internal.output("\n");
-};
-
-// must be a variable definition for the browser
-var print = TRI_PRINT_FUNCTION;
+    internal.output("\n");
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quote cache
 ////////////////////////////////////////////////////////////////////////////////
 
-var TRI_CharacterQuoteCache = {
-  '\b': '\\b', // ASCII 8, Backspace
-  '\t': '\\t', // ASCII 9, Tab
-  '\n': '\\n', // ASCII 10, Newline
-  '\f': '\\f', // ASCII 12, Formfeed
-  '\r': '\\r', // ASCII 13, Carriage Return
-  '\"': '\\"',
-  '\\': '\\\\'
-};
+  internal.characterQuoteCache = {
+    '\b': '\\b', // ASCII 8, Backspace
+    '\t': '\\t', // ASCII 9, Tab
+    '\n': '\\n', // ASCII 10, Newline
+    '\f': '\\f', // ASCII 12, Formfeed
+    '\r': '\\r', // ASCII 13, Carriage Return
+    '\"': '\\"',
+    '\\': '\\\\'
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-function QuoteSingleJSONCharacter (c) {
-  if (c in TRI_CharacterQuoteCache) {
-    return TRI_CharacterQuoteCache[c];
-  }
+  internal.quoteSingleJsonCharacter = function (c) {
+    if (internal.characterQuoteCache.hasOwnProperty[c]) {
+      return internal.characterQuoteCache[c];
+    }
 
-  var charCode = c.charCodeAt(0);
-  var result;
+    var charCode = c.charCodeAt(0);
+    var result;
 
-  if (charCode < 16) result = '\\u000';
-  else if (charCode < 256) result = '\\u00';
-  else if (charCode < 4096) result = '\\u0';
-  else result = '\\u';
+    if (charCode < 16) {
+      result = '\\u000';
+    }
+    else if (charCode < 256) {
+      result = '\\u00';
+    }
+    else if (charCode < 4096) {
+      result = '\\u0';
+    }
+    else {
+      result = '\\u';
+    }
 
-  result += charCode.toString(16);
-  TRI_CharacterQuoteCache[c] = result;
+    result += charCode.toString(16);
+    internal.characterQuoteCache[c] = result;
 
-  return result;
-}
+    return result;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a string character
 ////////////////////////////////////////////////////////////////////////////////
 
-function QuoteJSONString (str) {
- var quotable = /[\\\"\x00-\x1f]/g;
- return '"' + str.replace(quotable, QuoteSingleJSONCharacter) + '"';
-}
+  internal.quoteJsonString = function (str) {
+    var quotable = /[\\\"\x00-\x1f]/g;
+    return '"' + str.replace(quotable, internal.quoteSingleJsonCharacter) + '"';
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRI_PRINT (value, seen, path, names, level) {
-  var p;
+  internal.printRecursive = function (value, seen, path, names, level) {
+    var p;
 
-  if (seen === undefined) {
-    seen = [];
-    names = [];
-  }
-
-  p = seen.indexOf(value);
-
-  if (0 <= p) {
-    internal.output(names[p]);
-  }
-  else {
-    if (value instanceof Object) {
-      seen.push(value);
-      names.push(path);
+    if (seen === undefined) {
+      seen = [];
+      names = [];
     }
 
-    if (value instanceof Object) {
-      if ('_PRINT' in value) {
-        value._PRINT(seen, path, names, level);
-      }
-      else if (value instanceof Array) {
-        TRI_PRINT_ARRAY(value, seen, path, names, level);
-      }
-      else if (value.__proto__ === Object.prototype) {
-        TRI_PRINT_OBJECT(value, seen, path, names, level);
-      }
-      else if ('toString' in value) {
-        internal.output(value.toString());
-      }
-      else {
-        TRI_PRINT_OBJECT(value, seen, path, names, level);
-      }
-    }
-    else if (value === undefined) {
-      internal.output("undefined");
+    p = seen.indexOf(value);
+
+    if (0 <= p) {
+      internal.output(names[p]);
     }
     else {
-      if (typeof(value) === "string") {
-        internal.output(QuoteJSONString(value));
-      } 
+      if (value instanceof Object) {
+        seen.push(value);
+        names.push(path);
+      }
+
+      if (value instanceof Object) {
+        if ('_PRINT' in value) {
+          value._PRINT(seen, path, names, level);
+        }
+        else if (value instanceof Array) {
+          internal.printArray(value, seen, path, names, level);
+        }
+        else if (value.__proto__ === Object.prototype) {
+          internal.printObject(value, seen, path, names, level);
+        }
+        else if ('toString' in value) {
+          internal.output(value.toString());
+        }
+        else {
+          internal.printObject(value, seen, path, names, level);
+        }
+      }
+      else if (value === undefined) {
+        internal.output("undefined");
+      }
       else {
-        internal.output("" + value);        
+        if (typeof(value) === "string") {
+          internal.output(internal.quoteJsonString(value));
+        }
+        else {
+          internal.output(String(value));
+        }
       }
     }
-  }
-}
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief prints the ident for pretty printing
+///
+/// @FUN{internal.printIndent(@FA{level})}
+///
+/// Only available in shell mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Array
-// -----------------------------------------------------------------------------
+  internal.printIndent = function (level) {
+    var j;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+    if (internal.PRETTY_PRINT) {
+      internal.output("\n");
+
+      for (j = 0; j < level; ++j) {
+        internal.output("  ");
+      }
+    }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRI_PRINT_ARRAY (object, seen, path, names, level) {
-  if (object.length == 0) {
-    internal.output("[ ]");
-  }
-  else {
-    var sep = "";
-
-    internal.output("[");
-    
-    var newLevel = level + 1;
-    
-    for (var i = 0;  i < object.length;  i++) {
-      internal.output(sep);
-      
-      printIdent(newLevel);
-      
-      TRI_PRINT(object[i], seen, path + "[" + i + "]", names, newLevel);
-      sep = ", ";
+  internal.printArray = function (object, seen, path, names, level) {
+    if (object.length === 0) {
+      internal.output("[ ]");
     }
+    else {
+      var i;
+      var sep = "";
 
-    printIdent(level);
+      internal.output("[");
 
-    internal.output("]");
-  }
-}
+      var newLevel = level + 1;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+      for (i = 0;  i < object.length;  i++) {
+        internal.output(sep);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          Function
-// -----------------------------------------------------------------------------
+        internal.printIndent(newLevel);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+        internal.printRecursive(object[i],
+                                seen,
+                                path + "[" + i + "]",
+                                names,
+                                newLevel);
+        sep = ", ";
+      }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a function
-////////////////////////////////////////////////////////////////////////////////
+      internal.printIndent(level);
 
-Function.prototype._PRINT = function() {
-  internal.output(this.toString());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Object
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+      internal.output("]");
+    }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an object
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRI_PRINT_OBJECT (object, seen, path, names, level) {
-  var sep = " ";
+  internal.printObject = function (object, seen, path, names, level) {
+    var sep = " ";
+    var k;
 
-  internal.output("{");
+    internal.output("{");
 
-  var newLevel = level + 1;
+    var newLevel = level + 1;
 
-  for (var k in object) {
-    if (object.hasOwnProperty(k)) {
-      var val = object[k];
+    for (k in object) {
+      if (object.hasOwnProperty(k)) {
+        var val = object[k];
 
-      internal.output(sep);
-      
-      printIdent(newLevel);
-      
-      if (typeof(COLOR_OUTPUT) != "undefined") {
-        internal.output(COLOR_OUTPUT, k, COLOR_OUTPUT_RESET, " : ");
+        internal.output(sep);
+
+        internal.printIndent(newLevel);
+
+        if (typeof(internal.COLOR_OUTPUT) !== "undefined") {
+          internal.output(internal.COLOR_OUTPUT,
+                          k,
+                          internal.COLOR_OUTPUT_RESET, 
+                          " : ");
+        }
+        else {
+          internal.output(internal.quoteJsonString(k), " : ");
+        }
+
+        internal.printRecursive(val,
+                                seen,
+                                path + "[" + k + "]",
+                                names,
+                                newLevel);
+        sep = ", ";
       }
-      else {
-        internal.output(QuoteJSONString(k), " : ");        
-      }
-
-      TRI_PRINT(val, seen, path + "[" + k + "]", names, newLevel);
-      sep = ", ";
     }
-  }
 
-  printIdent(level);
-  
-  internal.output(" }");
-}
+    internal.printIndent(level);
+
+    internal.output(" }");
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+}());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  global functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
@@ -298,21 +310,15 @@ function TRI_PRINT_OBJECT (object, seen, path, names, level) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the ident for pretty printing
-///
-/// @FUN{printIdent(@FA{level})}
-///
-/// Only available in shell mode.
+/// @brief global print
 ////////////////////////////////////////////////////////////////////////////////
 
-function printIdent (level) {
-  if (typeof(PRETTY_PRINT) != "undefined" && PRETTY_PRINT) {
-      internal.output("\n");
-
-      for (var j = 0; j < level; ++j) {
-        internal.output("  ");    
-      }    
-  }
+// must be a variable definition for the browser
+if (typeof require("internal").printBrowser === "function") {
+  print = require("internal").print = require("internal").printBrowser;
+}
+else {
+  print = require("internal").print = require("internal").printShell;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

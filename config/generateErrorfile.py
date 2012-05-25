@@ -20,20 +20,32 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
 # generate javascript file from errors
 def genJsFile(errors):
-  out = prologue\
-      + "var internal = require(\"internal\");\n"\
+  jslint = "/*jslint indent: 2,\n"\
+           "         nomen: true,\n"\
+           "         maxlen: 240,\n"\
+           "         sloppy: true,\n"\
+           "         vars: true,\n"\
+           "         white: true,\n"\
+           "         plusplus: true */\n"\
+           "/*global require */\n\n"
+
+  out = jslint \
+      + prologue\
+      + "(function () {\n"\
+      + "  var internal = require(\"internal\");\n"\
       + "\n"\
-      + "ModuleCache[\"/internal\"].exports.errors = {\n"
+      + "  internal.errors = {\n"
   
   # print individual errors
   for e in errors:
     name = "\"" + e[0] + "\""
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
-        + "  " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }, \n"
+        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }, \n"
 
   out = out\
       + "};\n"\
+      + "}());\n"\
       + "\n"
 
   return out

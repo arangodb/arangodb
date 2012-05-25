@@ -1,3 +1,16 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global require, module, ModuleCache, SYS_EXECUTE, CONSOLE_ERROR,
+ FS_EXISTS, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
+ SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
+ SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUITE, MODULES_PATH,
+ COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
 ///
@@ -54,28 +67,30 @@ function Module (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.require = function (path) {
-  var raw;
   var content;
-  var sandbox;
-  var paths;
-  var module;
   var f;
+  var module;
+  var paths;
+  var raw;
+  var sandbox;
 
   // first get rid of any ".." and "."
   path = this.normalise(path);
 
   // check if you already know the module, return the exports
-  if (path in ModuleCache) {
+  if (ModuleCache.hasOwnProperty(path)) {
     return ModuleCache[path].exports;
   }
 
   // locate file and read content
-  raw = internal.readFile(path);
+  raw = ModuleCache["/internal"].exports.readFile(path);
 
   // create a new sandbox and execute
-  ModuleCache[path] = module = new Module(path);
+  module = ModuleCache[path] = new Module(path);
 
-  content = "(function (module, exports, require, print) {" + raw.content + "\n/* end-of-file '" + raw.path + "' */ });";
+  content = "(function (module, exports, require, print) {"
+          + raw.content 
+          + "\n});";
 
   try {
     f = SYS_EXECUTE(content, undefined, path);
@@ -85,11 +100,14 @@ Module.prototype.require = function (path) {
     throw err;
   }
 
-  if (f == undefined) {
+  if (f === undefined) {
     throw "cannot create context function";
   }
 
-  f(module, module.exports, function(path) { return module.require(path); }, print);
+  f(module,
+    module.exports,
+    function(path) { return module.require(path); },
+    ModuleCache["/internal"].exports.print);
 
   return module.exports;
 };
@@ -99,18 +117,20 @@ Module.prototype.require = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.normalise = function (path) {
+  var i;
+  var n;
   var p;
   var q;
   var x;
 
-  if (path == "") {
+  if (path === "") {
     return this.id;
   }
 
   p = path.split('/');
 
   // relative path
-  if (p[0] == "." || p[0] == "..") {
+  if (p[0] === "." || p[0] === "..") {
     q = this.id.split('/');
     q.pop();
     q = q.concat(p);
@@ -124,21 +144,17 @@ Module.prototype.normalise = function (path) {
   // normalize path
   n = [];
 
-  for (var i = 0;  i < q.length;  ++i) {
+  for (i = 0;  i < q.length;  ++i) {
     x = q[i];
 
-    if (x == "") {
-    }
-    else if (x == ".") {
-    }
-    else if (x == "..") {
-      if (n.length == 0) {
+    if (x === "..") {
+      if (n.length === 0) {
         throw "cannot cross module top";
       }
 
       n.pop();
     }
-    else {
+    else if (x !== "" && x !== ".") {
       n.push(x);
     }
   }
@@ -157,7 +173,10 @@ Module.prototype.unload = function (path) {
 
   var norm = module.normalise(path);
 
-  if (norm == "/" || norm == "/internal" || norm == "/console" || norm == "/fs") {
+  if (   norm === "/"
+      || norm === "/internal"
+      || norm === "/console"
+      || norm === "/fs") {
     return;
   }
 
@@ -168,7 +187,7 @@ Module.prototype.unload = function (path) {
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/"] = module = new Module("/");
+module = ModuleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
@@ -215,8 +234,12 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/fs"] = new Module("/fs");
-ModuleCache["/fs"].exports.exists = FS_EXISTS;
-fs = ModuleCache["/fs"].exports;
+
+(function () {
+  var fs = ModuleCache["/fs"].exports;
+
+  fs.exists = FS_EXISTS;
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -236,76 +259,140 @@ fs = ModuleCache["/fs"].exports;
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/internal"] = new Module("/internal");
-ModuleCache["/internal"].exports.execute = SYS_EXECUTE;
-ModuleCache["/internal"].exports.load = SYS_LOAD;
-ModuleCache["/internal"].exports.log = SYS_LOG;
-ModuleCache["/internal"].exports.logLevel = SYS_LOG_LEVEL;
-ModuleCache["/internal"].exports.output = SYS_OUTPUT;
-ModuleCache["/internal"].exports.processStat = SYS_PROCESS_STAT;
-ModuleCache["/internal"].exports.read = SYS_READ;
-ModuleCache["/internal"].exports.sprintf = SYS_SPRINTF;
-ModuleCache["/internal"].exports.time = SYS_TIME;
-internal = ModuleCache["/internal"].exports;
+
+(function () {
+  var internal = ModuleCache["/internal"].exports;
+  var fs = ModuleCache["/fs"].exports;
+
+  // system functions
+  internal.execute = SYS_EXECUTE;
+  internal.load = SYS_LOAD;
+  internal.log = SYS_LOG;
+  internal.logLevel = SYS_LOG_LEVEL;
+  internal.output = SYS_OUTPUT;
+  internal.processStat = SYS_PROCESS_STAT;
+  internal.read = SYS_READ;
+  internal.sprintf = SYS_SPRINTF;
+  internal.time = SYS_TIME;
+
+
+  // command line parameter
+  internal.MODULES_PATH = "";
+
+  if (typeof MODULES_PATH !== "undefined") {
+    internal.MODULES_PATH = MODULES_PATH;
+  }
+
+
+  // output 
+  internal.start_pager = function() {};
+  internal.stop_pager = function() {};
+
+  internal.ARANGO_QUITE = false;
+
+  internal.COLOR_OUTPUT = undefined;
+  internal.COLOR_OUTPUT_RESET = "";
+  internal.COLOR_BRIGHT = "";
+
+  internal.PRETTY_PRINT = false;
+
+  if (typeof SYS_START_PAGER !== "undefined") {
+    internal.start_pager = SYS_START_PAGER;
+  }
+
+  if (typeof SYS_STOP_PAGER !== "undefined") {
+    internal.stop_pager = SYS_STOP_PAGER;
+  }
+
+  if (typeof ARANGO_QUITE !== "undefined") {
+    internal.stop_pager = ARANGO_QUITE;
+  }
+
+  if (typeof COLOR_OUTPUT !== "undefined") {
+    internal.COLOR_OUTPUT = COLOR_OUTPUT;
+  }
+
+  if (typeof COLOR_OUTPUT_RESET !== "undefined") {
+    internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET;
+  }
+
+  if (typeof COLOR_BRIGHT !== "undefined") {
+    internal.COLOR_BRIGHT = COLOR_BRIGHT;
+  }
+
+  if (typeof PRETTY_PRINT !== "undefined") {
+    internal.PRETTY_PRINT = PRETTY_PRINT;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file
 ////////////////////////////////////////////////////////////////////////////////
 
-internal.readFile = function (path) {
+  internal.readFile = function (path) {
+    var i;
 
-  // try to load the file
-  var paths = MODULES_PATH;
+    // try to load the file
+    var paths = internal.MODULES_PATH;
 
-  for (var i = 0;  i < paths.length;  ++i) {
-    var p = paths[i];
-    var n;
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+      var n;
 
-    if (p == "") {
-      n = "." + path + ".js"
+      if (p === "") {
+        n = "." + path + ".js";
+      }
+      else {
+        n = p + "/" + path + ".js";
+      }
+
+      if (fs.exists(n)) {
+        return { path : n, content : SYS_READ(n) };
+      }
     }
-    else {
-      n = p + "/" + path + ".js";
-    }
 
-    if (FS_EXISTS(n)) {
-      return { path : n, content : SYS_READ(n) };
-    }
-  }
-
-  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
-}
+    throw "cannot find a file named '"
+        + path
+        + "' using the module path(s) '" 
+        + internal.MODULES_PATH + "'";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a file
 ////////////////////////////////////////////////////////////////////////////////
 
-internal.loadFile = function (path) {
+  internal.loadFile = function (path) {
+    var i;
 
-  // try to load the file
-  var paths = MODULES_PATH;
+    // try to load the file
+    var paths = internal.MODULES_PATH;
 
-  for (var i = 0;  i < paths.length;  ++i) {
-    var p = paths[i];
-    var n;
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+      var n;
 
-    if (p == "") {
-      n = "." + path + ".js"
+      if (p === "") {
+        n = "." + path + ".js";
+      }
+      else {
+        n = p + "/" + path + ".js";
+      }
+
+      if (fs.exists(n)) {
+        return internal.load(n);
+      }
     }
-    else {
-      n = p + "/" + path + ".js";
-    }
 
-    if (FS_EXISTS(n)) {
-      return SYS_LOAD(n);
-    }
-  }
-
-  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
-}
+    throw "cannot find a file named '"
+        + path 
+        + "' using the module path(s) '" 
+        + internal.MODULES_PATH + "'";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
@@ -315,6 +402,16 @@ internal.loadFile = function (path) {
 /// @addtogroup V8ModuleConsole
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief console module
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/console"] = new Module("/console");
+
+(function () {
+  var internal = ModuleCache["/internal"].exports;
+  var console = ModuleCache["/console"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug message
@@ -332,18 +429,18 @@ internal.loadFile = function (path) {
 /// - @LIT{\%o} object hyperlink
 ////////////////////////////////////////////////////////////////////////////////
 
-function CONSOLE_DEBUG () {
-  var msg;
+  console.debug = function () {
+    var msg;
 
-  try {
-    msg = internal.sprintf.apply(internal.sprintf, arguments);
-  }
-  catch (err) {
-    msg = err + ": " + arguments[0];
-  }
+    try {
+      msg = internal.sprintf.apply(internal.sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
 
-  internal.log("debug", msg);
-}
+    internal.log("debug", msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs error message
@@ -354,18 +451,18 @@ function CONSOLE_DEBUG () {
 /// error message.
 ////////////////////////////////////////////////////////////////////////////////
 
-function CONSOLE_ERROR () {
-  var msg;
+  console.error = function () {
+    var msg;
 
-  try {
-    msg = internal.sprintf.apply(internal.sprintf, arguments);
-  }
-  catch (err) {
-    msg = err + ": " + arguments[0];
-  }
+    try {
+      msg = internal.sprintf.apply(internal.sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
 
-  internal.log("error", msg);
-}
+    internal.log("error", msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs info message
@@ -376,18 +473,18 @@ function CONSOLE_ERROR () {
 /// info message.
 ////////////////////////////////////////////////////////////////////////////////
 
-function CONSOLE_INFO () {
-  var msg;
+  console.info = function () {
+    var msg;
 
-  try {
-    msg = internal.sprintf.apply(internal.sprintf, arguments);
-  }
-  catch (err) {
-    msg = err + ": " + arguments[0];
-  }
+    try {
+      msg = internal.sprintf.apply(internal.sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
 
-  internal.log("info", msg);
-}
+    internal.log("info", msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs log message
@@ -398,18 +495,18 @@ function CONSOLE_INFO () {
 /// log message.
 ////////////////////////////////////////////////////////////////////////////////
 
-function CONSOLE_LOG () {
-  var msg;
+  console.log = function () {
+    var msg;
 
-  try {
-    msg = internal.sprintf.apply(internal.sprintf, arguments);
-  }
-  catch (err) {
-    msg = err + ": " + arguments[0];
-  }
+    try {
+      msg = internal.sprintf.apply(internal.sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
 
-  internal.log("info", msg);
-}
+    internal.log("info", msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs warn message
@@ -420,34 +517,24 @@ function CONSOLE_LOG () {
 /// warn message.
 ////////////////////////////////////////////////////////////////////////////////
 
-function CONSOLE_WARN () {
-  var msg;
+  console.warn = function () {
+    var msg;
 
-  try {
-    msg = internal.sprintf.apply(internal.sprintf, arguments);
-  }
-  catch (err) {
-    msg = err + ": " + arguments[0];
-  }
+    try {
+      msg = internal.sprintf.apply(internal.sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
 
-  internal.log("warn", msg);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief console module
-////////////////////////////////////////////////////////////////////////////////
-
-ModuleCache["/console"] = new Module("/console");
-ModuleCache["/console"].exports.debug = CONSOLE_DEBUG;
-ModuleCache["/console"].exports.error = CONSOLE_ERROR;
-ModuleCache["/console"].exports.info = CONSOLE_INFO;
-ModuleCache["/console"].exports.log = CONSOLE_LOG;
-ModuleCache["/console"].exports.warn = CONSOLE_WARN;
-console = ModuleCache["/console"].exports;
+    internal.log("warn", msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // Local Variables:
 // mode: outline-minor
