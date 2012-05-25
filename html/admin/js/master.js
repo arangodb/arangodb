@@ -160,7 +160,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px"} ],
     "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
@@ -176,12 +176,11 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bSortable": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"300px" }, 
+                  {"sClass":"writeable", "bSortable": false},
                   {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -218,7 +217,7 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "70px"}, 
+    "aoColumns": [{ "sClass":"read_only","bSortable": false, "sWidth": "80px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "125px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "60px"}, 
                   {"bSortable": false}],
@@ -716,8 +715,9 @@ var logTable = $('#logTableID').dataTable({
       createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
-        print(welcomeMSG + HELP);
+        print(welcomeMSG + require("arangosh").HELP);
         printedHelp = true; 
+        start_pretty_print(); 
       }
     }
 
@@ -805,7 +805,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -903,7 +902,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -971,7 +969,6 @@ var logTable = $('#logTableID').dataTable({
       }
  
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
 
@@ -1185,6 +1182,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 /// submit avocsh content 
 ///////////////////////////////////////////////////////////////////////////////
+
+var lastFormatQuestion = true;  
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
@@ -1196,7 +1195,17 @@ var logTable = $('#logTableID').dataTable({
        location.reload();
        return false;  
     }
-
+    formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
+    if (formatQuestion != lastFormatQuestion) {
+      if (formatQuestion == true) {
+        start_pretty_print();
+        lastFormatQuestion = true;
+      } 
+      if (formatQuestion == false) {
+        stop_pretty_print(); 
+        lastFormatQuestion = false;
+      }
+    }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
@@ -1237,7 +1246,6 @@ var logTable = $('#logTableID').dataTable({
         }
       },
       error: function(data) {
-        console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
         $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 
@@ -1948,8 +1956,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 150) {
-    return escaped(string.substr(0, 150)) + '...';
+  if (string.length > 100) {
+    return escaped(string.substr(0, 100)) + '...';
   }
   return escaped(string);
 }
@@ -2237,7 +2245,6 @@ $('#submitDocPageInput').live('click', function () {
     }
     
     else { 
-      console.log("out of reach");
       return false; 
     }  
   }
