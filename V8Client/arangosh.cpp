@@ -83,9 +83,9 @@ using namespace triagens::arango;
 
 static string DEFAULT_SERVER_NAME = "localhost";
 static int    DEFAULT_SERVER_PORT = 8529;
-static double DEFAULT_REQUEST_TIMEOUT = 10.0;
+static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
 static size_t DEFAULT_RETRIES = 5;
-static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
+static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quite start
@@ -188,6 +188,18 @@ regex_t intRegex;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t maxUploadSize = 500000;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connect timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -534,6 +546,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("pretty-print", "pretty print values")          
     ("no-colors", "deactivate color support")
     ("no-auto-complete", "disable auto completion")
+    ("connect-timeout", &connectTimeout, "connect timeout in seconds")
+    ("request-timeout", &requestTimeout, "request timeout in seconds")
     ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
     (hidden, true)
@@ -649,10 +663,8 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
   string server = DEFAULT_SERVER_NAME;
   int    port = DEFAULT_SERVER_PORT;
-  double requestTimeout = DEFAULT_REQUEST_TIMEOUT;
   size_t retries = DEFAULT_RETRIES;
-  double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
+  
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
     
@@ -663,7 +675,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
     
   }
   
-  V8ClientConnection* connection = new V8ClientConnection(server, port, requestTimeout, retries, connectionTimeout);
+  V8ClientConnection* connection = new V8ClientConnection(server, port, (double) requestTimeout, retries, (double) connectTimeout, false);
   
   if (connection->isConnected()) {
     printf("Connected to Arango DB %s:%d Version %s\n", 
@@ -1153,6 +1165,17 @@ int main (int argc, char* argv[]) {
 
   // parse the program options
   ParseProgramOptions(argc, argv);
+  
+  // check connection args
+  if (connectTimeout <= 0) {
+    cout << "invalid value for connect-timeout." << endl;
+    return EXIT_FAILURE;
+  }
+
+  if (requestTimeout <= 0) {
+    cout << "invalid value for request-timeout." << endl;
+    return EXIT_FAILURE;
+  }
 
   v8::HandleScope handle_scope;
 
@@ -1193,9 +1216,10 @@ int main (int argc, char* argv[]) {
     clientConnection = new V8ClientConnection(
       DEFAULT_SERVER_NAME, 
       DEFAULT_SERVER_PORT, 
-      DEFAULT_REQUEST_TIMEOUT, 
+      (double) requestTimeout,
       DEFAULT_RETRIES, 
-      DEFAULT_CONNECTION_TIMEOUT);
+      (double) connectTimeout,
+      false);
   }
   
   // .............................................................................

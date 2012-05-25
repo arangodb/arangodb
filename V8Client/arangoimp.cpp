@@ -64,9 +64,9 @@ using namespace triagens::v8client;
 
 static string DEFAULT_SERVER_NAME = "localhost";
 static int    DEFAULT_SERVER_PORT = 8529;
-static double DEFAULT_REQUEST_TIMEOUT = 300;
+static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
 static size_t DEFAULT_RETRIES = 5;
-static double DEFAULT_CONNECTION_TIMEOUT = 5;
+static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server address
@@ -255,7 +255,8 @@ int main (int argc, char* argv[]) {
           DEFAULT_SERVER_PORT, 
           (double) requestTimeout,
           DEFAULT_RETRIES, 
-          (double) connectTimeout);
+          (double) connectTimeout, 
+          true);
 
   if (clientConnection->isConnected()) {
     printf("Connected to Arango DB %s:%d Version %s\n", 
