@@ -381,7 +381,7 @@ form {
 
 
 #queryOutput {
-  height:40%; 
+  height:25%; 
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
