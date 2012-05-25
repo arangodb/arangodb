@@ -187,12 +187,7 @@ static TRI_action_options_t ParseActionOptions (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
 ///
-/// @FUN{defineAction(@FA{name}, @FA{queue}, @FA{callback}, @FA{parameter})}
-///
-/// Possible queues are:
-/// - "CLIENT"
-/// - "SYSTEM"
-/// - "MONITORING"
+/// @FUN{defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
@@ -201,8 +196,8 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <queue>, <callback>, <parameter>)")));
+  if (argv.Length() != 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>)")));
   }
 
   // extract the action name
@@ -214,31 +209,18 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   string name = *utf8name;
 
-  // extract the action queue
-  v8::String::Utf8Value utf8queue(argv[1]);
-
-  if (*utf8queue == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<queue> must be an UTF8 name")));
-  }
-
-  string queue = *utf8queue;
-
-  if (queue != "CLIENT" && queue != "SYSTEM" && queue != "MONITORING") {
-    return scope.Close(v8::ThrowException(v8::String::New("<queue> must CLIENT, SYSTEM, MONITORING")));
-  }
-
   // extract the action callback
-  if (! argv[2]->IsFunction()) {
+  if (! argv[1]->IsFunction()) {
     return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
   }
 
-  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[2]);
+  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
 
   // extract the options
   v8::Handle<v8::Object> options;
 
-  if (argv[3]->IsObject()) {
-    options = argv[3]->ToObject();
+  if (argv[2]->IsObject()) {
+    options = argv[2]->ToObject();
   }
   else {
     options = v8::Object::New();
@@ -247,7 +229,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   TRI_action_options_t ao = ParseActionOptions(v8g, options);
 
   // store an action with the given name
-  TRI_CreateActionVocBase(name, queue, ao, callback);
+  TRI_CreateActionVocBase(name, ao, callback);
 
   return scope.Close(v8::Undefined());
 }
@@ -270,7 +252,6 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateActionVocBase (string const& name,
-                              string const& queue,
                               TRI_action_options_t ao,
                               v8::Handle<v8::Function> callback) {
 
@@ -293,7 +274,6 @@ void TRI_CreateActionVocBase (string const& name,
 
     action->_url = url;
     action->_urlParts = StringUtils::split(url, "/").size();
-    action->_queue = queue;
     action->_options = ao;
 
     Actions[url] = action;
@@ -311,7 +291,7 @@ void TRI_CreateActionVocBase (string const& name,
   v8g->Actions[url] = v8::Persistent<v8::Function>::New(callback);
 
   // some debug output
-  LOG_DEBUG("created action '%s' for queue %s", url.c_str(), queue.c_str());
+  LOG_DEBUG("created action '%s'", url.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,7 +580,9 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue) {
+void TRI_InitV8Actions (v8::Handle<v8::Context> context,
+                        string const& actionQueue,
+                        set<string> const& allowedContexts) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -617,7 +599,18 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   // .............................................................................
 
   context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
-                         v8::String::New(actionQueue),
+                         v8::String::New(actionQueue.c_str()),
+                         v8::ReadOnly);
+
+  v8::Handle<v8::Array> contexts = v8::Array::New();
+  size_t pos = 0;
+
+  for (set<string>::iterator i = allowedContexts.begin();  i != allowedContexts.end();  ++i, ++pos) {
+    contexts->Set(pos, v8::String::New((*i).c_str()));
+  }
+
+  context->Global()->Set(v8::String::New("SYS_ACTION_CONTEXTS"),
+                         contexts,
                          v8::ReadOnly);
 
   // .............................................................................

@@ -199,7 +199,6 @@ TRI_action_options_t;
 typedef struct TRI_action_s {
   std::string _url;
   size_t _urlParts;
-  std::string _queue;
   TRI_action_options_t _options;
 }
 TRI_action_t;
@@ -222,7 +221,6 @@ TRI_action_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateActionVocBase (std::string const& name,
-                              std::string const& queue,
                               TRI_action_options_t ao,
                               v8::Handle<v8::Function> callback);
 
@@ -250,7 +248,9 @@ triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue);
+void TRI_InitV8Actions (v8::Handle<v8::Context> context,
+                        std::string const& actionQueue,
+                        std::set<std::string> const& allowedContexts);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -87,18 +87,18 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
       else {
         try {
           var result = collection.all();
 
-          if (skip != null) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
 
-          if (limit != null) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
 
@@ -188,35 +188,35 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
-      else if (latitude == null) {
+      else if (latitude === null || latitude === undefined) {
         actions.badParameter(req, res, "latitude");
       }
-      else if (longitude == null) {
+      else if (longitude === null || longitude === undefined) {
         actions.badParameter(req, res, "longitude");
       }
       else {
         try {
           var result;
 
-          if (geo == null) {
+          if (geo === null || geo === undefined) {
             result = collection.near(latitude, longitude);
           }
           else {
             result = collection.geo({ id : geo }).near(latitude, longitude);
           }
 
-          if (skip != null) {
+          if (skip !== null && skip != undefined) {
             result = result.skip(skip);
           }
 
-          if (limit != null) {
+          if (limit !== null && limit != undefined) {
             result = result.limit(limit);
           }
 
-          if (distance != null) {
+          if (distance !== null && distance !== undefined) {
             result = result.distance(distance);
           }
 
@@ -305,35 +305,35 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
-      else if (latitude == null) {
+      else if (latitude === null || latitude === undefined) {
         actions.badParameter(req, res, "latitude");
       }
-      else if (longitude == null) {
+      else if (longitude === null || longitude === undefined) {
         actions.badParameter(req, res, "longitude");
       }
       else {
         try {
           var result;
 
-          if (geo == null) {
+          if (geo === null || geo === undefined) {
             result = collection.within(latitude, longitude, radius);
           }
           else {
             result = collection.geo({ id : geo }).within(latitude, longitude, radius);
           }
           
-          if (skip != null) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
           
-          if (limit != null) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
           
-          if (distance != null) {
+          if (distance !== null && distance !== undefined) {
             result = result.distance(distance);
           }
           
@@ -408,7 +408,7 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
       else if (typeof example !== "object") {
@@ -418,11 +418,11 @@ actions.defineHttp({
         try {
           var result = collection.byExample(example);
 
-          if (skip != null) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
 
-          if (limit != null) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
 
@@ -487,7 +487,7 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
       else if (typeof example !== "object") {
@@ -536,7 +536,7 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
       else if (typeof example !== "object") {
@@ -618,7 +618,7 @@ actions.defineHttp({
       var id = parseInt(name) || name;
       var collection = internal.db._collection(id);
 
-      if (collection == null) {
+      if (collection === null) {
         actions.collectionNotFound(req, res, name);
       }
       else {
@@ -632,11 +632,11 @@ actions.defineHttp({
             result = collection.range(attribute, left, right);
           }
 
-          if (skip != null) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
 
-          if (limit != null) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
 

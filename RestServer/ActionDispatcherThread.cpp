@@ -100,11 +100,13 @@ uint64_t ActionDispatcherThread::_gcInterval = 1000;
 
 ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
                                                 string const& actionQueue,
+                                                set<string> const& allowedContexts,
                                                 JSLoader* actionLoader)
   : DispatcherThread(queue),
     _isolate(0),
     _context(),
     _actionQueue(actionQueue),
+    _allowedContexts(allowedContexts),
     _actionLoader(actionLoader),
     _gc(0),
     _v8g(0) {
@@ -258,7 +260,7 @@ void ActionDispatcherThread::initialise () {
 
   _v8g = TRI_InitV8VocBridge(_context, _vocbase);
   TRI_InitV8Queries(_context);
-  TRI_InitV8Actions(_context, _actionQueue.c_str());
+  TRI_InitV8Actions(_context, _actionQueue, _allowedContexts);
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
