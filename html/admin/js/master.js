@@ -12,6 +12,7 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
 
+
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -26,6 +27,11 @@ var rowCounter = 0;
 
 $(document).ready(function() {       
 showCursor();
+
+//hide incomplete functions 
+$("#uploadFile").attr("disabled", "disabled");
+$("#uploadFileImport").attr("disabled", "disabled");
+$("#uploadFileSearch").attr("disabled", "disabled");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
@@ -343,6 +349,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash.substr(0, 12) == "#collection?" ) {
+      $("#addNewDocButton").removeAttr("disabled");
       tableView = true; 
       $('#toggleNewDocButtonText').text('Edit Source'); 
       
@@ -385,6 +392,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
+      $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
       
       $('#documentEditSourceView').hide();
@@ -947,7 +955,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = false; 
         $('#toggleEditedDocButtonText').text('Edit Table'); 
-        $('#addEditedDocRowButton').css('visibility', "hidden"); 
+        $("#addEditedDocRowButton").attr("disabled", "disabled");
     }
     else {
       try {
@@ -967,7 +975,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = true; 
         $('#toggleEditedDocButtonText').text('Edit Source'); 
-        $('#addEditedDocRowButton').css('visibility', "visible"); 
+        $("#addEditedDocRowButton").removeAttr("disabled");
       }
  
       catch(e) {
@@ -1071,7 +1079,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = false; 
         $('#toggleNewDocButtonText').text('Edit Table'); 
-        $('#addNewDocButton').css('visibility', "hidden"); 
+        $("#addNewDocButton").attr("disabled", "disabled");
       }
   
       catch(e) {
@@ -1098,7 +1106,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = true; 
         $('#toggleNewDocButtonText').text('Edit Source'); 
-        $('#addNewDocButton').css('visibility', "visible"); 
+        $("#addNewDocButton").removeAttr("disabled");
       }
  
       catch(e) {
