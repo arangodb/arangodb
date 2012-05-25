@@ -1206,7 +1206,20 @@ var lastFormatQuestion = true;
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
-    shArray.push(data); 
+
+    var r = [ ];
+    for (var i = 0; i < shArray.length; ++i) {
+      if (shArray[i] != data) {
+        r.push(shArray[i]);
+      }
+    }
+
+    shArray = r;
+    if (shArray.length > 4) {
+      shArray.shift();
+    }
+    shArray.push(data);
+   
     $("#avocshContent").autocomplete({
       source: shArray
     });
@@ -1248,11 +1261,21 @@ var lastFormatQuestion = true;
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#submitQuery').live('click', function () {
-      var data = {query:$('#queryContent').val()};
-      quArray.push(data); 
-      $("#queryContent").autocomplete({
-        source: quArray
-      });
+    var data = {query:$('#queryContent').val()};
+
+    var r = [ ];
+    for (var i = 0; i < quArray.length; ++i) {
+      if (quArray[i] != data) {
+        r.push(quArray[i]);
+      }
+    }
+
+    quArray = r;
+    if (quArray.length > 4) {
+      quArray.shift();
+    }
+    quArray.push(data);
+
       var formattedJSON; 
     $.ajax({
       type: "POST",
