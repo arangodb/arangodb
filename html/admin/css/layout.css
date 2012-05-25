@@ -387,6 +387,7 @@ form {
   background: white;  
   font-family: "courier";
   text-size: 0.7em !important;  
+  resize: vertical !important; 
 }
 
 #queryContent {
