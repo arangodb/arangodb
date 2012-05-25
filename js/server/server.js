@@ -58,14 +58,21 @@
   internal.edges = edges;
   internal.ArangoCollection = ArangoCollection;
   internal.ArangoEdgesCollection = ArangoEdgesCollection;
+  internal.allowedActionContexts = {}
 
   if (typeof SYS_DEFINE_ACTION === "undefined") {
-    ModuleCache["/internal"].exports.defineAction = function() {
+    internal.defineAction = function() {
       console.error("SYS_DEFINE_ACTION not available");
     };
   }
   else {
-    ModuleCache["/internal"].exports.defineAction = SYS_DEFINE_ACTION;
+    var i;
+
+    for (i = 0;  i < SYS_ACTION_CONTEXTS.length;  ++i) {
+      internal.allowedActionContexts[SYS_ACTION_CONTEXTS[i]] = true;
+    }
+
+    internal.defineAction = SYS_DEFINE_ACTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

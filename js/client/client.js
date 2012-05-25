@@ -1213,7 +1213,7 @@ function ArangoCollection (database, data) {
 
       throw new ArangoError(requestResult);
     }
-    else if (s[0] !== this._id) {
+    else if (parseInt(s[0]) !== this._id) {
       requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
         errorMessage: 
@@ -1250,7 +1250,7 @@ function ArangoCollection (database, data) {
 
       throw new ArangoError(requestResult);
     }
-    else if (s[0] !== this._id) {
+    else if (parseInt(s[0]) !== this._id) {
       requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
         errorMessage:
@@ -1394,6 +1394,10 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
     var body;
+
+    if (typeof lat !== "string") {
+      throw "usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])";
+    }
 
     if (typeof lon === "boolean") {
       body = { 
@@ -1654,7 +1658,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (s[0] !== this._id) {
+      else if (parseInt(s[0]) !== this._id) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1717,7 +1721,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (s[0] !== this._id) {
+      else if (parseInt(s[0]) !== this._id) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1774,7 +1778,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (s[0] !== this._id) {
+      else if (parseInt(s[0]) !== this._id) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
