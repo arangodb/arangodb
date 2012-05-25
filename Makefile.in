@@ -3154,6 +3154,8 @@ unittests-shell-client:
 	kill `cat $(PIDFILE)`
 	while test -f $(PIDFILE); do sleep 1; done
 
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
 	@rm -rf "$(VOCDIR)"
 
 	@echo
