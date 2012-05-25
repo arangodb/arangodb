@@ -24,6 +24,8 @@ var checkCollectionName;
 var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
+var shArray = []; 
+var quArray = []; 
 
 $(document).ready(function() {       
 showCursor();
@@ -709,6 +711,9 @@ var logTable = $('#logTableID').dataTable({
       $('#queryView').show();
       createnav ("Query"); 
       $('#queryContent').focus();
+      $("#queryContent").autocomplete({
+        source: quArray
+      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -727,6 +732,9 @@ var logTable = $('#logTableID').dataTable({
         printedHelp = true; 
         start_pretty_print(); 
       }
+      $("#avocshContent").autocomplete({
+        source: shArray
+      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1198,6 +1206,10 @@ var lastFormatQuestion = true;
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
+    shArray.push(data); 
+    $("#avocshContent").autocomplete({
+      source: shArray
+    });
 
     if (data == "help") {
        data = "help()";
@@ -1218,6 +1230,7 @@ var lastFormatQuestion = true;
       }
     }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
+
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(data);
@@ -1225,8 +1238,6 @@ var lastFormatQuestion = true;
     $("#avocshContent").val('');
     return false; 
   });
-
-
 
   $('#refreshShell').live('click', function () {
     location.reload(); 
@@ -1238,6 +1249,10 @@ var lastFormatQuestion = true;
 
   $('#submitQuery').live('click', function () {
       var data = {query:$('#queryContent').val()};
+      quArray.push(data); 
+      $("#queryContent").autocomplete({
+        source: quArray
+      });
       var formattedJSON; 
     $.ajax({
       type: "POST",
