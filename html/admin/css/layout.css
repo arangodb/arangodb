@@ -381,19 +381,20 @@ form {
 
 
 #queryOutput {
-  height:60%; 
+  height:35%; 
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
   font-family: "courier";
   text-size: 0.7em !important;  
+  resize: vertical !important; 
 }
 
 #queryContent {
-  height: 20%; 
+  height: 45%; 
   font-family: "courier";
   width: 100%;
-  resize: none; 
+  resize: vertical; 
 }
 
 #avocshWindow {
