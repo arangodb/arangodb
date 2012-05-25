@@ -789,7 +789,7 @@ var logTable = $('#logTableID').dataTable({
 
         $.ajax({
           type: "PUT",
-          url: "/document/" + collectionID,
+          url: "/_api/document/" + collectionID,
           data: JSON.stringify(parsedContent), 
           contentType: "application/json",
           processData: false, 
@@ -889,7 +889,7 @@ var logTable = $('#logTableID').dataTable({
 
         $.ajax({
           type: "POST",
-          url: "/document?collection=" + collID, 
+          url: "/_api/document?collection=" + collID, 
           data: JSON.stringify(jsonContent), 
           contentType: "application/json",
           processData: false, 
