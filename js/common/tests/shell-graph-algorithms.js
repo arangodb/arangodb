@@ -93,52 +93,37 @@ function dijkstraSuite() {
       }
     },
 
-    testPushToNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        test_array = [];
-
-      graph.addEdge(v1, v2);
-      graph.addEdge(v1, v3);
-
-      v1._pushNeigborsToArray(test_array);
-
-      assertEqual(test_array[0], 2);
-      assertEqual(test_array[1], 3);
-    },
-
-    testShortestDistanceFor : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        todo_list = [v1.getId(), v2.getId()], // [ID]
-        distances = {}, // {ID => [Node]}
-        node_id_found; // Node
-
-      distances[v1.getId()] = [v1, v2, v3];
-      distances[v2.getId()] = [v2, v3];
-      distances[v3.getId()] = [v3];
-
-      node_id_found = v1._getShortestDistanceFor(todo_list, distances);
-      assertEqual(node_id_found, v2.getId());
-    },
+    // testPushToNeighbors : function () {
+    //   var v1 = graph.addVertex(1),
+    //     v2 = graph.addVertex(2),
+    //     v3 = graph.addVertex(3),
+    //     test_array = [];
+    // 
+    //   graph.addEdge(v1, v2);
+    //   graph.addEdge(v1, v3);
+    // 
+    //   v1._pushNeigborsToArray(test_array);
+    // 
+    //   assertEqual(test_array[0], 2);
+    //   assertEqual(test_array[1], 3);
+    // },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a short, distinct path
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetAShortDistinctPath : function () {
-      var v1, v2, e1;
+      var v1, v2, e1, path;
 
       v1 = graph.addVertex(1);
       v2 = graph.addVertex(2);
 
       e1 = graph.addEdge(v1, v2);
 
-      assertEqual(v1.pathTo(v2).length, 2);
-      assertEqual(v1.pathTo(v2)[0].getId(), v1.getId());
-      assertEqual(v1.pathTo(v2)[1].getId(), v2.getId());
+      path = v1.pathTo(v2)[0];
+      assertEqual(path.length, 2);
+      assertEqual(path[0].toString(), v1.getId());
+      assertEqual(path[1].toString(), v2.getId());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +131,7 @@ function dijkstraSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetALongerDistinctPath : function () {
-      var v1, v2, v3, e1, e2;
+      var v1, v2, v3, e1, e2, path;
 
       v1 = graph.addVertex(1);
       v2 = graph.addVertex(2);
@@ -155,23 +140,26 @@ function dijkstraSuite() {
       e1 = graph.addEdge(v1, v2);
       e2 = graph.addEdge(v2, v3);
 
-      assertEqual(v1.pathTo(v3).length, 3);
-      assertEqual(v1.pathTo(v3)[0].getId(), v1.getId());
-      assertEqual(v1.pathTo(v3)[1].getId(), v2.getId());
-      assertEqual(v1.pathTo(v3)[2].getId(), v3.getId());
+      path = v1.pathTo(v3)[0];
+      assertEqual(path.length, 3);
+      assertEqual(path[0].toString(), v1.getId());
+      assertEqual(path[1].toString(), v2.getId());
+      assertEqual(path[2].toString(), v3.getId());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare with Neo4j on a random network of size 500
+/// @brief compare with Neo4j on a network of size 500
 ////////////////////////////////////////////////////////////////////////////////
 
-    testComparisonWithNeo4j500 : function () {
+    testComparisonWithNeo4j500LengthOnly : function () {
       var base_path = "js/common/test-data/random500/",
         v1,
         v2,
         e,
-        path,
+        pathes,
         results = [],
+        neo4j_results = [],
+        single_result = {},
         counter;
 
       Helper.process(base_path + "generated_edges.csv", function (row) {
@@ -184,8 +172,13 @@ function dijkstraSuite() {
         v1 = graph.getVertex(row[0]);
         v2 = graph.getVertex(row[1]);
         if (v1 !== null && v2 !== null) {
-          path = v1.pathTo(v2);
-          results.push(path);
+          pathes = v1.pathTo(v2);
+          single_result = {
+            'from'   : v1.getId(),
+            'to'     : v2.getId(),
+            'path_length' : pathes[0].length
+          };
+          results.push(single_result);
         }
       });
 
@@ -198,18 +191,26 @@ function dijkstraSuite() {
         if (!(v1 === row[0] && v2 === row[row.length - 1])) {
           v1 = row[0];
           v2 = row[row.length - 1];
-          result = results[counter];
 
-          assertEqual(v1, result[0].getId());
-          assertEqual(v2, result[result.length - 1].getId());
-
-          if (result.length !== row.length) {
-            console.log("Neo4j: Path from " + v1 + " to " + v2 + " has length " + result.length + " (should be " + row.length + ")");
-          }
-          counter += 1;
+          single_result = {
+            'from'   : v1,
+            'to'     : v2,
+            'path_length' : row.length
+          };
+          neo4j_results.push(single_result);
         }
-        //assertEqual(raw_row, results[index]);
       });
+
+      for (counter = 0; counter < neo4j_results.results; counter += 1) {
+        assertEqual(results[counter].from,
+          neo4j_results[counter].from);
+
+        assertEqual(results[counter].to,
+          neo4j_results[counter].to);
+
+        assertEqual(results[counter].path_length,
+          neo4j_results[counter].path_length);
+      }
     }
   };
 }

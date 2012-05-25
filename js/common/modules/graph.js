@@ -768,61 +768,72 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_node) {
-  var pathes = {},        // {ID => [Node]}
-    determined_list = [], // [ID]
-    todo_list = [],       // [ID]
-    i,                    // Number
-    current_node_id,      // ID
-    neighbor_list = [],   // [ID]
-    new_path = [],        // [Node]
-    current_neighbor;     // ID
+  var determined_list = [],     // [ID]
+    todo_list = [],             // [ID]
+    distances = {},             // { ID => Number }
+    predecessors = {},          // { ID => [ID] }
+    raw_neighborlist = [],      // [ID]
+    i,                          // Number
+    current_distance = 0,       // Number
+    pathes = [],                //
+    current_node_id,            // ID
+    current_neighbor_id;        // ID
 
-  this._pushNeigborsToArray(todo_list);
-
-  for (i = 0; i < todo_list.length; i++) {
-    pathes[todo_list[i]] = [this, this._graph.getVertex(todo_list[i])];
-  }
+  todo_list.push(this.getId());
+  distances[this.getId()] = 0;
 
   while (todo_list.length > 0) {
-    current_node_id = this._getShortestDistanceFor(todo_list, pathes);
-    determined_list.push(current_node_id);
+    current_node_id = this._getShortestDistance(todo_list, distances);
+
+    if (current_node_id === target_node) {
+      break;
+    }
+
     todo_list.removeLastOccurrenceOf(current_node_id);
+    determined_list.push(current_node_id);
 
-    neighbor_list = [];
-    this._graph.getVertex(current_node_id)._pushNeigborsToArray(neighbor_list);
-    for (i = 0; i < neighbor_list.length; i++) {
-      current_neighbor = neighbor_list[i];
+    raw_neighborlist = this._graph.getVertex(current_node_id).getNeighbors();
+    for (i = 0; i < raw_neighborlist.length; i += 1) {
+      current_neighbor_id = raw_neighborlist[i];
 
-      new_path = []
-        .concat(pathes[current_node_id])
-        .concat(this._graph.getVertex(current_neighbor));
+      if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
+        current_distance = distances[current_node_id] + 1;
 
-      if (pathes[current_neighbor] === undefined || (new_path.length < pathes[current_neighbor].length)) {
-        pathes[current_neighbor] = new_path;
-
-        if (determined_list.lastIndexOf(neighbor_list[i]) === -1) {
-          todo_list.push(neighbor_list[i]);
+        if (todo_list.lastIndexOf(current_neighbor_id) === -1) {
+          todo_list.push(current_neighbor_id);
+          predecessors[current_neighbor_id] = [current_node_id];
+          distances[current_neighbor_id] = current_distance;
+        } else if (distances[current_neighbor_id] > current_distance) {
+          predecessors[current_neighbor_id] = [current_node_id];
+          distances[current_neighbor_id] = current_distance;
+        } else if (distances[current_neighbor_id] === current_distance) {
+          predecessors[current_neighbor_id].push(current_node_id);
         }
       }
     }
-
-    if (current_node_id === target_node.getId()) {
-      break;
-    }
   }
 
-  return pathes[target_node.getId()];
+  current_node_id = target_node.getId();
+  if (determined_list.lastIndexOf(current_node_id) === -1) {
+    pathes = [];
+  } else {
+    pathes[0] = [];
+    while (current_node_id !== undefined) {
+      pathes[0].push(current_node_id);
+      current_node_id = predecessors[current_node_id];
+    }
+    pathes[0].reverse();
+  }
+
+  return pathes;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the shortest path to a certain node
-///
-/// @FUN{@FA{vertex}._pushNeigborsToArray(@FA{target_array})}
-///
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype._pushNeigborsToArray = function (target_array) {
-  var i, current_node_id;
+// Later: Take Inbound, Outbound, Both. Currently Both only
+// and: Only return neighbors with a certain label
+Vertex.prototype.getNeighbors = function () {
+  var i,
+    current_node_id,
+    target_array = [];
 
   for (i = 0; i < this.getOutEdges().length; i++) {
     current_node_id = this.getOutEdges()[i].getInVertex().getId();
@@ -833,7 +844,47 @@ Vertex.prototype._pushNeigborsToArray = function (target_array) {
     current_node_id = this.getInEdges()[i].getOutVertex().getId();
     target_array.push(current_node_id);
   }
+
+  return target_array;
 };
+
+Vertex.prototype._getShortestDistance = function (todo_list, distances) {
+  var shortest_distance = Infinity,
+    node = null,
+    i,
+    distance;
+
+  for (i = 0; i < todo_list.length; i += 1) {
+    distance = distances[todo_list[i]];
+    if (distance < shortest_distance) {
+      shortest_distance = distance;
+      node = todo_list[i];
+    }
+  }
+
+  return node;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shortest path to a certain node
+///
+/// @FUN{@FA{vertex}._pushNeigborsToArray(@FA{target_array})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+// Vertex.prototype._pushNeigborsToArray = function (target_array) {
+//   var i, current_node_id;
+// 
+//   for (i = 0; i < this.getOutEdges().length; i++) {
+//     current_node_id = this.getOutEdges()[i].getInVertex().getId();
+//     target_array.push(current_node_id);
+//   }
+// 
+//   for (i = 0; i < this.getInEdges().length; i++) {
+//     current_node_id = this.getInEdges()[i].getOutVertex().getId();
+//     target_array.push(current_node_id);
+//   }
+// };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Find the node with the shortest distance for a given list
@@ -842,21 +893,21 @@ Vertex.prototype._pushNeigborsToArray = function (target_array) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._getShortestDistanceFor = function (todo_list, distances) {
-  var current_node_id,
-    shortest_distance = [null, Infinity],
-    i;
-
-  for (i = 0; i < todo_list.length; i++) {
-    current_node_id = todo_list[i];
-
-    if (distances[current_node_id].length < shortest_distance[1]) {
-      shortest_distance = [current_node_id, distances[current_node_id].length];
-    }
-  }
-
-  return shortest_distance[0];
-};
+// Vertex.prototype._getShortestDistanceFor = function (todo_list, prede) {
+//   var current_node_id,
+//     shortest_distance = [null, Infinity],
+//     i;
+// 
+//   for (i = 0; i < todo_list.length; i++) {
+//     current_node_id = todo_list[i];
+// 
+//     if (distances[current_node_id].length < shortest_distance[1]) {
+//       shortest_distance = [current_node_id, distances[current_node_id].length];
+//     }
+//   }
+// 
+//   return shortest_distance[0];
+// };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
