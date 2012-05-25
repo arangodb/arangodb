@@ -716,7 +716,7 @@ var logTable = $('#logTableID').dataTable({
       createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
-        print(welcomeMSG + HELP);
+        print(welcomeMSG + require("arangosh").HELP);
         printedHelp = true; 
       }
     }
