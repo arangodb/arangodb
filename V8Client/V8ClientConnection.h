@@ -81,7 +81,8 @@ namespace triagens {
                         int port, 
                         double requestTimeout,
                         size_t retries,
-                        double connectionTimeout);
+                        double connectionTimeout,
+                        bool warn);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructor

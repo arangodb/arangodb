@@ -66,12 +66,13 @@ namespace triagens {
             int port,
             double requestTimeout,
             size_t retries,
-            double connectionTimeout) : _client(0), _httpResult(0) {
+            double connectionTimeout,
+            bool warn) : _client(0), _httpResult(0) {
       
       _connected = false;
       _lastHttpReturnCode = 0;
       _lastErrorMessage = "";
-      _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout);
+      _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
 
       // connect to server and get version number
       map<string, string> headerFields;

@@ -7,8 +7,8 @@
 }
 
 .writeable {
-  width: 100%; 
   word-wrap: break-word; 
+  width:auto !important;   
 }
 
 #delete {
@@ -346,6 +346,13 @@ form {
   float:right;
 }
 
+#formatshellJSONyesno {
+  float:right; 
+  padding-right:10px; 
+  margin-top: -3px; 
+  color: #797979;
+}
+
 #formatJSONyesno {
   margin-top: -40px;  
   float:right; 
@@ -654,7 +661,7 @@ form {
   line-height: 1;
   text-align: center;
   text-shadow: 0 1px 0 #fff;
-  width: 80px;
+  width: 90px;
 }
 #menue button.minimal:hover {
     background: #d9d9d9;

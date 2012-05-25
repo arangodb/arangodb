@@ -58,12 +58,14 @@ namespace triagens {
             int port,
             double requestTimeout,
             double connectTimeout,
-            size_t connectRetries) :
+            size_t connectRetries,
+            bool warn = true) :
     _hostname(hostname),
     _port(port),
     _requestTimeout(requestTimeout),
     _connectTimeout(connectTimeout),
     _connectRetries(connectRetries),
+    _warn(warn),
     _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
     _readBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
@@ -129,7 +131,9 @@ namespace triagens {
       }
       
       if (isWorking() && _errorMessage=="" ) {
-        LOGGER_ERROR << "Request timeout reached.";
+        if (_warn) {
+          LOGGER_WARNING << "Request timeout reached.";
+        }
         _errorMessage = "Request timeout reached.";
       }
       
@@ -153,14 +157,15 @@ namespace triagens {
         _numConnectRetries++;
       }
       else {
-        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+        if (_warn) {
+          LOGGER_WARNING << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+        }
         _state = DEAD;
         return;
       }
 
       if (_hostname == "" || _port == 0) {
         _errorMessage = "Could not connect to '" + _hostname + ":" + StringUtils::itoa(_port) + "'";
-        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
         _state = DEAD;
         return;
       }

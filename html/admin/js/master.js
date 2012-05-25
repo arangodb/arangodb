@@ -12,6 +12,7 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
 
+
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -23,9 +24,15 @@ var checkCollectionName;
 var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
+var shArray = []; 
 
 $(document).ready(function() {       
 showCursor();
+
+//hide incomplete functions 
+$("#uploadFile").attr("disabled", "disabled");
+$("#uploadFileImport").attr("disabled", "disabled");
+$("#uploadFileSearch").attr("disabled", "disabled");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
@@ -160,7 +167,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"120px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null ],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px"} ],
     "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
@@ -176,12 +183,11 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bSortable": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"300px" }, 
+                  {"sClass":"writeable", "bSortable": false},
                   {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -218,7 +224,7 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "70px"}, 
+    "aoColumns": [{ "sClass":"read_only","bSortable": false, "sWidth": "80px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "125px"}, 
                   {"sClass":"read_only","bSortable": false, "sWidth": "60px"}, 
                   {"bSortable": false}],
@@ -344,6 +350,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash.substr(0, 12) == "#collection?" ) {
+      $("#addNewDocButton").removeAttr("disabled");
       tableView = true; 
       $('#toggleNewDocButtonText').text('Edit Source'); 
       
@@ -386,6 +393,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
+      $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
       
       $('#documentEditSourceView').hide();
@@ -716,9 +724,13 @@ var logTable = $('#logTableID').dataTable({
       createnav ("ArangoDB Shell"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
-        print(welcomeMSG + HELP);
+        print(welcomeMSG + require("arangosh").HELP);
         printedHelp = true; 
+        start_pretty_print(); 
       }
+      $("#avocshContent").autocomplete({
+        source: shArray
+      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -805,7 +817,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -903,7 +914,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -949,6 +959,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = false; 
         $('#toggleEditedDocButtonText').text('Edit Table'); 
+        $("#addEditedDocRowButton").attr("disabled", "disabled");
     }
     else {
       try {
@@ -968,10 +979,10 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = true; 
         $('#toggleEditedDocButtonText').text('Edit Source'); 
+        $("#addEditedDocRowButton").removeAttr("disabled");
       }
  
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
 
@@ -1072,6 +1083,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = false; 
         $('#toggleNewDocButtonText').text('Edit Table'); 
+        $("#addNewDocButton").attr("disabled", "disabled");
       }
   
       catch(e) {
@@ -1097,8 +1109,8 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentTableView').toggle();
         $('#NewDocumentSourceView').toggle();
         tableView = true; 
-        var img = $(this).find('img'); 
-        img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+        $('#toggleNewDocButtonText').text('Edit Source'); 
+        $("#addNewDocButton").removeAttr("disabled");
       }
  
       catch(e) {
@@ -1185,9 +1197,28 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 /// submit avocsh content 
 ///////////////////////////////////////////////////////////////////////////////
+
+var lastFormatQuestion = true;  
  
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
+
+    var r = [ ];
+    for (var i = 0; i < shArray.length; ++i) {
+      if (shArray[i] != data) {
+        r.push(shArray[i]);
+      }
+    }
+
+    shArray = r;
+    if (shArray.length > 4) {
+      shArray.shift();
+    }
+    shArray.push(data);
+   
+    $("#avocshContent").autocomplete({
+      source: shArray
+    });
 
     if (data == "help") {
        data = "help()";
@@ -1196,8 +1227,19 @@ var logTable = $('#logTableID').dataTable({
        location.reload();
        return false;  
     }
-
+    formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
+    if (formatQuestion != lastFormatQuestion) {
+      if (formatQuestion == true) {
+        start_pretty_print();
+        lastFormatQuestion = true;
+      } 
+      if (formatQuestion == false) {
+        stop_pretty_print(); 
+        lastFormatQuestion = false;
+      }
+    }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
+
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(data);
@@ -1205,8 +1247,6 @@ var logTable = $('#logTableID').dataTable({
     $("#avocshContent").val('');
     return false; 
   });
-
-
 
   $('#refreshShell').live('click', function () {
     location.reload(); 
@@ -1217,8 +1257,8 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#submitQuery').live('click', function () {
-      var data = {query:$('#queryContent').val()};
-      var formattedJSON; 
+    var data = {query:$('#queryContent').val()};
+    var formattedJSON; 
     $.ajax({
       type: "POST",
       url: "/_api/cursor",
@@ -1237,7 +1277,6 @@ var logTable = $('#logTableID').dataTable({
         }
       },
       error: function(data) {
-        console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
         $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 
@@ -1948,8 +1987,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 150) {
-    return escaped(string.substr(0, 150)) + '...';
+  if (string.length > 100) {
+    return escaped(string.substr(0, 100)) + '...';
   }
   return escaped(string);
 }
@@ -2237,7 +2276,6 @@ $('#submitDocPageInput').live('click', function () {
     }
     
     else { 
-      console.log("out of reach");
       return false; 
     }  
   }
