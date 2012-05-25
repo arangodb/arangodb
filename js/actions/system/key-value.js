@@ -125,7 +125,7 @@ function postKeyValue(req, res) {
   try {
     var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) == null) {
+    if (internal.db._collection(collection) === null) {
       actions.collectionNotFound(req, res, collection);
       return;      
     }
@@ -173,7 +173,7 @@ function putKeyValue(req, res) {
   try {
     var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) == null) {
+    if (internal.db._collection(collection) === null) {
       actions.collectionNotFound(req, res);
       return;      
     }
@@ -234,7 +234,7 @@ function deleteKeyValue(req, res) {
   try {
     var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) == null) {
+    if (internal.db._collection(collection) === null) {
       actions.collectionNotFound(req, res);
       return;      
     }
@@ -283,7 +283,7 @@ function getKeyValue(req, res) {
   try {
     var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) == null) {
+    if (internal.db._collection(collection) === null) {
       actions.collectionNotFound(req, res);
       return;      
     }
@@ -389,7 +389,7 @@ function searchKeyValue(req, res) {
   try {
     var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) == null) {
+    if (internal.db._collection(collection) === null) {
       actions.collectionNotFound(req, res);
       return;      
     }

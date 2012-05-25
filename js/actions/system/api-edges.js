@@ -69,7 +69,7 @@ var API = "/_api/edges";
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_edges (req, res) {
-  if (req.suffix.length != 1) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-identifer>?vertex=<vertex-handle>&direction=<direction>");
     return;
@@ -79,7 +79,7 @@ function GET_edges (req, res) {
   var id = parseInt(name) || name;
   var collection = edges._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -89,13 +89,13 @@ function GET_edges (req, res) {
   var e;
 
   try {
-    if (direction == null || direction == "" || direction == "any") {
+    if (direction === null || direction === undefined || direction === "" || direction === "any") {
       e = collection.edges(vertex);
     }
-    else if (direction == "in") {
+    else if (direction === "in") {
       e = collection.inEdges(vertex);
     }
-    else if (direction == "out") {
+    else if (direction === "out") {
       e = collection.outEdges(vertex);
     }
     else {
@@ -123,7 +123,7 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType == actions.GET) {
+    if (req.requestType === actions.GET) {
       GET_edges(req, res);
     }
     else {
