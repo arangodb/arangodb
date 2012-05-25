@@ -74,7 +74,7 @@ function GeneralArrayCursor (documents, skip, limit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.execute = function () {
-  if (this._skip == null) {
+  if (this._skip === null) {
     this._skip = 0;
   }
 
@@ -230,18 +230,18 @@ function JoinLimits (query, limit) {
   var q;
 
   // original limit is 0, keep it
-  if (query._limit == 0) {
+  if (query._limit === 0) {
     query = query.clone();
   }
 
   // new limit is 0, use it
-  else if (limit == 0) {
+  else if (limit === 0) {
     query = query.clone();
     query._limit = 0;
   }
 
   // no old limit, use new limit
-  else if (query._limit == null) {
+  else if (query._limit === null) {
     query = query.clone();
     query._limit = limit
   }
@@ -341,7 +341,7 @@ SimpleQuery.prototype.skip = function (skip) {
   var query;
   var documents;
 
-  if (skip == null) {
+  if (skip === undefined || skip === null) {
     skip = 0;
   }
 
@@ -350,10 +350,10 @@ SimpleQuery.prototype.skip = function (skip) {
   }
 
   // no limit set, use or add skip
-  if (this._limit == null) {
+  if (this._limit === null) {
     query = this.clone();
 
-    if (this._skip == null || this._skip == 0) {
+    if (this._skip === null || this._skip === 0) {
       query._skip = skip;
     }
     else {
@@ -659,8 +659,8 @@ SimpleQueryArray.prototype.clone = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryArray.prototype.execute = function () {
-  if (this._execution == null) {
-    if (this._skip == null) {
+  if (this._execution === null) {
+    if (this._skip === null) {
       this._skip = 0;
     }
 
@@ -777,7 +777,7 @@ ArangoCollection.prototype.byExample = function () {
   var example;
 
   // example is given as only argument
-  if (arguments.length == 1) {
+  if (arguments.length === 1) {
     example = arguments[0];
   }
 
@@ -1043,8 +1043,8 @@ ArangoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo1") {
-        if (index.fields[0] == loc && index.geoJson == order) {
+      if (index.type === "geo1") {
+        if (index.fields[0] === loc && index.geoJson === order) {
           return index;
         }
       }
@@ -1059,8 +1059,8 @@ ArangoCollection.prototype.geo = function(loc, order) {
     for (var i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
-      if (index.type == "geo2") {
-        if (index.fields[0] == lat && index.fields[1] == lon) {
+      if (index.type === "geo2") {
+        if (index.fields[0] === lat && index.fields[1] === lon) {
           return index;
         }
       }
@@ -1084,7 +1084,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
     idx = locateGeoIndex2(this, loc, order);
   }
 
-  if (idx == null) {
+  if (idx === null) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
@@ -1184,14 +1184,14 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
   this._index = (iid === undefined ? null : iid);
   this._distance = null;
 
-  if (iid == null) {
+  if (iid === undefined) {
     idx = collection.getIndexes();
     
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo1" || index.type == "geo2") {
-        if (this._index == null) {
+      if (index.type === "geo1" || index.type === "geo2") {
+        if (this._index === null) {
           this._index = index.id;
         }
         else if (index.id < this._index) {
@@ -1201,7 +1201,7 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
     }
   }
     
-  if (this._index == null) {
+  if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
@@ -1390,14 +1390,14 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
   this._radius = radius;
   this._distance = null;
 
-  if (iid == null) {
+  if (iid === undefined) {
     idx = collection.getIndexes();
     
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
-      if (index.type == "geo1" || index.type == "geo2") {
-        if (this._index == null) {
+      if (index.type === "geo1" || index.type === "geo2") {
+        if (this._index === null) {
           this._index = index.id;
         }
         else if (index.id < this._index) {
@@ -1407,7 +1407,7 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
     }
   }
     
-  if (this._index == null) {
+  if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
@@ -1504,11 +1504,11 @@ SimpleQueryWithin.prototype._PRINT = function () {
        + this._index
        + ")";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 

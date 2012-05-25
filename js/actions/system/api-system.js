@@ -52,6 +52,13 @@ actions.defineHttp({
   callback : GET_time
 });
 
+actions.defineHttp({
+  url : "_admin/time",
+  context : "admin",
+  prefix : false,
+  callback : GET_time
+});
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns system status information for the server
 ////////////////////////////////////////////////////////////////////////////////

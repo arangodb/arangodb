@@ -116,8 +116,8 @@ function DefineHttp (options) {
     contexts = "user";
   }
 
-  if (typeof contexts == "string") {
-    if (contexts == "user") {
+  if (typeof contexts === "string") {
+    if (contexts === "user") {
       userContext = true;
     }
 
@@ -125,7 +125,7 @@ function DefineHttp (options) {
   }
   else {
     for (var i = 0;  i < contexts.length && ! userContext;  ++i) {
-      if (context == "user") {
+      if (context === "user") {
         userContext = true;
       }
     }
@@ -150,32 +150,11 @@ function DefineHttp (options) {
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
-    var use = false;
-
-    if (context == "admin") {
-      if (SYS_ACTION_QUEUE == "SYSTEM") {
-        use = true;
-      }
-    }
-    else if (context == "api") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "user") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "monitoring") {
-      if (SYS_ACTION_QUEUE == "MONITORING") {
-        use = true;
-      }
-    }
+    var use = (internal.allowedActionContexts[context] === true)
 
     if (use) {
       try {
-        internal.defineAction(url, SYS_ACTION_QUEUE, callback, parameter);
+        internal.defineAction(url, callback, parameter);
         console.debug("defining action '%s' in context '%s' using queue '%s'", url, context, SYS_ACTION_QUEUE);
       }
       catch (err) {
@@ -199,7 +178,7 @@ function DefineHttp (options) {
 function GetErrorMessage (code) {
   for (var key in internal.errors) {
     if (internal.errors.hasOwnProperty(key)) {
-      if (internal.errors[key].code == code) {
+      if (internal.errors[key].code === code) {
         return internal.errors[key].message;
       }
     }
@@ -224,7 +203,7 @@ function GetJsonBody (req, res, code) {
   }
 
   if (! body || ! (body instanceof Object)) {
-    if (code == null) {
+    if (code === undefined) {
       code = exports.ERROR_HTTP_CORRUPTED_JSON;
     }
 
@@ -276,7 +255,7 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   
   res.body = JSON.stringify(result);
 
-  if (headers != undefined) {
+  if (headers !== undefined) {
     res.headers = headers;    
   }
 }
@@ -311,7 +290,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
   res.contentType = "application/json";
   
   // add some default attributes to result
-  if (result == undefined) {
+  if (result === undefined) {
     result = {};
   }
 
@@ -320,7 +299,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
   
   res.body = JSON.stringify(result);
   
-  if (headers != undefined) {
+  if (headers !== undefined) {
     res.headers = headers;    
   }
 }
@@ -334,7 +313,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultBad (req, res, code, msg, headers) {
-  if (msg == null) {
+  if (msg === undefined || msg === null) {
     msg = GetErrorMessage(code);
   }
   else {
@@ -436,7 +415,7 @@ function ResultCursor (req, res, cursor, code) {
     result["count"] = count;
   }
 
-  if (code == null) {
+  if (code === undefined) {
     code = exports.HTTP_CREATED;
   }
 
@@ -452,7 +431,7 @@ function ResultCursor (req, res, cursor, code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionNotFound (req, res, collection, headers) {
-  if (collection == null) {
+  if (collection === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
@@ -474,13 +453,13 @@ function CollectionNotFound (req, res, collection, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IndexNotFound (req, res, collection, index, headers) {
-  if (collection == null) {
+  if (collection === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
-  else if (index == null) {
+  else if (index === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting an index identifier",
