@@ -367,12 +367,19 @@ form {
   width: 9.5% !important;
 }
 
+#queryOutput a, .queryError, .querySuccess {
+  font-size: 0.9em !important; 
+  font-family: "courier"; 
+}
+
+
 #queryOutput {
   height:60%; 
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
-  font-family: "courier"; 
+  font-family: "courier";
+  text-size: 0.7em !important;  
 }
 
 #queryContent {
@@ -541,6 +548,8 @@ form {
   width:33%; 
 }
 #footerCenter {
+  word-break:keep-all;
+  overflow: visible;
   height:100%; 
   line-height: 20px;
   float:left; 

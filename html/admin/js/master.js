@@ -1233,14 +1233,14 @@ var logTable = $('#logTableID').dataTable({
           $("#queryOutput").append('<pre><font color=green>' + FormatJSON(data.result) + '</font></pre>'); 
         }
         else {
-          $("#queryOutput").append('<font color=green>' + JSON.stringify(data.result) + '</font>'); 
+          $("#queryOutput").append('<a class="querySuccess"><font color=green>' + JSON.stringify(data.result) + '</font></a>'); 
         }
       },
       error: function(data) {
         console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
-        $("#queryOutput").append('<font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font>'); 
+        $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 
       }
     });
   });
