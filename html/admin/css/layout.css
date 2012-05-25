@@ -381,7 +381,7 @@ form {
 
 
 #queryOutput {
-  height:25%; 
+  height:35%; 
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
@@ -390,10 +390,10 @@ form {
 }
 
 #queryContent {
-  height: 60%; 
+  height: 45%; 
   font-family: "courier";
   width: 100%;
-  resize: none; 
+  resize: vertical; 
 }
 
 #avocshWindow {
