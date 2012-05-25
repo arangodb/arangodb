@@ -805,7 +805,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -903,7 +902,6 @@ var logTable = $('#logTableID').dataTable({
         });
       }
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
@@ -971,7 +969,6 @@ var logTable = $('#logTableID').dataTable({
       }
  
       catch(e) {
-        console.log(e); 
         alert("Please make sure the entered value is a valid json string."); 
       }
 
@@ -1199,7 +1196,6 @@ var lastFormatQuestion = true;
        return false;  
     }
     formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
-    console.log(formatQuestion); 
     if (formatQuestion != lastFormatQuestion) {
       if (formatQuestion == true) {
         start_pretty_print();
@@ -1250,7 +1246,6 @@ var lastFormatQuestion = true;
         }
       },
       error: function(data) {
-        console.log(data); 
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
         $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 
@@ -2250,7 +2245,6 @@ $('#submitDocPageInput').live('click', function () {
     }
     
     else { 
-      console.log("out of reach");
       return false; 
     }  
   }
