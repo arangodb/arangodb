@@ -1483,6 +1483,8 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   else if (operator == AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_json_t* list;
 
+    assert(value->_type == TRI_JSON_LIST);
+
     // create a list access 
     fieldAccess->_type = TRI_AQL_ACCESS_LIST;
     fieldAccess->_value._value = value;
@@ -1649,14 +1651,22 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_attribute_name_t* field;
     TRI_aql_node_t* node1;
     TRI_aql_node_t* node2; 
+    TRI_aql_node_type_e operator;
 
-    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
+    if (node->_type == AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != AQL_NODE_LIST) {
+      // in is special
+      return NULL;
+    } 
+    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(rhs)) {
       node1 = lhs;
       node2 = rhs;
+      operator = node->_type;
     }
-    else if (rhs->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
+    else if (rhs->_type == AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(lhs)) {
       node1 = rhs;
       node2 = lhs;
+      operator = TRI_ReverseOperatorRelationalAql(node->_type);
+      assert(operator != AQL_NODE_UNDEFINED);
     }
     else {
       return NULL;
@@ -1672,7 +1682,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     field = GetAttributeName(context, node1);
 
     if (field) {
-      TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, node->_type, node2);
+      TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, operator, node2);
       TRI_vector_pointer_t* result;
 
       TRI_DestroyStringBuffer(&field->_name);
