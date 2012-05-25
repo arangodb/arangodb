@@ -90,7 +90,8 @@ namespace triagens {
                       int port,
                       double requestTimeout,
                       double connectTimeout, 
-                      size_t connectRetries);
+                      size_t connectRetries,
+                      bool warn);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructs a http client
@@ -302,6 +303,7 @@ namespace triagens {
       double _requestTimeout;
       double _connectTimeout;
       size_t _connectRetries;
+      bool _warn;
 
       socket_t _socket;         
 

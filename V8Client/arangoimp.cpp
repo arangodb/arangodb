@@ -64,9 +64,9 @@ using namespace triagens::v8client;
 
 static string DEFAULT_SERVER_NAME = "localhost";
 static int    DEFAULT_SERVER_PORT = 8529;
-static double DEFAULT_REQUEST_TIMEOUT = 10.0;
+static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
 static size_t DEFAULT_RETRIES = 5;
-static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
+static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server address
@@ -85,6 +85,18 @@ V8ClientConnection* clientConnection = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t maxUploadSize = 500000;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connect timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 static string QuoteChar = "\"";
 static string SeparatorChar = ",";
@@ -164,6 +176,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("quote", &QuoteChar, "quote character")
     ("separator", &SeparatorChar, "separator character")
     ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
+    ("connect-timeout", &connectTimeout, "connect timeout in seconds")
+    ("request-timeout", &requestTimeout, "request timeout in seconds")
   ;
 
   vector<string> myargs;
@@ -218,6 +232,17 @@ int main (int argc, char* argv[]) {
   // parse the program options
   ParseProgramOptions(argc, argv);
   
+  // check connection args
+  if (connectTimeout <= 0) {
+    cout << "invalid value for connect-timeout." << endl;
+    return EXIT_FAILURE;
+  }
+
+  if (requestTimeout <= 0) {
+    cout << "invalid value for request-timeout." << endl;
+    return EXIT_FAILURE;
+  }
+    
   // processComandLineArguments(argc, argv);
   if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
     if (ServerAddress.length()) {
@@ -228,10 +253,11 @@ int main (int argc, char* argv[]) {
   clientConnection = new V8ClientConnection(
           DEFAULT_SERVER_NAME, 
           DEFAULT_SERVER_PORT, 
-          DEFAULT_REQUEST_TIMEOUT, 
+          (double) requestTimeout,
           DEFAULT_RETRIES, 
-          DEFAULT_CONNECTION_TIMEOUT);
-  
+          (double) connectTimeout, 
+          true);
+
   if (clientConnection->isConnected()) {
     printf("Connected to Arango DB %s:%d Version %s\n", 
             clientConnection->getHostname().c_str(), 
@@ -239,12 +265,14 @@ int main (int argc, char* argv[]) {
             clientConnection->getVersion().c_str());
 
     cout << "----------------------------------------" << endl;
-    cout << "collection : " << CollectionName << endl;
-    cout << "create     : " << (CreateCollection ? "yes" : "no") << endl;
-    cout << "file       : " << FileName << endl;
-    cout << "type       : " << TypeImport << endl;
-    cout << "quote      : " << QuoteChar << endl;
-    cout << "separator  : " << SeparatorChar << endl;
+    cout << "collection      : " << CollectionName << endl;
+    cout << "create          : " << (CreateCollection ? "yes" : "no") << endl;
+    cout << "file            : " << FileName << endl;
+    cout << "type            : " << TypeImport << endl;
+    cout << "quote           : " << QuoteChar << endl;
+    cout << "separator       : " << SeparatorChar << endl;
+    cout << "connect timeout : " << connectTimeout << endl;
+    cout << "request timeout : " << requestTimeout << endl;
     cout << "----------------------------------------" << endl;
     
     ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
@@ -257,7 +285,7 @@ int main (int argc, char* argv[]) {
       ih.setQuote(QuoteChar[0]);      
     }
     else {
-      cout << "Wrong lenght of quote character." << endl;
+      cout << "Wrong length of quote character." << endl;
       return EXIT_FAILURE;
     }
 
@@ -265,7 +293,7 @@ int main (int argc, char* argv[]) {
       ih.setSeparator(SeparatorChar[0]);      
     }
     else {
-      cout << "Wrong lenght of separator character." << endl;
+      cout << "Wrong length of separator character." << endl;
       return EXIT_FAILURE;
     }
     
