@@ -947,6 +947,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = false; 
         $('#toggleEditedDocButtonText').text('Edit Table'); 
+        $('#addEditedDocRowButton').css('visibility', "hidden"); 
     }
     else {
       try {
@@ -966,6 +967,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = true; 
         $('#toggleEditedDocButtonText').text('Edit Source'); 
+        $('#addEditedDocRowButton').css('visibility', "visible"); 
       }
  
       catch(e) {
@@ -1069,6 +1071,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = false; 
         $('#toggleNewDocButtonText').text('Edit Table'); 
+        $('#addNewDocButton').css('visibility', "hidden"); 
       }
   
       catch(e) {
@@ -1094,8 +1097,8 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentTableView').toggle();
         $('#NewDocumentSourceView').toggle();
         tableView = true; 
-        var img = $(this).find('img'); 
-        img.attr('src', '/_admin/html/media/icons/off_icon16.png');
+        $('#toggleNewDocButtonText').text('Edit Source'); 
+        $('#addNewDocButton').css('visibility', "visible"); 
       }
  
       catch(e) {
