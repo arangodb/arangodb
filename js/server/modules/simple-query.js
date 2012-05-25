@@ -49,8 +49,8 @@ var SQ = require("simple-query-basics");
 SQ.SimpleQueryAll.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
-    if (this._skip == null) {
+  if (this._execution === null) {
+    if (this._skip === null) {
       this._skip = 0;
     }
 
@@ -92,10 +92,10 @@ function ByExample (collection, example, skip, limit) {
     if (example.hasOwnProperty(k)) {
       attributes.push(k);
 
-      if (example[k] == null) {
+      if (example[k] === null) {
         unique = false;
       }
-      else if (k == '_id') {
+      else if (k === '_id') {
         // example contains the document id in attribute "_id"
         documentId = example[k];
         break;
@@ -117,10 +117,10 @@ function ByExample (collection, example, skip, limit) {
 
   var idx = collection.lookupHashIndex.apply(collection, attributes);
 
-  if (idx == null && unique) {
+  if (idx === null && unique) {
     idx = collection.lookupUniqueConstraint.apply(collection, attributes);
 
-    if (idx != null) {
+    if (idx !== null) {
       console.debug("found unique constraint %s", idx.id);
     }
   }
@@ -128,7 +128,7 @@ function ByExample (collection, example, skip, limit) {
     console.debug("found hash index %s", idx.id);
   }
 
-  if (idx != null) {
+  if (idx !== null) {
     // use hash index
     return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
   }
@@ -145,8 +145,8 @@ function ByExample (collection, example, skip, limit) {
 SQ.SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
+  if (this._execution === null) {
+    if (this._skip === null || this._skip <= 0) {
       this._skip = 0;
     }
 
@@ -193,7 +193,7 @@ ArangoCollection.prototype.firstExample = function () {
   var example;
 
   // example is given as only argument
-  if (arguments.length == 1) {
+  if (arguments.length === 1) {
     example = arguments[0];
   }
 
@@ -242,10 +242,10 @@ ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstE
 function RangedQuery (collection, attribute, left, right, type, skip, limit) {
   var idx = collection.lookupSkiplist(attribute);
 
-  if (idx == null) {
+  if (idx === null) {
     idx = collection.lookupUniqueSkiplist(attribute);
 
-    if (idx != null) {
+    if (idx !== null) {
       console.debug("found unique skip-list index %s", idx.id);
     }
   }
@@ -253,13 +253,13 @@ function RangedQuery (collection, attribute, left, right, type, skip, limit) {
     console.debug("found skip-list index %s", idx.id);
   }
 
-  if (idx != null) {
+  if (idx !== null) {
     var cond = {};
 
-    if (type == 0) {
+    if (type === 0) {
       cond[attribute] = [ [ ">=", left ], [ "<", right ] ];
     }
-    else if (type == 1) {
+    else if (type === 1) {
       cond[attribute] = [ [ ">=", left ], [ "<=", right ] ];
     }
     else {
@@ -280,8 +280,8 @@ function RangedQuery (collection, attribute, left, right, type, skip, limit) {
 SQ.SimpleQueryRange.prototype.execute = function () {
   var documents;
 
-  if (this._execution == null) {
-    if (this._skip == null || this._skip <= 0) {
+  if (this._execution === null) {
+    if (this._skip === null) {
       this._skip = 0;
     }
 
@@ -326,8 +326,8 @@ SQ.SimpleQueryNear.prototype.execute = function () {
   var distances;
   var limit;
 
-  if (this._execution == null) {
-    if (this._skip == null) {
+  if (this._execution === null) {
+    if (this._skip === null) {
       this._skip = 0;
     }
 
@@ -338,7 +338,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
       throw err;
     }
 
-    if (this._limit == null) {
+    if (this._limit === null) {
       limit = this._skip + 100;
     }
     else {
@@ -349,7 +349,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
     documents = result.documents;
     distances = result.distances;
 
-    if (this._distance != null) {
+    if (this._distance !== null) {
       for (var i = this._skip;  i < documents.length;  ++i) {
         documents[i][this._distance] = distances[i];
       }
@@ -388,12 +388,12 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
   var distances;
   var limit;
 
-  if (this._execution == null) {
+  if (this._execution === null) {
     result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
     documents = result.documents;
     distances = result.distances;
 
-    if (this._distance != null) {
+    if (this._distance !== null) {
       for (var i = this._skip;  i < documents.length;  ++i) {
         documents[i][this._distance] = distances[i];
       }

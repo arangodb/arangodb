@@ -12,6 +12,7 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
 
+
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -23,9 +24,15 @@ var checkCollectionName;
 var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
+var shArray = []; 
 
 $(document).ready(function() {       
 showCursor();
+
+//hide incomplete functions 
+$("#uploadFile").attr("disabled", "disabled");
+$("#uploadFileImport").attr("disabled", "disabled");
+$("#uploadFileSearch").attr("disabled", "disabled");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
@@ -343,6 +350,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash.substr(0, 12) == "#collection?" ) {
+      $("#addNewDocButton").removeAttr("disabled");
       tableView = true; 
       $('#toggleNewDocButtonText').text('Edit Source'); 
       
@@ -385,6 +393,7 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 14) == "#editDocument?") {
       tableView = true; 
+      $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
       
       $('#documentEditSourceView').hide();
@@ -719,6 +728,9 @@ var logTable = $('#logTableID').dataTable({
         printedHelp = true; 
         start_pretty_print(); 
       }
+      $("#avocshContent").autocomplete({
+        source: shArray
+      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -947,7 +959,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = false; 
         $('#toggleEditedDocButtonText').text('Edit Table'); 
-        $('#addEditedDocRowButton').css('visibility', "hidden"); 
+        $("#addEditedDocRowButton").attr("disabled", "disabled");
     }
     else {
       try {
@@ -967,7 +979,7 @@ var logTable = $('#logTableID').dataTable({
         $('#documentEditSourceView').toggle();
         tableView = true; 
         $('#toggleEditedDocButtonText').text('Edit Source'); 
-        $('#addEditedDocRowButton').css('visibility', "visible"); 
+        $("#addEditedDocRowButton").removeAttr("disabled");
       }
  
       catch(e) {
@@ -1071,7 +1083,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = false; 
         $('#toggleNewDocButtonText').text('Edit Table'); 
-        $('#addNewDocButton').css('visibility', "hidden"); 
+        $("#addNewDocButton").attr("disabled", "disabled");
       }
   
       catch(e) {
@@ -1098,7 +1110,7 @@ var logTable = $('#logTableID').dataTable({
         $('#NewDocumentSourceView').toggle();
         tableView = true; 
         $('#toggleNewDocButtonText').text('Edit Source'); 
-        $('#addNewDocButton').css('visibility', "visible"); 
+        $("#addNewDocButton").removeAttr("disabled");
       }
  
       catch(e) {
@@ -1191,6 +1203,23 @@ var lastFormatQuestion = true;
  $('#submitAvoc').live('click', function () {
     var data = $('#avocshContent').val();
 
+    var r = [ ];
+    for (var i = 0; i < shArray.length; ++i) {
+      if (shArray[i] != data) {
+        r.push(shArray[i]);
+      }
+    }
+
+    shArray = r;
+    if (shArray.length > 4) {
+      shArray.shift();
+    }
+    shArray.push(data);
+   
+    $("#avocshContent").autocomplete({
+      source: shArray
+    });
+
     if (data == "help") {
        data = "help()";
     }
@@ -1210,6 +1239,7 @@ var lastFormatQuestion = true;
       }
     }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
+
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(data);
@@ -1217,8 +1247,6 @@ var lastFormatQuestion = true;
     $("#avocshContent").val('');
     return false; 
   });
-
-
 
   $('#refreshShell').live('click', function () {
     location.reload(); 
@@ -1229,8 +1257,8 @@ var lastFormatQuestion = true;
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#submitQuery').live('click', function () {
-      var data = {query:$('#queryContent').val()};
-      var formattedJSON; 
+    var data = {query:$('#queryContent').val()};
+    var formattedJSON; 
     $.ajax({
       type: "POST",
       url: "/_api/cursor",

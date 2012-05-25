@@ -113,10 +113,16 @@ static JSLoader StartupLoader;
 static JSLoader ActionLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system action loader
+/// @brief allowed client actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static JSLoader SystemActionLoader;
+static set<string> AllowedClientActions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allowed admin actions
+////////////////////////////////////////////////////////////////////////////////
+
+static set<string> AllowedAdminActions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -136,7 +142,7 @@ static JSLoader SystemActionLoader;
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue, "CLIENT", &ActionLoader);
+  return new ActionDispatcherThread(queue, "CLIENT", AllowedClientActions, &ActionLoader);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +150,52 @@ static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* q
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue, "SYSTEM", &SystemActionLoader);
+  return new ActionDispatcherThread(queue, "SYSTEM", AllowedAdminActions, &ActionLoader);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief define "_api" handlers
+////////////////////////////////////////////////////////////////////////////////
+
+static void DefineApiHandlers (HttpHandlerFactory* factory,
+                               ApplicationAdminServer* admin, 
+                               TRI_vocbase_t* vocbase) {
+
+  // add "/version" handler
+  admin->addBasicHandlers(factory, "/_api");
+
+  // add "/document" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
+                            RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+
+  // add "/edge" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
+                            RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+
+  // add import handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
+                            RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief define "admin" handlers
+////////////////////////////////////////////////////////////////////////////////
+
+static void DefineAdminHandlers (HttpHandlerFactory* factory,
+                                 ApplicationAdminServer* admin,
+                                 ApplicationUserManager* user,
+                                 TRI_vocbase_t* vocbase) {
+
+  // add "/version" handler
+  admin->addBasicHandlers(factory, "/_admin");
+
+  // add admin handlers
+  admin->addHandlers(factory, "/_admin");
+  user->addHandlers(factory, "/_admin");
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,9 +232,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _dispatcherThreads(1),
     _startupPath(),
     _startupModules("js/modules"),
-    _actionPath(),
     _systemActionPath(),
-    _actionThreads(1),
+    _actionThreads(8),
     _gcInterval(1000),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
@@ -424,7 +474,6 @@ void ArangoServer::buildApplicationServer () {
   additional["JAVASCRIPT Options:help-admin"]
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
     ("startup.modules-path", &_startupModules, "one or more directories separated by cola")
-    ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
   ;
 
@@ -477,51 +526,12 @@ void ArangoServer::buildApplicationServer () {
     StartupLoader.setDirectory(_startupPath);
   }
 
-  if (_actionPath.empty()) {
-    char* path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
-
-    if (path == 0) {
-      LOGGER_FATAL << "out-of-memory";
-      exit(EXIT_FAILURE);
-    }
-
-    string pathString(path);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
-
-    if (! TRI_IsDirectory(pathString.c_str())) {
-      bool ok = TRI_ExistsFile(pathString.c_str());
-
-      if (ok) {
-        LOGGER_FATAL << "action directory '" << pathString << "' must be a directory";
-        cerr << "action directory '" << pathString << "' must be a directory\n";
-        LOGGER_INFO << "please use the '--database.directory' option";
-        exit(EXIT_FAILURE);
-      }
-
-      ok = TRI_CreateDirectory(pathString.c_str());
-
-      if (! ok) {
-        LOGGER_FATAL << "cannot create action directory '" << pathString << "': " << TRI_last_error();
-        LOGGER_INFO << "please use the '--database.directory' option";
-        exit(EXIT_FAILURE);
-      }
-    }
-
-    ActionLoader.setDirectory(pathString);
-
-    LOGGER_INFO << "using database action files at '" << pathString << "'";
-  }
-  else {
-    ActionLoader.setDirectory(_actionPath);
-    LOGGER_INFO << "using alternate action files at '" << _actionPath << "'";
-  }
-
   if (! _systemActionPath.empty()) {
-    SystemActionLoader.setDirectory(_systemActionPath);
-    LOGGER_INFO << "using system action files at '" << _systemActionPath << "'";
+    ActionLoader.setDirectory(_systemActionPath);
+    LOGGER_INFO << "using action files at '" << _systemActionPath << "'";
   }
   else {
-    LOGGER_INFO << "system actions are disabled, empty system action path";
+    LOGGER_INFO << "actions are disabled, empty system action path";
   }
 
   // .............................................................................
@@ -581,6 +591,10 @@ void ArangoServer::buildApplicationServer () {
 int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
 
+  bool useHttpPort = ! _httpPort.empty();
+  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
+  bool shareAdminPort = useHttpPort && _adminPort.empty();
+
   // .............................................................................
   // open the database
   // .............................................................................
@@ -616,51 +630,50 @@ int ArangoServer::startupServer () {
     _actionThreads = 1;
   }
 
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
+  // if we share a the server port for admin and client, only create a SYSTEM queue
+  if (shareAdminPort) {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
+  }
+
+  // use a separate queue for administrator requests
+  else {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
+
+    if (useAdminPort) {
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
+    }
+  }
 
   // .............................................................................
   // create a http server and http handler factory
   // .............................................................................
 
-  bool useHttpPort = ! _httpPort.empty();
-  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
-  bool shareAdminPort = useHttpPort && _adminPort.empty();
-
   Scheduler* scheduler = _applicationServer->scheduler();
 
-  set<string> allowedQueuesHttp;
-  pair< TRI_vocbase_t*, set<string>* > handlerDataHttp = make_pair(_vocbase, &allowedQueuesHttp);
+  RestActionHandler::action_options_t httpOptions;
+  httpOptions._vocbase = _vocbase;
+  httpOptions._queue = "CLIENT";
 
   if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    allowedQueuesHttp.insert("STANDARD");
-    allowedQueuesHttp.insert("CLIENT");
+    AllowedClientActions.insert("user");
+    AllowedClientActions.insert("api");
 
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
 
-    // add /version URL
-    _applicationAdminServer->addBasicHandlers(factory, "/_api");
-
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
     if (shareAdminPort) {
-      // add /version URL
-      _applicationAdminServer->addBasicHandlers(factory, "/_admin");
-
-      _applicationAdminServer->addHandlers(factory, "/_admin");
-      _applicationUserManager->addHandlers(factory, "/_admin");
-      allowedQueuesHttp.insert("SYSTEM");
+      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+      AllowedClientActions.insert("admin");
     }
 
+    // add action handler
     factory->addPrefixHandler("/", 
-                              RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
-                              (void*) &handlerDataHttp);
+                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                              (void*) &httpOptions);
 
     _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, ports);
   }
@@ -669,36 +682,28 @@ int ArangoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
-  set<string> allowedQueuesAdmin;
-  pair< TRI_vocbase_t*, set<string>* > handlerDataAdmin = make_pair(_vocbase, &allowedQueuesAdmin);
+  RestActionHandler::action_options_t adminOptions;
+  adminOptions._vocbase = _vocbase;
+  adminOptions._queue = "SYSTEM";
 
   if (useAdminPort) {
-    HttpHandlerFactory* adminFactory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    allowedQueuesAdmin.insert("STANDARD");
-    allowedQueuesAdmin.insert("CLIENT");
-    allowedQueuesAdmin.insert("SYSTEM");
+    AllowedAdminActions.insert("api");
+    AllowedAdminActions.insert("admin");
 
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
-    // add /version URL
-    _applicationAdminServer->addBasicHandlers(adminFactory, "/_admin");
-    _applicationAdminServer->addBasicHandlers(adminFactory, "/_api");
+    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
+    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
-    _applicationAdminServer->addHandlers(adminFactory, "/_admin");
-    _applicationUserManager->addHandlers(adminFactory, "/_admin");
+    // add action handler
+    factory->addPrefixHandler("/", 
+                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                              (void*) &adminOptions);
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
-    adminFactory->addPrefixHandler("/", 
-                                   RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
-                                   (void*) &handlerDataAdmin);
-
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH, RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, adminPorts);
   }
 
   // .............................................................................
