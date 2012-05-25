@@ -15,6 +15,10 @@ table.dataTable thead th {
 	*cursor: hand;
 }
 
+#subCenterView table.dataTable thead th {
+  cursor: default !important;  
+}
+
 table.dataTable tfoot th {
 	padding: 3px 10px;
 }
