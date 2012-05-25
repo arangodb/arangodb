@@ -7,7 +7,7 @@ RETURN "this will be returned"
 /* a query that creates the cross products of two lists, and runs a projection on it */
 FOR year in [ 2011, 2012, 2013 ]
   FOR quarter IN [ 1, 2, 3, 4 ]
-    RETURN { "y" : "year", "q" : quarter, "nice" : CONCAT(TOSTRING(quarter), "/", TOSTRING(year)) }
+    RETURN { "y" : "year", "q" : quarter, "nice" : CONCAT(TO_STRING(quarter), "/", TO_STRING(year)) }
 
 [ { "y" : "year", "q" : 1, "nice" : "1/2011" }, 
   { "y" : "year", "q" : 2, "nice" : "2/2011" }, 
