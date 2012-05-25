@@ -25,7 +25,6 @@ var printedHelp = false;
 var open = false;
 var rowCounter = 0; 
 var shArray = []; 
-var quArray = []; 
 
 $(document).ready(function() {       
 showCursor();
@@ -711,9 +710,6 @@ var logTable = $('#logTableID').dataTable({
       $('#queryView').show();
       createnav ("Query"); 
       $('#queryContent').focus();
-      $("#queryContent").autocomplete({
-        source: quArray
-      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1262,21 +1258,7 @@ var lastFormatQuestion = true;
 
   $('#submitQuery').live('click', function () {
     var data = {query:$('#queryContent').val()};
-
-    var r = [ ];
-    for (var i = 0; i < quArray.length; ++i) {
-      if (quArray[i] != data) {
-        r.push(quArray[i]);
-      }
-    }
-
-    quArray = r;
-    if (quArray.length > 4) {
-      quArray.shift();
-    }
-    quArray.push(data);
-
-      var formattedJSON; 
+    var formattedJSON; 
     $.ajax({
       type: "POST",
       url: "/_api/cursor",
