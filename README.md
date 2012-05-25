@@ -20,7 +20,7 @@ Key features include:
 
 For more in-depth information
 
-* read more on the [design goals of ArangoDB](http://www.arangodb.org/2012/03/07/arangodbs-design-objectives)
+* read more on the [design goals of ArangoDB](http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives)
 * [watch the video](http://vimeo.com/36411892) - Martin Schoenert, architect of ArangoDB, gives an introduction of what the ArangoDB project is about.
 * or  give it a try.
 

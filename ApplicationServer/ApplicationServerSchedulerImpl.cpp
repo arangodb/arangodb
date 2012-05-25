@@ -124,7 +124,7 @@ namespace triagens {
       : ApplicationServerImpl(description, version),
         _reportIntervall(60.0),
         _multiSchedulerAllowed(false),
-        _nrSchedulerThreads(1),
+        _nrSchedulerThreads(4),
         _backend(0),
         reuseAddress(true),
         descriptorMinimum(0),
