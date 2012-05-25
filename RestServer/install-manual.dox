@@ -196,14 +196,14 @@
 ///
 /// This will compile the ArangoDB and create a binary of the server in
 ///
-/// @LIT{./arangodb}
+/// @LIT{./arangod}
 ///
 /// @subsection CompilingAIOTest Test
 /////////////////////////////////////
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./arango --server.http-port 12345 /tmp/vocbase}
+/// @LIT{./arangod --server.http-port 12345 /tmp/vocbase}
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to any address. You should see the startup messages
