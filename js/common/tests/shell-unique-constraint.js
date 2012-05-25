@@ -4,9 +4,6 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    console,
     ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +34,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods

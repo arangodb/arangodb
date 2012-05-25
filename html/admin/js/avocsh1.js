@@ -1,3 +1,12 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global module, ModuleCache, $ */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
 ///
@@ -29,6 +38,10 @@
 // --SECTION--                                                            Module
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoShell
 /// @{
@@ -44,23 +57,41 @@ function Module (id) {
   this.definition = null;
 }
 
+var ModuleCache = {};
+var module = ModuleCache["/"] = new Module("/");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalises a path
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.normalise = function (path) {
+  var i;
+  var n;
   var p;
   var q;
   var x;
 
-  if (path == "") {
+  if (path === "") {
     return this.id;
   }
 
   p = path.split('/');
 
   // relative path
-  if (p[0] == "." || p[0] == "..") {
+  if (p[0] === "." || p[0] === "..") {
     q = this.id.split('/');
     q.pop();
     q = q.concat(p);
@@ -74,27 +105,36 @@ Module.prototype.normalise = function (path) {
   // normalize path
   n = [];
 
-  for (var i = 0;  i < q.length;  ++i) {
+  for (i = 0;  i < q.length;  ++i) {
     x = q[i];
 
-    if (x == "") {
-    }
-    else if (x == ".") {
-    }
-    else if (x == "..") {
-      if (n.length == 0) {
+    if (x === "..") {
+      if (n.length === 0) {
         throw "cannot cross module top";
       }
 
       n.pop();
     }
-    else {
+    else if (x !== "" && x !== ".") {
       n.push(x);
     }
   }
 
   return "/" + n.join('/');
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a definition or creates a new module descriptor
@@ -107,7 +147,7 @@ Module.prototype.require = function (path) {
   path = this.normalise(path);
 
   // check if you already know the module, return the exports
-  if (path in ModuleCache) {
+  if (ModuleCache.hasOwnProperty(path)) {
     module = ModuleCache[path];
   }
   else {
@@ -132,7 +172,7 @@ Module.prototype.define = function (path, definition) {
   path = this.normalise(path);
 
   // check if you already know the module, return the exports
-  if (! (path in ModuleCache)) {
+  if (! ModuleCache.hasOwnProperty(path)) {
     ModuleCache[path] = new Module(path);
   }
 
@@ -145,6 +185,10 @@ Module.prototype.define = function (path, definition) {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoConnection
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,11 +204,24 @@ function ArangoConnection () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executs a get request
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.get = function (url) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
@@ -190,7 +247,7 @@ ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.delete = function (url) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
@@ -217,7 +274,7 @@ ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.post = function (url, body) {
-  var msg;
+  var msg = null;
 
   $.ajax({
     async: false, 
@@ -244,7 +301,7 @@ ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.put = function (url, body) {
-  var msg; 
+  var msg = null; 
 
   $.ajax({
     async: false, 
@@ -266,12 +323,27 @@ ArangoConnection.prototype.put = function (url, body) {
 
 ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  global variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global server connection
+////////////////////////////////////////////////////////////////////////////////
+
+var arango = new ArangoConnection();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
+// --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,29 +355,72 @@ ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
 /// @brief module cache
 ////////////////////////////////////////////////////////////////////////////////
 
-var ModuleCache = {};
-var module = new Module("/");
-
-ModuleCache["/"] = module;
 ModuleCache["/internal"] = new Module("/internal");
 
-var internal = ModuleCache["/internal"].exports;
+(function () {
+  var internal = ModuleCache["/internal"].exports;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global server connection
-////////////////////////////////////////////////////////////////////////////////
-
-var arango = new ArangoConnection();
+  internal.start_pager = function() {};
+  internal.stop_pager = function() {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global output buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-var TRI_OutputBuffer = "";
+  internal.browserOutputBuffer = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs text to shell window
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.output = function () {
+    var i;
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      var value = arguments[i];
+      var text;
+
+      if (value === null) {
+        text = "null";
+      }
+      else if (value === undefined) {
+        text = "undefined";
+      }
+      else if (typeof(value) === "object") {
+        try {
+          text = JSON.stringify(value);
+        }
+        catch (err) {
+          text = String(value);
+        }
+      }
+      else {
+        text = String(value);
+      }
+
+      internal.browserOutputBuffer += escapeHTML(text);
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs text to shell window
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.printBrowser = function () {
+    internal.printShell.apply(internal.printShell, arguments);
+
+    // flush buffer
+    $('#avocshWindow').append('<p class="avocshSuccess">'
+                              + internal.browserOutputBuffer
+                              + '</p>'); 
+    internal.browserOutputBuffer = "";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -315,20 +430,6 @@ var TRI_OutputBuffer = "";
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts pager (dummy)
-////////////////////////////////////////////////////////////////////////////////
-
-function SYS_START_PAGER () {
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops pager (dummy)
-////////////////////////////////////////////////////////////////////////////////
-
-function SYS_STOP_PAGER () {
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes HTML
@@ -350,70 +451,7 @@ var escapeHTML = (function() {
                     return function(s) {
                       return s.replace(/[&<>'"\n ]/g, repl); //'
                     };
-                  })(); 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs text to shell window
-////////////////////////////////////////////////////////////////////////////////
-
-function TRI_SYS_OUTPUT () {
-  for (var i = 0;  i < arguments.length;  ++i) {
-    var value = arguments[i];
-    var text;
-
-    if (value === null) {
-      text = "null";
-    }
-    else if (value === undefined) {
-      text = "undefined";
-    }
-    else if (typeof(value) == "object") {
-      try {
-        text = JSON.stringify(value);
-      }
-      catch (err) {
-        text = "" + value;
-      }
-    }
-    else {
-      text = "" + value;
-    }
-
-    TRI_OutputBuffer += escapeHTML(text);
-  }
-
-  return undefined;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs text to shell window
-////////////////////////////////////////////////////////////////////////////////
-
-// must be a variable definition for the browser
-function TRI_PRINT_BROWSER () {
-  for (var i = 0;  i < arguments.length;  ++i) {
-    if (0 < i) {
-      TRI_SYS_OUTPUT(" ");
-    }
-
-    if (typeof(arguments[i]) === "string") {
-      TRI_SYS_OUTPUT(arguments[i]);      
-    } 
-    else {
-      TRI_PRINT(arguments[i], [], "~", [], 0);
-    }
-  }
-
-  TRI_SYS_OUTPUT("\n");
-
-  // flush buffer
-  $('#avocshWindow').append('<p class="avocshSuccess">' + TRI_OutputBuffer + '</p>'); 
-  TRI_OutputBuffer = "";
-
-  return undefined;
-};
-
-print = TRI_PRINT_BROWSER;
+                  }()); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
