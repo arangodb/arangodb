@@ -418,9 +418,11 @@ am_arangoimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	V8Client/arangoimp.$(OBJEXT)
 arangoimp_OBJECTS = $(am_arangoimp_OBJECTS)
 arangoimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
-am__arangoirb_SOURCES_DIST = MRClient/MRubyClientConnection.cpp \
-	MRClient/arangoirb.cpp
-@ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS =  \
+am__arangoirb_SOURCES_DIST = SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	MRClient/MRubyClientConnection.cpp MRClient/arangoirb.cpp
+@ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRClient/MRubyClientConnection.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRClient/arangoirb.$(OBJEXT)
 arangoirb_OBJECTS = $(am_arangoirb_OBJECTS)
@@ -866,6 +868,8 @@ arangosh_SOURCES = \
 ################################################################################
 @ENABLE_MRUBY_TRUE@arangoirb_LDADD = libarango.a $(LIBS)
 @ENABLE_MRUBY_TRUE@arangoirb_SOURCES = \
+@ENABLE_MRUBY_TRUE@	SimpleHttpClient/SimpleHttpClient.cpp \
+@ENABLE_MRUBY_TRUE@	SimpleHttpClient/SimpleHttpResult.cpp \
 @ENABLE_MRUBY_TRUE@	MRClient/MRubyClientConnection.cpp \
 @ENABLE_MRUBY_TRUE@	MRClient/arangoirb.cpp
 

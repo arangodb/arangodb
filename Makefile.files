@@ -248,6 +248,8 @@ if ENABLE_MRUBY
 arangoirb_LDADD = libarango.a $(LIBS)
 
 arangoirb_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
 	MRClient/MRubyClientConnection.cpp \
 	MRClient/arangoirb.cpp
 

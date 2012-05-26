@@ -300,7 +300,8 @@ mrb_value MRubyClientConnection::requestData (int method,
 
         if (js != NULL) {
           // return v8 object
-          v8::Handle<v8::Value> result = TRI_ObjectJson(js);
+          mrb_value result;
+          // mrb_value result = TRI_ObjectJson(js);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
 
           return result;
@@ -320,7 +321,7 @@ mrb_value MRubyClientConnection::requestData (int method,
       mrb_value result;
 
       mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorSym, mrb_false_value());
-      mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_int_value(_httpResult->getHttpReturnCode()));
+      mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_fixnum_value(_httpResult->getHttpReturnCode()));
 
       return result;
     }        
