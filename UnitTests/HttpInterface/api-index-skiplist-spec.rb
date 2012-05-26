@@ -47,7 +47,7 @@ describe ArangoDB do
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
-	doc.parsed_response['errorNum'].should eq(1203)
+	doc.parsed_response['errorNum'].should eq(1210)
       end
     end
   end

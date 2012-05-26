@@ -144,7 +144,7 @@ int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   // .............................................................................
   
   result = TRI_InsertKeyHashArray(hashIndex->hashArray, element, element, false);
-  return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+  return result ? TRI_ERROR_NO_ERROR : TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
 }
 
 
