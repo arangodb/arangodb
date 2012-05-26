@@ -944,7 +944,7 @@ static const struct mrb_data_type MR_ArangoCollection_Type = {
   "ArangoDatabase", MR_ArangoCollection_Free
 };
 
-mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
+mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   char* name;
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t* collection;
@@ -954,7 +954,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
   mrb_get_args(mrb, "s", &name);
 
   if (name == 0) {
-    return exc;
+    return self;
   }
 
   // check 
@@ -962,13 +962,13 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
   printf("using collection '%s'\n", name);
 
   // looking at "mruby.h" I assume that is the way to unwrap the pointer
-  rdata = (struct RData*) mrb_object(exc);
+  rdata = (struct RData*) mrb_object(self);
   vocbase = (TRI_vocbase_t*) rdata->data;
   collection = TRI_FindCollectionByNameVocBase(vocbase, name, false);
 
   if (collection == NULL) {
     printf("unknown collection (TODO raise error)\n");
-    return exc;
+    return self;
   }
   
   return mrb_obj_value(Data_Wrap_Struct(mrb, ArangoCollectionClass, &MR_ArangoCollection_Type, (void*) collection));
