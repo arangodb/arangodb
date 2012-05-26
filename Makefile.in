@@ -3066,9 +3066,11 @@ start-server:
 	@echo "================================================================================"
 	@echo
 
-	@rm -f "$(PIDFILE)"
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)"
+	rm -f "$(PIDFILE)"
+	rm -rf "$(VOCDIR)"
+	mkdir -p "$(VOCDIR)"
+
+	@test -d "$(VOCDIR)"
 
 	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
@@ -3080,7 +3082,6 @@ start-server:
 	curl -sS http://$(VOCHOST):$(VOCPORT)/_api/version
 
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
 	@echo
 
 ################################################################################
@@ -3128,7 +3129,6 @@ unittests-shell-server:
 	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 .PHONY: unittests-shell-server-ahuacatl
@@ -3146,7 +3146,6 @@ unittests-shell-server-ahuacatl:
 	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 .PHONY: unittests-shell-client
@@ -3163,12 +3162,11 @@ unittests-shell-client:
 	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
 
+	while test -f $(PIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 ################################################################################
@@ -3188,10 +3186,11 @@ unittests-http-server:
 	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
+
 	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 -include Makefile.local
