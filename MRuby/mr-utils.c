@@ -326,22 +326,7 @@ void TRI_InitMRUtils (MR_state_t* mrs) {
   // arango exception
   // .............................................................................
 
- mrs->_arangoError = mrb_define_class(&mrs->_mrb, "ArangoError", mrs->_mrb.eStandardError_class);
-
-  /*
-mrb_value
-mrb_obj_ivar_set(mrb_state *mrb, mrb_value self)
-{
-  mrb_value key;
-  mrb_value val;
-  mrb_sym id;
-
-  mrb_get_args(mrb, "oo", &key, &val);
-  id = mrb_to_id(mrb, key);
-  mrb_iv_set(mrb, self, id, val);
-  return val;
-}
-  */
+  mrs->_arangoError = mrb_define_class(&mrs->_mrb, "ArangoError", mrs->_mrb.eStandardError_class);
 
   // .............................................................................
   // json parser and generator
