@@ -41,12 +41,10 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
-
-#include "Variant/VariantArray.h"
-#include "Variant/VariantString.h"
-
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantString.h"
 
 #include "json.h"
 #include "V8/v8-conv.h"
@@ -150,7 +148,9 @@ V8ClientConnection::~V8ClientConnection () {
 /// @brief returns true if it is connected
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isConnected ();
+bool V8ClientConnection::isConnected () {
+  return _connected;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version and build number of the arango server

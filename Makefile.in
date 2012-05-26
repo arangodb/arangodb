@@ -418,8 +418,10 @@ am_arangoimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	V8Client/arangoimp.$(OBJEXT)
 arangoimp_OBJECTS = $(am_arangoimp_OBJECTS)
 arangoimp_DEPENDENCIES = libarango.a $(am__DEPENDENCIES_2)
-am__arangoirb_SOURCES_DIST = MRClient/arangoirb.cpp
+am__arangoirb_SOURCES_DIST = MRClient/MRubyClientConnection.cpp \
+	MRClient/arangoirb.cpp
 @ENABLE_MRUBY_TRUE@am_arangoirb_OBJECTS =  \
+@ENABLE_MRUBY_TRUE@	MRClient/MRubyClientConnection.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRClient/arangoirb.$(OBJEXT)
 arangoirb_OBJECTS = $(am_arangoirb_OBJECTS)
 @ENABLE_MRUBY_TRUE@arangoirb_DEPENDENCIES = libarango.a \
@@ -864,6 +866,7 @@ arangosh_SOURCES = \
 ################################################################################
 @ENABLE_MRUBY_TRUE@arangoirb_LDADD = libarango.a $(LIBS)
 @ENABLE_MRUBY_TRUE@arangoirb_SOURCES = \
+@ENABLE_MRUBY_TRUE@	MRClient/MRubyClientConnection.cpp \
 @ENABLE_MRUBY_TRUE@	MRClient/arangoirb.cpp
 
 
@@ -1950,6 +1953,8 @@ MRClient/$(am__dirstamp):
 MRClient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) MRClient/$(DEPDIR)
 	@: > MRClient/$(DEPDIR)/$(am__dirstamp)
+MRClient/MRubyClientConnection.$(OBJEXT): MRClient/$(am__dirstamp) \
+	MRClient/$(DEPDIR)/$(am__dirstamp)
 MRClient/arangoirb.$(OBJEXT): MRClient/$(am__dirstamp) \
 	MRClient/$(DEPDIR)/$(am__dirstamp)
 arangoirb$(EXEEXT): $(arangoirb_OBJECTS) $(arangoirb_DEPENDENCIES) 
@@ -2069,6 +2074,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
+	-rm -f MRClient/MRubyClientConnection.$(OBJEXT)
 	-rm -f MRClient/arangoirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
 	-rm -f MRuby/MRLoader.$(OBJEXT)
@@ -2302,6 +2308,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/MRubyClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
