@@ -27,63 +27,100 @@
 
 #include "AddressPort.h"
 
-#include <Basics/StringUtils.h>
+#include "Basics/StringUtils.h"
 
 using namespace triagens::basics;
+using namespace triagens::rest;
 
-namespace triagens {
-  namespace rest {
-    AddressPort::AddressPort ()
-      : address("127.0.0.1"),
-        port(0) {
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an empty address / port structure
+////////////////////////////////////////////////////////////////////////////////
 
-    AddressPort::AddressPort (string const& definition) {
-      split(definition);
-    }
+AddressPort::AddressPort ()
+  : _address("127.0.0.1"),
+    _port(0) {
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IP4 or IP6 address / port structure
+////////////////////////////////////////////////////////////////////////////////
 
+AddressPort::AddressPort (string const& definition) {
+  split(definition);
+}
 
-    bool AddressPort::operator== (AddressPort const &that) {
-      return address == that.address && port == that.port;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    bool AddressPort::split (string const& definition) {
-      if (definition.empty()) {
-        return false;
-      }
+bool AddressPort::operator== (AddressPort const &that) {
+  return _address == that._address && _port == that._port;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief splits an address
+////////////////////////////////////////////////////////////////////////////////
+
+bool AddressPort::split (string const& definition) {
+  if (definition.empty()) {
+    return false;
+  }
       
-      if (definition[0] == '[') {
-        // ipv6 address
-        size_t find = definition.find("]:", 1);
-        
-        if (find != string::npos && find + 2 < definition.size()) {
-          address = definition.substr(1, find-1);
-          port = StringUtils::uint32(definition.substr(find+2));
-          return true;
-        }
-        
-      }
+  if (definition[0] == '[') {
 
-      int n = StringUtils::numEntries(definition, ":");
+    // ipv6 address
+    size_t find = definition.find("]:", 1);
+        
+    if (find != string::npos && find + 2 < definition.size()) {
+      _address = definition.substr(1, find-1);
+      _port = StringUtils::uint32(definition.substr(find+2));
 
-      if (n == 1) {
-        address = "";
-        port = StringUtils::uint32(definition);
-        return true;
-      }
-      else if (n == 2) {
-        address = StringUtils::entry(1, definition, ":");
-        port = StringUtils::int32(StringUtils::entry(2, definition, ":"));
-        return true;
-      }
-      else {
-        return false;
-      }
+      return true;
     }
   }
+
+  int n = StringUtils::numEntries(definition, ":");
+
+  if (n == 1) {
+    _address = "";
+    _port = StringUtils::uint32(definition);
+
+    return true;
+  }
+  else if (n == 2) {
+    _address = StringUtils::entry(1, definition, ":");
+    _port = StringUtils::int32(StringUtils::entry(2, definition, ":"));
+
+    return true;
+  }
+  else {
+    return false;
+  }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

@@ -42,6 +42,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
+#include "Rest/AddressPort.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -59,6 +60,7 @@
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::arango;
@@ -69,7 +71,7 @@ using namespace triagens::arango;
 #include "js/client/js-client.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,53 +83,79 @@ using namespace triagens::arango;
 /// @brief connection default values
 ////////////////////////////////////////////////////////////////////////////////
 
-static string DEFAULT_SERVER_NAME = "localhost";
-static int    DEFAULT_SERVER_PORT = 8529;
-static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t DEFAULT_RETRIES = 5;
-static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
+static string const  DEFAULT_SERVER_NAME = "127.0.0.1";
+static int const     DEFAULT_SERVER_PORT = 8529;
+static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
+static size_t const  DEFAULT_RETRIES = 5;
+static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief quite start
+/// @brief colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Quite = false;
+static char const DEF_RED[6]         = "\x1b[31m";
+static char const DEF_BOLD_RED[8]    = "\x1b[1;31m";
+static char const DEF_GREEN[6]       = "\x1b[32m";
+static char const DEF_BOLD_GREEN[8]  = "\x1b[1;32m";
+static char const DEF_BLUE[6]        = "\x1b[34m";
+static char const DEF_BOLD_BLUE[8]   = "\x1b[1;34m";
+static char const DEF_YELLOW[8]      = "\x1b[1;33m";
+static char const DEF_WHITE[6]       = "\x1b[37m";
+static char const DEF_BOLD_WHITE[8]  = "\x1b[1;37m";
+static char const DEF_BLACK[6]       = "\x1b[30m";
+static char const DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
+static char const DEF_BLINK[5]       = "\x1b[5m";
+static char const DEF_BRIGHT[5]      = "\x1b[1m";
+static char const DEF_RESET[5]       = "\x1b[0m";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path for JavaScript bootstrap files
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-static string StartupPath = "";
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path for JavaScript modules files
+/// @addtogroup V8Shell
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-static string StartupModules = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startup JavaScript files
-////////////////////////////////////////////////////////////////////////////////
-
-static JSLoader StartupLoader;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server address
-////////////////////////////////////////////////////////////////////////////////
-
-static string ServerAddress = "127.0.0.1:8529";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* clientConnection = 0;
+V8ClientConnection* ClientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief object template for the initial connection
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connect timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief max size body size (used for imports)
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t MaxUploadSize = 500000;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable auto completion
+////////////////////////////////////////////////////////////////////////////////
+
+static bool NoAutoComplete = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deactivate colors
+////////////////////////////////////////////////////////////////////////////////
+
+static bool NoColors = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the output pager
@@ -142,28 +170,58 @@ static string OutputPager = "less -X -R -F -L";
 static FILE *PAGER = stdout;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use pager
-////////////////////////////////////////////////////////////////////////////////
-
-static bool usePager = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deactivate colors
-////////////////////////////////////////////////////////////////////////////////
-
-static bool noColors = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use pretty print
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool prettyPrint = false;
+static bool PrettyPrint = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disable auto completion
+/// @brief quite start
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool noAutoComplete = false;
+static bool Quite = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server address and port
+////////////////////////////////////////////////////////////////////////////////
+
+static string ServerAddressPort = DEFAULT_SERVER_NAME + ":" + StringUtils::itoa(DEFAULT_SERVER_PORT);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server address
+////////////////////////////////////////////////////////////////////////////////
+
+static string ServerAddress = DEFAULT_SERVER_NAME;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server port
+////////////////////////////////////////////////////////////////////////////////
+
+static int ServerPort = DEFAULT_SERVER_PORT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup JavaScript files
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader StartupLoader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for JavaScript modules files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupModules = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for JavaScript bootstrap files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupPath = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit file test cases
@@ -172,34 +230,10 @@ static bool noAutoComplete = false;
 static vector<string> UnitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief regex for double values
+/// @brief use pager
 ////////////////////////////////////////////////////////////////////////////////
 
-regex_t doubleRegex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief regex for integer values
-////////////////////////////////////////////////////////////////////////////////
-
-regex_t intRegex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief max size body size (used for imports)
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t maxUploadSize = 500000;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connect timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static bool UsePager = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -258,11 +292,11 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
-  if (usePager) {
+  if (UsePager) {
     internalPrint("Using pager already.\n");        
   }
   else {
-    usePager = true;
+    UsePager = true;
     internalPrint("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
   }
   return v8::Undefined();
@@ -273,13 +307,13 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
-  if (usePager) {
+  if (UsePager) {
     internalPrint("Stopping pager.\n");
   }
   else {
     internalPrint("Pager not running.\n");    
   }
-  usePager = false;
+  UsePager = false;
   return v8::Undefined();
 }
 
@@ -360,7 +394,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
+  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -422,7 +456,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
   
-  ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
+  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
   
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -456,7 +490,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartPager () {
-  if (!usePager || OutputPager == "" || OutputPager == "stdout") {
+  if (!UsePager || OutputPager == "" || OutputPager == "stdout") {
     PAGER= stdout;
     return;
   }
@@ -464,7 +498,7 @@ static void StartPager () {
   if (!(PAGER = popen(OutputPager.c_str(), "w"))) {
     printf("popen() failed! defaulting PAGER to stdout!\n");
     PAGER= stdout;
-    usePager = false;
+    UsePager = false;
   }
 }
 
@@ -476,44 +510,6 @@ static void StopPager ()
 {
   if (PAGER != stdout) {
     pclose(PAGER);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief splits the address
-////////////////////////////////////////////////////////////////////////////////
-
-static bool splitServerAdress (string const& definition, string& address, int& port) {
-  if (definition.empty()) {
-    return false;
-  }
-
-  if (definition[0] == '[') {
-    // ipv6 address
-    size_t find = definition.find("]:", 1);
-
-    if (find != string::npos && find + 2 < definition.size()) {
-      address = definition.substr(1, find - 1);
-      port = triagens::basics::StringUtils::uint32(definition.substr(find + 2));
-      return true;
-    }
-
-  }
-
-  int n = triagens::basics::StringUtils::numEntries(definition, ":");
-
-  if (n == 1) {
-    address = "";
-    port = triagens::basics::StringUtils::uint32(definition);
-    return true;
-  }
-  else if (n == 2) {
-    address = triagens::basics::StringUtils::entry(1, definition, ":");
-    port = triagens::basics::StringUtils::int32(triagens::basics::StringUtils::entry(2, definition, ":"));
-    return true;
-  }
-  else {
-    return false;
   }
 }
 
@@ -538,7 +534,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("quite,s", "no banner")
     ("log.level,l", &level,  "log level")
-    ("server", &ServerAddress, "server address and port")
+    ("server", &ServerAddressPort, "server address and port")
     ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
     ("pager", &OutputPager, "output pager")
@@ -546,10 +542,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("pretty-print", "pretty print values")          
     ("no-colors", "deactivate color support")
     ("no-auto-complete", "disable auto completion")
-    ("connect-timeout", &connectTimeout, "connect timeout in seconds")
-    ("request-timeout", &requestTimeout, "request timeout in seconds")
+    ("connect-timeout", &ConnectTimeout, "connect timeout in seconds")
+    ("request-timeout", &RequestTimeout, "request timeout in seconds")
     ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
-    ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
+    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
     (hidden, true)
   ;
 
@@ -574,31 +570,31 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // set colors
   if (options.has("colors")) {
-    noColors = false;
+    NoColors = false;
   }
 
   if (options.has("no-colors")) {
-    noColors = true;
+    NoColors = true;
   }
 
   if (options.has("auto-complete")) {
-    noAutoComplete = false;
+    NoAutoComplete = false;
   }
 
   if (options.has("no-auto-complete")) {
-    noAutoComplete = true;
+    NoAutoComplete = true;
   }
 
   if (options.has("pretty-print")) {
-    prettyPrint = true;
+    PrettyPrint = true;
   }
 
   if (options.has("no-pretty-print")) {
-    prettyPrint = false;
+    PrettyPrint = false;
   }
 
   if (options.has("use-pager")) {
-    usePager = true;
+    UsePager = true;
   }
 
   if (options.has("quite")) {
@@ -623,7 +619,6 @@ static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) 
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection class
@@ -661,21 +656,28 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
 static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  string server = DEFAULT_SERVER_NAME;
-  int    port = DEFAULT_SERVER_PORT;
+  string server = ServerAddress;
+  int port = ServerPort;
   size_t retries = DEFAULT_RETRIES;
   
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
     
-    if (!splitServerAdress(definition, server, port)) {
+    AddressPort ap;
+
+    if (! ap.split(definition)) {
       string errorMessage = "error in '" + definition + "'";
       return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
     }    
-    
+
+    if (! ap._address.empty()) {
+      server = ap._address;
+    }
+
+    port = ap._port;
   }
   
-  V8ClientConnection* connection = new V8ClientConnection(server, port, (double) requestTimeout, retries, (double) connectTimeout, false);
+  V8ClientConnection* connection = new V8ClientConnection(server, port, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
   
   if (connection->isConnected()) {
     printf("Connected to Arango DB %s:%d Version %s\n", 
@@ -715,6 +717,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
 
   // check header fields
   map<string, string> headerFields;
+
   if (argv.Length() > 1) {
     objectToMap(headerFields, argv[1]);
   }
@@ -898,17 +901,17 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   }
   
   string result = "[object ArangoConnection:" 
-          + connection->getHostname()
-          + ":"
-          + triagens::basics::StringUtils::itoa(connection->getPort())
-          + ","
-          + connection->getVersion();
+                + connection->getHostname()
+                + ":"
+                + triagens::basics::StringUtils::itoa(connection->getPort());
           
   if (connection->isConnected()) {
-    result += ",connected]";
+    result += ","
+            + connection->getVersion()
+            + ",connected]";
   }
   else {
-    result += "]";    
+    result += ",unconnected]";    
   }
   
   return scope.Close(v8::String::New(result.c_str()));
@@ -950,7 +953,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   V8LineEditor* console = new V8LineEditor(context, ".arangosh");
 
-  console->open(!noAutoComplete);
+  console->open(!NoAutoComplete);
 
   while (true) {
     while (! v8::V8::IdleNotification()) {
@@ -997,11 +1000,11 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   console->close();
 
-  if (! Quite) {
-    printf("\nBye Bye! Auf Wiedersehen!\n");
+  if (Quite) {
+    printf("\n");
   }
   else {
-    printf("\n");
+    printf("\nBye Bye! Auf Wiedersehen!\n");
   }
 }
 
@@ -1046,21 +1049,6 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
-static char DEF_RED[6]         = "\x1b[31m";
-static char DEF_BOLD_RED[8]    = "\x1b[1;31m";
-static char DEF_GREEN[6]       = "\x1b[32m";
-static char DEF_BOLD_GREEN[8]  = "\x1b[1;32m";
-static char DEF_BLUE[6]        = "\x1b[34m";
-static char DEF_BOLD_BLUE[8]   = "\x1b[1;34m";
-static char DEF_YELLOW[8]      = "\x1b[1;33m";
-static char DEF_WHITE[6]       = "\x1b[37m";
-static char DEF_BOLD_WHITE[8]  = "\x1b[1;37m";
-static char DEF_BLACK[6]       = "\x1b[30m";
-static char DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
-static char DEF_BLINK[5]       = "\x1b[5m";
-static char DEF_BRIGHT[5]      = "\x1b[1m";
-static char DEF_RESET[5]       = "\x1b[0m";
-
 static void addColors (v8::Handle<v8::Context> context) {  
   context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5),
                          v8::ReadOnly);
@@ -1088,7 +1076,7 @@ static void addColors (v8::Handle<v8::Context> context) {
                          v8::ReadOnly);
   context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BRIGHT, 4),
                          v8::ReadOnly);
-  if (!noColors) {
+  if (!NoColors) {
     context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
   }
   context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4),
@@ -1163,19 +1151,58 @@ int main (int argc, char* argv[]) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
 
+  // .............................................................................
   // parse the program options
+  // .............................................................................
+
   ParseProgramOptions(argc, argv);
   
   // check connection args
-  if (connectTimeout <= 0) {
+  if (ConnectTimeout <= 0) {
     cout << "invalid value for connect-timeout." << endl;
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
   }
 
-  if (requestTimeout <= 0) {
+  if (RequestTimeout <= 0) {
     cout << "invalid value for request-timeout." << endl;
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
   }
+
+  // .............................................................................
+  // set-up client connection
+  // .............................................................................
+
+  // check if we want to connect to a server
+  bool useServer = (ServerAddressPort != "none");
+
+  if (useServer) {
+    AddressPort ap;
+
+    if (! ap.split(ServerAddressPort)) {
+      if (! ServerAddress.empty()) {
+        printf("Could not split %s.\n", ServerAddress.c_str());
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    if (! ap._address.empty()) {
+      ServerAddress = ap._address;
+    }
+
+    ServerPort = ap._port;
+    
+    ClientConnection = new V8ClientConnection(
+      ServerAddress, 
+      ServerPort, 
+      (double) RequestTimeout,
+      DEFAULT_RETRIES, 
+      (double) ConnectTimeout,
+      false);
+  }
+  
+  // .............................................................................
+  // set-up V8 objects
+  // .............................................................................
 
   v8::HandleScope handle_scope;
 
@@ -1202,26 +1229,12 @@ int main (int argc, char* argv[]) {
   
   TRI_InitV8Shell(context);
 
-  // check if we want to connect to a server
-  bool useServer = (ServerAddress != "none");
-
-  if (useServer) {
-    if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-      if (ServerAddress.length()) {
-        printf("Could not split %s.\n", ServerAddress.c_str());                  
-      }
-    }
-        
-    
-    clientConnection = new V8ClientConnection(
-      DEFAULT_SERVER_NAME, 
-      DEFAULT_SERVER_PORT, 
-      (double) requestTimeout,
-      DEFAULT_RETRIES, 
-      (double) connectTimeout,
-      false);
-  }
+  // set pretty print default: (used in print.js)
+  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(PrettyPrint));
   
+  // add colors for print.js
+  addColors(context);
+
   // .............................................................................
   // define ArangoConnection class
   // .............................................................................  
@@ -1248,6 +1261,11 @@ int main (int argc, char* argv[]) {
     
     context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());    
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
+
+    // add the client connection to the context:
+    context->Global()->Set(v8::String::New("arango"), 
+                           wrapV8ClientConnection(ClientConnection),
+                           v8::ReadOnly);
   }
     
   context->Global()->Set(v8::String::New("SYS_START_PAGER"),
@@ -1265,13 +1283,17 @@ int main (int argc, char* argv[]) {
                          v8::ReadOnly);
   
   
+  // .............................................................................
+  // banner
+  // .............................................................................  
+
   // http://www.network-science.de/ascii/   Font: ogre
   if (! Quite) {
     char const* g = DEF_GREEN;
     char const* r = DEF_RED;
     char const* z = DEF_RESET;
 
-    if (noColors) {
+    if (NoColors) {
       g = "";
       r = "";
       z = "";
@@ -1300,41 +1322,33 @@ int main (int argc, char* argv[]) {
     printf("\n");
 
     // set up output
-    if (usePager) {
+    if (UsePager) {
       printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
     }
 
-    if (prettyPrint) {
+    if (PrettyPrint) {
       printf("Pretty print values.\n");    
     }
-  }
 
-  // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(prettyPrint));
-  
-  // add colors for print.js
-  addColors(context);
-
-  // set up connection
-  if (useServer) {
-    if (clientConnection->isConnected()) {
-      if (! Quite) {
-        printf("Connected to Arango DB %s:%d Version %s\n", 
-               clientConnection->getHostname().c_str(), 
-               clientConnection->getPort(), 
-               clientConnection->getVersion().c_str());
+    if (useServer) {
+      if (ClientConnection->isConnected()) {
+        if (! Quite) {
+          printf("Connected to Arango DB %s:%d Version %s\n", 
+                 ClientConnection->getHostname().c_str(), 
+                 ClientConnection->getPort(), 
+                 ClientConnection->getVersion().c_str());
+        }
       }
-
-      // add the client connection to the context:
-      context->Global()->Set(v8::String::New("arango"), 
-                           wrapV8ClientConnection(clientConnection),
-                           v8::ReadOnly);
-    }
-    else {
-      printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);
-      printf("Error message '%s'\n", clientConnection->getErrorMessage().c_str());
+      else {
+        printf("Could not connect to server %s:%d\n", ServerAddress.c_str(), ServerPort);
+        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+      }
     }
   }
+
+  // .............................................................................
+  // read files
+  // .............................................................................
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
@@ -1371,12 +1385,18 @@ int main (int argc, char* argv[]) {
     }
   }
   
+  // .............................................................................
   // run normal shell
+  // .............................................................................
+
   if (UnitTests.empty()) {
     RunShell(context);
   }
 
+  // .............................................................................
   // run unit tests
+  // .............................................................................
+
   else {
     bool ok = RunUnitTests(context);
     
@@ -1385,7 +1405,10 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  // .............................................................................
   // cleanup
+  // .............................................................................
+
   context->Exit();
   context.Dispose();
 

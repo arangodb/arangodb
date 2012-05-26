@@ -182,8 +182,8 @@ namespace triagens {
         AddressPort ap = addresses[0];
         addresses.pop_front();
 
-        string bindAddress = ap.address;
-        int port = ap.port;
+        string bindAddress = ap._address;
+        int port = ap._port;
 
         bool result;
 
