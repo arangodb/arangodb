@@ -40,11 +40,12 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
+
 #include <v8.h>
 
-#include <string>
-#include <map>
-#include <sstream>
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace httpclient {
@@ -52,6 +53,15 @@ namespace triagens {
     class SimpleHttpResult;
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          class V8ClientConnection
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -61,170 +71,264 @@ namespace triagens {
   namespace v8client {
 
     class V8ClientConnection {
-    private:
-      V8ClientConnection (V8ClientConnection const&);
-      V8ClientConnection& operator= (V8ClientConnection const&);
+      private:
+        V8ClientConnection (V8ClientConnection const&);
+        V8ClientConnection& operator= (V8ClientConnection const&);
 
-    public:
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief constructor
-      ///
-      /// @param string hostname            server hostname
-      /// @param int port                   server port
-      /// @param double requestTimeout      timeout in seconds for one request
-      /// @param size_t retries             maximum number of request retries
-      /// @param double connTimeout         timeout in seconds for the tcp connect 
-      ///
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-      V8ClientConnection (const string& hostname, 
-                        int port, 
-                        double requestTimeout,
-                        size_t retries,
-                        double connectionTimeout,
-                        bool warn);
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief destructor
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-      ~V8ClientConnection ();
+      public:
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if it is connected
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+///
+/// @param string hostname            server hostname
+/// @param int port                   server port
+/// @param double requestTimeout      timeout in seconds for one request
+/// @param size_t retries             maximum number of request retries
+/// @param double connTimeout         timeout in seconds for the tcp connect 
+////////////////////////////////////////////////////////////////////////////////
 
-      bool isConnected () {
-        return _connected;
-      }
+        V8ClientConnection (const string& hostname, 
+                            int port, 
+                            double requestTimeout,
+                            size_t retries,
+                            double connectionTimeout,
+                            bool warn);
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the version and build number of the arango server
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
-      const string& getVersion () {
-        return _version;
-      }
+        ~V8ClientConnection ();
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief do a "GET" request
-      ///
-      /// @param string location                     the request location
-      /// @param map<string, string> headerFields    additional header fields
-      ///
-      /// @return v8::Value                          a V8 JavaScript object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> getData (std::string const& location, map<string, string> const& headerFields);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief do a "DELETE" request
-      ///
-      /// @param string location                     the request location
-      /// @param map<string, string> headerFields    additional header fields
-      ///
-      /// @return v8::Value                          a V8 JavaScript object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> deleteData (std::string const& location, map<string, string> const& headerFields);
+      public:
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief do a "HEAD" request
-      ///
-      /// @param string location                     the request location
-      /// @param map<string, string> headerFields    additional header fields
-      ///
-      /// @return v8::Value                          a V8 JavaScript object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if it is connected
+////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> headData (std::string const& location, map<string, string> const& headerFields);
+        bool isConnected ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the version and build number of the arango server
+////////////////////////////////////////////////////////////////////////////////
+
+        const string& getVersion ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the last http return code
+///
+/// @return int          the code
+////////////////////////////////////////////////////////////////////////////////
+
+        int getLastHttpReturnCode ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the last error message
+///
+/// @return string          the error message
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string& getErrorMessage ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the hostname 
+///
+/// @return string          the server name
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string& getHostname ();
       
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief do a "POST" request
-      ///
-      /// @param string location                     the request location
-      /// @param string body                         the request body
-      /// @param map<string, string> headerFields    additional header fields
-      ///
-      /// @return v8::Value                          a V8 JavaScript object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the port
+///
+/// @return string          the server port
+////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> postData (std::string const& location, std::string const& body, map<string, string> const& headerFields);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief do a "PUT" request
-      ///
-      /// @param string location                     the request location
-      /// @param string body                         the request body
-      /// @param map<string, string> headerFields    additional header fields
-      ///
-      /// @return v8::Value                          a V8 JavaScript object
-      ////////////////////////////////////////////////////////////////////////////////
-
-      v8::Handle<v8::Value> putData (std::string const& location, std::string const& body, map<string, string> const& headerFields);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the last http return code
-      ///
-      /// @return int          the code
-      ////////////////////////////////////////////////////////////////////////////////
-
-      int getLastHttpReturnCode () {
-        return _lastHttpReturnCode;
-      }
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the last error message
-      ///
-      /// @return string          the error message
-      ////////////////////////////////////////////////////////////////////////////////
-
-      const std::string& getErrorMessage () {
-        return _lastErrorMessage;
-      }
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the hostname 
-      ///
-      /// @return string          the server name
-      ////////////////////////////////////////////////////////////////////////////////
-
-      const std::string& getHostname ();
+        int getPort ();
       
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the port
-      ///
-      /// @return string          the server port
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      int getPort ();
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the simple http client
-      ///
-      /// @return triagens::httpclient::SimpleHttpClient*    then client connection
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the simple http client
+///
+/// @return triagens::httpclient::SimpleHttpClient*    then client connection
+////////////////////////////////////////////////////////////////////////////////
             
-      triagens::httpclient::SimpleHttpClient* getHttpClient() {
-        return _client;
-      }
+        triagens::httpclient::SimpleHttpClient* getHttpClient();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "GET" request
+///
+/// @param string location                     the request location
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> getData (std::string const& location,
+                                       map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "DELETE" request
+///
+/// @param string location                     the request location
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> deleteData (std::string const& location,
+                                          map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "HEAD" request
+///
+/// @param string location                     the request location
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> headData (std::string const& location,
+                                        map<string, string> const& headerFields);
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "POST" request
+///
+/// @param string location                     the request location
+/// @param string body                         the request body
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> postData (std::string const& location,
+                                        std::string const& body,
+                                        map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "PUT" request
+///
+/// @param string location                     the request location
+/// @param string body                         the request body
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> putData (std::string const& location,
+                                       std::string const& body,
+                                       map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ClientConnection
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
     private:
       
-      v8::Handle<v8::Value> requestData (int method, std::string const& location, std::string const& body, map<string, string> const& headerFields);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executs a request
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Handle<v8::Value> requestData (int method, 
+                                         std::string const& location,
+                                         std::string const& body,
+                                         map<string, string> const& headerFields);
       
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ClientConnection
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
     private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server version
+////////////////////////////////////////////////////////////////////////////////
+
       std::string _version;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection status
+////////////////////////////////////////////////////////////////////////////////
+
       bool _connected;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last http return code
+////////////////////////////////////////////////////////////////////////////////
+
       int _lastHttpReturnCode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last error message
+////////////////////////////////////////////////////////////////////////////////
+
       std::string _lastErrorMessage;
       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief underlying client
+////////////////////////////////////////////////////////////////////////////////
+
       triagens::httpclient::SimpleHttpClient* _client;
       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last result
+////////////////////////////////////////////////////////////////////////////////
+
       triagens::httpclient::SimpleHttpResult* _httpResult;
     };
   }
 }
-#endif	/* HTTPCLIENT_H */
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
