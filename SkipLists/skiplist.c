@@ -679,11 +679,13 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, b
       // .......................................................................    
       if (compareResult == 0) {
         TRI_FreeSkipListNode(&(skiplist->_base), newNode);
+
         if (overwrite) {
           j = IndexStaticCopyElementElement(&(skiplist->_base), &(nextNode->_element), element);
           return j;
         }
-        return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+
+        return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
       }
       
       // .......................................................................    
