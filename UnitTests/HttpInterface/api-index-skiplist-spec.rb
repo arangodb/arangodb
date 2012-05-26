@@ -11,7 +11,7 @@ describe ArangoDB do
 ## unique constraints during create
 ################################################################################
 
-  context "creating index:" do
+  context "creating skip-list index:" do
     context "dealing with unique constraints violation:" do
       before do
 	@cn = "UnitTestsCollectionIndexes"
