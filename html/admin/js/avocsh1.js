@@ -228,12 +228,18 @@ ArangoConnection.prototype.get = function (url) {
     type: "GET",
     url: url, 
     contentType: "application/json",
+    dataType: "json",
     processData: false, 
     success: function(data) {
       msg = data;
     },
     error: function(data) {
-      msg = data; 
+      try {
+        msg = JSON.parse(data.responseText);
+      }
+      catch (err) {
+        msg = data.responseText;
+      }
     }
   });
 
@@ -254,12 +260,18 @@ ArangoConnection.prototype.delete = function (url) {
     type: "DELETE",
     url: url, 
     contentType: "application/json",
+    dataType: "json",
     processData: false, 
     success: function(data) {
       msg = data;
     },
     error: function(data) {
-      msg = data;
+      try {
+        msg = JSON.parse(data.responseText);
+      }
+      catch (err) {
+        msg = data.responseText;
+      }
     }
   });
 
@@ -282,12 +294,18 @@ ArangoConnection.prototype.post = function (url, body) {
     url: url, 
     data: body, 
     contentType: "application/json",
+    dataType: "json",
     processData: false, 
     success: function(data) {
       msg = data;
     },
     error: function(data) {
-      msg = data;
+      try {
+        msg = JSON.parse(data.responseText);
+      }
+      catch (err) {
+        msg = data.responseText;
+      }
     }
   });
 
@@ -309,12 +327,18 @@ ArangoConnection.prototype.put = function (url, body) {
     url: url, 
     data: body, 
     contentType: "application/json",
+    dataType: "json",
     processData: false, 
     success: function(data) {
       msg = data;
     },
     error: function(data) {
-      msg = data;
+      try {
+        msg = JSON.parse(data.responseText);
+      }
+      catch (err) {
+        msg = data.responseText;
+      }
     }
   });
 
