@@ -766,7 +766,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeShell (operation_mode_e mode) {
+int ArangoServer::executeShell (shell_operation_mode_e mode) {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
