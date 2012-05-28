@@ -93,6 +93,32 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type name of a scope
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_DEBUG_AQL
+static char* ScopeTypeName (const TRI_aql_codegen_scope_e type) {
+  switch (type) {
+    case TRI_AQL_SCOPE_MAIN:
+      return "main";
+    case TRI_AQL_SCOPE_SUBQUERY:
+      return "subquery";
+    case TRI_AQL_SCOPE_FOR:
+      return "for";
+    case TRI_AQL_SCOPE_FOR_NESTED:
+      return "for (nested)";
+    case TRI_AQL_SCOPE_FUNCTION:
+      return "function";
+    case TRI_AQL_SCOPE_EXPAND:
+      return "expand";
+    default:
+      assert(false);
+      return NULL;
+  }
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next register number
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -383,7 +409,7 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
 static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator, 
                                               const TRI_aql_codegen_scope_e requestedType) {
   TRI_aql_codegen_scope_t* scope;
- 
+
   // we're only interested in TRI_AQL_SCOPE_FOR 
   if (requestedType != TRI_AQL_SCOPE_FOR) {
     return requestedType;
@@ -392,7 +418,7 @@ static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const genera
   scope = CurrentScope(generator);
 
   // if we are in a TRI_AQL_SCOPE_FOR scope, we'll return TRI_AQL_SCOPE_FOR_NESTED 
-  if (scope->_type == TRI_AQL_SCOPE_FOR) {
+  if (scope->_type == TRI_AQL_SCOPE_FOR || scope->_type == TRI_AQL_SCOPE_FOR_NESTED) {
     return TRI_AQL_SCOPE_FOR_NESTED;
   }
 
@@ -444,6 +470,8 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
 #ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, scope->_name);
+  ScopeOutput(generator, ", type ");
+  ScopeOutput(generator, ScopeTypeName(scope->_type));
   ScopeOutput(generator, ") */\n");
 #endif
 }
