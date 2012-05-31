@@ -1598,7 +1598,7 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
 
-  // register might have changed
+  // the register might have changed
   scopeRegister = CurrentScope(generator)->_resultRegister;
   EndScope(generator);
 
