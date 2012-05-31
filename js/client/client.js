@@ -340,7 +340,7 @@ function stop_color_print () {
 
 function help () {
   var internal = require("internal");
-  var client = require("argonsh");
+  var client = require("arangosh");
 
   internal.print(client.HELP);
   internal.print(client.helpQueries);
