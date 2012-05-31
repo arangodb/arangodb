@@ -1221,8 +1221,9 @@ var lastFormatQuestion = true;
     });
 
     if (data == "help") {
-       data = "help()";
+       data = require("arangosh").HELP;
     }
+
     if (data == "exit") {
        location.reload();
        return false;  
@@ -1239,7 +1240,6 @@ var lastFormatQuestion = true;
       }
     }
     var client = "arangosh> " + escapeHTML(data) + "<br>";
-
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(data);
