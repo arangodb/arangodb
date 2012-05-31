@@ -1302,7 +1302,7 @@ static string JS_server_ahuacatl =
   "\n"
   "function AHUACATL_STRING_CONTAINS (value, search) {\n"
   "  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, \"CONTAINS\");\n"
-  "  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_STRING, \"CONTAINS\");\n"
+  "  AHUACATL_ARG_CHECK(search, AHUACATL_TYPEWEIGHT_STRING, \"CONTAINS\");\n"
   "\n"
   "  return value.indexOf(search) != -1;\n"
   "}\n"

@@ -118,6 +118,48 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test require function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testContainsFirst : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS(\"test\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS(\"test\", \"test2\", \"test3\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS(null, null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS(4, 4)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS({ }, { })"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS([ ], [ ])"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS( null, \"yes\""); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN CONTAINS(3, null"); } ));
+    },
+    testContainsTrue1 : function () {
+      var expected = [false];  
+      var actual = getQueryResults("RETURN CONTAINS(\"test\", \"test2\")", true);
+      assertEqual(expected, actual);
+    },
+    testContainsTrue2 : function () {
+      var expected = [true];  
+      var actual = getQueryResults("RETURN CONTAINS(\"test2\", \"test\")", true);
+      assertEqual(expected, actual);
+    },
+    testContainsTrue3 : function () {
+      var expected = [true];  
+      var actual = getQueryResults("RETURN CONTAINS(\"xxasdxx\", \"asd\")", true);
+      assertEqual(expected, actual);
+    },
+    testContainsTrue4 : function () {
+      var expected = [false];  
+      var actual = getQueryResults("RETURN CONTAINS(\"test123\", \"\")", true);
+      assertEqual(expected, actual);
+    },
+    testContainsTrue5 : function () {
+      var expected = [false];  
+      var actual = getQueryResults("RETURN CONTAINS(\"\", \"test123\")", true);
+      assertEqual(expected, actual);
+    },
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test first function
 ////////////////////////////////////////////////////////////////////////////////
 
