@@ -341,7 +341,7 @@ static string JS_client_client =
   "\n"
   "function help () {\n"
   "  var internal = require(\"internal\");\n"
-  "  var client = require(\"argonsh\");\n"
+  "  var client = require(\"arangosh\");\n"
   "\n"
   "  internal.print(client.HELP);\n"
   "  internal.print(client.helpQueries);\n"
