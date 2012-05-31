@@ -48,23 +48,23 @@
 /// <hr>
 ///
 /// @anchor JSModuleConsoleDebug
-/// @copydetails JSF_CONSOLE_DEBUG
+/// @copydetails JSF_console_debug
 /// <hr>
 ///
 /// @anchor JSModuleConsoleError
-/// @copydetails JSF_CONSOLE_ERROR
+/// @copydetails JSF_console_error
 /// <hr>
 ///
 /// @anchor JSModuleConsoleInfo
-/// @copydetails JSF_CONSOLE_INFO
+/// @copydetails JSF_console_info
 /// <hr>
 ///
 /// @anchor JSModuleConsoleLog
-/// @copydetails JSF_CONSOLE_LOG
+/// @copydetails JSF_console_log
 /// <hr>
 ///
 /// @anchor JSModuleConsoleWarn
-/// @copydetails JSF_CONSOLE_WARN
+/// @copydetails JSF_console_warn
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
