@@ -218,7 +218,7 @@ unittests-shell-server-ahuacatl:
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 
