@@ -18,11 +18,6 @@
 3rdParty/ptmalloc3/t-test2
 ARCH.*
 autom4te.cache
-arango
-arangodb
-avocimp
-avocirb
-avocsh
 BasicsC/local-configuration.h
 build.h
 build.info
@@ -82,7 +77,6 @@ Makefile.local
 out
 *.Po
 *.pyc
-QL/parser.output
 .setup-directories
 stamp-h*
 .svn
