@@ -28,6 +28,7 @@
 #include "Ahuacatl/ahuacatl-optimiser.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 #include "V8/v8-execution.h"
 
@@ -181,14 +182,14 @@ static void FreeScope (TRI_aql_optimiser_scope_t* const scope) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartScope (TRI_aql_context_t* const context, 
-                        const TRI_aql_codegen_scope_e requestedType,
+                        const TRI_aql_scope_e requestedType,
                         const TRI_aql_node_t* const node,
                         const char* const variableName) {
   TRI_aql_optimiser_scope_t* scope; 
-  TRI_aql_codegen_scope_e type = requestedType;
+  TRI_aql_scope_e type = requestedType;
 
   if (requestedType == TRI_AQL_SCOPE_FOR) {
-    TRI_aql_codegen_scope_e previousType = CurrentScope(&context->_optimiser._scopes)->_type;
+    TRI_aql_scope_e previousType = CurrentScope(&context->_optimiser._scopes)->_type;
 
     if (previousType == TRI_AQL_SCOPE_FOR || previousType == TRI_AQL_SCOPE_FOR_NESTED) {
       type = TRI_AQL_SCOPE_FOR_NESTED;
@@ -243,7 +244,7 @@ static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
 
   // we are closing at least one scope
   while (true) {
-    TRI_aql_codegen_scope_e type = scope->_type;
+    TRI_aql_scope_e type = scope->_type;
 
     FreeScope(scope);
 

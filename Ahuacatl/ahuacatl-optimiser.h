@@ -41,6 +41,7 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-log.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
@@ -64,7 +65,7 @@ typedef struct TRI_aql_optimiser_scope_s {
   char* _variableName;
   TRI_aql_node_t* _node;
   TRI_vector_pointer_t* _ranges;
-  TRI_aql_codegen_scope_e _type;
+  TRI_aql_scope_e _type;
 }
 TRI_aql_optimiser_scope_t;
 
