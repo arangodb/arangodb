@@ -1220,29 +1220,38 @@ var lastFormatQuestion = true;
       source: shArray
     });
 
-    if (data == "help") {
-       data = require("arangosh").HELP;
+    if (data == "exit") {
+      location.reload();
+      return;  
     }
 
-    if (data == "exit") {
-       location.reload();
-       return false;  
+    var command;
+    if (data == "help") {
+      command = "require(\"arangosh\").HELP";
     }
-    formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
-    if (formatQuestion != lastFormatQuestion) {
-      if (formatQuestion == true) {
-        start_pretty_print();
-        lastFormatQuestion = true;
-      } 
-      if (formatQuestion == false) {
-        stop_pretty_print(); 
-        lastFormatQuestion = false;
+    else if (data == "reset") {
+      command = "$('#avocshWindow').html(\"\");undefined;";
+    }
+    else {
+      formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
+      if (formatQuestion != lastFormatQuestion) {
+        if (formatQuestion == true) {
+          start_pretty_print();
+          lastFormatQuestion = true;
+        } 
+        if (formatQuestion == false) {
+          stop_pretty_print(); 
+          lastFormatQuestion = false;
+        }
       }
+
+      command = data;
     }
+
     var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-    evaloutput(data);
+    evaloutput(command);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
