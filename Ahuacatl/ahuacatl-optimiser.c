@@ -84,8 +84,9 @@ static void PatchForNode (TRI_aql_context_t* const context,
     return;
   }
 
-  previous = (TRI_vector_pointer_t*) node->_value._value._data; // might be NULL
+  assert(node->_type == AQL_NODE_FOR);
 
+  previous = (TRI_vector_pointer_t*) node->_value._value._data; // might be NULL
   node->_value._value._data = (void*) TRI_AddAccessAql(context, previous, fieldAccess);
 }
 

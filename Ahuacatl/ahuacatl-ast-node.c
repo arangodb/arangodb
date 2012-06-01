@@ -220,6 +220,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_FOR)
+  node->_value._value._data = NULL; 
 
   if (!name) {
     ABORT_OOM
@@ -235,9 +236,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
-  
-  TRI_AQL_NODE_DATA(node) = NULL;
-
+ 
   return node;
 }
 

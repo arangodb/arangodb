@@ -120,10 +120,11 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 
   while (i--) {
     TRI_aql_node_t* node = (TRI_aql_node_t*) context->_memory._nodes._buffer[i];
+
     if (node) {
       TRI_DestroyVectorPointer(&node->_members);
 
-      if (node->_type == AQL_NODE_FOR && node->_value._value._data) {
+      if (node->_type == AQL_NODE_FOR && node->_value._value._data != NULL) {
         TRI_FreeAccessesAql((TRI_vector_pointer_t*) node->_value._value._data);
       }
       // free node itself
@@ -193,6 +194,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   
   TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
+//  TRI_InitVectorPointer(&context->_memory._scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
