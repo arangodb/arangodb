@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-scope.h" 
+#include "Ahuacatl/ahuacatl-variable.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -314,7 +315,9 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
 /// @brief push a variable into the current scope's symbol table
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context, const char* name) {
+bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context, 
+                              const char* name, 
+                              TRI_aql_node_t* const definingNode) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
   
@@ -325,7 +328,7 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context, const char* name
     return false;
   }
 
-  variable = TRI_CreateVariableAql(name);
+  variable = TRI_CreateVariableAql(name, definingNode);
   if (variable == NULL) {
     return false;
   }

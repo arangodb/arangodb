@@ -34,6 +34,8 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
+#include "Ahuacatl/ahuacatl-ast-node.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -54,6 +56,7 @@ extern "C" {
 typedef struct TRI_aql_variable_s {
   char* _name;
   uint32_t _refCount;
+  TRI_aql_node_t* _definingNode;
 }
 TRI_aql_variable_t;
 
@@ -74,7 +77,8 @@ TRI_aql_variable_t;
 /// @brief register a new variable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const);
+TRI_aql_variable_t* TRI_CreateVariableAql (const char* const,
+                                           TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an existing variable

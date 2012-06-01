@@ -40,7 +40,8 @@
 /// @brief register a new variable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) { 
+TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
+                                           TRI_aql_node_t* const definingNode) { 
   TRI_aql_variable_t* variable;
 
   variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
@@ -57,6 +58,9 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) {
   }
 
   variable->_refCount = 0;
+  variable->_definingNode = definingNode;
+
+  assert(definingNode);
 
   return variable;
 }

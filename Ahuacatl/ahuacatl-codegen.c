@@ -1168,7 +1168,9 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
 
     if (parameter->_type == AQL_NODE_COLLECTION && TRI_ConvertParameterFunctionAql(function, i)) {
       // collection arguments will be created as string argument => e.g. "users"
-      ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(parameter));
+      TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(parameter, 0);
+
+      ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(nameNode));
     }
     else {
       // anything else will be created as is
@@ -1226,9 +1228,9 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessCollection (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS('");
-  ScopeOutput(generator, TRI_AQL_NODE_STRING(node));
-  ScopeOutput(generator, "')");
+  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS(");
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  ScopeOutput(generator, ")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1253,7 +1255,7 @@ static void ProcessHintedCollection (TRI_aql_codegen_js_t* const generator,
   variableName = TRI_AQL_NODE_STRING(nameNode);
   assert(variableName);
 
-  collectionName = TRI_AQL_NODE_STRING(collectionNode);
+  collectionName = TRI_AQL_NODE_STRING((TRI_AQL_NODE_MEMBER(collectionNode, 0)));
   assert(collectionName);
 
   collection = TRI_GetCollectionAql(generator->_context, collectionName);

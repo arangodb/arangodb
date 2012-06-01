@@ -34,6 +34,7 @@
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
+#include "Ahuacatl/ahuacatl-variable.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
