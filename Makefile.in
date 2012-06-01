@@ -367,6 +367,7 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-result.$(OBJEXT) \
+	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
@@ -798,6 +799,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
+        Ahuacatl/ahuacatl-scope.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
@@ -1771,6 +1773,8 @@ Ahuacatl/ahuacatl-parser-functions.$(OBJEXT):  \
 	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1994,6 +1998,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-parser-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-result.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-scope.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-walker.$(OBJEXT)
@@ -2228,6 +2233,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-result.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-scope.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-walker.Po@am__quote@

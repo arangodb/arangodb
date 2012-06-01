@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, AST to JS code generator
+/// @brief Ahuacatl, scopes
 ///
 /// @file
 ///
@@ -25,21 +25,13 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_H
-#define TRIAGENS_DURHAM_AHUACATL_CODEGEN_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_SCOPE_H
+#define TRIAGENS_DURHAM_AHUACATL_SCOPE_H 1
 
-#include <BasicsC/common.h>
 #include <BasicsC/associative.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
 
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-conversions.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-log.h"
-#include "Ahuacatl/ahuacatl-scope.h"
-#include "VocBase/simple-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,55 +47,28 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for a variable or function register number
+/// @brief scope types used by various components
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef uint32_t TRI_aql_codegen_register_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief variable (name + register index) type used by code generator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_codegen_variable_s {
-  char* _name; // variable name
-  TRI_aql_codegen_register_t _register; // the assigned register
+typedef enum {
+  TRI_AQL_SCOPE_MAIN,
+  TRI_AQL_SCOPE_SUBQUERY,
+  TRI_AQL_SCOPE_FOR,
+  TRI_AQL_SCOPE_FOR_NESTED,
+  TRI_AQL_SCOPE_FUNCTION,
+  TRI_AQL_SCOPE_EXPAND
 }
-TRI_aql_codegen_variable_t;
+TRI_aql_scope_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief code generator scope
+/// @brief scope type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_codegen_scope_s {
-  TRI_string_buffer_t* _buffer; // generated code
-  TRI_aql_scope_e _type; // scope type
-  TRI_aql_codegen_register_t _listRegister;
-  TRI_aql_codegen_register_t _keyRegister;
-  TRI_aql_codegen_register_t _ownRegister;
-  TRI_aql_codegen_register_t _resultRegister;
-  TRI_associative_pointer_t _variables; // list of variables in scope
-  char* _prefix; // prefix for variable names, used in FUNCTION scopes only
-#ifdef TRI_DEBUG_AQL
-  const char* _name; // for debugging purposes only
-#endif
+typedef struct TRI_aql_scope_s {
+  TRI_associative_pointer_t _variables;
+  TRI_aql_scope_e _type;
 }
-TRI_aql_codegen_scope_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief code generator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_codegen_js_s {  
-  TRI_aql_context_t* _context;
-  TRI_string_buffer_t _buffer;
-  TRI_string_buffer_t _functionBuffer;
-  TRI_vector_pointer_t _scopes;
-
-  size_t _registerIndex;
-  size_t _functionIndex;
-  bool _error;
-}
-TRI_aql_codegen_js_t;
+TRI_aql_scope_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -119,10 +84,46 @@ TRI_aql_codegen_js_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate Javascript code for the AST nodes recursively
+/// @brief init scopes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (TRI_aql_context_t* const, const void* const);
+bool TRI_InitScopesAql (TRI_aql_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all scopes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeScopesAql (TRI_aql_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a new scope
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StartScopeAql (TRI_aql_context_t* const, const TRI_aql_scope_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end the current scope, only 1
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EndScopeAql (TRI_aql_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end the current scopes, 0 .. n
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EndScopeByReturnAql (TRI_aql_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a variable is defined in the current scope or above
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const, const char* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push a variable into the current scope's symbol table
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddVariableScopeAql (TRI_aql_context_t* const, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

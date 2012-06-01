@@ -40,22 +40,23 @@
 /// @brief register a new variable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name, 
-                                           const size_t idx) {
+TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) { 
   TRI_aql_variable_t* variable;
 
   variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
-  if (!variable) {
+
+  if (variable == NULL) {
     return NULL;
   }
 
   variable->_name = TRI_DuplicateString(name);
-  if (!variable->_name) {
+
+  if (variable->_name == NULL) {
     TRI_FreeVariableAql(variable);
     return NULL;
   }
 
-  variable->_index = idx;
+  variable->_refCount = 0;
 
   return variable;
 }

@@ -32,6 +32,7 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-optimiser.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
@@ -93,7 +94,7 @@ static void FreeScopes (TRI_aql_context_t* const context) {
   // free scopes allocated by optimiser
   TRI_DestroyVectorPointer(&context->_optimiser._scopes);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all strings
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,9 +195,9 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   
   TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
-//  TRI_InitVectorPointer(&context->_memory._scopes, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE); // TODO: remove
+  TRI_InitScopesAql(context);
 
   TRI_InitVectorPointer(&context->_optimiser._scopes, TRI_UNKNOWN_MEM_ZONE);
 
@@ -243,6 +244,9 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 
   // release all collections used
   TRI_UnlockCollectionsAql(context);
+
+  // release all scopes
+  TRI_FreeScopesAql(context);
 
   FreeScopes(context);
   FreeStrings(context);
@@ -376,10 +380,10 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
 /// @brief create a new variable scope
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_CreateScopeAql (void) {
-  TRI_aql_scope_t* scope;
+TRI_aql_scope2_t* TRI_CreateScopeAql (void) {
+  TRI_aql_scope2_t* scope;
 
-  scope = (TRI_aql_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope_t), false);
+  scope = (TRI_aql_scope2_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope2_t), false);
   if (!scope) {
     return NULL;
   }
@@ -401,7 +405,7 @@ TRI_aql_scope_t* TRI_CreateScopeAql (void) {
 /// @brief free a variable scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeScopeAql (TRI_aql_scope_t* const scope) {
+void TRI_FreeScopeAql (TRI_aql_scope2_t* const scope) {
   size_t i, length;
 
   assert(scope);
@@ -462,7 +466,7 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_GetFirstStatementAql (TRI_aql_context_t* const context) {
-  TRI_aql_scope_t* scope;
+  TRI_aql_scope2_t* scope;
   size_t length;
 
   assert(context);
@@ -471,7 +475,7 @@ void* TRI_GetFirstStatementAql (TRI_aql_context_t* const context) {
 
   assert(length > 0);
 
-  scope = (TRI_aql_scope_t*) context->_scopes._buffer[length - 1];
+  scope = (TRI_aql_scope2_t*) context->_scopes._buffer[length - 1];
   assert(scope);
 
   return scope->_first;
@@ -484,7 +488,7 @@ void* TRI_GetFirstStatementAql (TRI_aql_context_t* const context) {
 bool TRI_AddStatementAql (TRI_aql_context_t* const context, 
                           const void* const statement) {
 
-  TRI_aql_scope_t* scope;
+  TRI_aql_scope2_t* scope;
   size_t n;
  
   assert(context);
@@ -496,7 +500,7 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
   n = context->_scopes._length;
   assert(n > 0);
 
-  scope = (TRI_aql_scope_t*) context->_scopes._buffer[n - 1];
+  scope = (TRI_aql_scope2_t*) context->_scopes._buffer[n - 1];
           
   if (!scope->_first) {
     if (n == 1 && !context->_first) {
@@ -520,8 +524,8 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const context,
 /// @brief create a new variable scope and stack it in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
-  TRI_aql_scope_t* scope;
+TRI_aql_scope2_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
+  TRI_aql_scope2_t* scope;
 
   assert(context);
   scope = TRI_CreateScopeAql();
@@ -538,47 +542,17 @@ TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_EndScopeContextAql (TRI_aql_context_t* const context) {
-  TRI_aql_scope_t* scope;
+  TRI_aql_scope2_t* scope;
   size_t n;
 
   assert(context);
 
   n = context->_scopes._length;
   assert(n > 0);
-  scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_scopes, n - 1);
+  scope = (TRI_aql_scope2_t*) TRI_RemoveVectorPointer(&context->_scopes, n - 1);
   assert(scope);
 
   TRI_FreeScopeAql(scope);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief push a variable into the current scope context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* name) {
-  TRI_aql_variable_t* variable;
-  TRI_aql_scope_t* scope;
-  size_t current;
-  
-  assert(context);
-  assert(name);
-
-  if (TRI_VariableExistsAql(context, name)) {
-    return false;
-  }
-
-  variable = TRI_CreateVariableAql(name, ++context->_variableIndex);
-  if (!variable) {
-    return false;
-  }
-
-  // use outermost scope for the assignment
-  current = context->_scopes._length - 1;
-  scope = (TRI_aql_scope_t*) context->_scopes._buffer[current];
-  assert(scope);
-  assert(!TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,37 +584,6 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
   TRI_PushBackVectorPointer(&context->_memory._strings, copy);
 
   return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a variable is defined in the current scope or above
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_VariableExistsAql (TRI_aql_context_t* const context, 
-                            const char* const name) {
-  size_t current = context->_scopes._length;
-
-  if (!name) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return false;
-  }
-
-  while (current > 0) {
-    TRI_aql_scope_t* scope = (TRI_aql_scope_t*) context->_scopes._buffer[--current];
-    assert(scope);
-
-    if (TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name)) {
-      // duplicate variable
-      return true;
-    }
-
-    if (current == 0) {
-      // reached the outermost scope
-      break;
-    }
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

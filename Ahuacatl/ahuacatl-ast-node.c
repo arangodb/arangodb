@@ -29,6 +29,7 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -384,7 +385,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
   
-  if (!TRI_AddVariableContextAql(context, name)) {
+  if (!TRI_AddVariableScopeAql(context, name)) {
     // duplicate variable name 
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;

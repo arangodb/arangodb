@@ -406,8 +406,8 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
 /// @brief get the type for the next scope
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator, 
-                                              const TRI_aql_codegen_scope_e requestedType) {
+static TRI_aql_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator, 
+                                      const TRI_aql_scope_e requestedType) {
   TRI_aql_codegen_scope_t* scope;
 
   // we're only interested in TRI_AQL_SCOPE_FOR 
@@ -431,7 +431,7 @@ static TRI_aql_codegen_scope_e NextScopeType (TRI_aql_codegen_js_t* const genera
 
 static void StartScope (TRI_aql_codegen_js_t* const generator, 
                         TRI_string_buffer_t* const buffer,
-                        const TRI_aql_codegen_scope_e const type,
+                        const TRI_aql_scope_e const type,
                         const TRI_aql_codegen_register_t listRegister, 
                         const TRI_aql_codegen_register_t keyRegister, 
                         const TRI_aql_codegen_register_t ownRegister, 
@@ -770,7 +770,7 @@ static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
 
   // we are closing at least one scope
   while (true) {
-    TRI_aql_codegen_scope_e type = scope->_type;
+    TRI_aql_scope_e type = scope->_type;
     ScopeOutput(generator, "}\n");
     EndScope(generator);
     
@@ -1895,7 +1895,8 @@ static void ProcessLet (TRI_aql_codegen_js_t* const generator,
                         const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
-  
+ 
+  // TODO: if variable not refcounted, remove let statement! 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
@@ -2097,8 +2098,8 @@ static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* 
 /// @brief create code for the AST starting at the specified node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator, 
-                                       const TRI_aql_node_t* const node) {
+static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator, 
+                                              const TRI_aql_node_t* const node) {
   TRI_aql_codegen_register_t startRegister = IncRegister(generator);
   TRI_aql_codegen_register_t resultRegister;
 

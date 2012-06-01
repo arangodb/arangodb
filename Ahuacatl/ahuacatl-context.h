@@ -59,13 +59,13 @@ extern "C" {
 /// @brief a variable scope
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_scope_s {
+typedef struct TRI_aql_scope2_s {
   struct TRI_aql_scope_s* _parent; // parent scope
   TRI_associative_pointer_t _variables; // symbol table
   void* _first;
   void* _last;
 }
-TRI_aql_scope_t;
+TRI_aql_scope2_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the context for parsing a query
@@ -80,16 +80,17 @@ typedef struct TRI_aql_context_s {
   struct {
     TRI_vector_pointer_t _nodes;
     TRI_vector_pointer_t _strings;
-//    TRI_vector_pointer_t _scopes;
+    TRI_vector_pointer_t _scopes;
   } 
   _memory;
+  TRI_vector_pointer_t _currentScopes;
+  TRI_vector_pointer_t _scopes;
   struct {
     TRI_associative_pointer_t _values;
     TRI_associative_pointer_t _names;
   } 
   _parameters;
 
-  TRI_vector_pointer_t _scopes;
   size_t _variableIndex;
   void* _first;
   struct {
@@ -154,13 +155,13 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const);
 /// @brief create a new variable scope
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_CreateScopeAql (void);
+TRI_aql_scope2_t* TRI_CreateScopeAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a variable scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeScopeAql (TRI_aql_scope_t* const);
+void TRI_FreeScopeAql (TRI_aql_scope2_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a node
@@ -193,19 +194,13 @@ bool TRI_AddStatementAql (TRI_aql_context_t* const, const void* const);
 /// @brief create a new variable scope and stack it in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const); 
+TRI_aql_scope2_t* TRI_StartScopeContextAql (TRI_aql_context_t* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a variable scope from context scopes stack
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_EndScopeContextAql (TRI_aql_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief push a variable into the current scope context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddVariableContextAql (TRI_aql_context_t* const, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
@@ -215,13 +210,6 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const,
                              const char* const,
                              const size_t, 
                              const bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a variable is defined in the current scope or above
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_VariableExistsAql (TRI_aql_context_t* const, const char* const);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
