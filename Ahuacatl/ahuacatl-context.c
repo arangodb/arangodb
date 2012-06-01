@@ -168,7 +168,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   context->_variableIndex = 0;
   
   // actual bind parameter values
-  TRI_InitAssociativePointer(&context->_parameterValues,
+  TRI_InitAssociativePointer(&context->_parameters._values,
                              TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashBindParameterAql,
@@ -176,7 +176,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                              0);
 
   // bind parameter names used in the query
-  TRI_InitAssociativePointer(&context->_parameterNames,
+  TRI_InitAssociativePointer(&context->_parameters._names,
                              TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashStringKeyAssociativePointer,
@@ -247,7 +247,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   FreeNodes(context); 
 
   // free parameter names hash
-  TRI_DestroyAssociativePointer(&context->_parameterNames);
+  TRI_DestroyAssociativePointer(&context->_parameters._names);
   
   // free collection names
   TRI_DestroyAssociativePointer(&context->_collectionNames);
@@ -256,7 +256,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   
   // free parameter values
   TRI_FreeBindParametersAql(context);
-  TRI_DestroyAssociativePointer(&context->_parameterValues);
+  TRI_DestroyAssociativePointer(&context->_parameters._values);
 
   // free parser/lexer
   TRI_FreeParserAql(context->_parser);
