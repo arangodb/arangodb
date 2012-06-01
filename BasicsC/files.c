@@ -846,7 +846,17 @@ char* TRI_LocateBinaryPath (char const* argv0) {
       files = TRI_SplitString(p, ':');
 
       for (i = 0;  i < files._length;  ++i) {
-        char* full = TRI_Concatenate2File(files._buffer[i], argv0);
+        char* full;
+        char* prefix;
+
+        prefix = files._buffer[i];
+
+        if (*prefix) {
+          full = TRI_Concatenate2File(prefix, argv0);
+        }
+        else {
+          full = TRI_Concatenate2File(".", argv0);
+        }
 
         if (TRI_ExistsFile(full)) {
           TRI_FreeString(TRI_CORE_MEM_ZONE, full);
@@ -855,6 +865,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
         }
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, full);
+      }
+
+      if (binaryPath == NULL) {
+        binaryPath = TRI_DuplicateString(".");
       }
 
       TRI_DestroyVectorString(&files);
