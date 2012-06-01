@@ -99,16 +99,16 @@ static void FreeScopes (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
   
 static void FreeStrings (TRI_aql_context_t* const context) {
-  size_t i = context->_strings._length;
+  size_t i = context->_memory._strings._length;
 
   while (i--) {
-    void* string = context->_strings._buffer[i];
+    void* string = context->_memory._strings._buffer[i];
 
     if (string) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_strings._buffer[i]);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_memory._strings._buffer[i]);
     }
   }
-  TRI_DestroyVectorPointer(&context->_strings);
+  TRI_DestroyVectorPointer(&context->_memory._strings);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,10 +116,10 @@ static void FreeStrings (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
   
 static void FreeNodes (TRI_aql_context_t* const context) {
-  size_t i = context->_nodes._length;
+  size_t i = context->_memory._nodes._length;
 
   while (i--) {
-    TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
+    TRI_aql_node_t* node = (TRI_aql_node_t*) context->_memory._nodes._buffer[i];
     if (node) {
       TRI_DestroyVectorPointer(&node->_members);
 
@@ -131,7 +131,7 @@ static void FreeNodes (TRI_aql_context_t* const context) {
     }
   }
 
-  TRI_DestroyVectorPointer(&context->_nodes);
+  TRI_DestroyVectorPointer(&context->_memory._nodes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,8 +191,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
   
-  TRI_InitVectorPointer(&context->_nodes, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&context->_strings, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -428,7 +428,7 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
   assert(context);
   assert(node);
 
-  TRI_PushBackVectorPointer(&context->_nodes, node);
+  TRI_PushBackVectorPointer(&context->_memory._nodes, node);
 
   return true;
 }
@@ -605,7 +605,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
 
-  TRI_PushBackVectorPointer(&context->_strings, copy);
+  TRI_PushBackVectorPointer(&context->_memory._strings, copy);
 
   return copy;
 }
