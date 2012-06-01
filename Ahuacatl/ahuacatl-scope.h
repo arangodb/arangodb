@@ -30,6 +30,7 @@
 
 #include <BasicsC/associative.h>
 
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-log.h"
 
@@ -123,7 +124,9 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const, const char* const);
 /// @brief push a variable into the current scope's symbol table
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddVariableScopeAql (TRI_aql_context_t* const, const char*);
+bool TRI_AddVariableScopeAql (TRI_aql_context_t* const, 
+                              const char*, 
+                              TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

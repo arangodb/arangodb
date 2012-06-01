@@ -539,6 +539,18 @@ TRY_LOOP:
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise a reference expression
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseReference (TRI_aql_context_t* const context,
+                                          TRI_aql_node_t* node) {
+  // TODO: find variable in current symbol table
+  // follow references until variable declaration is found
+  // if variable value at source is constant, copy the constant into here as well
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise an arithmetic operation with one operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -915,6 +927,8 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
       return OptimiseFilter(context, node);
     case AQL_NODE_FCALL:
       return OptimiseFcall(context, node);
+    case AQL_NODE_REFERENCE:
+      return OptimiseReference(context, node);
     default: 
       break;
   }

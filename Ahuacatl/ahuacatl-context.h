@@ -40,7 +40,6 @@
 
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-parser.h"
-#include "Ahuacatl/ahuacatl-variable.h"
 
 #ifdef __cplusplus
 extern "C" {
