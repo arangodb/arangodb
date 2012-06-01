@@ -469,7 +469,7 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const context,
   }
 
   // save name of bind parameter for later
-  TRI_InsertKeyAssociativePointer(&context->_parameterNames, name, (void*) name, true);
+  TRI_InsertKeyAssociativePointer(&context->_parameters._names, name, (void*) name, true);
 
   TRI_AQL_NODE_STRING(node) = (char*) name;
 

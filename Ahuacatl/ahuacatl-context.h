@@ -79,8 +79,11 @@ typedef struct TRI_aql_context_s {
   TRI_vector_pointer_t _collections;
   TRI_aql_error_t _error;
   TRI_vocbase_t* _vocbase;
-  TRI_associative_pointer_t _parameterValues;
-  TRI_associative_pointer_t _parameterNames;
+  struct {
+    TRI_associative_pointer_t _values;
+    TRI_associative_pointer_t _names;
+  } 
+  _parameters;
   TRI_associative_pointer_t _collectionNames;
   size_t _variableIndex;
   void* _first;

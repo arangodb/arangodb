@@ -1826,7 +1826,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   result->Set(v8::String::New("parsed"), v8::True());
 
   // return the bind parameter names
-  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameterNames));
+  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameters._names));
   // return the collection names
   result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&context->_collectionNames));
     
