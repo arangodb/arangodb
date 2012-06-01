@@ -72,15 +72,15 @@ TRI_aql_scope_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_context_s {
-  TRI_aql_parser_t* _parser;
-  TRI_vector_pointer_t _scopes;
-  TRI_vector_pointer_t _collections;
-  TRI_aql_error_t _error;
-  const char* _query;
   TRI_vocbase_t* _vocbase;
+  TRI_aql_parser_t* _parser;
+  TRI_aql_error_t _error;
+  TRI_vector_pointer_t _collections;
+  TRI_associative_pointer_t _collectionNames;
   struct {
     TRI_vector_pointer_t _nodes;
     TRI_vector_pointer_t _strings;
+//    TRI_vector_pointer_t _scopes;
   } 
   _memory;
   struct {
@@ -88,13 +88,15 @@ typedef struct TRI_aql_context_s {
     TRI_associative_pointer_t _names;
   } 
   _parameters;
-  TRI_associative_pointer_t _collectionNames;
+
+  TRI_vector_pointer_t _scopes;
   size_t _variableIndex;
   void* _first;
   struct {
     TRI_vector_pointer_t _scopes;
   }
   _optimiser;
+  const char* _query;
 }
 TRI_aql_context_t;
 

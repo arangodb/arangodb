@@ -300,11 +300,6 @@ collect_element:
         ABORT_OOM
       }
     }
-  | expression {
-      if (!TRI_PushListAql(context, $1)) {
-        ABORT_OOM
-      }
-    }
   ;
 
 optional_into: 
