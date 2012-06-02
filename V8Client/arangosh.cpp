@@ -176,10 +176,10 @@ static FILE *PAGER = stdout;
 static bool PrettyPrint = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief quite start
+/// @brief quiet start
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Quite = false;
+static bool Quiet = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request timeout (in s) 
@@ -532,7 +532,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("help,h", "help message")
-    ("quite,s", "no banner")
+    ("quiet,s", "no banner")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddressPort, "server address and port")
     ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
@@ -597,8 +597,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     UsePager = true;
   }
 
-  if (options.has("quite")) {
-    Quite = true;
+  if (options.has("quiet")) {
+    Quiet = true;
   }
 
   // set V8 options
@@ -1000,7 +1000,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   console->close();
 
-  if (Quite) {
+  if (Quiet) {
     printf("\n");
   }
   else {
@@ -1288,7 +1288,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................  
 
   // http://www.network-science.de/ascii/   Font: ogre
-  if (! Quite) {
+  if (! Quiet) {
     char const* g = DEF_GREEN;
     char const* r = DEF_RED;
     char const* z = DEF_RESET;
@@ -1332,7 +1332,7 @@ int main (int argc, char* argv[]) {
 
     if (useServer) {
       if (ClientConnection->isConnected()) {
-        if (! Quite) {
+        if (! Quiet) {
           printf("Connected to Arango DB %s:%d Version %s\n", 
                  ClientConnection->getHostname().c_str(), 
                  ClientConnection->getPort(), 
@@ -1362,8 +1362,7 @@ int main (int argc, char* argv[]) {
     StartupLoader.setDirectory(StartupPath);
   }
 
-  // add the client connection to the context:
-  context->Global()->Set(v8::String::New("ARANGO_QUITE"), Quite ? v8::True() : v8::False(), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("ARANGO_QUIET"), Quiet ? v8::True() : v8::False(), v8::ReadOnly);
 
   // load all init files
   char const* files[] = {
