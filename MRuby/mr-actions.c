@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mruby utilities
+/// @brief mruby actions
 ///
 /// @file
 ///
@@ -22,58 +22,42 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_MRUBY_MR_UTILS_H
-#define TRIAGENS_MRUBY_MR_UTILS_H 1
+#include "mr-utils.h"
 
-#include "BasicsC/common.h"
+#include "BasicsC/strings.h"
 
-#include "BasicsC/json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "mruby.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+#include "mruby/array.h"
+#include "mruby/class.h"
+#include "mruby/data.h"
+#include "mruby/hash.h"
+#include "mruby/proc.h"
+#include "mruby/string.h"
+#include "mruby/variable.h"
+#include "mruby/error.h"
+#include "compile.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mruby state info
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct MR_state_s {
-  struct mrb_state _mrb;
-
-  struct RClass* _arangoError;
-  struct RClass* _arangoResponse;
-
-  mrb_value _errorSym;
-  mrb_value _codeSym;
-  mrb_value _errorNumSym;
-  mrb_value _errorMessageSym;
-}
-MR_state_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    ruby functions
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    ArangoResponse
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,50 +66,61 @@ MR_state_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_json_t into a V8 object
+/// @brief status getter
 ////////////////////////////////////////////////////////////////////////////////
 
-mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json);
+static mrb_value ArangoResponse_StatusGetter (mrb_state* mrb, mrb_value self) {
+  return mrb_nil_value();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens a new context
+/// @brief status setter
 ////////////////////////////////////////////////////////////////////////////////
 
-MR_state_t* MR_OpenShell (void);
+static mrb_value ArangoResponse_StatusSetter (mrb_state* mrb, mrb_value self) {
+  return mrb_nil_value();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a ArangoError
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-mrb_value MR_ArangoError (mrb_state* mrb, int errNum, char const* errMessage);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    ArangoResponse
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an exception and stacktrace
+/// @addtogroup ArangoDB
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogRubyException (mrb_state*, struct RObject*);
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a file in the current context
+/// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteRubyFile (mrb_state*, char const*);
+static mrb_value MR_DefineAction (mrb_state* mrb, mrb_value self) {
+  char* s;
+  size_t l;
+  mrb_value cl;
+  mrb_value p;
+  struct RClass* rcl;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in the current context
-////////////////////////////////////////////////////////////////////////////////
+  mrb_get_args(mrb, "soh", &s, &l, &cl, &p);
 
-bool TRI_ExecuteRubyDirectory (mrb_state*, char const*);
+  if (s == NULL) {
+    return mrb_nil_value();
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context, optionally print the result
-////////////////////////////////////////////////////////////////////////////////
+  rcl = mrb_class_ptr(cl);
 
-bool TRI_ExecuteRubyString (mrb_state*,
-                            char const* script,
-                            char const* name,
-                            bool printResult,
-                            mrb_value* result);
+  if (rcl == 0) {
+    printf("########### NILL CLASS\n");
+    return mrb_nil_value();
+  }
+
+  printf("########### %s\n", s);
+  return mrb_class_new_instance(mrb, 0, 0, rcl);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -141,20 +136,32 @@ bool TRI_ExecuteRubyString (mrb_state*,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief init utilities
+/// @brief init mruby utilities
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMRUtils (MR_state_t* mrb);
+void TRI_InitMRActions (MR_state_t* mrs) {
+  struct RClass *rcl;
+
+  rcl = mrs->_mrb.kernel_module;
+
+  // .............................................................................
+  // ArangoServer
+  // .............................................................................
+
+  rcl = mrb_define_class(&mrs->_mrb, "ArangoServer", mrs->_mrb.object_class);
+  
+  mrb_define_class_method(&mrs->_mrb, rcl, "define_action", MR_DefineAction, ARGS_REQ(3));
+
+  // .............................................................................
+  // ArangoResponse
+  // .............................................................................
+
+  rcl = mrs->_arangoResponse = mrb_define_class(&mrs->_mrb, "ArangoResponse", mrs->_mrb.hash_class);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
 
 // Local Variables:
 // mode: outline-minor
