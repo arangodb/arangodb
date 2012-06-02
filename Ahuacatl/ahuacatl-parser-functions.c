@@ -149,8 +149,6 @@ char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
 
   assert(context);
 
-  // fill buffer with 0 bytes
-  memset(buffer, 0, sizeof(buffer));
   snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
 
   // register the string and return the copy of it

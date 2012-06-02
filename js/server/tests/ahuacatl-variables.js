@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, optimiser
+/// @brief tests for query language, variables
 ///
 /// @file
 ///
@@ -22,84 +22,85 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
-#define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
-
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen.h"
-#include "Ahuacatl/ahuacatl-log.h"
-#include "Ahuacatl/ahuacatl-scope.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+var internal = require("internal");
+var jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
+/// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+function ahuacatlVariablesTestSuite () {
+  var errors = internal.errors;
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scope type used during optimisation
+/// @brief return the error code from a result
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_optimiser_scope_s {
-  char* _variableName;
-  TRI_aql_node_t* _node;
-  TRI_vector_pointer_t* _ranges;
-  TRI_aql_scope_e _type;
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
+  }
+
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare1 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET a = 1 RETURN 0"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare2 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare3 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
+    },
+
+  };
 }
-TRI_aql_optimiser_scope_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+jsunity.run(ahuacatlVariablesTestSuite);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the AST
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_OptimiseAql (TRI_aql_context_t* const, 
-                                 TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
