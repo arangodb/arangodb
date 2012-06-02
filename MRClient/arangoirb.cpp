@@ -50,13 +50,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-extern "C" {
 #include "mruby.h"
 #include "mruby/proc.h"
 #include "mruby/data.h"
 #include "mruby/variable.h"
-#include "compile.h"
-}
+#include "mruby/compile.h"
 
 using namespace std;
 using namespace triagens::basics;

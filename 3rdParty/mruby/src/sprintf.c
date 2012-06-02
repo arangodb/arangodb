@@ -28,10 +28,9 @@ static void fmt_setup(char*,size_t,int,int,int,int);
 static char*
 remove_sign_bits(char *str, int base)
 {
-  char *s, *t;
+  char *t;
 
-  s = t = str;
-
+  t = str;
   if (base == 16) {
     while (*t == 'f') {
       t++;
@@ -55,7 +54,7 @@ remove_sign_bits(char *str, int base)
 static char
 sign_bits(int base, const char *p)
 {
-  char c = '.';
+  char c;
 
   switch (base) {
   case 16:
@@ -66,6 +65,8 @@ sign_bits(int base, const char *p)
     c = '7'; break;
   case 2:
     c = '1'; break;
+  default:
+    c = '.'; break;
   }
   return c;
 }
@@ -75,7 +76,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
 {
   char buf[64], *b = buf + sizeof buf;
   unsigned long val = mrb_fixnum(x);
-  char d = 0;
+  char d;
 
   if (base != 2) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid radix %d", base);
@@ -89,7 +90,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
   }
   *--b = '\0';
   do {
-    *--b = ruby_digitmap[(int)(val % base)];
+    *--b = mrb_digitmap[(int)(val % base)];
   } while (val /= base);
 
   if (mrb_fixnum(x) < 0) {
@@ -98,6 +99,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
     case 16: d = 'f'; break;
     case 8:  d = '7'; break;
     case 2:  d = '1'; break;
+    default: d = 0;   break;
     }
 
     if (d && *b != d) {
@@ -192,7 +194,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
 } while (0)
 
 static mrb_value
-get_hash(mrb_state *mrb, volatile mrb_value *hash, int argc, const mrb_value *argv)
+get_hash(mrb_state *mrb, mrb_value *hash, int argc, const mrb_value *argv)
 {
   mrb_value tmp;
 
@@ -498,7 +500,7 @@ mrb_str_format(mrb_state *mrb, int argc, const mrb_value *argv, mrb_value fmt)
   mrb_value nextvalue;
   mrb_value tmp;
   mrb_value str;
-  volatile mrb_value hash = mrb_undef_value();
+  mrb_value hash = mrb_undef_value();
 
 #define CHECK_FOR_WIDTH(f)                                                  \
   if ((f) & FWIDTH) {                                                       \
@@ -518,7 +520,6 @@ mrb_str_format(mrb_state *mrb, int argc, const mrb_value *argv, mrb_value fmt)
   ++argc;
   --argv;
   mrb_string_value(mrb, &fmt);
-  fmt = mrb_str_new4(mrb, fmt);
   p = RSTRING_PTR(fmt);
   end = p + RSTRING_LEN(fmt);
   blen = 0;
@@ -666,44 +667,37 @@ retry:
         mrb_value tmp;
         unsigned int c;
         int n;
-#ifdef INCLUDE_ENCODING
-        mrb_encoding *enc = mrb_enc_get(mrb, fmt);
-#endif //INCLUDE_ENCODING
 
         tmp = mrb_check_string_type(mrb, val);
         if (!mrb_nil_p(tmp)) {
           if (RSTRING_LEN(tmp) != 1 ) {
             mrb_raise(mrb, E_ARGUMENT_ERROR, "%%c requires a character");
           }
-#ifdef INCLUDE_ENCODING
-          c = mrb_enc_codepoint_len(mrb, RSTRING_PTR(tmp), RSTRING_END(tmp), &n, enc);
-#else
           c = RSTRING_PTR(tmp)[0];
           n = 1;
-#endif //INCLUDE_ENCODING
         }
         else {
           c = mrb_fixnum(val);
-          n = mrb_enc_codelen(mrb, c, enc);
+          n = 1;
         }
         if (n <= 0) {
           mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid character");
         }
         if (!(flags & FWIDTH)) {
           CHECK(n);
-          mrb_enc_mbcput(c, &buf[blen], enc);
+	  buf[blen] = c;
           blen += n;
         }
         else if ((flags & FMINUS)) {
           CHECK(n);
-          mrb_enc_mbcput(c, &buf[blen], enc);
+	  buf[blen] = c;
           blen += n;
           FILL(' ', width-1);
         }
         else {
           FILL(' ', width-1);
           CHECK(n);
-          mrb_enc_mbcput(c, &buf[blen], enc);
+	  buf[blen] = c;
           blen += n;
         }
       }
@@ -715,25 +709,18 @@ format_s:
       {
         mrb_value arg = GETARG();
         long len, slen;
-#ifdef INCLUDE_ENCODING
-        mrb_encoding *enc = mrb_enc_get(mrb, fmt);
-#endif //INCLUDE_ENCODING
 
         if (*p == 'p') arg = mrb_inspect(mrb, arg);
         str = mrb_obj_as_string(mrb, arg);
         len = RSTRING_LEN(str);
-        mrb_str_set_len(mrb, result, blen);
+	RSTRING_LEN(result) = blen;
         if (flags&(FPREC|FWIDTH)) {
           slen = RSTRING_LEN(str);
           if (slen < 0) {
             mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid mbstring sequence");
           }
           if ((flags&FPREC) && (prec < slen)) {
-#ifdef INCLUDE_ENCODING
-            char *p = mrb_enc_nth(mrb, RSTRING_PTR(str), RSTRING_END(str),prec, enc);
-#else
             char *p = RSTRING_PTR(str) + prec;
-#endif //INCLUDE_ENCODING
             slen = prec;
             len = p - RSTRING_PTR(str);
           }
@@ -755,12 +742,10 @@ format_s:
                 buf[blen++] = ' ';
               }
             }
-            mrb_enc_associate(mrb, result, enc);
             break;
           }
         }
         PUSH(RSTRING_PTR(str), len);
-        mrb_enc_associate(mrb, result, enc);
       }
       break;
 
@@ -773,14 +758,14 @@ format_s:
     case 'B':
     case 'u':
       {
-        volatile mrb_value val = GETARG();
+        mrb_value val = GETARG();
         char fbuf[32], nbuf[64], *s;
         const char *prefix = 0;
         int sign = 0, dots = 0;
         char sc = 0;
         long v = 0, org_v = 0;
         int base;
-        int len, pos;
+        int len;
 
         switch (*p) {
         case 'd':
@@ -794,6 +779,8 @@ format_s:
         case 'B':
           if (flags&(FPLUS|FSPACE)) sign = 1;
           break;
+	default:
+	  break;
         }
         if (flags & FSHARP) {
           switch (*p) {
@@ -802,6 +789,7 @@ format_s:
           case 'X': prefix = "0X"; break;
           case 'b': prefix = "0b"; break;
           case 'B': prefix = "0B"; break;
+	  default: break;
           }
         }
 
@@ -885,13 +873,14 @@ bin_retry:
           snprintf(fbuf, sizeof(fbuf), "%%l%c", c);
           snprintf(++s, sizeof(nbuf) - 1, fbuf, v);
           if (v < 0) {
-            char d = 0;
+            char d;
 
             s = remove_sign_bits(s, base);
             switch (base) {
             case 16: d = 'f'; break;
             case 8:  d = '7'; break;
             case 2:  d = '1'; break;
+	    default: d = 0; break;
             }
 
             if (d && *s != d) {
@@ -901,7 +890,6 @@ bin_retry:
         }
         len = (int)strlen(s);
 
-        pos = -1;
         if (dots) {
           prec -= 2;
           width -= 2;
@@ -910,15 +898,8 @@ bin_retry:
         if (*p == 'X') {
           char *pp = s;
           int c;
-#ifdef INCLUDE_ENCODING
-          mrb_encoding *enc = mrb_enc_get(mrb, fmt);
-#endif //INCLUDE_ENCODING
           while ((c = (int)(unsigned char)*pp) != 0) {
-#ifdef INCLUDE_ENCODING
-            *pp = mrb_enc_toupper(c, enc);
-#else
             *pp = toupper(c);
-#endif //INCLUDE_ENCODING
             pp++;
           }
         }

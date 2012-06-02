@@ -31,8 +31,6 @@ mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state
 #define mrb_long2int(n) ((int)(n))
 
 
-static mrb_value struct_alloc(mrb_state *mrb, mrb_value);
-
 static struct RClass *
 struct_class(mrb_state *mrb)
 {
@@ -381,7 +379,7 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
       pargv = &argv[0];
       argcnt++;
     }
-    rest = mrb_ary_new_from_values(mrb, pargv, argcnt);
+    rest = mrb_ary_new_from_values(mrb, argcnt, pargv);
   }
   st = make_struct(mrb, name, rest, struct_class(mrb));
   if (!mrb_nil_p(b)) {
@@ -418,7 +416,7 @@ mrb_struct_initialize_withArg(mrb_state *mrb, int argc, mrb_value *argv, mrb_val
     mrb_raise(mrb, E_ARGUMENT_ERROR, "struct size differs");
   }
   st = RSTRUCT(self);
-  st->ptr = malloc(sizeof(mrb_value)*argc);
+  st->ptr = mrb_malloc(mrb, sizeof(mrb_value)*argc);
   st->len = n;
   memcpy(st->ptr, argv, sizeof(mrb_value)*argc);
   //if (n > argc) {
@@ -535,19 +533,20 @@ mrb_value
 mrb_struct_init_copy(mrb_state *mrb, mrb_value copy)
 {
   mrb_value s;
+
   mrb_get_args(mrb, "o", &s);
 
-    if (mrb_obj_equal(mrb, copy, s)) return copy;
-    //mrb_check_frozen(copy);
-    if (!mrb_obj_is_instance_of(mrb, s, mrb_obj_class(mrb, copy))) {
-      mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
-    }
-    if (RSTRUCT_LEN(copy) != RSTRUCT_LEN(s)) {
-      mrb_raise(mrb, E_TYPE_ERROR, "struct size mismatch");
-    }
-    memcpy(RSTRUCT_PTR(copy), RSTRUCT_PTR(s), sizeof(mrb_value)*RSTRUCT_LEN(copy));
+  if (mrb_obj_equal(mrb, copy, s)) return copy;
+  //mrb_check_frozen(copy);
+  if (!mrb_obj_is_instance_of(mrb, s, mrb_obj_class(mrb, copy))) {
+    mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
+  }
+  if (RSTRUCT_LEN(copy) != RSTRUCT_LEN(s)) {
+    mrb_raise(mrb, E_TYPE_ERROR, "struct size mismatch");
+  }
+  memcpy(RSTRUCT_PTR(copy), RSTRUCT_PTR(s), sizeof(mrb_value)*RSTRUCT_LEN(copy));
 
-    return copy;
+  return copy;
 }
 
 static mrb_value
@@ -670,24 +669,25 @@ mrb_struct_aset(mrb_state *mrb, mrb_value s)
   long i;
   mrb_value idx;
   mrb_value val;
+
   mrb_get_args(mrb, "oo", &idx, &val);
 
-    if (mrb_type(idx) == MRB_TT_STRING || mrb_type(idx) == MRB_TT_SYMBOL) {
-      return mrb_struct_aset_id(mrb, s, mrb_to_id(mrb, idx), val);
-    }
+  if (mrb_type(idx) == MRB_TT_STRING || mrb_type(idx) == MRB_TT_SYMBOL) {
+    return mrb_struct_aset_id(mrb, s, mrb_to_id(mrb, idx), val);
+  }
 
-    i = mrb_fixnum(idx);
-    if (i < 0) i = RSTRUCT_LEN(s) + i;
-    if (i < 0) {
-        mrb_raise(mrb, E_INDEX_ERROR, "offset %ld too small for struct(size:%ld)",
-             i, RSTRUCT_LEN(s));
-    }
-    if (RSTRUCT_LEN(s) <= i) {
-        mrb_raise(mrb, E_INDEX_ERROR, "offset %ld too large for struct(size:%ld)",
-             i, RSTRUCT_LEN(s));
-    }
-    mrb_struct_modify(s);
-    return RSTRUCT_PTR(s)[i] = val;
+  i = mrb_fixnum(idx);
+  if (i < 0) i = RSTRUCT_LEN(s) + i;
+  if (i < 0) {
+    mrb_raise(mrb, E_INDEX_ERROR, "offset %ld too small for struct(size:%ld)",
+	      i, RSTRUCT_LEN(s));
+  }
+  if (RSTRUCT_LEN(s) <= i) {
+    mrb_raise(mrb, E_INDEX_ERROR, "offset %ld too large for struct(size:%ld)",
+	      i, RSTRUCT_LEN(s));
+  }
+  mrb_struct_modify(s);
+  return RSTRUCT_PTR(s)[i] = val;
 }
 
 static mrb_value
