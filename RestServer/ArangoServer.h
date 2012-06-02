@@ -322,6 +322,19 @@ namespace triagens {
         uint64_t _gcIntervalJS;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief path to the directory containing alternate startup scripts
+///
+/// @CMDOPT{--startup.ruby-directory @CA{directory}}
+///
+/// Specifies the @CA{directory} path to alternate startup MRuby files.
+/// Normally, the server will start using built-in MRuby core functionality. To
+/// override the core functionality with a different implementation, this option
+/// can be used.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _startupPathMR;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 ///
 /// @CMDOPT{--database.directory @CA{directory}}

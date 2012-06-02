@@ -18,6 +18,9 @@ BUILT_SOURCES += .setup-mr-directories
 mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
 	@top_srcdir@/config/mr2c.sh $< > $@
 
+mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
 ################################################################################
 ### @brief cleanup
 ################################################################################
