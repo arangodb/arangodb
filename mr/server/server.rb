@@ -25,9 +25,56 @@
 ### @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
+module Arango
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                     ArangoRequest
+## -----------------------------------------------------------------------------
+
+  class HttpRequest
+    def body()
+      return @body
+    end
+
+    def content_type()
+      return @content_type
+    end
+
+    def status()
+      return @status
+    end
+  end
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    ArangoResponse
 ## -----------------------------------------------------------------------------
+
+  class HttpResponse
+    def content_type()
+      return @content_type
+    end
+
+    def content_type=(type)
+      @content_type = type
+    end
+
+    def body()
+      return @body
+    end
+
+    def body=(text)
+      @body = text.to_s
+    end
+    def status()
+      return @status
+    end
+
+    def status=(code)
+      @status = code.to_i
+    end
+  end
+
+end
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
