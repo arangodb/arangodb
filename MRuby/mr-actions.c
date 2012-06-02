@@ -155,7 +155,7 @@ void TRI_InitMRActions (MR_state_t* mrs) {
   // ArangoResponse
   // .............................................................................
 
-  rcl = mrs->_arangoResponse = mrb_define_class(&mrs->_mrb, "ArangoResponse", mrs->_mrb.hash_class);
+  rcl = mrs->_arangoResponse = mrb_define_class(&mrs->_mrb, "ArangoResponse", mrs->_mrb.object_class);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

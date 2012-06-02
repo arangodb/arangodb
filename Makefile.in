@@ -994,7 +994,8 @@ JAVASCRIPT_BROWSER = \
 ### @brief MRuby source code as header
 ################################################################################
 MRUBY_HEADER = \
-	mr/common/bootstrap/mr-error.h
+	mr/common/bootstrap/mr-error.h \
+	mr/server/mr-server.h
 
 
 ################################################################################
@@ -3197,6 +3198,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 	@touch $@
 
 mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
+mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
 	@top_srcdir@/config/mr2c.sh $< > $@
 
 ################################################################################
