@@ -49,43 +49,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           public static variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startup path
-////////////////////////////////////////////////////////////////////////////////
-
-JSLoader* ActionDispatcherThread::_startupLoader = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* ActionDispatcherThread::_vocbase = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief modules path
-////////////////////////////////////////////////////////////////////////////////
-
-string ActionDispatcherThread::_startupModules;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Javascript garbage collection interval (each x requests)
-////////////////////////////////////////////////////////////////////////////////
-        
-uint64_t ActionDispatcherThread::_gcInterval = 1000;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -99,17 +62,25 @@ uint64_t ActionDispatcherThread::_gcInterval = 1000;
 ////////////////////////////////////////////////////////////////////////////////
 
 ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
+                                                TRI_vocbase_t* vocbase,
+                                                uint64_t gcInterval,
                                                 string const& actionQueue,
                                                 set<string> const& allowedContexts,
+                                                string startupModules,
+                                                JSLoader* startupLoader,
                                                 JSLoader* actionLoader)
   : DispatcherThread(queue),
+    _vocbase(vocbase),
+    _gcInterval(gcInterval),
+    _gc(0),
     _isolate(0),
     _context(),
+    _v8g(0),
     _actionQueue(actionQueue),
     _allowedContexts(allowedContexts),
-    _actionLoader(actionLoader),
-    _gc(0),
-    _v8g(0) {
+    _startupModules(startupModules),
+    _startupLoader(startupLoader),
+    _actionLoader(actionLoader) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,27 +170,6 @@ void ActionDispatcherThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// returns the action loader
-////////////////////////////////////////////////////////////////////////////////
-
-JSLoader* ActionDispatcherThread::actionLoader () {
-  return _actionLoader;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -280,16 +230,14 @@ void ActionDispatcherThread::initialise () {
   }
 
   // load all actions
-  JSLoader* loader = actionLoader();
-
-  if (loader == 0) {
+  if (_actionLoader == 0) {
     LOGGER_WARNING << "no action loader has been defined";
   }
   else {
-    ok = actionLoader()->executeAllScripts(_context);
+    ok = _actionLoader->executeAllScripts(_context);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
+      LOGGER_FATAL << "cannot load actions from directory '" << _actionLoader->getDirectory() << "'";
     }
   }
   
@@ -301,6 +249,10 @@ void ActionDispatcherThread::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

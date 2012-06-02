@@ -83,7 +83,8 @@ out
 *.Po
 *.pyc
 QL/parser.output
-.setup-directories
+.setup-js-directories
+.setup-mr-directories
 stamp-h*
 .svn
 *.swp
@@ -107,3 +108,4 @@ arangod
 arangosh
 arangoimp
 arangoirb
+Doxygen/.setup-directories
