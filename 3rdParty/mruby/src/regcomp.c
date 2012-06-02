@@ -1640,8 +1640,8 @@ compile_tree(Node* node, regex_t* reg)
 
       switch (NCTYPE(node)->ctype) {
       case ONIGENC_CTYPE_WORD:
-        if (NCTYPE(node)->not != 0)  op = OP_NOT_WORD;
-        else                         op = OP_WORD;
+        if (NCTYPE(node)->is_not != 0)  op = OP_NOT_WORD;
+        else                            op = OP_WORD;
         break;
       default:
         return ONIGERR_TYPE_BUG;
@@ -2440,8 +2440,8 @@ is_not_included(Node* x, Node* y, regex_t* reg)
     {
       switch (ytype) {
       case NT_CTYPE:
-        if (NCTYPE(y)->ctype == NCTYPE(x)->ctype &&
-            NCTYPE(y)->not   != NCTYPE(x)->not)
+        if (NCTYPE(y)->ctype  == NCTYPE(x)->ctype &&
+            NCTYPE(y)->is_not != NCTYPE(x)->is_not)
           return 1;
         else
           return 0;
@@ -2473,7 +2473,7 @@ is_not_included(Node* x, Node* y, regex_t* reg)
       case NT_CTYPE:
         switch (NCTYPE(y)->ctype) {
         case ONIGENC_CTYPE_WORD:
-          if (NCTYPE(y)->not == 0) {
+          if (NCTYPE(y)->is_not == 0) {
             if (IS_NULL(xc->mbuf) && !IS_NCCLASS_NOT(xc)) {
               for (i = 0; i < SINGLE_BYTE_SIZE; i++) {
                 if (BITSET_AT(xc->bs, i)) {
@@ -2550,9 +2550,9 @@ is_not_included(Node* x, Node* y, regex_t* reg)
         switch (NCTYPE(y)->ctype) {
         case ONIGENC_CTYPE_WORD:
           if (ONIGENC_IS_MBC_WORD(reg->enc, xs->s, xs->end))
-            return NCTYPE(y)->not;
+            return NCTYPE(y)->is_not;
           else
-            return !(NCTYPE(y)->not);
+            return !(NCTYPE(y)->is_not);
           break;
         default:
           break;
@@ -3038,19 +3038,21 @@ setup_subexp_call(Node* node, ScanEnv* env)
       Node** nodes = SCANENV_MEM_NODES(env);
 
       if (cn->group_num != 0) {
-        int gnum = cn->group_num;
+        {
+          int gnum = cn->group_num;
 
 #ifdef USE_NAMED_GROUP
-        if (env->num_named > 0 &&
-            IS_SYNTAX_BV(env->syntax, ONIG_SYN_CAPTURE_ONLY_NAMED_GROUP) &&
-            !ONIG_IS_OPTION_ON(env->option, ONIG_OPTION_CAPTURE_GROUP)) {
-          return ONIGERR_NUMBERED_BACKREF_OR_CALL_NOT_ALLOWED;
-        }
+          if (env->num_named > 0 &&
+              IS_SYNTAX_BV(env->syntax, ONIG_SYN_CAPTURE_ONLY_NAMED_GROUP) &&
+              !ONIG_IS_OPTION_ON(env->option, ONIG_OPTION_CAPTURE_GROUP)) {
+            return ONIGERR_NUMBERED_BACKREF_OR_CALL_NOT_ALLOWED;
+          }
 #endif
-        if (gnum > env->num_mem) {
-          onig_scan_env_set_error_string(env,
-                 ONIGERR_UNDEFINED_GROUP_REFERENCE, cn->name, cn->name_end);
-          return ONIGERR_UNDEFINED_GROUP_REFERENCE;
+          if (gnum > env->num_mem) {
+            onig_scan_env_set_error_string(env,
+                   ONIGERR_UNDEFINED_GROUP_REFERENCE, cn->name, cn->name_end);
+            return ONIGERR_UNDEFINED_GROUP_REFERENCE;
+          }
         }
 
 #ifdef USE_NAMED_GROUP
@@ -4668,7 +4670,7 @@ optimize_node_left(Node* node, NodeOptInfo* opt, OptEnv* env)
 
         switch (NCTYPE(node)->ctype) {
         case ONIGENC_CTYPE_WORD:
-          if (NCTYPE(node)->not != 0) {
+          if (NCTYPE(node)->is_not != 0) {
             for (i = 0; i < SINGLE_BYTE_SIZE; i++) {
               if (! ONIGENC_IS_CODE_WORD(env->enc, i)) {
                 add_char_opt_map_info(&opt->map, (UChar )i, env->enc);
@@ -6170,7 +6172,7 @@ print_indent_tree(FILE* f, Node* node, int indent)
     fprintf(f, "<ctype:%x> ", (int )node);
     switch (NCTYPE(node)->ctype) {
     case ONIGENC_CTYPE_WORD:
-      if (NCTYPE(node)->not != 0)
+      if (NCTYPE(node)->is_not != 0)
         fputs("not word",       f);
       else
         fputs("word",           f);

@@ -15,8 +15,6 @@ extern "C" {
 
 #ifndef ONIG_RUBY_M17N
 
-ONIG_EXTERN OnigEncoding    OnigEncDefaultCharEncoding;
-
 #define mbclen(p,e,enc)  mrb_enc_mbclen((p),(e),(enc))
 
 #endif /* ifndef ONIG_RUBY_M17N */

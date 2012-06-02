@@ -247,7 +247,7 @@ typedef struct {
 typedef struct {
   NodeBase base;
   int ctype;
-  int not;
+  int is_not;
 } CtypeNode;
 
 typedef struct _Node {

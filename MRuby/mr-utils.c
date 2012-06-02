@@ -30,13 +30,12 @@
 #include "BasicsC/strings.h"
 
 #include "mruby/array.h"
+#include "mruby/compile.h"
 #include "mruby/data.h"
 #include "mruby/hash.h"
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
-#include "mruby/error.h"
-#include "compile.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

@@ -26,9 +26,6 @@ LIBS = -lm
 INCLUDES = -I$(BASEDIR) -I$(BASEDIR)/../include
 
 # compiler, linker (gcc)
-CC = gcc
-LL = gcc
-YACC = bison
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g -O3
@@ -73,5 +70,5 @@ clean :
 	$(MAKE) clean -C ../../mrblib $(MAKE_FLAGS)
 	$(MAKE) clean -C ../mrbc $(MAKE_FLAGS)
 	@echo "make: removing targets, objects and depend files of `pwd`"
-	-rm -f $(EXE) $(OBJS)
-	-rm -f $(OBJS:.o=.d)
+	-$(RM_F) $(EXE) $(OBJS)
+	-$(RM_F) $(OBJS:.o=.d)

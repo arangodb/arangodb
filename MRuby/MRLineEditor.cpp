@@ -37,10 +37,8 @@
 #endif
 
 #ifdef TRI_ENABLE_MRUBY
-extern "C" {
 #include "mruby.h"
-#include "compile.h"
-}
+#include "mruby/compile.h"
 #endif
 
 using namespace std;
@@ -287,7 +285,7 @@ bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t colum
   char const* msg = "syntax error, unexpected $end";
   char* text = TRI_DuplicateString(source.c_str());
 
-  struct mrb_parser_state* p = mrb_parse_nstring_ext(&_mrs->_mrb, text, source.size());
+  struct mrb_parser_state* p = mrb_parse_nstring(&_mrs->_mrb, text, source.size());
   TRI_FreeString(TRI_CORE_MEM_ZONE, text);
 
   // out of memory?

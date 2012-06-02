@@ -83,13 +83,11 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
-extern "C" {
-#include "compile.h"
 #include "mruby.h"
+#include "mruby/compile.h"
 #include "mruby/data.h"
 #include "mruby/proc.h"
 #include "mruby/variable.h"
-}
 #endif
 
 // -----------------------------------------------------------------------------

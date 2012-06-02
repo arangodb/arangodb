@@ -23,8 +23,8 @@ assert('Time#initialize_copy', '15.2.19.7.17') do
 end
 
 assert('Time#mday', '15.2.19.7.19') do
-  Time.gm(2012, 12, 23).mday == 23 
-end 
+  Time.gm(2012, 12, 23).mday == 23
+end
 
 assert('Time#month', '15.2.19.7.22') do
   Time.gm(2012, 12, 23).month == 12

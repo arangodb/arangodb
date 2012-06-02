@@ -4,8 +4,12 @@
 ** See Copyright Notice in mruby.h
 */
 
-#ifndef MSTRUCT_H
-#define MSTRUCT_H
+#ifndef MRUBY_STRUCT_H
+#define MRUBY_STRUCT_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 struct RStruct {
     struct RBasic basic;
@@ -19,4 +23,8 @@ struct RStruct {
 mrb_value mrb_yield_values(int n, ...);
 mrb_value mrb_mod_module_eval(mrb_state *mrb, int argc, mrb_value *argv, mrb_value mod);
 
-#endif //MSTRUCT_H
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif /* MRUBY_STRUCT_H */
