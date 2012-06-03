@@ -82,7 +82,7 @@ bool RestImportHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestImportHandler::queue () {
-  static string const client = "CLIENT";
+  static string const client = "STANDARD";
 
   return client;
 }
