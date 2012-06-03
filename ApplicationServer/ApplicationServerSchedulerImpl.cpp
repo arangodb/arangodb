@@ -330,8 +330,8 @@ namespace triagens {
       ;
 
       if (_multiSchedulerAllowed) {
-        options[OPTIONS_SERVER + ":help-extended"]
-          ("scheduler.threads", &_nrSchedulerThreads, "number of scheduler threads")
+        options["THREAD Options:help-admin"]
+          ("scheduler.threads", &_nrSchedulerThreads, "number of threads for I/O scheduler")
         ;
       }
     }

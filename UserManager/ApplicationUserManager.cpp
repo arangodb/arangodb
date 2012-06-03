@@ -226,7 +226,7 @@ void ApplicationUserManager::setAnonymousRights (vector<right_t> const& rights) 
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationUserManager::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
     ("server.user-database", &optionUserDatabase, "file for storing the user database")
   ;
 }

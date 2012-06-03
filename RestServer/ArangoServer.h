@@ -293,19 +293,19 @@ namespace triagens {
 ///
 /// @CMDOPT{--action.system-directory @CA{directory}}
 ///
-/// Specifies the @CA{system-directory} path to system defined Javascript files 
+/// Specifies the @CA{directory} containg the system defined Javascript files
 /// that can be invoked as actions.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _actionPathJS;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of action threads
+/// @brief number of action threads for JavaScript
 ///
 /// @CMDOPT{--action.threads @CA{number}}
 ///
 /// Specifies the @CA{number} of threads that are spawned to handle action 
-/// requests.
+/// requests using JavaScript.
 ////////////////////////////////////////////////////////////////////////////////
 
         int _actionThreadsJS;
@@ -313,7 +313,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Javascript garbage collection interval (each x requests)
 ///
-/// @CMDOPT{--gc.interval @CA{interval}}
+/// @CMDOPT{--action.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the 
 /// garbage collection for Javascript objects will be run in each thread.
@@ -332,7 +332,22 @@ namespace triagens {
 /// can be used.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MRUBY
         string _startupPathMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of action threads for MRuby
+///
+/// @CMDOPT{--action.ruby-threads @CA{number}}
+///
+/// Specifies the @CA{number} of threads that are spawned to handle action 
+/// requests using MRuby.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        int _actionThreadsMR;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database

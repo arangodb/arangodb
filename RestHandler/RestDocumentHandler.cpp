@@ -82,7 +82,7 @@ bool RestDocumentHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestDocumentHandler::queue () {
-  static string const client = "CLIENT";
+  static string const client = "STANDARD";
 
   return client;
 }

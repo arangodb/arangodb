@@ -149,7 +149,9 @@ static set<string> AllowedAdminActions;
 /// @brief startup loader
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MRUBY
 static MRLoader StartupLoaderMR;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -165,14 +167,14 @@ static MRLoader StartupLoaderMR;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action dispatcher thread creator
+/// @brief JavaScript action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
+static DispatcherThread* ClientActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue,
                                     Vocbase,
                                     GcIntervalJS,
-                                    "CLIENT",
+                                    "CLIENT-JAVASCRIPT",
                                     AllowedClientActions,
                                     StartupModulesJS,
                                     &StartupLoaderJS,
@@ -180,19 +182,57 @@ static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* q
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system action dispatcher thread creator
+/// @brief JavaScript system action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
+static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue,
                                     Vocbase,
                                     GcIntervalJS,
-                                    "SYSTEM",
+                                    "SYSTEM-JAVASCRIPT",
                                     AllowedAdminActions,
                                     StartupModulesJS,
                                     &StartupLoaderJS,
                                     &ActionLoaderJS);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "CLIENT-RUBY",
+                                    AllowedClientActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript system action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "SYSTEM-RUBY",
+                                    AllowedAdminActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" handlers
@@ -270,13 +310,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
     _adminPort(),
-    _dispatcherThreads(1),
+    _dispatcherThreads(8),
     _startupPathJS(),
     _startupModulesJS("js/modules"),
     _actionPathJS(),
     _actionThreadsJS(8),
     _gcIntervalJS(1000),
+#ifdef TRI_ENABLE_MRUBY
     _startupPathMR(),
+    _actionThreadsMR(8),
+#endif
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
@@ -514,20 +557,31 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
-    ("action.system-directory", &_actionPathJS, "path to the system action directory")
-    ("action.threads", &_actionThreadsJS, "threads for actions")
-    ("gc.interval", &_gcIntervalJS, "garbage collection interval (each x requests)")
+    ("action.system-directory", &_actionPathJS, "path to the JavaScript action directory")
+    ("action.gc-interval", &_gcIntervalJS, "JavaScript garbage collection interval (each x requests)")
     ("startup.directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
     ("startup.modules-path", &_startupModulesJS, "one or more directories separated by cola")
+  ;
+
+  additional["THREAD Options:help-admin"]
+    ("action.threads", &_actionThreadsJS, "number of threads for JavaScript actions")
   ;
 
   // .............................................................................
   // JavaScript options
   // .............................................................................
 
+#ifdef TRI_ENABLE_MRUBY
+
   additional["MRUBY Options:help-admin"]
     ("startup.ruby-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
   ;
+
+  additional["THREAD Options:help-admin"]
+    ("action.ruby-threads", &_actionThreadsMR, "number of threads for MRuby actions")
+  ;
+
+#endif
 
   // .............................................................................
   // database options
@@ -535,6 +589,10 @@ void ArangoServer::buildApplicationServer () {
 
   additional["Server Options:help-admin"]
     ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
+  ;
+
+  additional["THREAD Options:help-admin"]
+    ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
 
   // .............................................................................
@@ -689,17 +747,25 @@ int ArangoServer::startupServer () {
     _actionThreadsJS = 1;
   }
 
-  // if we share a the server port for admin and client, only create a SYSTEM queue
-  if (shareAdminPort) {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreadsJS);
+  // if we share a the server port for admin and client, only create a CLIENT queue
+  if (0 < _actionThreadsJS) {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-JAVASCRIPT", ClientActionDispatcherThreadCreatorJS, _actionThreadsJS);
   }
 
-  // use a separate queue for administrator requests
-  else {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreadsJS);
+#if TRI_ENABLE_MRUBY
+  if (0 < _actionThreadsMR) {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
+  }
+#endif
 
+  // use a separate queue for administrator requests
+  if (! shareAdminPort) {
     if (useAdminPort) {
-      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
+
+#if TRI_ENABLE_MRUBY
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
+#endif
     }
   }
 
@@ -711,7 +777,7 @@ int ArangoServer::startupServer () {
 
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
-  httpOptions._queue = "CLIENT";
+  httpOptions._queue = "CLIENT-JAVASCRIPT";
 
   if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
@@ -743,7 +809,7 @@ int ArangoServer::startupServer () {
 
   RestActionHandler::action_options_t adminOptions;
   adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
+  adminOptions._queue = "SYSTEM-JAVASCRIPT";
 
   if (useAdminPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
@@ -1200,6 +1266,10 @@ void ArangoServer::closeDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
