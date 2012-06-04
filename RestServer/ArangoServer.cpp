@@ -566,7 +566,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DIRECTORY Options:help-admin"]
     ("javascript.action-directory", &_actionPathJS, "path to the JavaScript action directory")
     ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
-    ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by cola")
+    ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by (semi-) colons")
   ;
 
   additional["THREAD Options:help-admin"]
