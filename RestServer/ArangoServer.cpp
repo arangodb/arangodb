@@ -542,8 +542,11 @@ void ArangoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
+  additional["DIRECTORY Options:help-admin"]
+    ("database.directory", &_databasePath, "path to the database directory")
+  ;
+
   additional["DATABASE Options:help-admin"]
-    ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
   ;
@@ -557,14 +560,17 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
-    ("action.system-directory", &_actionPathJS, "path to the JavaScript action directory")
-    ("action.gc-interval", &_gcIntervalJS, "JavaScript garbage collection interval (each x requests)")
-    ("startup.directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
-    ("startup.modules-path", &_startupModulesJS, "one or more directories separated by cola")
+    ("javascript.gc-interval", &_gcIntervalJS, "JavaScript garbage collection interval (each x requests)")
+  ;
+
+  additional["DIRECTORY Options:help-admin"]
+    ("javascript.action-directory", &_actionPathJS, "path to the JavaScript action directory")
+    ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by cola")
   ;
 
   additional["THREAD Options:help-admin"]
-    ("action.threads", &_actionThreadsJS, "number of threads for JavaScript actions")
+    ("javascript.action-threads", &_actionThreadsJS, "number of threads for JavaScript actions")
   ;
 
   // .............................................................................
@@ -573,12 +579,12 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_MRUBY
 
-  additional["MRUBY Options:help-admin"]
-    ("startup.ruby-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
+  additional["DIRECTORY Options:help-admin"]
+    ("ruby.startup-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
   ;
 
   additional["THREAD Options:help-admin"]
-    ("action.ruby-threads", &_actionThreadsMR, "number of threads for MRuby actions")
+    ("ruby.action-threads", &_actionThreadsMR, "number of threads for MRuby actions")
   ;
 
 #endif
