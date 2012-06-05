@@ -409,7 +409,7 @@ namespace triagens {
         vector<string> _unitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief js lint
+/// @brief files to jslint
 ///
 /// @CMDOPT{--jslint @CA{test-file}}
 ///
