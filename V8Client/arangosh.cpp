@@ -1218,7 +1218,7 @@ int main (int argc, char* argv[]) {
   bool useServer = (ServerAddressPort != "none");
 
   if (!JsLint.empty()) {
-    // if we are in jslint mode, we will not need the server
+    // if we are in jslint mode, we will not need the server at all
     useServer = false;
   }
 
