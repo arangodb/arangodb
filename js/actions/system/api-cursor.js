@@ -155,7 +155,7 @@ function POST_api_cursor(req, res) {
     }
 
     // this might dispose or persist the cursor
-    actions.resultCursor(req, res, cursor);
+    actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, json.count ? true : false);
   }
   catch (err) {
     actions.resultException(req, res, err);
