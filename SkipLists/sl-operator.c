@@ -69,13 +69,14 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
                                         void* collection) {
 
   TRI_sl_operator_t*          newOperator;
+  TRI_sl_logical_operator_t*  newLogicalOperator;
+  TRI_sl_relation_operator_t* newRelationOperator;
   
   switch (operatorType) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: {
-      TRI_sl_logical_operator_t*  newLogicalOperator;
-    
+      
       newLogicalOperator = (TRI_sl_logical_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t), false);
 
       if (!newLogicalOperator) {
@@ -96,7 +97,6 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
-      TRI_sl_relation_operator_t* newRelationOperator;
 
       newRelationOperator = (TRI_sl_relation_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false);
 
@@ -124,6 +124,65 @@ TRI_sl_operator_t* TRI_CreateSLOperator(TRI_sl_operator_type_e operatorType,
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Destroys and frees any memory associated with a Skiplist operator
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClearSLOperator(TRI_sl_operator_t* slOperator) {
+
+  TRI_sl_logical_operator_t*  logicalOperator;
+  TRI_sl_relation_operator_t* relationOperator;
+  
+  if (slOperator == NULL) {
+    return;
+  }
+  
+  switch (slOperator->_type) {
+    case TRI_SL_AND_OPERATOR: 
+    case TRI_SL_NOT_OPERATOR:
+    case TRI_SL_OR_OPERATOR: {
+    
+      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
+      TRI_ClearSLOperator(logicalOperator->_left);
+      TRI_ClearSLOperator(logicalOperator->_right);
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
+      break;
+      
+    }
+    
+    
+    case TRI_SL_EQ_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+    case TRI_SL_NE_OPERATOR: 
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: {
+      size_t i;
+
+      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+      if (relationOperator->_parameters != NULL) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
+      } 
+
+      if (relationOperator->_fields != NULL) {
+        // relationOperator->_fields contains _numFields shapedJson objects
+        for (i = 0; i < relationOperator->_numFields; ++i) {
+          // destroy each individual shapedJson object
+          TRI_shaped_json_t* shaped = relationOperator->_fields + i;
+          TRI_DestroyShapedJson(relationOperator->_base._shaper, shaped);
+        }
+        // free the memory pointer
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
+      }  
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
+      break;
+    }    
+  } // end of switch statement
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy a skiplist operator recursively (deep copy)
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +201,7 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_AND_OPERATOR: 
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: {
+    
       TRI_sl_logical_operator_t*  newLogicalOperator;
       TRI_sl_logical_operator_t*  oldLogicalOperator;
     
@@ -164,87 +224,53 @@ TRI_sl_operator_t* TRI_CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_NE_OPERATOR: 
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: {
+    
       TRI_sl_relation_operator_t* newRelationOperator;
       TRI_sl_relation_operator_t* oldRelationOperator;
-    
+
       oldRelationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       newRelationOperator = (TRI_sl_relation_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t), false));
-      if (newRelationOperator != NULL) {
-        newRelationOperator->_base._type = slOperator->_type;
-        newRelationOperator->_base._shaper = slOperator->_shaper;
-        newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);
-        if (newRelationOperator->_fields != NULL) {
-          newRelationOperator->_fields = TRI_CopyShapedJson(newRelationOperator->_base._shaper, oldRelationOperator->_fields);
-        }  
-        newRelationOperator->_numFields  = oldRelationOperator->_numFields;
-        newRelationOperator->_collection = oldRelationOperator->_collection;
-        newOperator = &(newRelationOperator->_base);      
-      }  
-      break;
       
+      if (newRelationOperator == NULL) { // out of memory?
+        break;
+      }
+      
+      newRelationOperator->_base._type   = slOperator->_type;
+      newRelationOperator->_base._shaper = slOperator->_shaper;
+      
+      if (oldRelationOperator->_parameters != NULL) {
+        newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);
+      }
+      else {
+        newRelationOperator->_parameters = NULL;
+      }
+      
+      if (oldRelationOperator->_fields != NULL) {
+        newRelationOperator->_fields = TRI_CopyShapedJson(oldRelationOperator->_base._shaper, oldRelationOperator->_fields);
+      }  
+      else {
+        newRelationOperator->_fields = NULL;
+      }  
+      
+      newRelationOperator->_numFields    = oldRelationOperator->_numFields;
+      newRelationOperator->_collection   = oldRelationOperator->_collection;
+
+      newOperator = &(newRelationOperator->_base);      
+      
+      break;            
     }        
   }
   
   return newOperator;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a skiplist operator recursively
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSLOperator (TRI_sl_operator_t* slOperator) {
-  if (slOperator == NULL) {
-    return;
-  }
-  
-  switch (slOperator->_type) {
-    case TRI_SL_AND_OPERATOR: 
-    case TRI_SL_NOT_OPERATOR:
-    case TRI_SL_OR_OPERATOR: {
-      TRI_sl_logical_operator_t*  logicalOperator;
-
-      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
-      TRI_FreeSLOperator(logicalOperator->_left);
-      TRI_FreeSLOperator(logicalOperator->_right);
-
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
-      break;
-    }
-    
-    case TRI_SL_EQ_OPERATOR: 
-    case TRI_SL_GE_OPERATOR: 
-    case TRI_SL_GT_OPERATOR: 
-    case TRI_SL_NE_OPERATOR: 
-    case TRI_SL_LE_OPERATOR: 
-    case TRI_SL_LT_OPERATOR: {
-      TRI_sl_relation_operator_t* relationOperator;
-
-      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
-
-      if (relationOperator->_parameters != NULL) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
-      }
-
-      if (relationOperator->_fields != NULL) {
-        size_t j;
-
-        for (j = 0; j < relationOperator->_numFields; ++j) {
-          TRI_shaped_json_t* field = relationOperator->_fields + j;
-
-          if (field->_data.data) {
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, field->_data.data);
-          }
-        }
-
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields); // don't require storage anymore
-        relationOperator->_fields = NULL;
-      }
-      relationOperator->_numFields = 0;
-      
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
-      break;
-    }
-  }
+  TRI_ClearSLOperator(slOperator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
