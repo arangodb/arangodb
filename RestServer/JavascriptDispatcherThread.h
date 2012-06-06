@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_REST_SERVER_JAVASCRIPT_DISPATCHER_THREAD_H
 #define TRIAGENS_REST_SERVER_JAVASCRIPT_DISPATCHER_THREAD_H 1
 
-#include "RestServer/ActionDispatcherThread.h"
+#include "Actions/ActionDispatcherThread.h"
 
 #include <v8.h>
 

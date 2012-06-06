@@ -137,12 +137,34 @@ endif
 arangod_LDADD = libarango.a $(LIBS)
 
 arangod_SOURCES = \
+	Actions/RestActionHandler.cpp \
+	Actions/ActionDispatcherThread.cpp \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
 	Admin/RestAdminLogHandler.cpp \
 	Admin/RestBaseHandler.cpp \
 	Admin/RestVersionHandler.cpp \
+	Ahuacatl/ahuacatl-access-optimiser.c \
+	Ahuacatl/ahuacatl-ast-node.c \
+	Ahuacatl/ahuacatl-bind-parameter.c \
+	Ahuacatl/ahuacatl-codegen.c \
+	Ahuacatl/ahuacatl-collections.c \
+	Ahuacatl/ahuacatl-context.c \
+	Ahuacatl/ahuacatl-conversions.c \
+	Ahuacatl/ahuacatl-error.c \
+	Ahuacatl/ahuacatl-functions.c \
+	Ahuacatl/ahuacatl-grammar.c \
+	Ahuacatl/ahuacatl-index.c \
+	Ahuacatl/ahuacatl-optimiser.c \
+	Ahuacatl/ahuacatl-parser-functions.c \
+	Ahuacatl/ahuacatl-parser.c \
+	Ahuacatl/ahuacatl-result.c \
+	Ahuacatl/ahuacatl-scope.c \
+	Ahuacatl/ahuacatl-tokens.c \
+	Ahuacatl/ahuacatl-tree-dump.c \
+	Ahuacatl/ahuacatl-tree-walker.c \
+	Ahuacatl/ahuacatl-variable.c \
 	ApplicationServer/ApplicationServer.cpp \
 	ApplicationServer/ApplicationServerImpl.cpp \
 	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
@@ -153,8 +175,8 @@ arangod_SOURCES = \
 	Dispatcher/DispatcherThread.cpp \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
-	HashIndex/hashindex.c \
 	HashIndex/hasharray.c \
+	HashIndex/hashindex.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
@@ -170,27 +192,10 @@ arangod_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
-        Ahuacatl/ahuacatl-access-optimiser.c \
-        Ahuacatl/ahuacatl-ast-node.c \
-        Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen.c \
-        Ahuacatl/ahuacatl-collections.c \
-        Ahuacatl/ahuacatl-context.c \
-        Ahuacatl/ahuacatl-conversions.c \
-        Ahuacatl/ahuacatl-error.c \
-	Ahuacatl/ahuacatl-functions.c \
-        Ahuacatl/ahuacatl-grammar.c \
-        Ahuacatl/ahuacatl-index.c \
-        Ahuacatl/ahuacatl-optimiser.c \
-        Ahuacatl/ahuacatl-parser.c \
-        Ahuacatl/ahuacatl-parser-functions.c \
-        Ahuacatl/ahuacatl-result.c \
-	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
 	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
-	RestServer/ActionDispatcherThread.cpp \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
 	RestServer/JavascriptDispatcherThread.cpp \
@@ -201,11 +206,6 @@ arangod_SOURCES = \
 	ResultGenerator/JsonXResultGenerator.cpp \
 	ResultGenerator/OutputGenerator.cpp \
 	ResultGenerator/PhpResultGenerator.cpp \
-        Ahuacatl/ahuacatl-scope.c \
-        Ahuacatl/ahuacatl-tokens.c \
-        Ahuacatl/ahuacatl-tree-dump.c \
-        Ahuacatl/ahuacatl-tree-walker.c \
-        Ahuacatl/ahuacatl-variable.c \
 	ResultGenerator/ResultGenerator.cpp \
 	ResultGenerator/XmlResultGenerator.cpp \
 	Scheduler/AsyncTask.cpp \
@@ -220,9 +220,9 @@ arangod_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
-	SkipLists/sl-operator.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
+	SkipLists/sl-operator.c \
 	V8/v8-actions.cpp \
 	V8/v8-query.cpp \
 	V8/v8-vocbase.cpp \

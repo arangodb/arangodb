@@ -344,12 +344,34 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
-am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
+am_arangod_OBJECTS = Actions/RestActionHandler.$(OBJEXT) \
+	Actions/ActionDispatcherThread.$(OBJEXT) \
+	Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
 	Admin/RestAdminLogHandler.$(OBJEXT) \
 	Admin/RestBaseHandler.$(OBJEXT) \
 	Admin/RestVersionHandler.$(OBJEXT) \
+	Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT) \
+	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
+	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
+	Ahuacatl/ahuacatl-codegen.$(OBJEXT) \
+	Ahuacatl/ahuacatl-collections.$(OBJEXT) \
+	Ahuacatl/ahuacatl-context.$(OBJEXT) \
+	Ahuacatl/ahuacatl-conversions.$(OBJEXT) \
+	Ahuacatl/ahuacatl-error.$(OBJEXT) \
+	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
+	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
+	Ahuacatl/ahuacatl-index.$(OBJEXT) \
+	Ahuacatl/ahuacatl-optimiser.$(OBJEXT) \
+	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
+	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
+	Ahuacatl/ahuacatl-result.$(OBJEXT) \
+	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
+	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	ApplicationServer/ApplicationServer.$(OBJEXT) \
 	ApplicationServer/ApplicationServerImpl.$(OBJEXT) \
 	ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT) \
@@ -359,7 +381,7 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Dispatcher/DispatcherQueue.$(OBJEXT) \
 	Dispatcher/DispatcherThread.$(OBJEXT) Dispatcher/Job.$(OBJEXT) \
 	GeneralServer/GeneralFigures.$(OBJEXT) \
-	HashIndex/hashindex.$(OBJEXT) HashIndex/hasharray.$(OBJEXT) \
+	HashIndex/hasharray.$(OBJEXT) HashIndex/hashindex.$(OBJEXT) \
 	HttpServer/ApplicationHttpServer.$(OBJEXT) \
 	HttpServer/ApplicationHttpServerImpl.$(OBJEXT) \
 	HttpServer/HttpCommTask.$(OBJEXT) \
@@ -375,27 +397,10 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/HttpsServerImpl.$(OBJEXT) \
 	PriorityQueue/pqueueindex.$(OBJEXT) \
 	PriorityQueue/priorityqueue.$(OBJEXT) \
-	Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT) \
-	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
-	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
-	Ahuacatl/ahuacatl-codegen.$(OBJEXT) \
-	Ahuacatl/ahuacatl-collections.$(OBJEXT) \
-	Ahuacatl/ahuacatl-context.$(OBJEXT) \
-	Ahuacatl/ahuacatl-conversions.$(OBJEXT) \
-	Ahuacatl/ahuacatl-error.$(OBJEXT) \
-	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
-	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
-	Ahuacatl/ahuacatl-index.$(OBJEXT) \
-	Ahuacatl/ahuacatl-optimiser.$(OBJEXT) \
-	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
-	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
-	Ahuacatl/ahuacatl-result.$(OBJEXT) \
-	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
 	RestHandler/RestEdgeHandler.$(OBJEXT) \
 	RestHandler/RestImportHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
-	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/ArangoHttpServer.$(OBJEXT) \
 	RestServer/ArangoServer.$(OBJEXT) \
 	RestServer/JavascriptDispatcherThread.$(OBJEXT) \
@@ -406,11 +411,6 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	ResultGenerator/JsonXResultGenerator.$(OBJEXT) \
 	ResultGenerator/OutputGenerator.$(OBJEXT) \
 	ResultGenerator/PhpResultGenerator.$(OBJEXT) \
-	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
-	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	ResultGenerator/ResultGenerator.$(OBJEXT) \
 	ResultGenerator/XmlResultGenerator.$(OBJEXT) \
 	Scheduler/AsyncTask.$(OBJEXT) \
@@ -421,12 +421,13 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Scheduler/SchedulerThread.$(OBJEXT) \
 	Scheduler/SignalTask.$(OBJEXT) Scheduler/SocketTask.$(OBJEXT) \
 	Scheduler/Task.$(OBJEXT) Scheduler/TaskManager.$(OBJEXT) \
-	Scheduler/TimerTask.$(OBJEXT) SkipLists/sl-operator.$(OBJEXT) \
-	SkipLists/skiplist.$(OBJEXT) SkipLists/skiplistIndex.$(OBJEXT) \
-	V8/v8-actions.$(OBJEXT) V8/v8-query.$(OBJEXT) \
-	V8/v8-vocbase.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
-	VocBase/blob-collection.$(OBJEXT) VocBase/collection.$(OBJEXT) \
-	VocBase/compactor.$(OBJEXT) VocBase/datafile.$(OBJEXT) \
+	Scheduler/TimerTask.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
+	SkipLists/skiplistIndex.$(OBJEXT) \
+	SkipLists/sl-operator.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
+	V8/v8-query.$(OBJEXT) V8/v8-vocbase.$(OBJEXT) \
+	VocBase/barrier.$(OBJEXT) VocBase/blob-collection.$(OBJEXT) \
+	VocBase/collection.$(OBJEXT) VocBase/compactor.$(OBJEXT) \
+	VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
 	VocBase/general-cursor.$(OBJEXT) VocBase/headers.$(OBJEXT) \
 	VocBase/index.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
@@ -787,12 +788,34 @@ libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 ################################################################################
 arangod_LDADD = libarango.a $(LIBS)
 arangod_SOURCES = \
+	Actions/RestActionHandler.cpp \
+	Actions/ActionDispatcherThread.cpp \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
 	Admin/RestAdminLogHandler.cpp \
 	Admin/RestBaseHandler.cpp \
 	Admin/RestVersionHandler.cpp \
+	Ahuacatl/ahuacatl-access-optimiser.c \
+	Ahuacatl/ahuacatl-ast-node.c \
+	Ahuacatl/ahuacatl-bind-parameter.c \
+	Ahuacatl/ahuacatl-codegen.c \
+	Ahuacatl/ahuacatl-collections.c \
+	Ahuacatl/ahuacatl-context.c \
+	Ahuacatl/ahuacatl-conversions.c \
+	Ahuacatl/ahuacatl-error.c \
+	Ahuacatl/ahuacatl-functions.c \
+	Ahuacatl/ahuacatl-grammar.c \
+	Ahuacatl/ahuacatl-index.c \
+	Ahuacatl/ahuacatl-optimiser.c \
+	Ahuacatl/ahuacatl-parser-functions.c \
+	Ahuacatl/ahuacatl-parser.c \
+	Ahuacatl/ahuacatl-result.c \
+	Ahuacatl/ahuacatl-scope.c \
+	Ahuacatl/ahuacatl-tokens.c \
+	Ahuacatl/ahuacatl-tree-dump.c \
+	Ahuacatl/ahuacatl-tree-walker.c \
+	Ahuacatl/ahuacatl-variable.c \
 	ApplicationServer/ApplicationServer.cpp \
 	ApplicationServer/ApplicationServerImpl.cpp \
 	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
@@ -803,8 +826,8 @@ arangod_SOURCES = \
 	Dispatcher/DispatcherThread.cpp \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
-	HashIndex/hashindex.c \
 	HashIndex/hasharray.c \
+	HashIndex/hashindex.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
@@ -820,27 +843,10 @@ arangod_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
-        Ahuacatl/ahuacatl-access-optimiser.c \
-        Ahuacatl/ahuacatl-ast-node.c \
-        Ahuacatl/ahuacatl-bind-parameter.c \
-	Ahuacatl/ahuacatl-codegen.c \
-        Ahuacatl/ahuacatl-collections.c \
-        Ahuacatl/ahuacatl-context.c \
-        Ahuacatl/ahuacatl-conversions.c \
-        Ahuacatl/ahuacatl-error.c \
-	Ahuacatl/ahuacatl-functions.c \
-        Ahuacatl/ahuacatl-grammar.c \
-        Ahuacatl/ahuacatl-index.c \
-        Ahuacatl/ahuacatl-optimiser.c \
-        Ahuacatl/ahuacatl-parser.c \
-        Ahuacatl/ahuacatl-parser-functions.c \
-        Ahuacatl/ahuacatl-result.c \
-	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
 	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
-	RestServer/ActionDispatcherThread.cpp \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
 	RestServer/JavascriptDispatcherThread.cpp \
@@ -851,11 +857,6 @@ arangod_SOURCES = \
 	ResultGenerator/JsonXResultGenerator.cpp \
 	ResultGenerator/OutputGenerator.cpp \
 	ResultGenerator/PhpResultGenerator.cpp \
-        Ahuacatl/ahuacatl-scope.c \
-        Ahuacatl/ahuacatl-tokens.c \
-        Ahuacatl/ahuacatl-tree-dump.c \
-        Ahuacatl/ahuacatl-tree-walker.c \
-        Ahuacatl/ahuacatl-variable.c \
 	ResultGenerator/ResultGenerator.cpp \
 	ResultGenerator/XmlResultGenerator.cpp \
 	Scheduler/AsyncTask.cpp \
@@ -870,9 +871,9 @@ arangod_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
-	SkipLists/sl-operator.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
+	SkipLists/sl-operator.c \
 	V8/v8-actions.cpp \
 	V8/v8-query.cpp \
 	V8/v8-vocbase.cpp \
@@ -1683,6 +1684,16 @@ UnitTests/Cambridge/georeg.$(OBJEXT):  \
 UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
 	@rm -f UnitTests/geo_suite$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_LDADD) $(LIBS)
+Actions/$(am__dirstamp):
+	@$(MKDIR_P) Actions
+	@: > Actions/$(am__dirstamp)
+Actions/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Actions/$(DEPDIR)
+	@: > Actions/$(DEPDIR)/$(am__dirstamp)
+Actions/RestActionHandler.$(OBJEXT): Actions/$(am__dirstamp) \
+	Actions/$(DEPDIR)/$(am__dirstamp)
+Actions/ActionDispatcherThread.$(OBJEXT): Actions/$(am__dirstamp) \
+	Actions/$(DEPDIR)/$(am__dirstamp)
 Admin/$(am__dirstamp):
 	@$(MKDIR_P) Admin
 	@: > Admin/$(am__dirstamp)
@@ -1701,6 +1712,52 @@ Admin/RestBaseHandler.$(OBJEXT): Admin/$(am__dirstamp) \
 	Admin/$(DEPDIR)/$(am__dirstamp)
 Admin/RestVersionHandler.$(OBJEXT): Admin/$(am__dirstamp) \
 	Admin/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl
+	@: > Ahuacatl/$(am__dirstamp)
+Ahuacatl/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
+	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT):  \
+	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-codegen.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-collections.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-context.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-conversions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-index.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-optimiser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-parser-functions.$(OBJEXT):  \
+	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 ApplicationServer/$(am__dirstamp):
 	@$(MKDIR_P) ApplicationServer
 	@: > ApplicationServer/$(am__dirstamp)
@@ -1750,9 +1807,9 @@ HashIndex/$(am__dirstamp):
 HashIndex/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) HashIndex/$(DEPDIR)
 	@: > HashIndex/$(DEPDIR)/$(am__dirstamp)
-HashIndex/hashindex.$(OBJEXT): HashIndex/$(am__dirstamp) \
-	HashIndex/$(DEPDIR)/$(am__dirstamp)
 HashIndex/hasharray.$(OBJEXT): HashIndex/$(am__dirstamp) \
+	HashIndex/$(DEPDIR)/$(am__dirstamp)
+HashIndex/hashindex.$(OBJEXT): HashIndex/$(am__dirstamp) \
 	HashIndex/$(DEPDIR)/$(am__dirstamp)
 HttpServer/$(am__dirstamp):
 	@$(MKDIR_P) HttpServer
@@ -1807,50 +1864,12 @@ PriorityQueue/pqueueindex.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
 	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 PriorityQueue/priorityqueue.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
 	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/$(am__dirstamp):
-	@$(MKDIR_P) Ahuacatl
-	@: > Ahuacatl/$(am__dirstamp)
-Ahuacatl/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
-	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-access-optimiser.$(OBJEXT):  \
-	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-codegen.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-collections.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-context.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-conversions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-index.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-optimiser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-parser-functions.$(OBJEXT):  \
-	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 RestHandler/$(am__dirstamp):
 	@$(MKDIR_P) RestHandler
 	@: > RestHandler/$(am__dirstamp)
 RestHandler/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) RestHandler/$(DEPDIR)
 	@: > RestHandler/$(DEPDIR)/$(am__dirstamp)
-RestHandler/RestActionHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
-	RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestDocumentHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -1867,9 +1886,6 @@ RestServer/$(am__dirstamp):
 RestServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) RestServer/$(DEPDIR)
 	@: > RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/ActionDispatcherThread.$(OBJEXT):  \
-	RestServer/$(am__dirstamp) \
-	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/ArangoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/ArangoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
@@ -1902,16 +1918,6 @@ ResultGenerator/OutputGenerator.$(OBJEXT):  \
 ResultGenerator/PhpResultGenerator.$(OBJEXT):  \
 	ResultGenerator/$(am__dirstamp) \
 	ResultGenerator/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/ResultGenerator.$(OBJEXT):  \
 	ResultGenerator/$(am__dirstamp) \
 	ResultGenerator/$(DEPDIR)/$(am__dirstamp)
@@ -1954,11 +1960,11 @@ SkipLists/$(am__dirstamp):
 SkipLists/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) SkipLists/$(DEPDIR)
 	@: > SkipLists/$(DEPDIR)/$(am__dirstamp)
-SkipLists/sl-operator.$(OBJEXT): SkipLists/$(am__dirstamp) \
-	SkipLists/$(DEPDIR)/$(am__dirstamp)
 SkipLists/skiplist.$(OBJEXT): SkipLists/$(am__dirstamp) \
 	SkipLists/$(DEPDIR)/$(am__dirstamp)
 SkipLists/skiplistIndex.$(OBJEXT): SkipLists/$(am__dirstamp) \
+	SkipLists/$(DEPDIR)/$(am__dirstamp)
+SkipLists/sl-operator.$(OBJEXT): SkipLists/$(am__dirstamp) \
 	SkipLists/$(DEPDIR)/$(am__dirstamp)
 V8/v8-actions.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
@@ -2050,6 +2056,8 @@ arangosh$(EXEEXT): $(arangosh_OBJECTS) $(arangosh_DEPENDENCIES)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f Actions/ActionDispatcherThread.$(OBJEXT)
+	-rm -f Actions/RestActionHandler.$(OBJEXT)
 	-rm -f Admin/ApplicationAdminServer.$(OBJEXT)
 	-rm -f Admin/RestAdminBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestAdminFeConfigurationHandler.$(OBJEXT)
@@ -2174,12 +2182,10 @@ mostlyclean-compile:
 	-rm -f Rest/JsonContainer.$(OBJEXT)
 	-rm -f Rest/SslInterface.$(OBJEXT)
 	-rm -f Rest/Url.$(OBJEXT)
-	-rm -f RestHandler/RestActionHandler.$(OBJEXT)
 	-rm -f RestHandler/RestDocumentHandler.$(OBJEXT)
 	-rm -f RestHandler/RestEdgeHandler.$(OBJEXT)
 	-rm -f RestHandler/RestImportHandler.$(OBJEXT)
 	-rm -f RestHandler/RestVocbaseBaseHandler.$(OBJEXT)
-	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/ArangoHttpServer.$(OBJEXT)
 	-rm -f RestServer/ArangoServer.$(OBJEXT)
 	-rm -f RestServer/JavascriptDispatcherThread.$(OBJEXT)
@@ -2287,6 +2293,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@Actions/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Actions/$(DEPDIR)/RestActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/ApplicationAdminServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminFeConfigurationHandler.Po@am__quote@
@@ -2411,12 +2419,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/JsonContainer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/SslInterface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Url.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestDocumentHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestVocbaseBaseHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/JavascriptDispatcherThread.Po@am__quote@
@@ -2809,6 +2815,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f Actions/$(DEPDIR)/$(am__dirstamp)
+	-rm -f Actions/$(am__dirstamp)
 	-rm -f Admin/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Admin/$(am__dirstamp)
 	-rm -f Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -2895,7 +2903,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Actions/$(DEPDIR) Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2943,7 +2951,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Actions/$(DEPDIR) Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
