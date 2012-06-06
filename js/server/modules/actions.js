@@ -367,7 +367,7 @@ function ResultUnsupported (req, res, headers) {
 /// @brief returns a result set from a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ResultCursor (req, res, cursor, code, countRequested) {
+function ResultCursor (req, res, cursor, code, options) {
   var rows;
   var count;
   var hasCount;
@@ -377,7 +377,7 @@ function ResultCursor (req, res, cursor, code, countRequested) {
   if (Array.isArray(cursor)) {
     // performance optimisation: if the value passed in is an array, we can
     // use it as it is
-    hasCount = (countRequested ? true : false);
+    hasCount = ((options && options.countRequested) ? true : false);
     count = cursor.length;
     rows = cursor;
     hasNext = false;
