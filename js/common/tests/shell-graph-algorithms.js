@@ -201,7 +201,7 @@ function dijkstraSuite() {
         }
       });
 
-      for (counter = 0; counter < neo4j_results.results; counter += 1) {
+      for (counter = 0; counter < neo4j_results.length; counter += 1) {
         assertEqual(results[counter].from,
           neo4j_results[counter].from);
 

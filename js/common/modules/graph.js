@@ -774,8 +774,8 @@ Vertex.prototype.pathTo = function (target_node) {
     predecessors = {},          // { ID => [ID] }
     raw_neighborlist = [],      // [ID]
     i,                          // Number
-    current_distance = 0,       // Number
-    pathes = [],                //
+    current_distance,           // Number
+    pathes = [],                // [[ID]]
     current_node_id,            // ID
     current_neighbor_id;        // ID
 
@@ -792,23 +792,25 @@ Vertex.prototype.pathTo = function (target_node) {
     todo_list.removeLastOccurrenceOf(current_node_id);
     determined_list.push(current_node_id);
 
+    // FIXME: Choose the neighbors according to the graph (directed/undirected)
     raw_neighborlist = this._graph.getVertex(current_node_id).getNeighbors();
     for (i = 0; i < raw_neighborlist.length; i += 1) {
       current_neighbor_id = raw_neighborlist[i];
 
       if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
+        // FIXME: Take the weight if it is a weighted graph
         current_distance = distances[current_node_id] + 1;
 
         if (todo_list.lastIndexOf(current_neighbor_id) === -1) {
           todo_list.push(current_neighbor_id);
+        }
+
+        if ((distances[current_neighbor_id] === undefined) || (distances[current_neighbor_id] > current_distance)) {
           predecessors[current_neighbor_id] = [current_node_id];
           distances[current_neighbor_id] = current_distance;
         } else if (distances[current_neighbor_id] > current_distance) {
-          predecessors[current_neighbor_id] = [current_node_id];
-          distances[current_neighbor_id] = current_distance;
-        } else if (distances[current_neighbor_id] === current_distance) {
           predecessors[current_neighbor_id].push(current_node_id);
-        }
+        }        
       }
     }
   }
@@ -817,6 +819,7 @@ Vertex.prototype.pathTo = function (target_node) {
   if (determined_list.lastIndexOf(current_node_id) === -1) {
     pathes = [];
   } else {
+    // FIXME: This is a hack ;)
     pathes[0] = [];
     while (current_node_id !== undefined) {
       pathes[0].push(current_node_id);
