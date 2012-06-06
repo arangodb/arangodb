@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -199,7 +199,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Javascript garbage collection interval (each x requests)
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         uint64_t _gcInterval;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,5 +261,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

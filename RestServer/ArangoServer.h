@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -270,8 +270,8 @@ namespace triagens {
 /// @CMDOPT{--javascript.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup Javascript files.
-/// Normally, the server will start using built-in Javascript core 
-/// functionality. To override the core functionality with a different 
+/// Normally, the server will start using built-in Javascript core
+/// functionality. To override the core functionality with a different
 /// implementation, this option can be used.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,7 +304,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.action-threads @CA{number}}
 ///
-/// Specifies the @CA{number} of threads that are spawned to handle action 
+/// Specifies the @CA{number} of threads that are spawned to handle action
 /// requests using JavaScript.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,7 +315,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.gc-interval @CA{interval}}
 ///
-/// Specifies the interval (approximately in number of requests) that the 
+/// Specifies the interval (approximately in number of requests) that the
 /// garbage collection for Javascript objects will be run in each thread.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -341,7 +341,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--ruby.action-threads @CA{number}}
 ///
-/// Specifies the @CA{number} of threads that are spawned to handle action 
+/// Specifies the @CA{number} of threads that are spawned to handle action
 /// requests using MRuby.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -441,5 +441,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
