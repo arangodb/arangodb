@@ -139,6 +139,7 @@ arangod_LDADD = libarango.a $(LIBS)
 arangod_SOURCES = \
 	Actions/RestActionHandler.cpp \
 	Actions/ActionDispatcherThread.cpp \
+	Actions/actions.cpp \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \

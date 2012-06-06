@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -185,7 +185,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   TRI_csv_parser_t parser;
 
   TRI_InitCsvParser(&parser,
-                    TRI_UNKNOWN_MEM_ZONE, 
+                    TRI_UNKNOWN_MEM_ZONE,
                     ProcessCsvBegin,
                     ProcessCsvAdd,
                     ProcessCsvEnd);
@@ -326,7 +326,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 
 void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
-  
+
   // .............................................................................
   // create the global functions
   // .............................................................................
@@ -346,5 +346,5 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

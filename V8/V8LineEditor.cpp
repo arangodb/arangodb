@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 static char WordBreakCharacters[] = {
-    ' ', '\t', '\n', '"', '\\', '\'', '`', '@', 
+    ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
 };
@@ -155,14 +155,14 @@ static char* CompletionGenerator (char const* text, int state) {
 
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
-                  
+
         v8::String::Utf8Value str(v);
         char const* s = *str;
-        
+
         if (s != 0 && *s) {
           string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
           string name = path + s + suffix;
-                  
+
           if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
             result.push_back(name);
           }
@@ -422,5 +422,5 @@ bool V8LineEditor::isComplete (string const& source, size_t, size_t) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

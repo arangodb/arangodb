@@ -346,6 +346,7 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
 am_arangod_OBJECTS = Actions/RestActionHandler.$(OBJEXT) \
 	Actions/ActionDispatcherThread.$(OBJEXT) \
+	Actions/actions.$(OBJEXT) \
 	Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
@@ -790,6 +791,7 @@ arangod_LDADD = libarango.a $(LIBS)
 arangod_SOURCES = \
 	Actions/RestActionHandler.cpp \
 	Actions/ActionDispatcherThread.cpp \
+	Actions/actions.cpp \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
@@ -1694,6 +1696,8 @@ Actions/RestActionHandler.$(OBJEXT): Actions/$(am__dirstamp) \
 	Actions/$(DEPDIR)/$(am__dirstamp)
 Actions/ActionDispatcherThread.$(OBJEXT): Actions/$(am__dirstamp) \
 	Actions/$(DEPDIR)/$(am__dirstamp)
+Actions/actions.$(OBJEXT): Actions/$(am__dirstamp) \
+	Actions/$(DEPDIR)/$(am__dirstamp)
 Admin/$(am__dirstamp):
 	@$(MKDIR_P) Admin
 	@: > Admin/$(am__dirstamp)
@@ -2058,6 +2062,7 @@ mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f Actions/ActionDispatcherThread.$(OBJEXT)
 	-rm -f Actions/RestActionHandler.$(OBJEXT)
+	-rm -f Actions/actions.$(OBJEXT)
 	-rm -f Admin/ApplicationAdminServer.$(OBJEXT)
 	-rm -f Admin/RestAdminBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestAdminFeConfigurationHandler.$(OBJEXT)
@@ -2295,6 +2300,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@Actions/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Actions/$(DEPDIR)/RestActionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Actions/$(DEPDIR)/actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/ApplicationAdminServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminFeConfigurationHandler.Po@am__quote@

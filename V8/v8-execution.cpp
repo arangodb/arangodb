@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -80,17 +80,17 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
   js_exec_context_t* ctx;
 
   // execute script inside the context
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script), 
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script),
                                                         v8::String::New("--script--"));
-    
+
   // compilation failed, print errors that happened during compilation
   if (compiled.IsEmpty()) {
     return 0;
   }
-    
+
   // compute the function
   v8::Handle<v8::Value> val = compiled->Run();
-    
+
   if (val.IsEmpty()) {
     return 0;
   }
@@ -149,7 +149,7 @@ TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
   // and execute the function
   v8::Handle<v8::Value> args[] = { ctx->_arguments };
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
-  
+
   if (result.IsEmpty()) {
     return NULL;
   }
@@ -163,5 +163,5 @@ TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

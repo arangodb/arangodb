@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -74,6 +74,14 @@ class v8_action_t : public TRI_action_t {
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    v8_action_t ()  {
+      _type = "javascript";
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -85,8 +93,6 @@ class v8_action_t : public TRI_action_t {
            ++i) {
         (i->second).Dispose();
       }
-
-      _callbacks.clear();
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,8 +109,7 @@ class v8_action_t : public TRI_action_t {
       }
 
       v8::Handle<v8::Function>* cb = (v8::Handle<v8::Function>*) callback;
-
-      i->second = v8::Persistent<v8::Function>::New(*cb);
+      _callbacks[context] = v8::Persistent<v8::Function>::New(*cb);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +131,7 @@ class v8_action_t : public TRI_action_t {
 
         callback = i->second;
       }
-      
+
       return ExecuteActionVocbase(vocbase, context, this, callback, request);
     }
 
@@ -248,80 +253,11 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a new action
-///
-/// @FUN{defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  if (argv.Length() != 3) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>)")));
-  }
-
-  // extract the action name
-  v8::String::Utf8Value utf8name(argv[0]);
-
-  if (*utf8name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
-  }
-
-  string name = *utf8name;
-
-  // extract the action callback
-  if (! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
-  }
-
-  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
-
-  // extract the options
-  v8::Handle<v8::Object> options;
-
-  if (argv[2]->IsObject()) {
-    options = argv[2]->ToObject();
-  }
-  else {
-    options = v8::Object::New();
-  }
-
-  // create an action with the given options
-  v8_action_t* action = new v8_action_t;
-  ParseActionOptions(v8g, action, options);
-
-  // store an action with the given name
-  TRI_action_t* result = TRI_DefineActionVocBase(name, action);
-
-  // and define the callback
-  if (result != 0) {
-    result->createCallback((void*) v8g, (void*) &callback);
-  }
-
-  return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                    void* context,
                                     TRI_action_t const* action,
                                     v8::Handle<v8::Function> callback,
                                     HttpRequest* request) {
@@ -330,12 +266,12 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8g = (TRI_v8_global_t*) ((v8::Isolate*) context)->GetData();
 
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New();
 
-  // Example:  
+  // Example:
   //      {
   //        "suffix" : [
   //          "suffix1",
@@ -355,9 +291,9 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //
   //        "requestType" : "GET",
   //        "requestBody" : "... only for PUT and POST ..."
-  //      } 
-  
-  // copy suffix 
+  //      }
+
+  // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
   vector<string> const& suffix = request->suffix();
 
@@ -368,7 +304,7 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   req->Set(v8g->SuffixKey, suffixArray);
-  
+
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
 
@@ -379,11 +315,11 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     headerFields->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
   }
 
-  req->Set(v8g->HeadersKey, headerFields);  
-  
+  req->Set(v8g->HeadersKey, headerFields);
+
   // copy request type
   switch (request->requestType()) {
-    case HttpRequest::HTTP_REQUEST_POST: 
+    case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
       break;
@@ -393,18 +329,18 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
       break;
 
-    case HttpRequest::HTTP_REQUEST_DELETE: 
+    case HttpRequest::HTTP_REQUEST_DELETE:
       req->Set(v8g->RequestTypeKey, v8g->DeleteConstant);
       break;
 
-    case HttpRequest::HTTP_REQUEST_HEAD: 
+    case HttpRequest::HTTP_REQUEST_HEAD:
       req->Set(v8g->RequestTypeKey, v8g->HeadConstant);
       break;
 
     default:
       req->Set(v8g->RequestTypeKey, v8g->GetConstant);
   }
-  
+
   // copy request parameter
   v8::Handle<v8::Array> parametersArray = v8::Array::New();
   map<string, string> values = request->values();
@@ -476,7 +412,7 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     }
   }
 
-  req->Set(v8g->ParametersKey, parametersArray);  
+  req->Set(v8g->ParametersKey, parametersArray);
 
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
@@ -517,7 +453,7 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       if (v8Headers->IsObject()) {
         v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
 
-        for (uint32_t i = 0; i < props->Length(); i++) {          
+        for (uint32_t i = 0; i < props->Length(); i++) {
           v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
           response->setHeader(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
         }
@@ -526,6 +462,79 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
     return response;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      JS functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Actions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new action
+///
+/// @FUN{defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
+  v8::Isolate* isolate;
+
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  isolate = v8::Isolate::GetCurrent();
+  v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (argv.Length() != 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>)")));
+  }
+
+  // extract the action name
+  v8::String::Utf8Value utf8name(argv[0]);
+
+  if (*utf8name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
+  }
+
+  string name = *utf8name;
+
+  // extract the action callback
+  if (! argv[1]->IsFunction()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
+  }
+
+  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
+
+  // extract the options
+  v8::Handle<v8::Object> options;
+
+  if (argv[2]->IsObject()) {
+    options = argv[2]->ToObject();
+  }
+  else {
+    options = v8::Object::New();
+  }
+
+  // create an action with the given options
+  v8_action_t* action = new v8_action_t;
+  ParseActionOptions(v8g, action, options);
+
+  // store an action with the given name
+  TRI_action_t* result = TRI_DefineActionVocBase(name, action);
+
+  // and define the callback
+  if (result != 0) {
+    result->createCallback((void*) isolate, (void*) &callback);
+  }
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,5 +622,5 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
