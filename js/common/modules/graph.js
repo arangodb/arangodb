@@ -771,13 +771,13 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the shortest path to a certain node, return the ID
+/// @brief find the shortest path to a certain vertex, return the ID
 ///
-/// @FUN{@FA{vertex}.pathTo(@FA{target_node})}
+/// @FUN{@FA{vertex}.pathTo(@FA{target_vertex})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.pathTo = function (target_node) {
+Vertex.prototype.pathTo = function (target_vertex) {
   var predecessors = {},        // { ID => [ID] }
     todo_list = [this.getId()], // [ID]
     distances = {},             // { ID => Number }
@@ -785,8 +785,8 @@ Vertex.prototype.pathTo = function (target_node) {
 
   distances[this.getId()] = 0;
 
-  predecessors = this._determinePredecessors(target_node, todo_list, distances);
-  pathes = this._pathesForTree(target_node.getId(), [target_node.getId()], predecessors);
+  predecessors = this._determinePredecessors(target_vertex, todo_list, distances);
+  pathes = this._pathesForTree(target_vertex.getId(), [target_vertex.getId()], predecessors);
 
   return pathes;
 };
@@ -794,47 +794,47 @@ Vertex.prototype.pathTo = function (target_node) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function for pathTo
 ///
-/// @FUN{@FA{vertex}._determinePredecessors(@FA{target_node}, @FA{todo_list}, @FA{distances})}
+/// @FUN{@FA{vertex}._determinePredecessors(@FA{target_vertex}, @FA{todo_list}, @FA{distances})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._determinePredecessors = function (target_node, todo_list, distances) {
+Vertex.prototype._determinePredecessors = function (target_vertex, todo_list, distances) {
   var determined_list = [], // [ID]
     predecessors = {},      // { ID => [ID] }
     raw_neighborlist = [],  // [ID]
     i,                      // Number
     current_distance,       // Number
-    current_node_id,        // ID
+    current_vertex_id,        // ID
     current_neighbor_id,    // ID
     compared_distance;
 
   while (todo_list.length > 0) {
-    current_node_id = this._getShortestDistance(todo_list, distances);
+    current_vertex_id = this._getShortestDistance(todo_list, distances);
 
-    if (current_node_id === target_node) {
+    if (current_vertex_id === target_vertex) {
       break;
     }
 
-    todo_list.removeLastOccurrenceOf(current_node_id);
-    determined_list.push(current_node_id);
+    todo_list.removeLastOccurrenceOf(current_vertex_id);
+    determined_list.push(current_vertex_id);
 
     // FIXME: Choose the neighbors according to the graph (directed/undirected)
-    raw_neighborlist = this._graph.getVertex(current_node_id).getNeighbors();
+    raw_neighborlist = this._graph.getVertex(current_vertex_id).getNeighbors();
     for (i = 0; i < raw_neighborlist.length; i += 1) {
       current_neighbor_id = raw_neighborlist[i];
 
       if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
         // FIXME: Take the weight if it is a weighted graph
-        current_distance = distances[current_node_id] + 1;
+        current_distance = distances[current_vertex_id] + 1;
 
         todo_list.pushIfNotFound(current_neighbor_id);
 
         compared_distance = distances[current_neighbor_id];
         if ((compared_distance === undefined) || (compared_distance > current_distance)) {
-          predecessors[current_neighbor_id] = [current_node_id];
+          predecessors[current_neighbor_id] = [current_vertex_id];
           distances[current_neighbor_id] = current_distance;
         } else if (compared_distance === current_distance) {
-          predecessors[current_neighbor_id].push(current_node_id);
+          predecessors[current_neighbor_id].push(current_vertex_id);
         }
       }
     }
@@ -844,7 +844,7 @@ Vertex.prototype._determinePredecessors = function (target_node, todo_list, dist
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get all pathes from root to leave nodes for a given tree
+/// @brief Get all pathes from root to leave vertices for a given tree
 ///
 /// @FUN{@FA{vertex}._pathesForTree(@FA{root}, @FA{path_to_here}, @FA{tree})}
 ///
@@ -880,17 +880,17 @@ Vertex.prototype.getNeighbors = function () {
   // FIXME: Take Inbound, Outbound, Both. Currently Both only
   // FIXME: Only return neighbors with a certain label
   var i,
-    current_node_id,
+    current_vertex_id,
     target_array = [];
 
   for (i = 0; i < this.getOutEdges().length; i++) {
-    current_node_id = this.getOutEdges()[i].getInVertex().getId();
-    target_array.push(current_node_id);
+    current_vertex_id = this.getOutEdges()[i].getInVertex().getId();
+    target_array.push(current_vertex_id);
   }
 
   for (i = 0; i < this.getInEdges().length; i++) {
-    current_node_id = this.getInEdges()[i].getOutVertex().getId();
-    target_array.push(current_node_id);
+    current_vertex_id = this.getInEdges()[i].getOutVertex().getId();
+    target_array.push(current_vertex_id);
   }
 
   return target_array;
@@ -906,7 +906,7 @@ Vertex.prototype.getNeighbors = function () {
 
 Vertex.prototype._getShortestDistance = function (todo_list, distances) {
   var shortest_distance = Infinity,
-    node = null,
+    vertex = null,
     i,
     distance;
 
@@ -914,11 +914,11 @@ Vertex.prototype._getShortestDistance = function (todo_list, distances) {
     distance = distances[todo_list[i]];
     if (distance < shortest_distance) {
       shortest_distance = distance;
-      node = todo_list[i];
+      vertex = todo_list[i];
     }
   }
 
-  return node;
+  return vertex;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
