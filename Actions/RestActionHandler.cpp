@@ -27,10 +27,10 @@
 
 #include "RestActionHandler.h"
 
+#include "Actions/ActionDispatcherThread.h"
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
-#include "RestServer/ActionDispatcherThread.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;

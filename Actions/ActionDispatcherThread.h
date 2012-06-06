@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread for actions
+/// @brief abstract dispatcher thread for actions
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_ACTION_DISPATCHER_THREAD_H
-#define TRIAGENS_REST_SERVER_ACTION_DISPATCHER_THREAD_H 1
+#ifndef TRIAGENS_ACTIONS_ACTION_DISPATCHER_THREAD_H
+#define TRIAGENS_ACTIONS_ACTION_DISPATCHER_THREAD_H 1
 
 #include "Dispatcher/DispatcherThread.h"
 
@@ -99,6 +99,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-LINE
+// -----------------------------------------------------------------------------
 
 #endif
 

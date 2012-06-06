@@ -31,6 +31,7 @@
 
 #include "build.h"
 
+#include "Actions/RestActionHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
@@ -47,21 +48,20 @@
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
-#include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/JavascriptDispatcherThread.h"
 #include "RestServer/ArangoHttpServer.h"
+#include "RestServer/JavascriptDispatcherThread.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-query.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-query.h"
 #include "V8/v8-vocbase.h"
 
 using namespace std;
