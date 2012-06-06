@@ -798,7 +798,8 @@ Vertex.prototype._determinePredecessors = function (target_node, todo_list, dist
     i,                      // Number
     current_distance,       // Number
     current_node_id,        // ID
-    current_neighbor_id;    // ID
+    current_neighbor_id,    // ID
+    compared_distance;
 
   while (todo_list.length > 0) {
     current_node_id = this._getShortestDistance(todo_list, distances);
@@ -821,10 +822,11 @@ Vertex.prototype._determinePredecessors = function (target_node, todo_list, dist
 
         todo_list.pushIfNotFound(current_neighbor_id);
 
-        if ((distances[current_neighbor_id] === undefined) || (distances[current_neighbor_id] > current_distance)) {
+        compared_distance = distances[current_neighbor_id];
+        if ((compared_distance === undefined) || (compared_distance > current_distance)) {
           predecessors[current_neighbor_id] = [current_node_id];
           distances[current_neighbor_id] = current_distance;
-        } else if (distances[current_neighbor_id] === current_distance) {
+        } else if (compared_distance === current_distance) {
           predecessors[current_neighbor_id].push(current_node_id);
         }
       }
