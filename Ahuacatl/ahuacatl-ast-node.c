@@ -1124,13 +1124,13 @@ double TRI_GetNumericNodeValueAql (const TRI_aql_node_t* const node) {
 TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e source) {
   switch (source) {
     case AQL_NODE_OPERATOR_BINARY_LT:
-      return AQL_NODE_OPERATOR_BINARY_GE;
-    case AQL_NODE_OPERATOR_BINARY_LE:
       return AQL_NODE_OPERATOR_BINARY_GT;
+    case AQL_NODE_OPERATOR_BINARY_LE:
+      return AQL_NODE_OPERATOR_BINARY_GE;
     case AQL_NODE_OPERATOR_BINARY_GT:
-      return AQL_NODE_OPERATOR_BINARY_LE;
-    case AQL_NODE_OPERATOR_BINARY_GE:
       return AQL_NODE_OPERATOR_BINARY_LT;
+    case AQL_NODE_OPERATOR_BINARY_GE:
+      return AQL_NODE_OPERATOR_BINARY_LE;
     case AQL_NODE_OPERATOR_BINARY_NE:
     case AQL_NODE_OPERATOR_BINARY_EQ: 
       return source;
