@@ -46,7 +46,7 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
-CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors
+CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 
 .PHONY: start-server
 
@@ -234,7 +234,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
