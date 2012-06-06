@@ -71,6 +71,16 @@ Array.prototype.removeLastOccurrenceOf = function (element) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief push if the element was not found in the list
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.pushIfNotFound = function (element) {
+  if (this.lastIndexOf(element) === -1) {
+    this.push(element);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copy properties
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -768,19 +778,27 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_node) {
-  var determined_list = [],     // [ID]
-    todo_list = [],             // [ID]
+  var predecessors = {},        // { ID => [ID] }
+    todo_list = [this.getId()], // [ID]
     distances = {},             // { ID => Number }
-    predecessors = {},          // { ID => [ID] }
-    raw_neighborlist = [],      // [ID]
-    i,                          // Number
-    current_distance,           // Number
-    pathes = [],                // [[ID]]
-    current_node_id,            // ID
-    current_neighbor_id;        // ID
+    pathes = [];                // [[ID]]
 
-  todo_list.push(this.getId());
   distances[this.getId()] = 0;
+
+  predecessors = this._determinePredecessors(target_node, todo_list, distances);
+  pathes = this._pathesForTree(target_node.getId(), [target_node.getId()], predecessors);
+
+  return pathes;
+};
+
+Vertex.prototype._determinePredecessors = function (target_node, todo_list, distances) {
+  var determined_list = [], // [ID]
+    predecessors = {},      // { ID => [ID] }
+    raw_neighborlist = [],  // [ID]
+    i,                      // Number
+    current_distance,       // Number
+    current_node_id,        // ID
+    current_neighbor_id;    // ID
 
   while (todo_list.length > 0) {
     current_node_id = this._getShortestDistance(todo_list, distances);
@@ -801,33 +819,38 @@ Vertex.prototype.pathTo = function (target_node) {
         // FIXME: Take the weight if it is a weighted graph
         current_distance = distances[current_node_id] + 1;
 
-        if (todo_list.lastIndexOf(current_neighbor_id) === -1) {
-          todo_list.push(current_neighbor_id);
-        }
+        todo_list.pushIfNotFound(current_neighbor_id);
 
         if ((distances[current_neighbor_id] === undefined) || (distances[current_neighbor_id] > current_distance)) {
           predecessors[current_neighbor_id] = [current_node_id];
           distances[current_neighbor_id] = current_distance;
-        } else if (distances[current_neighbor_id] > current_distance) {
+        } else if (distances[current_neighbor_id] === current_distance) {
           predecessors[current_neighbor_id].push(current_node_id);
-        }        
+        }
       }
     }
   }
 
-  current_node_id = target_node.getId();
-  if (determined_list.lastIndexOf(current_node_id) === -1) {
-    pathes = [];
-  } else {
-    // FIXME: This is a hack ;)
-    pathes[0] = [];
-    while (current_node_id !== undefined) {
-      pathes[0].push(current_node_id);
-      current_node_id = predecessors[current_node_id];
-    }
-    pathes[0].reverse();
-  }
+  return predecessors;
+};
 
+// GET ALL PATHES FOR PREDECESSORS
+Vertex.prototype._pathesForTree = function (root, path_to_here, tree) {
+  var my_children = tree[root],
+    i,
+    my_child,
+    pathes = [];
+
+  if (my_children === undefined) {
+    pathes = [path_to_here.reverse()];
+  } else {
+    for (i = 0; i < my_children.length; i += 1) {
+      my_child = my_children[i];
+      pathes = pathes.concat(this._pathesForTree(my_child,
+        path_to_here.concat([my_child]),
+        tree));
+    }
+  }
   return pathes;
 };
 

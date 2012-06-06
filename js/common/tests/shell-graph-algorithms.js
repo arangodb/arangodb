@@ -151,7 +151,7 @@ function dijkstraSuite() {
 /// @brief compare with Neo4j on a network of size 500
 ////////////////////////////////////////////////////////////////////////////////
 
-    testComparisonWithNeo4j500LengthOnly : function () {
+    testComparisonWithNeo4j500 : function () {
       var base_path = "js/common/test-data/random500/",
         v1,
         v2,
@@ -176,7 +176,8 @@ function dijkstraSuite() {
           single_result = {
             'from'   : v1.getId(),
             'to'     : v2.getId(),
-            'path_length' : pathes[0].length
+            'path_length' : pathes[0].length,
+            'number_of_pathes' : pathes.length
           };
           results.push(single_result);
         }
@@ -184,10 +185,8 @@ function dijkstraSuite() {
 
       v1 = "";
       v2 = "";
-      counter = 0;
       Helper.process(base_path + "neo4j-dijkstra.csv", function (row) {
-        var result;
-
+        counter += 1;
         if (!(v1 === row[0] && v2 === row[row.length - 1])) {
           v1 = row[0];
           v2 = row[row.length - 1];
@@ -197,9 +196,15 @@ function dijkstraSuite() {
             'to'     : v2,
             'path_length' : row.length
           };
+          if (neo4j_results.length > 0) {
+            neo4j_results[neo4j_results.length - 1].number_of_pathes = counter;
+          }
+          counter = 0;
           neo4j_results.push(single_result);
         }
       });
+      neo4j_results[0].number_of_pathes += 1;
+      neo4j_results[neo4j_results.length - 1].number_of_pathes = counter + 1;
 
       for (counter = 0; counter < neo4j_results.length; counter += 1) {
         assertEqual(results[counter].from,
@@ -210,6 +215,9 @@ function dijkstraSuite() {
 
         assertEqual(results[counter].path_length,
           neo4j_results[counter].path_length);
+
+        assertEqual(results[counter].number_of_pathes,
+                  neo4j_results[counter].number_of_pathes);
       }
     }
   };
