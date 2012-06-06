@@ -37,14 +37,6 @@
 #define fmod(x,y) fmodf(x,y)
 #endif
 
-void mrb_cmperr(mrb_state *mrb, mrb_value x, mrb_value y);
-
-void
-mrb_num_zerodiv(mrb_state *mrb)
-{
-    mrb_raise(mrb, E_ZERODIVISION_ERROR, "divided by 0");
-}
-
 static mrb_float
 mrb_to_flo(mrb_state *mrb, mrb_value val)
 {
@@ -110,7 +102,7 @@ num_pow(mrb_state *mrb, mrb_value x)
   mrb_get_args(mrb, "o", &y);
   if (FIXNUM_P(x) && FIXNUM_P(y)) both_int = TRUE;
   d = pow(mrb_to_flo(mrb, x), mrb_to_flo(mrb, y));
-  if (both_int && isfinite(d) && FIXABLE(d))
+  if (both_int && FIXABLE(d))
     return mrb_fixnum_value((mrb_int)d);
   return mrb_float_value(d);
 }
@@ -254,7 +246,6 @@ flodivmod(mrb_state *mrb, mrb_float x, mrb_float y, mrb_float *divp, mrb_float *
 {
   mrb_float div, mod;
 
-  if (y == 0.0) mrb_num_zerodiv(mrb);
   mod = fmod(x, y);
   if (isinf(x) && !isinf(y) && !isnan(y))
     div = x;
@@ -308,6 +299,7 @@ static mrb_value
 num_eql(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
+  
   mrb_get_args(mrb, "o", &y);
   if (mrb_type(x) != mrb_type(y)) return mrb_false_value();
   if (mrb_equal(mrb, x, y)) {
@@ -374,7 +366,8 @@ flo_hash(mrb_state *mrb, mrb_value num)
   int i, hash;
 
   d = (mrb_float)mrb_fixnum(num);
-  if (d == 0) d = fabs(d);
+  /* normalize -0.0 to 0.0 */
+  if (d == 0) d = 0.0;
   c = (char*)&d;
   for (hash=0, i=0; i<sizeof(mrb_float);i++) {
     hash = (hash * 971) ^ (unsigned char)c[i];
@@ -744,7 +737,6 @@ fixdivmod(mrb_state *mrb, mrb_int x, mrb_int y, mrb_int *divp, mrb_int *modp)
 {
   mrb_int div, mod;
 
-  if (y == 0) mrb_num_zerodiv(mrb);
   if (y < 0) {
     if (x < 0)
       div = -x / -y;
@@ -943,8 +935,8 @@ fix_xor(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
   mrb_int val;
-  mrb_get_args(mrb, "o", &y);
 
+  mrb_get_args(mrb, "o", &y);
   y = bit_coerce(mrb, y);
   val = mrb_fixnum(x) ^ mrb_fixnum(y);
   return mrb_fixnum_value(val);
@@ -966,8 +958,8 @@ mrb_fix_lshift(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
   mrb_int val, width;
-  mrb_get_args(mrb, "o", &y);
 
+  mrb_get_args(mrb, "o", &y);
   val = mrb_fixnum(x);
   y = bit_coerce(mrb, y);
   width = mrb_fixnum(y);
@@ -1001,8 +993,8 @@ mrb_fix_rshift(mrb_state *mrb, mrb_value x)
 {
   mrb_value y;
   mrb_int i, val;
-  mrb_get_args(mrb, "o", &y);
 
+  mrb_get_args(mrb, "o", &y);
   val = mrb_fixnum(x);
   y = bit_coerce(mrb, y);
   i = mrb_fixnum(y);
@@ -1041,24 +1033,6 @@ fix_to_f(mrb_state *mrb, mrb_value num)
 
     return mrb_float_value(val);
 }
-
-/*
- *  Document-class: ZeroDivisionError
- *
- *  Raised when attempting to divide an integer by 0.
- *
- *     42 / 0
- *
- *  <em>raises the exception:</em>
- *
- *     ZeroDivisionError: divided by 0
- *
- *  Note that only division by an exact 0 will raise that exception:
- *
- *     42 /  0.0 #=> Float::INFINITY
- *     42 / -0.0 #=> -Float::INFINITY
- *     0  /  0.0 #=> NaN
- */
 
 /*
  *  Document-class: FloatDomainError
@@ -1166,7 +1140,7 @@ mrb_fix2str(mrb_state *mrb, mrb_value x, int base)
   }
   *--b = '\0';
   do {
-    *--b = ruby_digitmap[(int)(val % base)];
+    *--b = mrb_digitmap[(int)(val % base)];
   } while (val /= base);
   if (neg) {
     *--b = '-';
@@ -1292,6 +1266,7 @@ mrb_init_numeric(mrb_state *mrb)
   integer = mrb_define_class(mrb, "Integer",  numeric);
   fixnum = mrb->fixnum_class = mrb_define_class(mrb, "Fixnum", integer);
 
+  mrb_undef_method(mrb,  fixnum, "new");
   mrb_define_method(mrb, fixnum,  "+",        mrb_fixnum_plus,   ARGS_REQ(1)); /* 15.2.8.3.1  */
   mrb_define_method(mrb, fixnum,  "-",        mrb_fixnum_minus,  ARGS_REQ(1)); /* 15.2.8.3.2  */
   mrb_define_method(mrb, fixnum,  "-@",       fix_uminus,        ARGS_REQ(1)); /* 15.2.7.4.2  */
@@ -1319,6 +1294,7 @@ mrb_init_numeric(mrb_state *mrb)
 
   /* Float Class */
   fl = mrb->float_class = mrb_define_class(mrb, "Float", numeric);
+  mrb_undef_method(mrb,  fl, "new");
   mrb_define_method(mrb, fl,      "+",         mrb_float_plus,   ARGS_REQ(1)); /* 15.2.9.3.1  */
   mrb_define_method(mrb, fl,      "-",         flo_minus,        ARGS_REQ(1)); /* 15.2.9.3.2  */
   mrb_define_method(mrb, fl,      "*",         flo_mul,          ARGS_REQ(1)); /* 15.2.9.3.3  */

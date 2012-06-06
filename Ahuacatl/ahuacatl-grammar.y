@@ -20,6 +20,7 @@
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 %}
 
 %union {
@@ -216,7 +217,13 @@ statement_block_statement:
     
 for_statement:
     T_FOR variable_name T_IN expression {
-      TRI_aql_node_t* node = TRI_CreateNodeForAql(context, $2, $4);
+      TRI_aql_node_t* node;
+      
+      if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_FOR)) {
+        ABORT_OOM
+      }
+      
+      node = TRI_CreateNodeForAql(context, $2, $4);
       if (!node) {
         ABORT_OOM
       }
@@ -297,11 +304,6 @@ collect_element:
       }
 
       if (!TRI_PushListAql(context, node)) {
-        ABORT_OOM
-      }
-    }
-  | expression {
-      if (!TRI_PushListAql(context, $1)) {
         ABORT_OOM
       }
     }
@@ -414,6 +416,8 @@ return_statement:
         ABORT_OOM
       }
       
+      TRI_EndScopeByReturnAql(context);
+      
       $$ = node;
     }
   ;
@@ -423,12 +427,17 @@ expression:
     T_OPEN expression T_CLOSE {
       $$ = $2;
     }
-  | T_OPEN query T_CLOSE {
+  | T_OPEN {
+      if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
+        ABORT_OOM
+      }
+
+    } query T_CLOSE {
       TRI_aql_node_t* subQuery;
       TRI_aql_node_t* result;
       TRI_aql_node_t* nameNode;
 
-      subQuery = TRI_CreateNodeSubqueryAql(context, $2);
+      subQuery = TRI_CreateNodeSubqueryAql(context, $3);
       if (!subQuery) {
         ABORT_OOM
       }
@@ -437,6 +446,8 @@ expression:
       if (!TRI_AddStatementAql(context, subQuery)) {
         ABORT_OOM
       }
+
+      TRI_EndScopeAql(context);
 
       nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
       if (!nameNode) {
@@ -802,7 +813,7 @@ single_reference:
       // variable or collection
       TRI_aql_node_t* node;
       
-      if (TRI_VariableExistsAql(context, $1)) {
+      if (TRI_VariableExistsScopeAql(context, $1)) {
         node = TRI_CreateNodeReferenceAql(context, $1);
       }
       else {

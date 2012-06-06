@@ -31,4 +31,19 @@ module Kernel
     end
     __printstr__ "\n" if len == 0
   end
+
+  ##
+  # Print human readable object description
+  #
+  # ISO 15.3.1.3.34
+  def p(*args)
+    i = 0
+    len = args.size
+    while i < len
+      __printstr__ args[i].inspect
+      __printstr__ "\n"
+      i += 1
+    end
+    args[0]
+  end
 end

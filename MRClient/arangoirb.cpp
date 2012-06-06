@@ -50,13 +50,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-extern "C" {
 #include "mruby.h"
 #include "mruby/proc.h"
 #include "mruby/data.h"
 #include "mruby/variable.h"
-#include "compile.h"
-}
+#include "mruby/compile.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -64,6 +62,8 @@ using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace triagens::arango;
 using namespace triagens::mrclient;
+
+#include "mr/common/bootstrap/mr-error.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -443,7 +443,7 @@ static void InitMRClientConnection (MR_state_t* mrs, MRubyClientConnection* conn
 static void RunShell (MR_state_t* mrs) {
   MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
 
-  console->open(! NoAutoComplete);
+  console->open(false /*! NoAutoComplete*/);
 
   while (true) {
     char* input = console->prompt("arangoirb> ");
@@ -693,7 +693,7 @@ int main (int argc, char* argv[]) {
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    StartupLoader.defineScript("client/client.rb", "");
+    StartupLoader.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
   }
   else {
     LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
@@ -702,7 +702,7 @@ int main (int argc, char* argv[]) {
 
   // load all init files
   char const* files[] = {
-    "client/client.rb"
+    "common/bootstrap/error.rb"
   };
   
   for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {

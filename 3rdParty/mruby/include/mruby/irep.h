@@ -7,6 +7,10 @@
 #ifndef MRUBY_IREP_H
 #define MRUBY_IREP_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 typedef struct mrb_irep {
   int idx;
 
@@ -25,5 +29,9 @@ typedef struct mrb_irep {
 #define MRB_ISEQ_NOFREE 1
 
 void mrb_add_irep(mrb_state *mrb, int n);
+
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
 
 #endif  /* MRUBY_IREP_H */

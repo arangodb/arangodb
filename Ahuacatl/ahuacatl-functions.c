@@ -373,6 +373,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s"); 
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n");
+  REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s");
 
   // numeric functions 
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n");

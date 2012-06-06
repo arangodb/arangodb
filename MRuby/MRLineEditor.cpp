@@ -36,12 +36,8 @@
 #define completion_matches rl_completion_matches
 #endif
 
-#ifdef TRI_ENABLE_MRUBY
-extern "C" {
 #include "mruby.h"
-#include "compile.h"
-}
-#endif
+#include "mruby/compile.h"
 
 using namespace std;
 
@@ -282,33 +278,117 @@ bool MRLineEditor::open (const bool autoComplete) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t column) {
- 
-#ifdef TRI_ENABLE_MRUBY 
-  char const* msg = "syntax error, unexpected $end";
-  char* text = TRI_DuplicateString(source.c_str());
+  static char const* msg1 = "syntax error, unexpected $end";
+  static char const* msg2 = "syntax error, unexpected keyword_end, expecting $end";
 
-  struct mrb_parser_state* p = mrb_parse_nstring_ext(&_mrs->_mrb, text, source.size());
+  mrb_state *mrb_interpreter;
+  struct mrb_parser_state* parser;
+
+  char* text = TRI_DuplicateString(source.c_str());
+  bool complete = true;
+
+  mrb_interpreter = mrb_open();
+  parser = mrb_parser_new(mrb_interpreter);
+  parser->s = text;
+  parser->send = text + source.size();
+  parser->capture_errors = 1;
+  parser->lineno = 1;
+
+  mrb_parser_parse(parser);
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, text);
 
-  // out of memory?
-  if (p == 0) {
-    return true;
+  char const* message = parser->error_buffer[0].message;
+  bool eofMsg = false;
+
+  if (message != 0) {
+    if (TRI_EqualString2(message, msg1, strlen(msg1))) {
+      eofMsg = true;
+    }
+    else if (TRI_EqualString2(message, msg2, strlen(msg1))) {
+      eofMsg = true;
+    }
   }
 
   // no error or strange error
-  if (p->tree != 0) {
-    return true;
+  if (parser->tree != 0) {
+    complete = true;
+  }
+
+  // check for unterminated string
+  else if (parser->sterm) {
+    complete = false;
   }
 
   // check for end-of-line
-  if (0 < p->nerr) {
-    if (TRI_EqualString2(p->error_buffer[0].message, msg, strlen(msg))) {
-      return false;
+  else if (0 < parser->nerr && eofMsg) {
+    complete = false;
+  }
+
+  // check the parser state
+  else {
+    switch (parser->lstate) {
+
+      // an expression was just started, we can't end it like this
+      case EXPR_BEG:
+        complete = false;
+        break;
+
+      // a message dot was the last token, there has to come more
+      case EXPR_DOT:
+        complete = false;
+        break;
+
+      // a class keyword is not enough!, we need also a name of the class
+      case EXPR_CLASS:
+        complete = false;
+        break;
+
+      // a method name is necessary
+      case EXPR_FNAME:
+        complete = false;
+        break;
+
+      // if, elsif, etc. without condition
+      case EXPR_VALUE:
+        complete = false;
+        break;
+
+      // an argument is the last token
+      case EXPR_ARG:
+        complete = true;
+        break;
+
+      // TODO: what is this?
+      case EXPR_CMDARG:
+        break;
+
+      // TODO: an expression was ended
+      case EXPR_END:
+        break;
+
+      // TODO: closing parenthese
+      case EXPR_ENDARG:
+        break;
+
+      // TODO: definition end
+      case EXPR_ENDFN:
+        break;
+
+      // TODO: jump keyword like break, return, ...
+      case EXPR_MID:
+        break;
+
+      // don't know what to do with this token
+      case EXPR_MAX_STATE:
+        break;
     }
   }
-#endif
 
-  return true;
+  mrb_pool_close(parser->pool);
+  mrb_close(mrb_interpreter);
+
+  return complete;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

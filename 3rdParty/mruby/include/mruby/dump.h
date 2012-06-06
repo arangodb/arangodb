@@ -4,6 +4,13 @@
 ** See Copyright Notice in mruby.h
 */
 
+#ifndef MRUBY_DUMP_H
+#define MRUBY_DUMP_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include "mruby.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -122,3 +129,9 @@ bin_to_uint16(unsigned char bin[])
   return (uint16_t)bin[0] << 8 |
          (uint16_t)bin[1];
 }
+
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* MRUBY_DUMP_H */

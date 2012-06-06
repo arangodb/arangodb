@@ -8,7 +8,7 @@
 /*global require, module, ModuleCache, SYS_EXECUTE, CONSOLE_ERROR,
  FS_EXISTS, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
  SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
- SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUITE, MODULES_PATH,
+ SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUIET, MODULES_PATH,
  COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +288,7 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.start_pager = function() {};
   internal.stop_pager = function() {};
 
-  internal.ARANGO_QUITE = false;
+  internal.ARANGO_QUIET = false;
 
   internal.COLOR_OUTPUT = undefined;
   internal.COLOR_OUTPUT_RESET = "";
@@ -302,10 +302,6 @@ ModuleCache["/internal"] = new Module("/internal");
 
   if (typeof SYS_STOP_PAGER !== "undefined") {
     internal.stop_pager = SYS_STOP_PAGER;
-  }
-
-  if (typeof ARANGO_QUITE !== "undefined") {
-    internal.stop_pager = ARANGO_QUITE;
   }
 
   if (typeof COLOR_OUTPUT !== "undefined") {

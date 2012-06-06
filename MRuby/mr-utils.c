@@ -30,13 +30,12 @@
 #include "BasicsC/strings.h"
 
 #include "mruby/array.h"
+#include "mruby/compile.h"
 #include "mruby/data.h"
 #include "mruby/hash.h"
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
-#include "mruby/error.h"
-#include "compile.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -249,7 +248,7 @@ bool TRI_ExecuteRubyDirectory (mrb_state* mrb, char const* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context, optionally print the result
+/// @brief executes a string within a mruby context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteRubyString (mrb_state* mrb,

@@ -28,13 +28,14 @@ module Kernel
   # Alias for +send+.
   #
   # ISO 15.3.1.3.4
-  def __send__(symbol, *args, &block)
+  #def __send__(symbol, *args, &block)
     ### *** TODO *** ###
-  end
+  #end
 
   # 15.3.1.3.18
   def instance_eval(string=nil, &block)
     ### *** TODO *** ###
+    raise "Not implemented yet"
   end
 
   ##
@@ -53,41 +54,6 @@ module Kernel
   def loop #(&block)
     while(true)
       yield
-    end
-  end
-
-  ##
-  # Invoke the method with the name +symbol+ on
-  # the receiver and pass +args+ and the given
-  # block.
-  #
-  # ISO 15.3.1.3.44
-  def send(symbol, *args, &block)
-    ### *** TODO *** ###
-  end
-
-  ##
-  # Print arguments
-  #
-  # ISO 15.3.1.2.10
-  def print(*args)
-    args.each do|x|
-      if x.nil?
-        __printstr__ "nil"
-      else
-        __printstr__ x.to_s
-      end
-    end
-  end
-
-  ##
-  # Print arguments with newline
-  #
-  # ISO 15.3.1.2.11
-  def puts(*args)
-    args.each do|x|
-      __printstr__ x.to_s
-      __printstr__ "\n"
     end
   end
 end

@@ -1,5 +1,5 @@
-/* C code produced by gperf version 3.0.3 */
-/* Command-line: gperf -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k'1,3,$' keywords  */
+/* ANSI-C code produced by gperf version 3.0.3 */
+/* Command-line: gperf -L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k'1,3,$' ./keywords  */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
       && ('%' == 37) && ('&' == 38) && ('\'' == 39) && ('(' == 40) \
@@ -25,16 +25,16 @@
       && ('w' == 119) && ('x' == 120) && ('y' == 121) && ('z' == 122) \
       && ('{' == 123) && ('|' == 124) && ('}' == 125) && ('~' == 126))
 /* The character set is not based on ISO-646.  */
-error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
+#error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
 #endif
 
-#line 1 "keywords"
+#line 1 "./keywords"
 
 struct kwtable {const char *name; int id[2]; enum mrb_lex_state_enum state;};
 const struct kwtable *mrb_reserved_word(const char *, unsigned int);
 static const struct kwtable *reserved_word(const char *, unsigned int);
 #define mrb_reserved_word(str, len) reserved_word(str, len)
-#line 8 "keywords"
+#line 8 "./keywords"
 struct kwtable;
 
 #define TOTAL_KEYWORDS 40
@@ -52,9 +52,7 @@ inline
 #endif
 #endif
 static unsigned int
-hash (str, len)
-     register const char *str;
-     register unsigned int len;
+hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
@@ -107,94 +105,92 @@ __attribute__ ((__gnu_inline__))
 #endif
 #endif
 const struct kwtable *
-mrb_reserved_word (str, len)
-     register const char *str;
-     register unsigned int len;
+mrb_reserved_word (register const char *str, register unsigned int len)
 {
   static const struct kwtable wordlist[] =
     {
       {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
-#line 18 "keywords"
+#line 18 "./keywords"
       {"break", {keyword_break, keyword_break}, EXPR_MID},
-#line 23 "keywords"
+#line 23 "./keywords"
       {"else", {keyword_else, keyword_else}, EXPR_BEG},
-#line 33 "keywords"
+#line 33 "./keywords"
       {"nil", {keyword_nil, keyword_nil}, EXPR_END},
-#line 26 "keywords"
+#line 26 "./keywords"
       {"ensure", {keyword_ensure, keyword_ensure}, EXPR_BEG},
-#line 25 "keywords"
+#line 25 "./keywords"
       {"end", {keyword_end, keyword_end}, EXPR_END},
-#line 42 "keywords"
+#line 42 "./keywords"
       {"then", {keyword_then, keyword_then}, EXPR_BEG},
-#line 34 "keywords"
+#line 34 "./keywords"
       {"not", {keyword_not, keyword_not}, EXPR_ARG},
-#line 27 "keywords"
+#line 27 "./keywords"
       {"false", {keyword_false, keyword_false}, EXPR_END},
-#line 40 "keywords"
+#line 40 "./keywords"
       {"self", {keyword_self, keyword_self}, EXPR_END},
-#line 24 "keywords"
+#line 24 "./keywords"
       {"elsif", {keyword_elsif, keyword_elsif}, EXPR_VALUE},
-#line 37 "keywords"
+#line 37 "./keywords"
       {"rescue", {keyword_rescue, modifier_rescue}, EXPR_MID},
-#line 43 "keywords"
+#line 43 "./keywords"
       {"true", {keyword_true, keyword_true}, EXPR_END},
-#line 46 "keywords"
+#line 46 "./keywords"
       {"until", {keyword_until, modifier_until}, EXPR_VALUE},
-#line 45 "keywords"
+#line 45 "./keywords"
       {"unless", {keyword_unless, modifier_unless}, EXPR_VALUE},
-#line 39 "keywords"
+#line 39 "./keywords"
       {"return", {keyword_return, keyword_return}, EXPR_MID},
-#line 21 "keywords"
+#line 21 "./keywords"
       {"def", {keyword_def, keyword_def}, EXPR_FNAME},
-#line 16 "keywords"
+#line 16 "./keywords"
       {"and", {keyword_and, keyword_and}, EXPR_VALUE},
-#line 22 "keywords"
+#line 22 "./keywords"
       {"do", {keyword_do, keyword_do}, EXPR_BEG},
-#line 49 "keywords"
+#line 49 "./keywords"
       {"yield", {keyword_yield, keyword_yield}, EXPR_ARG},
-#line 28 "keywords"
+#line 28 "./keywords"
       {"for", {keyword_for, keyword_for}, EXPR_VALUE},
-#line 44 "keywords"
+#line 44 "./keywords"
       {"undef", {keyword_undef, keyword_undef}, EXPR_FNAME},
-#line 35 "keywords"
+#line 35 "./keywords"
       {"or", {keyword_or, keyword_or}, EXPR_VALUE},
-#line 30 "keywords"
+#line 30 "./keywords"
       {"in", {keyword_in, keyword_in}, EXPR_VALUE},
-#line 47 "keywords"
+#line 47 "./keywords"
       {"when", {keyword_when, keyword_when}, EXPR_VALUE},
-#line 38 "keywords"
+#line 38 "./keywords"
       {"retry", {keyword_retry, keyword_retry}, EXPR_END},
-#line 29 "keywords"
+#line 29 "./keywords"
       {"if", {keyword_if, modifier_if}, EXPR_VALUE},
-#line 19 "keywords"
+#line 19 "./keywords"
       {"case", {keyword_case, keyword_case}, EXPR_VALUE},
-#line 36 "keywords"
+#line 36 "./keywords"
       {"redo", {keyword_redo, keyword_redo}, EXPR_END},
-#line 32 "keywords"
+#line 32 "./keywords"
       {"next", {keyword_next, keyword_next}, EXPR_MID},
-#line 41 "keywords"
+#line 41 "./keywords"
       {"super", {keyword_super, keyword_super}, EXPR_ARG},
-#line 31 "keywords"
+#line 31 "./keywords"
       {"module", {keyword_module, keyword_module}, EXPR_VALUE},
-#line 17 "keywords"
+#line 17 "./keywords"
       {"begin", {keyword_begin, keyword_begin}, EXPR_BEG},
-#line 11 "keywords"
+#line 11 "./keywords"
       {"__LINE__", {keyword__LINE__, keyword__LINE__}, EXPR_END},
-#line 12 "keywords"
+#line 12 "./keywords"
       {"__FILE__", {keyword__FILE__, keyword__FILE__}, EXPR_END},
-#line 10 "keywords"
+#line 10 "./keywords"
       {"__ENCODING__", {keyword__ENCODING__, keyword__ENCODING__}, EXPR_END},
-#line 14 "keywords"
+#line 14 "./keywords"
       {"END", {keyword_END, keyword_END}, EXPR_END},
-#line 15 "keywords"
+#line 15 "./keywords"
       {"alias", {keyword_alias, keyword_alias}, EXPR_FNAME},
-#line 13 "keywords"
+#line 13 "./keywords"
       {"BEGIN", {keyword_BEGIN, keyword_BEGIN}, EXPR_END},
       {""},
-#line 20 "keywords"
+#line 20 "./keywords"
       {"class", {keyword_class, keyword_class}, EXPR_CLASS},
       {""}, {""},
-#line 48 "keywords"
+#line 48 "./keywords"
       {"while", {keyword_while, modifier_while}, EXPR_VALUE}
     };
 
@@ -212,5 +208,5 @@ mrb_reserved_word (str, len)
     }
   return 0;
 }
-#line 50 "keywords"
+#line 50 "./keywords"
 

@@ -4,9 +4,11 @@
 # project-specific macros
 # extension of the executable-file is modifiable(.exe .out ...)
 BASEDIR = .
-TARGET := ../lib/libmruby.a
+TARGET := ../lib/libmruby_core.a
 YSRC := $(BASEDIR)/parse.y
 YC := $(BASEDIR)/y.tab.c
+KWD := $(BASEDIR)/keywords
+LDEF := $(BASEDIR)/lex.def
 EXCEPT1 := $(YC) $(BASEDIR)/minimain.c
 OBJY := $(patsubst %.c,%.o,$(YC))
 OBJ1 := $(patsubst %.c,%.o,$(filter-out $(EXCEPT1),$(wildcard $(BASEDIR)/*.c)))
@@ -17,19 +19,14 @@ OBJS := $(OBJ1) $(OBJ2) $(OBJ3)
 # libraries, includes
 INCLUDES = -I$(BASEDIR) -I$(BASEDIR)/../include
 
-# compiler, linker (gcc)
-CC = gcc
-LL = gcc
-AR = ar
-YACC = bison
-
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g -O3
+CFLAGS = -g
 else
 CFLAGS = -O3
 endif
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
+
 
 ##############################
 # generic build targets, rules
@@ -48,17 +45,20 @@ $(OBJS) : %.o : %.c
 	$(CC) $(ALL_CFLAGS) -MMD $(INCLUDES) -c $< -o $@
 
 # parser complie
-$(OBJY) : $(YC)
+$(OBJY) : $(YC) $(LDEF)
 	$(CC) $(ALL_CFLAGS) -MMD $(INCLUDES) -c $(YC) -o $(OBJY)
 
 # yacc complie
 $(YC) : $(YSRC)
 	$(YACC) -o $(YC) $(YSRC)
 
+$(LDEF) : $(KWD)
+	gperf -L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k'1,3,$$' $(KWD) > $(LDEF)
+
 # clean up
 .PHONY : clean #cleandep
 clean :
 	@echo "make: removing targets, objects and depend files of `pwd`"
-	-rm -f $(TARGET) $(OBJS) $(OBJY) $(YC)
-	-rm -f $(OBJS:.o=.d) $(OBJY:.o=.d)
-	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
+	-$(RM_F) $(TARGET) $(OBJS) $(OBJY) $(YC)
+	-$(RM_F) $(OBJS:.o=.d) $(OBJY:.o=.d)
+	-$(RM_F) $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))

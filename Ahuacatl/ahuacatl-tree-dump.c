@@ -138,7 +138,6 @@ static void DumpNode (void* data, const TRI_aql_node_t* const node) {
 
     case AQL_NODE_VARIABLE:
     case AQL_NODE_ATTRIBUTE:
-    case AQL_NODE_COLLECTION:
     case AQL_NODE_REFERENCE:
     case AQL_NODE_PARAMETER:
     case AQL_NODE_ARRAY_ELEMENT:

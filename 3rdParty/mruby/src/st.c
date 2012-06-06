@@ -29,7 +29,7 @@ static struct st_hash_type type_numhash = {
 };
 
 /* extern int strcmp(const char *, const char *); */
-static st_index_t strhash(const char *);
+static st_index_t strhash(const char*);
 static struct st_hash_type type_strhash = {
     strcmp,
     strhash,
@@ -41,7 +41,7 @@ static const struct st_hash_type type_strcasehash = {
     strcasehash,
 };
 
-static void rehash(st_table *);
+static void rehash(st_table*);
 
 #ifdef RUBY
 #define malloc xmalloc
@@ -404,7 +404,7 @@ st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
 }
 
 int
-st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+st_foreach(st_table *table, enum st_retval (*func)(ANYARGS), st_data_t arg)
 {
     st_table_entry *ptr, **last, *tmp;
     enum st_retval retval;
@@ -542,7 +542,7 @@ st_strncasecmp(const char *s1, const char *s2, size_t n)
 static st_index_t
 strcasehash(st_data_t arg)
 {
-    register const char *string = (const char *)arg;
+    register const char *string = (const char*)arg;
     register st_index_t hval = FNV1_32A_INIT;
 
     /*
@@ -572,7 +572,7 @@ numhash(long n)
 }
 
 #if 0
-static int
+static enum st_retval
 f(st_data_t key, st_data_t val, st_data_t a)
 {
   printf("tbl=%p key=%s val=%s\n", (st_table*)a, (char*)key, (char*)val);

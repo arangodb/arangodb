@@ -109,7 +109,7 @@
 /// For more in-depth information
 ///
 /// <ul>
-///  <li> read more on the@SPC@EXTREF{http://www.arangodb.org/2012/03/07/arangodbs-design-objectives,design goals of ArangoDB}</li>
+///  <li> read more on the@SPC@EXTREF{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
 ///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
 ///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
 ///       is about.</li>
@@ -136,7 +136,7 @@
 ///   read-eval-print loop (REPL) and provides functions to access and
 ///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
 /// - @LIT{arangoimp}: A bulk importer for the ArangoDB server.
-///   See @ref UserManualImporterStartStop.
+///   See @ref ImpManual
 ///
 /// @EMBEDTOC{UserManualBasicsTOC}
 ///

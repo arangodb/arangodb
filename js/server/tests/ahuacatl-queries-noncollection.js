@@ -267,6 +267,17 @@ function ahuacatlQueryNonCollectionTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test nesting (issue #97)
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiNesting : function () {
+      var expected = [ 1 ]; // we're only interested in whether the below query can be parsed properly
+
+      var actual = getQueryResults("FOR r IN [ 1 ] LET f = (FOR x IN [ 1 ] FILTER 1 == 1 FOR y IN [ 1 ] FOR z IN [ 1 ] RETURN 1) RETURN 1", true);
+      assertEqual(expected, actual);
+    },
+
   };
 }
 

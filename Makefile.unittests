@@ -45,8 +45,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
-CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
+SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
+CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors
 
 .PHONY: start-server
 
@@ -179,6 +179,7 @@ unittests-shell-server:
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-variables.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
 			@srcdir@/js/server/tests/ahuacatl-complex.js \
 			@srcdir@/js/server/tests/ahuacatl-logical.js \
@@ -218,7 +219,7 @@ unittests-shell-server-ahuacatl:
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 

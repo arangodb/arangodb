@@ -20,6 +20,10 @@
 ################################################################################
 ################################################################################
 
+################################################################################
+### @brief library "libarango.a"
+################################################################################
+
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -28,6 +32,19 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
+################################################################################
+
+################################################################################
+### @brief sets up the directories
+################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief sets up the directories
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -88,7 +105,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
 	$(srcdir)/Makefile.in $(srcdir)/Makefile.javascript \
-	$(srcdir)/Makefile.unittests \
+	$(srcdir)/Makefile.mruby $(srcdir)/Makefile.unittests \
 	$(srcdir)/m4/Makefile.all-in-one-libev \
 	$(srcdir)/m4/Makefile.all-in-one-mruby \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
@@ -97,9 +114,14 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
+
+################################################################################
+### @brief library "libarango.a", MRuby part
+################################################################################
 @ENABLE_MRUBY_TRUE@am__append_4 = \
 @ENABLE_MRUBY_TRUE@	MRuby/MRLoader.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.cpp \
+@ENABLE_MRUBY_TRUE@	MRuby/mr-actions.cpp \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.cpp
 
 @ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
@@ -214,10 +236,11 @@ am__libarango_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
 	Variant/VariantUInt16.cpp Variant/VariantUInt32.cpp \
 	Variant/VariantUInt64.cpp Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp MRuby/MRLoader.cpp \
-	MRuby/MRLineEditor.cpp MRuby/mr-utils.cpp
+	MRuby/MRLineEditor.cpp MRuby/mr-actions.cpp MRuby/mr-utils.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLoader.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	MRuby/mr-actions.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
 am_libarango_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
@@ -367,6 +390,7 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-result.$(OBJEXT) \
+	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
@@ -672,19 +696,26 @@ AM_LDFLAGS = \
 	@V8_LDFLAGS@
 
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
-	$(FLEX_FILES) $(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
-	Doxygen/.setup-directories .setup-directories $(am__append_7) \
+	$(MRUBY_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) $(BISON_FILES) \
+	$(BISONXX_FILES) Doxygen/.setup-directories \
+	.setup-js-directories .setup-mr-directories $(am__append_7) \
 	$(am__append_8) $(am__append_9)
 
 ################################################################################
 ################################################################################
 
 ################################################################################
+### @brief cleanup
+################################################################################
+
+################################################################################
+### @brief cleanup
 ################################################################################
 CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
-	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_5) \
-	$(am__append_6)
+	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
+	.setup-js-directories $(JAVASCRIPT_HEADER) \
+	.setup-mr-directories $(am__append_5) $(am__append_6)
 noinst_LIBRARIES = libarango.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
@@ -748,6 +779,10 @@ libarango_a_SOURCES = Basics/ConditionLocker.cpp \
 
 ################################################################################
 ################################################################################
+
+################################################################################
+### @brief program "arangod"
+################################################################################
 arangod_LDADD = libarango.a $(LIBS)
 arangod_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
@@ -798,6 +833,7 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
+        Ahuacatl/ahuacatl-scope.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
@@ -854,6 +890,7 @@ arangod_SOURCES = \
 
 
 ################################################################################
+### @brief program "arangosh"
 ################################################################################
 arangosh_LDADD = libarango.a $(LIBS)
 arangosh_SOURCES = \
@@ -865,6 +902,7 @@ arangosh_SOURCES = \
 
 
 ################################################################################
+### @brief program "arangoirb"
 ################################################################################
 @ENABLE_MRUBY_TRUE@arangoirb_LDADD = libarango.a $(LIBS)
 @ENABLE_MRUBY_TRUE@arangoirb_SOURCES = \
@@ -875,6 +913,7 @@ arangosh_SOURCES = \
 
 
 ################################################################################
+### @brief program "arangoimp"
 ################################################################################
 arangoimp_LDADD = libarango.a $(LIBS)
 arangoimp_SOURCES = \
@@ -887,6 +926,10 @@ arangoimp_SOURCES = \
 
 ################################################################################
 ################################################################################
+
+################################################################################
+### @brief JavaScript source code as header
+################################################################################
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -897,6 +940,7 @@ JAVASCRIPT_HEADER = \
 
 
 ################################################################################
+### @brief JavaScript modules for browser
 ################################################################################
 JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/simple-query-basics.js \
@@ -905,12 +949,28 @@ JAVASCRIPT_BROWSER = \
 
 ################################################################################
 ################################################################################
+
+################################################################################
+### @brief MRuby source code as header
+################################################################################
+MRUBY_HEADER = \
+	mr/common/bootstrap/mr-error.h \
+	mr/server/mr-server.h
+
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief flex
+################################################################################
 FLEX_FILES = \
 	JsonParser/json-parser.c \
         Ahuacatl/ahuacatl-tokens.c
 
 
 ################################################################################
+### @brief flex++
 ################################################################################
 FLEXXX_FILES = \
 	V8/v8-json.cpp \
@@ -918,18 +978,24 @@ FLEXXX_FILES = \
 
 
 ################################################################################
+### @brief bison
 ################################################################################
 BISON_FILES = \
 	Ahuacatl/ahuacatl-grammar.c
 
 
 ################################################################################
+### @brief bison++
 ################################################################################
 BISONXX_FILES = \
 	JsonParserX/JsonParserX.cpp
 
 
 ################################################################################
+################################################################################
+
+################################################################################
+### @brief JavaScript files
 ################################################################################
 DOXYGEN = \
 	Doxygen/js/actions/system/api-collection.c \
@@ -950,6 +1016,7 @@ DOXYGEN = \
 
 
 ################################################################################
+### @brief wiki pages
 ################################################################################
 WIKI = \
 	Actions \
@@ -1020,8 +1087,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
-CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
+SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
+CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
@@ -1065,6 +1132,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-variables.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
 			@srcdir@/js/server/tests/ahuacatl-complex.js \
 			@srcdir@/js/server/tests/ahuacatl-logical.js \
@@ -1084,7 +1152,7 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 
 ################################################################################
 ################################################################################
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
@@ -1099,7 +1167,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.mruby $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1456,6 +1524,8 @@ MRuby/MRLoader.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/mr-actions.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 libarango.a: $(libarango_a_OBJECTS) $(libarango_a_DEPENDENCIES) 
@@ -1770,6 +1840,8 @@ Ahuacatl/ahuacatl-parser-functions.$(OBJEXT):  \
 	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1993,6 +2065,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-parser-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-result.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-scope.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-walker.$(OBJEXT)
@@ -2082,6 +2155,7 @@ mostlyclean-compile:
 	-rm -f MRClient/arangoirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
 	-rm -f MRuby/MRLoader.$(OBJEXT)
+	-rm -f MRuby/mr-actions.$(OBJEXT)
 	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
@@ -2227,6 +2301,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-result.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-scope.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-walker.Po@am__quote@
@@ -2316,6 +2391,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
@@ -2911,6 +2987,9 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 build.h: configure.ac
 	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
 
+################################################################################
+################################################################################
+
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 
 Doxygen/.setup-directories:
@@ -3002,30 +3081,52 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
 
-.setup-directories:
+.setup-js-directories:
+	@test -d html/admin/js/modules || mkdir html/admin/js/modules
 	@test -d js || mkdir js
-	@test -d js/bootstrap || mkdir js/bootstrap
-	@test -d js/modules || mkdir js/modules
+	@test -d js/client || mkdir js/client
+	@test -d js/common/bootstrap || mkdir js/common/bootstrap
 	@test -d js/server || mkdir js/server
 	@touch $@
 
-js/js-%.h: @srcdir@/js/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
+################################################################################
+### @brief converts JavaScript files to header files
+################################################################################
 
-js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js
+html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
 
-html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js
+html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+
+js/js-%.h: @srcdir@/js/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+################################################################################
+################################################################################
+
+.setup-mr-directories:
+	@test -d mr || mkdir mr
+	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
+	@touch $@
+
+mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
+mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
+################################################################################
+################################################################################
 
 ################################################################################
 ################################################################################
