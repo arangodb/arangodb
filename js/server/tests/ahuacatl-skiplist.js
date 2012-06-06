@@ -968,6 +968,50 @@ function ahuacatlSkiplistTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with a constant
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefConst1 : function () {
+      var expected = [ [ 3, 1 ], [ 3, 2 ], [ 3, 3 ], [ 3, 4 ], [ 3, 5 ] ];
+      var actual = getQueryResults("LET x = 3 FOR v IN " + skiplist.name() + " FILTER v.a == x SORT v.a, v.b RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with a constant
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefConst2 : function () {
+      var expected = [ [ 3, 5 ] ];
+      var actual = getQueryResults("LET x = 3 LET y = 5 FOR v IN " + skiplist.name() + " FILTER v.a == x && v.b == y RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefSingle1 : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ] ];
+      var actual = getQueryResults("FOR v1 IN " + skiplist.name() + " FOR v2 IN " + skiplist.name() + " FILTER v1.a == 1 && v2.a == v1.a && v1.b == 1 SORT v1.a, v2.b RETURN [ v1.a, v2.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefSingle2 : function () {
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ] ];
+      var actual = getQueryResults("FOR v1 IN " + skiplist.name() + " FOR v2 IN " + skiplist.name() + " FILTER 1 == v1.a && v1.a == v2.a && 1 == v1.b SORT v1.a, v2.b RETURN [ v1.a, v2.b ]");
+
+      assertEqual(expected, actual);
+    },
+
   };
 }
 
