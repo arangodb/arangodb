@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread for JavaScript actions
+/// @brief dispatcher thread for Ruby actions
 ///
 /// @file
 ///
@@ -25,25 +25,38 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "JavascriptDispatcherThread.h"
+#ifndef TRIAGENS_REST_SERVER_RUBY_DISPATCHER_THREAD_H
+#define TRIAGENS_REST_SERVER_RUBY_DISPATCHER_THREAD_H 1
 
-#include "Actions/actions.h"
-#include "Logger/Logger.h"
-#include "V8/v8-actions.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-query.h"
-#include "V8/v8-shell.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-vocbase.h"
+#include "Actions/ActionDispatcherThread.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+#include "MRuby/MRLoader.h"
+#include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class ActionDispatcherThread
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcher thread
+////////////////////////////////////////////////////////////////////////////////
+
+    class RubyDispatcherThread : public ActionDispatcherThread {
+      private:
+        RubyDispatcherThread (RubyDispatcherThread const&);
+        RubyDispatcherThread& operator= (RubyDispatcherThread const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -54,30 +67,19 @@ using namespace triagens::arango;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* queue,
-                                                        TRI_vocbase_t* vocbase,
-                                                        uint64_t gcInterval,
-                                                        string const& actionQueue,
-                                                        set<string> const& allowedContexts,
-                                                        string startupModules,
-                                                        JSLoader* startupLoader,
-                                                        JSLoader* actionLoader)
-  : ActionDispatcherThread(queue),
-    _vocbase(vocbase),
-    _gcInterval(gcInterval),
-    _gc(0),
-    _isolate(0),
-    _context(),
-    _actionQueue(actionQueue),
-    _allowedContexts(allowedContexts),
-    _startupModules(startupModules),
-    _startupLoader(startupLoader),
-    _actionLoader(actionLoader) {
-}
+        RubyDispatcherThread (rest::DispatcherQueue*,
+                                    TRI_vocbase_t*,
+                                    string const& actionQueue,
+                                    set<string> const& allowedContexts,
+                                    std::string startupModules,
+                                    MRLoader* startupLoader,
+                                    MRLoader* actionLoader);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -92,13 +94,13 @@ JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* q
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void* JavascriptDispatcherThread::context () {
-  return (void*) _isolate; // the isolate is the execution context
-}
+        void* context ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -113,29 +115,19 @@ void* JavascriptDispatcherThread::context () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void JavascriptDispatcherThread::reportStatus () {
-}
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::tick (bool idle) {
-  _gc += (idle ? 10 : 1);
+        void reportStatus ();
 
-  if (_gc > _gcInterval) {
-    LOGGER_TRACE << "collecting garbage...";
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-    while (! v8::V8::IdleNotification()) {
-    }
-
-    _gc = 0;
-  }
-}
+        void tick (bool idle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -150,31 +142,13 @@ void JavascriptDispatcherThread::tick (bool idle) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::run () {
-  initialise();
-
-  _isolate->Enter();
-  _context->Enter();
-
-  DispatcherThread::run();
-
-  // free memory for this thread
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
-
-  if (v8g) {
-    delete v8g;
-  }
-
-  _context->Exit();
-  _context.Dispose();
-
-  _isolate->Exit();
-  _isolate->Dispose();
-}
+        void run ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -189,81 +163,79 @@ void JavascriptDispatcherThread::run () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the isolate and context
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::initialise () {
-  bool ok;
-  char const* files[] = { "common/bootstrap/modules.js",
-                          "common/bootstrap/print.js",
-                          "common/bootstrap/errors.js",
-                          "server/ahuacatl.js",
-                          "server/server.js"
-  };
-  size_t i;
-
-  // enter a new isolate
-  _isolate = v8::Isolate::New();
-  _isolate->Enter();
-
-  // create the context
-  _context = v8::Context::New(0);
-
-  if (_context.IsEmpty()) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-    _isolate->Exit();
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-
-  _context->Enter();
-
-  TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Queries(_context);
-  TRI_InitV8Actions(_context, _actionQueue, _allowedContexts);
-  TRI_InitV8Conversions(_context);
-  TRI_InitV8Utils(_context, _startupModules);
-  TRI_InitV8Shell(_context);
-
-  // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    ok = _startupLoader->loadScript(_context, files[i]);
-
-    if (! ok) {
-      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
-      _context->Exit();
-      _isolate->Exit();
-
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // load all actions
-  if (_actionLoader == 0) {
-    LOGGER_WARNING << "no action loader has been defined";
-  }
-  else {
-    ok = _actionLoader->executeAllScripts(_context);
-
-    if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << _actionLoader->getDirectory() << "'";
-    }
-  }
-
-  // and return from the context
-  _context->Exit();
-  _isolate->Exit();
-}
+        void initialise ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 isolate
+////////////////////////////////////////////////////////////////////////////////
+
+        MR_state_t* _mrs;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief action queue
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _actionQueue;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allowed action contexts
+////////////////////////////////////////////////////////////////////////////////
+
+        std::set<std::string> _allowedContexts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modules path
+////////////////////////////////////////////////////////////////////////////////
+
+        string _startupModules;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup path
+////////////////////////////////////////////////////////////////////////////////
+
+        MRLoader* _startupLoader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief action path
+////////////////////////////////////////////////////////////////////////////////
+
+        MRLoader* _actionLoader;
+    };
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

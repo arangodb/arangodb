@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ using namespace triagens::arango;
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
 #include "MRuby/mr-actions.h"
+#include "RestServer/RubyDispatcherThread.h"
 
 #include "mruby.h"
 #include "mruby/compile.h"
@@ -200,17 +201,13 @@ static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue*
 #ifdef TRI_ENABLE_MRUBY
 
 static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
-  return 0;
-#if 0
-  return new ActionDispatcherThread(queue,
-                                    Vocbase,
-                                    GcIntervalJS,
-                                    "CLIENT-RUBY",
-                                    AllowedClientActions,
-                                    StartupModulesJS,
-                                    &StartupLoaderJS,
-                                    &ActionLoaderJS);
-#endif
+  return new RubyDispatcherThread(queue,
+                                  Vocbase,
+                                  "CLIENT-RUBY",
+                                  AllowedClientActions,
+                                  StartupModulesMR,
+                                  &StartupLoaderMR,
+                                  &ActionLoaderMR);
 }
 
 #endif
@@ -222,17 +219,13 @@ static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue*
 #ifdef TRI_ENABLE_MRUBY
 
 static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
-  return 0;
-#if 0
-  return new ActionDispatcherThread(queue,
-                                    Vocbase,
-                                    GcIntervalJS,
-                                    "SYSTEM-RUBY",
-                                    AllowedAdminActions,
-                                    StartupModulesJS,
-                                    &StartupLoaderJS,
-                                    &ActionLoaderJS);
-#endif
+  return new RubyDispatcherThread(queue,
+                                  Vocbase,
+                                  "SYSTEM-RUBY",
+                                  AllowedAdminActions,
+                                  StartupModulesMR,
+                                  &StartupLoaderMR,
+                                  &ActionLoaderMR);
 }
 
 #endif
@@ -242,7 +235,7 @@ static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue*
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin, 
+                               ApplicationAdminServer* admin,
                                TRI_vocbase_t* vocbase) {
 
   // add "/version" handler
@@ -340,7 +333,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   // .............................................................................
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  
+
     _workingDirectory = _binaryPath + "/../tmp";
     _actionPathJS = _binaryPath + "/../share/arango/js/actions/system";
     _startupModulesJS = _binaryPath + "/../share/arango/js/server/modules"
@@ -439,37 +432,37 @@ void ArangoServer::buildApplicationServer () {
   vector<right_t> rightsManager;
   rightsManager.push_back(RIGHT_TO_MANAGE_USER);
   rightsManager.push_back(RIGHT_TO_MANAGE_ADMIN);
-      
+
   _applicationUserManager->createRole("manager", rightsManager, 0);
-      
+
   // create admin role
   vector<right_t> rightsAdmin;
   rightsAdmin.push_back(RIGHT_TO_MANAGE_USER);
   rightsAdmin.push_back(RIGHT_TO_BE_DELETED);
-  
+
   _applicationUserManager->createRole("admin", rightsAdmin, RIGHT_TO_MANAGE_ADMIN);
-      
+
   // create user role
   vector<right_t> rightsUser;
   rightsUser.push_back(RIGHT_TO_BE_DELETED);
-      
+
   _applicationUserManager->createRole("user", rightsUser, RIGHT_TO_MANAGE_USER);
-      
+
   // create a standard user
   _applicationUserManager->createUser("manager", "manager");
-      
+
   // added a anonymous right for session which are not logged in
   vector<right_t> rightsAnonymous;
   rightsAnonymous.push_back(RIGHT_TO_LOGIN);
-      
+
   _applicationUserManager->setAnonymousRights(rightsAnonymous);
-      
+
   // .............................................................................
   // use relative system paths
   // .............................................................................
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  
+
   _applicationServer->setSystemConfigFile("arango.conf", _binaryPath + "/../etc");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
@@ -736,7 +729,7 @@ int ArangoServer::startupServer () {
 
   Vocbase = _vocbase;
   StartupModulesJS = _startupModulesJS;
-  GcIntervalJS = _gcIntervalJS; 
+  GcIntervalJS = _gcIntervalJS;
 
   // .............................................................................
   // create the various parts of the Arango server
@@ -763,7 +756,7 @@ int ArangoServer::startupServer () {
 
 #if TRI_ENABLE_MRUBY
   if (0 < _actionThreadsMR) {
-    // safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
   }
 #endif
 
@@ -773,7 +766,7 @@ int ArangoServer::startupServer () {
       safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
 
 #if TRI_ENABLE_MRUBY
-      // safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
 #endif
     }
   }
@@ -805,7 +798,7 @@ int ArangoServer::startupServer () {
     }
 
     // add action handler
-    factory->addPrefixHandler("/", 
+    factory->addPrefixHandler("/",
                               RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                               (void*) &httpOptions);
 
@@ -833,7 +826,7 @@ int ArangoServer::startupServer () {
     DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    factory->addPrefixHandler("/", 
+    factory->addPrefixHandler("/",
                               RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                               (void*) &adminOptions);
 
@@ -984,7 +977,7 @@ int ArangoServer::executeShell (bool tests) {
     // run tests
     char const* input = "require(\"jsunity\").runCommandLineTests();";
     TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-      
+
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
       ok = false;
@@ -1026,7 +1019,7 @@ int ArangoServer::executeShell (bool tests) {
 
       TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      
+
       if (tryCatch.HasCaught()) {
         cout << TRI_StringifyV8Exception(&tryCatch);
       }
@@ -1097,7 +1090,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
     return self;
   }
 
-  // check 
+  // check
 
   printf("using collection '%s'\n", name);
 
@@ -1110,7 +1103,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
     printf("unknown collection (TODO raise error)\n");
     return self;
   }
-  
+
   return mrb_obj_value(Data_Wrap_Struct(mrb, ArangoCollectionClass, &MR_ArangoCollection_Type, (void*) collection));
 }
 
@@ -1178,7 +1171,7 @@ int ArangoServer::executeRubyShell () {
   MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
 
   console->open(false);
-  
+
   while (true) {
     char* input = console->prompt("arangod> ");
 
@@ -1222,7 +1215,7 @@ int ArangoServer::executeRubyShell () {
       mrb_p(&mrs->_mrb, result);
     }
   }
-  
+
   // close the console
   console->close();
   delete console;
@@ -1248,7 +1241,7 @@ void ArangoServer::openDatabase () {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
-  
+
     ApplicationUserManager::unloadUsers();
     ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
@@ -1282,5 +1275,5 @@ void ArangoServer::closeDatabase () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
