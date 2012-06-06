@@ -1413,9 +1413,16 @@ var lastFormatQuestion = true;
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
       var systemcheck = $('input:radio[name=isSystem]:checked').val();
       var collName = $('#createCollName').val(); 
-      var collSize = $('#createCollSize').val(); 
-      collSize = JSON.parse(collSize) * 1024 * 1024; 
+      var collSize = $('#createCollSize').val();
+      var journalSizeString;
  
+      if (collSize == '') { 
+        journalSizeString = ''; 
+      }
+      else {
+        collSize = JSON.parse(collSize) * 1024 * 1024;  
+        journalSizeString = ', "journalSize":' + collSize; 
+      }
       if (collName == '') {
         alert("No collection name entered. Aborting..."); 
         return 0; 
@@ -1424,7 +1431,7 @@ var lastFormatQuestion = true;
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+',"journalSize":' + collSize + '}',
+        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+ journalSizeString + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
