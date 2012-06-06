@@ -136,7 +136,7 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
 
   // some debug output
   LOGGER_DEBUG << "created " << action->_type << " "
-               << (action->_isPrefix ? "prefix " : "") 
+               << (action->_isPrefix ? "prefix " : "")
                << "action '" << url.c_str() << "'";
 
   // return old or new action description
