@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action request handler
+/// @brief dispatcher thread for JavaScript actions
 ///
 /// @file
 ///
@@ -22,64 +22,28 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_REST_ACTION_HANDLER_H
-#define TRIAGENS_REST_HANDLER_REST_ACTION_HANDLER_H 1
+#include "JavascriptDispatcherThread.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Actions/actions.h"
+#include "Logger/Logger.h"
+#include "V8/v8-actions.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-query.h"
+#include "V8/v8-shell.h"
+#include "V8/v8-utils.h"
+#include "V8/v8-vocbase.h"
+
+using namespace std;
+using namespace triagens::basics;
+using namespace triagens::rest;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                      class ActionDispatcherThread
 // -----------------------------------------------------------------------------
-
-class TRI_action_t;
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 RestActionHandler
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace arango {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief action request handler
-////////////////////////////////////////////////////////////////////////////////
-
-    class RestActionHandler : public RestVocbaseBaseHandler {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor options
-////////////////////////////////////////////////////////////////////////////////
-
-        struct action_options_t {
-          TRI_vocbase_t* _vocbase;
-          string _queue;
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -90,20 +54,37 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestActionHandler (rest::HttpRequest*, action_options_t*);
+JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* queue,
+                                                        TRI_vocbase_t* vocbase,
+                                                        uint64_t gcInterval,
+                                                        string const& actionQueue,
+                                                        set<string> const& allowedContexts,
+                                                        string startupModules,
+                                                        JSLoader* startupLoader,
+                                                        JSLoader* actionLoader)
+  : ActionDispatcherThread(queue),
+    _vocbase(vocbase),
+    _gcInterval(gcInterval),
+    _gc(0),
+    _isolate(0),
+    _context(),
+    _actionQueue(actionQueue),
+    _allowedContexts(allowedContexts),
+    _startupModules(startupModules),
+    _startupLoader(startupLoader),
+    _actionLoader(actionLoader) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                    ActionDispatcherThread methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,32 +92,89 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
+void* JavascriptDispatcherThread::context () {
+  return (void*) _isolate;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          DispatcherThread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect ();
+void JavascriptDispatcherThread::reportStatus () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue ();
+void JavascriptDispatcherThread::tick (bool idle) {
+  _gc += (idle ? 10 : 1);
+
+  if (_gc > _gcInterval) {
+    LOGGER_TRACE << "collecting garbage...";
+
+    while (! v8::V8::IdleNotification()) {
+    }
+
+    _gc = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setDispatcherThread (rest::DispatcherThread* thread);
+void JavascriptDispatcherThread::run () {
+  initialise();
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  _isolate->Enter();
+  _context->Enter();
 
-        status_e execute ();
+  DispatcherThread::run();
+  
+  // free memory for this thread
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
+
+  if (v8g) {
+    delete v8g;
+  }
+
+  _context->Exit();
+  _context.Dispose();
+ 
+  _isolate->Exit();
+  _isolate->Dispose();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -151,55 +189,81 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an action
+/// @brief initialises the isolate and context
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool executeAction ();
+void JavascriptDispatcherThread::initialise () {
+  bool ok;
+  char const* files[] = { "common/bootstrap/modules.js",
+                          "common/bootstrap/print.js",
+                          "common/bootstrap/errors.js",
+                          "server/ahuacatl.js",
+                          "server/server.js"
+  };
+  size_t i;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  // enter a new isolate
+  _isolate = v8::Isolate::New();
+  _isolate->Enter();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              proctected variables
-// -----------------------------------------------------------------------------
+  // create the context
+  _context = v8::Context::New(0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief action
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_action_t* _action;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief context
-////////////////////////////////////////////////////////////////////////////////
-
-        void* _context;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief queue to use
-////////////////////////////////////////////////////////////////////////////////
-
-        string _queue;
-    };
+  if (_context.IsEmpty()) {
+    LOGGER_FATAL << "cannot initialize V8 engine";
+    _isolate->Exit();
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
+
+  _context->Enter();
+
+  TRI_InitV8VocBridge(_context, _vocbase);
+  TRI_InitV8Queries(_context);
+  TRI_InitV8Actions(_context, _actionQueue, _allowedContexts);
+  TRI_InitV8Conversions(_context);
+  TRI_InitV8Utils(_context, _startupModules);
+  TRI_InitV8Shell(_context);
+
+  // load all init files
+  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+    ok = _startupLoader->loadScript(_context, files[i]);
+
+    if (! ok) {
+      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
+      _context->Exit();
+      _isolate->Exit();
+
+      TRI_FlushLogging();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  // load all actions
+  if (_actionLoader == 0) {
+    LOGGER_WARNING << "no action loader has been defined";
+  }
+  else {
+    ok = _actionLoader->executeAllScripts(_context);
+
+    if (! ok) {
+      LOGGER_FATAL << "cannot load actions from directory '" << _actionLoader->getDirectory() << "'";
+    }
+  }
+  
+  // and return from the context
+  _context->Exit();
+  _isolate->Exit();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

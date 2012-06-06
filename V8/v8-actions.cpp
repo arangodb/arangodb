@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,14 +27,14 @@
 
 #include "v8-actions.h"
 
+#include "Actions/actions.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
@@ -44,7 +44,21 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                    void* context,
+                                    TRI_action_t const* action,
+                                    v8::Handle<v8::Function> callback,
+                                    HttpRequest* request);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class v8_action_t
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,23 +67,90 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief actions
+/// @brief action description for V8
 ////////////////////////////////////////////////////////////////////////////////
 
-static map< string, TRI_action_t* > Actions;
+class v8_action_t : public TRI_action_t {
+  public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief actions lock
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static ReadWriteLock ActionsLock;
+    ~v8_action_t () {
+      WRITE_LOCKER(_callbacksLock);
+
+      for (map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.begin();
+           i != _callbacks.end();
+           ++i) {
+        (i->second).Dispose();
+      }
+
+      _callbacks.clear();
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates callback for a context
+////////////////////////////////////////////////////////////////////////////////
+
+    void createCallback (void* context, void* callback) {
+      WRITE_LOCKER(_callbacksLock);
+
+      map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context);
+
+      if (i != _callbacks.end()) {
+        (i->second).Dispose();
+      }
+
+      v8::Handle<v8::Function>* cb = (v8::Handle<v8::Function>*) callback;
+
+      i->second = v8::Persistent<v8::Function>::New(*cb);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates callback for a context
+////////////////////////////////////////////////////////////////////////////////
+
+    HttpResponse* execute (TRI_vocbase_t* vocbase, void* context, HttpRequest* request) {
+      v8::Handle<v8::Function> callback;
+
+      {
+        READ_LOCKER(_callbacksLock);
+
+        map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context);
+
+        if (i == _callbacks.end()) {
+          LOGGER_WARNING << "no callback function for action '" << _url.c_str() << "'";
+          return new HttpResponse(HttpResponse::NOT_FOUND);
+        }
+
+        callback = i->second;
+      }
+      
+      return ExecuteActionVocbase(vocbase, context, this, callback, request);
+    }
+
+  private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback dictionary
+////////////////////////////////////////////////////////////////////////////////
+
+    map< void*, v8::Persistent<v8::Function> > _callbacks;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for the callback dictionary
+////////////////////////////////////////////////////////////////////////////////
+
+    ReadWriteLock _callbacksLock;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,34 +163,32 @@ static ReadWriteLock ActionsLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_options_t ao,
+                                         TRI_action_t* action,
                                          string const& key,
                                          string const& parameter) {
-  TRI_action_parameter_t p;
-
-  p._name = key;
+  TRI_action_parameter_type_e p;
 
   if (parameter == "collection") {
-    p._type = TRI_ACT_COLLECTION;
+    p = TRI_ACT_COLLECTION;
   }
   if (parameter == "collection-name") {
-    p._type = TRI_ACT_COLLECTION_NAME;
+    p = TRI_ACT_COLLECTION_NAME;
   }
   else if (parameter == "collection-identifier") {
-    p._type = TRI_ACT_COLLECTION_ID;
+    p = TRI_ACT_COLLECTION_ID;
   }
   else if (parameter == "number") {
-    p._type = TRI_ACT_NUMBER;
+    p = TRI_ACT_NUMBER;
   }
   else if (parameter == "string") {
-    p._type = TRI_ACT_STRING;
+    p = TRI_ACT_STRING;
   }
   else {
     LOG_ERROR("unknown parameter type '%s', falling back to string", parameter.c_str());
-    p._type = TRI_ACT_STRING;
+    p = TRI_ACT_STRING;
   }
 
-  ao._parameters[key] = p;
+  action->_parameters[key] = p;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,11 +196,11 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_options_t ao,
+                                         TRI_action_t* action,
                                          string const& key,
                                          v8::Handle<v8::Value> parameter) {
   if (parameter->IsString() || parameter->IsStringObject()) {
-    ParseActionOptionsParameter(v8g, ao, key, TRI_ObjectToString(parameter));
+    ParseActionOptionsParameter(v8g, action, key, TRI_ObjectToString(parameter));
   }
 }
 
@@ -130,7 +209,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
-                                          TRI_action_options_t ao,
+                                          TRI_action_t* action,
                                           v8::Handle<v8::Object> parameters) {
   v8::Handle<v8::Array> keys = parameters->GetOwnPropertyNames();
   uint32_t len = keys->Length();
@@ -138,7 +217,7 @@ static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
   for (uint32_t i = 0;  i < len;  ++i) {
     v8::Handle<v8::Value> key = keys->Get(i);
 
-    ParseActionOptionsParameter(v8g, ao, TRI_ObjectToString(key), parameters->Get(key));
+    ParseActionOptionsParameter(v8g, action, TRI_ObjectToString(key), parameters->Get(key));
   }
 }
 
@@ -146,29 +225,26 @@ static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
 /// @brief parses the action options
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_action_options_t ParseActionOptions (TRI_v8_global_t* v8g,
-                                                v8::Handle<v8::Object> options) {
-  TRI_action_options_t ao;
+static void ParseActionOptions (TRI_v8_global_t* v8g,
+                                TRI_action_t* action,
+                                v8::Handle<v8::Object> options) {
 
   // check "parameters" field
   if (options->Has(v8g->ParametersKey)) {
     v8::Handle<v8::Value> parameters = options->Get(v8g->ParametersKey);
 
     if (parameters->IsObject()) {
-      ParseActionOptionsParameters(v8g, ao, parameters->ToObject());
+      ParseActionOptionsParameters(v8g, action, parameters->ToObject());
     }
   }
 
   // check the "prefix" field
   if (options->Has(v8g->PrefixKey)) {
-    ao._prefix = TRI_ObjectToBoolean(options->Get(v8g->PrefixKey));
+    action->_isPrefix = TRI_ObjectToBoolean(options->Get(v8g->PrefixKey));
   }
   else {
-    ao._prefix = false;
+    action->_isPrefix = false;
   }
-
-  // and return the result
-  return ao;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,159 +302,35 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
     options = v8::Object::New();
   }
 
-  TRI_action_options_t ao = ParseActionOptions(v8g, options);
+  // create an action with the given options
+  v8_action_t* action = new v8_action_t;
+  ParseActionOptions(v8g, action, options);
 
   // store an action with the given name
-  TRI_CreateActionVocBase(name, ao, callback);
+  TRI_action_t* result = TRI_DefineActionVocBase(name, action);
+
+  // and define the callback
+  if (result != 0) {
+    result->createCallback((void*) v8g, (void*) &callback);
+  }
 
   return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new action
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateActionVocBase (string const& name,
-                              TRI_action_options_t ao,
-                              v8::Handle<v8::Function> callback) {
-
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  WRITE_LOCKER(ActionsLock);
-  WRITE_LOCKER(v8g->ActionsLock);
-
-  string url = name;
-
-  while (! url.empty() && url[0] == '/') {
-    url = url.substr(1);
-  }
-
-  // create a new action and store the callback function
-  if (Actions.find(url) == Actions.end()) {
-    TRI_action_t* action = new TRI_action_t;
-
-    action->_url = url;
-    action->_urlParts = StringUtils::split(url, "/").size();
-    action->_options = ao;
-
-    Actions[url] = action;
-  }
-
-  // check if we already know an callback
-  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(url);
-
-  if (i != v8g->Actions.end()) {
-    v8::Persistent<v8::Function> cb = i->second;
-
-    cb.Dispose();
-  }
-
-  v8g->Actions[url] = v8::Persistent<v8::Function>::New(callback);
-
-  // some debug output
-  LOG_DEBUG("created action '%s'", url.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free all existing actions
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeActionsVocBase (void) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  WRITE_LOCKER(ActionsLock);
-  WRITE_LOCKER(v8g->ActionsLock);
-
-  map<string, TRI_action_t* >::iterator it;
-
-  for (it = Actions.begin(); it != Actions.end(); it++) {
-    delete (*it).second;
-  }
-  Actions.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an action
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
-  READ_LOCKER(ActionsLock);
-
-  // check if we know a callback
-  vector<string> suffix = request->suffix();
-  bool poped = false;
-    
-  // find longest prefix
-  while (true) {
-    string name = StringUtils::join(suffix, '/');
-    map<string, TRI_action_t*>::iterator i = Actions.find(name);
-    
-    if (i != Actions.end()) {
-      TRI_action_t* action = i->second;
-
-      if (action->_options._prefix) {
-        return action;
-      }
-      else {
-        if (! poped) {
-          return action;
-        }
-      }
-    }
-
-    if (suffix.empty()) {
-      break;
-    }
-
-    suffix.pop_back();
-    poped = true;
-  }
-
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
-                                        TRI_action_t const* action,
-                                        HttpRequest* request) {
+HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                    TRI_action_t const* action,
+                                    v8::Handle<v8::Function> callback,
+                                    HttpRequest* request) {
   TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  READ_LOCKER(ActionsLock);
-  READ_LOCKER(v8g->ActionsLock);
 
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action->_url);
-
-  if (i == v8g->Actions.end()) {
-    LOG_DEBUG("no callback for action '%s'", action->_url.c_str());
-    return new HttpResponse(HttpResponse::NOT_FOUND);
-  }
-
-  v8::Persistent<v8::Function> cb = i->second;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New();
@@ -461,15 +413,15 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     string const& k = i->first;
     string const& v = i->second;
 
-    map<string, TRI_action_parameter_t>::const_iterator p = action->_options._parameters.find(k);
+    map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
 
-    if (p == action->_options._parameters.end()) {
+    if (p == action->_parameters.end()) {
       parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
     }
     else {
-      TRI_action_parameter_t const& ap = p->second;
+      TRI_action_parameter_type_e const& ap = p->second;
 
-      switch (ap._type) {
+      switch (ap) {
         case TRI_ACT_COLLECTION: {
           if (! v.empty()) {
             char ch = v[0];
@@ -530,7 +482,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
 
-  cb->Call(cb, 2, args);
+  callback->Call(callback, 2, args);
 
   // convert the result
   if (tryCatch.HasCaught()) {
@@ -575,6 +527,19 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     return response;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Actions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable

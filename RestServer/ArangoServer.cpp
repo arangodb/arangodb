@@ -46,19 +46,12 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
-
-#ifdef TRI_ENABLE_MRUBY
-#include "MRuby/MRLineEditor.h"
-#include "MRuby/MRLoader.h"
-#include "MRuby/mr-actions.h"
-#endif
-
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/ActionDispatcherThread.h"
+#include "RestServer/JavascriptDispatcherThread.h"
 #include "RestServer/ArangoHttpServer.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
@@ -84,6 +77,10 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
+#include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
+#include "MRuby/mr-actions.h"
+
 #include "mruby.h"
 #include "mruby/compile.h"
 #include "mruby/data.h"
@@ -171,14 +168,14 @@ static MRLoader StartupLoaderMR;
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* ClientActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue,
-                                    Vocbase,
-                                    GcIntervalJS,
-                                    "CLIENT-JAVASCRIPT",
-                                    AllowedClientActions,
-                                    StartupModulesJS,
-                                    &StartupLoaderJS,
-                                    &ActionLoaderJS);
+  return new JavascriptDispatcherThread(queue,
+                                        Vocbase,
+                                        GcIntervalJS,
+                                        "CLIENT-JAVASCRIPT",
+                                        AllowedClientActions,
+                                        StartupModulesJS,
+                                        &StartupLoaderJS,
+                                        &ActionLoaderJS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,14 +183,14 @@ static DispatcherThread* ClientActionDispatcherThreadCreatorJS (DispatcherQueue*
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue,
-                                    Vocbase,
-                                    GcIntervalJS,
-                                    "SYSTEM-JAVASCRIPT",
-                                    AllowedAdminActions,
-                                    StartupModulesJS,
-                                    &StartupLoaderJS,
-                                    &ActionLoaderJS);
+  return new JavascriptDispatcherThread(queue,
+                                        Vocbase,
+                                        GcIntervalJS,
+                                        "SYSTEM-JAVASCRIPT",
+                                        AllowedAdminActions,
+                                        StartupModulesJS,
+                                        &StartupLoaderJS,
+                                        &ActionLoaderJS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +200,8 @@ static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue*
 #ifdef TRI_ENABLE_MRUBY
 
 static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return 0;
+#if 0
   return new ActionDispatcherThread(queue,
                                     Vocbase,
                                     GcIntervalJS,
@@ -211,6 +210,7 @@ static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue*
                                     StartupModulesJS,
                                     &StartupLoaderJS,
                                     &ActionLoaderJS);
+#endif
 }
 
 #endif
@@ -222,6 +222,8 @@ static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue*
 #ifdef TRI_ENABLE_MRUBY
 
 static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return 0;
+#if 0
   return new ActionDispatcherThread(queue,
                                     Vocbase,
                                     GcIntervalJS,
@@ -230,6 +232,7 @@ static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue*
                                     StartupModulesJS,
                                     &StartupLoaderJS,
                                     &ActionLoaderJS);
+#endif
 }
 
 #endif

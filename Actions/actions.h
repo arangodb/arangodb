@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
+/// @brief abstract actions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,17 +22,24 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
-#define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
+#ifndef TRIAGENS_DURHAM_ACTIONS_ACTIONS_H
+#define TRIAGENS_DURHAM_ACTIONS_ACTIONS_H 1
 
 #include <Basics/Common.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace rest {
+    class HttpResponse;
+    class HttpRequest;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -60,14 +67,45 @@ TRI_action_parameter_type_e;
 /// @brief action descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_action_s {
-    void execute (rest::HttpRequest const&
-  std::string _url;
-  size_t _urlParts;
-  bool _isPrefix;
-  map<std::string, TRI_action_parameter_type_e> _parameter;
-} 
-TRI_action_t;
+class TRI_action_t {
+  public:
+    virtual ~TRI_action_t () {}
+
+    virtual void createCallback (void* context, void* callback) = 0;
+    virtual triagens::rest::HttpResponse* execute (TRI_vocbase_t* _vocbase, void* context, triagens::rest::HttpRequest*) = 0;
+
+    std::string _type;
+    std::string _url;
+    bool _isPrefix;
+
+    size_t _urlParts;
+    std::map<std::string, TRI_action_parameter_type_e> _parameters;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines an action
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_action_t* TRI_DefineActionVocBase (std::string const& name, TRI_action_t* action);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an action
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -76,10 +114,6 @@ TRI_action_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-LINE
 // -----------------------------------------------------------------------------
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

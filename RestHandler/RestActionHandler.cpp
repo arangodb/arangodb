@@ -27,9 +27,10 @@
 
 #include "RestActionHandler.h"
 
+#include "Actions/actions.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
+#include "RestServer/ActionDispatcherThread.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -53,6 +54,7 @@ using namespace triagens::arango;
 RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* data)
   : RestVocbaseBaseHandler(request, data->_vocbase),
     _action(0),
+    _context(0),
     _queue(data->_queue) {
   _action = TRI_LookupActionVocBase(request);
 }
@@ -90,6 +92,18 @@ string const& RestActionHandler::queue () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+void RestActionHandler::setDispatcherThread (DispatcherThread* thread) {
+  ActionDispatcherThread* actionThread = dynamic_cast<ActionDispatcherThread*>(thread);
+
+  if (actionThread != 0) {
+    _context = actionThread->context();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 HttpHandler::status_e RestActionHandler::execute () {
   static LoggerData::Task const logExecute("ACTION [execute]");
   static LoggerData::Task const logHead("ACTION [head]");
@@ -99,8 +113,13 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   bool res = false;
 
+  // need a context
+  if (_context == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "no execution context is known");
+  }
+
   // need an action
-  if (_action == 0) {
+  else if (_action == 0) {
     string n = request->requestPath();
     n += StringUtils::join(request->suffix(), "/");
 
@@ -163,7 +182,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::executeAction () {
-  response = TRI_ExecuteActionVocBase(_vocbase, _action, request);
+  response = _action->execute(_vocbase, _context, request);
 
   if (response == 0) {
     generateNotImplemented(_action->_url);
