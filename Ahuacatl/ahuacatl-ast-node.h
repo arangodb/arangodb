@@ -337,7 +337,8 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const,
-                                           const char* const);
+                                           const char* const,
+                                           TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collection node

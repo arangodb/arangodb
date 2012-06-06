@@ -2025,6 +2025,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
       // candidate is preferred
 
       // free existing field access
+      assert(existing);
       TRI_FreeAccessAql(existing);
       copy = TRI_CloneAccessAql(context, candidate);
       if (!copy) {

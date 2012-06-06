@@ -136,7 +136,7 @@
 ///   read-eval-print loop (REPL) and provides functions to access and
 ///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
 /// - @LIT{arangoimp}: A bulk importer for the ArangoDB server.
-///   See @ref UserManualImporterStartStop.
+///   See @ref ImpManual
 ///
 /// @EMBEDTOC{UserManualBasicsTOC}
 ///
