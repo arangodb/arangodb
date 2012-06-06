@@ -98,7 +98,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 25 "Ahuacatl/ahuacatl-grammar.y"
+#line 26 "Ahuacatl/ahuacatl-grammar.y"
 
   TRI_aql_node_t* node;
   char* strval;

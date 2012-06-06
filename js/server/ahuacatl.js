@@ -1294,6 +1294,23 @@ function AHUACATL_STRING_SUBSTRING (value, offset, count) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief searches a substring in a string
+///
+/// the two input operands must be strings or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_CONTAINS (value, search) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+  AHUACATL_ARG_CHECK(search, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+
+  if (search.length == 0) {
+    return false;
+  }
+
+  return value.indexOf(search) != -1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -17,7 +17,7 @@
 #include <stdio.h>
 
 /* ------------------------------------------------------ */
-KHASH_MAP_INIT_INT(s2n, const char*);
+KHASH_INIT(s2n, mrb_sym, const char*, 1, kh_int_hash_func, kh_int_hash_equal)
 KHASH_MAP_INIT_STR(n2s, mrb_sym);
 /* ------------------------------------------------------ */
 mrb_sym
@@ -149,13 +149,7 @@ mrb_sym_to_s(mrb_state *mrb, mrb_value sym)
 {
   mrb_sym id = SYM2ID(sym);
 
-#ifdef INCLUDE_REGEXP
-  //return str_new3(mrb_cString, mrb_id2str(id));
-  return str_new3(mrb, mrb_obj_class(mrb, sym), mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id)));
-#else
-  return mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id)); //mrb_str_new2(mrb_id2name(SYM2ID(sym)));
-#endif
-
+  return mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id));
 }
 
 /* 15.2.11.3.4  */
@@ -185,42 +179,112 @@ sym_to_sym(mrb_state *mrb, mrb_value sym)
  *     :fred.inspect   #=> ":fred"
  */
 
+#if __STDC__
+# define SIGN_EXTEND_CHAR(c) ((signed char)(c))
+#else  /* not __STDC__ */
+/* As in Harbison and Steele.  */
+# define SIGN_EXTEND_CHAR(c) ((((unsigned char)(c)) ^ 128) - 128)
+#endif
+#define is_identchar(c) (SIGN_EXTEND_CHAR(c)!=-1&&(ISALNUM(c) || (c) == '_'))
+
+static int
+is_special_global_name(const char* m)
+{
+    switch (*m) {
+      case '~': case '*': case '$': case '?': case '!': case '@':
+      case '/': case '\\': case ';': case ',': case '.': case '=':
+      case ':': case '<': case '>': case '\"':
+      case '&': case '`': case '\'': case '+':
+      case '0':
+        ++m;
+        break;
+      case '-':
+        ++m;
+        if (is_identchar(*m)) m += 1;
+        break;
+      default:
+        if (!ISDIGIT(*m)) return 0;
+        do ++m; while (ISDIGIT(*m));
+    }
+    return !*m;
+}
+
+static int
+symname_p(const char *name)
+{
+    const char *m = name;
+    int localid = FALSE;
+
+    if (!m) return FALSE;
+    switch (*m) {
+      case '\0':
+        return FALSE;
+
+      case '$':
+        if (is_special_global_name(++m)) return TRUE;
+        goto id;
+
+      case '@':
+        if (*++m == '@') ++m;
+        goto id;
+
+      case '<':
+        switch (*++m) {
+          case '<': ++m; break;
+          case '=': if (*++m == '>') ++m; break;
+          default: break;
+        }
+        break;
+
+      case '>':
+        switch (*++m) {
+          case '>': case '=': ++m; break;
+        }
+        break;
+
+      case '=':
+        switch (*++m) {
+          case '~': ++m; break;
+          case '=': if (*++m == '=') ++m; break;
+          default: return FALSE;
+        }
+        break;
+
+      case '*':
+        if (*++m == '*') ++m;
+        break;
+
+      case '+': case '-':
+        if (*++m == '@') ++m;
+        break;
+
+      case '|': case '^': case '&': case '/': case '%': case '~': case '`':
+        ++m;
+        break;
+
+      case '[':
+        if (*++m != ']') return FALSE;
+        if (*++m == '=') ++m;
+        break;
+
+      default:
+        localid = !ISUPPER(*m);
+id:
+        if (*m != '_' && !ISALPHA(*m)) return FALSE;
+        while (is_identchar(*m)) m += 1;
+        if (localid) {
+            switch (*m) {
+              case '!': case '?': case '=': ++m;
+            }
+        }
+        break;
+    }
+    return *m ? FALSE : TRUE;
+}
+
 static mrb_value
 sym_inspect(mrb_state *mrb, mrb_value sym)
 {
-#ifdef INCLUDE_ENCODING
-  #define STR_ENC_GET(mrb, str) mrb_enc_from_index(mrb, ENCODING_GET(mrb, str))
-  mrb_value str;
-  mrb_sym id = SYM2ID(sym);
-  mrb_encoding *enc;
-  const char *ptr;
-  long len;
-  char *dest;
-  mrb_encoding *resenc = mrb_default_internal_encoding(mrb);
-
-  if (resenc == NULL) resenc = mrb_default_external_encoding(mrb);
-  sym = mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id));//mrb_id2str(id);
-  enc = STR_ENC_GET(mrb, sym);
-  ptr = RSTRING_PTR(sym);
-  len = RSTRING_LEN(sym);
-  if ((resenc != enc && !mrb_str_is_ascii_only_p(mrb, sym)) || len != (long)strlen(ptr) ||
-    !mrb_enc_symname_p(ptr, enc) || !sym_printable(mrb, ptr, ptr + len, enc)) {
-    str = mrb_str_inspect(mrb, sym);
-    len = RSTRING_LEN(str);
-    mrb_str_resize(mrb, str, len + 1);
-    dest = RSTRING_PTR(str);
-    memmove(dest + 1, dest, len);
-    dest[0] = ':';
-  }
-  else {
-    char *dest;
-    str = mrb_enc_str_new(mrb, 0, len + 1, enc);
-    dest = RSTRING_PTR(str);
-    dest[0] = ':';
-    memcpy(dest + 1, ptr, len);
-  }
-  return str;
-#else
   mrb_value str;
   const char *name;
   mrb_sym id = SYM2ID(sym);
@@ -229,12 +293,11 @@ sym_inspect(mrb_state *mrb, mrb_value sym)
   str = mrb_str_new(mrb, 0, strlen(name)+1);
   RSTRING(str)->buf[0] = ':';
   strcpy(RSTRING(str)->buf+1, name);
-  if (!mrb_symname_p(name)) {
+  if (!symname_p(name)) {
     str = mrb_str_dump(mrb, str);
     strncpy(RSTRING(str)->buf, ":\"", 2);
   }
   return str;
-#endif
 }
 
 

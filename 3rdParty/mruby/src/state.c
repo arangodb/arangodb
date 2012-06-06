@@ -78,8 +78,8 @@ mrb_add_irep(mrb_state *mrb, int idx)
     mrb->irep = mrb_malloc(mrb, sizeof(mrb_irep*)*max);
     mrb->irep_capa = max;
   }
-  else if (mrb->irep_capa < idx) {
-    while (mrb->irep_capa < idx) {
+  else if (mrb->irep_capa <= idx) {
+    while (mrb->irep_capa <= idx) {
       mrb->irep_capa *= 2;
     }
     mrb->irep = mrb_realloc(mrb, mrb->irep, sizeof(mrb_irep)*mrb->irep_capa);

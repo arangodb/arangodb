@@ -259,7 +259,7 @@ namespace triagens {
         string _adminPort;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of dispatcher threads
+/// @brief number of dispatcher threads for non-database worker
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherThreads;
@@ -267,7 +267,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing alternate startup scripts
 ///
-/// @CMDOPT{--startup.directory @CA{directory}}
+/// @CMDOPT{--javascript.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup Javascript files.
 /// Normally, the server will start using built-in Javascript core 
@@ -275,51 +275,79 @@ namespace triagens {
 /// implementation, this option can be used.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupPath;
+        string _startupPathJS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
-/// @CMDOPT{--startup.modules-path @CA{directory}}
+/// @CMDOPT{--javascript.modules-path @CA{directory}}
 ///
 /// Specifies the @CA{directory} path with user defined Javascript modules.
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupModules;
+        string _startupModulesJS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
-/// @CMDOPT{--action.system-directory @CA{directory}}
+/// @CMDOPT{--javascript.action-directory @CA{directory}}
 ///
-/// Specifies the @CA{system-directory} path to system defined Javascript files 
+/// Specifies the @CA{directory} containg the system defined Javascript files
 /// that can be invoked as actions.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _systemActionPath;
+        string _actionPathJS;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of action threads
+/// @brief number of action threads for JavaScript
 ///
-/// @CMDOPT{--action.threads @CA{number}}
+/// @CMDOPT{--javascript.action-threads @CA{number}}
 ///
 /// Specifies the @CA{number} of threads that are spawned to handle action 
-/// requests.
+/// requests using JavaScript.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int _actionThreads;
+        int _actionThreadsJS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Javascript garbage collection interval (each x requests)
 ///
-/// @CMDOPT{--gc.interval @CA{interval}}
+/// @CMDOPT{--javascript.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the 
 /// garbage collection for Javascript objects will be run in each thread.
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t _gcInterval;
+        uint64_t _gcIntervalJS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path to the directory containing alternate startup scripts
+///
+/// @CMDOPT{--ruby.startup-directory @CA{directory}}
+///
+/// Specifies the @CA{directory} path to alternate startup MRuby files.
+/// Normally, the server will start using built-in MRuby core functionality. To
+/// override the core functionality with a different implementation, this option
+/// can be used.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        string _startupPathMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of action threads for MRuby
+///
+/// @CMDOPT{--ruby.action-threads @CA{number}}
+///
+/// Specifies the @CA{number} of threads that are spawned to handle action 
+/// requests using MRuby.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        int _actionThreadsMR;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database

@@ -35,7 +35,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      ArangoError
+// --SECTION--                                                       ArangoError
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -303,6 +303,26 @@ function stop_pretty_print () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start paging
+////////////////////////////////////////////////////////////////////////////////
+
+function start_pager () {
+  var internal = require("internal");
+
+  internal.start_pager();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop paging
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_pager () {
+  var internal = require("internal");
+  
+  internal.stop_pager();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start pretty printing with optional color
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -340,7 +360,7 @@ function stop_color_print () {
 
 function help () {
   var internal = require("internal");
-  var client = require("argonsh");
+  var client = require("arangosh");
 
   internal.print(client.HELP);
   internal.print(client.helpQueries);
@@ -382,7 +402,7 @@ function help () {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                ArangoQueryCursor
+// --SECTION--                                                 ArangoQueryCursor
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -608,7 +628,7 @@ function ArangoQueryCursor (database, data) {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoStatement
+// --SECTION--                                                   ArangoStatement
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -670,7 +690,7 @@ function ArangoStatement (database, data) {
 
   client.helpArangoStatement = client.createHelpHeadline("ArangoStatement help") +
   'ArangoStatement constructor:                                        ' + "\n" +
-  ' > st = new ArangoStatement({ "query" : "for ..." });               ' + "\n" +
+  ' > st = new ArangoStatement(db, { "query" : "for ..." });           ' + "\n" +
   ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
   'Functions:                                                          ' + "\n" +
   '  bind(<key>, <value>);          bind single variable               ' + "\n" +
@@ -884,7 +904,7 @@ function ArangoStatement (database, data) {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 ArangoCollection
+// --SECTION--                                                  ArangoCollection
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -1797,7 +1817,7 @@ function ArangoCollection (database, data) {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoDatabase
+// --SECTION--                                                    ArangoDatabase
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -2612,7 +2632,6 @@ ArangoEdges.prototype = new ArangoDatabase();
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
   ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
   ' > help                                  show help pages            ' + "\n" +
-  ' > helpQueries                           query help                 ' + "\n" +
   ' > exit                                                             ';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2651,8 +2670,8 @@ ArangoEdges.prototype = new ArangoDatabase();
 
   client.helpExtended = client.createHelpHeadline("More help") +
   'Pager:                                                              ' + "\n" +
-  ' > internal.stop_pager()               stop the pager output        ' + "\n" +
-  ' > internal.start_pager()              start the pager              ' + "\n" +
+  ' > stop_pager()                        stop the pager output        ' + "\n" +
+  ' > start_pager()                       start the pager              ' + "\n" +
   'Pretty printing:                                                    ' + "\n" +
   ' > stop_pretty_print()                 stop pretty printing         ' + "\n" +
   ' > start_pretty_print()                start pretty printing        ' + "\n" +
@@ -2683,7 +2702,7 @@ ArangoEdges.prototype = new ArangoDatabase();
       // load simple queries
       require("simple-query");
 
-      if (! internal.ARANGO_QUITE) {
+      if (! internal.ARANGO_QUIET) {
         internal.print(client.HELP);
       }
     }
@@ -2698,7 +2717,11 @@ ArangoEdges.prototype = new ArangoDatabase();
 
 }());
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint\\)"
 // End:

@@ -72,6 +72,7 @@ build.h: configure.ac
 include Makefile.files
 include Makefile.doxygen
 include Makefile.javascript
+include Makefile.mruby
 include Makefile.unittests
 -include Makefile.local
 

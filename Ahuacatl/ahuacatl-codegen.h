@@ -37,6 +37,8 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
+#include "Ahuacatl/ahuacatl-log.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 #include "VocBase/simple-collection.h"
 
 #ifdef __cplusplus
@@ -59,20 +61,6 @@ extern "C" {
 typedef uint32_t TRI_aql_codegen_register_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scope types used by the code generator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_AQL_SCOPE_MAIN,
-  TRI_AQL_SCOPE_SUBQUERY,
-  TRI_AQL_SCOPE_FOR,
-  TRI_AQL_SCOPE_FOR_NESTED,
-  TRI_AQL_SCOPE_FUNCTION,
-  TRI_AQL_SCOPE_EXPAND
-}
-TRI_aql_codegen_scope_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief variable (name + register index) type used by code generator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -88,7 +76,7 @@ TRI_aql_codegen_variable_t;
 
 typedef struct TRI_aql_codegen_scope_s {
   TRI_string_buffer_t* _buffer; // generated code
-  TRI_aql_codegen_scope_e _type; // scope type
+  TRI_aql_scope_e _type; // scope type
   TRI_aql_codegen_register_t _listRegister;
   TRI_aql_codegen_register_t _keyRegister;
   TRI_aql_codegen_register_t _ownRegister;

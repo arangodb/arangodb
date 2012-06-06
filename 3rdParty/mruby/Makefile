@@ -1,12 +1,15 @@
 # makefile discription.
 # basic build file for mruby
 
-# compiler, linker (gcc)
-CC = gcc
-LL = gcc
+# compiler, linker (gcc), archiver, parser generator
+export CC = gcc
+export LL = gcc
+export AR = ar
+export YACC = bison
+
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g -O3
+CFLAGS = -g
 else
 CFLAGS = -O3
 endif
@@ -16,6 +19,16 @@ ifeq ($(OS),Windows_NT)
 else
   MAKE_FLAGS = --no-print-directory CC='$(CC)' LL='$(LL)' ALL_CFLAGS='$(ALL_CFLAGS)'
 endif
+
+##############################
+# internal variables
+
+export MSG_BEGIN = @for line in
+export MSG_END = ; do echo "$$line"; done
+
+export CP := cp
+export RM_F := rm -f
+export CAT := cat
 
 ##############################
 # generic build targets, rules
@@ -29,7 +42,7 @@ all :
 
 # mruby test
 .PHONY : test
-test :
+test : all
 	@$(MAKE) -C test $(MAKE_FLAGS)
 
 # clean up
@@ -39,3 +52,29 @@ clean :
 	@$(MAKE) clean -C tools/mruby $(MAKE_FLAGS)
 	@$(MAKE) clean -C tools/mirb $(MAKE_FLAGS)
 	@$(MAKE) clean -C test $(MAKE_FLAGS)
+
+# display help for build configuration and interesting targets
+.PHONY : showconfig
+showconfig :
+	$(MSG_BEGIN) \
+	"" \
+	"  CC = $(CC)" \
+	"  LL = $(LL)" \
+	"  MAKE = $(MAKE)" \
+	"" \
+	"  CFLAGS = $(CFLAGS)" \
+	"  ALL_CFLAGS = $(ALL_CFLAGS)" \
+	$(MSG_END)
+
+.PHONY : help
+help :
+	$(MSG_BEGIN) \
+	"" \
+	"            Basic mruby Makefile" \
+	"" \
+	"targets:" \
+	"  all (default):  build all targets, install (locally) in-repo" \
+	"  clean:          clean all built and in-repo installed artifacts" \
+	"  showconfig:     show build config summary" \
+	"  test:           run all mruby tests" \
+	$(MSG_END)

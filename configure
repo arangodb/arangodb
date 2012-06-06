@@ -9047,7 +9047,7 @@ if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-05-16 (a3a9d136aa4835eb50f4be92fbbce1ad503ec4c7)"
+  TRI_MRUBY_VERSION="2012-06-02 (92f192521865137c7e457b4a54c5df4ad2fbb049)"
 
 
 cat >>confdefs.h <<_ACEOF

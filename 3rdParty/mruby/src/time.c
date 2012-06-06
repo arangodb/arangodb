@@ -27,8 +27,12 @@
 
 #ifdef _WIN32
 /* Win32 platform do not provide gmtime_r/localtime_r; emulate them using gmtime_s/localtime_s */
-#define gmtime_r(tp, tm)    ((gmtime_s((tm), (tp)) == 0) ? (tp) : NULL)
-#define localtime_r(tp, tm)    ((localtime_s((tm), (tp)) == 0) ? (tp) : NULL)
+#if _MVC_VER
+#define gmtime_r(tp, tm)    ((gmtime_s((tm), (tp)) == 0) ? (tm) : NULL)
+#define localtime_r(tp, tm)    ((localtime_s((tm), (tp)) == 0) ? (tm) : NULL)
+#else
+#define NO_GMTIME_R
+#endif
 #endif
 
 /* timegm(3) */
@@ -262,10 +266,9 @@ time_mktime(mrb_state *mrb, mrb_int ayear, mrb_int amonth, mrb_int aday,
 static mrb_value
 mrb_time_gm(mrb_state *mrb, mrb_value self)
 { 
-  mrb_int ayear = 0.0, amonth = 1.0, aday = 1.0, ahour = 0.0, 
-  amin = 0.0, asec = 0.0, ausec = 0.0;
+  mrb_int ayear = 0, amonth = 1, aday = 1, ahour = 0, amin = 0, asec = 0, ausec = 0;
 
-  mrb_get_args(mrb, "iiiiiii",
+  mrb_get_args(mrb, "i|iiiiii",
                 &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
   return mrb_time_wrap(mrb, mrb_class_ptr(self),
 		       time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_UTC));
@@ -277,10 +280,9 @@ mrb_time_gm(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_time_local(mrb_state *mrb, mrb_value self)
 { 
-  mrb_float ayear = 0.0, amonth = 1.0, aday = 1.0, ahour = 0.0, 
-  amin = 0.0, asec = 0.0, ausec = 0.0;
+  mrb_int ayear = 0, amonth = 1, aday = 1, ahour = 0, amin = 0, asec = 0, ausec = 0;
 
-  mrb_get_args(mrb, "fffffff",
+  mrb_get_args(mrb, "i|iiiiii",
                 &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
   return mrb_time_wrap(mrb, mrb_class_ptr(self),
 		       time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_LOCAL));
@@ -350,7 +352,6 @@ mrb_time_minus(mrb_state *mrb, mrb_value self)
   struct mrb_time *tm;
 
   mrb_get_args(mrb, "f", &f);
-  
   tm = mrb_get_datatype(mrb, self, &mrb_time_type);
   if(!tm) return mrb_nil_value();
   f -= tm->sec;
@@ -497,8 +498,8 @@ static mrb_value
 mrb_time_initialize_copy(mrb_state *mrb, mrb_value copy)
 {
   mrb_value src;
-  mrb_get_args(mrb, "o", &src);
 
+  mrb_get_args(mrb, "o", &src);
   if (mrb_obj_equal(mrb, copy, src)) return copy;
   if (!mrb_obj_is_instance_of(mrb, src, mrb_obj_class(mrb, copy))) {
     mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");

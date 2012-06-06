@@ -49,6 +49,8 @@
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
+#include "MRuby/mr-actions.h"
 #endif
 
 #include "Rest/Initialise.h"
@@ -82,13 +84,14 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
-extern "C" {
-#include "compile.h"
 #include "mruby.h"
+#include "mruby/compile.h"
 #include "mruby/data.h"
 #include "mruby/proc.h"
 #include "mruby/variable.h"
-}
+
+#include "mr/common/bootstrap/mr-error.h"
+#include "mr/server/mr-server.h"
 #endif
 
 // -----------------------------------------------------------------------------
@@ -101,16 +104,34 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief startup loader
+/// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-static JSLoader StartupLoader;
+static TRI_vocbase_t* Vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action loader
+/// @brief V8 gc interval
 ////////////////////////////////////////////////////////////////////////////////
 
-static JSLoader ActionLoader;
+static uint64_t GcIntervalJS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 module path
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupModulesJS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 startup loader
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader StartupLoaderJS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 action loader
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader ActionLoaderJS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allowed client actions
@@ -123,6 +144,14 @@ static set<string> AllowedClientActions;
 ////////////////////////////////////////////////////////////////////////////////
 
 static set<string> AllowedAdminActions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup loader
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+static MRLoader StartupLoaderMR;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -138,20 +167,72 @@ static set<string> AllowedAdminActions;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action dispatcher thread creator
+/// @brief JavaScript action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue, "CLIENT", AllowedClientActions, &ActionLoader);
+static DispatcherThread* ClientActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "CLIENT-JAVASCRIPT",
+                                    AllowedClientActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system action dispatcher thread creator
+/// @brief JavaScript system action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDispatcherThread(queue, "SYSTEM", AllowedAdminActions, &ActionLoader);
+static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "SYSTEM-JAVASCRIPT",
+                                    AllowedAdminActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "CLIENT-RUBY",
+                                    AllowedClientActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript system action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue,
+                                    Vocbase,
+                                    GcIntervalJS,
+                                    "SYSTEM-RUBY",
+                                    AllowedAdminActions,
+                                    StartupModulesJS,
+                                    &StartupLoaderJS,
+                                    &ActionLoaderJS);
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" handlers
@@ -216,7 +297,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief UnviversalVoc constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoServer::ArangoServer (int argc, char** argv)
@@ -229,12 +310,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
     _adminPort(),
-    _dispatcherThreads(1),
-    _startupPath(),
-    _startupModules("js/modules"),
-    _systemActionPath(),
-    _actionThreads(8),
-    _gcInterval(1000),
+    _dispatcherThreads(8),
+    _startupPathJS(),
+    _startupModulesJS("js/modules"),
+    _actionPathJS(),
+    _actionThreadsJS(8),
+    _gcIntervalJS(1000),
+#ifdef TRI_ENABLE_MRUBY
+    _startupPathMR(),
+    _actionThreadsMR(8),
+#endif
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
@@ -254,8 +339,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
   
     _workingDirectory = _binaryPath + "/../tmp";
-    _systemActionPath = _binaryPath + "/../share/arango/js/actions/system";
-    _startupModules = _binaryPath + "/../share/arango/js/server/modules"
+    _actionPathJS = _binaryPath + "/../share/arango/js/actions/system";
+    _startupModulesJS = _binaryPath + "/../share/arango/js/server/modules"
               + ";" + _binaryPath + "/../share/arango/js/common/modules";
     _databasePath = _binaryPath + "/../var/arango";
 
@@ -268,15 +353,15 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #ifdef TRI_ENABLE_RELATIVE_DEVEL
 
 #ifdef TRI_SYSTEM_ACTION_PATH
-    _systemActionPath = TRI_SYSTEM_ACTION_PATH;
+    _actionPathJS = TRI_SYSTEM_ACTION_PATH;
 #else
-    _systemActionPath = _binaryPath + "/js/actions/system";
+    _actionPathJS = _binaryPath + "/js/actions/system";
 #endif
 
 #ifdef TRI_STARTUP_MODULES_PATH
-    _startupModules = TRI_STARTUP_MODULES_PATH;
+    _startupModulesJS = TRI_STARTUP_MODULES_PATH;
 #else
-    _startupModules = _binaryPath + "/js/server/modules"
+    _startupModulesJS = _binaryPath + "/js/server/modules"
               + ";" + _binaryPath + "/js/common/modules";
 #endif
 
@@ -289,8 +374,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _workingDirectory = "/var/tmp";
 
 #ifdef _PKGDATADIR_
-    _systemActionPath = string(_PKGDATADIR_) + "/js/actions/system";
-    _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
+    _actionPathJS = string(_PKGDATADIR_) + "/js/actions/system";
+    _startupModulesJS = string(_PKGDATADIR_) + "/js/server/modules"
               + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 #endif
 
@@ -457,8 +542,11 @@ void ArangoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
+  additional["DIRECTORY Options:help-admin"]
+    ("database.directory", &_databasePath, "path to the database directory")
+  ;
+
   additional["DATABASE Options:help-admin"]
-    ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
   ;
@@ -472,15 +560,34 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
-    ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
-    ("startup.modules-path", &_startupModules, "one or more directories separated by cola")
-    ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
+    ("javascript.gc-interval", &_gcIntervalJS, "JavaScript garbage collection interval (each x requests)")
   ;
 
-  additional["JAVASCRIPT Options:help-admin"]
-    ("action.system-directory", &_systemActionPath, "path to the system action directory")
-    ("action.threads", &_actionThreads, "threads for actions")
+  additional["DIRECTORY Options:help-admin"]
+    ("javascript.action-directory", &_actionPathJS, "path to the JavaScript action directory")
+    ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by (semi-) colons")
   ;
+
+  additional["THREAD Options:help-admin"]
+    ("javascript.action-threads", &_actionThreadsJS, "number of threads for JavaScript actions")
+  ;
+
+  // .............................................................................
+  // JavaScript options
+  // .............................................................................
+
+#ifdef TRI_ENABLE_MRUBY
+
+  additional["DIRECTORY Options:help-admin"]
+    ("ruby.startup-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
+  ;
+
+  additional["THREAD Options:help-admin"]
+    ("ruby.action-threads", &_actionThreadsMR, "number of threads for MRuby actions")
+  ;
+
+#endif
 
   // .............................................................................
   // database options
@@ -488,7 +595,10 @@ void ArangoServer::buildApplicationServer () {
 
   additional["Server Options:help-admin"]
     ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
-    ("dispatcher.threads", &_dispatcherThreads, "number of dispatcher threads")
+  ;
+
+  additional["THREAD Options:help-admin"]
+    ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
 
   // .............................................................................
@@ -513,26 +623,40 @@ void ArangoServer::buildApplicationServer () {
     _databasePath = arguments[0];
   }
 
-  if (_startupPath.empty()) {
+  if (_startupPathJS.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
-    StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-    StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-    StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-    StartupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
-    StartupLoader.defineScript("server/server.js", JS_server_server);
+    StartupLoaderJS.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    StartupLoaderJS.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoaderJS.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
+    StartupLoaderJS.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
+    StartupLoaderJS.defineScript("server/server.js", JS_server_server);
   }
   else {
-    LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
-    StartupLoader.setDirectory(_startupPath);
+    LOGGER_INFO << "using JavaScript startup files at '" << _startupPathJS << "'";
+    StartupLoaderJS.setDirectory(_startupPathJS);
   }
 
-  if (! _systemActionPath.empty()) {
-    ActionLoader.setDirectory(_systemActionPath);
-    LOGGER_INFO << "using action files at '" << _systemActionPath << "'";
+  if (! _actionPathJS.empty()) {
+    ActionLoaderJS.setDirectory(_actionPathJS);
+    LOGGER_INFO << "using action files at '" << _actionPathJS << "'";
   }
   else {
     LOGGER_INFO << "actions are disabled, empty system action path";
   }
+
+#ifdef TRI_ENABLE_MRUBY
+
+  if (_startupPathMR.empty()) {
+    LOGGER_INFO << "using built-in MRuby startup files";
+    StartupLoaderMR.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
+    StartupLoaderMR.defineScript("server/server.rb", MR_server_server);
+  }
+  else {
+    LOGGER_INFO << "using MRuby startup files at '" << _startupPathMR << "'";
+    StartupLoaderMR.setDirectory(_startupPathMR);
+  }
+
+#endif
 
   // .............................................................................
   // in shell mode ignore the rest
@@ -605,12 +729,11 @@ int ArangoServer::startupServer () {
   // create the action dispatcher thread infor
   // .............................................................................
 
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+  LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
 
-  ActionDispatcherThread::_startupLoader = &StartupLoader;
-  ActionDispatcherThread::_vocbase = _vocbase;
-  ActionDispatcherThread::_startupModules = _startupModules;
-  ActionDispatcherThread::_gcInterval = _gcInterval; 
+  Vocbase = _vocbase;
+  StartupModulesJS = _startupModulesJS;
+  GcIntervalJS = _gcIntervalJS; 
 
   // .............................................................................
   // create the various parts of the Arango server
@@ -626,21 +749,29 @@ int ArangoServer::startupServer () {
 
   Dispatcher* dispatcher = safe_cast<ApplicationServerDispatcher*>(_applicationServer)->dispatcher();
 
-  if (_actionThreads < 1) {
-    _actionThreads = 1;
+  if (_actionThreadsJS < 1) {
+    _actionThreadsJS = 1;
   }
 
-  // if we share a the server port for admin and client, only create a SYSTEM queue
-  if (shareAdminPort) {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
+  // if we share a the server port for admin and client, only create a CLIENT queue
+  if (0 < _actionThreadsJS) {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-JAVASCRIPT", ClientActionDispatcherThreadCreatorJS, _actionThreadsJS);
   }
+
+#if TRI_ENABLE_MRUBY
+  if (0 < _actionThreadsMR) {
+    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
+  }
+#endif
 
   // use a separate queue for administrator requests
-  else {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
-
+  if (! shareAdminPort) {
     if (useAdminPort) {
-      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
+
+#if TRI_ENABLE_MRUBY
+      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
+#endif
     }
   }
 
@@ -652,7 +783,7 @@ int ArangoServer::startupServer () {
 
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
-  httpOptions._queue = "CLIENT";
+  httpOptions._queue = "CLIENT-JAVASCRIPT";
 
   if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
@@ -684,7 +815,7 @@ int ArangoServer::startupServer () {
 
   RestActionHandler::action_options_t adminOptions;
   adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
+  adminOptions._queue = "SYSTEM-JAVASCRIPT";
 
   if (useAdminPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
@@ -799,37 +930,40 @@ int ArangoServer::executeShell (bool tests) {
 
   context->Enter();
 
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+  LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
 
   TRI_v8_global_t* v8g = TRI_InitV8VocBridge(context, _vocbase);
   TRI_InitV8Queries(context);
   TRI_InitV8Conversions(context);
-  TRI_InitV8Utils(context, _startupModules);
+  TRI_InitV8Utils(context, _startupModulesJS);
   TRI_InitV8Shell(context);
 
   // load all init files
   for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    ok = StartupLoader.loadScript(context, files[i]);
+    ok = StartupLoaderJS.loadScript(context, files[i]);
 
     if (ok) {
-      LOGGER_TRACE << "loaded json file '" << files[i] << "'";
+      LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
     }
     else {
-      LOGGER_FATAL << "cannot load json file '" << files[i] << "'";
+      LOGGER_FATAL << "cannot load JavaScript file '" << files[i] << "'";
       TRI_FlushLogging();
       return EXIT_FAILURE;
     }
   }
 
   // run the shell
-  printf("ArangoDB shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+  printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
 
   v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context);
 
   ok = true;
 
+  // .............................................................................
   // run all unit tests
+  // .............................................................................
+
   if (tests) {
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
@@ -857,7 +991,10 @@ int ArangoServer::executeShell (bool tests) {
     }
   }
 
+  // .............................................................................
   // run a shell
+  // .............................................................................
+
   else {
     V8LineEditor* console = new V8LineEditor(context, ".arango");
 
@@ -913,7 +1050,7 @@ int ArangoServer::executeShell (bool tests) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the ruby emergency console
+/// @brief executes the MRuby emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MRUBY
@@ -974,29 +1111,6 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   return mrb_obj_value(Data_Wrap_Struct(mrb, ArangoCollectionClass, &MR_ArangoCollection_Type, (void*) collection));
 }
 
-
-int ArangoServer::executeRubyShell () {
-  struct mrb_parser_state* p;
-  MR_state_t mrs;
-  mrb_state* mrb;
-  int n;
-
-  // only simple logging
-  TRI_ShutdownLogging();
-  TRI_InitialiseLogging(false);
-  TRI_CreateLogAppenderFile("+");
-
-  // open the database
-  openDatabase();
-
-  // create a new ruby shell
-  mrb = mrb_open();
-
-  memcpy(&mrs, mrb, sizeof(mrb_state));
-
-  // create a line editor
-  MRLineEditor* console = new MRLineEditor(&mrs, ".arango-mrb");
-
   // setup the classes
 #if 0
   struct RClass* ArangoDatabaseClass = mrb_define_class(mrb, "ArangoDatabase", mrb->object_class);
@@ -1019,13 +1133,54 @@ int ArangoServer::executeRubyShell () {
   mrb_define_const(mrb, "$db", db);
 #endif
 
-  console->open(true);
+
+int ArangoServer::executeRubyShell () {
+  struct mrb_parser_state* p;
+  size_t i;
+  char const* files[] = { "common/bootstrap/error.rb",
+                          "server/server.rb"
+  };
+
+  // only simple logging
+  TRI_ShutdownLogging();
+  TRI_InitialiseLogging(false);
+  TRI_CreateLogAppenderFile("+");
+
+  // open the database
+  openDatabase();
+
+  // create a new ruby shell
+  MR_state_t* mrs = MR_OpenShell();
+
+  TRI_InitMRUtils(mrs);
+  TRI_InitMRActions(mrs);
+
+  // load all init files
+  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+    bool ok = StartupLoaderMR.loadScript(&mrs->_mrb, files[i]);
+
+    if (ok) {
+      LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
+    }
+    else {
+      LOGGER_FATAL << "cannot load ruby file '" << files[i] << "'";
+      TRI_FlushLogging();
+      return EXIT_FAILURE;
+    }
+  }
+
+  // create a line editor
+  printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
+
+  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
+
+  console->open(false);
   
   while (true) {
-    char* input = console->prompt("avocmrb> ");
+    char* input = console->prompt("arangod> ");
 
     if (input == 0) {
-      printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
+      printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
       break;
     }
 
@@ -1036,33 +1191,42 @@ int ArangoServer::executeRubyShell () {
 
     console->addHistory(input);
 
-    p = mrb_parse_string(mrb, input);
+    p = mrb_parse_string(&mrs->_mrb, input);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-      cout << "UPPS!\n";
+      LOGGER_ERROR << "failed to compile input";
       continue;
     }
 
-    n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(&mrs->_mrb, p->tree);
 
     if (n < 0) {
-      cout << "UPPS 2: " << n << "\n";
+      LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+    mrb_value result = mrb_run(&mrs->_mrb,
+                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
+                               mrb_top_self(&mrs->_mrb));
 
-    if (mrb->exc) {
-      cout << "OUTPUT EXCEPTION\n";
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
-      cout << "\nOUTPUT END\n";
+    if (mrs->_mrb.exc) {
+      LOGGER_ERROR << "caught Ruby exception";
+      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
+      mrs->_mrb.exc = 0;
     }
-    else {
-      mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
+    else if (! mrb_nil_p(result)) {
+      mrb_p(&mrs->_mrb, result);
     }
   }
   
+  // close the console
+  console->close();
+  delete console;
+
+  // close the database
+  closeDatabase();
+
   Random::shutdown();
 
   return EXIT_SUCCESS;
@@ -1108,6 +1272,10 @@ void ArangoServer::closeDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

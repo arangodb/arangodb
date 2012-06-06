@@ -57,7 +57,10 @@ extern "C" {
 
 typedef struct MR_state_s {
   struct mrb_state _mrb;
+
   struct RClass* _arangoError;
+  struct RClass* _arangoRequest;
+  struct RClass* _arangoResponse;
 
   mrb_value _errorSym;
   mrb_value _codeSym;
