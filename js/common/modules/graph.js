@@ -773,7 +773,7 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shortest path to a certain node, return the ID
 ///
-/// @FUN{@FA{vertex}.setProperty(@FA{target_node})}
+/// @FUN{@FA{vertex}.pathTo(@FA{target_node})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -790,6 +790,13 @@ Vertex.prototype.pathTo = function (target_node) {
 
   return pathes;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function for pathTo
+///
+/// @FUN{@FA{vertex}._determinePredecessors(@FA{target_node}, @FA{todo_list}, @FA{distances})}
+///
+////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype._determinePredecessors = function (target_node, todo_list, distances) {
   var determined_list = [], // [ID]
@@ -836,7 +843,13 @@ Vertex.prototype._determinePredecessors = function (target_node, todo_list, dist
   return predecessors;
 };
 
-// GET ALL PATHES FOR PREDECESSORS
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get all pathes from root to leave nodes for a given tree
+///
+/// @FUN{@FA{vertex}._pathesForTree(@FA{root}, @FA{path_to_here}, @FA{tree})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
 Vertex.prototype._pathesForTree = function (root, path_to_here, tree) {
   var my_children = tree[root],
     i,
@@ -856,9 +869,16 @@ Vertex.prototype._pathesForTree = function (root, path_to_here, tree) {
   return pathes;
 };
 
-// Later: Take Inbound, Outbound, Both. Currently Both only
-// and: Only return neighbors with a certain label
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get all neighbors for this vertex
+///
+/// @FUN{@FA{vertex}.getNeighbors()}
+///
+////////////////////////////////////////////////////////////////////////////////
+
 Vertex.prototype.getNeighbors = function () {
+  // FIXME: Take Inbound, Outbound, Both. Currently Both only
+  // FIXME: Only return neighbors with a certain label
   var i,
     current_node_id,
     target_array = [];
@@ -876,6 +896,14 @@ Vertex.prototype.getNeighbors = function () {
   return target_array;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the shortest distance for a given list of vertices and 
+/// their distances
+///
+/// @FUN{@FA{vertex}._getShortestDistance(@FA{todo_list}, @FA{distances})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
 Vertex.prototype._getShortestDistance = function (todo_list, distances) {
   var shortest_distance = Infinity,
     node = null,
@@ -892,50 +920,6 @@ Vertex.prototype._getShortestDistance = function (todo_list, distances) {
 
   return node;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the shortest path to a certain node
-///
-/// @FUN{@FA{vertex}._pushNeigborsToArray(@FA{target_array})}
-///
-////////////////////////////////////////////////////////////////////////////////
-
-// Vertex.prototype._pushNeigborsToArray = function (target_array) {
-//   var i, current_node_id;
-// 
-//   for (i = 0; i < this.getOutEdges().length; i++) {
-//     current_node_id = this.getOutEdges()[i].getInVertex().getId();
-//     target_array.push(current_node_id);
-//   }
-// 
-//   for (i = 0; i < this.getInEdges().length; i++) {
-//     current_node_id = this.getInEdges()[i].getOutVertex().getId();
-//     target_array.push(current_node_id);
-//   }
-// };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Find the node with the shortest distance for a given list
-///
-/// @FUN{@FA{vertex}._getShortestDistanceFor(@FA{todo_list}, @FA{distances})}
-///
-////////////////////////////////////////////////////////////////////////////////
-
-// Vertex.prototype._getShortestDistanceFor = function (todo_list, prede) {
-//   var current_node_id,
-//     shortest_distance = [null, Infinity],
-//     i;
-// 
-//   for (i = 0; i < todo_list.length; i++) {
-//     current_node_id = todo_list[i];
-// 
-//     if (distances[current_node_id].length < shortest_distance[1]) {
-//       shortest_distance = [current_node_id, distances[current_node_id].length];
-//     }
-//   }
-// 
-//   return shortest_distance[0];
-// };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
