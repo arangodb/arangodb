@@ -161,12 +161,19 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 static int attributeWeightCompareFunction(const void* leftItem, const void* rightItem) {
   const attribute_weight_t* l = (const attribute_weight_t*)(leftItem);
   const attribute_weight_t* r = (const attribute_weight_t*)(rightItem);
+
+  assert(l);
+  assert(r);
   return (strcmp(l->_attribute, r->_attribute));
 }
 
 static int attributeWeightCompareFunctionPointer(const void* leftItem, const void* rightItem) {
   const attribute_weight_t* l = *((const attribute_weight_t**)(leftItem));
   const attribute_weight_t* r = *((const attribute_weight_t**)(rightItem));
+  
+  assert(l);
+  assert(r);
+
   return (strcmp(l->_attribute, r->_attribute));
 }
 
@@ -183,7 +190,7 @@ static int64_t sortedIndexOf(voc_shaper_t* shaper, attribute_weight_t* item) {
   int compareResult;
   
   leftPos  = 0;
-  rightPos = (shaper->_sortedAttributes._length) - 1;
+  rightPos = ((int64_t) shaper->_sortedAttributes._length) - 1;
   
   while (leftPos <= rightPos)  {
     midPos = (leftPos + rightPos) / 2;
