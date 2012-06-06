@@ -179,6 +179,7 @@ unittests-shell-server:
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-variables.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
 			@srcdir@/js/server/tests/ahuacatl-complex.js \
 			@srcdir@/js/server/tests/ahuacatl-logical.js \
@@ -218,7 +219,7 @@ unittests-shell-server-ahuacatl:
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 

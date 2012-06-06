@@ -1301,7 +1301,11 @@ function AHUACATL_STRING_SUBSTRING (value, offset, count) {
 
 function AHUACATL_STRING_CONTAINS (value, search) {
   AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
-  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+  AHUACATL_ARG_CHECK(search, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+
+  if (search.length == 0) {
+    return false;
+  }
 
   return value.indexOf(search) != -1;
 }

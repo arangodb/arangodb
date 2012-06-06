@@ -56,7 +56,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
   context = (TRI_aql_context_t*) data;
   assert(context);
 
-  bindValues = (TRI_associative_pointer_t*) &context->_parameterValues;
+  bindValues = (TRI_associative_pointer_t*) &context->_parameters._values;
   assert(bindValues);
   
   name = TRI_AQL_NODE_STRING(node);
@@ -164,11 +164,11 @@ void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
   size_t n;
 
   // iterate thru all parameters allocated
-  n = context->_parameterValues._nrAlloc;
+  n = context->_parameters._values._nrAlloc;
   for (i = 0; i < n; ++i) {
     TRI_aql_bind_parameter_t* parameter;
 
-    parameter = (TRI_aql_bind_parameter_t*) context->_parameterValues._table[i];
+    parameter = (TRI_aql_bind_parameter_t*) context->_parameters._values._table[i];
 
     if (!parameter) {
       continue;
@@ -226,7 +226,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
       return false;
     }
  
-    TRI_InsertKeyAssociativePointer(&context->_parameterValues, parameter->_name, parameter, false);
+    TRI_InsertKeyAssociativePointer(&context->_parameters._values, parameter->_name, parameter, false);
   }
 
   return true;
@@ -241,26 +241,26 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
   size_t n;
 
   // iterate thru all parameter names used in the query
-  n = context->_parameterNames._nrAlloc;
+  n = context->_parameters._names._nrAlloc;
   for (i = 0; i < n; ++i) {
-    char* name = (char*) context->_parameterNames._table[i];
+    char* name = (char*) context->_parameters._names._table[i];
 
     if (!name) {
       continue;
     }
 
-    if (!TRI_LookupByKeyAssociativePointer(&context->_parameterValues, name)) {
+    if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._values, name)) {
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
       return false;
     }
   }
 
   // iterate thru all parameters that we have values for
-  n = context->_parameterValues._nrAlloc;
+  n = context->_parameters._values._nrAlloc;
   for (i = 0; i < n; ++i) {
     TRI_aql_bind_parameter_t* parameter;
 
-    parameter = (TRI_aql_bind_parameter_t*) context->_parameterValues._table[i];
+    parameter = (TRI_aql_bind_parameter_t*) context->_parameters._values._table[i];
 
     if (!parameter) {
       continue;
@@ -268,7 +268,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
 
     assert(parameter->_name);
 
-    if (!TRI_LookupByKeyAssociativePointer(&context->_parameterNames, parameter->_name)) {
+    if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._names, parameter->_name)) {
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
       return false;
     }
@@ -288,7 +288,7 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context,
   assert(context);
   assert(context->_first);
 
-  if (TRI_GetLengthAssociativePointer(&context->_parameterNames) == 0) {
+  if (TRI_GetLengthAssociativePointer(&context->_parameters._names) == 0) {
     // no bind parameters used in query, instantly return
     return true;
   }

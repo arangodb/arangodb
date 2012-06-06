@@ -1220,29 +1220,38 @@ var lastFormatQuestion = true;
       source: shArray
     });
 
-    if (data == "help") {
-       data = require("arangosh").HELP;
+    if (data == "exit") {
+      location.reload();
+      return;  
     }
 
-    if (data == "exit") {
-       location.reload();
-       return false;  
+    var command;
+    if (data == "help") {
+      command = "require(\"arangosh\").HELP";
     }
-    formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
-    if (formatQuestion != lastFormatQuestion) {
-      if (formatQuestion == true) {
-        start_pretty_print();
-        lastFormatQuestion = true;
-      } 
-      if (formatQuestion == false) {
-        stop_pretty_print(); 
-        lastFormatQuestion = false;
+    else if (data == "reset") {
+      command = "$('#avocshWindow').html(\"\");undefined;";
+    }
+    else {
+      formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
+      if (formatQuestion != lastFormatQuestion) {
+        if (formatQuestion == true) {
+          start_pretty_print();
+          lastFormatQuestion = true;
+        } 
+        if (formatQuestion == false) {
+          stop_pretty_print(); 
+          lastFormatQuestion = false;
+        }
       }
+
+      command = data;
     }
+
     var client = "arangosh> " + escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
-    evaloutput(data);
+    evaloutput(command);
     $("#avocshWindow").animate({scrollTop:$("#avocshWindow")[0].scrollHeight}, 1);
     $("#avocshContent").val('');
     return false; 
@@ -1404,9 +1413,16 @@ var lastFormatQuestion = true;
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
       var systemcheck = $('input:radio[name=isSystem]:checked').val();
       var collName = $('#createCollName').val(); 
-      var collSize = $('#createCollSize').val(); 
-      collSize = JSON.parse(collSize) * 1024 * 1024; 
+      var collSize = $('#createCollSize').val();
+      var journalSizeString;
  
+      if (collSize == '') { 
+        journalSizeString = ''; 
+      }
+      else {
+        collSize = JSON.parse(collSize) * 1024 * 1024;  
+        journalSizeString = ', "journalSize":' + collSize; 
+      }
       if (collName == '') {
         alert("No collection name entered. Aborting..."); 
         return 0; 
@@ -1415,7 +1431,7 @@ var lastFormatQuestion = true;
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+',"journalSize":' + collSize + '}',
+        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+ journalSizeString + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {

@@ -29,6 +29,8 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
+#include "Ahuacatl/ahuacatl-variable.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -220,6 +222,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_FOR)
+  node->_value._value._data = NULL; 
 
   if (!name) {
     ABORT_OOM
@@ -231,13 +234,11 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
   }
   
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
-  
-  TRI_AQL_NODE_DATA(node) = NULL;
-
+ 
   return node;
 }
 
@@ -260,7 +261,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
   }
   
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
@@ -305,7 +306,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_context_t* const context,
 
   ADD_MEMBER(list)
   if (name) {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
   }
 
@@ -365,7 +366,7 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_context_t* const context,
   CREATE_NODE(AQL_NODE_ASSIGN)
  
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
@@ -378,14 +379,15 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
-                                           const char* const name) {
+                                           const char* const name,
+                                           TRI_aql_node_t* const definingNode) {
   CREATE_NODE(AQL_NODE_VARIABLE)
    
   if (!name) {
     ABORT_OOM
   }
   
-  if (!TRI_AddVariableContextAql(context, name)) {
+  if (!TRI_AddVariableScopeAql(context, name, definingNode)) {
     // duplicate variable name 
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
@@ -412,9 +414,12 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
     return NULL;
   }
-  
-  TRI_AQL_NODE_STRING(node) = (char*) name;
 
+  {
+    TRI_aql_node_t* nameNode = TRI_CreateNodeValueStringAql(context, name);
+    ADD_MEMBER(nameNode)
+  }
+  
   if (!TRI_AddCollectionAql(context, name)) {
     return NULL;
   }
@@ -469,7 +474,7 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const context,
   }
 
   // save name of bind parameter for later
-  TRI_InsertKeyAssociativePointer(&context->_parameterNames, name, (void*) name, true);
+  TRI_InsertKeyAssociativePointer(&context->_parameters._names, name, (void*) name, true);
 
   TRI_AQL_NODE_STRING(node) = (char*) name;
 
@@ -752,7 +757,7 @@ TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_context_t* const context,
      
   {
     // add the temporary variable
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context));
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node);
     ADD_MEMBER(variable)
   }
  
@@ -811,8 +816,9 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
   }
 
   {
-    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname);
-    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context));
+    // TODO: check if 3rd parameters' values are correct for these
+    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname, node);
+    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node);
 
     ADD_MEMBER(variable1)
     ADD_MEMBER(variable2)
