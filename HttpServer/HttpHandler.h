@@ -3,7 +3,7 @@
 ///
 /// @file
 ///
-/// DISCLAIMER
+// DISCLAIMER
 ///
 /// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///

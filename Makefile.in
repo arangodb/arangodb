@@ -390,11 +390,6 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-parser-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-result.$(OBJEXT) \
-	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
-	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
-	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
 	RestHandler/RestEdgeHandler.$(OBJEXT) \
@@ -402,13 +397,20 @@ am_arangod_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/ArangoHttpServer.$(OBJEXT) \
-	RestServer/ArangoServer.$(OBJEXT) RestServer/arango.$(OBJEXT) \
+	RestServer/ArangoServer.$(OBJEXT) \
+	RestServer/JavascriptDispatcherThread.$(OBJEXT) \
+	RestServer/arango.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
 	ResultGenerator/JsonResultGenerator.$(OBJEXT) \
 	ResultGenerator/JsonXResultGenerator.$(OBJEXT) \
 	ResultGenerator/OutputGenerator.$(OBJEXT) \
 	ResultGenerator/PhpResultGenerator.$(OBJEXT) \
+	Ahuacatl/ahuacatl-scope.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
+	Ahuacatl/ahuacatl-variable.$(OBJEXT) \
 	ResultGenerator/ResultGenerator.$(OBJEXT) \
 	ResultGenerator/XmlResultGenerator.$(OBJEXT) \
 	Scheduler/AsyncTask.$(OBJEXT) \
@@ -833,11 +835,6 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
-        Ahuacatl/ahuacatl-scope.c \
-        Ahuacatl/ahuacatl-tokens.c \
-        Ahuacatl/ahuacatl-tree-dump.c \
-        Ahuacatl/ahuacatl-tree-walker.c \
-        Ahuacatl/ahuacatl-variable.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
@@ -846,6 +843,7 @@ arangod_SOURCES = \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
+	RestServer/JavascriptDispatcherThread.cpp \
 	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -853,6 +851,11 @@ arangod_SOURCES = \
 	ResultGenerator/JsonXResultGenerator.cpp \
 	ResultGenerator/OutputGenerator.cpp \
 	ResultGenerator/PhpResultGenerator.cpp \
+        Ahuacatl/ahuacatl-scope.c \
+        Ahuacatl/ahuacatl-tokens.c \
+        Ahuacatl/ahuacatl-tree-dump.c \
+        Ahuacatl/ahuacatl-tree-walker.c \
+        Ahuacatl/ahuacatl-variable.c \
 	ResultGenerator/ResultGenerator.cpp \
 	ResultGenerator/XmlResultGenerator.cpp \
 	Scheduler/AsyncTask.cpp \
@@ -1840,16 +1843,6 @@ Ahuacatl/ahuacatl-parser-functions.$(OBJEXT):  \
 	Ahuacatl/$(am__dirstamp) Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 RestHandler/$(am__dirstamp):
 	@$(MKDIR_P) RestHandler
 	@: > RestHandler/$(am__dirstamp)
@@ -1881,6 +1874,9 @@ RestServer/ArangoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/ArangoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
+RestServer/JavascriptDispatcherThread.$(OBJEXT):  \
+	RestServer/$(am__dirstamp) \
+	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/arango.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/$(am__dirstamp):
@@ -1906,6 +1902,16 @@ ResultGenerator/OutputGenerator.$(OBJEXT):  \
 ResultGenerator/PhpResultGenerator.$(OBJEXT):  \
 	ResultGenerator/$(am__dirstamp) \
 	ResultGenerator/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-scope.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tree-walker.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-variable.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/ResultGenerator.$(OBJEXT):  \
 	ResultGenerator/$(am__dirstamp) \
 	ResultGenerator/$(DEPDIR)/$(am__dirstamp)
@@ -2176,6 +2182,7 @@ mostlyclean-compile:
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/ArangoHttpServer.$(OBJEXT)
 	-rm -f RestServer/ArangoServer.$(OBJEXT)
+	-rm -f RestServer/JavascriptDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/arango.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -2412,6 +2419,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/JavascriptDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@

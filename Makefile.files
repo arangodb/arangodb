@@ -185,11 +185,6 @@ arangod_SOURCES = \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
-        Ahuacatl/ahuacatl-scope.c \
-        Ahuacatl/ahuacatl-tokens.c \
-        Ahuacatl/ahuacatl-tree-dump.c \
-        Ahuacatl/ahuacatl-tree-walker.c \
-        Ahuacatl/ahuacatl-variable.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
@@ -198,6 +193,7 @@ arangod_SOURCES = \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
+	RestServer/JavascriptDispatcherThread.cpp \
 	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -205,6 +201,11 @@ arangod_SOURCES = \
 	ResultGenerator/JsonXResultGenerator.cpp \
 	ResultGenerator/OutputGenerator.cpp \
 	ResultGenerator/PhpResultGenerator.cpp \
+        Ahuacatl/ahuacatl-scope.c \
+        Ahuacatl/ahuacatl-tokens.c \
+        Ahuacatl/ahuacatl-tree-dump.c \
+        Ahuacatl/ahuacatl-tree-walker.c \
+        Ahuacatl/ahuacatl-variable.c \
 	ResultGenerator/ResultGenerator.cpp \
 	ResultGenerator/XmlResultGenerator.cpp \
 	Scheduler/AsyncTask.cpp \
