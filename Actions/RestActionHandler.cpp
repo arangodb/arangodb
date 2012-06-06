@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -113,23 +113,25 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   bool res = false;
 
-  // need a context
-  if (_context == 0) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "no execution context is known");
-  }
-
   // need an action
-  else if (_action == 0) {
+  if (_action == 0) {
     string n = request->requestPath();
     n += StringUtils::join(request->suffix(), "/");
 
     generateNotImplemented(n);
   }
+
+  // need a context
+  else if (_context == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "no execution context is known");
+  }
+
+  // execute
   else {
 
     // extract the sub-request type
     HttpRequest::HttpRequestType type = request->requestType();
-    
+
     // prepare logging
     switch (type) {
       case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
@@ -139,10 +141,10 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
       case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     }
-      
+
     _timing << *task;
     LOGGER_REQUEST_IN_START_I(_timing);
-      
+
     // execute one of the CRUD methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
@@ -150,7 +152,7 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
-          
+
       default:
         res = false;
         generateNotImplemented("METHOD");
@@ -198,5 +200,5 @@ bool RestActionHandler::executeAction () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

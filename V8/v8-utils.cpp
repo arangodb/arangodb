@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -176,10 +176,10 @@ static v8::Handle<v8::Integer> PropertyQueryWeakDictionary (v8::Local<v8::String
 
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
-  
+
   if (key == "") {
     return scope.Close(v8::Handle<v8::Integer>());
-  }  
+  }
 
   // check the dictionary
   WD::KeyValue const* kv = dictionary->lookup(key.c_str());
@@ -251,10 +251,10 @@ static v8::Handle<v8::Value> MapGetWeakDictionary (v8::Local<v8::String> name,
 
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
-  
+
   if (key == "") {
     return scope.Close(v8::Undefined());
-  }  
+  }
 
   // check the dictionary
   WD::KeyValue const* kv = dictionary->lookup(key.c_str());
@@ -289,10 +289,10 @@ static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
 
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
-  
+
   if (key == "") {
     return scope.Close(v8::Undefined());
-  }  
+  }
 
   char* ckey = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key.c_str());
 
@@ -798,7 +798,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 ///
 /// - minorPageFaults: The number of minor faults the process has made
 ///   which have not required loading a memory page from disk.
-///   
+///
 /// - majorPageFaults: The number of major faults the process has made
 ///   which have required loading a memory page from disk.
 ///
@@ -1099,7 +1099,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
       string l = *sourceline;
 
       result += "!" + l + "\n";
-      
+
       if (1 < start) {
         l = string(start - 1, ' ');
       }
@@ -1172,7 +1172,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
       string l = *sourceline;
 
       LOG_ERROR("!%s", l.c_str());
-      
+
       if (1 < start) {
         l = string(start - 1, ' ');
       }
@@ -1297,7 +1297,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   ft->SetClassName(v8::String::New("WeakDictionary"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);    
+  rt->SetInternalFieldCount(2);
 
   rt->SetNamedPropertyHandler(MapGetWeakDictionary,        // NamedPropertyGetter
                               MapSetWeakDictionary,        // NamedPropertySetter
@@ -1311,7 +1311,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("WeakDictionary"), ft->GetFunction());
-                         
+
   // .............................................................................
   // create the global functions
   // .............................................................................
@@ -1377,5 +1377,5 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

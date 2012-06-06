@@ -97,7 +97,7 @@ JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* q
 ////////////////////////////////////////////////////////////////////////////////
 
 void* JavascriptDispatcherThread::context () {
-  return (void*) _isolate;
+  return (void*) _isolate; // the isolate is the execution context
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief geo coordinate container, also containing the distance 
+/// @brief geo coordinate container, also containing the distance
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
@@ -106,7 +106,7 @@ static void ExtractSkipAndLimit (v8::Arguments const& argv,
 /// @brief calculates slice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CalculateSkipLimitSlice (size_t length, 
+static void CalculateSkipLimitSlice (size_t length,
                                      TRI_voc_ssize_t skip,
                                      TRI_voc_size_t limit,
                                      size_t& s,
@@ -196,17 +196,17 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
       CleanupExampleObject(shaper, i, pids, values);
 
       if (*keyStr == 0) {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert attribute path to UTF8");
         return TRI_ERROR_BAD_PARAMETER;
       }
       else if (pids[i] == 0) {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert to attribute path");
         return TRI_ERROR_BAD_PARAMETER;
       }
       else {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert value to JSON");
         return TRI_ERROR_BAD_PARAMETER;
       }
@@ -228,8 +228,8 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   TRI_sl_operator_t* lastOperator = 0;
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
-  size_t lastNonEq = 0; 
-  
+  size_t lastNonEq = 0;
+
   if (parameters == 0) {
     return 0;
   }
@@ -247,17 +247,17 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
       // wrong data type for field conditions
       break;
     }
-    
+
     // iterator over all conditions
     v8::Handle<v8::Array> values = v8::Handle<v8::Array>::Cast(fieldConditions);
     for (uint32_t j = 0; j < values->Length(); ++j) {
       v8::Handle<v8::Value> fieldCondition = values->Get(j);
-    
+
       if (!fieldCondition->IsArray()) {
         // wrong data type for single condition
         goto MEM_ERROR;
       }
-    
+
       v8::Handle<v8::Array> condition = v8::Handle<v8::Array>::Cast(fieldCondition);
 
       if (condition->Length() != 2) {
@@ -272,7 +272,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         // wrong operator type
         goto MEM_ERROR;
       }
-    
+
       TRI_json_t* json = TRI_JsonObject(value);
 
       if (!json) {
@@ -280,13 +280,13 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
       }
 
       std::string opValue = TRI_ObjectToString(op);
-      if (opValue == "==") { 
+      if (opValue == "==") {
         // equality comparison
 
         if (lastNonEq > 0) {
           goto MEM_ERROR;
         }
-    
+
         TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
         // creation of equality operator is deferred until it is finally needed
         ++numEq;
@@ -299,7 +299,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           goto MEM_ERROR;
         }
 
-        TRI_sl_operator_type_e opType; 
+        TRI_sl_operator_type_e opType;
         if (opValue == ">") {
           opType = TRI_SL_GT_OPERATOR;
         }
@@ -316,7 +316,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           // wrong operator type
           goto MEM_ERROR;
         }
-        
+
         lastNonEq = i;
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -336,7 +336,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           lastOperator = TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
           numEq = 0;
         }
-  
+
         TRI_sl_operator_t* current = 0;
 
         // create the operator for the current condition
@@ -370,7 +370,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
     // create equality operator if one is in queue
     assert(lastOperator == 0);
     assert(lastNonEq == 0);
-    
+
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     if (clonedParams == 0) {
       goto MEM_ERROR;
@@ -427,7 +427,7 @@ static TRI_sl_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
 
     TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
   }
-  
+
   if (parameters->_value._objects._length > 0) {
     // example means equality comparisons only
     return TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
@@ -470,7 +470,7 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
 
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
-    
+
       values[i] = TRI_ShapedJsonV8Object(val, shaper);
     }
     else {
@@ -480,7 +480,7 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
     if (values[i] == 0) {
       CleanupExampleObject(shaper, i, 0, values);
 
-      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                    "cannot convert value to JSON");
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -512,7 +512,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
     std::string usage("Usage: ");
     usage += signature;
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                usage)));
   }
 
@@ -541,7 +541,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   if (limit < 0) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "<limit> cannot be negative")));
   }
 
@@ -556,7 +556,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
 
@@ -620,7 +620,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   // .............................................................................
   // outside a write transaction
   // .............................................................................
-  
+
   // free data allocated by skiplist index result
   TRI_FreeSkiplistIterator(skiplistIterator);
 
@@ -665,7 +665,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 #define FSRT__RAND \
   ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
-#include <BasicsC/fsrt.inc>
+#include "BasicsC/fsrt.inc"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo result
@@ -762,22 +762,22 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     switch (direction) {
       case TRI_EDGE_UNUSED:
         return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                    "usage: edges(<vertices>)")));
 
       case TRI_EDGE_IN:
         return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                    "usage: inEdges(<vertices>)")));
 
       case TRI_EDGE_OUT:
         return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                    "usage: outEdges(<vertices>)")));
 
       case TRI_EDGE_ANY:
         return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                    "usage: edges(<vertices>)")));
     }
   }
@@ -804,10 +804,10 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       TRI_voc_cid_t cid;
       TRI_voc_did_t did;
       TRI_voc_rid_t rid;
-      
+
       TRI_vocbase_col_t const* vertexCollection = 0;
       v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
-     
+
       if (! errMsg.IsEmpty()) {
         if (vertexCollection != 0) {
           TRI_ReleaseCollection(vertexCollection);
@@ -818,18 +818,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
       cid = vertexCollection->_cid;
       TRI_ReleaseCollection(vertexCollection);
-      
+
       edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
-      
+
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
         }
         // TODO: barrier might be 0
-        
+
         documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
       }
-      
+
       TRI_DestroyVectorPointer(&edges);
     }
   }
@@ -840,10 +840,10 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_voc_cid_t cid;
     TRI_voc_did_t did;
     TRI_voc_rid_t rid;
-      
+
     TRI_vocbase_col_t const* vertexCollection = 0;
     v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
-      
+
     if (! errMsg.IsEmpty()) {
       if (vertexCollection != 0) {
         TRI_ReleaseCollection(vertexCollection);
@@ -859,19 +859,19 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_ReleaseCollection(vertexCollection);
 
     edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
-      
+
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
       }
       // TODO: barrier might be 0
-        
+
       documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
     }
-    
+
     TRI_DestroyVectorPointer(&edges);
   }
-  
+
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................
@@ -915,7 +915,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   if (argv.Length() != 2) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: ALL(<skip>, <limit>)")));
   }
 
@@ -936,7 +936,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   size_t total = sim->_primaryIndex._nrUsed;
   uint32_t count = 0;
 
@@ -952,7 +952,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
       for (;  ptr < end && 0 < skip;  ++ptr) {
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-          
+
           if (d->_deletion == 0) {
             --skip;
           }
@@ -967,7 +967,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
       for (;  beg <= ptr;  --ptr) {
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-          
+
           if (d->_deletion == 0) {
             ++skip;
 
@@ -987,13 +987,13 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     for (;  ptr < end && count < limit;  ++ptr) {
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-          
+
         if (d->_deletion == 0) {
           if (barrier == 0) {
             barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
           }
           // TODO: barrier might be 0
-            
+
           documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
           ++count;
         }
@@ -1036,7 +1036,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (argv.Length() < 1) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: BY_EXAMPLE(<example>, <skip>, <limit>)")));
   }
 
@@ -1044,7 +1044,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (! argv[0]->IsObject()) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "<example> must be an object")));
   }
 
@@ -1079,7 +1079,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   // find documents by example
   TRI_vector_t filtered = TRI_SelectByExample(sim, n,  pids, values);
 
@@ -1145,7 +1145,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   if (argv.Length() < 2) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: BY_EXAMPLE_HASH(<index>, <example>, <skip>, <limit>)")));
   }
 
@@ -1153,7 +1153,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   if (! argv[1]->IsObject()) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "<example> must be an object")));
   }
 
@@ -1176,7 +1176,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
 
@@ -1239,9 +1239,9 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // .............................................................................
   // outside a write transaction
   // .............................................................................
-  
+
   // free data allocated by hash index result
-  TRI_FreeResultHashIndex(idx, list); 
+  TRI_FreeResultHashIndex(idx, list);
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
@@ -1261,7 +1261,7 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
   std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example using a skiplist index
@@ -1337,7 +1337,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   if (argv.Length() != 4) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: NEAR(<index-handle>, <latitude>, <longitude>, <limit>)")));
   }
 
@@ -1346,7 +1346,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
 
@@ -1439,7 +1439,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   if (argv.Length() != 4) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)")));
   }
 
@@ -1448,7 +1448,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
 
@@ -1586,5 +1586,5 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

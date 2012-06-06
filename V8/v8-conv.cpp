@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -321,7 +321,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   l = values[0]._size;
   p = values;
 
-  for (;  p < e;  ++p) { 
+  for (;  p < e;  ++p) {
     if (p->_sid != s) {
       hs = false;
       break;
@@ -1414,7 +1414,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
   if (parameter->IsNull()) {
     return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
   }
-  
+
   if (parameter->IsNumber()) {
     v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
     return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
@@ -1433,7 +1433,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
     if (listJson != 0) {
       uint32_t n = arrayParameter->Length();
       for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
+        v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_JsonObject(item);
 
         if (result != 0) {
@@ -1455,7 +1455,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
       uint32_t n = names->Length();
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
+        v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_JsonObject(item);
 
         if (result != 0) {
@@ -1466,7 +1466,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
 
     return arrayJson;
   }
-  
+
   return 0;
 }
 
@@ -1569,7 +1569,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
   if (parameter->IsNull()) {
     return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
   }
-  
+
   if (parameter->IsNumber()) {
     v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
     return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
@@ -1586,7 +1586,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
     TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
     if (listJson) {
       for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
+        v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_ObjectToJson(item);
         if (result) {
           TRI_PushBack2ListJson(listJson, result);
@@ -1604,7 +1604,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
       v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
       for (uint32_t j = 0; j < names->Length(); ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
+        v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_ObjectToJson(item);
         if (result) {
           TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
@@ -1614,7 +1614,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
     }
     return arrayJson;
   }
-  
+
   return NULL;
 }
 
@@ -1795,5 +1795,5 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

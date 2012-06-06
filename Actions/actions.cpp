@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "actions.h"
+
+#include "Basics/ReadWriteLock.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+
+using namespace std;
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -85,8 +95,8 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   action->_urlParts = StringUtils::split(url, "/").size();
 
   // create a new action and store the callback function
-  if (action->_prefix) {
-    if (PrefixActions.find(url) == PrefixActions.end(url)) {
+  if (action->_isPrefix) {
+    if (PrefixActions.find(url) == PrefixActions.end()) {
       PrefixActions[url] = action;
     }
     else {
@@ -105,7 +115,7 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
     }
   }
   else {
-    if (Actions.find(url) == Actions.end(url)) {
+    if (Actions.find(url) == Actions.end()) {
       Actions[url] = action;
     }
     else {
@@ -125,7 +135,9 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   }
 
   // some debug output
-  LOG_DEBUG("created action '%s'", url.c_str());
+  LOGGER_DEBUG << "created " << action->_type << " "
+               << (action->_isPrefix ? "prefix " : "") 
+               << "action '" << url.c_str() << "'";
 
   // return old or new action description
   return action;
@@ -135,26 +147,26 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
+TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   READ_LOCKER(ActionsLock);
 
   // check if we know a callback
   vector<string> suffix = request->suffix();
-    
+
   // find a direct match
   string name = StringUtils::join(suffix, '/');
   map<string, TRI_action_t*>::iterator i = Actions.find(name);
 
   if (i != Actions.end()) {
-    return i->_second;
+    return i->second;
   }
 
   // find longest prefix match
   while (true) {
     name = StringUtils::join(suffix, '/');
     i = PrefixActions.find(name);
-    
-    if (i != Actions.end()) {
+
+    if (i != PrefixActions.end()) {
       return i->second;
     }
 
@@ -169,28 +181,6 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free all existing actions
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeActionsVocBase () {
-  WRITE_LOCKER(ActionsLock);
-
-  // clear normal actions
-  for (map<string, TRI_action_t* >::iterator it = Actions.begin(); it != Actions.end(); it++) {
-    delete it->second;
-  }
-
-  Actions.clear();
-
-  // clear prefix actions
-  for (map<string, TRI_action_t* >::iterator it = PrefixActions.begin(); it != PrefixActions.end(); it++) {
-    delete it->second;
-  }
-
-  PrefixActions.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -200,5 +190,5 @@ void TRI_FreeActionsVocBase () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

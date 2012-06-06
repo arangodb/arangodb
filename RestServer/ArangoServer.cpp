@@ -763,7 +763,7 @@ int ArangoServer::startupServer () {
 
 #if TRI_ENABLE_MRUBY
   if (0 < _actionThreadsMR) {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
+    // safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
   }
 #endif
 
@@ -773,7 +773,7 @@ int ArangoServer::startupServer () {
       safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
 
 #if TRI_ENABLE_MRUBY
-      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
+      // safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
 #endif
     }
   }

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,14 +25,16 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_ACTIONS_ACTIONS_H
-#define TRIAGENS_DURHAM_ACTIONS_ACTIONS_H 1
+#ifndef TRIAGENS_ACTIONS_ACTIONS_H
+#define TRIAGENS_ACTIONS_ACTIONS_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
+
+extern "C" struct TRI_vocbase_s;
 
 namespace triagens {
   namespace rest {
@@ -72,7 +74,7 @@ class TRI_action_t {
     virtual ~TRI_action_t () {}
 
     virtual void createCallback (void* context, void* callback) = 0;
-    virtual triagens::rest::HttpResponse* execute (TRI_vocbase_t* _vocbase, void* context, triagens::rest::HttpRequest*) = 0;
+    virtual triagens::rest::HttpResponse* execute (struct TRI_vocbase_s*, void* context, triagens::rest::HttpRequest*) = 0;
 
     std::string _type;
     std::string _url;
@@ -119,5 +121,5 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
