@@ -93,6 +93,20 @@ describe ArangoDB do
 	doc.parsed_response['count'].should eq(2)
 	doc.parsed_response['result'].length.should eq(2)
       end
+      
+      it "creates a cursor single run, without count" do
+	cmd = api
+	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 2 RETURN u.n\", \"count\" : false, \"bindVars\" : {} }"
+	doc = ArangoDB.log_post("#{prefix}-create-for-limit-return-single", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['hasMore'].should eq(false)
+	doc.parsed_response['count'].should eq(nil)
+	doc.parsed_response['result'].length.should eq(2)
+      end
 
       it "creates a cursor single run, large batch size" do
 	cmd = api
