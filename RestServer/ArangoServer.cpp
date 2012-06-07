@@ -546,6 +546,7 @@ void ArangoServer::buildApplicationServer () {
     ("ruby-console", "do not start as server, start a Ruby emergency console instead")
 #endif
     ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
   ;
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
@@ -704,9 +705,18 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (_applicationServer->programOptions().has("console")) {
-    int res = executeShell(false);
+    int res = executeShell(MODE_CONSOLE);
     exit(res);
   }
+  else if (! _unitTests.empty()) {
+    int res = executeShell(MODE_UNITTESTS);
+    exit(res);
+  }
+  else if (_applicationServer->programOptions().has("jslint")) {
+    int res = executeShell(MODE_JSLINT);
+    exit(res);
+  }
+
 
 #ifdef TRI_ENABLE_MRUBY
   if (_applicationServer->programOptions().has("ruby-console")) {
@@ -714,11 +724,6 @@ void ArangoServer::buildApplicationServer () {
     exit(res);
   }
 #endif
-
-  if (! _unitTests.empty()) {
-    int res = executeShell(true);
-    exit(res);
-  }
 
   // .............................................................................
   // sanity checks
@@ -933,7 +938,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeShell (bool tests) {
+int ArangoServer::executeShell (shell_operation_mode_e mode) {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
@@ -1001,80 +1006,119 @@ int ArangoServer::executeShell (bool tests) {
 
   ok = true;
 
-  // .............................................................................
-  // run all unit tests
-  // .............................................................................
+  switch (mode) {
 
-  if (tests) {
-    v8::HandleScope scope;
-    v8::TryCatch tryCatch;
+    // .............................................................................
+    // run all unit tests
+    // .............................................................................
 
-    // set-up unit tests array
-    v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-    for (size_t i = 0;  i < _unitTests.size();  ++i) {
-      sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
-    }
-
-    context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-    context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-    // run tests
-    char const* input = "require(\"jsunity\").runCommandLineTests();";
-    TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-
-    if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
-      ok = false;
-    }
-    else {
-      ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-    }
-  }
-
-  // .............................................................................
-  // run a shell
-  // .............................................................................
-
-  else {
-    V8LineEditor* console = new V8LineEditor(context, ".arango");
-
-    console->open(true);
-
-    while (true) {
-      while(! v8::V8::IdleNotification()) {
-      }
-
-      char* input = console->prompt("arangod> ");
-
-      if (input == 0) {
-        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
-        break;
-      }
-
-      if (*input == '\0') {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, input);
-        continue;
-      }
-
-      console->addHistory(input);
-
+    case MODE_UNITTESTS: {
       v8::HandleScope scope;
       v8::TryCatch tryCatch;
 
+      // set-up unit tests array
+      v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+      for (size_t i = 0;  i < _unitTests.size();  ++i) {
+        sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
+      }
+
+      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+      // run tests
+      char const* input = "require(\"jsunity\").runCommandLineTests();";
       TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      
+      if (tryCatch.HasCaught()) {
+        cout << TRI_StringifyV8Exception(&tryCatch);
+        ok = false;
+      }
+      else {
+        ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+      }
+
+      break;
+    }
+
+    // .............................................................................
+    // run jslint
+    // .............................................................................
+
+    case MODE_JSLINT: {
+      v8::HandleScope scope;
+      v8::TryCatch tryCatch;
+      
+      // set-up tests files array
+      v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+      for (size_t i = 0;  i < _jslint.size();  ++i) {
+        sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
+      }
+      
+      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+      char const* input = "require(\"jslint\").runCommandLineTests({ });";
+      TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
       if (tryCatch.HasCaught()) {
         cout << TRI_StringifyV8Exception(&tryCatch);
+        ok = false;
       }
+      else {
+        ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+      }
+
+      break;
     }
 
-    console->close();
+    // .............................................................................
+    // run console
+    // .............................................................................
 
-    delete console;
+    case MODE_CONSOLE: {
+      // run a shell
+      V8LineEditor* console = new V8LineEditor(context, ".arango");
+
+      console->open(true);
+
+      while (true) {
+        while(! v8::V8::IdleNotification()) {
+        }
+
+        char* input = console->prompt("arangod> ");
+ 
+        if (input == 0) {
+          printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+          break;
+        }
+
+        if (*input == '\0') {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+          continue;
+        }
+
+        console->addHistory(input);
+
+        v8::HandleScope scope;
+        v8::TryCatch tryCatch;
+
+        TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      
+        if (tryCatch.HasCaught()) {
+          cout << TRI_StringifyV8Exception(&tryCatch);
+        }
+      }
+
+      console->close();
+
+      delete console;
+
+      break;
+    }
   }
-
+                      
   // and return from the context and isolate
   context->Exit();
   isolate->Exit();
