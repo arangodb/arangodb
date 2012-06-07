@@ -64,14 +64,13 @@
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-static mrb_value MR_DefineAction (mrb_state* mrb, mrb_value self) {
+static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
   char* s;
   size_t l;
   mrb_value cl;
-  mrb_value p;
   struct RClass* rcl;
 
-  mrb_get_args(mrb, "soh", &s, &l, &cl, &p);
+  mrb_get_args(mrb, "so", &s, &l, &cl);
 
   if (s == NULL) {
     return mrb_nil_value();
@@ -107,28 +106,29 @@ static mrb_value MR_DefineAction (mrb_state* mrb, mrb_value self) {
 
 void TRI_InitMRActions (MR_state_t* mrs) {
   struct RClass *rcl;
+  struct RClass *arango;
 
-  rcl = mrs->_mrb.kernel_module;
+  arango = mrb_define_module(&mrs->_mrb, "Arango");
 
   // .............................................................................
-  // ArangoServer
+  // HttpServer
   // .............................................................................
 
-  rcl = mrb_define_class(&mrs->_mrb, "Arango::HttpServer", mrs->_mrb.object_class);
+  rcl = mrb_define_class_under(&mrs->_mrb, arango, "HttpServer", mrs->_mrb.object_class);
   
-  mrb_define_class_method(&mrs->_mrb, rcl, "define_action", MR_DefineAction, ARGS_REQ(3));
+  mrb_define_class_method(&mrs->_mrb, rcl, "mount", MR_Mount, ARGS_REQ(2));
 
   // .............................................................................
-  // ArangoRequest
+  // HttpRequest
   // .............................................................................
 
-  rcl = mrs->_arangoRequest = mrb_define_class(&mrs->_mrb, "Arango::HttpRequest", mrs->_mrb.object_class);
+  rcl = mrs->_arangoRequest = mrb_define_class_under(&mrs->_mrb, arango, "HttpRequest", mrs->_mrb.object_class);
 
   // .............................................................................
-  // ArangoResponse
+  // HttpResponse
   // .............................................................................
 
-  rcl = mrs->_arangoResponse = mrb_define_class(&mrs->_mrb, "Arango::HttpResponse", mrs->_mrb.object_class);
+  rcl = mrs->_arangoResponse = mrb_define_class_under(&mrs->_mrb, arango, "HttpResponse", mrs->_mrb.object_class);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
