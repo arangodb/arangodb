@@ -144,11 +144,27 @@ static set<string> AllowedClientActions;
 static set<string> AllowedAdminActions;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief startup loader
+/// @brief Ruby module path
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+static string StartupModulesMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Ruby startup loader
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MRUBY
 static MRLoader StartupLoaderMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Ruby action loader
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+static MRLoader ActionLoaderMR;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,6 +330,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _gcIntervalJS(1000),
 #ifdef TRI_ENABLE_MRUBY
     _startupPathMR(),
+    _startupModulesMR("mr/modules"),
+    _actionPathMR(),
     _actionThreadsMR(8),
 #endif
     _databasePath("/var/lib/arango"),
@@ -335,10 +353,17 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
 
     _workingDirectory = _binaryPath + "/../tmp";
+    _databasePath = _binaryPath + "/../var/arango";
+
     _actionPathJS = _binaryPath + "/../share/arango/js/actions/system";
     _startupModulesJS = _binaryPath + "/../share/arango/js/server/modules"
-              + ";" + _binaryPath + "/../share/arango/js/common/modules";
-    _databasePath = _binaryPath + "/../var/arango";
+                + ";" + _binaryPath + "/../share/arango/js/common/modules";
+
+#ifdef TRI_ENABLE_MRUBY
+    _actionPathMR = _binaryPath + "/../share/arango/mr/actions/system";
+    _startupModulesMR = _binaryPath + "/../share/arango/mr/server/modules"
+                + ";" + _binaryPath + "/../share/arango/mr/common/modules";
+#endif
 
 #else
 
@@ -358,7 +383,13 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _startupModulesJS = TRI_STARTUP_MODULES_PATH;
 #else
     _startupModulesJS = _binaryPath + "/js/server/modules"
-              + ";" + _binaryPath + "/js/common/modules";
+                + ";" + _binaryPath + "/js/common/modules";
+#endif
+
+#ifdef TRI_ENABLE_MRUBY
+    _actionPathMR = _binaryPath + "/mr/actions/system";
+    _startupModulesMR = _binaryPath + "/mr/server/modules"
+                + ";" + _binaryPath + "/mr/common/modules";
 #endif
 
 #else
@@ -372,7 +403,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #ifdef _PKGDATADIR_
     _actionPathJS = string(_PKGDATADIR_) + "/js/actions/system";
     _startupModulesJS = string(_PKGDATADIR_) + "/js/server/modules"
-              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
+                + ";" + string(_PKGDATADIR_) + "/js/common/modules";
+
+    _actionPathMR = string(_PKGDATADIR_) + "/mr/actions/system";
+    _startupModulesMR = string(_PKGDATADIR_) + "/mr/server/modules"
+                + ";" + string(_PKGDATADIR_) + "/mr/common/modules";
 #endif
 
 #ifdef _DATABASEDIR_
@@ -561,8 +596,8 @@ void ArangoServer::buildApplicationServer () {
 
   additional["DIRECTORY Options:help-admin"]
     ("javascript.action-directory", &_actionPathJS, "path to the JavaScript action directory")
-    ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by (semi-) colons")
+    ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
   ;
 
   additional["THREAD Options:help-admin"]
@@ -570,12 +605,14 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   // .............................................................................
-  // JavaScript options
+  // MRuby options
   // .............................................................................
 
 #ifdef TRI_ENABLE_MRUBY
 
   additional["DIRECTORY Options:help-admin"]
+    ("ruby.action-directory", &_actionPathMR, "path to the MRuby action directory")
+    ("ruby.modules-path", &_startupModulesMR, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
   ;
 
@@ -634,7 +671,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (! _actionPathJS.empty()) {
     ActionLoaderJS.setDirectory(_actionPathJS);
-    LOGGER_INFO << "using action files at '" << _actionPathJS << "'";
+    LOGGER_INFO << "using JavaScript action files at '" << _actionPathJS << "'";
   }
   else {
     LOGGER_INFO << "actions are disabled, empty system action path";
@@ -650,6 +687,14 @@ void ArangoServer::buildApplicationServer () {
   else {
     LOGGER_INFO << "using MRuby startup files at '" << _startupPathMR << "'";
     StartupLoaderMR.setDirectory(_startupPathMR);
+  }
+
+  if (! _actionPathMR.empty()) {
+    ActionLoaderMR.setDirectory(_actionPathMR);
+    LOGGER_INFO << "using MRuby action files at '" << _actionPathJS << "'";
+  }
+  else {
+    LOGGER_INFO << "actions are disabled, empty system action path";
   }
 
 #endif

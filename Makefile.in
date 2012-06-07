@@ -405,6 +405,7 @@ am_arangod_OBJECTS = Actions/RestActionHandler.$(OBJEXT) \
 	RestServer/ArangoHttpServer.$(OBJEXT) \
 	RestServer/ArangoServer.$(OBJEXT) \
 	RestServer/JavascriptDispatcherThread.$(OBJEXT) \
+	RestServer/RubyDispatcherThread.$(OBJEXT) \
 	RestServer/arango.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
@@ -852,6 +853,7 @@ arangod_SOURCES = \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
 	RestServer/JavascriptDispatcherThread.cpp \
+	RestServer/RubyDispatcherThread.cpp \
 	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -1897,6 +1899,8 @@ RestServer/ArangoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 RestServer/JavascriptDispatcherThread.$(OBJEXT):  \
 	RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
+RestServer/RubyDispatcherThread.$(OBJEXT): RestServer/$(am__dirstamp) \
+	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/arango.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/$(am__dirstamp):
@@ -2194,6 +2198,7 @@ mostlyclean-compile:
 	-rm -f RestServer/ArangoHttpServer.$(OBJEXT)
 	-rm -f RestServer/ArangoServer.$(OBJEXT)
 	-rm -f RestServer/JavascriptDispatcherThread.$(OBJEXT)
+	-rm -f RestServer/RubyDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/arango.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -2432,6 +2437,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/JavascriptDispatcherThread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/RubyDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@

@@ -25,16 +25,12 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "JavascriptDispatcherThread.h"
+#include "RubyDispatcherThread.h"
 
 #include "Actions/actions.h"
 #include "Logger/Logger.h"
-#include "V8/v8-actions.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-query.h"
-#include "V8/v8-shell.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-vocbase.h"
+#include "MRuby/mr-actions.h"
+#include "MRuby/mr-utils.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -58,20 +54,16 @@ using namespace triagens::arango;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* queue,
-                                                        TRI_vocbase_t* vocbase,
-                                                        uint64_t gcInterval,
-                                                        string const& actionQueue,
-                                                        set<string> const& allowedContexts,
-                                                        string startupModules,
-                                                        JSLoader* startupLoader,
-                                                        JSLoader* actionLoader)
+RubyDispatcherThread::RubyDispatcherThread (rest::DispatcherQueue* queue,
+                                            TRI_vocbase_t* vocbase,
+                                            string const& actionQueue,
+                                            set<string> const& allowedContexts,
+                                            string startupModules,
+                                            MRLoader* startupLoader,
+                                            MRLoader* actionLoader)
   : ActionDispatcherThread(queue),
     _vocbase(vocbase),
-    _gcInterval(gcInterval),
-    _gc(0),
-    _isolate(0),
-    _context(),
+    _mrs(0),
     _actionQueue(actionQueue),
     _allowedContexts(allowedContexts),
     _startupModules(startupModules),
@@ -96,8 +88,8 @@ JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* q
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void* JavascriptDispatcherThread::context () {
-  return (void*) _isolate; // the isolate is the execution context
+void* RubyDispatcherThread::context () {
+  return (void*) _mrs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,24 +109,14 @@ void* JavascriptDispatcherThread::context () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::reportStatus () {
+void RubyDispatcherThread::reportStatus () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::tick (bool idle) {
-  _gc += (idle ? 10 : 1);
-
-  if (_gc > _gcInterval) {
-    LOGGER_TRACE << "collecting garbage...";
-
-    while (! v8::V8::IdleNotification()) {
-    }
-
-    _gc = 0;
-  }
+void RubyDispatcherThread::tick (bool idle) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,26 +136,10 @@ void JavascriptDispatcherThread::tick (bool idle) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::run () {
+void RubyDispatcherThread::run () {
   initialise();
 
-  _isolate->Enter();
-  _context->Enter();
-
   DispatcherThread::run();
-
-  // free memory for this thread
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
-
-  if (v8g) {
-    delete v8g;
-  }
-
-  _context->Exit();
-  _context.Dispose();
-
-  _isolate->Exit();
-  _isolate->Dispose();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,48 +159,25 @@ void JavascriptDispatcherThread::run () {
 /// @brief initialises the isolate and context
 ////////////////////////////////////////////////////////////////////////////////
 
-void JavascriptDispatcherThread::initialise () {
+void RubyDispatcherThread::initialise () {
   bool ok;
-  char const* files[] = { "common/bootstrap/modules.js",
-                          "common/bootstrap/print.js",
-                          "common/bootstrap/errors.js",
-                          "server/ahuacatl.js",
-                          "server/server.js"
+  char const* files[] = { "common/bootstrap/error.rb",
+                          "server/server.rb"
   };
   size_t i;
 
-  // enter a new isolate
-  _isolate = v8::Isolate::New();
-  _isolate->Enter();
+  // create a new ruby shell
+  _mrs = MR_OpenShell();
 
-  // create the context
-  _context = v8::Context::New(0);
-
-  if (_context.IsEmpty()) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-    _isolate->Exit();
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-
-  _context->Enter();
-
-  TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Queries(_context);
-  TRI_InitV8Actions(_context, _actionQueue, _allowedContexts);
-  TRI_InitV8Conversions(_context);
-  TRI_InitV8Utils(_context, _startupModules);
-  TRI_InitV8Shell(_context);
+  TRI_InitMRUtils(_mrs);
+  TRI_InitMRActions(_mrs);
 
   // load all init files
   for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    ok = _startupLoader->loadScript(_context, files[i]);
+    ok = _startupLoader->loadScript(&_mrs->_mrb, files[i]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
-      _context->Exit();
-      _isolate->Exit();
-
+      LOGGER_FATAL << "cannot load MRuby utilities from file '" << files[i] << "'";
       TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
@@ -245,16 +188,12 @@ void JavascriptDispatcherThread::initialise () {
     LOGGER_WARNING << "no action loader has been defined";
   }
   else {
-    ok = _actionLoader->executeAllScripts(_context);
+    ok = _actionLoader->executeAllScripts(&_mrs->_mrb);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << _actionLoader->getDirectory() << "'";
+      LOGGER_FATAL << "cannot load MRuby actions from directory '" << _actionLoader->getDirectory() << "'";
     }
   }
-
-  // and return from the context
-  _context->Exit();
-  _isolate->Exit();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
