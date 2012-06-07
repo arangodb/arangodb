@@ -230,6 +230,12 @@ static string StartupPath = "";
 static vector<string> UnitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief files to jslint
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> JsLint;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief use pager
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -535,6 +541,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
+    ("jslint", &JsLint, "do not start as shell, run jslint instead")
     ("log.level,l", &level,  "log level")
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
     ("no-auto-complete", "disable auto completion")
@@ -1043,7 +1050,40 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   return ok;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the jslint tests
+////////////////////////////////////////////////////////////////////////////////
 
+static bool RunJsLint (v8::Handle<v8::Context> context) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  bool ok;
+
+  // set-up jslint files array
+  v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+  for (size_t i = 0;  i < JsLint.size();  ++i) {
+    sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
+  }
+
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+  // run tests
+  char const* input = "require(\"jslint\").runCommandLineTests({ });";
+  v8::Local<v8::String> name(v8::String::New("(arangosh)"));
+  TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+      
+  if (tryCatch.HasCaught()) {
+    cout << TRI_StringifyV8Exception(&tryCatch);
+    ok = false;
+  }
+  else {
+    ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+  }
+
+  return ok;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adding colors for output
@@ -1174,6 +1214,11 @@ int main (int argc, char* argv[]) {
 
   // check if we want to connect to a server
   bool useServer = (ServerAddressPort != "none");
+
+  if (!JsLint.empty()) {
+    // if we are in jslint mode, we will not need the server at all
+    useServer = false;
+  }
 
   if (useServer) {
     AddressPort ap;
@@ -1388,22 +1433,33 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  if (UnitTests.empty()) {
+  if (UnitTests.empty() && JsLint.empty()) {
     RunShell(context);
   }
 
   // .............................................................................
-  // run unit tests
+  // run unit tests or jslint
   // .............................................................................
 
   else {
-    bool ok = RunUnitTests(context);
-    
+    bool ok;
+   
+    if (!UnitTests.empty()) {
+      // we have unit tests
+      ok = RunUnitTests(context);
+    }
+    else {
+      assert(!JsLint.empty());
+
+      // we don't have unittests, but we have files to jslint
+      ok = RunJsLint(context);
+    }
+
     if (! ok) {
       ret = EXIT_FAILURE;
     }
   }
-
+  
   // .............................................................................
   // cleanup
   // .............................................................................
