@@ -405,7 +405,7 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
   regex_t re;
   size_t i;
 
-  LOG_TRACE("loading java script directory: '%s'", path);
+  LOG_TRACE("loading JavaScript directory: '%s'", path);
 
   files = TRI_FilesDirectory(path);
 
@@ -426,11 +426,8 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
-    if (!full) {
-      continue;
-    }
     ok = LoadJavaScriptFile(context, full, execute);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, full);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
     result = result && ok;
 

@@ -27,6 +27,10 @@
 
 #include "mr-utils.h"
 
+#include <regex.h>
+
+#include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 
 #include "mruby/array.h"
@@ -229,6 +233,7 @@ mrb_value MR_ArangoError (mrb_state* mrb, int errNum, char const* errMessage) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LogRubyException (mrb_state* mrb, struct RObject* exc) {
+  LOG_ERROR("cannot log ruby exception\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,7 +241,22 @@ void TRI_LogRubyException (mrb_state* mrb, struct RObject* exc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteRubyFile (mrb_state* mrb, char const* filename) {
-  return false;
+  bool ok;
+  char* content;
+  mrb_value result;
+
+  content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
+
+  if (content == 0) {
+    LOG_TRACE("cannot loaded ruby file '%s': %s", filename, TRI_last_error());
+    return false;
+  }
+
+  ok = TRI_ExecuteRubyString(mrb, content, filename, false, &result);
+
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +264,45 @@ bool TRI_ExecuteRubyFile (mrb_state* mrb, char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteRubyDirectory (mrb_state* mrb, char const* path) {
-  return false;
+  TRI_vector_string_t files;
+  bool result;
+  regex_t re;
+  size_t i;
+
+  LOG_TRACE("loading ruby script directory: '%s'", path);
+
+  files = TRI_FilesDirectory(path);
+
+  regcomp(&re, "^(.*)\\.rb$", REG_ICASE | REG_EXTENDED);
+
+  result = true;
+
+  for (i = 0;  i < files._length;  ++i) {
+    bool ok;
+    char const* filename;
+    char* full;
+
+    filename = files._buffer[i];
+
+    if (! regexec(&re, filename, 0, 0, 0) == 0) {
+      continue;
+    }
+
+    full = TRI_Concatenate2File(path, filename);
+    ok = TRI_ExecuteRubyFile(mrb, full);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, full);
+
+    result = result && ok;
+
+    if (! ok) {
+      TRI_LogRubyException(mrb, mrb->exc);
+    }
+  }
+
+  TRI_DestroyVectorString(&files);
+  regfree(&re);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
