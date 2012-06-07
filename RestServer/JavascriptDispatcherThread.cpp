@@ -231,7 +231,7 @@ void JavascriptDispatcherThread::initialise () {
     ok = _startupLoader->loadScript(_context, files[i]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
+      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[i] << "'";
       _context->Exit();
       _isolate->Exit();
 
@@ -248,7 +248,7 @@ void JavascriptDispatcherThread::initialise () {
     ok = _actionLoader->executeAllScripts(_context);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << _actionLoader->getDirectory() << "'";
+      LOGGER_FATAL << "cannot load JavaScript actions from directory '" << _actionLoader->getDirectory() << "'";
     }
   }
 

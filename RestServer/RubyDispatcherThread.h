@@ -31,6 +31,7 @@
 #include "Actions/ActionDispatcherThread.h"
 
 #include "MRuby/MRLoader.h"
+#include "MRuby/mr-utils.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -74,12 +75,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RubyDispatcherThread (rest::DispatcherQueue*,
-                                    TRI_vocbase_t*,
-                                    string const& actionQueue,
-                                    set<string> const& allowedContexts,
-                                    std::string startupModules,
-                                    MRLoader* startupLoader,
-                                    MRLoader* actionLoader);
+                              TRI_vocbase_t*,
+                              string const& actionQueue,
+                              set<string> const& allowedContexts,
+                              std::string startupModules,
+                              MRLoader* startupLoader,
+                              MRLoader* actionLoader);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

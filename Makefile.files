@@ -200,6 +200,7 @@ arangod_SOURCES = \
 	RestServer/ArangoHttpServer.cpp \
 	RestServer/ArangoServer.cpp \
 	RestServer/JavascriptDispatcherThread.cpp \
+	RestServer/RubyDispatcherThread.cpp \
 	RestServer/arango.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \

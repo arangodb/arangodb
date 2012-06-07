@@ -269,8 +269,8 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} path to alternate startup Javascript files.
-/// Normally, the server will start using built-in Javascript core
+/// Specifies the @CA{directory} path to alternate startup JavaScript files.
+/// Normally, the server will start using built-in JavaScript core
 /// functionality. To override the core functionality with a different
 /// implementation, this option can be used.
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +282,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.modules-path @CA{directory}}
 ///
-/// Specifies the @CA{directory} path with user defined Javascript modules.
+/// Specifies the @CA{directory} path with user defined JavaScript modules.
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -293,7 +293,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.action-directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} containg the system defined Javascript files
+/// Specifies the @CA{directory} containg the system defined JavaScript files
 /// that can be invoked as actions.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,19 +304,19 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.action-threads @CA{number}}
 ///
-/// Specifies the @CA{number} of threads that are spawned to handle action
-/// requests using JavaScript.
+/// Specifies the @CA{number} of threads that are spawned to handle JavaScript
+/// action requests using JavaScript.
 ////////////////////////////////////////////////////////////////////////////////
 
         int _actionThreadsJS;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Javascript garbage collection interval (each x requests)
+/// @brief JavaScript garbage collection interval (each x requests)
 ///
 /// @CMDOPT{--javascript.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the
-/// garbage collection for Javascript objects will be run in each thread.
+/// garbage collection for JavaScript objects will be run in each thread.
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _gcIntervalJS;
@@ -337,11 +337,37 @@ namespace triagens {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief semicolon separated list of module directories
+///
+/// @CMDOPT{--javascript.modules-path @CA{directory}}
+///
+/// Specifies the @CA{directory} path with user defined JavaScript modules.
+/// Multiple paths can be specified separated with commas.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        string _startupModulesMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path to the system action directory
+///
+/// @CMDOPT{--ruby.action-directory @CA{directory}}
+///
+/// Specifies the @CA{directory} containg the system defined MRuby files
+/// that can be invoked as actions.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        string _actionPathMR;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief number of action threads for MRuby
 ///
 /// @CMDOPT{--ruby.action-threads @CA{number}}
 ///
-/// Specifies the @CA{number} of threads that are spawned to handle action
+/// Specifies the @CA{number} of threads that are spawned to handle MRuby action
 /// requests using MRuby.
 ////////////////////////////////////////////////////////////////////////////////
 
