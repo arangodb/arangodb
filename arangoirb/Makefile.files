@@ -1,33 +1,19 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-## --SECTION--                                                           LIBRARY
+## --SECTION--                                                           PROGRAM
 ################################################################################
 
 ################################################################################
-### @brief mruby
+### @brief program "arangoirb"
 ################################################################################
 
-BUILT_SOURCES += @MRUBY_LIBS@
+bin_arangoirb_CPPFLAGS = -I@top_srcdir@/arangoirb $(AM_CPPFLAGS) 
+bin_arangoirb_LDADD = lib/libarango_mruby.a lib/libarango_client.a lib/libarango.a $(LIBS) @MRUBY_LIBS@
 
-@MRUBY_LIBS@: .mruby-build-@TRI_BITS@
-
-.mruby-build-@TRI_BITS@:
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING LIBEV"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
-
-	touch .mruby-build-@TRI_BITS@
-
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILD mruby FINISHED"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
+bin_arangoirb_SOURCES = \
+	arangoirb/MRClient/MRubyClientConnection.cpp \
+	arangoirb/MRClient/arangoirb.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

@@ -56,13 +56,13 @@
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
-#include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
-#include "V8/v8-query.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-vocbase.h"
+#include "V8Server/v8-actions.h"
+#include "V8Server/v8-query.h"
+#include "V8Server/v8-vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -376,20 +376,20 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #ifdef TRI_SYSTEM_ACTION_PATH
     _actionPathJS = TRI_SYSTEM_ACTION_PATH;
 #else
-    _actionPathJS = _binaryPath + "/js/actions/system";
+    _actionPathJS = _binaryPath + "/../js/actions/system";
 #endif
 
 #ifdef TRI_STARTUP_MODULES_PATH
     _startupModulesJS = TRI_STARTUP_MODULES_PATH;
 #else
-    _startupModulesJS = _binaryPath + "/js/server/modules"
-                + ";" + _binaryPath + "/js/common/modules";
+    _startupModulesJS = _binaryPath + "/../js/server/modules"
+                + ";" + _binaryPath + "/../js/common/modules";
 #endif
 
 #ifdef TRI_ENABLE_MRUBY
-    _actionPathMR = _binaryPath + "/mr/actions/system";
-    _startupModulesMR = _binaryPath + "/mr/server/modules"
-                + ";" + _binaryPath + "/mr/common/modules";
+    _actionPathMR = _binaryPath + "/../mr/actions/system";
+    _startupModulesMR = _binaryPath + "/../mr/server/modules"
+                + ";" + _binaryPath + "/../mr/common/modules";
 #endif
 
 #else
@@ -512,7 +512,7 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_HTML_ADMIN_PATH
   _applicationAdminServer->allowAdminDirectory(TRI_HTML_ADMIN_PATH);
 #else
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/html/admin");
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../html/admin");
 #endif
 
 #else

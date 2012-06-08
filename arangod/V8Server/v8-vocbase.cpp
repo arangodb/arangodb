@@ -27,6 +27,10 @@
 
 #include "v8-vocbase.h"
 
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-codegen.h"
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-result.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
@@ -36,14 +40,11 @@
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
 #include "V8/v8-execution.h"
-#include "VocBase/simple-collection.h"
+#include "V8/v8-utils.h"
+#include "V8Server/v8-objects.h"
 #include "VocBase/general-cursor.h"
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen.h"
-#include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-result.h"
+#include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
