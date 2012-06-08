@@ -436,10 +436,10 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_basics_suite_OBJECTS = $(am_UnitTests_basics_suite_OBJECTS)
 am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
-	UnitTests/Cambridge/georeg.cpp
-@ENABLE_BOOST_TEST_TRUE@am_UnitTests_geo_suite_OBJECTS =  \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.$(OBJEXT)
+	UnitTests/Cambridge/georeg.cpp arangod/GeoIndex/GeoIndex.c
+@ENABLE_BOOST_TEST_TRUE@am_UnitTests_geo_suite_OBJECTS = UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
 am_bin_arangod_OBJECTS = arangod/Ahuacatl/bin_arangod-ahuacatl-access-optimiser.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-ast-node.$(OBJEXT) \
@@ -1238,8 +1238,8 @@ VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
@@ -1254,11 +1254,13 @@ CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libarango.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_builddir@/arangod -I@top_builddir@/lib
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.cpp
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.cpp \
+@ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/GeoIndex.c
 
 
 ################################################################################
@@ -2032,12 +2034,21 @@ UnitTests/Cambridge/$(am__dirstamp):
 UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Cambridge/$(DEPDIR)
 	@: > UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
-UnitTests/Cambridge/Runner.$(OBJEXT):  \
+UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT):  \
 	UnitTests/Cambridge/$(am__dirstamp) \
 	UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
-UnitTests/Cambridge/georeg.$(OBJEXT):  \
+UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT):  \
 	UnitTests/Cambridge/$(am__dirstamp) \
 	UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
+arangod/GeoIndex/$(am__dirstamp):
+	@$(MKDIR_P) arangod/GeoIndex
+	@: > arangod/GeoIndex/$(am__dirstamp)
+arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arangod/GeoIndex/$(DEPDIR)
+	@: > arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
+arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT):  \
+	arangod/GeoIndex/$(am__dirstamp) \
+	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
 UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
 	@rm -f UnitTests/geo_suite$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_LDADD) $(LIBS)
@@ -2107,12 +2118,6 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.$(OBJEXT):  \
 arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/GeoIndex/$(am__dirstamp):
-	@$(MKDIR_P) arangod/GeoIndex
-	@: > arangod/GeoIndex/$(am__dirstamp)
-arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) arangod/GeoIndex/$(DEPDIR)
-	@: > arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
 arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT):  \
 	arangod/GeoIndex/$(am__dirstamp) \
 	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
@@ -2314,8 +2319,8 @@ bin/arangosh$(EXEEXT): $(bin_arangosh_OBJECTS) $(bin_arangosh_DEPENDENCIES) bin/
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f UnitTests/Cambridge/Runner.$(OBJEXT)
-	-rm -f UnitTests/Cambridge/georeg.$(OBJEXT)
+	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT)
+	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
@@ -2348,6 +2353,7 @@ mostlyclean-compile:
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT)
+	-rm -f arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 	-rm -f arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT)
 	-rm -f arangod/HashIndex/bin_arangod-hasharray.$(OBJEXT)
 	-rm -f arangod/HashIndex/bin_arangod-hashindex.$(OBJEXT)
@@ -2554,8 +2560,8 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/Runner.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/georeg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
@@ -2587,6 +2593,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-variable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po@am__quote@
@@ -2806,6 +2813,22 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.o: arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.o -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Tpo -c -o arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
+
+arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.obj: arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.obj -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Tpo -c -o arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
 
 arangod/Ahuacatl/bin_arangod-ahuacatl-access-optimiser.o: arangod/Ahuacatl/ahuacatl-access-optimiser.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-access-optimiser.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-access-optimiser.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-access-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-access-optimiser.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-access-optimiser.c
@@ -3496,6 +3519,38 @@ arangod/VocBase/bin_arangod-vocbase.obj: arangod/VocBase/vocbase.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+UnitTests/Cambridge/UnitTests_geo_suite-Runner.o: UnitTests/Cambridge/Runner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Cambridge/UnitTests_geo_suite-Runner.o -MD -MP -MF UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Tpo -c -o UnitTests/Cambridge/UnitTests_geo_suite-Runner.o `test -f 'UnitTests/Cambridge/Runner.cpp' || echo '$(srcdir)/'`UnitTests/Cambridge/Runner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Tpo UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UnitTests/Cambridge/Runner.cpp' object='UnitTests/Cambridge/UnitTests_geo_suite-Runner.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Cambridge/UnitTests_geo_suite-Runner.o `test -f 'UnitTests/Cambridge/Runner.cpp' || echo '$(srcdir)/'`UnitTests/Cambridge/Runner.cpp
+
+UnitTests/Cambridge/UnitTests_geo_suite-Runner.obj: UnitTests/Cambridge/Runner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Cambridge/UnitTests_geo_suite-Runner.obj -MD -MP -MF UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Tpo -c -o UnitTests/Cambridge/UnitTests_geo_suite-Runner.obj `if test -f 'UnitTests/Cambridge/Runner.cpp'; then $(CYGPATH_W) 'UnitTests/Cambridge/Runner.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Cambridge/Runner.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Tpo UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UnitTests/Cambridge/Runner.cpp' object='UnitTests/Cambridge/UnitTests_geo_suite-Runner.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Cambridge/UnitTests_geo_suite-Runner.obj `if test -f 'UnitTests/Cambridge/Runner.cpp'; then $(CYGPATH_W) 'UnitTests/Cambridge/Runner.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Cambridge/Runner.cpp'; fi`
+
+UnitTests/Cambridge/UnitTests_geo_suite-georeg.o: UnitTests/Cambridge/georeg.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Cambridge/UnitTests_geo_suite-georeg.o -MD -MP -MF UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Tpo -c -o UnitTests/Cambridge/UnitTests_geo_suite-georeg.o `test -f 'UnitTests/Cambridge/georeg.cpp' || echo '$(srcdir)/'`UnitTests/Cambridge/georeg.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Tpo UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UnitTests/Cambridge/georeg.cpp' object='UnitTests/Cambridge/UnitTests_geo_suite-georeg.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Cambridge/UnitTests_geo_suite-georeg.o `test -f 'UnitTests/Cambridge/georeg.cpp' || echo '$(srcdir)/'`UnitTests/Cambridge/georeg.cpp
+
+UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj: UnitTests/Cambridge/georeg.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj -MD -MP -MF UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Tpo -c -o UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj `if test -f 'UnitTests/Cambridge/georeg.cpp'; then $(CYGPATH_W) 'UnitTests/Cambridge/georeg.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Cambridge/georeg.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Tpo UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UnitTests/Cambridge/georeg.cpp' object='UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_geo_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj `if test -f 'UnitTests/Cambridge/georeg.cpp'; then $(CYGPATH_W) 'UnitTests/Cambridge/georeg.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Cambridge/georeg.cpp'; fi`
 
 arangod/RestHandler/bin_arangod-RestActionHandler.o: arangod/RestHandler/RestActionHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestActionHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestActionHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestActionHandler.o `test -f 'arangod/RestHandler/RestActionHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestActionHandler.cpp

@@ -99,8 +99,8 @@ unittests-boost: UnitTests/basics_suite
 
 noinst_PROGRAMS = UnitTests/basics_suite UnitTests/geo_suite
 
-UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
+UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
 	UnitTests/Runner.cpp \
@@ -116,12 +116,14 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
-UnitTests_geo_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libarango.a
+UnitTests_geo_suite_CPPFLAGS = -I@top_builddir@/arangod -I@top_builddir@/lib
+UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_geo_suite_SOURCES = \
 	UnitTests/Cambridge/Runner.cpp \
-	UnitTests/Cambridge/georeg.cpp
+	UnitTests/Cambridge/georeg.cpp \
+	arangod/GeoIndex/GeoIndex.c
 
 else
 
