@@ -40,7 +40,6 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "V8/v8-conv.h"
-#include "VocBase/document-collection.h"
 
 using namespace std;
 using namespace triagens::basics;

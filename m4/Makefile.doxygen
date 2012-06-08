@@ -1,7 +1,11 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-## Doxygen Conversions
+## --SECTION--                                                           DOXYGEN
+################################################################################
+
+################################################################################
+### @brief directory setup
 ################################################################################
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
@@ -40,7 +44,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
-## doxygen
+### @brief doxygen
 ################################################################################
 
 .PHONY: doxygen
@@ -53,7 +57,7 @@ doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
 
 ################################################################################
-## wiki
+### @brief wiki
 ################################################################################
 
 .PHONY: wiki wiki2
@@ -69,7 +73,7 @@ wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
-## latex
+### @brief latex
 ################################################################################
 
 .PHONY: latex
@@ -101,10 +105,19 @@ latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
 
 ################################################################################
-## CLEANUP
+### @brief cleanup
 ################################################################################
 
 CLEANUP += \
 	$(DOXYGEN) \
 	$(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
 	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI)))
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:
