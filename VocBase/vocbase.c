@@ -46,6 +46,7 @@
 #include "VocBase/general-cursor.h"
 
 #include "Ahuacatl/ahuacatl-functions.h"
+#include "Ahuacatl/ahuacatl-statementlist.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1065,6 +1066,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
 
+  // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
@@ -1173,7 +1175,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
-  // free query functions
+  // free AQL functions
   TRI_FreeFunctionsAql(vocbase->_functions);
   
   // free the cursors
@@ -1746,6 +1748,7 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
 void TRI_InitialiseVocBase () {
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
+  TRI_InitStatementListAql();
 
   ServerIdentifier = TRI_UInt16Random();
   PageSize = getpagesize();

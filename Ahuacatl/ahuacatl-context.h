@@ -40,6 +40,7 @@
 
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-statementlist.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,7 +62,6 @@ extern "C" {
 typedef struct TRI_aql_scope2_s {
   struct TRI_aql_scope_s* _parent; // parent scope
   TRI_associative_pointer_t _variables; // symbol table
-  void* _first;
   void* _last;
 }
 TRI_aql_scope2_t;
@@ -73,6 +73,7 @@ TRI_aql_scope2_t;
 typedef struct TRI_aql_context_s {
   TRI_vocbase_t* _vocbase;
   TRI_aql_parser_t* _parser;
+  TRI_aql_statement_list_t* _statements;
   TRI_aql_error_t _error;
   TRI_vector_pointer_t _collections;
   TRI_associative_pointer_t _collectionNames;
@@ -83,20 +84,22 @@ typedef struct TRI_aql_context_s {
   } 
   _memory;
   TRI_vector_pointer_t _currentScopes;
-  TRI_vector_pointer_t _scopes;
   struct {
     TRI_associative_pointer_t _values;
     TRI_associative_pointer_t _names;
   } 
   _parameters;
 
-  size_t _variableIndex;
-  void* _first;
+  const char* _query;
+
+  size_t _variableIndex; 
+  size_t _scopeIndex;
+
+  // deprecated 
   struct {
     TRI_vector_pointer_t _scopes;
   }
-  _optimiser;
-  const char* _query;
+  _optimiser; // TODO: remove
 }
 TRI_aql_context_t;
 
@@ -151,16 +154,13 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const);
 bool TRI_LockQueryContextAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new variable scope
+/// @brief register a string
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope2_t* TRI_CreateScopeAql (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a variable scope
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeScopeAql (TRI_aql_scope2_t* const);
+char* TRI_RegisterStringAql (TRI_aql_context_t* const, 
+                             const char* const,
+                             const size_t, 
+                             const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a node
@@ -177,38 +177,6 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const,
                              const int, 
                              const char* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get first statement in the current scope
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_GetFirstStatementAql (TRI_aql_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a statement to the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddStatementAql (TRI_aql_context_t* const, const void* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new variable scope and stack it in the context
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_scope2_t* TRI_StartScopeContextAql (TRI_aql_context_t* const); 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a variable scope from context scopes stack
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_EndScopeContextAql (TRI_aql_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a string
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_RegisterStringAql (TRI_aql_context_t* const, 
-                             const char* const,
-                             const size_t, 
-                             const bool);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

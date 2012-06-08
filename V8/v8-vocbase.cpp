@@ -998,7 +998,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   }
   
   // generate code
-  char* code = TRI_GenerateCodeAql(context, (TRI_aql_node_t*) context->_first);
+  char* code = TRI_GenerateCodeAql(context);
   if (!code) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     

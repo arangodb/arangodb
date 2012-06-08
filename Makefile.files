@@ -168,14 +168,16 @@ arangod_SOURCES = \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
         Ahuacatl/ahuacatl-index.c \
+        Ahuacatl/ahuacatl-node.c \
         Ahuacatl/ahuacatl-optimiser.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-parser-functions.c \
         Ahuacatl/ahuacatl-result.c \
         Ahuacatl/ahuacatl-scope.c \
+        Ahuacatl/ahuacatl-statementlist.c \
+        Ahuacatl/ahuacatl-statement-dump.c \
+        Ahuacatl/ahuacatl-statement-walker.c \
         Ahuacatl/ahuacatl-tokens.c \
-        Ahuacatl/ahuacatl-tree-dump.c \
-        Ahuacatl/ahuacatl-tree-walker.c \
         Ahuacatl/ahuacatl-variable.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \

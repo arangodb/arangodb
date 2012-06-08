@@ -83,9 +83,6 @@ typedef struct TRI_aql_codegen_scope_s {
   TRI_aql_codegen_register_t _resultRegister;
   TRI_associative_pointer_t _variables; // list of variables in scope
   char* _prefix; // prefix for variable names, used in FUNCTION scopes only
-#ifdef TRI_DEBUG_AQL
-  const char* _name; // for debugging purposes only
-#endif
 }
 TRI_aql_codegen_scope_t;
 
@@ -98,6 +95,7 @@ typedef struct TRI_aql_codegen_js_s {
   TRI_string_buffer_t _buffer;
   TRI_string_buffer_t _functionBuffer;
   TRI_vector_pointer_t _scopes;
+  TRI_aql_codegen_register_t _lastResultRegister;
 
   size_t _registerIndex;
   size_t _functionIndex;
@@ -122,7 +120,7 @@ TRI_aql_codegen_js_t;
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (TRI_aql_context_t* const, const void* const);
+char* TRI_GenerateCodeAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

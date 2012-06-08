@@ -121,6 +121,7 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
+
     return NULL;
   }
 
@@ -1280,7 +1281,7 @@ static void MergeVector (TRI_aql_context_t* const context,
 
       if (TRI_EqualString(fieldAccess->_fullName, compareAccess->_fullName)) {
         // found the element
-        if (mergeType == AQL_NODE_OPERATOR_BINARY_AND) {
+        if (mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
           result->_buffer[j] = MergeAttributeAccessAnd(context, fieldAccess, compareAccess);
         }
         else {
@@ -1342,7 +1343,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   TRI_vector_pointer_t* result;
 
   assert(context);
-  assert(mergeType == AQL_NODE_OPERATOR_BINARY_AND || mergeType == AQL_NODE_OPERATOR_BINARY_OR);
+  assert(mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND || mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR);
 
   // first check if we can get away without copying/merging the vectors
   if (inheritedRestrictions == NULL) {
@@ -1438,7 +1439,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }
   
-  if (operator == AQL_NODE_OPERATOR_BINARY_NE) {
+  if (operator == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
     // create an all items access, and we're done
     fieldAccess->_type = TRI_AQL_ACCESS_ALL;
     return fieldAccess;
@@ -1451,36 +1452,36 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }  
 
-  if (operator == AQL_NODE_OPERATOR_BINARY_EQ) {
+  if (operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // create an exact value access
     fieldAccess->_type = TRI_AQL_ACCESS_EXACT; 
     fieldAccess->_value._value = value;
   } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_LT) { 
+  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_LT) { 
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_EXCLUDED;
     fieldAccess->_value._singleRange._value = value;
   } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_LE) { 
+  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_LE) { 
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_INCLUDED;
     fieldAccess->_value._singleRange._value = value;
   } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_GT) { 
+  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_GT) { 
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_EXCLUDED;
     fieldAccess->_value._singleRange._value = value;
   } 
-  else if (operator == AQL_NODE_OPERATOR_BINARY_GE) { 
+  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_GE) { 
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_INCLUDED;
     fieldAccess->_value._singleRange._value = value;
   }
-  else if (operator == AQL_NODE_OPERATOR_BINARY_IN) {
+  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_json_t* list;
 
     assert(value->_type == TRI_JSON_LIST);
@@ -1550,7 +1551,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
   assert(context);
   assert(node);
 
-  if (node->_type == AQL_NODE_ATTRIBUTE_ACCESS) {
+  if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     TRI_aql_attribute_name_t* field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(node, 0));
 
     if (!field) {
@@ -1561,7 +1562,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
     TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
     return field;
   }
-  else if (node->_type == AQL_NODE_REFERENCE) {
+  else if (node->_type == TRI_AQL_NODE_REFERENCE) {
     TRI_aql_attribute_name_t* field;
     
     field = (TRI_aql_attribute_name_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_attribute_name_t), false);
@@ -1597,7 +1598,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
   assert(context);
   assert(node);
 
-  if (node->_type == AQL_NODE_OPERATOR_UNARY_NOT) {
+  if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     
     assert(lhs);
@@ -1606,8 +1607,8 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     return MakeAllVector(context, ProcessNode(context, lhs, changed, NULL));
   }
 
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_OR ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_AND) {
+  if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_OR ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
     TRI_vector_pointer_t* result;
@@ -1639,13 +1640,13 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     return result;
   }
 
-  if (node->_type == AQL_NODE_OPERATOR_BINARY_EQ ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_NE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_LE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GT ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_GE ||
-      node->_type == AQL_NODE_OPERATOR_BINARY_IN) {
+  if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_NE ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LE ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_GT ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_GE ||
+      node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
     TRI_aql_attribute_name_t* field;
@@ -1653,28 +1654,28 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_t* node2; 
     TRI_aql_node_type_e operator;
 
-    if (node->_type == AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != AQL_NODE_LIST) {
+    if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
       // in is special
       return NULL;
     } 
-    if (lhs->_type == AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(rhs)) {
+    if (lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(rhs)) {
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
     }
-    else if (rhs->_type == AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(lhs)) {
+    else if (rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(lhs)) {
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
-      assert(operator != AQL_NODE_UNDEFINED);
+      assert(operator != TRI_AQL_NODE_NOP);
     }
     else {
       return NULL;
     } 
 
-    if (node2->_type != AQL_NODE_VALUE && 
-        node2->_type != AQL_NODE_LIST &&
-        node2->_type != AQL_NODE_ARRAY) {
+    if (node2->_type != TRI_AQL_NODE_VALUE && 
+        node2->_type != TRI_AQL_NODE_LIST &&
+        node2->_type != TRI_AQL_NODE_ARRAY) {
       // only the above types are supported
       return NULL;
     } 
@@ -1689,7 +1690,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, field);
        
       result = MergeVectors(context,
-                            AQL_NODE_OPERATOR_BINARY_AND,
+                            TRI_AQL_NODE_OPERATOR_BINARY_AND,
                             Vectorize(context, attributeAccess),
                             NULL,
                             inheritedRestrictions);
@@ -1700,7 +1701,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       else {
         if (TRI_ContainsImpossibleAql(result)) {
           // inject a dummy false == true node into the true if the condition is always false
-          node->_type = AQL_NODE_OPERATOR_BINARY_EQ;
+          node->_type = TRI_AQL_NODE_OPERATOR_BINARY_EQ;
           node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
           node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, true);
 
@@ -1794,7 +1795,7 @@ TRI_vector_pointer_t* TRI_CloneAccessesAql (TRI_aql_context_t* const context,
 
 void TRI_FreeAccessAql (TRI_aql_field_access_t* const fieldAccess) {
   assert(fieldAccess);
-
+  
   FreeAccessMembers(fieldAccess);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
@@ -1990,7 +1991,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
   assert(context);
   assert(candidate);
   assert(candidate->_fullName);
-
+  
   if (previous != NULL) {
     // use existing vector if already available
     accesses = previous;
@@ -2028,7 +2029,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
       assert(existing);
       TRI_FreeAccessAql(existing);
       copy = TRI_CloneAccessAql(context, candidate);
-      if (!copy) {
+      if (copy == NULL) {
         // OOM
         TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return accesses;
@@ -2042,7 +2043,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 
   if (!found) {
     // not found, now add this candidate
-    TRI_PushBackVectorPointer(accesses, TRI_CloneAccessAql(context, candidate));
+    TRI_PushBackVectorPointer(accesses, TRI_CloneAccessAql(context, candidate)); 
   }
 
   return accesses;
