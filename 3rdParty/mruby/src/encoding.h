@@ -92,7 +92,6 @@ int mrb_toupper(int c);
 
 typedef OnigEncodingType mrb_encoding;
 
-mrb_encoding* mrb_enc_get(mrb_state *mrb, mrb_value obj);
 /* mrb_encoding * -> name */
 #define mrb_enc_name(enc) (enc)->name
 int mrb_enc_get_index(mrb_state *mrb, mrb_value obj);
@@ -175,11 +174,7 @@ int mrb_enc_codelen(mrb_state *mrb, int code, mrb_encoding *enc);
 #endif //INCLUDE_ENCODING
 
 /* code,ptr,encoding -> write buf */
-#ifdef INCLUDE_ENCODING
-#define mrb_enc_mbcput(c,buf,enc) ONIGENC_CODE_TO_MBC(enc,c,(UChar*)(buf))
-#else
-#define mrb_enc_mbcput(c,buf,enc) *(buf) = (char)(c)
-#endif //INCLUDE_ENCODING
+#define mrb_enc_mbcput(c,buf,enc) ((*(buf) = (char)(c)),1)
 
 /* start, ptr, end, encoding -> prev_char */
 #define mrb_enc_prev_char(s,p,e,enc) (char *)onigenc_get_prev_char_head(enc,(UChar*)(s),(UChar*)(p),(UChar*)(e))
@@ -233,9 +228,6 @@ mrb_value mrb_enc_default_internal(mrb_state *mrb);
 void mrb_enc_set_default_external(mrb_state *mrb, mrb_value encoding);
 void mrb_enc_set_default_internal(mrb_state *mrb, mrb_value encoding);
 mrb_value mrb_locale_charmap(mrb_state *mrb, mrb_value klass);
-#ifdef INCLUDE_ENCODING
-int mrb_memsearch(mrb_state *mrb, const void*,int,const void*,int,mrb_encoding*);
-#endif //INCLUDE_ENCODING
 mrb_value mrb_usascii_str_new_cstr(mrb_state *mrb, const char *ptr);
 int mrb_str_buf_cat_escaped_char(mrb_state *mrb, mrb_value result, unsigned int c, int unicode_p);
 

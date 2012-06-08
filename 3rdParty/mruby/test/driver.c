@@ -10,7 +10,7 @@
 #include <mruby.h>
 #include <mruby/proc.h>
 #include <mruby/data.h>
-#include <compile.h>
+#include <mruby/compile.h>
 
 void
 mrb_init_mrbtest(mrb_state *);
@@ -27,33 +27,35 @@ int
 main(void)
 {
   struct mrb_parser_state *parser;
-  mrb_state *mrb_interpreter;
-  mrb_value mrb_return_value;
+  mrb_state *mrb;
+  mrb_value return_value;
   int byte_code;
+  const char *prog = "report()";
 
   print_hint();
 
   /* new interpreter instance */
-  mrb_interpreter = mrb_open();
-  mrb_init_mrbtest(mrb_interpreter);
-  parser = mrb_parse_nstring_ext(mrb_interpreter, "report()", strlen("report()"));
+  mrb = mrb_open();
+  mrb_init_mrbtest(mrb);
+  parser = mrb_parse_nstring(mrb, prog, strlen(prog));
 
   /* generate bytecode */
-  byte_code = mrb_generate_code(mrb_interpreter, parser->tree);
+  byte_code = mrb_generate_code(mrb, parser->tree);
 
   /* evaluate the bytecode */
-  mrb_return_value = mrb_run(mrb_interpreter,
+  return_value = mrb_run(mrb,
     /* pass a proc for evaulation */
-    mrb_proc_new(mrb_interpreter, mrb_interpreter->irep[byte_code]),
-    mrb_top_self(mrb_interpreter));
+    mrb_proc_new(mrb, mrb->irep[byte_code]),
+    mrb_top_self(mrb));
   /* did an exception occur? */
-  if (mrb_interpreter->exc) {
-    mrb_p(mrb_interpreter, mrb_return_value);
-    mrb_interpreter->exc = 0;
+  if (mrb->exc) {
+    mrb_p(mrb, return_value);
+    mrb->exc = 0;
   }
   else {
     /* no */
   }
+  mrb_close(mrb);
 
   return 0;
 }

@@ -184,7 +184,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
 AC_CONFIG_FILES([Makefile Doxygen/arango.template])
-AC_CONFIG_HEADER([config/config.h BasicsC/local-configuration.h])
+AC_CONFIG_HEADER([config/config.h lib/BasicsC/local-configuration.h])
 AC_OUTPUT
 
 dnl ============================================================================

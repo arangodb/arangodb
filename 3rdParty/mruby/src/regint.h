@@ -222,8 +222,13 @@
 
 #include "regenc.h"
 
+#ifndef MIN
 #define MIN(a,b) (((a)>(b))?(b):(a))
+#endif
+
+#ifndef MAX
 #define MAX(a,b) (((a)<(b))?(b):(a))
+#endif
 
 #define IS_NULL(p)                    (((void*)(p)) == (void*)0)
 #define IS_NOT_NULL(p)                (((void*)(p)) != (void*)0)
