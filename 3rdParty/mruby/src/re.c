@@ -7,16 +7,11 @@
 #include "mruby.h"
 #include <string.h>
 #include "mruby/string.h"
-#include "mruby/khash.h"
 #include "encoding.h"
 #include "re.h"
-#include "mruby/numeric.h"
-#include "mruby/range.h"
 #include "mruby/array.h"
 #include "regint.h"
 #include "mruby/class.h"
-#include "mruby/hash.h"
-#include "mruby/variable.h"
 #include "error.h"
 #ifdef INCLUDE_REGEXP
 
@@ -49,21 +44,15 @@ typedef char onig_errmsg_buffer[ONIG_MAX_ERROR_MESSAGE_LEN];
 #define mrb_bug printf
 #define KCODE_FIXED FL_USER4
 #define scan_oct(s,l,e) (int)ruby_scan_oct(s,l,e)
-unsigned long ruby_scan_oct(const char *, size_t, size_t *);
+unsigned long ruby_scan_oct(const char*, size_t, size_t*);
 #define scan_hex(s,l,e) (int)ruby_scan_hex(s,l,e)
-unsigned long ruby_scan_hex(const char *, size_t, size_t *);
+unsigned long ruby_scan_hex(const char*, size_t, size_t*);
 
 static mrb_value mrb_match_to_a(mrb_state *mrb, mrb_value match);
-int re_adjust_startpos(struct re_pattern_buffer *bufp, const char *string, int size, int startpos, int range);
-static mrb_value mrb_reg_preprocess(mrb_state *mrb, const char *p, const char *end, mrb_encoding *enc,
-        mrb_encoding **fixed_enc, onig_errmsg_buffer err);
-static void mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len,
-      mrb_encoding *enc, mrb_encoding *resenc);
+static mrb_value mrb_reg_preprocess(mrb_state *mrb, const char *p, const char *end, onig_errmsg_buffer err);
+static void mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len);
 static char * option_to_str(char str[4], int options);
-mrb_value match_alloc(mrb_state *mrb);
-void mrb_warn(const char *fmt, ...);
 
-static mrb_value reg_cache;
 //static int may_need_recompile;
 //static int reg_kcode = DEFAULT_KCODE;
 /* ------------------------------------------------------------------------- */
@@ -91,28 +80,26 @@ mrb_reg_s_new_instance(mrb_state *mrb, /*int argc, mrb_value *argv, */mrb_value 
   struct RRegexp *re;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  re = mrb_obj_alloc(mrb, MRB_TT_REGEX, REGEX_CLASS);
+  re = (struct RRegexp*)mrb_obj_alloc(mrb, MRB_TT_REGEX, REGEX_CLASS);
   re->ptr = 0;
   re->src = 0;
   re->usecnt = 0;
   return mrb_funcall_argv(mrb, mrb_obj_value(re), "initialize", argc, argv);
 }
-//#define mrb_enc_mbcput(a,b,c) a
+
 mrb_value
 mrb_reg_quote(mrb_state *mrb, mrb_value str)
 {
-  mrb_encoding *enc = mrb_enc_get(mrb, str);
   char *s, *send, *t;
   mrb_value tmp;
-  int c,clen;
-  int ascii_only = mrb_enc_str_asciionly_p(mrb, str);
+  int c;
 
   s = RSTRING_PTR(str);
   send = s + RSTRING_LEN(str);
   while (s < send) {
-    c = mrb_enc_ascget(mrb, s, send, &clen, enc);
+    c = *s;
     if (c == -1) {
-      s += mbclen(s, send, enc);
+      s += send - s;
       continue;
     }
     switch (c) {
@@ -124,38 +111,28 @@ mrb_reg_quote(mrb_state *mrb, mrb_value str)
       case '\t': case '\f': case '\n': case '\r':
         goto meta_found;
     }
-    s += clen;
+    s++;
   }
-  //tmp = mrb_str_new3(str);
   tmp = mrb_str_new(mrb, RSTRING_PTR(str), RSTRING_LEN(str));
-  if (ascii_only) {
-      mrb_enc_associate(mrb, tmp, mrb_usascii_encoding(mrb));
-  }
   return tmp;
 
 meta_found:
   tmp = mrb_str_new(mrb, 0, RSTRING_LEN(str)*2);
-  if (ascii_only) {
-    mrb_enc_associate(mrb, tmp, mrb_usascii_encoding(mrb));
-  }
-  else {
-    mrb_enc_copy(mrb, tmp, str);
-  }
   t = RSTRING_PTR(tmp);
   /* copy upto metacharacter */
   memcpy(t, RSTRING_PTR(str), s - RSTRING_PTR(str));
   t += s - RSTRING_PTR(str);
 
   while (s < send) {
-    c = mrb_enc_ascget(mrb, s, send, &clen, enc);
+    c = *s;
     if (c == -1) {
-      int n = mbclen(s, send, enc);
+      int n = send - s;
 
       while (n--)
         *t++ = *s++;
       continue;
     }
-    s += clen;
+    s++;
     switch (c) {
       case '[': case ']': case '{': case '}':
       case '(': case ')': case '|': case '-':
@@ -232,6 +209,7 @@ static mrb_value
 mrb_reg_s_quote(mrb_state *mrb, mrb_value c/*, mrb_value str*/)
 {
     mrb_value str;
+
     mrb_get_args(mrb, "o", &str);
     return mrb_reg_quote(mrb, reg_operand(mrb, str, 1/*TRUE*/));
 }
@@ -265,7 +243,7 @@ mrb_reg_nth_match(mrb_state *mrb, mrb_int nth, mrb_value match)
   if (start == -1) return mrb_nil_value();
   end = m->rmatch->regs.end[nth];
   len = end - start;
-  str = mrb_str_substr(mrb, mrb_obj_value(m->str), start, len);
+  str = mrb_str_subseq(mrb, mrb_obj_value(m->str), start, len);
 
   return str;
 }
@@ -381,75 +359,13 @@ mrb_reg_options(mrb_state *mrb, mrb_value re)
     return options;
 }
 
-static void
-reg_enc_error(mrb_state *mrb, mrb_value re, mrb_value str)
-{
-    mrb_raise(mrb, E_ENCODING_ERROR,
-         "incompatible encoding regexp match (%s regexp with %s string)",
-         mrb_enc_name(mrb_enc_get(mrb, re)),
-         mrb_enc_name(mrb_enc_get(mrb, str)));
-}
-
-static int
-mrb_reg_fixed_encoding_p(mrb_value re)
-{
-    /*if (FL_TEST(re, KCODE_FIXED))
-        return Qtrue;
-    else */
-        return 0/*Qfalse*/;
-}
-
-static mrb_encoding*
-mrb_reg_prepare_enc(mrb_state *mrb, mrb_value re, mrb_value str, int warn)
-{
-  mrb_encoding *enc = 0;
-
-  if (mrb_enc_str_coderange(mrb, str) == ENC_CODERANGE_BROKEN) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR,
-          "invalid byte sequence in %s",
-          mrb_enc_name(mrb_enc_get(mrb, str)));
-  }
-
-  mrb_reg_check(mrb, re);
-  enc = mrb_enc_get(mrb, str);
-  if (!mrb_enc_str_asciicompat_p(mrb, str)) {
-    if (RREGEXP(re)->ptr->enc != enc) {
-      reg_enc_error(mrb, re, str);
-    }
-  }
-  else if (mrb_reg_fixed_encoding_p(re)) {
-    if (RREGEXP(re)->ptr->enc != enc &&
-        (!mrb_enc_asciicompat(mrb, RREGEXP(re)->ptr->enc) ||
-         mrb_enc_str_coderange(mrb, str) != ENC_CODERANGE_7BIT)) {
-      reg_enc_error(mrb, re, str);
-    }
-    enc = RREGEXP(re)->ptr->enc;
-  }
-  if (warn && (RBASIC(re)->flags & REG_ENCODING_NONE) &&
-    enc != mrb_ascii8bit_encoding(mrb) &&
-    mrb_enc_str_coderange(mrb, str) != ENC_CODERANGE_7BIT) {
-    mrb_warn("regexp match /.../n against to %s string",
-        mrb_enc_name(enc));
-  }
-  return enc;
-}
-
 static mrb_value
 mrb_reg_desc(mrb_state *mrb, const char *s, long len, mrb_value re)
 {
-  mrb_encoding *enc = mrb_enc_get(mrb, re);
   mrb_value str = mrb_str_new_cstr(mrb, "/");//mrb_str_buf_new2("/");
-  mrb_encoding *resenc = mrb_default_internal_encoding(mrb);
-  if (resenc == NULL) resenc = mrb_default_external_encoding(mrb);
 
-  if (re.tt && mrb_enc_asciicompat(mrb, enc)) {
-    mrb_enc_copy(mrb, str, re);
-  }
-  else {
-    mrb_enc_associate(mrb, str, mrb_usascii_encoding(mrb));
-  }
-  mrb_reg_expr_str(mrb, str, s, len, enc, resenc);
-  mrb_str_buf_cat(mrb, str, "/", strlen("/"));//mrb_str_buf_cat2(str, "/");
+  mrb_reg_expr_str(mrb, str, s, len);
+  mrb_str_buf_cat(mrb, str, "/", strlen("/"));
   if (re.tt) {
     char opts[4];
     mrb_reg_check(mrb, re);
@@ -478,18 +394,14 @@ mrb_reg_prepare_re(mrb_state *mrb, mrb_value re, mrb_value str)
   OnigErrorInfo einfo;
   const char *pattern;
   mrb_value unescaped;
-  mrb_encoding *fixed_enc = 0;
-  mrb_encoding *enc = mrb_reg_prepare_enc(mrb, re, str, 1);
-
-  if (reg->enc == enc) return reg;
+  mrb_encoding *enc = mrb_ascii8bit_encoding(mrb);
 
   mrb_reg_check(mrb, re);
   reg = RREGEXP(re)->ptr;
   pattern = RREGEXP_SRC_PTR(re);
 
   unescaped = mrb_reg_preprocess(mrb,
-    pattern, pattern + RREGEXP(re)->src->len, enc,
-    &fixed_enc, err);
+    pattern, pattern + RREGEXP(re)->src->len, err);
 
   if (mrb_nil_p(unescaped)) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "regexp preprocess failed: %s", err);
@@ -677,18 +589,6 @@ ruby_scan_hex(const char *start, size_t len, size_t *retlen)
     return retval;
 }
 
-static int
-check_unicode_range(unsigned long code, onig_errmsg_buffer err)
-{
-    if ((0xd800 <= code && code <= 0xdfff) || /* Surrogates */
-        0x10ffff < code) {
-        //errcpy(err, "invalid Unicode range");
-        printf("invalid Unicode range");
-        return -1;
-    }
-    return 0;
-}
-
 #define BYTEWIDTH 8
 
 int
@@ -737,59 +637,6 @@ mrb_uv_to_utf8(mrb_state *mrb, char buf[6], unsigned long uv)
   return 0;
 }
 
-static int
-append_utf8(mrb_state *mrb, unsigned long uv,
-        mrb_value buf, mrb_encoding **encp, onig_errmsg_buffer err)
-{
-    if (check_unicode_range(uv, err) != 0)
-        return -1;
-    if (uv < 0x80) {
-        char escbuf[5];
-        snprintf(escbuf, sizeof(escbuf), "\\x%02X", (int)uv);
-        mrb_str_buf_cat(mrb, buf, escbuf, 4);
-    }
-    else {
-        int len;
-        char utf8buf[6];
-        len = mrb_uv_to_utf8(mrb, utf8buf, uv);
-        mrb_str_buf_cat(mrb, buf, utf8buf, len);
-
-        if (*encp == 0)
-            *encp = mrb_utf8_encoding(mrb);
-        else if (*encp != mrb_utf8_encoding(mrb)) {
-            //errcpy(err, "UTF-8 character in non UTF-8 regexp");
-            printf("UTF-8 character in non UTF-8 regexp");
-            return -1;
-        }
-    }
-    return 0;
-}
-
-static int
-unescape_unicode_bmp(mrb_state *mrb, const char **pp, const char *end,
-        mrb_value buf, mrb_encoding **encp, onig_errmsg_buffer err)
-{
-    const char *p = *pp;
-    size_t len;
-    unsigned long code;
-
-    if (end < p+4) {
-        //errcpy(err, "invalid Unicode escape");
-        printf("invalid Unicode escape");
-        return -1;
-    }
-    code = ruby_scan_hex(p, 4, &len);
-    if (len != 4) {
-        //errcpy(err, "invalid Unicode escape");
-        printf("invalid Unicode escape");
-        return -1;
-    }
-    if (append_utf8(mrb, code, buf, encp, err) != 0)
-        return -1;
-    *pp = p + 4;
-    return 0;
-}
-
 unsigned long
 ruby_scan_oct(const char *start, size_t len, size_t *retlen)
 {
@@ -804,400 +651,29 @@ ruby_scan_oct(const char *start, size_t len, size_t *retlen)
     return retval;
 }
 
-static int
-read_escaped_byte(const char **pp, const char *end, onig_errmsg_buffer err)
-{
-    const char *p = *pp;
-    int code;
-    int meta_prefix = 0, ctrl_prefix = 0;
-    size_t len;
-
-    if (p == end || *p++ != '\\') {
-        //errcpy(err, "too short escaped multibyte character");
-        printf("too short escaped multibyte character");
-        return -1;
-    }
-
-again:
-    if (p == end) {
-        //errcpy(err, "too short escape sequence");
-        printf("too short escape sequence");
-        return -1;
-    }
-    switch (*p++) {
-      case '\\': code = '\\'; break;
-      case 'n': code = '\n'; break;
-      case 't': code = '\t'; break;
-      case 'r': code = '\r'; break;
-      case 'f': code = '\f'; break;
-      case 'v': code = '\013'; break;
-      case 'a': code = '\007'; break;
-      case 'e': code = '\033'; break;
-
-      /* \OOO */
-      case '0': case '1': case '2': case '3':
-      case '4': case '5': case '6': case '7':
-        p--;
-        code = scan_oct(p, end < p+3 ? end-p : 3, &len);
-        p += len;
-        break;
-
-      case 'x': /* \xHH */
-        code = scan_hex(p, end < p+2 ? end-p : 2, &len);
-        if (len < 1) {
-            //errcpy(err, "invalid hex escape");
-            printf("invalid hex escape");
-            return -1;
-        }
-        p += len;
-        break;
-
-      case 'M': /* \M-X, \M-\C-X, \M-\cX */
-        if (meta_prefix) {
-            //errcpy(err, "duplicate meta escape");
-            printf("duplicate meta escape");
-            return -1;
-        }
-        meta_prefix = 1;
-        if (p+1 < end && *p++ == '-' && (*p & 0x80) == 0) {
-            if (*p == '\\') {
-                p++;
-                goto again;
-            }
-            else {
-                code = *p++;
-                break;
-            }
-        }
-        //errcpy(err, "too short meta escape");
-        printf("too short meta escape");
-        return -1;
-
-      case 'C': /* \C-X, \C-\M-X */
-        if (p == end || *p++ != '-') {
-            //errcpy(err, "too short control escape");
-            printf("too short control escape");
-            return -1;
-        }
-      case 'c': /* \cX, \c\M-X */
-        if (ctrl_prefix) {
-            //errcpy(err, "duplicate control escape");
-            printf("duplicate control escape");
-            return -1;
-        }
-        ctrl_prefix = 1;
-        if (p < end && (*p & 0x80) == 0) {
-            if (*p == '\\') {
-                p++;
-                goto again;
-            }
-            else {
-                code = *p++;
-                break;
-            }
-        }
-        //errcpy(err, "too short control escape");
-        printf("too short control escape");
-        return -1;
-
-      default:
-        //errcpy(err, "unexpected escape sequence");
-        printf("unexpected escape sequence");
-        return -1;
-    }
-    if (code < 0 || 0xff < code) {
-        //errcpy(err, "invalid escape code");
-        printf("invalid escape code");
-        return -1;
-    }
-
-    if (ctrl_prefix)
-        code &= 0x1f;
-    if (meta_prefix)
-        code |= 0x80;
-
-    *pp = p;
-    return code;
-}
-
-static int
-unescape_escaped_nonascii(mrb_state *mrb, const char **pp, const char *end, mrb_encoding *enc,
-        mrb_value buf, mrb_encoding **encp, onig_errmsg_buffer err)
-{
-    const char *p = *pp;
-    int chmaxlen = mrb_enc_mbmaxlen(enc);
-    //char *chbuf = ALLOCA_N(char, chmaxlen);
-    char *chbuf = mrb_malloc(mrb, chmaxlen);
-    int chlen = 0;
-    int byte;
-    int l;
-
-    memset(chbuf, 0, chmaxlen);
-
-    byte = read_escaped_byte(&p, end, err);
-    if (byte == -1) {
-        return -1;
-    }
-
-    chbuf[chlen++] = byte;
-    while (chlen < chmaxlen &&
-           MBCLEN_NEEDMORE_P(mrb_enc_precise_mbclen(chbuf, chbuf+chlen, enc))) {
-        byte = read_escaped_byte(&p, end, err);
-        if (byte == -1) {
-            return -1;
-        }
-        chbuf[chlen++] = byte;
-    }
-
-    l = mrb_enc_precise_mbclen(chbuf, chbuf+chlen, enc);
-    if (MBCLEN_INVALID_P(l)) {
-        //errcpy(err, "invalid multibyte escape");
-        printf("invalid multibyte escape");
-        return -1;
-    }
-    if (1 < chlen || (chbuf[0] & 0x80)) {
-        mrb_str_buf_cat(mrb, buf, chbuf, chlen);
-
-        if (*encp == 0)
-            *encp = enc;
-        else if (*encp != enc) {
-            //errcpy(err, "escaped non ASCII character in UTF-8 regexp");
-            printf("escaped non ASCII character in UTF-8 regexp");
-            return -1;
-        }
-    }
-    else {
-        char escbuf[5];
-        snprintf(escbuf, sizeof(escbuf), "\\x%02X", chbuf[0]&0xff);
-        mrb_str_buf_cat(mrb, buf, escbuf, 4);
-    }
-    *pp = p;
-    return 0;
-}
-
-static int
-unescape_unicode_list(mrb_state *mrb, const char **pp, const char *end,
-        mrb_value buf, mrb_encoding **encp, onig_errmsg_buffer err)
-{
-    const char *p = *pp;
-    int has_unicode = 0;
-    unsigned long code;
-    size_t len;
-
-    while (p < end && ISSPACE(*p)) p++;
-
-    while (1) {
-        code = ruby_scan_hex(p, end-p, &len);
-        if (len == 0)
-            break;
-        if (6 < len) { /* max 10FFFF */
-            //errcpy(err, "invalid Unicode range");
-            printf("invalid Unicode range");
-            return -1;
-        }
-        p += len;
-        if (append_utf8(mrb, code, buf, encp, err) != 0)
-            return -1;
-        has_unicode = 1;
-
-        while (p < end && ISSPACE(*p)) p++;
-    }
-
-    if (has_unicode == 0) {
-        //errcpy(err, "invalid Unicode list");
-        printf("invalid Unicode list");
-        return -1;
-    }
-
-    *pp = p;
-
-    return 0;
-}
-
-static int
-unescape_nonascii(mrb_state *mrb, const char *p, const char *end, mrb_encoding *enc,
-        mrb_value buf, mrb_encoding **encp, int *has_property,
-        onig_errmsg_buffer err)
-{
-    char c;
-    char smallbuf[2];
-
-    while (p < end) {
-        int chlen = mrb_enc_precise_mbclen(p, end, enc);
-        if (!MBCLEN_CHARFOUND_P(chlen)) {
-            //errcpy(err, "invalid multibyte character");
-            printf("invalid multibyte character");
-            return -1;
-        }
-        chlen = MBCLEN_CHARFOUND_LEN(chlen);
-        if (1 < chlen || (*p & 0x80)) {
-            mrb_str_buf_cat(mrb, buf, p, chlen);
-            p += chlen;
-            if (*encp == 0)
-                *encp = enc;
-            else if (*encp != enc) {
-                //errcpy(err, "non ASCII character in UTF-8 regexp");
-                printf("non ASCII character in UTF-8 regexp");
-                return -1;
-            }
-            continue;
-        }
-
-        switch (c = *p++) {
-          case '\\':
-            if (p == end) {
-                //errcpy(err, "too short escape sequence");
-                printf("too short escape sequence");
-                return -1;
-            }
-            switch (c = *p++) {
-              case '1': case '2': case '3':
-              case '4': case '5': case '6': case '7': /* \O, \OO, \OOO or backref */
-                {
-                    size_t octlen;
-                    if (ruby_scan_oct(p-1, end-(p-1), &octlen) <= 0177) {
-                        /* backref or 7bit octal.
-                           no need to unescape anyway.
-                           re-escaping may break backref */
-                        goto escape_asis;
-                    }
-                }
-                /* xxx: How about more than 199 subexpressions? */
-
-              case '0': /* \0, \0O, \0OO */
-
-              case 'x': /* \xHH */
-              case 'c': /* \cX, \c\M-X */
-              case 'C': /* \C-X, \C-\M-X */
-              case 'M': /* \M-X, \M-\C-X, \M-\cX */
-                p = p-2;
-                if (unescape_escaped_nonascii(mrb, &p, end, enc, buf, encp, err) != 0)
-                    return -1;
-                break;
-
-              case 'u':
-                if (p == end) {
-                    //errcpy(err, "too short escape sequence");
-                    printf("too short escape sequence");
-                    return -1;
-                }
-                if (*p == '{') {
-                    /* \u{H HH HHH HHHH HHHHH HHHHHH ...} */
-                    p++;
-                    if (unescape_unicode_list(mrb, &p, end, buf, encp, err) != 0)
-                        return -1;
-                    if (p == end || *p++ != '}') {
-                        //errcpy(err, "invalid Unicode list");
-                        printf("invalid Unicode list");
-                        return -1;
-                    }
-                    break;
-                }
-                else {
-                    /* \uHHHH */
-                    if (unescape_unicode_bmp(mrb, &p, end, buf, encp, err) != 0)
-                        return -1;
-                    break;
-                }
-
-              case 'p': /* \p{Hiragana} */
-              case 'P':
-                if (!*encp) {
-                    *has_property = 1;
-                }
-                goto escape_asis;
-
-              default: /* \n, \\, \d, \9, etc. */
-escape_asis:
-                smallbuf[0] = '\\';
-                smallbuf[1] = c;
-                mrb_str_buf_cat(mrb, buf, smallbuf, 2);
-                break;
-            }
-            break;
-
-          default:
-            mrb_str_buf_cat(mrb, buf, &c, 1);
-            break;
-        }
-    }
-
-    return 0;
-}
-
-
 static mrb_value
-mrb_reg_preprocess(mrb_state *mrb, const char *p, const char *end, mrb_encoding *enc,
-        mrb_encoding **fixed_enc, onig_errmsg_buffer err)
+mrb_reg_preprocess(mrb_state *mrb, const char *p, const char *end, onig_errmsg_buffer err)
 {
-    mrb_value buf;
-    int has_property = 0;
-
-    //buf = mrb_str_buf_new(0);
-    buf = mrb_str_buf_new(mrb, 0);
-
-    if (mrb_enc_asciicompat(mrb, enc))
-        *fixed_enc = 0;
-    else {
-        *fixed_enc = enc;
-        mrb_enc_associate(mrb, buf, enc);
-    }
-
-    if (unescape_nonascii(mrb, p, end, enc, buf, fixed_enc, &has_property, err) != 0)
-        return mrb_nil_value();
-
-    if (has_property && !*fixed_enc) {
-        *fixed_enc = enc;
-    }
-
-    if (*fixed_enc) {
-        mrb_enc_associate(mrb, buf, *fixed_enc);
-    }
-
-    return buf;
+  return mrb_nil_value();
 }
 
 static int
-mrb_reg_initialize(mrb_state *mrb, mrb_value obj, const char *s, long len, mrb_encoding *enc,
+mrb_reg_initialize(mrb_state *mrb, mrb_value obj, const char *s, long len, 
       int options, onig_errmsg_buffer err,
       const char *sourcefile, int sourceline)
 {
   struct RRegexp *re = RREGEXP(obj);
   mrb_value unescaped;
-  mrb_encoding *fixed_enc = 0;
-  mrb_encoding *a_enc = mrb_ascii8bit_encoding(mrb);
+  mrb_encoding *enc = mrb_ascii8bit_encoding(mrb);
   if (re->ptr)
     mrb_raise(mrb, E_TYPE_ERROR, "already initialized regexp");
   re->ptr = 0;
 
-  if (mrb_enc_dummy_p(enc)) {
-    //errcpy(err, "can't make regexp with dummy encoding");
-    printf("can't make regexp with dummy encoding");
-    return -1;
-  }
-
-  unescaped = mrb_reg_preprocess(mrb, s, s+len, enc, &fixed_enc, err);
+  unescaped = mrb_reg_preprocess(mrb, s, s+len, err);
   if (mrb_nil_p(unescaped))
     return -1;
 
-  if (fixed_enc) {
-    if ((fixed_enc != enc && (options & ARG_ENCODING_FIXED)) ||
-        (fixed_enc != a_enc && (options & ARG_ENCODING_NONE))) {
-      //errcpy(err, "incompatible character encoding");
-      printf("incompatible character encoding");
-      return -1;
-    }
-    if (fixed_enc != a_enc) {
-      options |= ARG_ENCODING_FIXED;
-      enc = fixed_enc;
-    }
-  }
-  else if (!(options & ARG_ENCODING_FIXED)) {
-    enc = mrb_usascii_encoding(mrb);
-  }
-
-  mrb_enc_associate(mrb, mrb_obj_value(re), enc);
-  if ((options & ARG_ENCODING_FIXED) || fixed_enc) {
+  if ((options & ARG_ENCODING_FIXED)) {
     //re->basic.flags |= KCODE_FIXED;
     re->flags|= KCODE_FIXED;
   }
@@ -1209,7 +685,7 @@ mrb_reg_initialize(mrb_state *mrb, mrb_value obj, const char *s, long len, mrb_e
       options & ARG_REG_OPTION_MASK, err,
       sourcefile, sourceline);
   if (!re->ptr) return -1;
-  re->src = mrb_str_ptr(mrb_enc_str_new(mrb, s, len, enc));
+  re->src = mrb_str_ptr(mrb_str_new(mrb, s, len));
 
   return 0;
 }
@@ -1219,8 +695,8 @@ mrb_reg_initialize_str(mrb_state *mrb, mrb_value obj, mrb_value str, int options
     const char *sourcefile, int sourceline)
 {
   int ret;
-  mrb_encoding *enc = mrb_enc_get(mrb, str);
 
+#if 0
   if (options & ARG_ENCODING_NONE) {
       mrb_encoding *ascii8bit = mrb_ascii8bit_encoding(mrb);
       if (enc != ascii8bit) {
@@ -1232,8 +708,9 @@ mrb_reg_initialize_str(mrb_state *mrb, mrb_value obj, mrb_value str, int options
           enc = ascii8bit;
       }
   }
+#endif
 
-  ret = mrb_reg_initialize(mrb, obj, RSTRING_PTR(str), RSTRING_LEN(str), enc,
+  ret = mrb_reg_initialize(mrb, obj, RSTRING_PTR(str), RSTRING_LEN(str), 
         options, err, sourcefile, sourceline);
 
   return ret;
@@ -1269,7 +746,6 @@ mrb_reg_initialize_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value se
   onig_errmsg_buffer err = "";
   int flags = 0;
   mrb_value str;
-  mrb_encoding *enc;
   const char *ptr;
   long len;
 
@@ -1288,10 +764,7 @@ mrb_reg_initialize_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value se
     flags = mrb_reg_options(mrb, re);
     ptr = RREGEXP_SRC_PTR(re);
     len = RREGEXP_SRC_LEN(re);
-    enc = mrb_enc_get(mrb, re);
-    if (mrb_reg_initialize(mrb, self, ptr, len, enc, flags, err, NULL, 0)) {
-        /*str = mrb_enc_str_new(mrb, ptr, len, enc);
-          mrb_reg_raise_str(str, flags, err);*/
+    if (mrb_reg_initialize(mrb, self, ptr, len, flags, err, NULL, 0)) {
         printf("mrb_reg_raise_str(str, flags, err);");
     }
   }
@@ -1300,12 +773,10 @@ mrb_reg_initialize_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value se
       if (mrb_type(argv[1]) == MRB_TT_FIXNUM) flags = mrb_fixnum(argv[1]);
       else if (mrb_test(argv[1])) flags = ONIG_OPTION_IGNORECASE;
     }
-    enc = 0;
     if (argc == 3 && !mrb_nil_p(argv[2])) {
       //char *kcode = StringValuePtr(argv[2]);
       char *kcode = mrb_string_value_ptr(mrb, argv[2]);
       if (kcode[0] == 'n' || kcode[0] == 'N') {
-        enc = mrb_ascii8bit_encoding(mrb);
         flags |= ARG_ENCODING_NONE;
       }
       else {
@@ -1316,9 +787,7 @@ mrb_reg_initialize_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value se
     str = argv[0];
     //ptr = StringValuePtr(str);
     ptr = mrb_string_value_ptr(mrb, str);
-    if (enc
-       ? mrb_reg_initialize(mrb, self, ptr, RSTRING_LEN(str), enc, flags, err, NULL, 0)
-       : mrb_reg_initialize_str(mrb, self, str, flags, err, NULL, 0)) {
+    if (mrb_reg_initialize_str(mrb, self, str, flags, err, NULL, 0)) {
        //mrb_reg_raise_str(str, flags, err);
     }
   }
@@ -1348,7 +817,7 @@ mrb_reg_init_copy(mrb_state *mrb, mrb_value re/*, mrb_value copy*/)
   mrb_reg_check(mrb, copy);
   s = RREGEXP_SRC_PTR(copy);
   len = RREGEXP_SRC_LEN(copy);
-  if (mrb_reg_initialize(mrb, re, s, len, mrb_enc_get(mrb, copy), mrb_reg_options(mrb, copy),
+  if (mrb_reg_initialize(mrb, re, s, len, mrb_reg_options(mrb, copy),
       err, 0/*NULL*/, 0) != 0) {
     mrb_reg_raise(mrb, s, len, err, re);
   }
@@ -1523,6 +992,7 @@ mrb_value
 mrb_reg_match(mrb_state *mrb, mrb_value re/*, mrb_value str*/)
 {
   mrb_value str;
+
   mrb_get_args(mrb, "o", &str);
   return mrb_reg_match_str(mrb, re, str);
 }
@@ -1585,7 +1055,7 @@ mrb_reg_match_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value re)
   long pos;
 
   //if (mrb_scan_args(argc, argv, "11", &str, &initpos) == 2) {
-  mrb_get_args(mrb, "&*", &b, &argv, &argc);
+  mrb_get_args(mrb, "*&", &argv, &argc, &b);
   if (argc == 2) {
     initpos = argv[1];
     pos = mrb_fixnum(initpos);
@@ -1629,7 +1099,7 @@ mrb_reg_source(mrb_state *mrb, mrb_value re)
     mrb_value str;
 
     mrb_reg_check(mrb, re);
-    str = mrb_enc_str_new(mrb, RREGEXP_SRC_PTR(re),RREGEXP_SRC_LEN(re), mrb_enc_get(mrb, re));
+    str = mrb_str_new(mrb, RREGEXP_SRC_PTR(re),RREGEXP_SRC_LEN(re));
     return str;
 }
 
@@ -1668,7 +1138,7 @@ match_alloc(mrb_state *mrb)
 {
   struct RMatch* m;
 
-  m = mrb_obj_alloc(mrb, MRB_TT_MATCH, MATCH_CLASS);
+  m = (struct RMatch*)mrb_obj_alloc(mrb, MRB_TT_MATCH, MATCH_CLASS);
 
   m->str    = 0;
   m->rmatch = 0;
@@ -1758,23 +1228,12 @@ typedef struct {
     long char_pos;
 } pair_t;
 
-static int
-pair_byte_cmp(const void *pair1, const void *pair2)
-{
-    long diff = ((pair_t*)pair1)->byte_pos - ((pair_t*)pair2)->byte_pos;
-    return diff ? diff > 0 ? 1 : -1 : 0;
-}
-
 static void
 update_char_offset(mrb_state *mrb, mrb_value match)
 {
     struct rmatch *rm = RMATCH(match)->rmatch;
     struct re_registers *regs;
-    int i, num_regs, num_pos;
-    long c;
-    char *s, *p, *q;
-    mrb_encoding *enc;
-    pair_t *pairs;
+    int i, num_regs;
 
     if (rm->char_offset_updated)
         return;
@@ -1788,55 +1247,12 @@ update_char_offset(mrb_state *mrb, mrb_value match)
         rm->char_offset_num_allocated = num_regs;
     }
 
-    enc = mrb_enc_get(mrb, mrb_obj_value(RMATCH(match)->str));
-    if (mrb_enc_mbmaxlen(enc) == 1) {
-        for (i = 0; i < num_regs; i++) {
-            rm->char_offset[i].beg = BEG(i);
-            rm->char_offset[i].end = END(i);
-        }
-        rm->char_offset_updated = 1;
-        return;
-    }
-
-    //pairs = ALLOCA_N(pair_t, num_regs*2);
-    pairs = mrb_malloc(mrb, sizeof(pair_t)*num_regs*2);
-
-    num_pos = 0;
     for (i = 0; i < num_regs; i++) {
-        if (BEG(i) < 0)
-            continue;
-        pairs[num_pos++].byte_pos = BEG(i);
-        pairs[num_pos++].byte_pos = END(i);
+      rm->char_offset[i].beg = BEG(i);
+      rm->char_offset[i].end = END(i);
     }
-    qsort(pairs, num_pos, sizeof(pair_t), pair_byte_cmp);
-
-    s = p = RMATCH(match)->str->buf;
-    c = 0;
-    for (i = 0; i < num_pos; i++) {
-        q = s + pairs[i].byte_pos;
-        c += mrb_enc_strlen(p, q, enc);
-        pairs[i].char_pos = c;
-        p = q;
-    }
-
-    for (i = 0; i < num_regs; i++) {
-        pair_t key, *found;
-        if (BEG(i) < 0) {
-            rm->char_offset[i].beg = -1;
-            rm->char_offset[i].end = -1;
-            continue;
-        }
-
-        key.byte_pos = BEG(i);
-        found = bsearch(&key, pairs, num_pos, sizeof(pair_t), pair_byte_cmp);
-        rm->char_offset[i].beg = found->char_pos;
-
-        key.byte_pos = END(i);
-        found = bsearch(&key, pairs, num_pos, sizeof(pair_t), pair_byte_cmp);
-        rm->char_offset[i].end = found->char_pos;
-    }
-
     rm->char_offset_updated = 1;
+    return;
 }
 
 /* 15.2.16.3.2  */
@@ -2236,49 +1652,36 @@ option_to_str(char str[4], int options)
 #define CHAR_ESC_LEN 13 /* sizeof(\x{ hex of 32bit unsigned int } \0) */
 
 static void
-mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len,
-      mrb_encoding *enc, mrb_encoding *resenc)
+mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len)
 {
   const char *p, *pend;
   int need_escape = 0;
-  int c, clen;
+  int c;
 
   p = s; pend = p + len;
-  if (mrb_enc_asciicompat(mrb, enc)) {
-    while (p < pend) {
-      c = mrb_enc_ascget(mrb, p, pend, &clen, enc);
-      if (c == -1) {
-        if (enc == resenc) {
-            p += mbclen(p, pend, enc);
-        }
-        else {
-            need_escape = 1;
-            break;
-        }
-      }
-      else if (c != '/' && mrb_enc_isprint(c, enc)) {
-        p += clen;
-      }
-      else {
-        need_escape = 1;
-        break;
-      }
+  while (p < pend) {
+    c = *p;
+    if (c == -1) {
+      p += pend - p;
     }
-  }
-  else {
-    need_escape = 1;
+    else if (c != '/' && ISPRINT(c)) {
+      p++;
+    }
+    else {
+      need_escape = 1;
+      break;
+    }
   }
 
   if (!need_escape) {
     mrb_str_buf_cat(mrb, str, s, len);
   }
   else {
-    int unicode_p = mrb_enc_unicode_p(enc);
     p = s;
     while (p<pend) {
-        c = mrb_enc_ascget(mrb, p, pend, &clen, enc);
-      if (c == '\\' && p+clen < pend) {
-        int n = clen + mbclen(p+clen, pend, enc);
+      c = *p;
+      if (c == '\\' && p+1 < pend) {
+        int n = 1 + pend - (p+1);
         mrb_str_buf_cat(mrb, str, p, n);
         p += n;
         continue;
@@ -2286,38 +1689,21 @@ mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len,
       else if (c == '/') {
         char c = '\\';
         mrb_str_buf_cat(mrb, str, &c, 1);
-        mrb_str_buf_cat(mrb, str, p, clen);
+        mrb_str_buf_cat(mrb, str, p, 1);
       }
-      else if (c == -1) {
-        clen = mrb_enc_precise_mbclen(p, pend, enc);
-        if (!MBCLEN_CHARFOUND_P(clen)) {
-          c = (unsigned char)*p;
-          clen = 1;
-          goto hex;
-        }
-        if (resenc) {
-          unsigned int c = mrb_enc_mbc_to_codepoint(p, pend, enc);
-          mrb_str_buf_cat_escaped_char(mrb, str, c, unicode_p);
-        }
-        else {
-          clen = MBCLEN_CHARFOUND_LEN(clen);
-          mrb_str_buf_cat(mrb, str, p, clen);
-        }
+      else if (ISPRINT(c)) {
+        mrb_str_buf_cat(mrb, str, p, 1);
       }
-      else if (mrb_enc_isprint(c, enc)) {
-        mrb_str_buf_cat(mrb, str, p, clen);
-      }
-      else if (!mrb_enc_isspace(c, enc)) {
+      else if (!ISSPACE(c)) {
         char b[8];
 
-        hex:
         snprintf(b, sizeof(b), "\\x%02X", c);
         mrb_str_buf_cat(mrb, str, b, 4);
       }
       else {
-        mrb_str_buf_cat(mrb, str, p, clen);
+        mrb_str_buf_cat(mrb, str, p, 1);
       }
-      p += clen;
+      p++;
     }
   }
 }
@@ -2356,7 +1742,6 @@ mrb_reg_to_s(mrb_state *mrb, mrb_value re)
 
   mrb_reg_check(mrb, re);
   memset(optbuf, 0, 5);
-  mrb_enc_copy(mrb, str, re);
   options = RREGEXP(re)->ptr->options;
   ptr = (UChar*)RREGEXP_SRC_PTR(re);
   len = RREGEXP_SRC_LEN(re);
@@ -2400,7 +1785,7 @@ again:
 
         ++ptr;
         len -= 2;
-            err = onig_new(&rp, ptr, ptr + len, ONIG_OPTION_DEFAULT,
+	err = onig_new(&rp, ptr, ptr + len, ONIG_OPTION_DEFAULT,
                enc, OnigDefaultSyntax, NULL);
         onig_free(rp);
     }
@@ -2420,9 +1805,8 @@ again:
   }
 
   mrb_str_buf_cat(mrb, str, ":", strlen(":"));
-  mrb_reg_expr_str(mrb, str, (char*)ptr, len, enc, NULL);
+  mrb_reg_expr_str(mrb, str, (char*)ptr, len);
   mrb_str_buf_cat(mrb, str, ")", strlen(")"));
-  mrb_enc_copy(mrb, str, re);
 
   return str;
 }
@@ -2456,7 +1840,7 @@ mrb_reg_s_alloc(mrb_state *mrb, mrb_value dummy)
 
   //NEWOBJ(re, struct RRegexp);
   //OBJSETUP(re, klass, T_REGEXP);
-  re = mrb_obj_alloc(mrb, MRB_TT_REGEX, REGEX_CLASS);
+  re = (struct RRegexp*)mrb_obj_alloc(mrb, MRB_TT_REGEX, REGEX_CLASS);
 
   re->ptr = 0;
   re->src = 0;
@@ -2509,7 +1893,7 @@ static int
 match_inspect_name_iter(const OnigUChar *name, const OnigUChar *name_end,
           int back_num, int *back_refs, OnigRegex regex, void *arg0)
 {
-    struct backref_name_tag *arg = (struct backref_name_tag *)arg0;
+    struct backref_name_tag *arg = (struct backref_name_tag*)arg0;
     int i;
 
     for (i = 0; i < back_num; i++) {
@@ -2551,11 +1935,11 @@ mrb_match_inspect(mrb_state *mrb, mrb_value match)
         mrb_str_buf_cat(mrb, str, " ", strlen(" "));//mrb_str_buf_cat2(str, " ");
         if (0 < i) {
             if (names[i].name)
-                mrb_str_buf_cat(mrb, str, (const char *)names[i].name, names[i].len);
+                mrb_str_buf_cat(mrb, str, (const char*)names[i].name, names[i].len);
             else {
                 //mrb_str_catf(mrb, str, "%d", i);
                 sprintf(buf, "%d", i);
-                mrb_str_buf_cat(mrb, str, (const char *)buf, strlen(buf));
+                mrb_str_buf_cat(mrb, str, (const char*)buf, strlen(buf));
             }
             mrb_str_buf_cat(mrb, str, ":", strlen(":"));//mrb_str_buf_cat2(str, ":");
         }
@@ -2664,8 +2048,6 @@ mrb_init_regexp(mrb_state *mrb)
     mrb_define_const(mrb, s, "MULTILINE", mrb_fixnum_value(ONIG_OPTION_MULTILINE));
     mrb_define_const(mrb, s, "FIXEDENCODING", mrb_fixnum_value(ARG_ENCODING_FIXED));
 
-    //mrb_global_variable(&reg_cache);
-
     s = mrb_define_class(mrb, "MatchData", mrb->object_class);
     //mrb_undef_method(CLASS_OF(rb_cMatch), "new");
 
@@ -2706,27 +2088,23 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
 {
   mrb_value val;
   char *p, *s, *e;
-    int no, clen;
-    mrb_encoding *str_enc = mrb_enc_get(mrb, str);
-    mrb_encoding *src_enc = mrb_enc_get(mrb, src);
-    int acompat = mrb_enc_asciicompat(mrb, str_enc);
-#define ASCGET(mrb,s,e,cl) (acompat ? (*cl=1,ISASCII(s[0])?s[0]:-1) : mrb_enc_ascget(mrb, s, e, cl, str_enc))
   struct RString *ps = mrb_str_ptr(str);
+  int no;
 
   val.tt = 0;
   p = s = ps->buf;
   e = s + ps->len;
 
   while (s < e) {
-    int c = ASCGET(mrb, s, e, &clen);
+    int c = *s;
     char *ss;
 
     if (c == -1) {
-      s += mbclen(s, e, str_enc);
+      s += e - s;
       continue;
     }
     ss = s;
-    s += clen;
+    s++;
 
     if (c != '\\' || s == e) continue;
 
@@ -2734,16 +2112,16 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
     if (!val.tt) {
       val = mrb_str_buf_new(mrb, ss-p);
     }
-    mrb_enc_str_buf_cat(mrb, val, p, ss-p, str_enc);
+    mrb_str_buf_cat(mrb, val, p, ss-p);
 
-    c = ASCGET(mrb, s, e, &clen);
+    c = *s;
     if (c == -1) {
-      s += mbclen(s, e, str_enc);
-      mrb_enc_str_buf_cat(mrb, val, ss, s-ss, str_enc);
+      s += e - s;
+      mrb_str_buf_cat(mrb, val, ss, s-ss);
       p = s;
       continue;
     }
-    s += clen;
+    s++;
 
     p = s;
     switch (c) {
@@ -2758,18 +2136,18 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
         break;
 
       case 'k':
-        if (s < e && ASCGET(mrb, s, e, &clen) == '<') {
+        if (s < e && *s == '<') {
             char *name, *name_end;
 
-            name_end = name = s + clen;
+            name_end = name = s + 1;
             while (name_end < e) {
-                c = ASCGET(mrb, name_end, e, &clen);
+                c = *name_end;
                 if (c == '>') break;
-                name_end += c == -1 ? mbclen(name_end, e, str_enc) : clen;
+                name_end += c == -1 ? e - name_end : 1;
             }
             if (name_end < e) {
 	        no = name_to_backref_number(mrb, regs, RREGEXP(regexp), name, name_end);
-                p = s = name_end + clen;
+                p = s = name_end + 1;
                 break;
             }
             else {
@@ -2777,7 +2155,7 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
             }
         }
 
-        mrb_enc_str_buf_cat(mrb, val, ss, s-ss, str_enc);
+        mrb_str_buf_cat(mrb, val, ss, s-ss);
         continue;
 
       case '0':
@@ -2786,11 +2164,11 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
         break;
 
       case '`':
-        mrb_enc_str_buf_cat(mrb, val, RSTRING_PTR(src), BEG(0), src_enc);
+        mrb_str_buf_cat(mrb, val, RSTRING_PTR(src), BEG(0));
         continue;
 
       case '\'':
-        mrb_enc_str_buf_cat(mrb, val, RSTRING_PTR(src)+END(0), RSTRING_LEN(src)-END(0), src_enc);
+        mrb_str_buf_cat(mrb, val, RSTRING_PTR(src)+END(0), RSTRING_LEN(src)-END(0));
         continue;
 
       case '+':
@@ -2800,31 +2178,29 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
         break;
 
       case '\\':
-        mrb_enc_str_buf_cat(mrb, val, s-clen, clen, str_enc);
+        mrb_str_buf_cat(mrb, val, s-1, 1);
         continue;
 
       default:
-        mrb_enc_str_buf_cat(mrb, val, ss, s-ss, str_enc);
+        mrb_str_buf_cat(mrb, val, ss, s-ss);
         continue;
     }
 
     if (no >= 0) {
         if (no >= regs->num_regs) continue;
         if (BEG(no) == -1) continue;
-        mrb_enc_str_buf_cat(mrb, val, RSTRING_PTR(src)+BEG(no), END(no)-BEG(no), src_enc);
+        mrb_str_buf_cat(mrb, val, RSTRING_PTR(src)+BEG(no), END(no)-BEG(no));
     }
   } /* while (s < e) { */
 
 
   if (!val.tt) return str;
   if (p < e) {
-    mrb_enc_str_buf_cat(mrb, val, p, e-p, str_enc);
+    mrb_str_buf_cat(mrb, val, p, e-p);
   }
   return val;
 }
 
-//#define NEW_NODE(t,a0,a1,a2) mrb_node_newnode((t),(int)(a0),(int)(a1),(int)(a2))
-//#define NEW_IF(c,t,e) NEW_NODE(NODE_IF,c,t,e)
 static inline NODE *
 lfp_svar_place(mrb_state *mrb, /*mrb_thread_t *th,*/ mrb_value *lfp)
 {
@@ -3039,9 +2415,6 @@ mrb_memsearch(mrb_state *mrb, const void *x0, int m, const void *y0, int n, mrb_
     }
     return -1;
   }
-  else if (enc == mrb_utf8_encoding(mrb)) {
-    return mrb_memsearch_qs_utf8(x0, m, y0, n);
-  }
   else {
     return mrb_memsearch_qs(x0, m, y0, n);
   }
@@ -3078,12 +2451,7 @@ mrb_reg_new_str(mrb_state *mrb, mrb_value s, int options)
 mrb_value
 mrb_reg_regcomp(mrb_state *mrb, mrb_value str)
 {
-  mrb_value save_str = str;
-  if (reg_cache.tt && RREGEXP_SRC_LEN(reg_cache) == RSTRING_LEN(str)
-      && ENCODING_GET(mrb, reg_cache) == ENCODING_GET(mrb, str)
-      && memcmp(RREGEXP_SRC_PTR(reg_cache), RSTRING_PTR(str), RSTRING_LEN(str)) == 0)
-      return reg_cache;
-  return reg_cache = mrb_reg_new_str(mrb, save_str, 0);
+  return mrb_reg_new_str(mrb, str, 0);
 }
 
 int
@@ -3144,7 +2512,7 @@ is_special_global_name(const char *m, const char *e, mrb_encoding *enc)
         ++m;
         if (m < e && is_identchar(m, e, enc)) {
             if (!ISASCII(*m)) mb = 1;
-            m += mrb_enc_mbclen(m, e, enc);
+            m += e - m;
         }
         break;
       default:
@@ -3229,7 +2597,7 @@ mrb_enc_symname2_p(const char *name, long len, mrb_encoding *enc)
 id:
         if (m >= e || (*m != '_' && !mrb_enc_isalpha(*m, enc) && ISASCII(*m)))
             return FALSE;
-        while (m < e && is_identchar(m, e, enc)) m += mrb_enc_mbclen(m, e, enc);
+        while (m < e && is_identchar(m, e, enc)) m += e - m;
         if (localid) {
             switch (*m) {
               case '!': case '?': case '=': ++m;

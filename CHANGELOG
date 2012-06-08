@@ -1,0 +1,22 @@
+1.0.alpha2 (2012-06-??)
+-----------------------
+
+* fixed issue #100: "count" attribute exists in cursor response with "count: false"
+
+* fixed issue #103: Should we cleanup the directory structure
+
+* added new MRuby version (2012-06-02)
+
+* cleanup of command line options:
+** --startup.directory => --javascript.startup-directory
+** --quite => --quiet
+** --gc.interval => --javascript.gc-interval
+** --startup.modules-path => --javascript.modules-path
+** --action.system-directory => --javascript.action-directory
+** --javascript.action-threads
+
+
+1.0.alpha1 (2012-05-28)
+-----------------------
+
+Alpha Release of ArangoDB 1.0

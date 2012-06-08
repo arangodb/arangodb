@@ -10,9 +10,6 @@
 #include "mruby/string.h"
 #include "mruby/class.h"
 
-mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mrb_value, int),
-                                   mrb_value obj, mrb_value paired_obj, void* arg);
-
 //#define ARY_DEFAULT_LEN  16
 #define ARY_DEFAULT_LEN   4
 #define ARY_SHRINK_RATIO  5 /* must be larger than 2 */
@@ -30,8 +27,8 @@ ary_elt(mrb_value ary, long offset)
   return RARRAY_PTR(ary)[offset];
 }
 
-mrb_value
-mrb_ary_new_capa(mrb_state *mrb, size_t capa)
+static struct RArray*
+ary_new_capa(mrb_state *mrb, size_t capa)
 {
   struct RArray *a;
   size_t blen;
@@ -49,12 +46,19 @@ mrb_ary_new_capa(mrb_state *mrb, size_t capa)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "ary size too big");
   }
 
-  a = mrb_obj_alloc(mrb, MRB_TT_ARRAY, mrb->array_class);
+  a = (struct RArray*)mrb_obj_alloc(mrb, MRB_TT_ARRAY, mrb->array_class);
   a->buf = mrb_malloc(mrb, blen);
   memset(a->buf, 0, blen);
   a->capa = capa;
   a->len = 0;
 
+  return a;
+}
+
+mrb_value
+mrb_ary_new_capa(mrb_state *mrb, size_t capa)
+{
+  struct RArray *a = ary_new_capa(mrb, capa);
   return mrb_obj_value(a);
 }
 
@@ -65,7 +69,7 @@ mrb_ary_new(mrb_state *mrb)
 }
 
 mrb_value
-mrb_ary_new_from_values(mrb_state *mrb, mrb_value *vals, size_t size)
+mrb_ary_new_from_values(mrb_state *mrb, size_t size, mrb_value *vals)
 {
   mrb_value ary;
   struct RArray *a;
@@ -84,7 +88,7 @@ mrb_assoc_new(mrb_state *mrb, mrb_value car, mrb_value cdr)
   mrb_value arv[2];
   arv[0] = car;
   arv[1] = cdr;
-  return mrb_ary_new_from_values(mrb, arv, 2);
+  return mrb_ary_new_from_values(mrb, 2, arv);
 }
 
 void
@@ -156,7 +160,7 @@ mrb_ary_s_create(mrb_state *mrb, mrb_value self)
   int len;
 
   mrb_get_args(mrb, "*", &vals, &len);
-  return mrb_ary_new_from_values(mrb, vals, (size_t)len);
+  return mrb_ary_new_from_values(mrb, (size_t)len, vals);
 }
 
 void
@@ -177,10 +181,7 @@ mrb_ary_concat_m(mrb_state *mrb, mrb_value self)
 {
   mrb_value other;
 
-  mrb_get_args(mrb, "o", &other);
-  if (mrb_type(other) != MRB_TT_ARRAY) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "expected Array");
-  }
+  mrb_get_args(mrb, "A", &other);
   mrb_ary_concat(mrb, self, other);
   return self;
 }
@@ -193,11 +194,7 @@ mrb_ary_plus(mrb_state *mrb, mrb_value self)
   mrb_value other;
   mrb_value ary;
 
-  mrb_get_args(mrb, "o", &other);
-  if (mrb_type(other) != MRB_TT_ARRAY) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "expected Array");
-  }
-
+  mrb_get_args(mrb, "A", &other);
   ary = mrb_ary_new_capa(mrb, a1->len + RARRAY_LEN(other));
   a2 = mrb_ary_ptr(ary);
   memcpy(a2->buf, a1->buf, sizeof(mrb_value)*a1->len);
@@ -205,25 +202,6 @@ mrb_ary_plus(mrb_state *mrb, mrb_value self)
   a2->len = a1->len + RARRAY_LEN(other);
 
   return ary;
-}
-
-static mrb_value
-recursive_cmp(mrb_state *mrb, mrb_value ary1, mrb_value ary2, int recur)
-{
-  long i, len;
-
-  if (recur) return mrb_undef_value(); /* Subtle! */
-  len = RARRAY_LEN(ary1);
-  if (len > RARRAY_LEN(ary2)) {
-    len = RARRAY_LEN(ary2);
-  }
-
-  for (i=0; i<len; i++) {
-    mrb_value r = mrb_funcall(mrb, ary_elt(ary1, i), "<=>", 1, ary_elt(ary2, i));
-    if (mrb_type(r) != MRB_TT_FIXNUM || mrb_fixnum(r) != 0) return r;
-  }
-
-  return mrb_undef_value();
 }
 
 /*
@@ -249,15 +227,23 @@ mrb_ary_cmp(mrb_state *mrb, mrb_value ary1)
 {
   mrb_value ary2;
   struct RArray *a1, *a2;
-  mrb_value r;
-  long len;
+  mrb_value r = mrb_nil_value();
+  long i, len;
 
   mrb_get_args(mrb, "o", &ary2);
   if (mrb_type(ary2) != MRB_TT_ARRAY) return mrb_nil_value();
   a1 = RARRAY(ary1); a2 = RARRAY(ary2);
   if (a1->len == a2->len && a1->buf == a2->buf) return mrb_fixnum_value(0);
-  r = mrb_exec_recursive_paired(mrb, recursive_cmp, ary1, ary2, &ary2);
-  if (mrb_type(r) != MRB_TT_UNDEF) return r;
+  else {
+    len = RARRAY_LEN(ary1);
+    if (len > RARRAY_LEN(ary2)) {
+      len = RARRAY_LEN(ary2);
+    }
+    for (i=0; i<len; i++) {
+      r = mrb_funcall(mrb, ary_elt(ary1, i), "<=>", 1, ary_elt(ary2, i));
+      if (mrb_type(r) != MRB_TT_FIXNUM || mrb_fixnum(r) != 0) return r;
+    }
+  }
   len = a1->len - a2->len;
   return mrb_fixnum_value((len == 0)? 0: (len > 0)? 1: -1);
 }
@@ -576,7 +562,7 @@ mrb_ary_aget(mrb_state *mrb, mrb_value self)
     if ((len = mrb_fixnum(argv[0])) < 0) return mrb_nil_value();
     if (a->len == (size_t)index) return mrb_ary_new(mrb);
     if ((size_t)len > a->len - index) len = a->len - index;
-    return mrb_ary_new_from_values(mrb, a->buf + index, len);
+    return mrb_ary_new_from_values(mrb, len, a->buf + index);
 
   default:
     mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments");
@@ -661,7 +647,7 @@ mrb_ary_first(mrb_state *mrb, mrb_value self)
   /* len == 1 */
   size = mrb_fixnum(*vals);
   if (size > a->len) size = a->len;
-  return mrb_ary_new_from_values(mrb, a->buf, size);
+  return mrb_ary_new_from_values(mrb, size, a->buf);
 }
 
 mrb_value
@@ -683,7 +669,7 @@ mrb_ary_last(mrb_state *mrb, mrb_value self)
   /* len == 1 */
   size = mrb_fixnum(*vals);
   if (size > a->len) size = a->len;
-  return mrb_ary_new_from_values(mrb, a->buf + a->len - size, size);
+  return mrb_ary_new_from_values(mrb, size, a->buf + a->len - size);
 }
 
 mrb_value
@@ -723,7 +709,7 @@ mrb_ary_splat(mrb_state *mrb, mrb_value v)
     return v;
   }
   else {
-    return mrb_ary_new_from_values(mrb, &v, 1);
+    return mrb_ary_new_from_values(mrb, 1, &v);
   }
 }
 
@@ -924,35 +910,10 @@ mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
 static mrb_value
 mrb_ary_join_m(mrb_state *mrb, mrb_value ary)
 {
-  mrb_value *argv;
-  int argc;
+  mrb_value sep = mrb_nil_value();
 
-  mrb_get_args(mrb, "*", &argv, &argc);
-  switch(argc) {
-  case 0:
-    return mrb_ary_join(mrb, ary, mrb_nil_value());
-
-  case 1:
-    return mrb_ary_join(mrb, ary, argv[0]);
-
-  default:
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments");
-  }
-
-  return mrb_nil_value(); /* dummy */
-}
-
-static mrb_value
-recursive_equal(mrb_state *mrb, mrb_value ary1, mrb_value ary2, int recur)
-{
-  long i;
-
-  if (recur) return mrb_true_value(); /* Subtle! */
-  for (i=0; i<RARRAY_LEN(ary1); i++) {
-    if (!mrb_equal(mrb, ary_elt(ary1, i), ary_elt(ary2, i)))
-        return mrb_false_value();
-  }
-  return mrb_true_value();
+  mrb_get_args(mrb, "|o", &sep);
+  return mrb_ary_join(mrb, ary, sep);
 }
 
 /* 15.2.12.5.33 (x) */
@@ -989,20 +950,15 @@ mrb_ary_equal(mrb_state *mrb, mrb_value ary1)
     }
   }
   if (RARRAY_LEN(ary1) != RARRAY_LEN(ary2)) return mrb_false_value();
-  return mrb_exec_recursive_paired(mrb, recursive_equal, ary1, ary2, &ary2);
-}
+  else {
+    long i;
 
-static mrb_value
-recursive_eql(mrb_state *mrb, mrb_value ary1, mrb_value ary2, int recur)
-{
-  long i;
-
-  if (recur) return mrb_true_value(); /* Subtle! */
-  for (i=0; i<RARRAY_LEN(ary1); i++) {
-    if (!mrb_eql(mrb, ary_elt(ary1, i), ary_elt(ary2, i)))
-      return mrb_false_value();
+    for (i=0; i<RARRAY_LEN(ary1); i++) {
+      if (!mrb_equal(mrb, ary_elt(ary1, i), ary_elt(ary2, i)))
+        return mrb_false_value();
+    }
+    return mrb_true_value();
   }
-  return mrb_true_value();
 }
 
 /* 15.2.12.5.34 (x) */
@@ -1020,10 +976,18 @@ mrb_ary_eql(mrb_state *mrb, mrb_value ary1)
   mrb_value ary2;
 
   mrb_get_args(mrb, "o", &ary2);
-  if (mrb_obj_equal(mrb, ary1,ary2)) return mrb_true_value();
+  if (mrb_obj_equal(mrb, ary1, ary2)) return mrb_true_value();
   if (mrb_type(ary2) != MRB_TT_ARRAY) return mrb_false_value();
   if (RARRAY_LEN(ary1) != RARRAY_LEN(ary2)) return mrb_false_value();
-  return mrb_exec_recursive_paired(mrb, recursive_eql, ary1, ary2, &ary2);
+  else {
+    long i;
+
+    for (i=0; i<RARRAY_LEN(ary1); i++) {
+      if (!mrb_eql(mrb, ary_elt(ary1, i), ary_elt(ary2, i)))
+	return mrb_false_value();
+    }
+    return mrb_true_value();
+  }
 }
 
 void

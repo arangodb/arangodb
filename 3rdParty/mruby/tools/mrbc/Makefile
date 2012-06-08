@@ -5,7 +5,7 @@
 # extension of the executable-file is modifiable(.exe .out ...)
 BASEDIR := ../../src
 TARGET := ../../bin/mrbc
-LIBR := ../../lib/libmruby.a
+LIBR := ../../lib/libmruby_core.a
 ifeq ($(OS),Windows_NT)
 EXE := $(TARGET).exe
 else
@@ -23,12 +23,9 @@ LIBS = -lm
 INCLUDES = -I$(BASEDIR) -I$(BASEDIR)/../include
 
 # compiler, linker (gcc)
-CC = gcc
-LL = gcc
-YACC = bison
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g -O3
+CFLAGS = -g
 else
 CFLAGS = -O3
 endif
@@ -38,6 +35,7 @@ ifeq ($(OS),Windows_NT)
 else
   MAKE_FLAGS = CC='$(CC)' LL='$(LL)' ALL_CFLAGS='$(ALL_CFLAGS)'
 endif
+
 
 ##############################
 # generic build targets, rules
@@ -63,5 +61,5 @@ $(LIBR) :
 .PHONY : clean
 clean :
 	@echo "make: removing targets, objects and depend files of `pwd`"
-	-rm -f $(EXE) $(OBJS)
-	-rm -f $(OBJS:.o=.d)
+	-$(RM_F) $(EXE) $(OBJS)
+	-$(RM_F) $(OBJS:.o=.d)

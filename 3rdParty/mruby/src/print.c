@@ -38,20 +38,6 @@ mrb_p(mrb_state *mrb, mrb_value obj)
 
 /* 15.3.1.2.9  */
 /* 15.3.1.3.34 */
-static mrb_value
-p_m(mrb_state *mrb, mrb_value self)
-{
-  int argc, i;
-  mrb_value *argv = NULL;
-
-  mrb_get_args(mrb, "*", &argv, &argc);
-  for (i=0; i<argc; i++) {
-    mrb_p(mrb, argv[i]);
-  }
-
-  return argv ? argv[0] : mrb_nil_value();
-}
-
 mrb_value
 mrb_printstr(mrb_state *mrb, mrb_value self)
 {
@@ -71,5 +57,17 @@ mrb_init_print(mrb_state *mrb)
   krn = mrb->kernel_module;
 
   mrb_define_method(mrb, krn, "__printstr__", mrb_printstr, ARGS_REQ(1));
-  mrb_define_method(mrb, krn, "p",  p_m, ARGS_ANY());    /* 15.3.1.3.34 */
+}
+
+
+void
+mrb_show_version(mrb_state *mrb)
+{
+  printf("mruby - Embeddable Ruby  Copyright (c) 2010-2012 mruby developers\n");
+}
+
+void
+mrb_show_copyright(mrb_state *mrb)
+{
+  printf("mruby - Copyright (c) 2010-2012 mruby developers\n");
 }
