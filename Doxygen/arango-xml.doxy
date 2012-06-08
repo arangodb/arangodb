@@ -627,20 +627,21 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
-	./Admin \
-	./Ahuacatl \
-	./ApplicationServer \
-	./Basics \
-	./BasicsC \
 	./Doxygen/js \
-	./Logger \
-	./Rest \
-	./RestHandler \
-	./RestServer \
-	./ShapedJson \
-	./UserManager \
-	./V8 \
-	./VocBase
+	./arangod/Ahuacatl \
+	./arangod/RestHandler \
+	./arangod/RestServer \
+	./arangod/V8Server \
+	./arangod/VocBase \
+	./lib/Admin \
+	./lib/ApplicationServer \
+	./lib/Basics \
+	./lib/BasicsC \
+	./lib/Logger \
+	./lib/Rest \
+	./lib/ShapedJson \
+	./lib/UserManager \
+	./lib/V8 \
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -671,9 +672,9 @@ RECURSIVE              = YES
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = \
-	./V8/v8-json.h \
-	./V8/v8-json.cpp \
-	./Ahuacatl/ahuacatl-tokens.c
+	./lib/V8/v8-json.h \
+	./lib/V8/v8-json.cpp \
+	./arangod/Ahuacatl/ahuacatl-tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded

@@ -912,14 +912,12 @@ DOXYGEN = \
 ### @brief wiki pages
 ################################################################################
 WIKI = \
-	Actions \
 	ArangoErrors \
 	CommandLine \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
 	Compiling \
-	DBAdmin \
 	DbaManual \
 	DbaManualBasics \
 	DefineAction \
