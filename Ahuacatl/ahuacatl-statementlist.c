@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, general AST walking
+/// @brief Ahuacatl, statement list
 ///
 /// @file
 ///
@@ -25,29 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_TREE_WALKER_H
-#define TRIAGENS_DURHAM_AHUACATL_TREE_WALKER_H 1
-
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/json.h>
-
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-context.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Ahuacatl/ahuacatl-statementlist.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            modifiying tree walker
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                  private members
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,21 +37,77 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for node visitation function
-////////////////////////////////////////////////////////////////////////////////
-  
-typedef TRI_aql_node_t* (*TRI_aql_node_modify_visit_f)(void*, TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tree walker container
+/// @brief dummy no-operations node (re-used for ALL non-operations)}
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_modify_tree_walker_s {
-  void* _data;
+static TRI_aql_node_t NopNode;
 
-  TRI_aql_node_modify_visit_f visitFunc;
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the statement at position <position>
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_aql_node_t* StatementAt (const TRI_aql_statement_list_t* const list,
+                                           const size_t position) {
+  return (TRI_aql_node_t*) TRI_AtVectorPointer(&list->_statements, position);
 }
-TRI_aql_modify_tree_walker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @} 
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create and initialize a statement list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_statement_list_t* TRI_CreateStatementListAql (void) {
+  TRI_aql_statement_list_t* list;
+
+  list = (TRI_aql_statement_list_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_statement_list_t), false);
+
+  if (list == NULL) {
+    return NULL;
+  }
+
+  TRI_InitVectorPointer(&list->_statements, TRI_UNKNOWN_MEM_ZONE);
+  list->_currentLevel = 0;
+
+  return list;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a statement list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
+  if (list == NULL) {
+    return;
+  }
+
+  TRI_DestroyVectorPointer(&list->_statements);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -86,112 +123,135 @@ TRI_aql_modify_tree_walker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a tree walker
+/// @brief init the no-op node at program start
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_modify_tree_walker_t* TRI_CreateModifyTreeWalkerAql (void*, 
-                                                             TRI_aql_node_modify_visit_f);
+void TRI_InitStatementListAql (void) {
+  NopNode._type = TRI_AQL_NODE_NOP;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a tree walker
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeModifyTreeWalkerAql (TRI_aql_modify_tree_walker_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run the tree walk
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_ModifyWalkTreeAql (TRI_aql_modify_tree_walker_t* const, TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 const tree walker
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for node visitation function
-////////////////////////////////////////////////////////////////////////////////
-  
-typedef void (*TRI_aql_tree_const_visit_f)(void*, const TRI_aql_node_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for recursion function
-////////////////////////////////////////////////////////////////////////////////
-  
-typedef void (*TRI_aql_tree_recurse_f)(void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tree walker container
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_const_tree_walker_s {
-  void* _data;
-
-  TRI_aql_tree_const_visit_f preVisitFunc;
-  TRI_aql_tree_const_visit_f postVisitFunc;
-  TRI_aql_tree_recurse_f preRecurseFunc;
-  TRI_aql_tree_recurse_f postRecurseFunc;
+  TRI_InitVectorPointer(&NopNode._members, TRI_UNKNOWN_MEM_ZONE);
 }
-TRI_aql_const_tree_walker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief get the address of the non-op node
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a tree walker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_const_tree_walker_t* TRI_CreateConstTreeWalkerAql (void*, 
-                                                           TRI_aql_tree_const_visit_f,
-                                                           TRI_aql_tree_const_visit_f,
-                                                           TRI_aql_tree_recurse_f,
-                                                           TRI_aql_tree_recurse_f);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a tree walker
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeConstTreeWalkerAql (TRI_aql_const_tree_walker_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run the tree walk
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ConstWalkTreeAql (TRI_aql_const_tree_walker_t* const, 
-                           const TRI_aql_node_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
+TRI_aql_node_t* TRI_GetNopNodeAql (void) {
+  return &NopNode;
 }
-#endif
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a statement to the statement list
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddStatementListAql (TRI_aql_statement_list_t* const list,
+                              TRI_aql_node_t* const node) {
+  TRI_aql_node_type_e type;
+  int result;
+
+  assert(list);
+  assert(node);
+
+  type = node->_type;
+  assert(TRI_IsTopLevelTypeAql(type));
+
+  if (type == TRI_AQL_NODE_SCOPE_START) {
+    ++list->_currentLevel;
+  }
+  else if (type == TRI_AQL_NODE_SCOPE_END) {
+    assert(list->_currentLevel > 0);
+    --list->_currentLevel;
+  }
+
+  result = TRI_PushBackVectorPointer(&list->_statements, node);
+
+  return result == TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all non-ops from the statement list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
+  size_t i, j, n;
+
+
+  assert(list);
+
+  j = 0;
+  n = list->_statements._length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_node_t* node = StatementAt(list, i);
+
+    if (node->_type == TRI_AQL_NODE_NOP) {
+      continue;
+    }
+
+    if (i == j) {
+      ++j;
+      continue;
+    }
+
+    list->_statements._buffer[j++] = node;
+  }
+
+  list->_statements._length = j;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all statements in current scope and subscopes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
+                                     const size_t position) {
+  size_t i, n;
+  size_t level;
+
+  assert(list);
+  n = list->_statements._length;
+
+  // remove from position backwards to scope start
+  i = position;
+  while (true) {
+    TRI_aql_node_t* node = StatementAt(list, i);
+    TRI_aql_node_type_e type = node->_type;
+
+    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+
+    if (type == TRI_AQL_NODE_SCOPE_START || i-- == 0) {
+      break;
+    }
+  }
+
+  // remove from position forwards to scope end
+  level = 1;
+  i = position;
+  while (true) {
+    TRI_aql_node_t* node = StatementAt(list, i);
+    TRI_aql_node_type_e type = node->_type;
+    
+    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+
+    if (type == TRI_AQL_NODE_SCOPE_START) {
+      ++level;
+    }
+    else if (type == TRI_AQL_NODE_SCOPE_END) {
+      assert(level > 0);
+      if (--level == 0) {
+        break;
+      }
+    }
+
+    if (++i == n) {
+      break;
+    }
+  }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

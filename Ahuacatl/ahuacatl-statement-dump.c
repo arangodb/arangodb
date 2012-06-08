@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, AST dump functions
+/// @brief Ahuacatl, statement dump functions
 ///
 /// @file
 ///
@@ -25,7 +25,9 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-tree-dump.h"
+#include "Ahuacatl/ahuacatl-statement-dump.h"
+#include "Ahuacatl/ahuacatl-functions.h"
+#include "Ahuacatl/ahuacatl-statement-walker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -74,22 +76,22 @@ static void DumpValue (TRI_aql_dump_t* const state, const TRI_aql_node_t* const 
   PrintIndent(state);
 
   switch (node->_value._type) {
-    case AQL_TYPE_FAIL:
+    case TRI_AQL_TYPE_FAIL:
       printf("fail\n");
       break;
-    case AQL_TYPE_NULL:
+    case TRI_AQL_TYPE_NULL:
       printf("null\n");
       break;
-    case AQL_TYPE_BOOL:
+    case TRI_AQL_TYPE_BOOL:
       printf("bool (%lu)\n", (unsigned long) TRI_AQL_NODE_BOOL(node));
       break;
-    case AQL_TYPE_INT:
+    case TRI_AQL_TYPE_INT:
       printf("int (%ld)\n", (long) TRI_AQL_NODE_INT(node));
       break;
-    case AQL_TYPE_DOUBLE:
+    case TRI_AQL_TYPE_DOUBLE:
       printf("double (%f)\n", TRI_AQL_NODE_DOUBLE(node));
       break;
-    case AQL_TYPE_STRING:
+    case TRI_AQL_TYPE_STRING:
       printf("string (%s)\n", TRI_AQL_NODE_STRING(node));
       break;
   }
@@ -115,40 +117,39 @@ static void Outdent (void* data) {
   assert(state->_indent > 0);
   --state->_indent;
 }
-        
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DumpNode (void* data, const TRI_aql_node_t* const node) {
+static TRI_aql_node_t* DumpNode (void* data, TRI_aql_node_t* const node) {
   TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
 
-  if (!node) {
-    return;
+  if (node == NULL) {
+    return node;
   }
 
   PrintType(state, node->_type);
   Indent(state);
 
   switch (node->_type) {
-    case AQL_NODE_VALUE: 
+    case TRI_AQL_NODE_VALUE: 
       DumpValue(state, node);
       break;
 
-    case AQL_NODE_VARIABLE:
-    case AQL_NODE_ATTRIBUTE:
-    case AQL_NODE_REFERENCE:
-    case AQL_NODE_PARAMETER:
-    case AQL_NODE_ARRAY_ELEMENT:
-    case AQL_NODE_ATTRIBUTE_ACCESS:
+    case TRI_AQL_NODE_VARIABLE:
+    case TRI_AQL_NODE_ATTRIBUTE:
+    case TRI_AQL_NODE_REFERENCE:
+    case TRI_AQL_NODE_PARAMETER:
+    case TRI_AQL_NODE_ARRAY_ELEMENT:
+    case TRI_AQL_NODE_ATTRIBUTE_ACCESS:
       DumpString(state, node);
       break;
-    case AQL_NODE_FCALL:
+    case TRI_AQL_NODE_FCALL:
       printf("name: %s\n", TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
       break;
 
-    case AQL_NODE_SORT_ELEMENT:
+    case TRI_AQL_NODE_SORT_ELEMENT:
       PrintIndent(state);
       printf("asc/desc: %lu\n", (unsigned long) TRI_AQL_NODE_BOOL(node));
       break;
@@ -159,7 +160,37 @@ static void DumpNode (void* data, const TRI_aql_node_t* const node) {
   }
 
   Outdent(state);
+
+  return node;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump a statement
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* DumpStatementStart (void* data, TRI_aql_node_t* const node) {
+  if (node == NULL) {
+    return node;
+  }
+
+  Indent((TRI_aql_dump_t*) data);
+
+  return DumpNode(data, node);
+}      
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump an AST node
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* DumpStatementEnd (void* data, TRI_aql_node_t* const node) {
+  if (node == NULL) {
+    return node;
+  }
+
+  Outdent((TRI_aql_dump_t*) data);
+
+  return node;
+}      
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @} 
@@ -175,23 +206,27 @@ static void DumpNode (void* data, const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump AST nodes recursively
+/// @brief dump statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpTreeAql (const TRI_aql_node_t* const node) {
-  TRI_aql_const_tree_walker_t* walker;
+void TRI_DumpStatementsAql (TRI_aql_statement_list_t* const statements) {
+  TRI_aql_statement_walker_t* walker;
   TRI_aql_dump_t state;
 
   state._indent = 0;
 
-  walker = TRI_CreateConstTreeWalkerAql((void*) &state, &DumpNode, NULL, &Indent, &Outdent); 
-  if (!walker) {
+  walker = TRI_CreateStatementWalkerAql((void*) &state, 
+                                        false,
+                                        &DumpNode, 
+                                        &DumpStatementStart, 
+                                        &DumpStatementEnd); 
+  if (walker == NULL) {
     return;
   }
 
-  TRI_ConstWalkTreeAql(walker, node); 
+  TRI_WalkStatementsAql(walker, statements);
 
-  TRI_FreeConstTreeWalkerAql(walker);
+  TRI_FreeStatementWalkerAql(walker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

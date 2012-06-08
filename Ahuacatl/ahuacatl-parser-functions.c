@@ -27,6 +27,7 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -56,8 +57,16 @@ bool TRI_InitParserAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
   
 bool TRI_ParseAql (TRI_aql_context_t* const context) {
+  if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_MAIN)) {
+    return false;
+  }
+
   if (Ahuacatlparse(context)) {
     // lexing/parsing failed
+    return false;
+  }
+
+  if (!TRI_EndScopeAql(context)) {
     return false;
   }
 

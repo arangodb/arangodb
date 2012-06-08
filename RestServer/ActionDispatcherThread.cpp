@@ -186,9 +186,12 @@ void ActionDispatcherThread::run () {
   
   // free memory 
   TRI_FreeActionsVocBase();
-
+  
   _context->Exit();
   _context.Dispose();
+  
+  while (!v8::V8::IdleNotification()) {
+  }
  
   _isolate->Exit();
   _isolate->Dispose();
