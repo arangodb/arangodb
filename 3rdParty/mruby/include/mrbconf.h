@@ -22,10 +22,10 @@ typedef intptr_t mrb_sym;
 #define readint(p,base) strtol((p),NULL,(base))
 
 #undef  INCLUDE_ENCODING   /* not use encoding classes (ascii only) */
-#define INCLUDE_ENCODING   /* use UTF-8 encoding classes */
+//#define INCLUDE_ENCODING   /* use UTF-8 encoding classes */
 
 #undef  INCLUDE_REGEXP     /* not use regular expression classes */
-#define INCLUDE_REGEXP     /* use regular expression classes */
+//#define INCLUDE_REGEXP     /* use regular expression classes */
 
 #ifdef  INCLUDE_REGEXP
 # define INCLUDE_ENCODING  /* Regexp depends Encoding */

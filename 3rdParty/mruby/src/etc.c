@@ -23,9 +23,9 @@ mrb_data_object_alloc(mrb_state *mrb, struct RClass *klass, void *ptr, const str
 {
   struct RData *data;
 
-  data = mrb_obj_alloc(mrb, MRB_TT_DATA, klass);
+  data = (struct RData*)mrb_obj_alloc(mrb, MRB_TT_DATA, klass);
   data->data = ptr;
-  data->type = (struct mrb_data_type *) type;
+  data->type = (struct mrb_data_type*) type;
 
   return data;
 }
@@ -67,6 +67,7 @@ mrb_lastline_get(mrb_state *mrb)
   //return mrb_nil_value();
   mrb_value *argv;
   int argc;
+
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc < 1) {
     return mrb_nil_value();

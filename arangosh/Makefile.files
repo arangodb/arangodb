@@ -1,0 +1,38 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                           PROGRAM
+################################################################################
+
+################################################################################
+### @brief program "arangosh"
+################################################################################
+
+bin_arangosh_CPPFLAGS = -I@top_srcdir@/arangosh $(AM_CPPFLAGS) 
+bin_arangosh_LDADD = lib/libarango_v8.a lib/libarango_client.a lib/libarango.a $(LIBS) @V8_LIBS@
+
+bin_arangosh_SOURCES = \
+	arangosh/V8Client/ImportHelper.cpp \
+	arangosh/V8Client/V8ClientConnection.cpp \
+	arangosh/V8Client/arangosh.cpp
+
+################################################################################
+### @brief program "arangoimp"
+################################################################################
+
+bin_arangoimp_CPPFLAGS = -I@top_srcdir@/arangosh $(AM_CPPFLAGS) 
+bin_arangoimp_LDADD = lib/libarango_v8.a lib/libarango_client.a lib/libarango.a $(LIBS) @V8_LIBS@
+
+bin_arangoimp_SOURCES = \
+	arangosh/V8Client/ImportHelper.cpp \
+	arangosh/V8Client/V8ClientConnection.cpp \
+	arangosh/V8Client/arangoimp.cpp
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

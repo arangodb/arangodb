@@ -9047,7 +9047,7 @@ if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-05-16 (a3a9d136aa4835eb50f4be92fbbce1ad503ec4c7)"
+  TRI_MRUBY_VERSION="2012-06-02 (92f192521865137c7e457b4a54c5df4ad2fbb049)"
 
 
 cat >>confdefs.h <<_ACEOF
@@ -9464,7 +9464,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 
 ac_config_files="$ac_config_files Makefile Doxygen/arango.template"
 
-ac_config_headers="$ac_config_headers config/config.h BasicsC/local-configuration.h"
+ac_config_headers="$ac_config_headers config/config.h lib/BasicsC/local-configuration.h"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -10312,7 +10312,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "Doxygen/arango.template") CONFIG_FILES="$CONFIG_FILES Doxygen/arango.template" ;;
     "config/config.h") CONFIG_HEADERS="$CONFIG_HEADERS config/config.h" ;;
-    "BasicsC/local-configuration.h") CONFIG_HEADERS="$CONFIG_HEADERS BasicsC/local-configuration.h" ;;
+    "lib/BasicsC/local-configuration.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/BasicsC/local-configuration.h" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

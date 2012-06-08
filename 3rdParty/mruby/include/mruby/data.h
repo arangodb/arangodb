@@ -4,13 +4,12 @@
 ** See Copyright Notice in mruby.h
 */
 
-#ifndef RUBY_DATA_H
-#define RUBY_DATA_H 1
+#ifndef MRUBY_DATA_H
+#define MRUBY_DATA_H 1
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
 
 struct mrb_data_type {
   const char *struct_name;
@@ -48,4 +47,4 @@ void *mrb_check_datatype(mrb_state *mrb, mrb_value, const struct mrb_data_type*)
 }  /* extern "C" { */
 #endif
 
-#endif /* RUBY_DATA_H */
+#endif /* MRUBY_DATA_H */

@@ -7,6 +7,10 @@
 #ifndef MRUBY_CLASS_H
 #define MRUBY_CLASS_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 struct RClass {
   MRUBY_OBJECT_HEADER;
   struct kh_iv *iv;
@@ -51,7 +55,7 @@ mrb_class(mrb_state *mrb, mrb_value v)
     return mrb->nil_class; /* not reach */
 #endif
   default:
-    return ((struct RBasic*)mrb_object(v))->c;
+    return mrb_object(v)->c;
   }
 }
 
@@ -70,10 +74,12 @@ struct RClass *mrb_class_outer_module(mrb_state*, struct RClass *);
 struct RProc *mrb_method_search_vm(mrb_state*, struct RClass**, mrb_sym);
 struct RProc *mrb_method_search(mrb_state*, struct RClass*, mrb_sym);
 
-int mrb_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym mid);
-int mrb_obj_is_instance_of(mrb_state *mrb, mrb_value obj, struct RClass* c);
 struct RClass* mrb_class_real(struct RClass* cl);
 
 void mrb_obj_call_init(mrb_state *mrb, mrb_value obj, int argc, mrb_value *argv);
+
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
 
 #endif  /* MRUBY_CLASS_H */

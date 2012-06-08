@@ -317,8 +317,8 @@ str_end_cmp(st_data_t xp, st_data_t yp)
   const UChar *p, *q;
   int c;
 
-  x = (const st_str_end_key *)xp;
-  y = (const st_str_end_key *)yp;
+  x = (const st_str_end_key*)xp;
+  y = (const st_str_end_key*)yp;
   if ((x->end - x->s) != (y->end - y->s))
     return 1;
 
@@ -337,7 +337,7 @@ str_end_cmp(st_data_t xp, st_data_t yp)
 static st_index_t
 str_end_hash(st_data_t xp)
 {
-  const st_str_end_key *x = (const st_str_end_key *)xp;
+  const st_str_end_key *x = (const st_str_end_key*)xp;
   const UChar *p;
   st_index_t val = 0;
 
@@ -416,7 +416,7 @@ typedef st_data_t HashDataType;   /* 1.6 st.h doesn't define st_data_t type */
 #define NAMEBUF_SIZE_1  25
 
 #ifdef ONIG_DEBUG
-static int
+static enum st_retval
 i_print_name_entry(UChar* key, NameEntry* e, void* arg)
 {
   int i;
@@ -451,7 +451,7 @@ onig_print_names(FILE* fp, regex_t* reg)
 }
 #endif /* ONIG_DEBUG */
 
-static int
+static enum st_retval
 i_free_name_entry(UChar* key, NameEntry* e, void* arg ARG_UNUSED)
 {
   xfree(e->name);
@@ -508,7 +508,7 @@ typedef struct {
   OnigEncoding enc;
 } INamesArg;
 
-static int
+static enum st_retval
 i_names(UChar* key ARG_UNUSED, NameEntry* e, INamesArg* arg)
 {
   int r = (*(arg->func))(e->name,
@@ -541,7 +541,7 @@ onig_foreach_name(regex_t* reg,
   return narg.ret;
 }
 
-static int
+static enum st_retval
 i_renumber_name(UChar* key ARG_UNUSED, NameEntry* e, GroupNumRemap* map)
 {
   int i;
@@ -1151,7 +1151,7 @@ node_new_cclass(void)
 }
 
 static Node*
-node_new_cclass_by_codepoint_range(int not, OnigCodePoint sb_out,
+node_new_cclass_by_codepoint_range(int is_not, OnigCodePoint sb_out,
                                    const OnigCodePoint ranges[])
 {
   int n, i;
@@ -1162,7 +1162,7 @@ node_new_cclass_by_codepoint_range(int not, OnigCodePoint sb_out,
   CHECK_NULL_RETURN(node);
 
   cc = NCCLASS(node);
-  if (not != 0) NCCLASS_SET_NOT(cc);
+  if (is_not != 0) NCCLASS_SET_NOT(cc);
 
   BITSET_CLEAR(cc->bs);
   if (sb_out > 0 && IS_NOT_NULL(ranges)) {
@@ -1201,14 +1201,14 @@ node_new_cclass_by_codepoint_range(int not, OnigCodePoint sb_out,
 }
 
 static Node*
-node_new_ctype(int type, int not)
+node_new_ctype(int type, int is_not)
 {
   Node* node = node_new();
   CHECK_NULL_RETURN(node);
 
   SET_NTYPE(node, NT_CTYPE);
-  NCTYPE(node)->ctype = type;
-  NCTYPE(node)->not   = not;
+  NCTYPE(node)->ctype  = type;
+  NCTYPE(node)->is_not = is_not;
   return node;
 }
 
@@ -2285,7 +2285,7 @@ typedef struct {
     } call;
     struct {
       int ctype;
-      int not;
+      int is_not;
     } prop;
   } u;
 } OnigToken;
@@ -2799,12 +2799,12 @@ onig_syntax_warn(ScanEnv *env, const char *fmt, ...)
     va_start(args, fmt);
     onig_vsnprintf_with_pattern(buf, WARN_BUFSIZE, env->enc,
                 env->pattern, env->pattern_end,
-                (const UChar *)fmt, args);
+                (const UChar*)fmt, args);
     va_end(args);
     if (env->sourcefile == NULL)
-      mrb_warn("%s", (char *)buf);
+      mrb_warn("%s", (char*)buf);
     else
-      mrb_compile_warn(env->sourcefile, env->sourceline, "%s", (char *)buf);
+      mrb_compile_warn(env->sourcefile, env->sourceline, "%s", (char*)buf);
 }
 
 static void
@@ -2954,45 +2954,45 @@ fetch_token_in_cc(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
     switch (c) {
     case 'w':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_W;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_W;
+      tok->u.prop.is_not = 0;
       break;
     case 'W':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_W;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_W;
+      tok->u.prop.is_not = 1;
       break;
     case 'd':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_D;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_D;
+      tok->u.prop.is_not = 0;
       break;
     case 'D':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_D;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_D;
+      tok->u.prop.is_not = 1;
       break;
     case 's':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_S;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_S;
+      tok->u.prop.is_not = 0;
       break;
     case 'S':
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_S;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_S;
+      tok->u.prop.is_not = 1;
       break;
     case 'h':
       if (! IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_H_XDIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_XDIGIT;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_XDIGIT;
+      tok->u.prop.is_not = 0;
       break;
     case 'H':
       if (! IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_H_XDIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_XDIGIT;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_XDIGIT;
+      tok->u.prop.is_not = 1;
       break;
 
     case 'p':
@@ -3002,12 +3002,12 @@ fetch_token_in_cc(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
           IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_P_BRACE_CHAR_PROPERTY)) {
         PINC;
         tok->type = TK_CHAR_PROPERTY;
-        tok->u.prop.not = (c == 'P' ? 1 : 0);
+        tok->u.prop.is_not = (c == 'P' ? 1 : 0);
 
         if (IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_P_BRACE_CIRCUMFLEX_NOT)) {
           PFETCH(c2);
           if (c2 == '^') {
-            tok->u.prop.not = (tok->u.prop.not == 0 ? 1 : 0);
+            tok->u.prop.is_not = (tok->u.prop.is_not == 0 ? 1 : 0);
           }
           else
             PUNFETCH;
@@ -3244,15 +3244,15 @@ fetch_token(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
     case 'w':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_W_WORD)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_W;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_W;
+      tok->u.prop.is_not = 0;
       break;
 
     case 'W':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_W_WORD)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_W;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_W;
+      tok->u.prop.is_not = 1;
       break;
 
     case 'b':
@@ -3284,43 +3284,43 @@ fetch_token(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
     case 's':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_S_WHITE_SPACE)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_S;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_S;
+      tok->u.prop.is_not = 0;
       break;
 
     case 'S':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_S_WHITE_SPACE)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_S;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_S;
+      tok->u.prop.is_not = 1;
       break;
 
     case 'd':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_D_DIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_D;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_D;
+      tok->u.prop.is_not = 0;
       break;
 
     case 'D':
       if (! IS_SYNTAX_OP(syn, ONIG_SYN_OP_ESC_D_DIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_D;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_D;
+      tok->u.prop.is_not = 1;
       break;
 
     case 'h':
       if (! IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_H_XDIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_XDIGIT;
-      tok->u.prop.not   = 0;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_XDIGIT;
+      tok->u.prop.is_not = 0;
       break;
 
     case 'H':
       if (! IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_H_XDIGIT)) break;
       tok->type = TK_CHAR_TYPE;
-      tok->u.prop.ctype = ONIGENC_CTYPE_XDIGIT;
-      tok->u.prop.not   = 1;
+      tok->u.prop.ctype  = ONIGENC_CTYPE_XDIGIT;
+      tok->u.prop.is_not = 1;
       break;
 
     case 'A':
@@ -3574,12 +3574,12 @@ fetch_token(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
           IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_P_BRACE_CHAR_PROPERTY)) {
         PINC;
         tok->type = TK_CHAR_PROPERTY;
-        tok->u.prop.not = (c == 'P' ? 1 : 0);
+        tok->u.prop.is_not = (c == 'P' ? 1 : 0);
 
         if (IS_SYNTAX_OP2(syn, ONIG_SYN_OP2_ESC_P_BRACE_CIRCUMFLEX_NOT)) {
           PFETCH(c);
           if (c == '^') {
-            tok->u.prop.not = (tok->u.prop.not == 0 ? 1 : 0);
+            tok->u.prop.is_not = (tok->u.prop.is_not == 0 ? 1 : 0);
           }
           else
             PUNFETCH;
@@ -3773,7 +3773,7 @@ fetch_token(OnigToken* tok, UChar** src, UChar* end, ScanEnv* env)
 }
 
 static int
-add_ctype_to_cc_by_range(CClassNode* cc, int ctype ARG_UNUSED, int not,
+add_ctype_to_cc_by_range(CClassNode* cc, int ctype ARG_UNUSED, int is_not,
                          ScanEnv* env,
                          OnigCodePoint sb_out, const OnigCodePoint mbr[])
 {
@@ -3782,7 +3782,7 @@ add_ctype_to_cc_by_range(CClassNode* cc, int ctype ARG_UNUSED, int not,
 
   int n = ONIGENC_CODE_RANGE_NUM(mbr);
 
-  if (not == 0) {
+  if (is_not == 0) {
     for (i = 0; i < n; i++) {
       for (j  = ONIGENC_CODE_RANGE_FROM(mbr, i);
            j <= ONIGENC_CODE_RANGE_TO(mbr, i); j++) {
@@ -3846,7 +3846,7 @@ add_ctype_to_cc_by_range(CClassNode* cc, int ctype ARG_UNUSED, int not,
 }
 
 static int
-add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
+add_ctype_to_cc(CClassNode* cc, int ctype, int is_not, ScanEnv* env)
 {
   int c, r;
   const OnigCodePoint *ranges;
@@ -3858,7 +3858,7 @@ add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
   case ONIGENC_CTYPE_S:
   case ONIGENC_CTYPE_W:
     ctype ^= ONIGENC_CTYPE_SPECIAL_MASK;
-    if (not != 0) {
+    if (is_not != 0) {
       for (c = 0; c < SINGLE_BYTE_SIZE; c++) {
         if (! ONIGENC_IS_ASCII_CODE_CTYPE((OnigCodePoint )c, ctype))
           BITSET_SET_BIT_CHKDUP(cc->bs, c);
@@ -3877,7 +3877,7 @@ add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
 
   r = ONIGENC_GET_CTYPE_CODE_RANGE(enc, ctype, &sb_out, &ranges);
   if (r == 0) {
-    return add_ctype_to_cc_by_range(cc, ctype, not, env, sb_out, ranges);
+    return add_ctype_to_cc_by_range(cc, ctype, is_not, env, sb_out, ranges);
   }
   else if (r != ONIG_NO_SUPPORT_CONFIG) {
     return r;
@@ -3896,7 +3896,7 @@ add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
   case ONIGENC_CTYPE_XDIGIT:
   case ONIGENC_CTYPE_ASCII:
   case ONIGENC_CTYPE_ALNUM:
-    if (not != 0) {
+    if (is_not != 0) {
       for (c = 0; c < SINGLE_BYTE_SIZE; c++) {
         if (! ONIGENC_IS_CODE_CTYPE(enc, (OnigCodePoint )c, ctype))
           BITSET_SET_BIT_CHKDUP(cc->bs, c);
@@ -3913,7 +3913,7 @@ add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
 
   case ONIGENC_CTYPE_GRAPH:
   case ONIGENC_CTYPE_PRINT:
-    if (not != 0) {
+    if (is_not != 0) {
       for (c = 0; c < SINGLE_BYTE_SIZE; c++) {
         if (! ONIGENC_IS_CODE_CTYPE(enc, (OnigCodePoint )c, ctype))
           BITSET_SET_BIT_CHKDUP(cc->bs, c);
@@ -3929,7 +3929,7 @@ add_ctype_to_cc(CClassNode* cc, int ctype, int not, ScanEnv* env)
     break;
 
   case ONIGENC_CTYPE_WORD:
-    if (not == 0) {
+    if (is_not == 0) {
       for (c = 0; c < SINGLE_BYTE_SIZE; c++) {
         if (IS_CODE_SB_WORD(enc, c)) BITSET_SET_BIT_CHKDUP(cc->bs, c);
       }
@@ -3977,7 +3977,7 @@ parse_posix_bracket(CClassNode* cc, UChar** src, UChar* end, ScanEnv* env)
   };
 
   const PosixBracketEntryType *pb;
-  int not, i, r;
+  int is_not, i, r;
   OnigCodePoint c;
   OnigEncoding enc = env->enc;
   UChar *p = *src;
@@ -3985,10 +3985,10 @@ parse_posix_bracket(CClassNode* cc, UChar** src, UChar* end, ScanEnv* env)
 
   if (PPEEK_IS('^')) {
     PINC;
-    not = 1;
+    is_not = 1;
   }
   else
-    not = 0;
+    is_not = 0;
 
   if (onigenc_strlen(enc, p, end) < POSIX_BRACKET_NAME_MIN_LEN + 3)
     goto not_posix_bracket;
@@ -3999,7 +3999,7 @@ parse_posix_bracket(CClassNode* cc, UChar** src, UChar* end, ScanEnv* env)
       if (onigenc_with_ascii_strncmp(enc, p, end, (UChar* )":]", 2) != 0)
         return ONIGERR_INVALID_POSIX_BRACKET_TYPE;
 
-      r = add_ctype_to_cc(cc, pb->ctype, not, env);
+      r = add_ctype_to_cc(cc, pb->ctype, is_not, env);
       if (r != 0) return r;
 
       PINC; PINC;
@@ -4074,7 +4074,7 @@ parse_char_property(Node** np, OnigToken* tok, UChar** src, UChar* end,
   cc = NCCLASS(*np);
   r = add_ctype_to_cc(cc, ctype, 0, env);
   if (r != 0) return r;
-  if (tok->u.prop.not != 0) NCCLASS_SET_NOT(cc);
+  if (tok->u.prop.is_not != 0) NCCLASS_SET_NOT(cc);
 
   return 0;
 }
@@ -4356,7 +4356,7 @@ parse_char_class(Node** np, OnigToken* tok, UChar** src, UChar* end,
       break;
 
     case TK_CHAR_TYPE:
-      r = add_ctype_to_cc(cc, tok->u.prop.ctype, tok->u.prop.not, env);
+      r = add_ctype_to_cc(cc, tok->u.prop.ctype, tok->u.prop.is_not, env);
       if (r != 0) return r;
 
     next_class:
@@ -4370,7 +4370,7 @@ parse_char_class(Node** np, OnigToken* tok, UChar** src, UChar* end,
 
         ctype = fetch_char_property_to_ctype(&p, end, env);
         if (ctype < 0) return ctype;
-        r = add_ctype_to_cc(cc, ctype, tok->u.prop.not, env);
+        r = add_ctype_to_cc(cc, ctype, tok->u.prop.is_not, env);
         if (r != 0) return r;
         goto next_class;
       }
@@ -4881,15 +4881,15 @@ set_quantifier(Node* qnode, Node* target, int group, ScanEnv* env)
 
 typedef struct {
   OnigEncoding enc;
-  int not;
+  int is_not;
   int type;
 } type_cclass_key;
 
 static int type_cclass_cmp(type_cclass_key* x, type_cclass_key* y)
 {
-  if (x->type != y->type) return 1;
-  if (x->enc  != y->enc)  return 1;
-  if (x->not  != y->not)  return 1;
+  if (x->type   != y->type) return 1;
+  if (x->enc    != y->enc)  return 1;
+  if (x->is_not != y->is_not)  return 1;
   return 0;
 }
 
@@ -4910,7 +4910,7 @@ static st_index_t type_cclass_hash(type_cclass_key* key)
     val = val * 997 + (int )*p++;
   }
 
-  val += key->not;
+  val += key->is_not;
   return val + (val >> 5);
 }
 
@@ -4922,7 +4922,7 @@ static const struct st_hash_type type_type_cclass_hash = {
 static st_table* OnigTypeCClassTable;
 
 
-static int
+static enum st_retval
 i_free_shared_class(type_cclass_key* key, Node* node, void* arg ARG_UNUSED)
 {
   if (IS_NOT_NULL(node)) {
@@ -5208,12 +5208,12 @@ parse_exp(Node** np, OnigToken* tok, int term,
             CHECK_NULL_RETURN_MEMERR(*np);
             cc = NCCLASS(*np);
             add_ctype_to_cc(cc, tok->u.prop.ctype, 0, env);
-            if (tok->u.prop.not != 0) NCCLASS_SET_NOT(cc);
+            if (tok->u.prop.is_not != 0) NCCLASS_SET_NOT(cc);
         }
         break;
 
       case ONIGENC_CTYPE_WORD:
-        *np = node_new_ctype(tok->u.prop.ctype, tok->u.prop.not);
+        *np = node_new_ctype(tok->u.prop.ctype, tok->u.prop.is_not);
         CHECK_NULL_RETURN_MEMERR(*np);
         break;
 
@@ -5235,9 +5235,9 @@ parse_exp(Node** np, OnigToken* tok, int term,
             type_cclass_key  key;
             type_cclass_key* new_key;
 
-            key.enc  = env->enc;
-            key.not  = tok->u.prop.not;
-            key.type = tok->u.prop.ctype;
+            key.enc    = env->enc;
+            key.is_not = tok->u.prop.is_not;
+            key.type   = tok->u.prop.ctype;
 
             THREAD_ATOMIC_START;
 
@@ -5257,7 +5257,7 @@ parse_exp(Node** np, OnigToken* tok, int term,
               }
             }
 
-            *np = node_new_cclass_by_codepoint_range(tok->u.prop.not,
+            *np = node_new_cclass_by_codepoint_range(tok->u.prop.is_not,
                                                      sb_out, mbr);
             if (IS_NULL(*np)) {
               THREAD_ATOMIC_END;
@@ -5279,7 +5279,7 @@ parse_exp(Node** np, OnigToken* tok, int term,
             CHECK_NULL_RETURN_MEMERR(*np);
             cc = NCCLASS(*np);
             add_ctype_to_cc(cc, tok->u.prop.ctype, 0, env);
-            if (tok->u.prop.not != 0) NCCLASS_SET_NOT(cc);
+            if (tok->u.prop.is_not != 0) NCCLASS_SET_NOT(cc);
 #ifdef USE_SHARED_CCLASS_TABLE
           }
 #endif

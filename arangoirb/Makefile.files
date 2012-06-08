@@ -1,0 +1,25 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                           PROGRAM
+################################################################################
+
+################################################################################
+### @brief program "arangoirb"
+################################################################################
+
+bin_arangoirb_CPPFLAGS = -I@top_srcdir@/arangoirb $(AM_CPPFLAGS) 
+bin_arangoirb_LDADD = lib/libarango_mruby.a lib/libarango_client.a lib/libarango.a $(LIBS) @MRUBY_LIBS@
+
+bin_arangoirb_SOURCES = \
+	arangoirb/MRClient/MRubyClientConnection.cpp \
+	arangoirb/MRClient/arangoirb.cpp
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

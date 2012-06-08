@@ -4,6 +4,13 @@
 ** See Copyright Notice in mruby.h
 */
 
+#ifndef KHASH_H
+#define KHASH_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -183,10 +190,9 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 #define kh_size(h) ((h)->size)
 #define kh_n_buckets(h) ((h)->n_buckets)
 
-//#define kh_int_hash_func(mrb,key) (uint32_t)(key)
-#define kh_int_hash_func(mrb,key) (uint32_t)((key)^((key)<<2)^((key)>>2))
+#define kh_int_hash_func(mrb,key) (khint_t)((key)^((key)<<2)^((key)>>2))
 #define kh_int_hash_equal(mrb,a, b) (a == b)
-#define kh_int64_hash_func(mrb,key) (uint32_t)((key)>>33^(key)^(key)<<11)
+#define kh_int64_hash_func(mrb,key) (khint_t)((key)>>33^(key)^(key)<<11)
 #define kh_int64_hash_equal(mrb,a, b) (a == b)
 static inline khint_t __ac_X31_hash_string(const char *s)
 {
@@ -203,3 +209,8 @@ typedef const char *kh_cstr_t;
 #define KHASH_MAP_INIT_STR(name, khval_t)                               \
     KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* KHASH_H */

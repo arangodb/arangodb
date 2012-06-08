@@ -32,14 +32,12 @@
 mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mrb_value, int),
                                   mrb_value obj, mrb_value paired_obj, void* arg);
 
-int printf (const char*, ...);
-
 mrb_value
 mrb_range_new(mrb_state *mrb, mrb_value beg, mrb_value end, int excl)
 {
   struct RRange *r;
 
-  r = mrb_obj_alloc(mrb, MRB_TT_RANGE, RANGE_CLASS);
+  r = (struct RRange*)mrb_obj_alloc(mrb, MRB_TT_RANGE, RANGE_CLASS);
   r->edges = mrb_malloc(mrb, sizeof(struct mrb_range_edges));
   r->edges->beg = beg;
   r->edges->end = end;
@@ -435,8 +433,8 @@ static mrb_value
 range_eql(mrb_state *mrb, mrb_value range)
 {
   mrb_value obj;
-  mrb_get_args(mrb, "o", &obj);
 
+  mrb_get_args(mrb, "o", &obj);
   if (mrb_obj_equal(mrb, range, obj))
     return mrb_true_value();
   if (!mrb_obj_is_kind_of(mrb, obj, RANGE_CLASS))
@@ -449,16 +447,17 @@ mrb_value
 range_initialize_copy(mrb_state *mrb, mrb_value copy)
 {
   mrb_value src;
+
   mrb_get_args(mrb, "o", &src);
 
-    if (mrb_obj_equal(mrb, copy, src)) return copy;
-    //mrb_check_frozen(copy);
-    if (!mrb_obj_is_instance_of(mrb, src, mrb_obj_class(mrb, copy))) {
-      mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
-    }
-    memcpy(mrb_range_ptr(copy), mrb_range_ptr(src), sizeof(struct RRange));
+  if (mrb_obj_equal(mrb, copy, src)) return copy;
+  //mrb_check_frozen(copy);
+  if (!mrb_obj_is_instance_of(mrb, src, mrb_obj_class(mrb, copy))) {
+    mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
+  }
+  memcpy(mrb_range_ptr(copy), mrb_range_ptr(src), sizeof(struct RRange));
 
-    return copy;
+  return copy;
 }
 
 void

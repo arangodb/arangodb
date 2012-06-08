@@ -11,7 +11,7 @@
 #include <mruby.h>
 #include <mruby/proc.h>
 #include <mruby/data.h>
-#include <compile.h>
+#include <mruby/compile.h>
 
 /* Guess if the user might want to enter more
  * or if he wants an evaluation of his code now */
@@ -19,6 +19,31 @@ int
 is_code_block_open(struct mrb_parser_state *parser)
 {
   int code_block_open = FALSE;
+
+  /* check for unterminated string */
+  if (parser->sterm) return TRUE;
+
+  /* check if parser error are available */
+  if (0 < parser->nerr) {
+    const char *unexpected_end = "syntax error, unexpected $end";
+    const char *message = parser->error_buffer[0].message;
+
+    /* a parser error occur, we have to check if */
+    /* we need to read one more line or if there is */
+    /* a different issue which we have to show to */
+    /* the user */
+
+    if (strncmp(message, unexpected_end, strlen(unexpected_end)) == 0) {
+      code_block_open = TRUE;
+    }
+    else if (strcmp(message, "syntax error, unexpected keyword_end") == 0) {
+      code_block_open = TRUE;
+    }
+    else if (strcmp(message, "syntax error, unexpected tREGEXP_BEG") == 0) {
+      code_block_open = TRUE;
+    }
+    return code_block_open;
+  }
 
   switch (parser->lstate) {
 
@@ -79,52 +104,6 @@ is_code_block_open(struct mrb_parser_state *parser)
     break;
   }
 
-  if (!code_block_open) {
-    /* based on the last parser state the code */
-    /* block seems to be closed */
-
-    /* now check if parser error are available */
-    if (0 < parser->nerr) {
-      /* a parser error occur, we have to check if */
-      /* we need to read one more line or if there is */
-      /* a different issue which we have to show to */
-      /* the user */
-
-      if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected $end, expecting ';' or '\\n'") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected $end, expecting keyword_end") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected $end, expecting '<' or ';' or '\\n'") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected keyword_end") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected $end, expecting keyword_then or ';' or '\\n'") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "syntax error, unexpected tREGEXP_BEG") == 0) {
-        code_block_open = TRUE;
-      }
-      else if (strcmp(parser->error_buffer[0].message,
-          "unterminated string meets end of file") == 0) {
-        code_block_open = TRUE;
-      }
-    }
-  }
-  else {
-    /* last parser state suggest that this code */
-    /* block is open, WE NEED MORE CODE!! */
-  }
-
   return code_block_open;
 }
 
@@ -161,8 +140,10 @@ main(void)
 
   print_hint();
 
-  /* new interpreter instance */
+  /* new interpreter instance */ 
   mrb_interpreter = mrb_open();
+  /* new parser instance */
+  parser = mrb_parser_new(mrb_interpreter);
   memset(ruby_code, 0, sizeof(*ruby_code));
   memset(last_code_line, 0, sizeof(*last_code_line));
 
@@ -181,7 +162,8 @@ main(void)
 
     last_code_line[char_index] = '\0';
 
-    if (strcmp(last_code_line, "exit") == 0) {
+    if ((strcmp(last_code_line, "quit") == 0) ||
+        (strcmp(last_code_line, "exit") == 0)) {
       if (code_block_open) {
         /* cancel the current block and reset */
         code_block_open = FALSE;
@@ -196,7 +178,7 @@ main(void)
     }
     else {
       if (code_block_open) {
-        strcat(ruby_code, "\n");
+	strcat(ruby_code, "\n");
         strcat(ruby_code, last_code_line);
       }
       else {
@@ -205,7 +187,11 @@ main(void)
       }
 
       /* parse code */
-      parser = mrb_parse_nstring_ext(mrb_interpreter, ruby_code, strlen(ruby_code));
+      parser->s = ruby_code;
+      parser->send = ruby_code + strlen(ruby_code);
+      parser->capture_errors = 1;
+      parser->lineno = 1;
+      mrb_parser_parse(parser);
       code_block_open = is_code_block_open(parser); 
 
       if (code_block_open) {
@@ -214,7 +200,7 @@ main(void)
       else {
         if (0 < parser->nerr) {
           /* syntax error */
-          printf("%s\n", parser->error_buffer[0].message);
+          printf("line %d: %s\n", parser->error_buffer[0].lineno, parser->error_buffer[0].message);
         }
 	else {
           /* generate bytecode */
@@ -242,6 +228,7 @@ main(void)
       }
     }
   }
+  mrb_close(mrb_interpreter);
 
   return 0;
 }
