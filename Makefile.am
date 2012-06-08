@@ -98,10 +98,10 @@ include Makefile.unittests
 .PHONY: errorfiles
 
 if ENABLE_ERRORS_DEPENDENCY
-errorfiles: BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
+errorfiles: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
 
 BUILT_SOURCES += \
 	errorfiles
