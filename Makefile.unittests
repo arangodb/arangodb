@@ -45,8 +45,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
-CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
+SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
+CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 
 .PHONY: start-server
 
@@ -63,7 +63,7 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
@@ -167,7 +167,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -210,7 +210,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -234,7 +234,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 

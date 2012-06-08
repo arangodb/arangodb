@@ -7,8 +7,11 @@
 #ifndef MRUBY_PROC_H
 #define MRUBY_PROC_H
 
-#include "mruby.h"
 #include "irep.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 struct REnv {
   MRUBY_OBJECT_HEADER;
@@ -47,4 +50,8 @@ struct RProc *mrb_proc_new(mrb_state*, mrb_irep*);
 struct RProc *mrb_proc_new_cfunc(mrb_state*, mrb_func_t);
 struct RProc *mrb_closure_new(mrb_state*, mrb_irep*);
 
-#endif  /* MRUBY_STRING_H */
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* MRUBY_PROC_H */
