@@ -30,7 +30,7 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include "V8/v8-actions.h"
+#include "V8Server/v8-actions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 RestActionHandler

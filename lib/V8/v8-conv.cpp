@@ -33,7 +33,6 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/vocbase.h"
 
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
@@ -1313,62 +1312,6 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts identifier into a object reference
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did) {
-  v8::HandleScope scope;
-  TRI_string_buffer_t buffer;
-
-  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
-  TRI_AppendUInt64StringBuffer(&buffer, cid);
-  TRI_AppendCharStringBuffer(&buffer, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  TRI_AppendUInt64StringBuffer(&buffer, did);
-
-  v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
-
-  TRI_AnnihilateStringBuffer(&buffer);
-
-  return scope.Close(ref);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extratcs identifiers from a object reference
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value> value, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
-  bool error;
-
-  cid = 0;
-  did = 0;
-
-  if (value->IsNumber() || value->IsNumberObject()) {
-    did = (TRI_voc_did_t) TRI_ObjectToDouble(value, error);
-    return ! error;
-  }
-
-  string v = TRI_ObjectToString(value);
-
-  vector<string> doc = StringUtils::split(v, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
-
-  switch (doc.size()) {
-    case 1:
-      did = StringUtils::uint64(doc[1]);
-      return did != 0;
-
-    case 2:
-      cid = StringUtils::uint64(doc[0]);
-      did = StringUtils::uint64(doc[1]);
-      return cid != 0 && did != 0;
-
-    default:
-      return false;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1468,54 +1411,6 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
   }
   
   return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_doc_mptr_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
-                                TRI_doc_mptr_t const* document,
-                                void* storage) {
-  TRI_df_marker_type_t type;
-  TRI_doc_edge_marker_t* marker;
-  TRI_shape_t const* shape;
-  TRI_shaped_json_t const* shaped;
-  TRI_shaper_t* shaper;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  shaper = collection->_shaper;
-  shaped = &document->_document;
-  shape = shaper->lookupShapeId(shaper, shaped->_sid);
-
-  if (shape == 0) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int) shaped->_sid);
-    return false;
-  }
-
-  v8::Handle<v8::Value> result = JsonShapeData(shaper,
-                                               shape,
-                                               shaped->_data.data,
-                                               shaped->_data.length);
-
-  if (result->IsObject()) {
-    result->ToObject()->Set(v8g->DidKey, TRI_ObjectReference(collection->base._cid, document->_did));
-    result->ToObject()->Set(v8g->RevKey, v8::Number::New(document->_rid));
-
-    type = ((TRI_df_marker_t*) document->_data)->_type;
-
-    if (type == TRI_DOC_MARKER_EDGE) {
-      marker = (TRI_doc_edge_marker_t*) document->_data;
-
-      result->ToObject()->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, marker->_fromDid));
-      result->ToObject()->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
-    }
-  }
-
-  * (v8::Handle<v8::Value>*) storage = result;
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

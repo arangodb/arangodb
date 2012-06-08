@@ -40,7 +40,6 @@
 #include <v8.h>
 
 #include "Basics/ReadWriteLock.h"
-#include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
