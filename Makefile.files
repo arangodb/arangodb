@@ -81,14 +81,12 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
-	Actions \
 	ArangoErrors \
 	CommandLine \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
 	Compiling \
-	DBAdmin \
 	DbaManual \
 	DbaManualBasics \
 	DefineAction \
