@@ -4,6 +4,7 @@ AM_CPPFLAGS = \
 	-D_SYSCONFDIR_='"${sysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
 	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
+	-I@top_srcdir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
@@ -27,21 +28,22 @@ LIBS = \
 	@MATH_LIBS@ \
 	@NCURSES_LIBS@ \
 	@OPENSSL_LIBS@ \
-	@READLINE_LIBS@ \
-	@V8_LIBS@
+	@READLINE_LIBS@
 
 BUILT_SOURCES = build.h
 CLEANUP =
 
-noinst_LIBRARIES = libarango.a
-sbin_PROGRAMS = arangod
-bin_PROGRAMS = arangosh arangoimp
+noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a lib/libarango_fe.a lib/libarango_client.a
+sbin_PROGRAMS = bin/arangod
+bin_PROGRAMS = bin/arangosh bin/arangoimp
 
 if ENABLE_MRUBY
 AM_CPPFLAGS += @MRUBY_CPPFLAGS@
 AM_CPPFLAGS += @MRUBY_LDFLAGS@
 LIBS += @MRUBY_LIBS@
-bin_PROGRAMS += arangoirb
+
+noinst_LIBRARIES += lib/libarango_mruby.a
+bin_PROGRAMS += bin/arangoirb
 endif
 
 nobase_pkgdata_DATA = \
@@ -70,27 +72,36 @@ build.h: configure.ac
 	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
 
 include Makefile.files
-include Makefile.doxygen
-include Makefile.javascript
-include Makefile.mruby
-include Makefile.unittests
--include Makefile.local
+include lib/Makefile.files
+include arangod/Makefile.files
+include arangosh/Makefile.files
+
+if ENABLE_MRUBY
+include arangoirb/Makefile.files
+include m4/Makefile.mruby
+endif
+
+include m4/Makefile.doxygen
+include m4/Makefile.javascript
 
 if ENABLE_FLEX
-include Makefile.flex
+include m4/Makefile.flex
 endif
 
 if ENABLE_BISON
-include Makefile.bison
+include m4/Makefile.bison
 endif
+
+include Makefile.unittests
+-include Makefile.local
 
 .PHONY: errorfiles
 
 if ENABLE_ERRORS_DEPENDENCY
-errorfiles: BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
+errorfiles: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
 
 BUILT_SOURCES += \
 	errorfiles

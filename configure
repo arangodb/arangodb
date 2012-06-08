@@ -9464,7 +9464,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 
 ac_config_files="$ac_config_files Makefile Doxygen/arango.template"
 
-ac_config_headers="$ac_config_headers config/config.h BasicsC/local-configuration.h"
+ac_config_headers="$ac_config_headers config/config.h lib/BasicsC/local-configuration.h"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -10312,7 +10312,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "Doxygen/arango.template") CONFIG_FILES="$CONFIG_FILES Doxygen/arango.template" ;;
     "config/config.h") CONFIG_HEADERS="$CONFIG_HEADERS config/config.h" ;;
-    "BasicsC/local-configuration.h") CONFIG_HEADERS="$CONFIG_HEADERS BasicsC/local-configuration.h" ;;
+    "lib/BasicsC/local-configuration.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/BasicsC/local-configuration.h" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

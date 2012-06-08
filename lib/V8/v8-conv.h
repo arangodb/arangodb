@@ -31,7 +31,7 @@
 #include "V8/v8-globals.h"
 
 #include "BasicsC/json.h"
-#include "VocBase/simple-collection.h"
+#include "ShapedJson/json-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
@@ -51,18 +51,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts identifier into a object reference
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t, TRI_voc_did_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extratcs identifiers from a object reference
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value>, TRI_voc_cid_t&, TRI_voc_did_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t into a V8 object
