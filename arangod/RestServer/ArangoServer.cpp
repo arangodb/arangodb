@@ -948,17 +948,10 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
     ok = StartupLoaderJS.loadScript(context, files[i]);
 
     if (ok) {
-<<<<<<< HEAD:RestServer/ArangoServer.cpp
-      LOGGER_TRACE << "loaded js file '" << files[i] << "'";
-    }
-    else {
-      LOGGER_FATAL << "cannot load js file '" << files[i] << "'";
-=======
       LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
     }
     else {
       LOGGER_FATAL << "cannot load JavaScript file '" << files[i] << "'";
->>>>>>> 4988c4aadad511b41bdfdcea04259e02f6b4f5dd:arangod/RestServer/ArangoServer.cpp
       TRI_FlushLogging();
       return EXIT_FAILURE;
     }
@@ -972,21 +965,11 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
 
   ok = true;
 
-<<<<<<< HEAD:RestServer/ArangoServer.cpp
   switch (mode) {
     case MODE_UNITTESTS: {
       // run all unit tests
       v8::HandleScope scope;
       v8::TryCatch tryCatch;
-=======
-  // .............................................................................
-  // run all unit tests
-  // .............................................................................
-
-  if (tests) {
-    v8::HandleScope scope;
-    v8::TryCatch tryCatch;
->>>>>>> 4988c4aadad511b41bdfdcea04259e02f6b4f5dd:arangod/RestServer/ArangoServer.cpp
 
       // set-up unit tests array
       v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
@@ -1002,32 +985,9 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
       char const* input = "require(\"jsunity\").runCommandLineTests();";
       TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
-<<<<<<< HEAD:RestServer/ArangoServer.cpp
       if (tryCatch.HasCaught()) {
         cout << TRI_StringifyV8Exception(&tryCatch);
         ok = false;
-=======
-    if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
-      ok = false;
-    }
-    else {
-      ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-    }
-  }
-
-  // .............................................................................
-  // run a shell
-  // .............................................................................
-
-  else {
-    V8LineEditor* console = new V8LineEditor(context, ".arango");
-
-    console->open(true);
-
-    while (true) {
-      while(! v8::V8::IdleNotification()) {
->>>>>>> 4988c4aadad511b41bdfdcea04259e02f6b4f5dd:arangod/RestServer/ArangoServer.cpp
       }
       else {
         ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));

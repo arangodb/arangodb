@@ -541,6 +541,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
+    ("jslint", &JsLint, "do not start as shell, run jslint instead")
     ("log.level,l", &level,  "log level")
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
     ("no-auto-complete", "disable auto completion")
@@ -551,12 +552,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("request-timeout", &RequestTimeout, "request timeout in seconds")
     ("server", &ServerAddressPort, "server address and port, use 'none' to start without a server")
     ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
-<<<<<<< HEAD:V8Client/arangosh.cpp
-    ("jslint", &JsLint, "do not start as shell, run jslint instead")
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
-=======
     ("use-pager", "use pager")
->>>>>>> 4988c4aadad511b41bdfdcea04259e02f6b4f5dd:arangosh/V8Client/arangosh.cpp
     (hidden, true)
   ;
 
