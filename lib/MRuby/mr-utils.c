@@ -335,11 +335,13 @@ bool TRI_ExecuteRubyString (mrb_state* mrb,
   r = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
 
   if (mrb->exc) {
-    printf("caught exception\n");
-    mrb_p(mrb, mrb_obj_value(mrb->exc));
+    if (printResult) {
+      mrb_p(mrb, mrb_obj_value(mrb->exc));
+    }
+
     mrb->exc = 0;
   }
-  else if (! mrb_nil_p(r)) {
+  else if (printResult && ! mrb_nil_p(r)) {
     mrb_p(mrb, r);
   }
 
