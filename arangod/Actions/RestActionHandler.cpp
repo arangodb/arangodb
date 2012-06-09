@@ -55,8 +55,15 @@ RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* da
   : RestVocbaseBaseHandler(request, data->_vocbase),
     _action(0),
     _context(0),
-    _queue(data->_queue) {
+    _queue() {
   _action = TRI_LookupActionVocBase(request);
+
+  if (_action == 0) {
+    _queue = "STANDARD";
+  }
+  else {
+    _queue = data->_queue + _action->_type;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

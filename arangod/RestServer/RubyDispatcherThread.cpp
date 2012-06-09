@@ -29,7 +29,7 @@
 
 #include "Actions/actions.h"
 #include "Logger/Logger.h"
-#include "MRuby/mr-actions.h"
+#include "MRServer/mr-actions.h"
 #include "MRuby/mr-utils.h"
 
 using namespace std;
@@ -89,7 +89,7 @@ RubyDispatcherThread::RubyDispatcherThread (rest::DispatcherQueue* queue,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* RubyDispatcherThread::context () {
-  return (void*) _mrs;
+  return (void*) &(_mrs->_mrb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
