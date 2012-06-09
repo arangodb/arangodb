@@ -47,11 +47,11 @@ using namespace triagens::rest;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                    void* context,
-                                    TRI_action_t const* action,
-                                    v8::Handle<v8::Function> callback,
-                                    HttpRequest* request);
+static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                           void* context,
+                                           TRI_action_t const* action,
+                                           v8::Handle<v8::Function> callback,
+                                           HttpRequest* request);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -256,11 +256,11 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                    void* context,
-                                    TRI_action_t const* action,
-                                    v8::Handle<v8::Function> callback,
-                                    HttpRequest* request) {
+static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                           void* context,
+                                           TRI_action_t const* action,
+                                           v8::Handle<v8::Function> callback,
+                                           HttpRequest* request) {
   TRI_v8_global_t* v8g;
 
   v8::HandleScope scope;
@@ -339,6 +339,7 @@ HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
     default:
       req->Set(v8g->RequestTypeKey, v8g->GetConstant);
+      break;
   }
 
   // copy request parameter

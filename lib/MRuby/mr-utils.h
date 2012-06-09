@@ -56,7 +56,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct MR_state_s {
-  struct mrb_state _mrb;
+  struct mrb_state _mrb; // USE AUX DATA POINTER FROM NEW MRUBY VERSIONS
 
   struct RClass* _arangoError;
   struct RClass* _arangoRequest;
