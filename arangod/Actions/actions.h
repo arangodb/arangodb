@@ -71,12 +71,16 @@ TRI_action_parameter_type_e;
 
 class TRI_action_t {
   public:
+    TRI_action_t () 
+      : _type(), _url(), _isPrefix(false), _urlParts(0), _parameters() {
+    }
+
     virtual ~TRI_action_t () {}
 
     virtual void createCallback (void* context, void* callback) = 0;
     virtual triagens::rest::HttpResponse* execute (struct TRI_vocbase_s*, void* context, triagens::rest::HttpRequest*) = 0;
 
-    std::string _type;
+    std::string _type; // will be used to create the queue
     std::string _url;
     bool _isPrefix;
 

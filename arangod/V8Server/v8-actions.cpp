@@ -78,7 +78,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     v8_action_t ()  {
-      _type = "javascript";
+      _type = "JAVASCRIPT";
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ class v8_action_t : public TRI_action_t {
         map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context);
 
         if (i == _callbacks.end()) {
-          LOGGER_WARNING << "no callback function for action '" << _url.c_str() << "'";
+          LOGGER_WARNING << "no callback function for JavaScript action '" << _url.c_str() << "'";
           return new HttpResponse(HttpResponse::NOT_FOUND);
         }
 

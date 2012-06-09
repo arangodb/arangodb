@@ -173,7 +173,10 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
 @ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a @MRUBY_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_6 = arangod/RestServer/RubyDispatcherThread.cpp
+@ENABLE_MRUBY_TRUE@am__append_6 = \
+@ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp \
+@ENABLE_MRUBY_TRUE@	arangod/RestServer/RubyDispatcherThread.cpp
+
 @ENABLE_MRUBY_TRUE@am__append_7 = .setup-mr-directories
 
 ################################################################################
@@ -391,12 +394,10 @@ lib_libarango_fe_a_OBJECTS = $(am_lib_libarango_fe_a_OBJECTS)
 lib_libarango_mruby_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_mruby_a_LIBADD =
 am__lib_libarango_mruby_a_SOURCES_DIST = lib/MRuby/MRLoader.cpp \
-	lib/MRuby/MRLineEditor.cpp lib/MRuby/mr-actions.cpp \
-	lib/MRuby/mr-utils.cpp
+	lib/MRuby/MRLineEditor.cpp lib/MRuby/mr-utils.c
 @ENABLE_MRUBY_TRUE@am_lib_libarango_mruby_a_OBJECTS =  \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/MRLoader.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/MRLineEditor.$(OBJEXT) \
-@ENABLE_MRUBY_TRUE@	lib/MRuby/mr-actions.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/mr-utils.$(OBJEXT)
 lib_libarango_mruby_a_OBJECTS = $(am_lib_libarango_mruby_a_OBJECTS)
 lib_libarango_v8_a_AR = $(AR) $(ARFLAGS)
@@ -489,9 +490,10 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c \
+	arangod/VocBase/vocbase.c arangod/MRServer/mr-actions.cpp \
 	arangod/RestServer/RubyDispatcherThread.cpp
-@ENABLE_MRUBY_TRUE@am__objects_1 = arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
+@ENABLE_MRUBY_TRUE@am__objects_1 = arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
 am_bin_arangod_OBJECTS =  \
 	arangod/Actions/bin_arangod-actions.$(OBJEXT) \
 	arangod/Actions/bin_arangod-ActionDispatcherThread.$(OBJEXT) \
@@ -1189,8 +1191,7 @@ lib_libarango_v8_a_SOURCES = \
 @ENABLE_MRUBY_TRUE@lib_libarango_mruby_a_SOURCES = \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/MRLoader.cpp \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/MRLineEditor.cpp \
-@ENABLE_MRUBY_TRUE@	lib/MRuby/mr-actions.cpp \
-@ENABLE_MRUBY_TRUE@	lib/MRuby/mr-utils.cpp
+@ENABLE_MRUBY_TRUE@	lib/MRuby/mr-utils.c
 
 bin_arangod_CPPFLAGS = -I@top_srcdir@/arangod $(AM_CPPFLAGS) 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
@@ -1905,8 +1906,6 @@ lib/MRuby/MRLoader.$(OBJEXT): lib/MRuby/$(am__dirstamp) \
 	lib/MRuby/$(DEPDIR)/$(am__dirstamp)
 lib/MRuby/MRLineEditor.$(OBJEXT): lib/MRuby/$(am__dirstamp) \
 	lib/MRuby/$(DEPDIR)/$(am__dirstamp)
-lib/MRuby/mr-actions.$(OBJEXT): lib/MRuby/$(am__dirstamp) \
-	lib/MRuby/$(DEPDIR)/$(am__dirstamp)
 lib/MRuby/mr-utils.$(OBJEXT): lib/MRuby/$(am__dirstamp) \
 	lib/MRuby/$(DEPDIR)/$(am__dirstamp)
 lib/libarango_mruby.a: $(lib_libarango_mruby_a_OBJECTS) $(lib_libarango_mruby_a_DEPENDENCIES) lib/$(am__dirstamp)
@@ -2319,6 +2318,15 @@ arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-vocbase.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/MRServer/$(am__dirstamp):
+	@$(MKDIR_P) arangod/MRServer
+	@: > arangod/MRServer/$(am__dirstamp)
+arangod/MRServer/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arangod/MRServer/$(DEPDIR)
+	@: > arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
+arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT):  \
+	arangod/MRServer/$(am__dirstamp) \
+	arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -2417,6 +2425,7 @@ mostlyclean-compile:
 	-rm -f arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT)
 	-rm -f arangod/HashIndex/bin_arangod-hasharray.$(OBJEXT)
 	-rm -f arangod/HashIndex/bin_arangod-hashindex.$(OBJEXT)
+	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT)
@@ -2543,7 +2552,6 @@ mostlyclean-compile:
 	-rm -f lib/Logger/LoggerTiming.$(OBJEXT)
 	-rm -f lib/MRuby/MRLineEditor.$(OBJEXT)
 	-rm -f lib/MRuby/MRLoader.$(OBJEXT)
-	-rm -f lib/MRuby/mr-actions.$(OBJEXT)
 	-rm -f lib/MRuby/mr-utils.$(OBJEXT)
 	-rm -f lib/ProgramOptions/program-options.$(OBJEXT)
 	-rm -f lib/Rest/AddressPort.$(OBJEXT)
@@ -2660,6 +2668,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po@am__quote@
@@ -2786,7 +2795,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AddressPort.Po@am__quote@
@@ -3855,6 +3863,22 @@ arangod/V8Server/bin_arangod-v8-vocbase.obj: arangod/V8Server/v8-vocbase.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/bin_arangod-v8-vocbase.obj `if test -f 'arangod/V8Server/v8-vocbase.cpp'; then $(CYGPATH_W) 'arangod/V8Server/v8-vocbase.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/v8-vocbase.cpp'; fi`
 
+arangod/MRServer/bin_arangod-mr-actions.o: arangod/MRServer/mr-actions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/MRServer/bin_arangod-mr-actions.o -MD -MP -MF arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo -c -o arangod/MRServer/bin_arangod-mr-actions.o `test -f 'arangod/MRServer/mr-actions.cpp' || echo '$(srcdir)/'`arangod/MRServer/mr-actions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/mr-actions.cpp' object='arangod/MRServer/bin_arangod-mr-actions.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-mr-actions.o `test -f 'arangod/MRServer/mr-actions.cpp' || echo '$(srcdir)/'`arangod/MRServer/mr-actions.cpp
+
+arangod/MRServer/bin_arangod-mr-actions.obj: arangod/MRServer/mr-actions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/MRServer/bin_arangod-mr-actions.obj -MD -MP -MF arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo -c -o arangod/MRServer/bin_arangod-mr-actions.obj `if test -f 'arangod/MRServer/mr-actions.cpp'; then $(CYGPATH_W) 'arangod/MRServer/mr-actions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/mr-actions.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/mr-actions.cpp' object='arangod/MRServer/bin_arangod-mr-actions.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-mr-actions.obj `if test -f 'arangod/MRServer/mr-actions.cpp'; then $(CYGPATH_W) 'arangod/MRServer/mr-actions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/mr-actions.cpp'; fi`
+
 arangod/RestServer/bin_arangod-RubyDispatcherThread.o: arangod/RestServer/RubyDispatcherThread.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-RubyDispatcherThread.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo -c -o arangod/RestServer/bin_arangod-RubyDispatcherThread.o `test -f 'arangod/RestServer/RubyDispatcherThread.cpp' || echo '$(srcdir)/'`arangod/RestServer/RubyDispatcherThread.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Po
@@ -4267,6 +4291,8 @@ distclean-generic:
 	-rm -f arangod/GeoIndex/$(am__dirstamp)
 	-rm -f arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/HashIndex/$(am__dirstamp)
+	-rm -f arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
+	-rm -f arangod/MRServer/$(am__dirstamp)
 	-rm -f arangod/PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/PriorityQueue/$(am__dirstamp)
 	-rm -f arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -4343,7 +4369,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -4391,7 +4417,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

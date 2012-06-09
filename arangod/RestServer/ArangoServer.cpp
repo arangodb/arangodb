@@ -77,9 +77,9 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
+#include "MRServer/mr-actions.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
-#include "MRuby/mr-actions.h"
 #include "RestServer/RubyDispatcherThread.h"
 
 #include "mruby.h"
@@ -827,10 +827,12 @@ int ArangoServer::startupServer () {
 
   Scheduler* scheduler = _applicationServer->scheduler();
 
+  // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
-  httpOptions._queue = "CLIENT-JAVASCRIPT";
+  httpOptions._queue = "CLIENT-";
 
+  // if we want a http port create the factory
   if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 
@@ -859,10 +861,12 @@ int ArangoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
+  // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t adminOptions;
   adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM-JAVASCRIPT";
+  adminOptions._queue = "SYSTEM-";
 
+  // if we want a admin http port create the factory
   if (useAdminPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 

@@ -43,6 +43,10 @@ module Arango
     def status()
       return @status
     end
+
+    def request_method()
+      return @request_method
+    end
   end
 
 ## -----------------------------------------------------------------------------
@@ -79,6 +83,54 @@ module Arango
 ## -----------------------------------------------------------------------------
 
   class AbstractServlet
+    @HTTP_OK                   = 200
+    @HTTP_CREATED              = 201
+    @HTTP_ACCEPTED             = 202
+    @HTTP_PARTIAL              = 203
+    @HTTP_NO_CONTENT           = 204
+
+    @HTTP_MOVED_PERMANENTLY    = 301
+    @HTTP_FOUND                = 302
+    @HTTP_SEE_OTHER            = 303
+    @HTTP_NOT_MODIFIED         = 304
+    @HTTP_TEMPORARY_REDIRECT   = 307
+
+    @HTTP_BAD                  = 400
+    @HTTP_UNAUTHORIZED         = 401
+    @HTTP_PAYMENT              = 402
+    @HTTP_FORBIDDEN            = 403
+    @HTTP_NOT_FOUND            = 404
+    @HTTP_METHOD_NOT_ALLOWED   = 405
+    @HTTP_CONFLICT             = 409
+    @HTTP_PRECONDITION_FAILED  = 412
+    @HTTP_UNPROCESSABLE_ENTITY = 422
+
+    @HTTP_SERVER_ERROR         = 500
+    @HTTP_NOT_IMPLEMENTED      = 501
+    @HTTP_BAD_GATEWAY          = 502
+    @HTTP_SERVICE_UNAVAILABLE  = 503
+
+    def service(req, res)
+      method = req.request_method
+
+      if method == "GET"
+	self.do_GET(req, res)
+      elsif method == "PUT"
+	self.do_PUT(req, res)
+      elsif method == "POST"
+	self.do_POST(req, res)
+      elsif method == "DELETE"
+	self.do_DELETE(req, res)
+      elsif method == "HEAD"
+	self.do_DELETE(req, res)
+      else
+	generate_unknown_method(req, res, method)
+      end
+    end
+
+    def generate_unknown_method(req, res, method)
+      res.status = @HTTP_METHOD_NOT_ALLOWED
+    end
   end
 
 end

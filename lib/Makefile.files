@@ -191,8 +191,7 @@ if ENABLE_MRUBY
 lib_libarango_mruby_a_SOURCES = \
 	lib/MRuby/MRLoader.cpp \
 	lib/MRuby/MRLineEditor.cpp \
-	lib/MRuby/mr-actions.cpp \
-	lib/MRuby/mr-utils.cpp
+	lib/MRuby/mr-utils.c
 
 endif
 

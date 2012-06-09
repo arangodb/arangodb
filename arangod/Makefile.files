@@ -71,8 +71,13 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/vocbase.c
 
 if ENABLE_MRUBY
+
 bin_arangod_LDADD += lib/libarango_mruby.a @MRUBY_LIBS@
-bin_arangod_SOURCES += arangod/RestServer/RubyDispatcherThread.cpp
+
+bin_arangod_SOURCES += \
+	arangod/MRServer/mr-actions.cpp \
+	arangod/RestServer/RubyDispatcherThread.cpp
+
 endif
 
 ################################################################################
