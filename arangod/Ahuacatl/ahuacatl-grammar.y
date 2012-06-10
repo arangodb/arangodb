@@ -135,18 +135,9 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <strval> T_QUOTED_STRING
 %type <strval> T_NUMBER
 %type <strval> T_PARAMETER; 
-
-%type <node> query;
-%type <node> for_statement;
-%type <node> filter_statement;
-%type <node> let_statement;
-%type <node> collect_statement;
-%type <node> sort_statement;
 %type <node> sort_list;
 %type <node> sort_element;
 %type <boolval> sort_direction;
-%type <node> limit_statement;
-%type <node> return_statement;
 %type <node> collect_list;
 %type <node> collect_element;
 %type <strval> optional_into;
@@ -181,16 +172,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %%
 
 query: 
-    {
-      // a query or a sub-query always starts a new scope
-      if (!TRI_StartScopeContextAql(context)) {
-        ABORT_OOM
-      }
-    } optional_statement_block_statements return_statement {
-      // end the scope
-      $$ = (TRI_aql_node_t*) TRI_GetFirstStatementAql(context);
-
-      TRI_EndScopeContextAql(context);
+    optional_statement_block_statements return_statement {
     }
   ;
 
@@ -228,11 +210,9 @@ for_statement:
         ABORT_OOM
       }
 
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
-      $$ = node;
     }
   ;
 
@@ -242,12 +222,10 @@ filter_statement:
       if (!node) {
         ABORT_OOM
       }
-
-      if (!TRI_AddStatementAql(context, node)) {
+      
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
     }
   ;
 
@@ -258,11 +236,9 @@ let_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
     }
   ;
 
@@ -281,11 +257,9 @@ collect_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
     }
   ;
 
@@ -334,11 +308,9 @@ sort_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
     }
   ;
 
@@ -385,11 +357,13 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
+      
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
     }
   | T_LIMIT signed_number T_COMMA signed_number {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, $2), TRI_CreateNodeValueIntAql(context, $4));
@@ -397,11 +371,9 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-
-      $$ = node;
     }
   ;
 
@@ -412,13 +384,15 @@ return_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementAql(context, node)) {
+      if (!TRI_AddStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
-      TRI_EndScopeByReturnAql(context);
+      if (!TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
       
-      $$ = node;
+      // $$ = node;
     }
   ;
 
@@ -431,23 +405,24 @@ expression:
       if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
         ABORT_OOM
       }
-
+      
     } query T_CLOSE {
-      TRI_aql_node_t* subQuery;
       TRI_aql_node_t* result;
+      TRI_aql_node_t* subQuery;
       TRI_aql_node_t* nameNode;
+      
+      if (!TRI_EndScopeAql(context)) {
+        ABORT_OOM
+      }
 
-      subQuery = TRI_CreateNodeSubqueryAql(context, $3);
+      subQuery = TRI_CreateNodeSubqueryAql(context);
       if (!subQuery) {
         ABORT_OOM
       }
-
-      // push the sub query execution into the statement list
-      if (!TRI_AddStatementAql(context, subQuery)) {
+      
+      if (!TRI_AddStatementListAql(context->_statements, subQuery)) {
         ABORT_OOM
       }
-
-      TRI_EndScopeAql(context);
 
       nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
       if (!nameNode) {
@@ -789,11 +764,11 @@ reference:
 
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, $4);
-
-      if (!TRI_AddStatementAql(context, expand)) {
+      
+      if (!TRI_AddStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
-      
+
       nameNode = TRI_AQL_NODE_MEMBER(expand, 1);
       if (!nameNode) {
         ABORT_OOM

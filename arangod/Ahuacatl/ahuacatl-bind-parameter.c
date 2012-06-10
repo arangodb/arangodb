@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
+#include "Ahuacatl/ahuacatl-statement-walker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -48,7 +49,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
   TRI_aql_context_t* context;
   char* name;
 
-  if (!node || node->_type != AQL_NODE_PARAMETER) {
+  if (!node || node->_type != TRI_AQL_NODE_PARAMETER) {
     return node;
   }
   
@@ -221,7 +222,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
     assert(value);
 
     parameter = CreateParameter(name->_value._string.data, value);
-    if (!parameter) {
+    if (parameter == NULL) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
@@ -281,27 +282,27 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context, 
-                                  TRI_aql_node_t* node) {
-  TRI_aql_modify_tree_walker_t* walker;
+bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) { 
+  TRI_aql_statement_walker_t* walker;
 
   assert(context);
-  assert(context->_first);
 
   if (TRI_GetLengthAssociativePointer(&context->_parameters._names) == 0) {
     // no bind parameters used in query, instantly return
     return true;
   }
   
-  walker = TRI_CreateModifyTreeWalkerAql(context, &ModifyNode);
-  if (!walker) {
+  walker = TRI_CreateStatementWalkerAql(context, true, &ModifyNode, NULL, NULL);
+  if (walker == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
     return false;
   }
 
-  context->_first = TRI_ModifyWalkTreeAql(walker, node);
 
-  TRI_FreeModifyTreeWalkerAql(walker);
+  TRI_WalkStatementsAql(walker, context->_statements);
+
+  TRI_FreeStatementWalkerAql(walker);
 
   return true;
 }

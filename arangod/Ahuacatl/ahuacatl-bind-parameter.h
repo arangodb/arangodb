@@ -38,7 +38,6 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,8 +112,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const);
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_context_t* const,
-                                  TRI_aql_node_t* node);
+bool TRI_InjectBindParametersAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
