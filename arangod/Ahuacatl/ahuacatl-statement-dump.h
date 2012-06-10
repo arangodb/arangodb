@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, AST dump functionality
+/// @brief Ahuacatl, statement dump functionality
 ///
 /// @file
 ///
@@ -25,18 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_TREE_DUMP_H
-#define TRIAGENS_DURHAM_AHUACATL_TREE_DUMP_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENT_DUMP_H
+#define TRIAGENS_DURHAM_AHUACATL_STATEMENT_DUMP_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
 
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-functions.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
+#include "Ahuacatl/ahuacatl-node.h"
+#include "Ahuacatl/ahuacatl-statementlist.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,10 +70,10 @@ TRI_aql_dump_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump AST nodes recursively
+/// @brief dump statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpTreeAql (const TRI_aql_node_t* const);
+void TRI_DumpStatementsAql (TRI_aql_statement_list_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

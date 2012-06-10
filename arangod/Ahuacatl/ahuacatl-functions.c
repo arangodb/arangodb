@@ -121,7 +121,7 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
                                const param_t* const allowed) {
   param_t found = InitParam(); 
 
-  if (parameter->_type == AQL_NODE_PARAMETER) {
+  if (parameter->_type == TRI_AQL_NODE_PARAMETER) {
     // node is a bind parameter
     char* name = TRI_AQL_NODE_STRING(parameter);
 
@@ -140,33 +140,33 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
       found._array = true;
     }
   }
-  else if (parameter->_type == AQL_NODE_VALUE) {
+  else if (parameter->_type == TRI_AQL_NODE_VALUE) {
     switch (parameter->_value._type) {
-      case AQL_TYPE_FAIL:
-      case AQL_TYPE_NULL:
+      case TRI_AQL_TYPE_FAIL:
+      case TRI_AQL_TYPE_NULL:
         found._null = true;
         break;
-      case AQL_TYPE_BOOL:
+      case TRI_AQL_TYPE_BOOL:
         found._bool = true;
         break;
-      case AQL_TYPE_INT:
-      case AQL_TYPE_DOUBLE:
+      case TRI_AQL_TYPE_INT:
+      case TRI_AQL_TYPE_DOUBLE:
         found._number = true;
         break;
-      case AQL_TYPE_STRING:
+      case TRI_AQL_TYPE_STRING:
         found._string = true;
         break;
     }
   }
-  else if (parameter->_type == AQL_NODE_LIST) {
+  else if (parameter->_type == TRI_AQL_NODE_LIST) {
     // actual parameter is a list
     found._list = true;
   }
-  else if (parameter->_type == AQL_NODE_ARRAY) {
+  else if (parameter->_type == TRI_AQL_NODE_ARRAY) {
     // actual parameter is an array
     found._array = true;
   }
-  else if (parameter->_type == AQL_NODE_COLLECTION) {
+  else if (parameter->_type == TRI_AQL_NODE_COLLECTION) {
     // actual parameter is a collection
     found._collection = true;
     found._list = true; // a collection is a list of documents
@@ -590,7 +590,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
 
   assert(function);
   assert(parameters);
-  assert(parameters->_type == AQL_NODE_LIST);
+  assert(parameters->_type == TRI_AQL_NODE_LIST);
 
   n = parameters->_members._length;
 

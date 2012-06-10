@@ -38,26 +38,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of a scope type
+/// @brief get the next scope id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline const char* TypeName (const TRI_aql_scope_e type) {
-  switch (type) {
-    case TRI_AQL_SCOPE_FOR:
-      return "for";
-    case TRI_AQL_SCOPE_FOR_NESTED:
-      return "for nested";
-    case TRI_AQL_SCOPE_SUBQUERY:
-      return "subquery";
-    case TRI_AQL_SCOPE_EXPAND:
-      return "expand";
-    case TRI_AQL_SCOPE_MAIN:
-      return "main";
-    case TRI_AQL_SCOPE_FUNCTION:
-      return "function";
-  }
-
-  return "unknown";
+static size_t NextId (TRI_aql_context_t* const context) {
+  return ++context->_scopeIndex;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,8 +111,8 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
     return NULL;
   }
 
+  scope->_id = NextId(context);
   scope->_type = NextType(context, type);
-  TRI_AQL_LOG("starting scope of type %s", TypeName(scope->_type));
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -175,6 +160,29 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of a scope type
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_TypeNameScopeAql (const TRI_aql_scope_e type) {
+  switch (type) {
+    case TRI_AQL_SCOPE_FOR:
+      return "for";
+    case TRI_AQL_SCOPE_FOR_NESTED:
+      return "for nested";
+    case TRI_AQL_SCOPE_SUBQUERY:
+      return "subquery";
+    case TRI_AQL_SCOPE_EXPAND:
+      return "expand";
+    case TRI_AQL_SCOPE_MAIN:
+      return "main";
+    case TRI_AQL_SCOPE_FUNCTION:
+      return "function";
+  }
+
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief init scopes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -184,7 +192,7 @@ bool TRI_InitScopesAql (TRI_aql_context_t* const context) {
   TRI_InitVectorPointer(&context->_memory._scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
 
-  return TRI_StartScopeAql(context, TRI_AQL_SCOPE_MAIN);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +221,7 @@ void TRI_FreeScopesAql (TRI_aql_context_t* const context) {
 
 bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e type) {
   TRI_aql_scope_t* scope;
+  TRI_aql_node_t* node;
 
   assert(context);
 
@@ -221,8 +230,18 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
     return false;
   }
 
+  TRI_AQL_LOG("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
   TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
+
+  node = TRI_CreateNodeScopeStartAql(context, scope);
+  if (node == NULL) {
+    return false;
+  }
+  
+  if (!TRI_AddStatementListAql(context->_statements, node)) {
+    return false;
+  }
 
   return true;
 }
@@ -231,8 +250,9 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
 /// @brief end the current scope, only 1
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_EndScopeAql (TRI_aql_context_t* const context) {
+bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
+  TRI_aql_node_t* node;
   size_t n;
 
   assert(context);
@@ -241,22 +261,34 @@ void TRI_EndScopeAql (TRI_aql_context_t* const context) {
   assert(n > 0);
 
   scope = TRI_RemoveVectorPointer(&context->_currentScopes, --n);
-  TRI_AQL_LOG("closing scope of type %s", TypeName(scope->_type));
+  TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  
+  node = TRI_CreateNodeScopeEndAql(context, scope);
+  if (node == NULL) {
+    return false;
+  }
+  
+  if (!TRI_AddStatementListAql(context->_statements, node)) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the current scopes, 0 .. n
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
+bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_e type;
+  TRI_aql_node_t* node;
   size_t n;
 
   assert(context);
   type = CurrentType(context);
 
   if (type == TRI_AQL_SCOPE_MAIN || type == TRI_AQL_SCOPE_SUBQUERY) {
-    return;
+    return true;
   }
 
   n = context->_currentScopes._length;
@@ -268,13 +300,24 @@ void TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);
 
-    TRI_AQL_LOG("closing scope of type %s", TypeName(scope->_type));
+    TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  
+    node = TRI_CreateNodeScopeEndAql(context, scope);
+    if (node == NULL) {
+      return false;
+    }
+  
+    if (!TRI_AddStatementListAql(context->_statements, node)) {
+      return false;
+    }
 
     if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
       // removed enough scopes
       break;
     }
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -52,8 +52,10 @@ extern "C" {
 
 #ifdef TRI_DEBUG_AQL
 #define TRI_AQL_LOG(...) LOG_INFO(__VA_ARGS__);
+#define TRI_AQL_DUMP(format, ...) printf(format, __VA_ARGS__);
 #else
 #define TRI_AQL_LOG(...) LOG_TRACE(__VA_ARGS__);
+#define TRI_AQL_DUMP(...) { };
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

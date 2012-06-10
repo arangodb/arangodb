@@ -463,7 +463,10 @@ def finalize_string(text):
     
     # really ugly, but fixes things that otherwise go wrong
     # unfortunately we can't simply replace <>&"' in text values as this is wrong, either
+    # text = text.replace("<tt><", "<tt>&lt;")
+    text = text.replace("<tt><b>", "__GRRR__")
     text = text.replace("<tt><", "<tt>&lt;")
+    text = text.replace("__GRRR__", "<tt><b>")
     
     return text
 #enddef

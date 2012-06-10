@@ -457,14 +457,16 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-functions.c \
 	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-index.c \
+	arangod/Ahuacatl/ahuacatl-node.c \
 	arangod/Ahuacatl/ahuacatl-optimiser.c \
 	arangod/Ahuacatl/ahuacatl-parser-functions.c \
 	arangod/Ahuacatl/ahuacatl-parser.c \
 	arangod/Ahuacatl/ahuacatl-result.c \
 	arangod/Ahuacatl/ahuacatl-scope.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
+	arangod/Ahuacatl/ahuacatl-statement-dump.c \
+	arangod/Ahuacatl/ahuacatl-statement-walker.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
-	arangod/Ahuacatl/ahuacatl-tree-dump.c \
-	arangod/Ahuacatl/ahuacatl-tree-walker.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
 	arangod/GeoIndex/GeoIndex.c arangod/HashIndex/hasharray.c \
 	arangod/HashIndex/hashindex.c \
@@ -509,14 +511,16 @@ am_bin_arangod_OBJECTS =  \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-functions.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-grammar.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-index.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-node.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-parser-functions.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-parser.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-result.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-scope.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.$(OBJEXT) \
-	arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.$(OBJEXT) \
-	arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT) \
 	arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT) \
 	arangod/HashIndex/bin_arangod-hasharray.$(OBJEXT) \
@@ -953,14 +957,12 @@ DOXYGEN = \
 ### @brief wiki pages
 ################################################################################
 WIKI = \
-	Actions \
 	ArangoErrors \
 	CommandLine \
 	CommandLineLogging \
 	CommandLineRandom \
 	CommandLineScheduler \
 	Compiling \
-	DBAdmin \
 	DbaManual \
 	DbaManualBasics \
 	DefineAction \
@@ -1210,14 +1212,16 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-functions.c \
 	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-index.c \
+	arangod/Ahuacatl/ahuacatl-node.c \
 	arangod/Ahuacatl/ahuacatl-optimiser.c \
 	arangod/Ahuacatl/ahuacatl-parser-functions.c \
 	arangod/Ahuacatl/ahuacatl-parser.c \
 	arangod/Ahuacatl/ahuacatl-result.c \
 	arangod/Ahuacatl/ahuacatl-scope.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
+	arangod/Ahuacatl/ahuacatl-statement-dump.c \
+	arangod/Ahuacatl/ahuacatl-statement-walker.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
-	arangod/Ahuacatl/ahuacatl-tree-dump.c \
-	arangod/Ahuacatl/ahuacatl-tree-walker.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
 	arangod/GeoIndex/GeoIndex.c arangod/HashIndex/hasharray.c \
 	arangod/HashIndex/hashindex.c \
@@ -2147,6 +2151,9 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-grammar.$(OBJEXT):  \
 arangod/Ahuacatl/bin_arangod-ahuacatl-index.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-node.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -2162,13 +2169,16 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-result.$(OBJEXT):  \
 arangod/Ahuacatl/bin_arangod-ahuacatl-scope.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT):  \
@@ -2412,14 +2422,16 @@ mostlyclean-compile:
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-functions.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-grammar.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-index.$(OBJEXT)
+	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-node.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-parser-functions.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-parser.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-result.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-scope.$(OBJEXT)
+	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.$(OBJEXT)
+	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.$(OBJEXT)
+	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.$(OBJEXT)
-	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.$(OBJEXT)
-	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT)
 	-rm -f arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 	-rm -f arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT)
@@ -2655,14 +2667,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-grammar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-index.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-optimiser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-parser-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-scope.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tokens.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-variable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po@am__quote@
@@ -3077,6 +3091,22 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-index.obj: arangod/Ahuacatl/ahuacatl-index
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-index.obj `if test -f 'arangod/Ahuacatl/ahuacatl-index.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-index.c'; fi`
 
+arangod/Ahuacatl/bin_arangod-ahuacatl-node.o: arangod/Ahuacatl/ahuacatl-node.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-node.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-node.o `test -f 'arangod/Ahuacatl/ahuacatl-node.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-node.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-node.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-node.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-node.o `test -f 'arangod/Ahuacatl/ahuacatl-node.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-node.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-node.obj: arangod/Ahuacatl/ahuacatl-node.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-node.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-node.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-node.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-node.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-node.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-node.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-node.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-node.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-node.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-node.c'; fi`
+
 arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.o: arangod/Ahuacatl/ahuacatl-optimiser.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-optimiser.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-optimiser.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-optimiser.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-optimiser.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-optimiser.Po
@@ -3157,6 +3187,54 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-scope.obj: arangod/Ahuacatl/ahuacatl-scope
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-scope.obj `if test -f 'arangod/Ahuacatl/ahuacatl-scope.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-scope.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-scope.c'; fi`
 
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o: arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj: arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o: arangod/Ahuacatl/ahuacatl-statement-dump.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-dump.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statement-dump.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-dump.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.obj: arangod/Ahuacatl/ahuacatl-statement-dump.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-dump.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-dump.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statement-dump.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-dump.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-dump.c'; fi`
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.o: arangod/Ahuacatl/ahuacatl-statement-walker.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-walker.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statement-walker.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-walker.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj: arangod/Ahuacatl/ahuacatl-statement-walker.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-walker.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-walker.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-statement-walker.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-walker.c'; fi`
+
 arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o: arangod/Ahuacatl/ahuacatl-tokens.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tokens.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o `test -f 'arangod/Ahuacatl/ahuacatl-tokens.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tokens.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tokens.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tokens.Po
@@ -3172,38 +3250,6 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.obj: arangod/Ahuacatl/ahuacatl-toke
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-tokens.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tokens.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tokens.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tokens.c'; fi`
-
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.o: arangod/Ahuacatl/ahuacatl-tree-dump.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-tree-dump.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tree-dump.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-tree-dump.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-tree-dump.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tree-dump.c
-
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.obj: arangod/Ahuacatl/ahuacatl-tree-dump.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tree-dump.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tree-dump.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tree-dump.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-dump.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-tree-dump.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tree-dump.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tree-dump.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tree-dump.c'; fi`
-
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.o: arangod/Ahuacatl/ahuacatl-tree-walker.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-tree-walker.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tree-walker.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-tree-walker.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-tree-walker.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tree-walker.c
-
-arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.obj: arangod/Ahuacatl/ahuacatl-tree-walker.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tree-walker.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tree-walker.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tree-walker.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tree-walker.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-tree-walker.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tree-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tree-walker.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tree-walker.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tree-walker.c'; fi`
 
 arangod/Ahuacatl/bin_arangod-ahuacatl-variable.o: arangod/Ahuacatl/ahuacatl-variable.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-variable.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-variable.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-variable.o `test -f 'arangod/Ahuacatl/ahuacatl-variable.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-variable.c

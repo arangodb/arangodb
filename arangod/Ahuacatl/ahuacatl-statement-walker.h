@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, optimiser
+/// @brief Ahuacatl, statement list walking
 ///
 /// @file
 ///
@@ -25,27 +25,27 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
-#define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H
+#define TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H 1
 
 #include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
 #include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
+#include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/json.h>
 
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen.h"
-#include "Ahuacatl/ahuacatl-log.h"
-#include "Ahuacatl/ahuacatl-scope.h"
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-statementlist.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  modifiying statement list walker
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -57,16 +57,31 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scope type used during optimisation
+/// @brief typedef for node visitation function
+////////////////////////////////////////////////////////////////////////////////
+  
+typedef TRI_aql_node_t* (*TRI_aql_visit_node_f)(void*, TRI_aql_node_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for statement visitation function
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_optimiser_scope_s {
-  char* _variableName;
-  TRI_aql_node_t* _node;
-  TRI_vector_pointer_t* _ranges;
-  TRI_aql_scope_e _type;
+typedef TRI_aql_node_t* (*TRI_aql_visit_statement_f)(void*, TRI_aql_node_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tree walker container
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_aql_statement_walker_s {
+  void* _data;
+  bool _canModify;
+  TRI_aql_statement_list_t* _statements;
+
+  TRI_aql_visit_node_f visitMember;
+  TRI_aql_visit_statement_f preVisitStatement;
+  TRI_aql_visit_statement_f postVisitStatement;
 }
-TRI_aql_optimiser_scope_t;
+TRI_aql_statement_walker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -82,10 +97,27 @@ TRI_aql_optimiser_scope_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the statement list
+/// @brief create a statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_OptimiseAql (TRI_aql_context_t* const); 
+TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void*,
+                                                          const bool, 
+                                                          TRI_aql_visit_node_f,
+                                                          TRI_aql_visit_statement_f,
+                                                          TRI_aql_visit_statement_f);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a statement walker
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the statement list walk
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const,
+                            TRI_aql_statement_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
