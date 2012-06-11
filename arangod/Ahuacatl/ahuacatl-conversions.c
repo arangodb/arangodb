@@ -26,13 +26,85 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-conversions.h"
+#include "Ahuacatl/ahuacatl-node.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for value list iteration callback function
+////////////////////////////////////////////////////////////////////////////////
+
+typedef bool (*convert_f) (TRI_string_buffer_t* const, const TRI_aql_node_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* GetStringOperator (const TRI_aql_node_type_e type) {
+  switch (type) {
+    case TRI_AQL_NODE_OPERATOR_UNARY_PLUS:
+      return " + ";
+    case TRI_AQL_NODE_OPERATOR_UNARY_MINUS:
+      return " - ";
+    case TRI_AQL_NODE_OPERATOR_UNARY_NOT:
+      return " ! ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_AND:
+      return " && ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_OR:
+      return " || ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_PLUS:
+      return " + ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_MINUS:
+      return " - ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_TIMES:
+      return " * ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_DIV:
+      return " / ";
+    case TRI_AQL_NODE_OPERATOR_BINARY_MOD:
+      return " % "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_EQ:
+      return " == "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_NE:
+      return " != "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_LT:
+      return " < "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_LE:
+      return " <= "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_GT:
+      return " > "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_GE:
+      return " >= "; 
+    case TRI_AQL_NODE_OPERATOR_BINARY_IN:
+      return " in "; 
+    default:
+      assert(false);
+      return NULL;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append list values to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendListValues (TRI_string_buffer_t* const buffer, 
-                              const TRI_aql_node_t* const node) {
+                              const TRI_aql_node_t* const node,
+                              convert_f func) {
   size_t i, n;
 
   n = node->_members._length;
@@ -43,13 +115,17 @@ static bool AppendListValues (TRI_string_buffer_t* const buffer,
       }
     }
 
-    if (!TRI_NodeJavascriptAql(buffer, TRI_AQL_NODE_MEMBER(node, i))) {
+    if (!func(buffer, TRI_AQL_NODE_MEMBER(node, i))) {
       return false;
     }
   }
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -307,7 +383,7 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (!AppendListValues(buffer, node)) {
+      if (!AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
         return false;
       }
 
@@ -317,7 +393,7 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
         return false;
       }
       
-      if (!AppendListValues(buffer, node)) {
+      if (!AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
         return false;
       }
      
@@ -325,6 +401,172 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
     default:
       return false;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a value node to a string representation, used for printing it
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValueStringAql (TRI_string_buffer_t* const buffer, 
+                         const TRI_aql_value_t* const value,
+                         const TRI_aql_value_type_e type) {
+  switch (type) {
+    case TRI_AQL_TYPE_FAIL:
+      return (TRI_AppendStringStringBuffer(buffer, "fail") == TRI_ERROR_NO_ERROR);
+
+    case TRI_AQL_TYPE_NULL:
+      return (TRI_AppendStringStringBuffer(buffer, "null") == TRI_ERROR_NO_ERROR);
+
+    case TRI_AQL_TYPE_BOOL:
+      return (TRI_AppendStringStringBuffer(buffer, value->_value._bool ? "true" : "false") == TRI_ERROR_NO_ERROR);
+
+    case TRI_AQL_TYPE_INT:
+      return (TRI_AppendInt64StringBuffer(buffer, value->_value._int) == TRI_ERROR_NO_ERROR);
+
+    case TRI_AQL_TYPE_DOUBLE:
+      return (TRI_AppendDoubleStringBuffer(buffer, value->_value._double) == TRI_ERROR_NO_ERROR);
+
+    case TRI_AQL_TYPE_STRING: {
+      if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (TRI_AppendStringStringBuffer(buffer, value->_value._string) != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      return (TRI_AppendCharStringBuffer(buffer, '"') == TRI_ERROR_NO_ERROR);
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a node to its string representation, used for printing it
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer, 
+                        const TRI_aql_node_t* const node) {
+  switch (node->_type) {
+    case TRI_AQL_NODE_VALUE:
+      return TRI_ValueStringAql(buffer, &node->_value, node->_value._type);
+    case TRI_AQL_NODE_ARRAY_ELEMENT: 
+      if (!TRI_ValueStringAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
+        return false;
+      }
+
+      if (TRI_AppendCharStringBuffer(buffer, ':') != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0));
+    case TRI_AQL_NODE_LIST: 
+      if (TRI_AppendCharStringBuffer(buffer, '[') != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (!AppendListValues(buffer, node, &TRI_NodeStringAql)) {
+        return false;
+      }
+
+      return (TRI_AppendCharStringBuffer(buffer, ']') == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_NODE_ARRAY: 
+      if (TRI_AppendCharStringBuffer(buffer, '{') != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      
+      if (!AppendListValues(buffer, node, &TRI_NodeStringAql)) {
+        return false;
+      }
+     
+      return (TRI_AppendCharStringBuffer(buffer, '}') == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_NODE_OPERATOR_UNARY_PLUS:
+    case TRI_AQL_NODE_OPERATOR_UNARY_MINUS:
+    case TRI_AQL_NODE_OPERATOR_UNARY_NOT:
+      if (!TRI_AppendStringStringBuffer(buffer, GetStringOperator(node->_type)) == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0));
+    case TRI_AQL_NODE_OPERATOR_BINARY_AND:
+    case TRI_AQL_NODE_OPERATOR_BINARY_OR:
+    case TRI_AQL_NODE_OPERATOR_BINARY_PLUS:
+    case TRI_AQL_NODE_OPERATOR_BINARY_MINUS:
+    case TRI_AQL_NODE_OPERATOR_BINARY_TIMES:
+    case TRI_AQL_NODE_OPERATOR_BINARY_DIV:
+    case TRI_AQL_NODE_OPERATOR_BINARY_MOD:
+    case TRI_AQL_NODE_OPERATOR_BINARY_EQ:
+    case TRI_AQL_NODE_OPERATOR_BINARY_NE:
+    case TRI_AQL_NODE_OPERATOR_BINARY_LT:
+    case TRI_AQL_NODE_OPERATOR_BINARY_LE:
+    case TRI_AQL_NODE_OPERATOR_BINARY_GT:
+    case TRI_AQL_NODE_OPERATOR_BINARY_GE:
+    case TRI_AQL_NODE_OPERATOR_BINARY_IN:
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+
+      if (!TRI_AppendStringStringBuffer(buffer, GetStringOperator(node->_type)) == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1));
+    case TRI_AQL_NODE_OPERATOR_TERNARY:
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+      
+      if (!TRI_AppendStringStringBuffer(buffer, " ? ") == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
+        return false;
+      }
+
+      if (!TRI_AppendStringStringBuffer(buffer, " : ") == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 2));
+    case TRI_AQL_NODE_ATTRIBUTE_ACCESS:
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+      
+      if (!TRI_AppendStringStringBuffer(buffer, ".") == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
+    case TRI_AQL_NODE_INDEXED:
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+      
+      if (!TRI_AppendStringStringBuffer(buffer, "[") == TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
+        return false;
+      }
+      
+      return TRI_AppendStringStringBuffer(buffer, "]") == TRI_ERROR_NO_ERROR;
+    case TRI_AQL_NODE_EXPAND:
+      // TODO
+      break;
+    case TRI_AQL_NODE_REFERENCE:
+      return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
+    case TRI_AQL_NODE_COLLECTION:
+      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+      return true;
+    default: {
+    }
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

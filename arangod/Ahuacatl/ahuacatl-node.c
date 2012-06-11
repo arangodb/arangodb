@@ -149,7 +149,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
     case TRI_AQL_NODE_FCALL:
       return "function call";
   }
- 
+
   assert(false);
   return "undefined";
 }

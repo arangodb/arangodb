@@ -46,14 +46,25 @@
 
 static void VisitStatement (TRI_aql_statement_walker_t* const walker,
                             const size_t position,
-                            TRI_aql_visit_statement_f func) {
+                            TRI_aql_visit_f func) {
   TRI_aql_node_t* node;
   TRI_aql_node_t* modified;
 
   node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, position);
   assert(node);
 
-  modified = func(walker->_data, node);
+  // handle scopes
+  if (node->_type == TRI_AQL_NODE_SCOPE_START) {
+    TRI_PushBackVectorPointer(&walker->_currentScopes, TRI_AQL_NODE_DATA(node));
+  }
+  else if (node->_type == TRI_AQL_NODE_SCOPE_END) {
+    size_t n = walker->_currentScopes._length;
+
+    assert(n > 0);
+    TRI_RemoveVectorPointer(&walker->_currentScopes, n - 1);
+  }
+
+  modified = func(walker, node);
   if (walker->_canModify && modified != node) {
     if (modified == NULL) {
       modified = TRI_GetNopNodeAql();
@@ -86,7 +97,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
 
     VisitMembers(walker, member);
   
-    modified = walker->visitMember(walker->_data, member);
+    modified = walker->visitMember(walker, member);
     if (walker->_canModify && modified != member) {
       if (modified == NULL) {
         modified = TRI_GetNopNodeAql();
@@ -111,6 +122,10 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     TRI_aql_node_t* node;
    
     node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, i);
+
+    if (!node) {
+      continue;
+    }
 
     if (walker->preVisitStatement != NULL) {
       // this might change the node ptr
@@ -148,9 +163,9 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 
 TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
                                                           const bool canModify, 
-                                                          TRI_aql_visit_node_f visitMember,
-                                                          TRI_aql_visit_statement_f preVisitStatement,
-                                                          TRI_aql_visit_statement_f postVisitStatement) {
+                                                          TRI_aql_visit_f visitMember,
+                                                          TRI_aql_visit_f preVisitStatement,
+                                                          TRI_aql_visit_f postVisitStatement) {
   TRI_aql_statement_walker_t* walker;
 
   walker = (TRI_aql_statement_walker_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_statement_walker_t), false);
@@ -165,6 +180,8 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
   walker->preVisitStatement = preVisitStatement;
   walker->postVisitStatement = postVisitStatement;
 
+  TRI_InitVectorPointer(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
+
   return walker;
 }
 
@@ -174,6 +191,8 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
 
 void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   assert(walker);
+
+  TRI_DestroyVectorPointer(&walker->_currentScopes);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 }

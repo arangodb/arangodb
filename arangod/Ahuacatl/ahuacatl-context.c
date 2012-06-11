@@ -30,6 +30,7 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-optimiser.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
@@ -340,6 +341,7 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
+  // TRI_ExplainAql(context);
   // TRI_DumpStatementsAql(context->_statements);
 
   return true;
@@ -370,54 +372,6 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new variable scope
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_scope2_t* TRI_CreateScopeAql (void) {
-  TRI_aql_scope2_t* scope;
-
-  scope = (TRI_aql_scope2_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope2_t), false);
-  if (!scope) {
-    return NULL;
-  }
-
-  TRI_InitAssociativePointer(&scope->_variables, 
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashVariableAql,
-                             &TRI_EqualVariableAql, 
-                             0);
-  
-  scope->_last = NULL;
-
-  return scope;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a variable scope
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeScopeAql (TRI_aql_scope2_t* const scope) {
-  size_t i, length;
-
-  assert(scope);
- 
-  // free variables lookup hash
-  length = scope->_variables._nrAlloc;
-  for (i = 0; i < length; ++i) {
-    TRI_aql_variable_t* variable = scope->_variables._table[i];
-
-    if (variable) {
-      TRI_FreeVariableAql(variable);
-    }
-  }
-
-  TRI_DestroyAssociativePointer(&scope->_variables);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

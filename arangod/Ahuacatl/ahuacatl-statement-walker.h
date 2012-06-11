@@ -30,10 +30,7 @@
 
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/json.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -57,18 +54,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for node visitation function
-////////////////////////////////////////////////////////////////////////////////
-  
-typedef TRI_aql_node_t* (*TRI_aql_visit_node_f)(void*, TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for statement visitation function
-////////////////////////////////////////////////////////////////////////////////
-
-typedef TRI_aql_node_t* (*TRI_aql_visit_statement_f)(void*, TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tree walker container
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -76,12 +61,19 @@ typedef struct TRI_aql_statement_walker_s {
   void* _data;
   bool _canModify;
   TRI_aql_statement_list_t* _statements;
+  TRI_vector_pointer_t _currentScopes;
 
-  TRI_aql_visit_node_f visitMember;
-  TRI_aql_visit_statement_f preVisitStatement;
-  TRI_aql_visit_statement_f postVisitStatement;
+  TRI_aql_node_t* (*visitMember)(struct TRI_aql_statement_walker_s* const, TRI_aql_node_t*);
+  TRI_aql_node_t* (*preVisitStatement)(struct TRI_aql_statement_walker_s* const, TRI_aql_node_t*);
+  TRI_aql_node_t* (*postVisitStatement)(struct TRI_aql_statement_walker_s* const, TRI_aql_node_t*);
 }
 TRI_aql_statement_walker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for node visitation function
+////////////////////////////////////////////////////////////////////////////////
+  
+typedef TRI_aql_node_t* (*TRI_aql_visit_f)(TRI_aql_statement_walker_t* const, TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -102,9 +94,9 @@ TRI_aql_statement_walker_t;
 
 TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void*,
                                                           const bool, 
-                                                          TRI_aql_visit_node_f,
-                                                          TRI_aql_visit_statement_f,
-                                                          TRI_aql_visit_statement_f);
+                                                          TRI_aql_visit_f,
+                                                          TRI_aql_visit_f,
+                                                          TRI_aql_visit_f);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a statement walker
