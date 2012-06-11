@@ -17,6 +17,22 @@
 
 # -*- mode: Makefile; -*-
 
+################################################################################
+################################################################################
+
+################################################################################
+### @brief m4 directory
+################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief JavaScript source code as header
+################################################################################
+
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -55,6 +71,8 @@
 
 # -*- mode: Makefile; -*-
 
+# -*- mode: Makefile; -*-
+
 ################################################################################
 ################################################################################
 
@@ -86,7 +104,7 @@
 ################################################################################
 
 ################################################################################
-### @brief flex
+### @brief built sources
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -95,10 +113,17 @@
 ################################################################################
 
 ################################################################################
-### @brief BISON
+### @brief built sources
 ################################################################################
 
 # -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief built sources
+################################################################################
 
 # -*- mode: Makefile; -*-
 
@@ -149,11 +174,19 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+
+################################################################################
+### @brief ruby additions
+################################################################################
+@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
 sbin_PROGRAMS = bin/arangod$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
-@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
-@ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
+
+################################################################################
+### @brief ruby additions
+################################################################################
 @ENABLE_MRUBY_TRUE@am__append_3 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_4 = bin/arangoirb
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
@@ -166,43 +199,54 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.doxygen \
 	$(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.javascript \
-	$(srcdir)/m4/Makefile.mruby \
+	$(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.protobuf \
 	$(top_srcdir)/Doxygen/arango.template.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-@ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_5 = \
+@ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
+@ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
+
 @ENABLE_MRUBY_TRUE@am__append_6 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/RestServer/RubyDispatcherThread.cpp
 
-@ENABLE_MRUBY_TRUE@am__append_7 = .setup-mr-directories
-
-################################################################################
-### @brief cleanup
-################################################################################
-@ENABLE_MRUBY_TRUE@am__append_8 = $(JAVASCRIPT_HEADER) .setup-mr-directories
-
-################################################################################
-### @brief cleanup
-################################################################################
-@ENABLE_FLEX_TRUE@am__append_9 = $(FLEX_FILES) $(FLEXXX_FILES)
-
-################################################################################
-### @brief CLEANUP
-################################################################################
-@ENABLE_BISON_TRUE@am__append_10 = $(BISON_FILES) $(BISONXX_FILES)
 @ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/geo_suite$(EXEEXT)
 @ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_11 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_7 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_ALL_IN_ONE_TRUE@am__append_12 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_13 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_8 = .setup-mr-directories
+
+################################################################################
+### @brief cleanup
+################################################################################
+@ENABLE_MRUBY_TRUE@am__append_9 = $(JAVASCRIPT_HEADER) .setup-mr-directories
+@ENABLE_FLEX_TRUE@am__append_10 = $(FLEX_FILES) $(FLEXXX_FILES)
+
+################################################################################
+### @brief cleanup
+################################################################################
+@ENABLE_FLEX_TRUE@am__append_11 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_12 = $(BISON_FILES) $(BISONXX_FILES)
+
+################################################################################
+### @brief CLEANUP
+################################################################################
+@ENABLE_BISON_TRUE@am__append_13 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_14 = $(PROTOBUF_FILES)
+
+################################################################################
+### @brief cleanup
+################################################################################
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_15 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_16 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_17 = @MRUBY_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -716,6 +760,10 @@ LIBEV_CPPFLAGS = @LIBEV_CPPFLAGS@
 LIBEV_LDFLAGS = @LIBEV_LDFLAGS@
 LIBEV_LIBS = @LIBEV_LIBS@
 LIBOBJS = @LIBOBJS@
+
+################################################################################
+### @brief libraries
+################################################################################
 LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
 	@OPENSSL_LIBS@ @READLINE_LIBS@ $(am__append_2)
 LN_S = @LN_S@
@@ -817,26 +865,19 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
-	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
-	-I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1)
-AM_LDFLAGS = \
-	@BOOST_LDFLAGS@ \
-	@LIBEV_LDFLAGS@ \
-	@MATH_LDFLAGS@ \
-	@NCURSES_LDFLAGS@ \
-	@OPENSSL_LDFLAGS@ \
-	@READLINE_LDFLAGS@ \
-	@V8_LDFLAGS@
 
+################################################################################
+### @brief source to build before compile
+################################################################################
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
-	$(MRUBY_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) $(BISONXX_FILES) \
-	$(FLEX_FILES) $(BISON_FILES) $(am__append_7) \
+	$(MRUBY_HEADER) $(am__append_7) $(am__append_8) \
 	Doxygen/.setup-directories .setup-js-directories \
-	$(am__append_11) $(am__append_12) $(am__append_13)
+	$(am__append_10) $(am__append_12) $(am__append_14) \
+	$(am__append_16) $(am__append_17)
+
+################################################################################
+### @brief files to cleanup
+################################################################################
 
 ################################################################################
 ### @brief cleanup
@@ -845,24 +886,15 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_8) $(DOXYGEN) $(addsuffix .md,$(addprefix \
+CLEANUP = $(am__append_9) $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
 	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
-	.setup-js-directories $(am__append_9) $(am__append_10)
-noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
-	lib/libarango_fe.a lib/libarango_client.a $(am__append_3)
-nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.css" -print) \
-	$(shell find @srcdir@/html -name "*.gif" -print) \
-	$(shell find @srcdir@/html -name "*.html" -print) \
-	$(shell find @srcdir@/html -name "*.ico" -print) \
-	$(shell find @srcdir@/html -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.png" -print)
+	.setup-js-directories $(am__append_11) $(am__append_13) \
+	$(am__append_15)
 
+################################################################################
+### @brief flex files
+################################################################################
 
 ################################################################################
 ################################################################################
@@ -881,9 +913,17 @@ FLEX_FILES = lib/JsonParser/json-parser.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c
 
 ################################################################################
+### @brief flex++ files
+################################################################################
+
+################################################################################
 ### @brief flex++
 ################################################################################
 FLEXXX_FILES = lib/V8/v8-json.cpp lib/JsonParserX/JsonScannerX.cpp
+
+################################################################################
+### @brief bison files
+################################################################################
 
 ################################################################################
 ### @brief bison
@@ -891,16 +931,70 @@ FLEXXX_FILES = lib/V8/v8-json.cpp lib/JsonParserX/JsonScannerX.cpp
 BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.c
 
 ################################################################################
+### @brief bison++ files
+################################################################################
+
+################################################################################
 ### @brief bison++
 ################################################################################
 BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
 
 ################################################################################
+### @brief protocol buffers files
 ################################################################################
 
 ################################################################################
-### @brief JavaScript source code as header
+### @brief protocol buffers
 ################################################################################
+PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
+
+################################################################################
+### @brief preprocessor flags
+################################################################################
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
+	-D_PKGDATADIR_='"${pkgdatadir}"' \
+	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
+	-I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1)
+
+################################################################################
+### @brief linker flags
+################################################################################
+AM_LDFLAGS = \
+	@BOOST_LDFLAGS@ \
+	@LIBEV_LDFLAGS@ \
+	@MATH_LDFLAGS@ \
+	@NCURSES_LDFLAGS@ \
+	@OPENSSL_LDFLAGS@ \
+	@READLINE_LDFLAGS@ \
+	@V8_LDFLAGS@
+
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief auxiliary libraries
+################################################################################
+noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
+	lib/libarango_fe.a lib/libarango_client.a $(am__append_3)
+
+################################################################################
+### @brief /share data
+################################################################################
+nobase_pkgdata_DATA = \
+	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
+	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.css" -print) \
+	$(shell find @srcdir@/html -name "*.gif" -print) \
+	$(shell find @srcdir@/html -name "*.html" -print) \
+	$(shell find @srcdir@/html -name "*.ico" -print) \
+	$(shell find @srcdir@/html -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.png" -print)
+
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -1195,7 +1289,10 @@ lib_libarango_v8_a_SOURCES = \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/MRLineEditor.cpp \
 @ENABLE_MRUBY_TRUE@	lib/MRuby/mr-utils.c
 
-bin_arangod_CPPFLAGS = -I@top_srcdir@/arangod $(AM_CPPFLAGS) 
+bin_arangod_CPPFLAGS = \
+	-I@top_srcdir@/arangod \
+	$(AM_CPPFLAGS) 
+
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
 	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_5)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
@@ -1248,8 +1345,17 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c $(am__append_6)
-bin_arangosh_CPPFLAGS = -I@top_srcdir@/arangosh $(AM_CPPFLAGS) 
-bin_arangosh_LDADD = lib/libarango_v8.a lib/libarango_client.a lib/libarango.a $(LIBS) @V8_LIBS@
+bin_arangosh_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangosh_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
 bin_arangosh_SOURCES = \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
@@ -1259,15 +1365,33 @@ bin_arangosh_SOURCES = \
 ################################################################################
 ### @brief program "arangoimp"
 ################################################################################
-bin_arangoimp_CPPFLAGS = -I@top_srcdir@/arangosh $(AM_CPPFLAGS) 
-bin_arangoimp_LDADD = lib/libarango_v8.a lib/libarango_client.a lib/libarango.a $(LIBS) @V8_LIBS@
+bin_arangoimp_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangoimp_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
 bin_arangoimp_SOURCES = \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangoimp.cpp
 
-@ENABLE_MRUBY_TRUE@bin_arangoirb_CPPFLAGS = -I@top_srcdir@/arangoirb $(AM_CPPFLAGS) 
-@ENABLE_MRUBY_TRUE@bin_arangoirb_LDADD = lib/libarango_mruby.a lib/libarango_client.a lib/libarango.a $(LIBS) @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@bin_arangoirb_CPPFLAGS = \
+@ENABLE_MRUBY_TRUE@	-I@top_srcdir@/arangoirb \
+@ENABLE_MRUBY_TRUE@	$(AM_CPPFLAGS) 
+
+@ENABLE_MRUBY_TRUE@bin_arangoirb_LDADD = \
+@ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
+@ENABLE_MRUBY_TRUE@	lib/libarango_client.a \
+@ENABLE_MRUBY_TRUE@	lib/libarango.a \
+@ENABLE_MRUBY_TRUE@	$(LIBS) \
+@ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
+
 @ENABLE_MRUBY_TRUE@bin_arangoirb_SOURCES = \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/MRubyClientConnection.cpp \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/arangoirb.cpp
@@ -1365,7 +1489,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -4505,6 +4629,10 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
+################################################################################
+### @brief /var data
+################################################################################
+
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
 @ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 @ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
@@ -4512,17 +4640,18 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 ################################################################################
 ################################################################################
 
+################################################################################
+### @brief version number
+################################################################################
+
 build.h: configure.ac
 	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
 
 ################################################################################
+### @brief local modifications
 ################################################################################
 
-################################################################################
-################################################################################
-
-################################################################################
-################################################################################
+-include Makefile.local
 
 ################################################################################
 ################################################################################
@@ -4530,181 +4659,11 @@ build.h: configure.ac
 ################################################################################
 ################################################################################
 
-@ENABLE_MRUBY_TRUE@.setup-mr-directories:
-@ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
-@ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
-@ENABLE_MRUBY_TRUE@	@touch $@
-
-@ENABLE_MRUBY_TRUE@mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
-
-@ENABLE_MRUBY_TRUE@mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
-@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
-
 ################################################################################
 ################################################################################
 
-.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
-
-Doxygen/.setup-directories:
-	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
-	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
-	@test -d Doxygen/js/common || mkdir Doxygen/js/common
-	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
-	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
-	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
-	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/web || mkdir Doxygen/web
-	@touch $@
-
-Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/xml/%.md: Doxygen/xml/%.xml
-	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
-
-################################################################################
-### @brief doxygen
-################################################################################
-
-.PHONY: doxygen
-
-Doxygen/arango-html.doxy: Doxygen/arango.template
-	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
-
-doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
-
-################################################################################
-### @brief wiki
-################################################################################
-
-.PHONY: wiki wiki2
-
-Doxygen/arango-xml.doxy: Doxygen/arango.template
-	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-
-wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
-
-wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-xml.doxy > /dev/null
-
-################################################################################
-### @brief latex
-################################################################################
-
-.PHONY: latex
-
-Doxygen/arango-latex.doxy: Doxygen/arango.template
-	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
-
-latex: Doxygen/arango-latex.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-latex.doxy > /dev/null
-
-	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
-
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
-
 ################################################################################
 ################################################################################
-
-.setup-js-directories:
-	@test -d html/admin/js/modules || mkdir html/admin/js/modules
-	@test -d js || mkdir js
-	@test -d js/client || mkdir js/client
-	@test -d js/common/bootstrap || mkdir js/common/bootstrap
-	@test -d js/server || mkdir js/server
-	@touch $@
-
-################################################################################
-### @brief converts JavaScript files to header files
-################################################################################
-
-html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-js/js-%.h: @srcdir@/js/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-################################################################################
-################################################################################
-
-@ENABLE_FLEX_TRUE@JsonParser/%.c: @srcdir@/JsonParser/%.l
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-@ENABLE_FLEX_TRUE@QL/%.c: @srcdir@/QL/%.l
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-@ENABLE_FLEX_TRUE@Ahuacatl/%.c: @srcdir@/Ahuacatl/%.l
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-################################################################################
-### @brief flex++
-################################################################################
-
-@ENABLE_FLEX_TRUE@V8/%.cpp: @srcdir@/V8/%.ll
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-@ENABLE_FLEX_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-################################################################################
-################################################################################
-
-@ENABLE_BISON_TRUE@arangod/Ahuacatl/%.c: @srcdir@/arangod/Ahuacatl/%.y
-@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
-
-################################################################################
-### @brief BISON++
-################################################################################
-
-@ENABLE_BISON_TRUE@lib/JsonParserX/%.cpp: @srcdir@/lib/JsonParserX/%.yy
-@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
 ################################################################################
 ################################################################################
@@ -4875,7 +4834,17 @@ unittests-http-server:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
--include Makefile.local
+################################################################################
+### @brief source files
+################################################################################
+
+################################################################################
+### @brief unit tests
+################################################################################
+
+################################################################################
+### @brief error code file
+################################################################################
 
 .PHONY: errorfiles
 
@@ -4883,6 +4852,201 @@ unittests-http-server:
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
+
+################################################################################
+################################################################################
+
+clean-local:
+	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+
+@ENABLE_MRUBY_TRUE@.setup-mr-directories:
+@ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
+@ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
+@ENABLE_MRUBY_TRUE@	@touch $@
+
+@ENABLE_MRUBY_TRUE@mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
+@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
+
+@ENABLE_MRUBY_TRUE@mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
+@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
+
+################################################################################
+################################################################################
+
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+
+Doxygen/.setup-directories:
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
+	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
+	@test -d Doxygen/js/common || mkdir Doxygen/js/common
+	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/client || mkdir Doxygen/js/client
+	@test -d Doxygen/web || mkdir Doxygen/web
+	@touch $@
+
+Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/xml/%.md: Doxygen/xml/%.xml
+	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+################################################################################
+### @brief doxygen
+################################################################################
+
+.PHONY: doxygen
+
+Doxygen/arango-html.doxy: Doxygen/arango.template
+	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
+
+doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-html.doxy > /dev/null
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
+
+################################################################################
+### @brief wiki
+################################################################################
+
+.PHONY: wiki wiki2
+
+Doxygen/arango-xml.doxy: Doxygen/arango.template
+	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
+
+wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
+
+wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-xml.doxy > /dev/null
+
+################################################################################
+### @brief latex
+################################################################################
+
+.PHONY: latex
+
+Doxygen/arango-latex.doxy: Doxygen/arango.template
+	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
+
+latex: Doxygen/arango-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-latex.doxy > /dev/null
+
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
+
+	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
+################################################################################
+################################################################################
+
+.setup-js-directories:
+	@test -d html/admin/js/modules || mkdir html/admin/js/modules
+	@test -d js || mkdir js
+	@test -d js/client || mkdir js/client
+	@test -d js/common/bootstrap || mkdir js/common/bootstrap
+	@test -d js/server || mkdir js/server
+	@touch $@
+
+################################################################################
+### @brief converts JavaScript files to header files
+################################################################################
+
+html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
+	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+
+html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
+	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+
+js/js-%.h: @srcdir@/js/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief flex
+################################################################################
+
+@ENABLE_FLEX_TRUE@%.c: %.l
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
+################################################################################
+### @brief flex++
+################################################################################
+
+@ENABLE_FLEX_TRUE@%.cpp: %.ll
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief BISON
+################################################################################
+
+@ENABLE_BISON_TRUE@%.c: %.y
+@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+
+################################################################################
+### @brief BISON++
+################################################################################
+
+@ENABLE_BISON_TRUE@%.cpp: %.yy
+@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief protocol buffers
+################################################################################
+
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@%.pb.cpp: %.proto
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@	mv $(addsuffix .cc,$(basename $@)) $@
+
+################################################################################
+################################################################################
 
 @ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build-@TRI_BITS@
 
@@ -4955,8 +5119,43 @@ unittests-http-server:
 ################################################################################
 ################################################################################
 
-clean-local:
-	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+################################################################################
+### @brief mruby
+################################################################################
+
+################################################################################
+### @brief documentation
+################################################################################
+
+################################################################################
+### @brief javascript
+################################################################################
+
+################################################################################
+### @brief flex
+################################################################################
+
+################################################################################
+### @brief bison
+################################################################################
+
+################################################################################
+### @brief protocol buffers
+################################################################################
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief libev and V8
+################################################################################
+
+################################################################################
+### @brief mruby
+################################################################################
+
+################################################################################
+################################################################################
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

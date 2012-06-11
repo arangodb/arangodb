@@ -3,7 +3,7 @@ dnl ArangoDB                                                  (c) triAGENS GmbH
 dnl ============================================================================
 
 dnl ============================================================================
-dnl PREAMBLE                                     triAGENS GmbH Build Environment
+dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
 AC_INIT([triAGENS ArangoDB], [1.0.alpha1], [info@triagens.de], [arango], [http://www.arangodb.org])
@@ -16,10 +16,13 @@ AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl ============================================================================
-dnl OPTIONS                                        BISON, FLEX, ALL-IN-ONE, PATH
+dnl --SECTION--                                                 SCANNER & PARSER
 dnl ============================================================================
 
+dnl ----------------------------------------------------------------------------
 dnl BISON
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(bison,
   AS_HELP_STRING([--enable-bison], [enable BISON]),
   [tr_BISON="${enableval:-yes}"],
@@ -28,9 +31,10 @@ AC_ARG_ENABLE(bison,
 
 AM_CONDITIONAL(ENABLE_BISON, test "x$tr_BISON" = xyes)
 
-
-
+dnl ----------------------------------------------------------------------------
 dnl FLEX
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(flex,
   AS_HELP_STRING([--enable-flex], [enable FLEX]),
   [tr_FLEX="${enableval:-yes}"],
@@ -39,31 +43,10 @@ AC_ARG_ENABLE(flex,
 
 AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
 
-
-
-dnl ALL-IN-ONE
-AC_ARG_ENABLE(all-in-one,
-  AS_HELP_STRING([--enable-all-in-one], [use supplied V8 and LIBEV from 3rdParty directory]),
-  [ALL_IN_ONE_ENABLE="${enableval:-yes}"],
-  [ALL_IN_ONE_ENABLE=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$ALL_IN_ONE_ENABLE" = xyes)
-
-
-
-dnl BOOST
-AC_ARG_ENABLE(3rd-party-boost,
-  AS_HELP_STRING([--enable-3rd-party-boost], [use supplied BOOST from 3rdParty directory]),
-  [tr_3RD_PARTY_BOOST="${enableval:-yes}"],
-  [tr_3RD_PARTY_BOOST=yes]
-)
-
-AM_CONDITIONAL(ENABLE_3RD_PARTY_BOOST, test "x$tr_3RD_PARTY_BOOST" = xyes)
-
-
-
+dnl ----------------------------------------------------------------------------
 dnl ERRORS
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(errors-dependency,
   AS_HELP_STRING([--enable-errors-dependency], [generate dependencies for error files]),
   [tr_ERRORS_DEPENDENCY="${enableval:-yes}"],
@@ -72,9 +55,65 @@ AC_ARG_ENABLE(errors-dependency,
 
 AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
 
+dnl ----------------------------------------------------------------------------
+dnl PROTCOL BUFFERS
+dnl ----------------------------------------------------------------------------
 
+AC_ARG_ENABLE(protobuf-dependency,
+  AS_HELP_STRING([--enable-protobuf-dependency], [generate dependencies for protocol buffers]),
+  [tr_PROTOBUF_DEPENDENCY="${enableval:-yes}"],
+  [tr_PROTOBUF_DEPENDENCY=no]
+)
 
+AM_CONDITIONAL(ENABLE_PROTOBUF_DEPENDENCY, test "x$tr_PROTOBUF_DEPENDENCY" = xyes)
+
+dnl ============================================================================
+dnl --SECTION--                                                        LIBRARIES
+dnl ============================================================================
+
+dnl ----------------------------------------------------------------------------
+dnl ALL-IN-ONE
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one,
+  AS_HELP_STRING([--enable-all-in-one], [use supplied V8 and LIBEV from 3rdParty directory]),
+  [ALL_IN_ONE_ENABLE="${enableval:-yes}"],
+  [ALL_IN_ONE_ENABLE=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$ALL_IN_ONE_ENABLE" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl BOOST
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(3rd-party-boost,
+  AS_HELP_STRING([--enable-3rd-party-boost], [use supplied BOOST from 3rdParty directory]),
+  [tr_3RD_PARTY_BOOST="${enableval:-yes}"],
+  [tr_3RD_PARTY_BOOST=yes]
+)
+
+AM_CONDITIONAL(ENABLE_3RD_PARTY_BOOST, test "x$tr_3RD_PARTY_BOOST" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl BOOST TEST
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_WITH([boost-test],
+  AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
+  [tr_BOOST_TEST=yes],
+  [tr_BOOST_TEST=no])
+
+AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
+
+dnl ============================================================================
+dnl --SECTION--                                                          OPTIONS
+dnl ============================================================================
+
+dnl ----------------------------------------------------------------------------
 dnl INSTALL EMPTY DATABASE
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(install-dbdir,
   AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
   [tr_DBDIR="${enableval:-yes}"],
@@ -83,9 +122,10 @@ AC_ARG_ENABLE(install-dbdir,
 
 AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
 
-
-
+dnl ----------------------------------------------------------------------------
 dnl RELATIVE PATH
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(relative,
   AS_HELP_STRING([--enable-relative], [all path are relative to the binary (yes/no/devel [default])]),
   [tr_RELATIVE="${enableval:-devel}"],
@@ -102,19 +142,8 @@ else
 fi
 fi
 
-
-
-dnl BOOST TEST
-AC_ARG_WITH([boost-test],
-  AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
-  [tr_BOOST_TEST=yes],
-  [tr_BOOST_TEST=no])
-
-AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
-
-
 dnl ============================================================================
-dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
+dnl --SECTION--                                                    CONFIGURATION
 dnl ============================================================================
 
 m4_include([m4/configure.basics])
@@ -177,7 +206,7 @@ else
 fi
 
 dnl ============================================================================
-dnl OUTPUT                                                        GENERATE FILES
+dnl --SECTION--                                                   GENERATE FILES
 dnl ============================================================================
 
 BUILD_H="\$(top_srcdir)/build.h"
@@ -188,7 +217,16 @@ AC_CONFIG_HEADER([config/config.h lib/BasicsC/local-configuration.h])
 AC_OUTPUT
 
 dnl ============================================================================
-dnl INFORMATION                                   information about used options
+dnl --SECTION--                                                    GENERATE INFO
 dnl ============================================================================
 
 m4_include([m4/configure.information])
+
+dnl ============================================================================
+dnl --SECTION--                                                      END-OF-FILE
+dnl ============================================================================
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl [a-zA-Z]\\|dnl --SECTION--\\)"
+dnl End:
