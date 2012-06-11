@@ -5140,7 +5140,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo
 
-@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && ./configure --disable-shared --prefix=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && ./configure --disable-shared --prefix=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD --libdir=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD/lib@TRI_BITS@
 @ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && $(MAKE) install
 
 @ENABLE_ZEROMQ_TRUE@	touch .zeromq-build-@TRI_BITS@
