@@ -405,9 +405,12 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _startupModulesJS = string(_PKGDATADIR_) + "/js/server/modules"
                 + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 
+#ifdef TRI_ENABLE_MRUBY
     _actionPathMR = string(_PKGDATADIR_) + "/mr/actions/system";
     _startupModulesMR = string(_PKGDATADIR_) + "/mr/server/modules"
                 + ";" + string(_PKGDATADIR_) + "/mr/common/modules";
+#endif
+
 #endif
 
 #ifdef _DATABASEDIR_
