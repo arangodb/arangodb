@@ -147,3 +147,5 @@ VC++
 3rdParty/zeromq-2.2.0/tests/test_reqrep_tcp
 3rdParty/zeromq-2.2.0/tests/test_shutdown_stress
 3rdParty/zeromq-2.2.0/tests/test_timeo
+.zeromq-build-64
+3rdParty/zeromq-2.2.0/BUILD/

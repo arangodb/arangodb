@@ -609,6 +609,11 @@ BUILD_H
 BOOST_LIBS
 BOOST_LDFLAGS
 BOOST_CPPFLAGS
+ZEROMQ_LIBS
+ZEROMQ_LDFLAGS
+ZEROMQ_CPPFLAGS
+ENABLE_ZEROMQ_FALSE
+ENABLE_ZEROMQ_TRUE
 MRUBY_LIBS
 MRUBY_LDFLAGS
 MRUBY_CPPFLAGS
@@ -843,6 +848,7 @@ with_v8
 with_v8_lib
 enable_static_v8
 enable_mruby
+enable_zeromq
 with_boost
 with_boost_libdir
 '
@@ -1524,6 +1530,7 @@ Optional Features:
   --enable-static-libev   using static library 'libev' (default: no)
   --enable-static-v8      using static library 'v8' (default: no)
   --enable-mruby          enable MRUBY
+  --enable-zeromq         enable ZeroMQ
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -6988,6 +6995,8 @@ FLAG_INFO="$FLAG_INFO|."
 
 
 
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR MATH" >&5
@@ -7055,6 +7064,8 @@ if test "x$tr_MATH" = xyes;  then
   FLAG_INFO="$FLAG_INFO|MATH_LDFLAGS:  ${MATH_LDFLAGS}"
   FLAG_INFO="$FLAG_INFO|MATH_LIBS:     ${MATH_LIBS}"
 fi
+
+
 
 
 
@@ -7715,6 +7726,8 @@ fi
  # before readline
 
 
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR READLINE" >&5
@@ -7985,6 +7998,8 @@ if test "x$tr_READLINE" = xyes;  then
 else
   LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
 fi
+
+
 
 
 
@@ -8448,6 +8463,7 @@ fi
 
 
 
+
 if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
 
 
@@ -8487,52 +8503,7 @@ FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
 FLAG_INFO="$FLAG_INFO|."
 
 
-
-
-V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
-V8_LDFLAGS=""
-V8_TARGET="native"
-
-if test x$tr_DARWIN == xyes;  then
-  if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
-  else
-    V8_TARGET="ia32.release"
-  fi
-
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
-else
-  if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
-  else
-    V8_TARGET="ia32.release"
-  fi
-
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
-fi
-
-TRI_V8_VERSION="3.9.4"
-
-
-
-
-
-
-
-V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
-
-
-LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
-
-FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
-FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
-
-
-
-  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-LIBEV: enabled"
 else
 
 
@@ -8841,6 +8812,58 @@ else
 fi
 
 
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-LIBEV: disabled"
+fi
+
+
+if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
+
+
+V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
+V8_LDFLAGS=""
+V8_TARGET="native"
+
+if test x$tr_DARWIN == xyes;  then
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
+else
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
+fi
+
+TRI_V8_VERSION="3.9.4"
+
+
+
+
+
+
+
+V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
+
+
+LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
+FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+
+
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-V8: enabled"
+else
 
 
 V8_CPPFLAGS=""
@@ -9047,8 +9070,9 @@ FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
 FLAG_INFO="$FLAG_INFO|."
 
 
-  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-V8: disabled"
 fi
+
 
 
 
@@ -9104,6 +9128,66 @@ if test "x$tr_MRUBY" = "xyes";  then
 else
   BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
 fi
+
+
+
+
+
+
+
+# Check whether --enable-zeromq was given.
+if test "${enable_zeromq+set}" = set; then :
+  enableval=$enable_zeromq; tr_ZEROMQ="${enableval:-yes}"
+else
+  tr_ZEROMQ=no
+
+fi
+
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  ZEROMQ_CPPFLAGS="-I${srcdir}/3rdParty/zeromq-2.2.0/include"
+  ZEROMQ_LDFLAGS=""
+  ZEROMQ_LIBS="${srcdir}/3rdParty/zeromq-2.2.0/BUILD/lib/libzeromq.a"
+
+  TRI_ZEROMQ_VERSION="2.2.0"
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_ZEROMQ 1
+_ACEOF
+
+fi
+
+ if test "x$tr_ZEROMQ" = "xyes"; then
+  ENABLE_ZEROMQ_TRUE=
+  ENABLE_ZEROMQ_FALSE='#'
+else
+  ENABLE_ZEROMQ_TRUE='#'
+  ENABLE_ZEROMQ_FALSE=
+fi
+
+
+
+
+
+
+
+ZEROMQ_CPPFLAGS="${ZEROMQ_CPPFLAGS} -DTRI_ZEROMQ_VERSION='\"${TRI_ZEROMQ_VERSION}\"'"
+
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: enabled"
+
+  LIB_INFO="$LIB_INFO|ZEROMQ VERSION: ${TRI_ZEROMQ_VERSION}"
+
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_CPPFLAGS: ${ZEROMQ_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LDFLAGS:  ${ZEROMQ_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LIBS:     ${ZEROMQ_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
+else
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: disabled"
+fi
+
 
 
 
@@ -9724,6 +9808,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_MRUBY_TRUE}" && test -z "${ENABLE_MRUBY_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_MRUBY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_ZEROMQ_TRUE}" && test -z "${ENABLE_ZEROMQ_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ZEROMQ\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

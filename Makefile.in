@@ -152,6 +152,15 @@
 ### @brief mruby
 ################################################################################
 
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief ZeroMQ
+################################################################################
+
 
 
 VPATH = @srcdir@
@@ -197,6 +206,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/m4/Makefile.all-in-one-libev \
 	$(srcdir)/m4/Makefile.all-in-one-mruby \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
+	$(srcdir)/m4/Makefile.all-in-one-zeromq \
 	$(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.doxygen \
 	$(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.javascript \
 	$(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.protobuf \
@@ -226,7 +236,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_9 = $(JAVASCRIPT_HEADER) .setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_9 = $(MRUBY_HEADER) .setup-mr-directories
 @ENABLE_FLEX_TRUE@am__append_10 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
@@ -247,6 +257,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 @ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_15 = $(FLEX_FILES) $(FLEXXX_FILES)
 @ENABLE_ALL_IN_ONE_TRUE@am__append_16 = @LIBEV_LIBS@ @V8_LIBS@
 @ENABLE_MRUBY_TRUE@am__append_17 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_18 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -268,8 +279,9 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.libev \
+	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/all-in-one.v8 \
 	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/all-in-one.zeromq \
 	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/configure.information \
@@ -808,6 +820,9 @@ V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
 V8_TARGET = @V8_TARGET@
 VERSION = @VERSION@
+ZEROMQ_CPPFLAGS = @ZEROMQ_CPPFLAGS@
+ZEROMQ_LDFLAGS = @ZEROMQ_LDFLAGS@
+ZEROMQ_LIBS = @ZEROMQ_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -873,7 +888,7 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) $(am__append_7) $(am__append_8) \
 	Doxygen/.setup-directories .setup-js-directories \
 	$(am__append_10) $(am__append_12) $(am__append_14) \
-	$(am__append_16) $(am__append_17)
+	$(am__append_16) $(am__append_17) $(am__append_18)
 
 ################################################################################
 ### @brief files to cleanup
@@ -1489,7 +1504,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5116,6 +5131,29 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 ################################################################################
 
+@ENABLE_ZEROMQ_TRUE@@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@
+
+@ENABLE_ZEROMQ_TRUE@.zeromq-build-@TRI_BITS@:
+@ENABLE_ZEROMQ_TRUE@	@echo
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo "BUILDING ZEROMQ"
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo
+
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && ./configure --disable-shared --prefix=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && $(MAKE) install
+
+@ENABLE_ZEROMQ_TRUE@	touch .zeromq-build-@TRI_BITS@
+
+@ENABLE_ZEROMQ_TRUE@	@echo
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo "BUILD ZeroMQ FINISHED"
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo
+
+################################################################################
+################################################################################
+
 ################################################################################
 ################################################################################
 
@@ -5152,6 +5190,10 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 ################################################################################
 ### @brief mruby
+################################################################################
+
+################################################################################
+### @brief zeromq
 ################################################################################
 
 ################################################################################
