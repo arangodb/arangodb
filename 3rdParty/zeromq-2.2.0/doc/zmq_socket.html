@@ -1,0 +1,1477 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.4" />
+<title>zmq_socket(3)</title>
+<style type="text/css">
+/* Sans-serif font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+div#toctitle,
+span#author, span#revnumber, span#revdate, span#revremark,
+div#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+/* Serif font. */
+div.sectionbody {
+  font-family: Georgia,"Times New Roman",Times,serif;
+}
+
+/* Monospace font. */
+tt {
+  font-size: inherit;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+tt {
+  font-size: inherit;
+  color: navy;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+pre {
+  padding: 0;
+  margin: 0;
+}
+
+span#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+span#email {
+}
+span#revnumber, span#revdate, span#revremark {
+}
+
+div#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+div#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+div#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+div#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.tableblock, div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #777777;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  div#footer-badges { display: none; }
+}
+
+div#toc {
+  margin-bottom: 2.5em;
+}
+
+div#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+/* Overrides for manpage documents */
+h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+h2 {
+  border-style: none;
+}
+div.sectionbody {
+  margin-left: 5%;
+}
+
+@media print {
+  div#toc { display: none; }
+}
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+window.onload = function(){asciidoc.footnotes();}
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([2-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  var cont = document.getElementById("content");
+  var noteholder = document.getElementById("footnotes");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      // Use [\s\S] in place of . so multi-line matches work.
+      // Because JavaScript has no s (dotall) regex flag.
+      note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      spans[i].innerHTML =
+        "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+        "' title='View footnote' class='footnote'>" + n + "</a>]";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+}
+
+}
+/*]]>*/
+</script>
+</head>
+<body class="manpage">
+<div id="header">
+<h1>
+zmq_socket(3) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>zmq_socket -
+   create 0MQ socket
+</p>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_synopsis">SYNOPSIS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><strong>void *zmq_socket (void <em>*context</em>, int <em>type</em>);</strong></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_description">DESCRIPTION</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The <em>zmq_socket()</em> function shall create a ØMQ socket within the specified
+<em>context</em> and return an opaque handle to the newly created socket. The <em>type</em>
+argument specifies the socket type, which determines the semantics of
+communication over the socket.</p></div>
+<div class="paragraph"><p>The newly created socket is initially unbound, and not associated with any
+endpoints. In order to establish a message flow a socket must first be
+connected to at least one endpoint with <a href="zmq_connect.html">zmq_connect(3)</a>, or at least one
+endpoint must be created for accepting incoming connections with
+<a href="zmq_bind.html">zmq_bind(3)</a>.</p></div>
+<div class="paragraph"><div class="title">Key differences to conventional sockets</div><p>Generally speaking, conventional sockets present a <em>synchronous</em> interface to
+either connection-oriented reliable byte streams (SOCK_STREAM), or
+connection-less unreliable datagrams (SOCK_DGRAM). In comparison, ØMQ sockets
+present an abstraction of an asynchronous <em>message queue</em>, with the exact
+queueing semantics depending on the socket type in use. Where conventional
+sockets transfer streams of bytes or discrete datagrams, ØMQ sockets transfer
+discrete <em>messages</em>.</p></div>
+<div class="paragraph"><p>ØMQ sockets being <em>asynchronous</em> means that the timings of the physical
+connection setup and tear down, reconnect and effective delivery are transparent
+to the user and organized by ØMQ itself. Further, messages may be <em>queued</em> in
+the event that a peer is unavailable to receive them.</p></div>
+<div class="paragraph"><p>Conventional sockets allow only strict one-to-one (two peers), many-to-one
+(many clients, one server), or in some cases one-to-many (multicast)
+relationships. With the exception of <em>ZMQ_PAIR</em>, ØMQ sockets may be connected
+<strong>to multiple endpoints</strong> using <em>zmq_connect()</em>, while simultaneously accepting
+incoming connections <strong>from multiple endpoints</strong> bound to the socket using
+<em>zmq_bind()</em>, thus allowing many-to-many relationships.</p></div>
+<div class="paragraph"><div class="title">Thread safety</div><p>ØMQ <em>sockets</em> are <em>not</em> thread safe. Applications MUST NOT use a socket
+from multiple threads except after migrating a socket from one thread to
+another with a "full fence" memory barrier.</p></div>
+<div class="paragraph"><div class="title">Socket types</div><p>The following sections present the socket types defined by ØMQ, grouped by the
+general <em>messaging pattern</em> which is built from related socket types.</p></div>
+<div class="sect2">
+<h3 id="_request_reply_pattern">Request-reply pattern</h3>
+<div class="paragraph"><p>The request-reply pattern is used for sending requests from a <em>client</em> to one
+or more instances of a <em>service</em>, and receiving subsequent replies to each
+request sent.</p></div>
+<div class="sect3">
+<h4 id="_zmq_req">ZMQ_REQ</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_REQ</em> is used by a <em>client</em> to send requests to and
+receive replies from a <em>service</em>. This socket type allows only an alternating
+sequence of <em>zmq_send(request)</em> and subsequent <em>zmq_recv(reply)</em> calls. Each
+request sent is round-robined among all <em>services</em>, and each reply received is
+matched with the last issued request.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_REQ</em> socket enters an exceptional state due to having reached the
+high water mark for all <em>services</em>, or if there are no <em>services</em> at all, then
+any <a href="zmq_send.html">zmq_send(3)</a> operations on the socket shall block until the
+exceptional state ends or at least one <em>service</em> becomes available for sending;
+messages are not discarded.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_REQ characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_REP</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Bidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Send, Receive, Send, Receive, &#8230;
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Round-robin
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Last peer
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Block
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+<div class="sect3">
+<h4 id="_zmq_rep">ZMQ_REP</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_REP</em> is used by a <em>service</em> to receive requests from and
+send replies to a <em>client</em>. This socket type allows only an alternating
+sequence of <em>zmq_recv(request)</em> and subsequent <em>zmq_send(reply)</em> calls. Each
+request received is fair-queued from among all <em>clients</em>, and each reply sent
+is routed to the <em>client</em> that issued the last request. If the original
+requester doesn&#8217;t exist any more the reply is silently discarded.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_REP</em> socket enters an exceptional state due to having reached the
+high water mark for a <em>client</em>, then any replies sent to the <em>client</em> in
+question shall be dropped until the exceptional state ends.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_REP characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_REQ</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Bidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Receive, Send, Receive, Send, &#8230;
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fair-queued
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Last peer
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Drop
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+<div class="sect3">
+<h4 id="_zmq_dealer">ZMQ_DEALER</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_DEALER</em> is an advanced pattern used for extending
+request/reply sockets. Each message sent is round-robined among all connected
+peers, and each message received is fair-queued from all connected peers.</p></div>
+<div class="paragraph"><p>Previously this socket was called <em>ZMQ_XREQ</em> and that name remains available
+for backwards compatibility.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_DEALER</em> socket enters an exceptional state due to having reached the
+high water mark for all peers, or if there are no peers at all, then any
+<a href="zmq_send.html">zmq_send(3)</a> operations on the socket shall block until the exceptional
+state ends or at least one peer becomes available for sending; messages are not
+discarded.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_DEALER</em> socket is connected to a <em>ZMQ_REP</em> socket each message sent
+must consist of an empty message part, the <em>delimiter</em>, followed by one or more
+<em>body parts</em>.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_DEALER characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_ROUTER</em>, <em>ZMQ_REQ</em>, <em>ZMQ_REP</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Bidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unrestricted
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Round-robin
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fair-queued
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Block
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+<div class="sect3">
+<h4 id="_zmq_router">ZMQ_ROUTER</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_ROUTER</em> is an advanced pattern used for extending
+request/reply sockets. When receiving messages a <em>ZMQ_ROUTER</em> socket shall
+prepend a message part containing the <em>identity</em> of the originating peer to the
+message before passing it to the application. Messages received are fair-queued
+from among all connected peers. When sending messages a <em>ZMQ_ROUTER</em> socket shall
+remove the first part of the message and use it to determine the <em>identity</em> of
+the peer the message shall be routed to. If the peer does not exist anymore
+the message shall be silently discarded.</p></div>
+<div class="paragraph"><p>Previously this socket was called <em>ZMQ_XREP</em> and that name remains available
+for backwards compatibility.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_ROUTER</em> socket enters an exceptional state due to having reached the
+high water mark for all peers, or if there are no peers at all, then any
+messages sent to the socket shall be dropped until the exceptional state ends.
+Likewise, any messages routed to a non-existent peer or a peer for which the
+individual high water mark has been reached shall also be dropped.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_REQ</em> socket is connected to a <em>ZMQ_ROUTER</em> socket, in addition to the
+<em>identity</em> of the originating peer each message received shall contain an empty
+<em>delimiter</em> message part. Hence, the entire structure of each received message
+as seen by the application becomes: one or more <em>identity</em> parts, <em>delimiter</em>
+part, one or more <em>body parts</em>. When sending replies to a <em>ZMQ_REQ</em> socket the
+application must include the <em>delimiter</em> part.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_ROUTER characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_DEALER</em>, <em>ZMQ_REQ</em>, <em>ZMQ_REP</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Bidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unrestricted
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+See text
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fair-queued
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Drop
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_publish_subscribe_pattern">Publish-subscribe pattern</h3>
+<div class="paragraph"><p>The publish-subscribe pattern is used for one-to-many distribution of data from
+a single <em>publisher</em> to multiple <em>subscribers</em> in a fan out fashion.</p></div>
+<div class="sect3">
+<h4 id="_zmq_pub">ZMQ_PUB</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_PUB</em> is used by a <em>publisher</em> to distribute data.
+Messages sent are distributed in a fan out fashion to all connected peers.
+The <a href="zmq_recv.html">zmq_recv(3)</a> function is not implemented for this socket type.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_PUB</em> socket enters an exceptional state due to having reached the
+high water mark for a <em>subscriber</em>, then any messages that would be sent to the
+<em>subscriber</em> in question shall instead be dropped until the exceptional state
+ends. The <em>zmq_send()</em> function shall never block for this socket type.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_PUB characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_SUB</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Send only
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fan out
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Drop
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+<div class="sect3">
+<h4 id="_zmq_sub">ZMQ_SUB</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_SUB</em> is used by a <em>subscriber</em> to subscribe to data
+distributed by a <em>publisher</em>. Initially a <em>ZMQ_SUB</em> socket is not subscribed to
+any messages, use the <em>ZMQ_SUBSCRIBE</em> option of <a href="zmq_setsockopt.html">zmq_setsockopt(3)</a> to
+specify which messages to subscribe to. The <em>zmq_send()</em> function is not
+implemented for this socket type.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_SUB characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_PUB</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Receive only
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fair-queued
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Drop
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_pipeline_pattern">Pipeline pattern</h3>
+<div class="paragraph"><p>The pipeline pattern is used for distributing data to <em>nodes</em> arranged in
+a pipeline. Data always flows down the pipeline, and each stage of the pipeline
+is connected to at least one <em>node</em>. When a pipeline stage is connected to
+multiple <em>nodes</em> data is round-robined among all connected <em>nodes</em>.</p></div>
+<div class="sect3">
+<h4 id="_zmq_push">ZMQ_PUSH</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_PUSH</em> is used by a pipeline <em>node</em> to send messages
+to downstream pipeline <em>nodes</em>. Messages are round-robined to all connected
+downstream <em>nodes</em>. The <em>zmq_recv()</em> function is not implemented for this
+socket type.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_PUSH</em> socket enters an exceptional state due to having reached the
+high water mark for all downstream <em>nodes</em>, or if there are no downstream
+<em>nodes</em> at all, then any <a href="zmq_send.html">zmq_send(3)</a> operations on the socket shall
+block until the exceptional state ends or at least one downstream <em>node</em>
+becomes available for sending; messages are not discarded.</p></div>
+<div class="paragraph"><p>Deprecated alias: <em>ZMQ_DOWNSTREAM</em>.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_PUSH characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_PULL</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Send only
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Round-robin
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Block
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+<div class="sect3">
+<h4 id="_zmq_pull">ZMQ_PULL</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_PULL</em> is used by a pipeline <em>node</em> to receive messages
+from upstream pipeline <em>nodes</em>. Messages are fair-queued from among all
+connected upstream <em>nodes</em>. The <em>zmq_send()</em> function is not implemented for
+this socket type.</p></div>
+<div class="paragraph"><p>Deprecated alias: <em>ZMQ_UPSTREAM</em>.</p></div>
+<div class="hdlist"><div class="title">Summary of ZMQ_PULL characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_PUSH</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Receive only
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Fair-queued
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_exclusive_pair_pattern">Exclusive pair pattern</h3>
+<div class="paragraph"><p>The exclusive pair pattern is used to connect a peer to precisely one other
+peer. This pattern is used for inter-thread communication across the inproc
+transport.</p></div>
+<div class="sect3">
+<h4 id="_zmq_pair">ZMQ_PAIR</h4>
+<div class="paragraph"><p>A socket of type <em>ZMQ_PAIR</em> can only be connected to a single peer at any one
+time.  No message routing or filtering is performed on messages sent over a
+<em>ZMQ_PAIR</em> socket.</p></div>
+<div class="paragraph"><p>When a <em>ZMQ_PAIR</em> socket enters an exceptional state due to having reached the
+high water mark for the connected peer, or if no peer is connected, then
+any <a href="zmq_send.html">zmq_send(3)</a> operations on the socket shall block until the peer
+becomes available for sending; messages are not discarded.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content"><em>ZMQ_PAIR</em> sockets are designed for inter-thread communication across
+the <a href="zmq_inproc.html">zmq_inproc(7)</a> transport and do not implement functionality such
+as auto-reconnection. <em>ZMQ_PAIR</em> sockets are considered experimental and may
+have other missing or broken aspects.</td>
+</tr></table>
+</div>
+<div class="hdlist"><div class="title">Summary of ZMQ_PAIR characteristics</div><table>
+<tr>
+<td class="hdlist1">
+Compatible peer sockets
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+<em>ZMQ_PAIR</em>
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Direction
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Bidirectional
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Send/receive pattern
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Unrestricted
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Incoming routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+Outgoing routing strategy
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+N/A
+</p>
+</td>
+</tr>
+<tr>
+<td class="hdlist1">
+ZMQ_HWM option action
+<br />
+</td>
+<td class="hdlist2">
+<p style="margin-top: 0;">
+Block
+</p>
+</td>
+</tr>
+</table></div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_return_value">RETURN VALUE</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The <em>zmq_socket()</em> function shall return an opaque handle to the newly created
+socket if successful. Otherwise, it shall return NULL and set <em>errno</em> to one of
+the values defined below.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_errors">ERRORS</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+<strong>EINVAL</strong>
+</dt>
+<dd>
+<p>
+The requested socket <em>type</em> is invalid.
+</p>
+</dd>
+<dt class="hdlist1">
+<strong>EFAULT</strong>
+</dt>
+<dd>
+<p>
+The provided <em>context</em> is invalid.
+</p>
+</dd>
+<dt class="hdlist1">
+<strong>EMFILE</strong>
+</dt>
+<dd>
+<p>
+The limit on the total number of open ØMQ sockets has been reached.
+</p>
+</dd>
+<dt class="hdlist1">
+<strong>ETERM</strong>
+</dt>
+<dd>
+<p>
+The context specified was terminated.
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_see_also">SEE ALSO</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><a href="zmq_init.html">zmq_init(3)</a>
+<a href="zmq_setsockopt.html">zmq_setsockopt(3)</a>
+<a href="zmq_bind.html">zmq_bind(3)</a>
+<a href="zmq_connect.html">zmq_connect(3)</a>
+<a href="zmq_send.html">zmq_send(3)</a>
+<a href="zmq_recv.html">zmq_recv(3)</a>
+<a href="zmq_inproc.html">zmq_inproc(7)</a>
+<a href="zmq.html">zmq(7)</a></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_authors">AUTHORS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>This manual page was written by the ØMQ community.</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+ØMQ 2.2.0<br />
+Last updated 2012-04-04 13:04:06 CEST
+</div>
+</div>
+</body>
+</html>
