@@ -74,6 +74,9 @@ static inline TRI_aql_scope_e CurrentType (TRI_aql_context_t* const context) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type for the next scope
+///
+/// this returns TRI_AQL_SCOPE_FOR_NESTED for a nested for scope, and the 
+/// originally requested type in all other cases
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_scope_e NextType (TRI_aql_context_t* const context,

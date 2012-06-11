@@ -23,6 +23,7 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-context.c \
 	arangod/Ahuacatl/ahuacatl-conversions.c \
 	arangod/Ahuacatl/ahuacatl-error.c \
+	arangod/Ahuacatl/ahuacatl-explain.c \
 	arangod/Ahuacatl/ahuacatl-functions.c \
 	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-index.c \

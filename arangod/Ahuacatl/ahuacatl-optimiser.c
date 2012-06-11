@@ -46,13 +46,15 @@
 /// @brief optimise a node recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessNode (void*, TRI_aql_node_t*);
+static TRI_aql_node_t* ProcessNode (TRI_aql_statement_walker_t* const, 
+                                    TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessStatement (void*, TRI_aql_node_t*);
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const, 
+                                         TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -980,8 +982,9 @@ static TRI_aql_node_t* OptimiseStatement (TRI_aql_context_t* const context,
 /// this is the callback function used by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
+static TRI_aql_node_t* ProcessNode (TRI_aql_statement_walker_t* const walker,
+                                    TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
 
   return OptimiseNode(context, node);
 }
@@ -992,8 +995,9 @@ static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
 /// this is the callback function used by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessStatement (void* data, TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
+                                         TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
   TRI_aql_node_t* result = node;
 
   if (node) {
@@ -1003,9 +1007,6 @@ static TRI_aql_node_t* ProcessStatement (void* data, TRI_aql_node_t* node) {
 
       StartScope(context, TRI_AQL_SCOPE_FOR, node, TRI_AQL_NODE_STRING(nameNode));
     }
-/*    else if (node->_type == TRI_AQL_NODE_SUBQUERY) {
-      StartScope(context, TRI_AQL_SCOPE_FUNCTION, NULL, NULL);
-    }*/ // TODO: REMOVE
 
     result = OptimiseStatement(context, node);
 
@@ -1014,11 +1015,6 @@ static TRI_aql_node_t* ProcessStatement (void* data, TRI_aql_node_t* node) {
       PatchForLoops(context);
       EndScope(context, true);
     }
-  /* TODO: REMOVE  
-    else if (node->_type == TRI_AQL_NODE_SUBQUERY) {
-      EndScope(context, false);
-    }
-    */
   }
 
   return result;
