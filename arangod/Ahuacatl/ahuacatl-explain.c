@@ -330,6 +330,24 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       AddRow(explain, row);
       break;
     }
+    case TRI_AQL_NODE_RETURN_DUMMY: {
+      TRI_json_t* row;
+      
+      row = GetRowProtoType(explain, node->_type);
+
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                           row,
+                           "valueType", 
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "empty list"));
+      
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                           row,
+                           "valueData", 
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "[ ]"));
+
+      AddRow(explain, row);
+      break;
+    }
     case TRI_AQL_NODE_FILTER: {
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;

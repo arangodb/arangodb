@@ -341,6 +341,8 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
+  TRI_CompactStatementListAql(context->_statements);
+
   // TRI_ExplainAql(context);
   // TRI_DumpStatementsAql(context->_statements);
 

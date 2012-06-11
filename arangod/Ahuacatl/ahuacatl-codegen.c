@@ -1876,6 +1876,21 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for dummy return
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessReturnDummy (TRI_aql_codegen_js_t* const generator, 
+                                const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  // var row = ...;
+  ScopeOutputRegister(generator, scope->_resultRegister);
+  ScopeOutput(generator, " = [ ];\n");
+
+  generator->_lastResultRegister = scope->_resultRegister;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for return keyword
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2094,6 +2109,9 @@ static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* 
       break;
     case TRI_AQL_NODE_RETURN:
       ProcessReturn(generator, node);
+      break;
+    case TRI_AQL_NODE_RETURN_DUMMY:
+      ProcessReturnDummy(generator, node);
       break;
     case TRI_AQL_NODE_SUBQUERY:
       ProcessSubquery(generator, node);

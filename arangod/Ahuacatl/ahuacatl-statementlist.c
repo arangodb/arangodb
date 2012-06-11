@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statementlist.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  private members
@@ -40,7 +41,13 @@
 /// @brief dummy no-operations node (re-used for ALL non-operations)}
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t NopNode;
+static TRI_aql_node_t DummyNopNode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dummy return node (re-used for ALL remove operations)}
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t DummyReturnNode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -127,17 +134,27 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStatementListAql (void) {
-  NopNode._type = TRI_AQL_NODE_NOP;
+  DummyNopNode._type = TRI_AQL_NODE_NOP;
+  DummyReturnNode._type = TRI_AQL_NODE_RETURN_DUMMY;
 
-  TRI_InitVectorPointer(&NopNode._members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&DummyNopNode._members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&DummyReturnNode._members, TRI_UNKNOWN_MEM_ZONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the non-op node
+/// @brief get the address of the dummy non-op node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_GetNopNodeAql (void) {
-  return &NopNode;
+TRI_aql_node_t* TRI_GetDummyNopNodeAql (void) {
+  return &DummyNopNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the address of the remove node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_GetDummyReturnNodeAql (void) {
+  return &DummyReturnNode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,24 +192,28 @@ bool TRI_AddStatementListAql (TRI_aql_statement_list_t* const list,
 void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
   size_t i, j, n;
 
-
   assert(list);
 
+  i = 0;
   j = 0;
   n = list->_statements._length;
-  for (i = 0; i < n; ++i) {
+
+  while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
 
     if (node->_type == TRI_AQL_NODE_NOP) {
+      ++i;
       continue;
     }
 
-    if (i == j) {
-      ++j;
-      continue;
+    if (node->_type == TRI_AQL_NODE_RETURN_DUMMY) {
+      i = TRI_InvalidateStatementListAql(list, i);
+      j = i;
+      continue; 
     }
 
     list->_statements._buffer[j++] = node;
+    ++i;
   }
 
   list->_statements._length = j;
@@ -202,42 +223,54 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
 /// @brief invalidate all statements in current scope and subscopes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
-                                     const size_t position) {
+size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
+                                       const size_t position) {
   size_t i, n;
-  size_t level;
+  size_t start;
+  size_t scopes;
 
   assert(list);
+  assert(position >= 0);
   n = list->_statements._length;
 
   // remove from position backwards to scope start
+  scopes = 1;
   i = position;
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
 
-    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
+    start = i;
 
-    if (type == TRI_AQL_NODE_SCOPE_START || i-- == 0) {
+    if (type == TRI_AQL_NODE_SCOPE_START) {
+      TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+
+      if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
+        break;
+      }
+      scopes++;
+    }
+
+    if (i-- == 0) {
       break;
     }
   }
 
   // remove from position forwards to scope end
-  level = 1;
   i = position;
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
     
-    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
 
     if (type == TRI_AQL_NODE_SCOPE_START) {
-      ++level;
+      ++scopes;
     }
     else if (type == TRI_AQL_NODE_SCOPE_END) {
-      assert(level > 0);
-      if (--level == 0) {
+      assert(scopes > 0);
+      if (--scopes == 0) {
         break;
       }
     }
@@ -246,7 +279,10 @@ void TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
       break;
     }
   }
+  
+  list->_statements._buffer[start] = TRI_GetDummyReturnNodeAql();
 
+  return start + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
