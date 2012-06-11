@@ -744,16 +744,18 @@ build_os
 build_vendor
 build_cpu
 build
-ENABLE_BOOST_TEST_FALSE
-ENABLE_BOOST_TEST_TRUE
 ENABLE_INSTALL_DBDIR_FALSE
 ENABLE_INSTALL_DBDIR_TRUE
-ENABLE_ERRORS_DEPENDENCY_FALSE
-ENABLE_ERRORS_DEPENDENCY_TRUE
+ENABLE_BOOST_TEST_FALSE
+ENABLE_BOOST_TEST_TRUE
 ENABLE_3RD_PARTY_BOOST_FALSE
 ENABLE_3RD_PARTY_BOOST_TRUE
 ENABLE_ALL_IN_ONE_FALSE
 ENABLE_ALL_IN_ONE_TRUE
+ENABLE_PROTOBUF_DEPENDENCY_FALSE
+ENABLE_PROTOBUF_DEPENDENCY_TRUE
+ENABLE_ERRORS_DEPENDENCY_FALSE
+ENABLE_ERRORS_DEPENDENCY_TRUE
 ENABLE_FLEX_FALSE
 ENABLE_FLEX_TRUE
 ENABLE_BISON_FALSE
@@ -801,12 +803,13 @@ ac_user_opts='
 enable_option_checking
 enable_bison
 enable_flex
+enable_errors_dependency
+enable_protobuf_dependency
 enable_all_in_one
 enable_3rd_party_boost
-enable_errors_dependency
+with_boost_test
 enable_install_dbdir
 enable_relative
-with_boost_test
 enable_silent_rules
 enable_dependency_tracking
 enable_error_on_warning
@@ -1479,11 +1482,13 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-bison          enable BISON
   --enable-flex           enable FLEX
+  --enable-errors-dependency
+                          generate dependencies for error files
+  --enable-protobuf-dependency
+                          generate dependencies for protocol buffers
   --enable-all-in-one     use supplied V8 and LIBEV from 3rdParty directory
   --enable-3rd-party-boost
                           use supplied BOOST from 3rdParty directory
-  --enable-errors-dependency
-                          generate dependencies for error files
   --enable-install-dbdir  install an empty database directory
   --enable-relative       all path are relative to the binary (yes/no/devel
                           [default])
@@ -2469,6 +2474,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 
+
 # Check whether --enable-bison was given.
 if test "${enable_bison+set}" = set; then :
   enableval=$enable_bison; tr_BISON="${enableval:-yes}"
@@ -2488,7 +2494,6 @@ fi
 
 
 
-
 # Check whether --enable-flex was given.
 if test "${enable_flex+set}" = set; then :
   enableval=$enable_flex; tr_FLEX="${enableval:-yes}"
@@ -2504,6 +2509,44 @@ fi
 else
   ENABLE_FLEX_TRUE='#'
   ENABLE_FLEX_FALSE=
+fi
+
+
+
+# Check whether --enable-errors-dependency was given.
+if test "${enable_errors_dependency+set}" = set; then :
+  enableval=$enable_errors_dependency; tr_ERRORS_DEPENDENCY="${enableval:-yes}"
+else
+  tr_ERRORS_DEPENDENCY=no
+
+fi
+
+
+ if test "x$tr_ERRORS_DEPENDENCY" = xyes; then
+  ENABLE_ERRORS_DEPENDENCY_TRUE=
+  ENABLE_ERRORS_DEPENDENCY_FALSE='#'
+else
+  ENABLE_ERRORS_DEPENDENCY_TRUE='#'
+  ENABLE_ERRORS_DEPENDENCY_FALSE=
+fi
+
+
+
+# Check whether --enable-protobuf-dependency was given.
+if test "${enable_protobuf_dependency+set}" = set; then :
+  enableval=$enable_protobuf_dependency; tr_PROTOBUF_DEPENDENCY="${enableval:-yes}"
+else
+  tr_PROTOBUF_DEPENDENCY=no
+
+fi
+
+
+ if test "x$tr_PROTOBUF_DEPENDENCY" = xyes; then
+  ENABLE_PROTOBUF_DEPENDENCY_TRUE=
+  ENABLE_PROTOBUF_DEPENDENCY_FALSE='#'
+else
+  ENABLE_PROTOBUF_DEPENDENCY_TRUE='#'
+  ENABLE_PROTOBUF_DEPENDENCY_FALSE=
 fi
 
 
@@ -2528,7 +2571,6 @@ fi
 
 
 
-
 # Check whether --enable-3rd-party-boost was given.
 if test "${enable_3rd_party_boost+set}" = set; then :
   enableval=$enable_3rd_party_boost; tr_3RD_PARTY_BOOST="${enableval:-yes}"
@@ -2549,21 +2591,20 @@ fi
 
 
 
-# Check whether --enable-errors-dependency was given.
-if test "${enable_errors_dependency+set}" = set; then :
-  enableval=$enable_errors_dependency; tr_ERRORS_DEPENDENCY="${enableval:-yes}"
+# Check whether --with-boost-test was given.
+if test "${with_boost_test+set}" = set; then :
+  withval=$with_boost_test; tr_BOOST_TEST=yes
 else
-  tr_ERRORS_DEPENDENCY=no
-
+  tr_BOOST_TEST=no
 fi
 
 
- if test "x$tr_ERRORS_DEPENDENCY" = xyes; then
-  ENABLE_ERRORS_DEPENDENCY_TRUE=
-  ENABLE_ERRORS_DEPENDENCY_FALSE='#'
+ if test "x$tr_BOOST_TEST" = xyes; then
+  ENABLE_BOOST_TEST_TRUE=
+  ENABLE_BOOST_TEST_FALSE='#'
 else
-  ENABLE_ERRORS_DEPENDENCY_TRUE='#'
-  ENABLE_ERRORS_DEPENDENCY_FALSE=
+  ENABLE_BOOST_TEST_TRUE='#'
+  ENABLE_BOOST_TEST_FALSE=
 fi
 
 
@@ -2585,7 +2626,6 @@ else
   ENABLE_INSTALL_DBDIR_TRUE='#'
   ENABLE_INSTALL_DBDIR_FALSE=
 fi
-
 
 
 
@@ -2615,27 +2655,6 @@ else
   tr_RELATIVE=no
 fi
 fi
-
-
-
-
-# Check whether --with-boost-test was given.
-if test "${with_boost_test+set}" = set; then :
-  withval=$with_boost_test; tr_BOOST_TEST=yes
-else
-  tr_BOOST_TEST=no
-fi
-
-
- if test "x$tr_BOOST_TEST" = xyes; then
-  ENABLE_BOOST_TEST_TRUE=
-  ENABLE_BOOST_TEST_FALSE='#'
-else
-  ENABLE_BOOST_TEST_TRUE='#'
-  ENABLE_BOOST_TEST_FALSE=
-fi
-
-
 
 
 
@@ -9583,6 +9602,14 @@ if test -z "${ENABLE_FLEX_TRUE}" && test -z "${ENABLE_FLEX_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FLEX\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${ENABLE_ERRORS_DEPENDENCY_TRUE}" && test -z "${ENABLE_ERRORS_DEPENDENCY_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ERRORS_DEPENDENCY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_PROTOBUF_DEPENDENCY_TRUE}" && test -z "${ENABLE_PROTOBUF_DEPENDENCY_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_PROTOBUF_DEPENDENCY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${ENABLE_ALL_IN_ONE_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -9591,16 +9618,12 @@ if test -z "${ENABLE_3RD_PARTY_BOOST_TRUE}" && test -z "${ENABLE_3RD_PARTY_BOOST
   as_fn_error $? "conditional \"ENABLE_3RD_PARTY_BOOST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ENABLE_ERRORS_DEPENDENCY_TRUE}" && test -z "${ENABLE_ERRORS_DEPENDENCY_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_ERRORS_DEPENDENCY\" was never defined.
+if test -z "${ENABLE_BOOST_TEST_TRUE}" && test -z "${ENABLE_BOOST_TEST_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_BOOST_TEST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${ENABLE_BOOST_TEST_TRUE}" && test -z "${ENABLE_BOOST_TEST_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_BOOST_TEST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_DARWIN_TRUE}" && test -z "${ENABLE_DARWIN_FALSE}"; then
@@ -11116,4 +11139,6 @@ done
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
+
+
 

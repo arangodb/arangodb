@@ -1,27 +1,28 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-## --SECTION--                                                           PROGRAM
+## --SECTION--                                                  PROTOCOL BUFFERS
 ################################################################################
 
 ################################################################################
-### @brief program "arangoirb"
+### @brief built sources
 ################################################################################
 
-bin_arangoirb_CPPFLAGS = \
-	-I@top_srcdir@/arangoirb \
-	$(AM_CPPFLAGS) 
+BUILT_SOURCES += $(PROTOBUF_FILES)
 
-bin_arangoirb_LDADD = \
-	lib/libarango_mruby.a \
-	lib/libarango_client.a \
-	lib/libarango.a \
-	$(LIBS) \
-	@MRUBY_LIBS@
+################################################################################
+### @brief protocol buffers
+################################################################################
 
-bin_arangoirb_SOURCES = \
-	arangoirb/MRClient/MRubyClientConnection.cpp \
-	arangoirb/MRClient/arangoirb.cpp
+%.pb.cpp: %.proto
+	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
+	mv $(addsuffix .cc,$(basename $@)) $@
+
+################################################################################
+### @brief cleanup
+################################################################################
+
+CLEANUP += $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

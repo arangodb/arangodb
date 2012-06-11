@@ -206,8 +206,6 @@ endif
 FLEX_FILES += \
 	lib/JsonParser/json-parser.c
 
-BUILT_SOURCES += $(FLEX_FILES)
-
 ################################################################################
 ### @brief flex++
 ################################################################################
@@ -216,8 +214,6 @@ FLEXXX_FILES += \
 	lib/V8/v8-json.cpp \
 	lib/JsonParserX/JsonScannerX.cpp
 
-BUILT_SOURCES += $(FLEXXX_FILES)
-
 ################################################################################
 ### @brief bison++
 ################################################################################
@@ -225,7 +221,12 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 BISONXX_FILES += \
 	lib/JsonParserX/JsonParserX.cpp
 
-BUILT_SOURCES += $(BISONXX_FILES)
+################################################################################
+### @brief protocol buffers
+################################################################################
+
+PROTOBUF_FILES += \
+	lib/ProtocolBuffers/arangodb.pb.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
