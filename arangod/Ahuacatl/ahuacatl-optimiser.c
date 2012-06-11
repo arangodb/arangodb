@@ -534,10 +534,14 @@ TRY_LOOP:
     // filter expression is always true => remove it
     TRI_AQL_LOG("optimised away constant (true) filter");
 
-    return TRI_GetNopNodeAql();
+    return TRI_GetDummyNopNodeAql();
   }
   else {
     // filter expression is always false => patch surrounding scope
+    TRI_AQL_LOG("optimised away scope"); 
+
+    return TRI_GetDummyReturnNodeAql();
+    /* TODO: validate this!!
     if (scope->_node) {
       TRI_aql_field_access_t* impossible;
 
@@ -552,6 +556,7 @@ TRY_LOOP:
       
       TRI_AQL_LOG("optimised away scope"); 
     }
+    */
   }
 
   return node;
@@ -940,10 +945,6 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
       return OptimiseBinaryArithmeticOperation(context, node);
     case TRI_AQL_NODE_OPERATOR_TERNARY:
       return OptimiseTernaryOperation(context, node);
-    case TRI_AQL_NODE_SORT:
-      return OptimiseSort(context, node);
-    case TRI_AQL_NODE_FILTER:
-      return OptimiseFilter(context, node);
     case TRI_AQL_NODE_FCALL:
       return OptimiseFcall(context, node);
     case TRI_AQL_NODE_REFERENCE:

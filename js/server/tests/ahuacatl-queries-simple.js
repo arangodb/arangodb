@@ -285,7 +285,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReturnFilter6 : function () {
-      var expected = [ ];
+      var expected = [ 2 ];
 
       var actual = getQueryResults("let x = (filter 0 == 1 return 1) return 2");
       assertEqual(expected, actual);

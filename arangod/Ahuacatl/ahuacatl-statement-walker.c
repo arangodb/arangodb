@@ -67,7 +67,7 @@ static void VisitStatement (TRI_aql_statement_walker_t* const walker,
   modified = func(walker, node);
   if (walker->_canModify && modified != node) {
     if (modified == NULL) {
-      modified = TRI_GetNopNodeAql();
+      modified = TRI_GetDummyNopNodeAql();
     }
 
     walker->_statements->_statements._buffer[position] = modified;
@@ -100,7 +100,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
     modified = walker->visitMember(walker, member);
     if (walker->_canModify && modified != member) {
       if (modified == NULL) {
-        modified = TRI_GetNopNodeAql();
+        modified = TRI_GetDummyNopNodeAql();
       }
 
       node->_members._buffer[i] = modified;
