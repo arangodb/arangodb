@@ -26,6 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
+
+#include "VocBase/index.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -35,6 +38,27 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get collection/index id as a string
+///
+/// The caller must free the result string
+////////////////////////////////////////////////////////////////////////////////
+
+static char* GetIndexIdString (TRI_aql_collection_hint_t* const hint) {
+  TRI_string_buffer_t buffer;
+  char* result;
+
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_AppendUInt64StringBuffer(&buffer, hint->_collection->_collection->_cid);
+  TRI_AppendCharStringBuffer(&buffer, '/');
+  TRI_AppendUInt64StringBuffer(&buffer, hint->_index->_idx->_iid);
+
+  result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+  TRI_DestroyStringBuffer(&buffer);
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator function to sort collections by name
@@ -157,7 +181,131 @@ bool OpenCollections (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookip a collection in the internal vector
+/// @brief get the JSON representation of a collection hint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint) {
+  TRI_json_t* result;
+
+  if (hint == NULL) {
+    return NULL;
+  }
+  
+  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  if (hint->_index == NULL) {
+    // full table scan
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "accessType", 
+                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "all"));
+  }
+  else {
+    // index usage
+    TRI_index_t* idx = hint->_index->_idx;
+    TRI_json_t* indexDescription;
+
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "accessType", 
+                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "index"));
+
+    indexDescription = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+    if (indexDescription != NULL) {
+      TRI_string_buffer_t* buffer;
+      char* idString = GetIndexIdString(hint);
+      
+      // index id
+      if (idString != NULL) {
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                             indexDescription,
+                             "id", 
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, idString);
+      }
+
+      // index type
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                           indexDescription,
+                           "type", 
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(idx)));
+    
+      // index attributes
+      buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+      if (buffer != NULL) {
+        size_t i;
+  
+        for (i = 0; i < idx->_fields._length; i++) {
+          if (i > 0) {
+            TRI_AppendStringStringBuffer(buffer, ", "); 
+          }
+          TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
+        }
+   
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                             indexDescription,
+                             "attributes", 
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer->_buffer));
+  
+        TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      }
+  
+    }
+    
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "index", 
+                         indexDescription);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a collection hint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
+  TRI_aql_collection_hint_t* hint;
+
+  hint = (TRI_aql_collection_hint_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_hint_t), false);
+
+  if (hint == NULL) {
+    return NULL;
+  }
+
+  hint->_ranges = NULL;
+  hint->_index = NULL;
+  hint->_collection = NULL;
+
+  return hint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a collection hint
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const hint) {
+  assert(hint);
+
+  if (hint->_ranges) {
+    TRI_FreeAccessesAql(hint->_ranges);
+  }
+
+  if (hint->_index) {
+    TRI_FreeIndexAql(hint->_index);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hint);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a collection in the internal vector
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const context,
@@ -391,6 +539,7 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const n
   
   if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+
     return false;
   }
 

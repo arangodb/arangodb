@@ -105,6 +105,7 @@ TRI_aql_range_t;
 
 typedef struct TRI_aql_field_access_s {
   char* _fullName;
+  size_t _variableNameLength; // length of variable name part (upto '.') in _fullName
   TRI_aql_access_e _type;
 
   union {

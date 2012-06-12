@@ -81,26 +81,49 @@ static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a node to its string representation
+/// @brief add an expression node to the json result structure
 ////////////////////////////////////////////////////////////////////////////////
       
-static TRI_json_t* StringifyExpression (const TRI_aql_node_t* const node) {
+static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
   TRI_json_t* result;
-  TRI_string_buffer_t buffer;
+  TRI_json_t* type;
+  TRI_json_t* value;
 
-  assert(node);
+  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (result == NULL) {
+    return false;
+  }
+      
+  type = NodeType(node);
+  if (type != NULL) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "type", 
+                         type);
+  }
   
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-
-  if (!TRI_NodeStringAql(&buffer, node)) {
-    return NULL;
+  value = NodeDescription(node);
+  if (value != NULL) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "value", 
+                         value);
   }
 
-  result = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
-  
-  TRI_DestroyStringBuffer(&buffer);
+  if (node->_type == TRI_AQL_NODE_COLLECTION) {
+    TRI_json_t* extra = TRI_GetJsonCollectionHintAql(TRI_AQL_NODE_DATA(node));
+    
+    if (extra != NULL) {
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                           result,
+                           "extra", 
+                           extra);
+    }
+  }
 
-  return result;
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, row, "expression", result);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +239,6 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_EXPAND: {
       TRI_aql_node_t* variableNode;
       TRI_json_t* row;
-      TRI_json_t* expression;
 
       row = GetRowProtoType(explain, TRI_AQL_NODE_REFERENCE);
       variableNode = TRI_AQL_NODE_MEMBER(node, 0);
@@ -225,15 +247,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
                            "resultVariable", 
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
 
-      expression = StringifyExpression(TRI_AQL_NODE_MEMBER(node, 2));
-      
-      if (expression != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "expression",
-                             expression);
-      }
-
+      AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 2));
       AddRow(explain, row);
 
       row = GetRowProtoType(explain, TRI_AQL_NODE_EXPAND);
@@ -243,15 +257,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
                            "resultVariable", 
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
       
-      expression = StringifyExpression(TRI_AQL_NODE_MEMBER(node, 3));
-
-      if (expression != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "expression",
-                             expression);
-      }
-
+      AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 3));
       AddRow(explain, row);
       break;
     }
@@ -272,8 +278,6 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
       TRI_json_t* row;
-      TRI_json_t* valueType;
-      TRI_json_t* valueData;
 
       row = GetRowProtoType(explain, node->_type);
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
@@ -281,24 +285,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
                            "resultVariable", 
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
       
-      valueType = NodeType(expressionNode);
-
-      if (valueType != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueType", 
-                             valueType);
-      }
-      
-      valueData = NodeDescription(expressionNode);
-
-      if (valueData != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueData", 
-                             valueData);
-      }
-
+      AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
     }
@@ -306,46 +293,18 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_RETURN_EMPTY: {
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;
-      TRI_json_t* valueType;
-      TRI_json_t* valueData;
       
       row = GetRowProtoType(explain, node->_type);
-      valueType = NodeType(expressionNode);
-
-      if (valueType != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueType", 
-                             valueType);
-      }
-      
-      valueData = NodeDescription(expressionNode);
-
-      if (valueData != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueData", 
-                             valueData);
-      }
-
+      AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
     }
     case TRI_AQL_NODE_FILTER: {
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;
-      TRI_json_t* expression;
 
       row = GetRowProtoType(explain, node->_type);
-      expression = StringifyExpression(expressionNode);
-
-      if (expression != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "expression", 
-                             expression);
-      }
-
+      AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
     }
@@ -353,51 +312,23 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
       TRI_json_t* row;
-      TRI_json_t* valueType;
-      TRI_json_t* valueData;
 
       row = GetRowProtoType(explain, node->_type);
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
                            row,
                            "resultVariable", 
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-      
-      valueType = NodeType(expressionNode);
-
-      if (valueType != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueType", 
-                             valueType);
-      }
-      
-      valueData = NodeDescription(expressionNode);
-
-      if (valueData != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "valueData", 
-                             valueData);
-      }
-
+     
+      AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
     }
     case TRI_AQL_NODE_SORT: {
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;
-      TRI_json_t* expression;
 
       row = GetRowProtoType(explain, node->_type);
-      expression = StringifyExpression(expressionNode);
-
-      if (expression != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                             row,
-                             "expression",
-                             expression);
-      }
-
+      AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
       break;

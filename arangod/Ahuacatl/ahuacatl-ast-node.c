@@ -187,9 +187,8 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(TRI_AQL_NODE_FOR)
-  node->_value._value._data = NULL; 
-
-  if (!name) {
+  
+  if (name == NULL) {
     ABORT_OOM
   }
 
@@ -216,7 +215,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(TRI_AQL_NODE_LET)
   
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
   
@@ -348,7 +347,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
                                            TRI_aql_node_t* const definingNode) {
   CREATE_NODE(TRI_AQL_NODE_VARIABLE)
    
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
   
@@ -370,21 +369,34 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
                                              const char* const name) {
   CREATE_NODE(TRI_AQL_NODE_COLLECTION)
+  
+  node->_value._value._data = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
-
+  
   if (strlen(name) == 0) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
     return NULL;
   }
 
   {
-    TRI_aql_node_t* nameNode = TRI_CreateNodeValueStringAql(context, name);
+    TRI_aql_collection_hint_t* hint;
+    TRI_aql_node_t* nameNode;
+    
+    // init collection hint
+    hint = TRI_CreateCollectionHintAql();
+    node->_value._value._data = hint;
+
+    if (hint == NULL) {
+      return NULL;
+    }
+
+    nameNode = TRI_CreateNodeValueStringAql(context, name);
     ADD_MEMBER(nameNode)
   }
-  
+ 
   if (!TRI_AddCollectionAql(context, name)) {
     return NULL;
   }
@@ -400,7 +412,7 @@ TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(TRI_AQL_NODE_REFERENCE)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
   
@@ -417,7 +429,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(TRI_AQL_NODE_ATTRIBUTE)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
   
@@ -434,7 +446,7 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(TRI_AQL_NODE_PARAMETER)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
 
@@ -737,7 +749,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_context_t* const conte
                                                   const char* const name) { 
   CREATE_NODE(TRI_AQL_NODE_ATTRIBUTE_ACCESS)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
 
@@ -891,7 +903,7 @@ TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_context_t* const context,
                                                const TRI_aql_node_t* const value) {
   CREATE_NODE(TRI_AQL_NODE_ARRAY_ELEMENT)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
 
@@ -910,7 +922,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
                                         const TRI_aql_node_t* const parameters) {
   CREATE_NODE(TRI_AQL_NODE_FCALL)
 
-  if (!name) {
+  if (name == NULL) {
     ABORT_OOM
   }
   
