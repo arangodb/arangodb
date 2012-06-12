@@ -94,107 +94,77 @@ function dijkstraSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the get neighbors function
+/// @brief compare with Neo4j on a network of size 500
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetAllNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        result_array = [];
+    testComparisonWithNeo4j500 : function () {
+      var base_path = "js/common/test-data/random500/",
+        v1,
+        v2,
+        e,
+        pathes,
+        results = [],
+        neo4j_results = [],
+        single_result = {},
+        counter;
 
-      graph.addEdge(v1, v2);
-      graph.addEdge(v3, v1);
+      Helper.process(base_path + "generated_edges.csv", function (row) {
+        v1 = graph.getOrAddVertex(row[1]);
+        v2 = graph.getOrAddVertex(row[2]);
+        e = graph.addEdge(v1, v2);
+      });
 
-      result_array = v1.getNeighbors('both');
+      Helper.process(base_path + "generated_testcases.csv", function (row) {
+        v1 = graph.getVertex(row[0]);
+        v2 = graph.getVertex(row[1]);
+        if (v1 !== null && v2 !== null) {
+          pathes = v1.pathTo(v2);
+          single_result = {
+            'from'   : v1.getId(),
+            'to'     : v2.getId(),
+            'path_length' : pathes[0].length,
+            'number_of_pathes' : pathes.length
+          };
+          results.push(single_result);
+        }
+      });
 
-      assertEqual(result_array.length, 2);
-      assertEqual(result_array[0], 2);
-      assertEqual(result_array[1], 3);
-    },
+      v1 = "";
+      v2 = "";
+      Helper.process(base_path + "neo4j-dijkstra.csv", function (row) {
+        counter += 1;
+        if (!(v1 === row[0] && v2 === row[row.length - 1])) {
+          v1 = row[0];
+          v2 = row[row.length - 1];
 
-    testGetOutboundNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        result_array = [];
+          single_result = {
+            'from'   : v1,
+            'to'     : v2,
+            'path_length' : row.length
+          };
+          if (neo4j_results.length > 0) {
+            neo4j_results[neo4j_results.length - 1].number_of_pathes = counter;
+          }
+          counter = 0;
+          neo4j_results.push(single_result);
+        }
+      });
+      neo4j_results[0].number_of_pathes += 1;
+      neo4j_results[neo4j_results.length - 1].number_of_pathes = counter + 1;
 
-      graph.addEdge(v1, v2);
-      graph.addEdge(v3, v1);
+      for (counter = 0; counter < neo4j_results.length; counter += 1) {
+        assertEqual(results[counter].from,
+          neo4j_results[counter].from);
 
-      result_array = v1.getNeighbors('outbound');
+        assertEqual(results[counter].to,
+          neo4j_results[counter].to);
 
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 2);
-    },
+        assertEqual(results[counter].path_length,
+          neo4j_results[counter].path_length);
 
-    testGetInboundNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        result_array = [];
-
-      graph.addEdge(v1, v2);
-      graph.addEdge(v3, v1);
-
-      result_array = v1.getNeighbors('inbound');
-
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 3);
-    },
-
-    testGetNeighborsWithPathLabel : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
-        result_array = [];
-
-      graph.addEdge(v1, v2, 8, 'a');
-      graph.addEdge(v1, v3, 9, 'b');
-
-      result_array = v1.getNeighbors('both', ['a']);
-
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a short, distinct path
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetAShortDistinctPath : function () {
-      var v1, v2, e1, path;
-
-      v1 = graph.addVertex(1);
-      v2 = graph.addVertex(2);
-
-      e1 = graph.addEdge(v1, v2);
-
-      path = v1.pathTo(v2)[0];
-      assertEqual(path.length, 2);
-      assertEqual(path[0].toString(), v1.getId());
-      assertEqual(path[1].toString(), v2.getId());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a longer, distinct path
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetALongerDistinctPath : function () {
-      var v1, v2, v3, e1, e2, path;
-
-      v1 = graph.addVertex(1);
-      v2 = graph.addVertex(2);
-      v3 = graph.addVertex(3);
-
-      e1 = graph.addEdge(v1, v2);
-      e2 = graph.addEdge(v2, v3);
-
-      path = v1.pathTo(v3)[0];
-      assertEqual(path.length, 3);
-      assertEqual(path[0].toString(), v1.getId());
-      assertEqual(path[1].toString(), v2.getId());
-      assertEqual(path[2].toString(), v3.getId());
+        assertEqual(results[counter].number_of_pathes,
+                  neo4j_results[counter].number_of_pathes);
+      }
     }
   };
 }
