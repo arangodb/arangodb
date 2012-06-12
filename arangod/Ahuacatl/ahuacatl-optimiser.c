@@ -483,7 +483,7 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
     // no members left => sort removed
     TRI_AQL_LOG("optimised away sort");
 
-    return NULL;
+    return TRI_GetDummyNopNodeAql();
   }
 
   return node;
@@ -540,7 +540,7 @@ TRY_LOOP:
     // filter expression is always false => patch surrounding scope
     TRI_AQL_LOG("optimised away scope"); 
 
-    return TRI_GetDummyReturnNodeAql();
+    return TRI_GetDummyReturnEmptyNodeAql();
     /* TODO: validate this!!
     if (scope->_node) {
       TRI_aql_field_access_t* impossible;

@@ -57,7 +57,6 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
     return NULL;
   }
 
-  variable->_refCount = 0;
   variable->_definingNode = definingNode;
 
   assert(definingNode);
