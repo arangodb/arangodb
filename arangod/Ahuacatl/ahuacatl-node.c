@@ -84,7 +84,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
   switch (type) {
     case TRI_AQL_NODE_NOP:
       return "nop";
-    case TRI_AQL_NODE_RETURN_DUMMY:
+    case TRI_AQL_NODE_RETURN_EMPTY:
       return "return (empty)";
     case TRI_AQL_NODE_SCOPE_START:
       return "scope start";

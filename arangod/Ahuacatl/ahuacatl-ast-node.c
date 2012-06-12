@@ -105,6 +105,57 @@ static inline void InitNode (TRI_aql_context_t* const context,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST nop node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeNopAql (void) {
+  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
+
+  if (node == NULL) {
+    return NULL;
+  }
+  
+  node->_type = TRI_AQL_NODE_NOP;
+ 
+  TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST return empty node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeReturnEmptyAql (void) {
+  TRI_aql_node_t* node;
+  TRI_aql_node_t* list;
+
+  node = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
+
+  if (node == NULL) {
+    return NULL;
+  }
+  
+  node->_type = TRI_AQL_NODE_RETURN_EMPTY;
+
+  list = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
+  
+  if (list == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+
+    return NULL;
+  }
+
+  list->_type = TRI_AQL_NODE_LIST;
+  TRI_InitVectorPointer(&list->_members, TRI_UNKNOWN_MEM_ZONE);
+ 
+  TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorPointer(&node->_members, (void*) list);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST scope start node
 ////////////////////////////////////////////////////////////////////////////////
 

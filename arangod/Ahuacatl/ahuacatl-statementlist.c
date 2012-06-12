@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statementlist.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
@@ -41,13 +42,13 @@
 /// @brief dummy no-operations node (re-used for ALL non-operations)}
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t DummyNopNode;
+static TRI_aql_node_t* DummyNopNode;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dummy return node (re-used for ALL remove operations)}
+/// @brief dummy empty return node (re-used for multiple operations)
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t DummyReturnNode;
+static TRI_aql_node_t* DummyReturnEmptyNode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -130,15 +131,33 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief init the no-op node at program start
+/// @brief init the global nodes at program start
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStatementListAql (void) {
-  DummyNopNode._type = TRI_AQL_NODE_NOP;
-  DummyReturnNode._type = TRI_AQL_NODE_RETURN_DUMMY;
+void TRI_GlobalInitStatementListAql (void) { 
+  DummyNopNode = TRI_CreateNodeNopAql();
+  DummyReturnEmptyNode = TRI_CreateNodeReturnEmptyAql();
+}
 
-  TRI_InitVectorPointer(&DummyNopNode._members, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&DummyReturnNode._members, TRI_UNKNOWN_MEM_ZONE);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the global nodes at program end
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GlobalFreeStatementListAql (void) { 
+  if (DummyNopNode != NULL) {
+    TRI_DestroyVectorPointer(&DummyNopNode->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyNopNode);
+  }
+  
+  if (DummyReturnEmptyNode != NULL) {
+    TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(DummyReturnEmptyNode, 0);
+    
+    TRI_DestroyVectorPointer(&list->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+
+    TRI_DestroyVectorPointer(&DummyReturnEmptyNode->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyReturnEmptyNode);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,15 +165,15 @@ void TRI_InitStatementListAql (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_GetDummyNopNodeAql (void) {
-  return &DummyNopNode;
+  return DummyNopNode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the remove node
+/// @brief get the address of the dummy return empty node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_GetDummyReturnNodeAql (void) {
-  return &DummyReturnNode;
+TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void) {
+  return DummyReturnEmptyNode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,7 +225,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
       continue;
     }
 
-    if (node->_type == TRI_AQL_NODE_RETURN_DUMMY) {
+    if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
       i = TRI_InvalidateStatementListAql(list, i);
       j = i;
       continue; 
@@ -280,7 +299,7 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
     }
   }
   
-  list->_statements._buffer[start] = TRI_GetDummyReturnNodeAql();
+  list->_statements._buffer[start] = TRI_GetDummyReturnEmptyNodeAql();
 
   return start + 1;
 }
