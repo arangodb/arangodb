@@ -68,12 +68,13 @@ TRI_aql_logical_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_AQL_ACCESS_IMPOSSIBLE,   // no values must be accessed
-  TRI_AQL_ACCESS_EXACT,        // one value must be accessed
-  TRI_AQL_ACCESS_LIST,         // a list of values must be accessed
-  TRI_AQL_ACCESS_RANGE_SINGLE, // a range with one bound must be accessed
-  TRI_AQL_ACCESS_RANGE_DOUBLE, // a two bounded range must be accessed
-  TRI_AQL_ACCESS_ALL           // all values must be accessed
+  TRI_AQL_ACCESS_IMPOSSIBLE,   // no value needs to be accessed (impossible range)
+  TRI_AQL_ACCESS_EXACT,        // one value is accessed
+  TRI_AQL_ACCESS_LIST,         // a list of values is accessed
+  TRI_AQL_ACCESS_RANGE_SINGLE, // a range with one boundary is accessed
+  TRI_AQL_ACCESS_RANGE_DOUBLE, // a two bounded range is accessed
+  TRI_AQL_ACCESS_REFERENCE,    // a reference can be used for access (a.x == b.x)
+  TRI_AQL_ACCESS_ALL           // all values must be accessed (full scan)
 }
 TRI_aql_access_e;
 
