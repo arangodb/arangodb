@@ -865,16 +865,15 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
     my_child,
     pathes = [];
 
-  if (path_to_here === undefined) {
-    path_to_here = [this.getId()];
-  }
+  path_to_here = path_to_here || [];
+  path_to_here = path_to_here.concat(this.getId());
 
   if (my_children === undefined) {
     pathes = [path_to_here.reverse()];
   } else {
     for (i = 0; i < my_children.length; i += 1) {
       my_child = this._graph.getVertex(my_children[i]);
-      pathes = pathes.concat(my_child.pathesForTree(tree, path_to_here.concat(my_children[i])));
+      pathes = pathes.concat(my_child.pathesForTree(tree, path_to_here));
     }
   }
 
