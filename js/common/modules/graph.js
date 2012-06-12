@@ -778,14 +778,10 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex) {
-  var predecessors = {},        // { ID => [ID] }
-    todo_list = [this.getId()], // [ID]
-    distances = {},             // { ID => Number }
-    pathes = [];                // [[ID]]
+  var predecessors = {}, // { ID => [ID] }
+    pathes = [];         // [[ID]]
 
-  distances[this.getId()] = 0;
-
-  predecessors = this._determinePredecessors(target_vertex, todo_list, distances);
+  predecessors = target_vertex.determinePredecessors(this.getId());
   pathes = this._pathesForTree(target_vertex.getId(), [target_vertex.getId()], predecessors);
 
   return pathes;
@@ -794,53 +790,69 @@ Vertex.prototype.pathTo = function (target_vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function for pathTo
 ///
-/// @FUN{@FA{vertex}._determinePredecessors(@FA{target_vertex}, @FA{todo_list}, @FA{distances})}
+/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._determinePredecessors = function (target_vertex, todo_list, distances) {
-  var determined_list = [], // [ID]
-    predecessors = {},      // { ID => [ID] }
-    raw_neighborlist = [],  // [ID]
-    i,                      // Number
-    current_distance,       // Number
-    current_vertex_id,      // ID
-    current_neighbor_id,    // ID
-    compared_distance;
+Vertex.prototype.determinePredecessors = function (source_id) {
+  var determined_list = [],  // [ID]
+    predecessors = {},       // { ID => [ID] }
+    todo_list = [source_id], // [ID]
+    distances = {},          // { ID => Number }
+    current_vertex,          // Vertex
+    current_vertex_id;       // ID
+
+  distances[source_id] = 0;
 
   while (todo_list.length > 0) {
     current_vertex_id = this._getShortestDistance(todo_list, distances);
 
-    if (current_vertex_id === target_vertex) {
+    if (current_vertex_id === this.getId()) {
       break;
-    }
-
-    todo_list.removeLastOccurrenceOf(current_vertex_id);
-    determined_list.push(current_vertex_id);
-
-    // FIXME: Choose the neighbors according to the graph (directed/undirected)
-    raw_neighborlist = this._graph.getVertex(current_vertex_id).getNeighbors('both');
-    for (i = 0; i < raw_neighborlist.length; i += 1) {
-      current_neighbor_id = raw_neighborlist[i];
-
-      if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
-        // FIXME: Take the weight if it is a weighted graph
-        current_distance = distances[current_vertex_id] + 1;
-
-        todo_list.pushIfNotFound(current_neighbor_id);
-
-        compared_distance = distances[current_neighbor_id];
-        if ((compared_distance === undefined) || (compared_distance > current_distance)) {
-          predecessors[current_neighbor_id] = [current_vertex_id];
-          distances[current_neighbor_id] = current_distance;
-        } else if (compared_distance === current_distance) {
-          predecessors[current_neighbor_id].push(current_vertex_id);
-        }
-      }
+    } else {
+      todo_list.removeLastOccurrenceOf(current_vertex_id);
+      determined_list.push(current_vertex_id);
+      current_vertex = this._graph.getVertex(current_vertex_id);
+      current_vertex.processNeighbors(
+        determined_list,
+        todo_list,
+        distances,
+        predecessors
+      );
     }
   }
 
   return predecessors;
+};
+
+Vertex.prototype.processNeighbors = function (determined_list, todo_list, distances, predecessors) {
+  var i,
+    current_neighbor_id,
+    current_distance,
+    raw_neighborlist,
+    compared_distance;
+
+  // FIXME: Choose the neighbors according to the graph (directed/undirected)
+  raw_neighborlist = this.getNeighbors('both');
+
+  for (i = 0; i < raw_neighborlist.length; i += 1) {
+    current_neighbor_id = raw_neighborlist[i];
+
+    if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
+      // FIXME: Take the weight if it is a weighted graph
+      current_distance = distances[this.getId()] + 1;
+
+      todo_list.pushIfNotFound(current_neighbor_id);
+
+      compared_distance = distances[current_neighbor_id];
+      if ((compared_distance === undefined) || (compared_distance > current_distance)) {
+        predecessors[current_neighbor_id] = [this.getId()];
+        distances[current_neighbor_id] = current_distance;
+      } else if (compared_distance === current_distance) {
+        predecessors[current_neighbor_id].push(this.getId());
+      }
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
