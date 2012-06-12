@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-explain.h"
+#include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-statement-walker.h"
