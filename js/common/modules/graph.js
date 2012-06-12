@@ -804,7 +804,7 @@ Vertex.prototype._determinePredecessors = function (target_vertex, todo_list, di
     raw_neighborlist = [],  // [ID]
     i,                      // Number
     current_distance,       // Number
-    current_vertex_id,        // ID
+    current_vertex_id,      // ID
     current_neighbor_id,    // ID
     compared_distance;
 
@@ -819,7 +819,7 @@ Vertex.prototype._determinePredecessors = function (target_vertex, todo_list, di
     determined_list.push(current_vertex_id);
 
     // FIXME: Choose the neighbors according to the graph (directed/undirected)
-    raw_neighborlist = this._graph.getVertex(current_vertex_id).getNeighbors();
+    raw_neighborlist = this._graph.getVertex(current_vertex_id).getNeighbors('both');
     for (i = 0; i < raw_neighborlist.length; i += 1) {
       current_neighbor_id = raw_neighborlist[i];
 
@@ -876,28 +876,40 @@ Vertex.prototype._pathesForTree = function (root, path_to_here, tree) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.getNeighbors = function () {
-  // FIXME: Take Inbound, Outbound, Both. Currently Both only
-  // FIXME: Only return neighbors with a certain label
+Vertex.prototype.getNeighbors = function (direction, labels) {
   var i,
-    current_vertex_id,
+    current_edge,
+    current_vertex,
+    current_label,
     target_array = [];
 
-  for (i = 0; i < this.getOutEdges().length; i++) {
-    current_vertex_id = this.getOutEdges()[i].getInVertex().getId();
-    target_array.push(current_vertex_id);
+  if ((direction === 'both') || (direction === 'outbound')) {
+    for (i = 0; i < this.getOutEdges().length; i++) {
+      current_edge = this.getOutEdges()[i];
+      current_vertex = current_edge.getInVertex();
+      current_label = current_edge.getLabel();
+      if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
+        target_array.push(current_vertex.getId());
+      }
+    }
   }
 
-  for (i = 0; i < this.getInEdges().length; i++) {
-    current_vertex_id = this.getInEdges()[i].getOutVertex().getId();
-    target_array.push(current_vertex_id);
+  if ((direction === 'both') || (direction === 'inbound')) {
+    for (i = 0; i < this.getInEdges().length; i++) {
+      current_edge = this.getInEdges()[i];
+      current_vertex = current_edge.getOutVertex();
+      current_label = current_edge.getLabel();
+      if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
+        target_array.push(current_vertex.getId());
+      }
+    }
   }
 
   return target_array;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the shortest distance for a given list of vertices and 
+/// @brief Get the shortest distance for a given list of vertices and
 /// their distances
 ///
 /// @FUN{@FA{vertex}._getShortestDistance(@FA{todo_list}, @FA{distances})}
