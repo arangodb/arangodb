@@ -118,12 +118,10 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
+	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \
-	lib/ApplicationServer/ApplicationServerImpl.cpp \
-	lib/ApplicationServer/ApplicationServerSchedulerImpl.cpp \
-	lib/Dispatcher/ApplicationServerDispatcher.cpp \
-	lib/Dispatcher/ApplicationServerDispatcherImpl.cpp \
-	lib/Dispatcher/DispatcherImpl.cpp \
+	lib/Dispatcher/ApplicationDispatcher.cpp \
+	lib/Dispatcher/Dispatcher.cpp \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
@@ -149,6 +147,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/PhpResultGenerator.cpp \
 	lib/ResultGenerator/ResultGenerator.cpp \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
+	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \

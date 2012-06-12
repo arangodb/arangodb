@@ -36,7 +36,7 @@
 
 #include <fstream>
 
-#include "ApplicationServer/ApplicationServerImpl.h"
+#include "ApplicationServer/ApplicationServer.h"
 #include <Basics/FileUtils.h>
 #include <Basics/safe_cast.h>
 #include <Logger/Logger.h>
@@ -148,7 +148,7 @@ static void WritePidFile (string const& pidFile, int pid) {
 /// @brief forks a new process
 ////////////////////////////////////////////////////////////////////////////////
 
-static int forkProcess (string const& pidFile, string const& workingDirectory, string& current, ApplicationServerImpl* applicationServer) {
+static int forkProcess (string const& pidFile, string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
   CheckPidFile(pidFile);
 
   // fork off the parent process
@@ -336,7 +336,7 @@ int AnyServer::startupSupervisor () {
   LOGGER_INFO << "starting up in supervisor mode";
   
   string current;
-  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServerImpl*>(_applicationServer));
+  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
   
   // main process
   if (result == 0) {
@@ -397,7 +397,7 @@ int AnyServer::startupSupervisor () {
         
         // reset logging
         TRI_InitialiseLogging(TRI_ResetLogging());
-        safe_cast<ApplicationServerImpl*>(_applicationServer)->setupLogging();
+        safe_cast<ApplicationServer*>(_applicationServer)->setupLogging();
         
         // force child to stop if supervisor dies
 #ifdef TRI_HAVE_PRCTL
@@ -441,7 +441,7 @@ int AnyServer::startupDaemon () {
   LOGGER_INFO << "starting up in daemon mode";
   
   string current;
-  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServerImpl*>(_applicationServer));
+  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
   
   // main process
   if (result == 0) {

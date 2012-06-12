@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief interface of a job dispatcher
+/// @brief job dispatcher
 ///
 /// @file
 ///
@@ -26,65 +26,19 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DISPATCHER_DISPATCHER_H
-#define TRIAGENS_DISPATCHER_DISPATCHER_H 1
+#include "Dispatcher.h"
 
-#include "Basics/Common.h"
+#include "Basics/ConditionLocker.h"
+#include "Logger/Logger.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
 
-#include "Basics/Mutex.h"
+#include "Dispatcher/DispatcherQueue.h"
+#include "Dispatcher/DispatcherThread.h"
+#include "Dispatcher/Job.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-    class Job;
-    class DispatcherQueue;
-    class DispatcherThread;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class Dispatcher
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interface of a job dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-    class Dispatcher {
-      private:
-        Dispatcher (Dispatcher const&);
-        Dispatcher& operator= (Dispatcher const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief queue thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef DispatcherThread* (*newDispatcherThread_fptr)(DispatcherQueue*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
@@ -95,13 +49,9 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default queue thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-        static DispatcherThread* defaultDispatcherThread (DispatcherQueue*);
+DispatcherThread* Dispatcher::defaultDispatcherThread (DispatcherQueue* queue) {
+  return new DispatcherThread(queue);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -116,19 +66,25 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Dispatcher ();
+Dispatcher::Dispatcher ()
+  : _accessDispatcher(),
+    _stopping(0),
+    _queues() {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~Dispatcher ();
+Dispatcher::~Dispatcher () {
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    delete i->second;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -143,54 +99,157 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief is the dispatcher still running
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isRunning ();
+bool Dispatcher::isRunning () {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  bool isRunning = false;
+
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    isRunning = isRunning || i->second->isRunning();
+  }
+
+  return isRunning;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addQueue (string const& name, size_t nrThreads);
+void Dispatcher::addQueue (string const& name, size_t nrThreads) {
+  _queues[name] = new DispatcherQueue(this, defaultDispatcherThread, nrThreads);
+}
 
 /////////////////////////////////////////////////////////////////////////
 /// @brief adds a queue which given dispatcher thread type
 /////////////////////////////////////////////////////////////////////////
 
-        void addQueue (string const& name, newDispatcherThread_fptr, size_t nrThreads);
+void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
+  _queues[name] = new DispatcherQueue(this, func, nrThreads);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job
-///
-/// The method is called from the scheduler to add a new job request.  It
-/// returns immediately (i.e. without waiting for the job to finish).  When the
-/// job is finished the scheduler will be awoken and the scheduler will write
-/// the response over the network to the caller.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addJob (Job*);
+bool Dispatcher::addJob (Job* job) {
+
+  // do not start new jobs if we are already shutting down
+  if (_stopping != 0) {
+    return false;
+  }
+  
+  // try to find a suitable queue
+  DispatcherQueue* queue = lookupQueue(job->queue());
+  
+  if (queue == 0) {
+    LOGGER_WARNING << "unknown queue '" << job->queue() << "'";
+    return false;
+  }
+  
+  // log success, but do this BEFORE the real add, because the addJob might execute
+  // and delete the job before we have a chance to log something
+  LOGGER_TRACE << "added job " << job << " to queue " << job->queue();
+  
+  // add the job to the list of ready jobs
+  queue->addJob(job);
+  
+  // indicate sucess, BUT never access job after it has been added to the queue
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool start ();
+bool Dispatcher::start () {
+  MUTEX_LOCKER(_accessDispatcher);
+  
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    bool ok = i->second->start();
+    
+    if (! ok) {
+      LOGGER_FATAL << "cannot start dispatcher queue";
+      return false;
+    }
+  }
+  
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins shutdown process
 ////////////////////////////////////////////////////////////////////////////////
 
-        void beginShutdown ();
+void Dispatcher::beginShutdown () {
+  if (_stopping != 0) {
+    return;
+  }
+  
+  MUTEX_LOCKER(_accessDispatcher);
+  
+  if (_stopping == 0) {
+    LOGGER_DEBUG << "beginning shutdown sequence of dispatcher";
+    
+    _stopping = 1;
+    
+    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+      i->second->beginShutdown();
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports status of dispatcher queues
 ////////////////////////////////////////////////////////////////////////////////
 
-        void reportStatus ();
+void Dispatcher::reportStatus () {
+  if (TRI_IsDebugLogging(__FILE__)) {
+    MUTEX_LOCKER(_accessDispatcher);
+    
+    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+      string const& name = i->first;
+      DispatcherQueue* q = i->second;
+      
+      LOGGER_DEBUG << "dispatcher queue '" << name << "': "
+                   << "threads = " << q->nrThreads << " "
+                   << "started = " << q->nrStarted << " "
+                   << "running = " << q->nrRunning << " "
+                   << "waiting = " << q->nrWaiting << " "
+                   << "stopped = " << q->nrStopped << " "
+                   << "special = " << q->nrSpecial << " "
+                   << "monopolistic = " << (q->monopolizer ? "yes" : "no");
+      
+      LOGGER_HEARTBEAT
+      << LoggerData::Task("dispatcher status")
+      << LoggerData::Extra(name)
+      << LoggerData::Extra("threads")
+      << LoggerData::Extra(StringUtils::itoa(q->nrThreads))
+      << LoggerData::Extra("started")
+      << LoggerData::Extra(StringUtils::itoa(q->nrStarted))
+      << LoggerData::Extra("running")
+      << LoggerData::Extra(StringUtils::itoa(q->nrRunning))
+      << LoggerData::Extra("waiting")
+      << LoggerData::Extra(StringUtils::itoa(q->nrWaiting))
+      << LoggerData::Extra("stopped")
+      << LoggerData::Extra(StringUtils::itoa(q->nrStopped))
+      << LoggerData::Extra("special")
+      << LoggerData::Extra(StringUtils::itoa(q->nrSpecial))
+      << LoggerData::Extra("monopilizer")
+      << LoggerData::Extra((q->monopolizer ? "1" : "0"))
+      << "dispatcher status";
+      
+      CONDITION_LOCKER(guard, q->accessQueue);
+      
+      for (set<DispatcherThread*>::iterator j = q->startedThreads.begin();  j != q->startedThreads.end(); ++j) {
+        (*j)->reportStatus();
+      }
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -205,47 +264,18 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherQueue* lookupQueue (string const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher lock
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::Mutex _accessDispatcher;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown indicator
-////////////////////////////////////////////////////////////////////////////////
-
-        volatile sig_atomic_t _stopping;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher queues
-////////////////////////////////////////////////////////////////////////////////
-
-        map<string, DispatcherQueue*> _queues;
-    };
+DispatcherQueue* Dispatcher::lookupQueue (string const& name) {
+  map<string, DispatcherQueue*>::const_iterator i = _queues.find(name);
+  
+  if (i == _queues.end()) {
+    return 0;
+  }
+  else {
+    return i->second;
   }
 }
 
@@ -253,13 +283,11 @@ namespace triagens {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
