@@ -992,8 +992,8 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   // lock
   if (!TRI_ValidateQueryContextAql(context) ||
       !TRI_BindQueryContextAql(context, parameters) ||
-      !TRI_OptimiseQueryContextAql(context) ||
-      !TRI_LockQueryContextAql(context)) {
+      !TRI_LockQueryContextAql(context) ||
+      !TRI_OptimiseQueryContextAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -1825,6 +1825,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   if (!TRI_ValidateQueryContextAql(context) ||
       !TRI_BindQueryContextAql(context, parameters.ptr()) ||
+      !TRI_LockQueryContextAql(context) ||
       !TRI_OptimiseQueryContextAql(context) ||
       !(explain = TRI_ExplainAql(context))) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);

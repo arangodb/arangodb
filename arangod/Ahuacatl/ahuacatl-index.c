@@ -150,21 +150,17 @@ void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
 
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const availableIndexes,
-                                        const char* const variableName,
                                         const char* const collectionName,
                                         const TRI_vector_pointer_t* const candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
-  size_t i, j, k, n, offset;
+  size_t i, j, k, n; 
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   assert(context);
   assert(collectionName);
   assert(candidates);
-
-  offset = strlen(variableName) + 1;
-  assert(offset > 1);
 
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
@@ -202,7 +198,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     for (j = 0; j < numIndexFields; ++j) {
       char* indexedFieldName = idx->_fields._buffer[j];
 
-      if (!indexedFieldName) {
+      if (indexedFieldName == NULL) {
         continue;
       }
 
@@ -216,7 +212,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           continue;
         }
         
-        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + offset)) {
+        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
           // different attribute, doesn't help
           continue;
         }
@@ -266,6 +262,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             // if we already had a range query, we cannot check another range after that
             continue;
           }
+
+          lastType = candidate->_type;
 
           TRI_PushBackVectorPointer(&matches, candidate);
         }

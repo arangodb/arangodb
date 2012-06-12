@@ -83,12 +83,6 @@ typedef struct TRI_aql_context_s {
 
   size_t _variableIndex; 
   size_t _scopeIndex;
-
-  // deprecated 
-  struct {
-    TRI_vector_pointer_t _scopes;
-  }
-  _optimiser; // TODO: remove
 }
 TRI_aql_context_t;
 

@@ -66,6 +66,26 @@ static char* AccessName (const TRI_aql_access_e type) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the length of the variable name for a field access struct
+////////////////////////////////////////////////////////////////////////////////
+
+static void SetNameLength (TRI_aql_field_access_t* const fieldAccess) {
+  char* dotPosition;
+
+  assert(fieldAccess);
+  assert(fieldAccess->_fullName);
+  
+  dotPosition = strchr(fieldAccess->_fullName, '.');
+  if (dotPosition == NULL) {
+    // field does not contain .
+    fieldAccess->_variableNameLength = strlen(fieldAccess->_fullName);
+  }
+  else {
+    fieldAccess->_variableNameLength = dotPosition - fieldAccess->_fullName;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free access member data, but do not free the access struct itself
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,6 +144,8 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
 
     return NULL;
   }
+
+  SetNameLength(fieldAccess);
 
   fieldAccess->_type = type;
 
@@ -1438,6 +1460,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
     return NULL;
   }
+  SetNameLength(fieldAccess);
   
   if (operator == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
     // create an all items access, and we're done
@@ -1655,15 +1678,31 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_type_e operator;
 
     if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
-      // in is special
+      // in operator is special. if right operand is not a list, we must abort here
       return NULL;
     } 
+
     if (lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(rhs)) {
+      // collection.attribute operator value
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
     }
     else if (rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(lhs)) {
+      // value operator collection.attribute
+      node1 = rhs;
+      node2 = lhs;
+      operator = TRI_ReverseOperatorRelationalAql(node->_type);
+      assert(operator != TRI_AQL_NODE_NOP);
+    }
+    else if (lhs->_type == TRI_AQL_NODE_REFERENCE && TRI_IsConstantValueNodeAql(rhs)) {
+      // variable operator value
+      node1 = lhs;
+      node2 = rhs;
+      operator = node->_type;
+    }
+    else if (rhs->_type == TRI_AQL_NODE_REFERENCE && TRI_IsConstantValueNodeAql(lhs)) {
+      // value operator variable
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);

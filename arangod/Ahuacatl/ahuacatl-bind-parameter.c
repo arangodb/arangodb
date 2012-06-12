@@ -72,6 +72,7 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
                                                      bind->_value->_value._string.data, 
                                                      strlen(bind->_value->_value._string.data), 
                                                      false);
+
         node = TRI_CreateNodeCollectionAql(context, collectionName);
       }
       else {

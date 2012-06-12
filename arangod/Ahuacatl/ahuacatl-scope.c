@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-scope.h" 
+#include "Ahuacatl/ahuacatl-access-optimiser.h" 
 #include "Ahuacatl/ahuacatl-variable.h"
 
 // -----------------------------------------------------------------------------
@@ -41,7 +42,7 @@
 /// @brief get the next scope id
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t NextId (TRI_aql_context_t* const context) {
+static inline size_t NextId (TRI_aql_context_t* const context) {
   return ++context->_scopeIndex;
 }
 
@@ -116,6 +117,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
 
   scope->_id = NextId(context);
   scope->_type = NextType(context, type);
+  scope->_ranges = NULL;
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -143,8 +145,13 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
       TRI_FreeVariableAql(variable);
     }
   }
-
+  
   TRI_DestroyAssociativePointer(&scope->_variables);
+  
+  if (scope->_ranges) {
+    // free ranges if set
+    TRI_FreeAccessesAql(scope->_ranges);
+  }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
@@ -229,10 +236,11 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
   assert(context);
 
   scope = CreateScope(context, type);
+
   if (scope == NULL) {
     return false;
   }
-
+  
   TRI_AQL_LOG("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
   TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
@@ -331,7 +339,7 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
                                  const char* const name) {
   size_t n;
   
-  if (!name) {
+  if (name == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }

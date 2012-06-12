@@ -80,7 +80,6 @@ void TRI_FreeIndexAql (TRI_aql_index_t* const);
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const,
                                         const TRI_vector_pointer_t* const,
                                         const char* const,
-                                        const char* const,
                                         const TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
