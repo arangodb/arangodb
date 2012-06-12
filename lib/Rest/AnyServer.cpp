@@ -233,9 +233,7 @@ AnyServer::AnyServer ()
     _supervisorMode(false),
     _pidFile(""),
     _workingDirectory(""),
-    _applicationServer(0),
-    _applicationHttpServer(0),
-    _applicationHttpsServer(0) {
+    _applicationServer(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
