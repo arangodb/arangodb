@@ -1121,11 +1121,11 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   // start synchroniser thread
   TRI_InitThread(&vocbase->_synchroniser);
-  TRI_StartThread(&vocbase->_synchroniser, TRI_SynchroniserVocBase, vocbase);
+  TRI_StartThread(&vocbase->_synchroniser, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
 
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, TRI_CompactorVocBase, vocbase);
+  TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
 
   // we are done
   return vocbase;
