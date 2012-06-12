@@ -162,6 +162,29 @@ function dijkstraSuite() {
 /// @brief get a short, distinct path
 ////////////////////////////////////////////////////////////////////////////////
 
+    testPathesForTree : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        tree = {},
+        pathes;
+
+      tree[v1.getId()] = [v2.getId(), v3.getId()];
+      tree[v2.getId()] = [v4.getId(), v5.getId()];
+
+      pathes = v1.pathesForTree(tree);
+      assertEqual(pathes.length, 3);
+      assertEqual(pathes[0].length, 3);
+      assertEqual(pathes[1].length, 3);
+      assertEqual(pathes[2].length, 2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path
+////////////////////////////////////////////////////////////////////////////////
+
     testGetAShortDistinctPath : function () {
       var v1, v2, e1, path;
 

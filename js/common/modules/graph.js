@@ -778,13 +778,10 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex) {
-  var predecessors = {}, // { ID => [ID] }
-    pathes = [];         // [[ID]]
+  var predecessors = {}; // { ID => [ID] }
 
   predecessors = target_vertex.determinePredecessors(this.getId());
-  pathes = this._pathesForTree(target_vertex.getId(), [target_vertex.getId()], predecessors);
-
-  return pathes;
+  return target_vertex.pathesForTree(predecessors);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -858,26 +855,29 @@ Vertex.prototype.processNeighbors = function (determined_list, todo_list, distan
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get all pathes from root to leave vertices for a given tree
 ///
-/// @FUN{@FA{vertex}._pathesForTree(@FA{root}, @FA{path_to_here}, @FA{tree})}
+/// @FUN{@FA{vertex}.pathesForTree(@FA{tree}, @FA{path_to_here})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._pathesForTree = function (root, path_to_here, tree) {
-  var my_children = tree[root],
+Vertex.prototype.pathesForTree = function (tree, path_to_here) {
+  var my_children = tree[this.getId()],
     i,
     my_child,
     pathes = [];
+
+  if (path_to_here === undefined) {
+    path_to_here = [this.getId()];
+  }
 
   if (my_children === undefined) {
     pathes = [path_to_here.reverse()];
   } else {
     for (i = 0; i < my_children.length; i += 1) {
-      my_child = my_children[i];
-      pathes = pathes.concat(this._pathesForTree(my_child,
-        path_to_here.concat([my_child]),
-        tree));
+      my_child = this._graph.getVertex(my_children[i]);
+      pathes = pathes.concat(my_child.pathesForTree(tree, path_to_here.concat(my_children[i])));
     }
   }
+
   return pathes;
 };
 
