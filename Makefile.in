@@ -396,12 +396,10 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Admin/RestAdminLogHandler.$(OBJEXT) \
 	lib/Admin/RestBaseHandler.$(OBJEXT) \
 	lib/Admin/RestVersionHandler.$(OBJEXT) \
+	lib/ApplicationServer/ApplicationFeature.$(OBJEXT) \
 	lib/ApplicationServer/ApplicationServer.$(OBJEXT) \
-	lib/ApplicationServer/ApplicationServerImpl.$(OBJEXT) \
-	lib/ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT) \
-	lib/Dispatcher/ApplicationServerDispatcher.$(OBJEXT) \
-	lib/Dispatcher/ApplicationServerDispatcherImpl.$(OBJEXT) \
-	lib/Dispatcher/DispatcherImpl.$(OBJEXT) \
+	lib/Dispatcher/ApplicationDispatcher.$(OBJEXT) \
+	lib/Dispatcher/Dispatcher.$(OBJEXT) \
 	lib/Dispatcher/DispatcherQueue.$(OBJEXT) \
 	lib/Dispatcher/DispatcherThread.$(OBJEXT) \
 	lib/Dispatcher/Job.$(OBJEXT) \
@@ -427,6 +425,7 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/ResultGenerator/PhpResultGenerator.$(OBJEXT) \
 	lib/ResultGenerator/ResultGenerator.$(OBJEXT) \
 	lib/ResultGenerator/XmlResultGenerator.$(OBJEXT) \
+	lib/Scheduler/ApplicationScheduler.$(OBJEXT) \
 	lib/Scheduler/AsyncTask.$(OBJEXT) \
 	lib/Scheduler/ConnectionTask.$(OBJEXT) \
 	lib/Scheduler/ListenTask.$(OBJEXT) \
@@ -1231,12 +1230,10 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
+	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \
-	lib/ApplicationServer/ApplicationServerImpl.cpp \
-	lib/ApplicationServer/ApplicationServerSchedulerImpl.cpp \
-	lib/Dispatcher/ApplicationServerDispatcher.cpp \
-	lib/Dispatcher/ApplicationServerDispatcherImpl.cpp \
-	lib/Dispatcher/DispatcherImpl.cpp \
+	lib/Dispatcher/ApplicationDispatcher.cpp \
+	lib/Dispatcher/Dispatcher.cpp \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
@@ -1262,6 +1259,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/PhpResultGenerator.cpp \
 	lib/ResultGenerator/ResultGenerator.cpp \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
+	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
@@ -1861,13 +1859,10 @@ lib/ApplicationServer/$(am__dirstamp):
 lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/ApplicationServer/$(DEPDIR)
 	@: > lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp)
+lib/ApplicationServer/ApplicationFeature.$(OBJEXT):  \
+	lib/ApplicationServer/$(am__dirstamp) \
+	lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp)
 lib/ApplicationServer/ApplicationServer.$(OBJEXT):  \
-	lib/ApplicationServer/$(am__dirstamp) \
-	lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp)
-lib/ApplicationServer/ApplicationServerImpl.$(OBJEXT):  \
-	lib/ApplicationServer/$(am__dirstamp) \
-	lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp)
-lib/ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT):  \
 	lib/ApplicationServer/$(am__dirstamp) \
 	lib/ApplicationServer/$(DEPDIR)/$(am__dirstamp)
 lib/Dispatcher/$(am__dirstamp):
@@ -1876,14 +1871,10 @@ lib/Dispatcher/$(am__dirstamp):
 lib/Dispatcher/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/Dispatcher/$(DEPDIR)
 	@: > lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
-lib/Dispatcher/ApplicationServerDispatcher.$(OBJEXT):  \
+lib/Dispatcher/ApplicationDispatcher.$(OBJEXT):  \
 	lib/Dispatcher/$(am__dirstamp) \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
-lib/Dispatcher/ApplicationServerDispatcherImpl.$(OBJEXT):  \
-	lib/Dispatcher/$(am__dirstamp) \
-	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
-lib/Dispatcher/DispatcherImpl.$(OBJEXT):  \
-	lib/Dispatcher/$(am__dirstamp) \
+lib/Dispatcher/Dispatcher.$(OBJEXT): lib/Dispatcher/$(am__dirstamp) \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
 lib/Dispatcher/DispatcherQueue.$(OBJEXT):  \
 	lib/Dispatcher/$(am__dirstamp) \
@@ -1986,6 +1977,9 @@ lib/Scheduler/$(am__dirstamp):
 lib/Scheduler/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/Scheduler/$(DEPDIR)
 	@: > lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
+lib/Scheduler/ApplicationScheduler.$(OBJEXT):  \
+	lib/Scheduler/$(am__dirstamp) \
+	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/AsyncTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/ConnectionTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
@@ -2623,9 +2617,8 @@ mostlyclean-compile:
 	-rm -f lib/Admin/RestAdminLogHandler.$(OBJEXT)
 	-rm -f lib/Admin/RestBaseHandler.$(OBJEXT)
 	-rm -f lib/Admin/RestVersionHandler.$(OBJEXT)
+	-rm -f lib/ApplicationServer/ApplicationFeature.$(OBJEXT)
 	-rm -f lib/ApplicationServer/ApplicationServer.$(OBJEXT)
-	-rm -f lib/ApplicationServer/ApplicationServerImpl.$(OBJEXT)
-	-rm -f lib/ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT)
 	-rm -f lib/Basics/ConditionLocker.$(OBJEXT)
 	-rm -f lib/Basics/ConditionVariable.$(OBJEXT)
 	-rm -f lib/Basics/FileUtils.$(OBJEXT)
@@ -2671,9 +2664,8 @@ mostlyclean-compile:
 	-rm -f lib/BasicsC/threads-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/vector.$(OBJEXT)
 	-rm -f lib/BasicsC/voc-errors.$(OBJEXT)
-	-rm -f lib/Dispatcher/ApplicationServerDispatcher.$(OBJEXT)
-	-rm -f lib/Dispatcher/ApplicationServerDispatcherImpl.$(OBJEXT)
-	-rm -f lib/Dispatcher/DispatcherImpl.$(OBJEXT)
+	-rm -f lib/Dispatcher/ApplicationDispatcher.$(OBJEXT)
+	-rm -f lib/Dispatcher/Dispatcher.$(OBJEXT)
 	-rm -f lib/Dispatcher/DispatcherQueue.$(OBJEXT)
 	-rm -f lib/Dispatcher/DispatcherThread.$(OBJEXT)
 	-rm -f lib/Dispatcher/Job.$(OBJEXT)
@@ -2721,6 +2713,7 @@ mostlyclean-compile:
 	-rm -f lib/ResultGenerator/PhpResultGenerator.$(OBJEXT)
 	-rm -f lib/ResultGenerator/ResultGenerator.$(OBJEXT)
 	-rm -f lib/ResultGenerator/XmlResultGenerator.$(OBJEXT)
+	-rm -f lib/Scheduler/ApplicationScheduler.$(OBJEXT)
 	-rm -f lib/Scheduler/AsyncTask.$(OBJEXT)
 	-rm -f lib/Scheduler/ConnectionTask.$(OBJEXT)
 	-rm -f lib/Scheduler/ListenTask.$(OBJEXT)
@@ -2868,9 +2861,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationFeature.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServerImpl.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServerSchedulerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionVariable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/FileUtils.Po@am__quote@
@@ -2916,9 +2908,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/threads-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/voc-errors.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/ApplicationServerDispatcher.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/ApplicationServerDispatcherImpl.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherImpl.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/ApplicationDispatcher.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Dispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherQueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Job.Po@am__quote@
@@ -2966,6 +2957,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ResultGenerator/$(DEPDIR)/PhpResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ResultGenerator/$(DEPDIR)/ResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ResultGenerator/$(DEPDIR)/XmlResultGenerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ApplicationScheduler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/AsyncTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ConnectionTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ListenTask.Po@am__quote@

@@ -450,8 +450,10 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   _applicationScheduler->allowMultiScheduler(true);
+  _applicationServer->addFeature(_applicationScheduler);
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+  _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
   // and start a simple admin server
