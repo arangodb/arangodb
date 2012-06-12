@@ -34,7 +34,6 @@
 #include <Basics/ConditionVariable.h>
 
 #include "Dispatcher/Dispatcher.h"
-#include "Dispatcher/DispatcherImpl.h"
 
 namespace triagens {
   namespace rest {
@@ -53,7 +52,7 @@ namespace triagens {
         /////////////////////////////////////////////////////////////////////////////
 
         DispatcherQueue (Dispatcher* dispatcher,
-                         DispatcherImpl::newDispatcherThread_fptr,
+                         Dispatcher::newDispatcherThread_fptr,
                          size_t nrThreads);
 
         /////////////////////////////////////////////////////////////////////////////
@@ -181,7 +180,7 @@ namespace triagens {
         Dispatcher* dispatcher;
 
       private:
-        DispatcherImpl::newDispatcherThread_fptr createDispatcherThread;
+        Dispatcher::newDispatcherThread_fptr createDispatcherThread;
     };
   }
 }

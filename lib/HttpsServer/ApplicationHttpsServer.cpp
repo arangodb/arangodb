@@ -31,8 +31,9 @@
 
 namespace triagens {
   namespace rest {
-    ApplicationHttpsServer* ApplicationHttpsServer::create (ApplicationServer* server) {
-      return new ApplicationHttpsServerImpl(server);
+    ApplicationHttpsServer* ApplicationHttpsServer::create (ApplicationScheduler* scheduler,
+                                                            ApplicationDispatcher* dispatcher) {
+      return new ApplicationHttpsServerImpl(scheduler, dispatcher);
     }
   }
 }

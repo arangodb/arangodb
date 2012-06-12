@@ -364,7 +364,7 @@ namespace triagens {
     namespace Random {
 
 // -----------------------------------------------------------------------------
-      // implementation
+// implementation
 // -----------------------------------------------------------------------------
 
       struct UniformIntegerImpl {

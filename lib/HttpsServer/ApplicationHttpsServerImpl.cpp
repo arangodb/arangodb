@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief application server https server implementation
 ///
 /// @file
@@ -29,17 +29,17 @@
 
 #include <openssl/err.h>
 
-#include <Basics/ProgramOptions.h>
-#include <Basics/ProgramOptionsDescription.h>
-#include <Basics/Random.h>
-#include <Basics/StringUtils.h>
-#include <Basics/delete_object.h>
-#include <Logger/Logger.h>
-
-#include "Dispatcher/ApplicationServerDispatcher.h"
+#include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/Random.h"
+#include "Basics/StringUtils.h"
+#include "Basics/delete_object.h"
+#include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpsServer/HttpsServer.h"
 #include "HttpsServer/HttpsServerImpl.h"
+#include "Logger/Logger.h"
+#include "Scheduler/ApplicationScheduler.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -87,20 +87,22 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    ApplicationHttpsServerImpl::ApplicationHttpsServerImpl (ApplicationServer* applicationServer)
-      : applicationServer(applicationServer),
-        showPort(true),
-        requireKeepAlive(false),
-        sslProtocol(3),
-        sslCacheMode(0),
-        sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
-        sslContext(0) {
+    ApplicationHttpsServerImpl::ApplicationHttpsServerImpl (ApplicationScheduler* applicationScheduler,
+                                                            ApplicationDispatcher* applicationDispatcher)
+      : _applicationScheduler(applicationScheduler),
+        _applicationDispatcher(applicationDispatcher),
+        _showPort(true),
+        _requireKeepAlive(false),
+        _sslProtocol(3),
+        _sslCacheMode(0),
+        _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
+        _sslContext(0) {
     }
 
 
 
     ApplicationHttpsServerImpl::~ApplicationHttpsServerImpl () {
-      for_each(httpsServers.begin(), httpsServers.end(), DeleteObject());
+      for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
     }
 
     // -----------------------------------------------------------------------------
@@ -108,19 +110,19 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void ApplicationHttpsServerImpl::setupOptions (map<string, ProgramOptionsDescription>& options) {
-      if (showPort) {
+      if (_showPort) {
         options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-          ("server.secure", &httpsPorts, "listen port or address:port")
+          ("server.secure", &_httpsPorts, "listen port or address:port")
         ;
       }
 
       options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
         ("server.secure-require-keep-alive", "close connection, if keep-alive is missing")
-        ("server.keyfile", &httpsKeyfile, "keyfile for SSL connections")
-        ("server.cafile", &cafile, "file containing the CA certificates of clients")
-        ("server.ssl-protocol", &sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
-        ("server.ssl-cache-mode", &sslCacheMode, "0 = off, 1 = client, 2 = server")
-        ("server.ssl-options", &sslOptions, "ssl options, see OpenSSL documentation")
+        ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
+        ("server.cafile", &_cafile, "file containing the CA certificates of clients")
+        ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
+        ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
+        ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
       ;
     }
 
@@ -130,12 +132,12 @@ namespace triagens {
 
       // check keep alive
       if (options.has("server.secure-require-keep-alive")) {
-        requireKeepAlive= true;
+        _requireKeepAlive= true;
       }
 
 
       // add ports
-      for (vector<string>::const_iterator i = httpsPorts.begin();  i != httpsPorts.end();  ++i) {
+      for (vector<string>::const_iterator i = _httpsPorts.begin();  i != _httpsPorts.end();  ++i) {
         addPort(*i);
       }
 
@@ -160,7 +162,7 @@ namespace triagens {
         LOGGER_ERROR << "unknown server:port definition '" << name << "'";
       }
       else {
-        httpsAddressPorts.push_back(ap);
+        _httpsAddressPorts.push_back(ap);
       }
 
       return ap;
@@ -169,7 +171,7 @@ namespace triagens {
 
 
     HttpsServer* ApplicationHttpsServerImpl::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-      return buildServer(httpHandlerFactory, httpsAddressPorts);
+      return buildServer(httpHandlerFactory, _httpsAddressPorts);
     }
 
 
@@ -191,33 +193,33 @@ namespace triagens {
     bool ApplicationHttpsServerImpl::createSslContext () {
 
       // check keyfile
-      if (httpsKeyfile.empty()) {
+      if (_httpsKeyfile.empty()) {
         return true;
       }
 
 
       // create context
-      sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(sslProtocol), httpsKeyfile);
+      _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
-      if (sslContext == 0) {
+      if (_sslContext == 0) {
         LOGGER_ERROR << "failed to create SSL context, cannot create a HTTPS server";
         return false;
       }
 
       // set cache mode
-      SSL_CTX_set_session_cache_mode(sslContext, sslCacheMode);
-      LOGGER_INFO << "using SSL session cache mode: " << sslCacheMode;
+      SSL_CTX_set_session_cache_mode(_sslContext, _sslCacheMode);
+      LOGGER_INFO << "using SSL session cache mode: " << _sslCacheMode;
 
       // set options
-      SSL_CTX_set_options(sslContext, sslOptions);
-      LOGGER_INFO << "using SSL options: " << sslOptions;
+      SSL_CTX_set_options(_sslContext, _sslOptions);
+      LOGGER_INFO << "using SSL options: " << _sslOptions;
 
 
       // set ssl context
       Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
       string rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-      int res = SSL_CTX_set_session_id_context(sslContext, (unsigned char const*) StringUtils::duplicate(rctx), rctx.size());
+      int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) StringUtils::duplicate(rctx), rctx.size());
 
       if (res != 1) {
         LOGGER_FATAL << "cannot set SSL session id context '" << rctx << "'";
@@ -226,23 +228,23 @@ namespace triagens {
       }
 
       // check CA
-      if (! cafile.empty()) {
-        LOGGER_TRACE << "trying to load CA certificates from '" << cafile << "'";
+      if (! _cafile.empty()) {
+        LOGGER_TRACE << "trying to load CA certificates from '" << _cafile << "'";
 
-        int res = SSL_CTX_load_verify_locations(sslContext, cafile.c_str(), 0);
+        int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
         if (res == 0) {
-          LOGGER_FATAL << "cannot load CA certificates from '" << cafile << "'";
+          LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
           LOGGER_ERROR << lastSSLError();
           return false;
         }
 
         STACK_OF(X509_NAME) * certNames;
 
-        certNames = SSL_load_client_CA_file(cafile.c_str());
+        certNames = SSL_load_client_CA_file(_cafile.c_str());
 
         if (certNames == 0) {
-          LOGGER_FATAL << "cannot load CA certificates from '" << cafile << "'";
+          LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
           LOGGER_ERROR << lastSSLError();
           return false;
         }
@@ -264,7 +266,7 @@ namespace triagens {
           }
         }
 
-        SSL_CTX_set_client_CA_list(sslContext, certNames);
+        SSL_CTX_set_client_CA_list(_sslContext, certNames);
       }
 
       return true;
@@ -273,7 +275,7 @@ namespace triagens {
 
     HttpsServerImpl* ApplicationHttpsServerImpl::buildHttpsServer (HttpHandlerFactory* httpHandlerFactory,
                                                                    vector<AddressPort> const& ports) {
-      Scheduler* scheduler = applicationServer->scheduler();
+      Scheduler* scheduler = _applicationScheduler->scheduler();
 
       if (scheduler == 0) {
         LOGGER_FATAL << "no scheduler is known, cannot create https server";
@@ -282,30 +284,29 @@ namespace triagens {
       }
 
       Dispatcher* dispatcher = 0;
-      ApplicationServerDispatcher* asd = dynamic_cast<ApplicationServerDispatcher*>(applicationServer);
 
-      if (asd != 0) {
-        dispatcher = asd->dispatcher();
+      if (_applicationDispatcher != 0) {
+        dispatcher = _applicationDispatcher->dispatcher();
       }
 
       // check the ssl context
-      if (sslContext == 0) {
+      if (_sslContext == 0) {
         LOGGER_FATAL << "no ssl context is known, cannot create https server";
         TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 
       // create new server
-      HttpsServerImpl* httpsServer = new HttpsServerImpl(scheduler, dispatcher, sslContext);
+      HttpsServerImpl* httpsServer = new HttpsServerImpl(scheduler, dispatcher, _sslContext);
 
       httpsServer->setHandlerFactory(httpHandlerFactory);
 
-      if (requireKeepAlive) {
+      if (_requireKeepAlive) {
         httpsServer->setCloseWithoutKeepAlive(true);
       }
 
       // keep a list of active server
-      httpsServers.push_back(httpsServer);
+      _httpsServers.push_back(httpsServer);
 
       // open http ports
       deque<AddressPort> addresses;
@@ -323,14 +324,14 @@ namespace triagens {
         if (bindAddress.empty()) {
           LOGGER_TRACE << "trying to open port " << port << " for https requests";
 
-          result = httpsServer->addPort(port, applicationServer->addressReuseAllowed());
+          result = httpsServer->addPort(port, _applicationScheduler->addressReuseAllowed());
         }
         else {
           LOGGER_TRACE << "trying to open address " << bindAddress
                        << " on port " << port
                        << " for https requests";
 
-          result = httpsServer->addPort(bindAddress, port, applicationServer->addressReuseAllowed());
+          result = httpsServer->addPort(bindAddress, port, _applicationScheduler->addressReuseAllowed());
         }
 
         if (result) {
