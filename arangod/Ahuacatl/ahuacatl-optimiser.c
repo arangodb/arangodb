@@ -47,8 +47,8 @@
 /// @brief optimise a node recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessNode (TRI_aql_statement_walker_t* const, 
-                                    TRI_aql_node_t*);
+static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const, 
+                                     TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
@@ -421,7 +421,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
     }
 
     // expression code was changed, set pointer to new value re-optimise it
-    node->_members._buffer[0] = ProcessNode((void*) context, expression);
+    node->_members._buffer[0] = OptimiseNode(walker, expression);
     expression = TRI_AQL_NODE_MEMBER(node, 0);
 
     // next iteration
@@ -432,13 +432,44 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a reference expression
+///
+/// this looks up the source node that defines the variable and checks if the
+/// variable has a constant value. if yes, then the reference is replaced with
+/// the constant value
+/// e.g. in the query "let a = 1 for x in a ...", the latter a would be replaced
+/// by the value "1".
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseReference (TRI_aql_context_t* const context,
+static TRI_aql_node_t* OptimiseReference (TRI_aql_statement_walker_t* const walker,
                                           TRI_aql_node_t* node) {
-  // TODO: find variable in current symbol table
-  // follow references until variable declaration is found
-  // if variable value at source is constant, copy the constant into here as well
+  TRI_aql_variable_t* variable;
+  TRI_aql_node_t* definingNode;
+  char* variableName = (char*) TRI_AQL_NODE_STRING(node);
+
+  assert(variableName);
+  variable = TRI_GetVariableStatementWalkerAql(walker, variableName);
+
+  if (variable == NULL) {
+    return node;
+  }
+
+  definingNode = variable->_definingNode;
+  if (definingNode == NULL) {
+    return node;
+  }
+
+  if (definingNode->_type == TRI_AQL_NODE_LET) {
+    // variable is defined via a let
+    TRI_aql_node_t* expressionNode;
+
+    expressionNode = TRI_AQL_NODE_MEMBER(definingNode, 1);
+    if (expressionNode && TRI_IsConstantValueNodeAql(expressionNode)) {
+      // the source variable is constant, so we can replace the reference with 
+      // the source's value
+      return expressionNode;
+    }
+  }
+
   return node;
 }
 
@@ -780,11 +811,15 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise nodes recursively
+/// @brief optimise a specific node
+///
+/// This is a callback function called by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context, 
+static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker, 
                                      TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+
   assert(node);
 
   // node optimisations
@@ -816,7 +851,7 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
     case TRI_AQL_NODE_FCALL:
       return OptimiseFcall(context, node);
     case TRI_AQL_NODE_REFERENCE:
-      return OptimiseReference(context, node);
+      return OptimiseReference(walker, node);
     default: 
       break;
   }
@@ -920,19 +955,6 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a node recursively
-///
-/// this is a callback function used by the statement walker
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_node_t* ProcessNode (TRI_aql_statement_walker_t* const walker,
-                                    TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
-
-  return OptimiseNode(context, node);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
 ///
 /// this is a callback function used by the statement walker
@@ -962,7 +984,7 @@ static bool OptimiseAst (TRI_aql_context_t* const context) {
 
   walker = TRI_CreateStatementWalkerAql((void*) context, 
                                         true,
-                                        &ProcessNode, 
+                                        &OptimiseNode,
                                         NULL, 
                                         &ProcessStatement);
   if (walker == NULL) {
@@ -986,7 +1008,7 @@ static bool DetermineIndexes (TRI_aql_context_t* const context) {
   TRI_aql_statement_walker_t* walker;
 
   walker = TRI_CreateStatementWalkerAql((void*) context, 
-                                        true,
+                                        false,
                                         &AnnotateNode, 
                                         NULL, 
                                         NULL);
