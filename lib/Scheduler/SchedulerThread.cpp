@@ -45,7 +45,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool defaultLoop)
-  : Thread("SchedulerThread"),
+  : Thread("scheduler"),
     scheduler(scheduler),
     defaultLoop(defaultLoop),
     loop(loop),
