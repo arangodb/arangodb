@@ -298,10 +298,13 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
     ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
     ("scheduler.report-intervall", &_reportIntervall, "scheduler report intervall")
     ("server.no-reuse-address", "do not try to reuse address")
-    ("server.reuse-address", "try to reuse address")
 #ifdef TRI_HAVE_GETRLIMIT
     ("server.descriptors-minimum", &_descriptorMinimum, "minimum number of file descriptors needed to start")
 #endif
+  ;
+
+  options[ApplicationServer::OPTIONS_HIDDEN]
+    ("server.reuse-address", "try to reuse address")
   ;
 
   if (_multiSchedulerAllowed) {
