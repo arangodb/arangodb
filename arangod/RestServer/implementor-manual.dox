@@ -51,8 +51,9 @@
 ///   @copydetails RestDocumentTOC
 ///   @copydetails RestEdgeTOC
 ///  </li>
-///  <li>Light-Weight HTTP for Queries
+///  <li>Light-Weight HTTP for Queries and Cursors
 ///   @copydetails HttpCursorTOC
+///   @copydetails HttpQueryTOC
 ///   @copydetails HttpSimpleTOC
 ///   @copydetails IndexCapHttpTOC
 ///   @copydetails IndexGeoHttpTOC

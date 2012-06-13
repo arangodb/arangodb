@@ -162,13 +162,6 @@ void JavascriptDispatcherThread::run () {
 
   DispatcherThread::run();
 
-  // free memory for this thread
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
-
-  if (v8g) {
-    delete v8g;
-  }
-
   _context->Exit();
   _context.Dispose();
 
@@ -177,6 +170,13 @@ void JavascriptDispatcherThread::run () {
  
   _isolate->Exit();
   _isolate->Dispose();
+  
+  // free memory for this thread
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
+
+  if (v8g) {
+    delete v8g;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

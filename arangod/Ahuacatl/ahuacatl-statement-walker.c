@@ -229,8 +229,12 @@ TRI_vector_pointer_t* TRI_GetScopesStatementWalkerAql (TRI_aql_statement_walker_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const walker, 
-                                                       const char* const name) {
+                                                       const char* const name,
+                                                       size_t* scopeCount) {
   size_t n;
+
+  // init scope counter to 0
+  *scopeCount = 0;
 
   assert(name != NULL);
 
@@ -251,6 +255,9 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
       // reached the outermost scope
       break;
     }
+
+    // increase the scope counter
+    (*scopeCount)++;
   }
 
   // variable not found
