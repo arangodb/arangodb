@@ -124,7 +124,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) 
   memset(self, 0, sizeof(TRI_string_buffer_t));
   self->_memoryZone = zone;
 
-  Reserve(self, 1);
+  Reserve(self, 100);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
