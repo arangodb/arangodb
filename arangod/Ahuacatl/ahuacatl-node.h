@@ -240,7 +240,7 @@ TRI_aql_node_t;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-const bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e);
+bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type group
@@ -258,7 +258,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e);
 /// @brief return true if a node is a list node
 ////////////////////////////////////////////////////////////////////////////////
 
-const bool TRI_IsListNodeAql (const TRI_aql_node_t* const);
+bool TRI_IsListNodeAql (const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a node is a constant
