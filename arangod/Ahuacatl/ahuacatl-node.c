@@ -36,7 +36,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-inline const bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
+inline bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
   if (type == TRI_AQL_NODE_SCOPE_START ||
       type == TRI_AQL_NODE_SCOPE_END ||
       type == TRI_AQL_NODE_SUBQUERY ||
