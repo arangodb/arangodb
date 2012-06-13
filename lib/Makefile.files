@@ -97,8 +97,14 @@ lib_libarango_a_SOURCES = \
 	lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp \
 	lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp 
-#	lib/ZeroMQ/ApplicationZeroMQ.cpp
+	lib/Variant/VariantVector.cpp
+
+if ENABLE_ZEROMQ
+
+lib_libarango_a_SOURCES += \
+	lib/ZeroMQ/ApplicationZeroMQ.cpp
+
+endif
 
 ################################################################################
 ### @brief library "libarango.a", client part

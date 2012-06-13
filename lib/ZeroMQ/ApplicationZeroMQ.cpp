@@ -30,6 +30,7 @@
 #include <zmq.h>
 
 #include "Basics/Thread.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -112,6 +113,8 @@ namespace {
 
 ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
   : _applicationServer(applicationServer),
+    _zeroMQThread(0),
+    _nrZeroMQThreads(1),
     _context(0),
     _connection() {
 }
@@ -122,7 +125,7 @@ ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
 
 ApplicationZeroMQ::~ApplicationZeroMQ () {
   if (_context != 0) {
-    zmq_term(context);
+    zmq_term(_context);
   }
 
   delete _zeroMQThread;
@@ -161,7 +164,7 @@ void ApplicationZeroMQ::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options["THREAD Options:help-admin"]
     ("zeromq.threads", &_nrZeroMQThreads, "number of threads for ZeroMQ scheduler")
-  }
+  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +210,8 @@ bool ApplicationZeroMQ::start () {
     while (! _zeroMQThread->isRunning()) {
       usleep(1000);
     }
+
+    LOGGER_INFO << "started ZeroMQ on '" << _connection << "'";
   }
 
   return true;
@@ -230,7 +235,12 @@ bool ApplicationZeroMQ::isRunning () {
 
 void ApplicationZeroMQ::beginShutdown () {
   if (_zeroMQThread != 0) {
-    _zeroMQThread->beginShutdown();
+    static_cast<ZeroMQThread*>(_zeroMQThread)->beginShutdown();
+  }
+
+  if (_context != 0) {
+    zmq_term(_context);
+    _context = 0;
   }
 }
 

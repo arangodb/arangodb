@@ -13,7 +13,7 @@ AC_ARG_ENABLE(zeromq,
 if test "x$tr_ZEROMQ" = "xyes";  then
   ZEROMQ_CPPFLAGS="-I${srcdir}/3rdParty/zeromq-2.2.0/BUILD/include"
   ZEROMQ_LDFLAGS=""
-  ZEROMQ_LIBS="${srcdir}/3rdParty/zeromq-2.2.0/BUILD/lib${tr_BITS}/libzeromq.a"
+  ZEROMQ_LIBS="${srcdir}/3rdParty/zeromq-2.2.0/BUILD/lib${tr_BITS}/libzmq.a -luuid -lrt"
 
   TRI_ZEROMQ_VERSION="2.2.0"
 

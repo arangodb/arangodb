@@ -183,12 +183,18 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@ENABLE_ZEROMQ_TRUE@am__append_1 = \
+@ENABLE_ZEROMQ_TRUE@	@ZEROMQ_CPPFLAGS@
+
+@ENABLE_ZEROMQ_TRUE@am__append_2 = \
+@ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LDFLAGS@
+
 
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
-@ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
 sbin_PROGRAMS = bin/arangod$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
@@ -196,8 +202,8 @@ bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_3 = lib/libarango_mruby.a
-@ENABLE_MRUBY_TRUE@am__append_4 = bin/arangoirb
+@ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
+@ENABLE_MRUBY_TRUE@am__append_6 = bin/arangoirb
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.unittests $(srcdir)/arangod/Makefile.files \
@@ -215,49 +221,55 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-@ENABLE_MRUBY_TRUE@am__append_5 = \
+@ENABLE_ZEROMQ_TRUE@am__append_7 = \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp
+
+@ENABLE_MRUBY_TRUE@am__append_8 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
-@ENABLE_MRUBY_TRUE@am__append_6 = \
+@ENABLE_MRUBY_TRUE@am__append_9 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/RestServer/RubyDispatcherThread.cpp
+
+@ENABLE_ZEROMQ_TRUE@am__append_10 = \
+@ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LIBS@
 
 @ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/geo_suite$(EXEEXT)
 @ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_7 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_11 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_MRUBY_TRUE@am__append_8 = .setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_12 = .setup-mr-directories
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_9 = $(MRUBY_HEADER) .setup-mr-directories
-@ENABLE_FLEX_TRUE@am__append_10 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_MRUBY_TRUE@am__append_13 = $(MRUBY_HEADER) .setup-mr-directories
+@ENABLE_FLEX_TRUE@am__append_14 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_11 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_12 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_15 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_16 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_13 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_14 = $(PROTOBUF_FILES)
+@ENABLE_BISON_TRUE@am__append_17 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_18 = $(PROTOBUF_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_15 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_16 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_17 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_18 = @ZEROMQ_LIBS@
+@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_19 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_20 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_21 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_22 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -306,7 +318,57 @@ am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 lib_libarango_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_a_LIBADD =
+am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
+	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
+	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
+	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
+	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
+	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
+	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
+	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
+	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
+	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
+	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
+	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
+	lib/BasicsC/logging.c lib/BasicsC/memory.c \
+	lib/BasicsC/process-utils.c lib/BasicsC/random.c \
+	lib/BasicsC/socket-utils.c lib/BasicsC/string-buffer.c \
+	lib/BasicsC/strings.c lib/BasicsC/structures.c \
+	lib/BasicsC/system-functions.c \
+	lib/BasicsC/terminal-utils-ncurses.c \
+	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
+	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
+	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
+	lib/JsonParserX/JsonParserX.cpp \
+	lib/JsonParserX/JsonParserXDriver.cpp \
+	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
+	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
+	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
+	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpResponse.cpp lib/Rest/Initialise.cpp \
+	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
+	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
+	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
+	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
+	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
+	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
+	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
+	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
+	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
+	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
+	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
+	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
+	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
+	lib/ZeroMQ/ApplicationZeroMQ.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
+@ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
 	lib/Basics/FileUtils.$(OBJEXT) lib/Basics/Initialise.$(OBJEXT) \
@@ -379,7 +441,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Variant/VariantUInt32.$(OBJEXT) \
 	lib/Variant/VariantUInt64.$(OBJEXT) \
 	lib/Variant/VariantUInt8.$(OBJEXT) \
-	lib/Variant/VariantVector.$(OBJEXT)
+	lib/Variant/VariantVector.$(OBJEXT) $(am__objects_1)
 lib_libarango_a_OBJECTS = $(am_lib_libarango_a_OBJECTS)
 lib_libarango_client_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_client_a_LIBADD =
@@ -549,7 +611,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c arangod/MRServer/mr-actions.cpp \
 	arangod/RestServer/RubyDispatcherThread.cpp
-@ENABLE_MRUBY_TRUE@am__objects_1 = arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@am__objects_2 = arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
 am_bin_arangod_OBJECTS =  \
 	arangod/Actions/bin_arangod-actions.$(OBJEXT) \
@@ -610,13 +672,14 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-vocbase.$(OBJEXT) $(am__objects_1)
+	arangod/VocBase/bin_arangod-vocbase.$(OBJEXT) $(am__objects_2)
 bin_arangod_OBJECTS = $(am_bin_arangod_OBJECTS)
 am__DEPENDENCIES_1 =
 am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @ENABLE_MRUBY_TRUE@am__DEPENDENCIES_3 = lib/libarango_mruby.a
 bin_arangod_DEPENDENCIES = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
+	lib/libarango.a $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_1)
 am_bin_arangoimp_OBJECTS =  \
 	arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT) \
 	arangosh/V8Client/bin_arangoimp-V8ClientConnection.$(OBJEXT) \
@@ -678,7 +741,7 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(UnitTests_geo_suite_SOURCES) $(bin_arangod_SOURCES) \
 	$(bin_arangoimp_SOURCES) $(bin_arangoirb_SOURCES) \
 	$(bin_arangosh_SOURCES)
-DIST_SOURCES = $(lib_libarango_a_SOURCES) \
+DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) \
 	$(am__lib_libarango_mruby_a_SOURCES_DIST) \
@@ -776,7 +839,7 @@ LIBOBJS = @LIBOBJS@
 ### @brief libraries
 ################################################################################
 LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ @READLINE_LIBS@ $(am__append_2)
+	@OPENSSL_LIBS@ @READLINE_LIBS@ $(am__append_4)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -884,10 +947,10 @@ ACLOCAL_AMFLAGS = -I m4
 ### @brief source to build before compile
 ################################################################################
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
-	$(MRUBY_HEADER) $(am__append_7) $(am__append_8) \
+	$(MRUBY_HEADER) $(am__append_11) $(am__append_12) \
 	Doxygen/.setup-directories .setup-js-directories \
-	$(am__append_10) $(am__append_12) $(am__append_14) \
-	$(am__append_16) $(am__append_17) $(am__append_18)
+	$(am__append_14) $(am__append_16) $(am__append_18) \
+	$(am__append_20) $(am__append_21) $(am__append_22)
 
 ################################################################################
 ### @brief files to cleanup
@@ -900,11 +963,11 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_9) $(DOXYGEN) $(addsuffix .md,$(addprefix \
+CLEANUP = $(am__append_13) $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
 	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
-	.setup-js-directories $(am__append_11) $(am__append_13) \
-	$(am__append_15)
+	.setup-js-directories $(am__append_15) $(am__append_17) \
+	$(am__append_19)
 
 ################################################################################
 ### @brief flex files
@@ -970,20 +1033,15 @@ AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
 	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
 	-I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1)
+	@READLINE_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1) \
+	$(am__append_3)
 
 ################################################################################
 ### @brief linker flags
 ################################################################################
-AM_LDFLAGS = \
-	@BOOST_LDFLAGS@ \
-	@LIBEV_LDFLAGS@ \
-	@MATH_LDFLAGS@ \
-	@NCURSES_LDFLAGS@ \
-	@OPENSSL_LDFLAGS@ \
-	@READLINE_LDFLAGS@ \
-	@V8_LDFLAGS@
-
+AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
+	@NCURSES_LDFLAGS@ @OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ \
+	@V8_LDFLAGS@ $(am__append_2)
 
 ################################################################################
 ################################################################################
@@ -992,7 +1050,7 @@ AM_LDFLAGS = \
 ### @brief auxiliary libraries
 ################################################################################
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
-	lib/libarango_fe.a lib/libarango_client.a $(am__append_3)
+	lib/libarango_fe.a lib/libarango_client.a $(am__append_5)
 
 ################################################################################
 ### @brief /share data
@@ -1120,98 +1178,54 @@ WIKI = \
         AqlExamples \
 	jsUnity
 
-lib_libarango_a_SOURCES = \
-	lib/Basics/ConditionLocker.cpp \
-	lib/Basics/ConditionVariable.cpp \
-	lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp \
-	lib/Basics/LibraryLoader.cpp \
-	lib/Basics/Mutex.cpp \
-	lib/Basics/MutexLocker.cpp \
+lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
+	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
 	lib/Basics/ProgramOptions.cpp \
-	lib/Basics/ProgramOptionsDescription.cpp \
-	lib/Basics/Random.cpp \
-	lib/Basics/ReadLocker.cpp \
-	lib/Basics/ReadUnlocker.cpp \
-	lib/Basics/ReadWriteLock.cpp \
-	lib/Basics/StringUtils.cpp \
-	lib/Basics/Thread.cpp \
-	lib/Basics/Timing.cpp \
-	lib/Basics/WriteLocker.cpp \
-	lib/Basics/WriteUnlocker.cpp \
-	lib/BasicsC/associative-multi.c \
-	lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c \
-	lib/BasicsC/csv.c \
-	lib/BasicsC/error.c \
-	lib/BasicsC/files.c \
-	lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c \
-	lib/BasicsC/json.c \
-	lib/BasicsC/json-utilities.c \
-	lib/BasicsC/linked-list.c \
-	lib/BasicsC/locks-macos.c \
-	lib/BasicsC/locks-posix.c \
-	lib/BasicsC/logging.c \
-	lib/BasicsC/memory.c \
-	lib/BasicsC/process-utils.c \
-	lib/BasicsC/random.c \
-	lib/BasicsC/socket-utils.c \
-	lib/BasicsC/string-buffer.c \
-	lib/BasicsC/strings.c \
-	lib/BasicsC/structures.c \
+	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
+	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
+	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
+	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
+	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
+	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
+	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
+	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
+	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
+	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
+	lib/BasicsC/logging.c lib/BasicsC/memory.c \
+	lib/BasicsC/process-utils.c lib/BasicsC/random.c \
+	lib/BasicsC/socket-utils.c lib/BasicsC/string-buffer.c \
+	lib/BasicsC/strings.c lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-ncurses.c \
-	lib/BasicsC/terminal-utils.c \
-	lib/BasicsC/threads-posix.c \
-	lib/BasicsC/vector.c \
-	lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c \
-	lib/JsonParserX/InputParser.cpp \
+	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
+	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
+	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
 	lib/JsonParserX/JsonParserX.cpp \
 	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp \
-	lib/Logger/Logger.cpp \
-	lib/Logger/LoggerData.cpp \
-	lib/Logger/LoggerInfo.cpp \
-	lib/Logger/LoggerStream.cpp \
-	lib/Logger/LoggerTiming.cpp \
-	lib/ProgramOptions/program-options.c \
-	lib/Rest/AddressPort.cpp \
-	lib/Rest/AnyServer.cpp \
-	lib/Rest/HttpRequest.cpp \
-	lib/Rest/HttpResponse.cpp \
-	lib/Rest/Initialise.cpp \
-	lib/Rest/JsonContainer.cpp \
-	lib/Rest/SslInterface.cpp \
-	lib/Rest/Url.cpp \
-	lib/ShapedJson/json-shaper.c \
-	lib/ShapedJson/shape-accessor.c \
-	lib/ShapedJson/shaped-json.c \
-	lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp \
-	lib/Variant/VariantArray.cpp \
-	lib/Variant/VariantBlob.cpp \
-	lib/Variant/VariantBoolean.cpp \
-	lib/Variant/VariantDate.cpp \
-	lib/Variant/VariantDatetime.cpp \
-	lib/Variant/VariantDouble.cpp \
-	lib/Variant/VariantFloat.cpp \
-	lib/Variant/VariantInt16.cpp \
-	lib/Variant/VariantInt32.cpp \
-	lib/Variant/VariantInt64.cpp \
-	lib/Variant/VariantInt8.cpp \
-	lib/Variant/VariantMatrix2.cpp \
-	lib/Variant/VariantNull.cpp \
-	lib/Variant/VariantObject.cpp \
-	lib/Variant/VariantString.cpp \
-	lib/Variant/VariantUInt16.cpp \
-	lib/Variant/VariantUInt32.cpp \
-	lib/Variant/VariantUInt64.cpp \
-	lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp 
-
-#	lib/ZeroMQ/ApplicationZeroMQ.cpp
+	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
+	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
+	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
+	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpResponse.cpp lib/Rest/Initialise.cpp \
+	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
+	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
+	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
+	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
+	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
+	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
+	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
+	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
+	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
+	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
+	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
+	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
+	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
+	$(am__append_7)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1308,7 +1322,8 @@ bin_arangod_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_5)
+	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_8) \
+	$(am__append_10)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -1358,7 +1373,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c $(am__append_6)
+	arangod/VocBase/vocbase.c $(am__append_9)
 bin_arangosh_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
@@ -1813,6 +1828,14 @@ lib/Variant/VariantUInt8.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
 lib/Variant/VariantVector.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/$(am__dirstamp):
+	@$(MKDIR_P) lib/ZeroMQ
+	@: > lib/ZeroMQ/$(am__dirstamp)
+lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib/ZeroMQ/$(DEPDIR)
+	@: > lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/$(am__dirstamp):
 	@$(MKDIR_P) lib
 	@: > lib/$(am__dirstamp)
@@ -2768,6 +2791,7 @@ mostlyclean-compile:
 	-rm -f lib/Variant/VariantUInt64.$(OBJEXT)
 	-rm -f lib/Variant/VariantUInt8.$(OBJEXT)
 	-rm -f lib/Variant/VariantVector.$(OBJEXT)
+	-rm -f lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -3012,6 +3036,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantUInt64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantUInt8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantVector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ApplicationZeroMQ.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -4533,6 +4558,8 @@ distclean-generic:
 	-rm -f lib/V8/$(am__dirstamp)
 	-rm -f lib/Variant/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Variant/$(am__dirstamp)
+	-rm -f lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+	-rm -f lib/ZeroMQ/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -4547,7 +4574,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -4595,7 +4622,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

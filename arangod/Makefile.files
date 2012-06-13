@@ -80,6 +80,8 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
 
+
+
 if ENABLE_MRUBY
 
 bin_arangod_LDADD += \
@@ -90,6 +92,14 @@ bin_arangod_SOURCES += \
 	arangod/MRServer/mr-actions.cpp \
 	arangod/RestServer/RubyDispatcherThread.cpp
 
+endif
+
+
+
+if ENABLE_ZEROMQ
+
+bin_arangod_LDADD += \
+	@ZEROMQ_LIBS@
 endif
 
 ################################################################################
