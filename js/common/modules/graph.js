@@ -912,29 +912,32 @@ Vertex.prototype.getNeighbors = function (options) {
   var i,
     current_edge,
     current_vertex,
-    current_label,
     target_array = [],
-    addNeighborToList;
+    addNeighborToList,
+    direction = options.direction || 'both',
+    labels = options.labels,
+    weight = options.weight,
+    default_weight = options.default_weight || Infinity;
 
-  direction = options.direction || 'both';
-  labels = options.labels;
-  weight = options.weight;
-  default_weight = options.default_weight || Infinity;
+  addNeighborToList = function (current_edge, current_vertex) {
+    var neighbor_info, current_label = current_edge.getLabel();
+
+    if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
+      neighbor_info = { id: current_vertex.getId() };
+      if (weight === undefined) {
+        neighbor_info.weight = 1;
+      } else {
+        neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
+      }
+      target_array.push(neighbor_info);
+    }
+  };
 
   if ((direction === 'both') || (direction === 'outbound')) {
     for (i = 0; i < this.getOutEdges().length; i++) {
       current_edge = this.getOutEdges()[i];
       current_vertex = current_edge.getInVertex();
-      current_label = current_edge.getLabel();
-      if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
-        neighbor_info = { id: current_vertex.getId() };
-        if (weight === undefined) {
-          neighbor_info.weight = 1;
-        } else {
-          neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
-        }
-        target_array.push(neighbor_info);
-      }
+      addNeighborToList(current_edge, current_vertex);
     }
   }
 
@@ -942,16 +945,7 @@ Vertex.prototype.getNeighbors = function (options) {
     for (i = 0; i < this.getInEdges().length; i++) {
       current_edge = this.getInEdges()[i];
       current_vertex = current_edge.getOutVertex();
-      current_label = current_edge.getLabel();
-      if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
-        neighbor_info = { id: current_vertex.getId() };
-        if (weight === undefined) {
-          neighbor_info.weight = 1;
-        } else {
-          neighbor_info.weight = current_edge.getProperty(weight);
-        }
-        target_array.push(neighbor_info);
-      }
+      addNeighborToList(current_edge, current_vertex);
     }
   }
 
