@@ -20,7 +20,7 @@ describe ArangoDB do
 	@cid = ArangoDB.create_collection(@cn, false)
 
 	(0...3000).each{|i|
-	  ArangoDB.post("/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
+	  ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
 	}
       end
 
@@ -115,7 +115,7 @@ describe ArangoDB do
 	  (0..10).each{|j|
 	    lon = 10 * (j - 5)
 	    
-	    ArangoDB.post("/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
+	    ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
 	  }
 	}
       end
@@ -191,7 +191,7 @@ describe ArangoDB do
 	  (0..10).each{|j|
 	    lon = 10 * (j - 5)
 	    
-	    ArangoDB.post("/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
+	    ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
 	  }
 	}
       end
@@ -268,37 +268,37 @@ describe ArangoDB do
 
       it "finds the examples" do
 	body = "{ \"i\" : 1 }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d1 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1 } }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d2 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1, \"k\" : 1 } }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d3 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d4 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2 }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d5 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2, \"a\" : 2 }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d6 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
-	doc = ArangoDB.post("/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
 	doc.code.should eq(202)
 	d7 = doc.parsed_response['_id']
 
@@ -362,5 +362,67 @@ describe ArangoDB do
       end
     end
 
+################################################################################
+## range query
+################################################################################
+
+    context "range query:" do
+      before do
+	@cn = "UnitTestsCollectionRange"
+	ArangoDB.drop_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn, false)
+      end
+
+      after do
+	ArangoDB.drop_collection(@cn)
+      end
+
+      it "finds the examples" do
+
+	# create data
+	for i in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+	  body = "{ \"i\" : #{i} }"
+	  doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	  doc.code.should eq(202)
+	end
+
+	# create index
+	cmd = "/_api/index?collection=#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"i\" ] }"
+	doc = ArangoDB.log_post("#{prefix}-skiplist-index", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(true)
+      
+	# range
+	cmd = api + "/range"
+	body = "{ \"collection\" : \"#{@cid}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4 }"
+	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['hasMore'].should eq(false)
+	doc.parsed_response['result'].length.should eq(2)
+	doc.parsed_response['count'].should eq(2)
+	doc.parsed_response['result'].map{|i| i['i']}.should =~ [2,3]
+
+	# closed range
+	cmd = api + "/range"
+	body = "{ \"collection\" : \"#{@cid}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4, \"closed\" : true }"
+	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['hasMore'].should eq(false)
+	doc.parsed_response['result'].length.should eq(3)
+	doc.parsed_response['count'].should eq(3)
+	doc.parsed_response['result'].map{|i| i['i']}.should =~ [2,3,4]
+      end
+    end
   end
 end

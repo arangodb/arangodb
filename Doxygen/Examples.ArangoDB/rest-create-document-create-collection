@@ -1,0 +1,13 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/document?collection=example&createCollection=true
+{ "Hallo" : "World" }
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+location: /document/26838830/28280622
+etag: "28280622"
+
+{
+  "_rev": 28280622,
+  "_id": "26838830/28280622",
+  "error": false
+}

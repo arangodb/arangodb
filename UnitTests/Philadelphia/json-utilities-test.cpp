@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
   JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[0]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[1]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[null]");
-  JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[false");
+  JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[false]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "0", "[true]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "0", "{}");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[]");
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[0]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[1]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[null]");
-  JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[false");
+  JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[false]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[true]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "{}");
 
@@ -263,8 +263,8 @@ BOOST_AUTO_TEST_CASE (tst_check_in_list_empty) {
   JSON_CHECK(false, TRI_CheckInListJson, "0", "[]");
   JSON_CHECK(false, TRI_CheckInListJson, "1", "[]");
   JSON_CHECK(false, TRI_CheckInListJson, "\"fox\"", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, " ", "[]");
+  JSON_CHECK(false, TRI_CheckInListJson, "\"\"", "[]");
+  JSON_CHECK(false, TRI_CheckInListJson, "\" \"", "[]");
   JSON_CHECK(false, TRI_CheckInListJson, "[]", "[]");
   JSON_CHECK(false, TRI_CheckInListJson, "{}", "[]");
 }

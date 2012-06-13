@@ -1,6 +1,6 @@
 /*
 ** node.h - nodes of abstract syntax tree
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

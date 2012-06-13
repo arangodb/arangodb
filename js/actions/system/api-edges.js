@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("actions");
-var API = "edges";
+var API = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoAPI
@@ -36,19 +36,19 @@ var API = "edges";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
 ///
-/// @RESTHEADER{GET /edges,reads in- or outbound edges}
+/// @RESTHEADER{GET /_api/edges,reads in- or outbound edges}
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
 ///
 /// Returns the list of edges starting or ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
 ///
 /// Returns the list of edges ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
+/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
 ///
 /// Returns the list of edges starting in the vertex identified by
 /// @FA{vertex-handle}.
@@ -57,19 +57,19 @@ var API = "edges";
 ///
 /// Any direction
 ///
-/// @verbinclude rest_edge-read-edges-any
+/// @verbinclude rest-edge-read-edges-any
 ///
 /// In edges
 ///
-/// @verbinclude rest_edge-read-edges-in
+/// @verbinclude rest-edge-read-edges-in
 ///
 /// Out edges
 ///
-/// @verbinclude rest_edge-read-edges-out
+/// @verbinclude rest-edge-read-edges-out
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_edges (req, res) {
-  if (req.suffix.length != 1) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-identifer>?vertex=<vertex-handle>&direction=<direction>");
     return;
@@ -79,7 +79,7 @@ function GET_edges (req, res) {
   var id = parseInt(name) || name;
   var collection = edges._collection(id);
 
-  if (collection == null) {
+  if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
@@ -89,13 +89,13 @@ function GET_edges (req, res) {
   var e;
 
   try {
-    if (direction == null || direction == "" || direction == "any") {
+    if (direction === null || direction === undefined || direction === "" || direction === "any") {
       e = collection.edges(vertex);
     }
-    else if (direction == "in") {
+    else if (direction === "in") {
       e = collection.inEdges(vertex);
     }
-    else if (direction == "out") {
+    else if (direction === "out") {
       e = collection.outEdges(vertex);
     }
     else {
@@ -123,7 +123,7 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType == actions.GET) {
+    if (req.requestType === actions.GET) {
       GET_edges(req, res);
     }
     else {

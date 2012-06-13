@@ -1,0 +1,176 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installation guide
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page SimpleQueriesTOC
+///
+/// <ul>
+///  <li>@ref SimpleQueries
+///   <ul>
+///    <li>@ref SimpleQueriesQueries
+///     <ul>
+///      <li>@ref SimpleQueryAll "collection.all"</li>
+///      <li>@ref SimpleQueryByExample "collection.byExample"</li>
+///      <li>@ref SimpleQueryFirstExample "collection.firstExample"</li>
+///      <li>@ref SimpleQueryRange "collection.range"</li>
+///      <li>@ref SimpleQueryCollectionCount "collection.count"</li>
+///      <li>@ref SimpleQueryToArray "collection.toArray"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesGeoQueries
+///     <ul>
+///      <li>@ref SimpleQueryNear "collection.near"</li>
+///      <li>@ref SimpleQueryWithin "collection.within"</li>
+///      <li>@ref SimpleQueryGeo "collection.geo"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesPagination
+///     <ul>
+///      <li>@ref SimpleQueryLimit "query.limit"</li>
+///      <li>@ref SimpleQuerySkip "query.skip"</li>
+///     </ul>
+///    </li>
+///    <li>@ref SimpleQueriesCursor
+///     <ul>
+///      <li>@ref SimpleQueryHasNext "query.hasNext"</li>
+///      <li>@ref SimpleQueryNext "query.next"</li>
+///      <li>@ref SimpleQueryDispose "query.dispose"</li>
+///      <li>@ref SimpleQueryCount "query.count"</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page SimpleQueries Simple Queries
+///
+/// Simple queries can be used if the query condition is straight forward,
+/// i. e., a document reference, all documents, a query-by-example, or a simple
+/// geo query. In a simple query you can specify exactly one collection and one
+/// query criteria. In the following sections we describe the JavaScript shell
+/// interface for simple queries, which you can use within the ArangoDB shell
+/// and within actions and transactions. For other languages see the
+/// corresponding language API documentation.
+///
+/// If a query returns a cursor, then you can use @FN{hasNext} and @FN{next} to
+/// iterate over the result set or @FN{toArray} to convert it to an array.
+///
+/// @EMBEDTOC{ SimpleQueriesTOC}
+///
+/// @section SimpleQueriesQueries Queries
+/////////////////////////////////////////
+///
+/// @anchor SimpleQueryAll
+/// @copydetails JSF_ArangoCollection_prototype_all
+///
+/// @anchor SimpleQueryByExample
+/// @copydetails JSF_ArangoCollection_prototype_byExample
+///
+/// @anchor SimpleQueryFirstExample
+/// @copydetails JSF_ArangoCollection_prototype_firstExample
+///
+/// @anchor SimpleQueryRange
+/// @copydetails JSF_ArangoCollection_prototype_range
+///
+/// @anchor SimpleQueryCollectionCount
+/// @copydetails JS_CountVocbaseCol
+///
+/// @anchor SimpleQueryToArray
+/// @copydetails JSF_ArangoCollection_prototype_toArray
+///
+/// @section SimpleQueriesGeoQueries Geo Queries
+////////////////////////////////////////////////
+///
+/// The ArangoDB allows to selects documents based on geographic coordinates. In
+/// order for this to work, a geo-spatial index must be defined.  This index
+/// will use a very elaborate algorithm to lookup neighbors that is a magnitude
+/// faster than a simple R* index.
+///
+/// In general a geo coordinate is a pair of latitude and longitude.  This can
+/// either be an list with two elements like @CODE{[-10\, +30]} (latitude
+/// first, followed by longitude) or an object like @CODE{{lon: -10\, lat: +30}}.
+/// In order to find all documents within a given radius around a coordinate
+/// use the @FN{within} operator. In order to find all documents near a given
+/// document use the @FN{near} operator.
+///
+/// It is possible to define more than one geo-spatial index per collection.  In
+/// this case you must give a hint using the @FN{geo} operator which of indexes
+/// should be used in a query.
+///
+/// @anchor SimpleQueryNear
+/// @copydetails JSF_ArangoCollection_prototype_near
+///
+/// @anchor SimpleQueryWithin
+/// @copydetails JSF_ArangoCollection_prototype_within
+///
+/// @anchor SimpleQueryGeo
+/// @copydetails JSF_ArangoCollection_prototype_geo
+///
+/// @section SimpleQueriesPagination Pagination
+///////////////////////////////////////////////
+///
+/// If, for example, you display the result of a user search, then you are in
+/// general not interested in the completed result set, but only the first 10 or
+/// so documents. Or maybe the next 10 documents for the second page. In this
+/// case, you can the @FN{skip} and @FN{limit} operators. These operators work
+/// like LIMIT in MySQL.
+///
+/// @FN{skip} used together with @FN{limit} can be used to implement pagination.
+/// The @FN{skip} operator skips over the first n documents. So, in order to
+/// create result pages with 10 result documents per page, you can use
+/// @CODE{skip(n * 10).limit(10)} to access the 10 documents on the n.th page.
+/// This result should be sorted, so that the pagination works in a predicable
+/// way.
+///
+/// @anchor SimpleQueryLimit
+/// @copydetails JSF_SimpleQuery_prototype_limit
+///
+/// @anchor SimpleQuerySkip
+/// @copydetails JSF_SimpleQuery_prototype_skip
+///
+/// @section SimpleQueriesCursor Sequential Access and Cursors
+//////////////////////////////////////////////////////////////
+///
+/// @anchor SimpleQueryHasNext
+/// @copydetails JSF_SimpleQuery_prototype_hasNext
+///
+/// @anchor SimpleQueryNext
+/// @copydetails JSF_SimpleQuery_prototype_next
+///
+/// @anchor SimpleQueryDispose
+/// @copydetails JSF_SimpleQuery_prototype_dispose
+///
+/// @anchor SimpleQueryCount
+/// @copydetails JSF_SimpleQuery_prototype_count
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

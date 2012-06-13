@@ -1,0 +1,183 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arango shell
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellCollectionTOC
+///
+/// <ul>
+///  <li>@ref ShellCollection
+///   <ul>
+///    <li>@ref ShellCollectionIntro</li>
+///    <li>@ref ShellCollectionResource</li>
+///    <li>@ref ShellCollectionShell
+///     @copydetails ShellCollectionCallsTOC
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellCollectionCallsTOC
+///
+/// <ul>
+///  <li>@ref ShellCollectionCollectionMethods
+///   <ul>
+///    <li>@ref ShellCollectionDrop "collection.drop"</li>
+///    <li>@ref ShellCollectionTruncate "collection.truncate"</li>
+///    <li>@ref ShellCollectionProperties "collection.properties"</li>
+///    <li>@ref ShellCollectionFigures "collection.figures"</li>
+///    <li>@ref ShellCollectionLoad "collection.load"</li>
+///    <li>@ref ShellCollectionUnload "collection.unload"</li>
+///    <li>@ref ShellCollectionUnload "collection.rename"</li>
+///   </ul>
+///  </li>
+///  <li>@ref ShellCollectionDatabaseMethods
+///   <ul>
+///    <li>@ref ShellCollectionRead "db._collection"</li>
+///    <li>@ref ShellCollectionCreate "db._create"</li>
+///    <li>@ref ShellCollectionReadAll "db._collections"</li>
+///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
+///    <li>@ref ShellCollectionDropDb "db._drop"</li>
+///    <li>@ref ShellCollectionTruncateDb "db._truncate"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellCollection Handling Collections
+///
+/// This is an introduction to ArangoDB's interface for collections and how
+/// handle collections from the JavaScript shell @LIT{arangosh}. For other
+/// languages see the corresponding language API.
+///
+/// The most import call is the call to create a new collection, see
+/// @ref ShellCollectionCreate "_create".
+///
+/// @EMBEDTOC{ShellCollectionTOC}
+///
+/// @section ShellCollectionIntro Collections
+/////////////////////////////////////////////
+///
+/// @copydoc GlossaryCollection
+///
+/// @copydoc GlossaryCollectionIdentifier
+///
+/// @copydoc GlossaryCollectionName
+///
+/// @section ShellCollectionResource Address of a Collection
+////////////////////////////////////////////////////////////
+///
+/// All collections in ArangoDB have an unique identifier. This collection
+/// identifier identifies a collection and is managed by ArangoDB. Each
+/// collection, in addition, has a unique name. This name is managed by the
+/// user. The interface allows you to access the collections as:
+///
+/// @LIT{db._collection(@FA{collection-identifier})}
+///
+/// or
+///
+/// @LIT{db._collection(@FA{collection-name})}
+///
+/// A collection is created by a @FN{db._create} call, see @ref
+/// ShellCollectionCreate "_create".
+///
+/// For example: Assume that the collection identifier is @LIT{7254820} and the
+/// name is @LIT{demo}, then the collection can be accessed as:
+///
+/// @LIT{db._collection("demo")}
+///
+/// or
+///
+/// @LIT{db._collection(7254820)}
+///
+/// If no collection with such a name or identifier exists, then
+/// @LIT{null} is returned.
+///
+/// There is a short-cut
+///
+/// @LIT{db.@FA{collection-name}}
+///
+/// This call will either return the collection named @FA{collection-name}
+/// or create a new one which that name and a set of default
+/// properties.
+///
+/// @section ShellCollectionShell Working with Collections
+//////////////////////////////////////////////////////////
+///
+/// @subsection ShellCollectionCollectionMethods Collection Methods
+///////////////////////////////////////////////////////////////////
+///
+/// @anchor ShellCollectionDrop
+/// @copydetails JS_DropVocbaseCol
+///
+/// @anchor ShellCollectionTruncate
+/// @copydetails JSF_ArangoCollection_prototype_truncate
+///
+/// @anchor ShellCollectionProperties
+/// @copydetails JS_PropertiesVocbaseCol
+///
+/// @anchor ShellCollectionFigures
+/// @copydetails JS_FiguresVocbaseCol
+///
+/// @anchor ShellCollectionLoad
+/// @copydetails JS_LoadVocbaseCol
+///
+/// @anchor ShellCollectionUnload
+/// @copydetails JS_UnloadVocbaseCol
+///
+/// @anchor ShellCollectionRename
+/// @copydetails JS_RenameVocbaseCol
+///
+/// @subsection ShellCollectionDatabaseMethods Database Methods
+///////////////////////////////////////////////////////////////
+///
+/// @anchor ShellCollectionRead
+/// @copydetails JS_CollectionVocBase
+///
+/// @anchor ShellCollectionCreate
+/// @copydetails JS_CreateVocBase
+///
+/// @anchor ShellCollectionReadAll
+/// @copydetails JS_CollectionsVocBase
+///
+/// @anchor ShellCollectionReadShortCut
+/// @copydetails MapGetVocBase
+///
+/// @anchor ShellCollectionDropDb
+/// @copydetails JSF_ArangoDatabase_prototype__drop
+///
+/// @anchor ShellCollectionTruncateDb
+/// @copydetails JSF_ArangoDatabase_prototype__truncate
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

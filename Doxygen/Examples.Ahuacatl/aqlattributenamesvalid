@@ -1,0 +1,4 @@
+FOR u IN users
+  FOR f IN friends
+    FILTER u.active == true && f.active == true && u.id == f.userId
+    RETURN u.name

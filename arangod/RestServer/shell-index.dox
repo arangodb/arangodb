@@ -1,0 +1,141 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arango shell
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellIndexTOC
+///
+/// <ul>
+///  <li>@ref ShellIndex</li>
+///   <ul>
+///    <li>@ref ShellIndexIntro</li>
+///    <li>@ref ShellIndexResource</li>
+///    <li>@ref ShellIndexShell
+///      @copydetails ShellIndexCallsTOC
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellIndexCallsTOC
+///
+/// <ul>
+///  <li>@ref ShellIndexCollectionMethods
+///   <ul>
+///    <li>@ref ShellIndexRead "collection.index"</li>
+///    <li>@ref ShellIndexReadAll "collection.getIndexes"</li>
+///    <li>@ref ShellIndexDelete "collection.dropIndex"</li>
+///   </ul>
+///  </li>
+///  <li>@ref ShellIndexDatabaseMethods
+///   <ul>
+///    <li>@ref ShellIndexDbRead "db._index"</li>
+///    <li>@ref ShellIndexDbDelete "db._dropIndex"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellIndex Handling Indexes
+///
+/// This is an introduction to ArangoDB's interface for indexs in general.
+/// There are special sections for @ref IndexCap "cap constraints", @ref
+/// IndexGeo "geo-spatial indexes", @ref IndexHash "hash indexes", and @ref
+/// IndexSkiplist "skip-lists".
+///
+/// @EMBEDTOC{ShellIndexTOC}
+///
+/// @section ShellIndexIntro Indexes, Identifiers, Handles
+//////////////////////////////////////////////////////////
+///
+/// @copydoc GlossaryIndex
+///
+/// @copydoc GlossaryIndexHandle
+///
+/// @copydoc GlossaryIndexGeo
+///
+/// @copydoc GlossaryIndexHash
+///
+/// @copydoc GlossaryIndexSkiplist
+///
+/// @section ShellIndexResource Address and ETag of an Index
+////////////////////////////////////////////////////////////
+///
+/// All indexs in ArangoDB have an index handle. This handle uniquely
+/// defines an index and is managed by ArangoDB. The interface allows
+/// you to access the indexs of a collection as:
+///
+/// @LIT{db.@FA{collection}.index(@FA{index-handle})}
+///
+/// For example: Assume that the index handle, which is stored in
+/// the @LIT{_id} field of the index, is @LIT{7254820/362549736}
+/// and the index lives in a collection named @FA{demo}, then
+/// that index can be accessed as:
+///
+/// @LIT{db.demo.index("7254820/362549736")}
+///
+/// Because the index handle is unique within the database, you
+/// can leave out the @FA{collection} and use the shortcut:
+///
+/// @LIT{db._index("7254820/362549736")}
+///
+/// @section ShellIndexShell Working with Indexes
+/////////////////////////////////////////////////
+///
+/// @subsection ShellIndexCollectionMethods Collection Methods
+//////////////////////////////////////////////////////////////
+///
+/// @anchor ShellIndexRead
+/// @copydetails JSF_ArangoCollection_prototype_index
+/// <hr>
+///
+/// @anchor ShellIndexReadAll
+/// @copydetails JS_GetIndexesVocbaseCol
+/// <hr>
+///
+/// @anchor ShellIndexDelete
+/// @copydetails JS_DropIndexVocbaseCol
+/// <hr>
+///
+/// @subsection ShellIndexDatabaseMethods Database Methods
+//////////////////////////////////////////////////////////
+///
+/// @anchor ShellIndexDbRead
+/// @copydetails JSF_ArangoDatabase_prototype__index
+/// <hr>
+///
+/// @anchor ShellIndexDbDelete
+/// @copydetails JSF_ArangoDatabase_prototype__dropIndex
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

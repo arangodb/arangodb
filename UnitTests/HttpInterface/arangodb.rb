@@ -1,6 +1,7 @@
 # coding: utf-8
 
 require 'httparty'
+require 'json'
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 

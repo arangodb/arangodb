@@ -1,0 +1,77 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reference manual
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RefManual ArangoDB Reference Manual
+///
+/// @if LATEX
+/// <ul>
+///  <li>@ref JSModules</li>
+///  <li>@ref JSModuleGraph</li>
+///  <li>@ref JSModuleActions</li>
+///  <li>@ref JSModuleConsole</li>
+///  <li>@ref JSModuleFs</li>
+///  <li>@ref JSModuleInternal</li>
+///  <li>@ref ArangoErrors</li>
+///  <li>@ref jsUnity</li>
+/// </ul>
+/// @else
+/// <ul>
+///  <li>@ref JSModules
+///   <ul>
+///    <li>User Modules
+///     <ul>
+///      <li>@ref JSModuleGraph</li>
+///     </ul>
+///    </li>
+///    <li>System Modules
+///     <ul>
+///      <li>@ref JSModuleActions</li>
+///      <li>@ref JSModuleConsole</li>
+///      <li>@ref JSModuleFs</li>
+///      <li>@ref JSModuleInternal</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
+///  <li>Advanced Topics
+///   <ul>
+///    <li>@ref ArangoErrors
+///    </li>
+///    <li>@ref jsUnity
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+/// @endif
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

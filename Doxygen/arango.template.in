@@ -190,13 +190,13 @@ TAB_SIZE               = 8
 # will result in a user-defined paragraph with heading "Side Effects:".
 # You can put \n's in the value part of an alias to insert newlines.
 
-ALIASES += FUN{1}="<tt><b>\1</b></tt>"
-ALIASES += FUN{2}="<tt><b>\1, \2</b></tt>"
-ALIASES += FUN{3}="<tt><b>\1, \2, \3</b></tt>"
-ALIASES += FUN{4}="<tt><b>\1, \2, \3, \4</b></tt>"
-ALIASES += FUN{5}="<tt><b>\1, \2, \3, \4, \5</b></tt>"
-ALIASES += FUN{6}="<tt><b>\1, \2, \3, \4, \5, \6</b></tt>"
-ALIASES += FUN{7}="<tt><b>\1, \2, \3, \4, \5, \6, \7</b></tt>"
+ALIASES += FUN{1}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif"
+ALIASES += FUN{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2</b></tt><hr>@endif"
+ALIASES += FUN{3}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3</b></tt><hr>@endif"
+ALIASES += FUN{4}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4</b></tt><hr>@endif"
+ALIASES += FUN{5}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5</b></tt><hr>@endif"
+ALIASES += FUN{6}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6</b></tt><hr>@endif"
+ALIASES += FUN{7}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6, \7</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6, \7</b></tt><hr>@endif"
 ALIASES += FA{1}="<em>\1</em>"
 ALIASES += FN{1}="<tt>\1</tt>"
 ALIASES += VAR{1}="<tt>\1</tt>"
@@ -204,17 +204,21 @@ ALIASES += LIT{1}="<tt>\1</tt>"
 ALIASES += CODE{1}="<tt>\1</tt>"
 ALIASES += CODE{2}="<tt>\1, \2</tt>"
 ALIASES += CODE{3}="<tt>\1, \2, \3</tt>"
-ALIASES += CMDOPT{1}="<tt><b>\1</b></tt>"
+ALIASES += CMDOPT{1}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif"
 ALIASES += CA{1}="<em>\1</em>"
 ALIASES += CO{1}="<tt>\1</tt>"
 ALIASES += REST{1}="<tt><b>\1</b></tt>"
 ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
-ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}@endlatexonly@verbinclude \1@latexonly\renewcommand{\examplecap}{}@endlatexonly"
+ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly"
+ALIASES += TINYEXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly"
 ALIASES += VERSION="@PACKAGE_VERSION@"
 ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
 ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
 ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
+ALIASES += EXTREF{2}="@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href="\1">\2</a>@endif"
+ALIASES += INTREF{2}="@if LATEX \2@else@ref \1 \"\2\"@endif"
+ALIASES += SPC="&nbsp;"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.
@@ -623,20 +627,21 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
-	@srcdir@/Admin \
-	@srcdir@/Ahuacatl \
-	@srcdir@/ApplicationServer \
-	@srcdir@/Basics \
-	@srcdir@/BasicsC \
 	@srcdir@/Doxygen/js \
-	@srcdir@/Logger \
-	@srcdir@/Rest \
-	@srcdir@/RestHandler \
-	@srcdir@/RestServer \
-	@srcdir@/ShapedJson \
-	@srcdir@/UserManager \
-	@srcdir@/V8 \
-	@srcdir@/VocBase
+	@srcdir@/arangod/Ahuacatl \
+	@srcdir@/arangod/RestHandler \
+	@srcdir@/arangod/RestServer \
+	@srcdir@/arangod/V8Server \
+	@srcdir@/arangod/VocBase \
+	@srcdir@/lib/Admin \
+	@srcdir@/lib/ApplicationServer \
+	@srcdir@/lib/Basics \
+	@srcdir@/lib/BasicsC \
+	@srcdir@/lib/Logger \
+	@srcdir@/lib/Rest \
+	@srcdir@/lib/ShapedJson \
+	@srcdir@/lib/UserManager \
+	@srcdir@/lib/V8 
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -667,9 +672,9 @@ RECURSIVE              = YES
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = \
-	@srcdir@/V8/v8-json.h \
-	@srcdir@/V8/v8-json.cpp \
-	@srcdir@/Ahuacatl/ahuacatl-tokens.c
+	@srcdir@/lib/V8/v8-json.h \
+	@srcdir@/lib/V8/v8-json.cpp \
+	@srcdir@/arangod/Ahuacatl/ahuacatl-tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -698,6 +703,7 @@ EXCLUDE_SYMBOLS        =
 # the \include command).
 
 EXAMPLE_PATH           = \
+	@srcdir@/Doxygen/Examples.Ahuacatl \
 	@srcdir@/Doxygen/Examples.ArangoDB \
 	@srcdir@/Doxygen/Examples.Durham \
 	@srcdir@/Doxygen/Examples.Fyn \

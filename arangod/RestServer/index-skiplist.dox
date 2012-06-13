@@ -1,0 +1,105 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indexes
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexSkiplistTOC
+///
+/// <ul>
+///  <li>@ref IndexSkiplist
+///   <ul>
+///    <li>@ref IndexSkiplistIntro
+///    </li>
+///    <li>@ref IndexSkiplistShell
+///     <ul>
+///      <li>@ref IndexSkiplistShellEnsureUniqueSkiplist "collection.ensureUniqueSkiplist"</li>
+///      <li>@ref IndexSkiplistShellEnsureSkiplist "collection.ensureSkiplist"</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexSkiplist Skip-Lists
+///
+/// This is an introduction to ArangoDB's skip-lists.
+///
+/// @EMBEDTOC{IndexSkiplistTOC}
+///
+/// @section IndexSkiplistIntro Skiplist Indexes
+////////////////////////////////////////////////
+///
+/// It is possible to define a skip-list index on one or more attributes (or
+/// paths) of a documents. This skip-list is then used in queries to locate
+/// documents within a given range. If the skip-list is unique, then no two
+/// documents are allowed to have the same set of attribute values.
+///
+/// @section IndexSkiplistShell Accessing Skip-List Indexes from the Shell
+//////////////////////////////////////////////////////////////////////////
+///
+/// @anchor IndexSkiplistShellEnsureUniqueSkiplist
+/// @copydetails JS_EnsureUniqueSkiplistVocbaseCol
+///
+/// @anchor IndexSkiplistShellEnsureSkiplist
+/// @copydetails JS_EnsureSkiplistVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexSkiplistHttpTOC
+///
+/// <ul>
+///  <li>@ref IndexSkiplistHttp
+///   <ul>
+///    <li>@ref IndexSkiplistHttpEnsureSkiplist "POST /_api/index"</li>
+///    <li>@ref IndexSkiplistHttpRange "POST /_api/simple/range"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page IndexSkiplistHttp Accessing Skip-List Indexes via Http
+///
+/// If a suitable skip-list index exists, then @ref HttpSimpleRange
+/// "/_api/simple/range" will use this index to execute a range
+/// query.
+///
+/// @EMBEDTOC{IndexSkiplistHttpTOC}
+///
+/// @anchor IndexSkiplistHttpEnsureSkiplist
+/// @copydetails JSF_POST_api_index_skiplist
+///
+/// @anchor IndexSkiplistHttpRange
+/// @copydetails JSA_PUT_api_simple_range
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

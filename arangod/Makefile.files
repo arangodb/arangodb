@@ -1,0 +1,115 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                           PROGRAM
+################################################################################
+
+################################################################################
+### @brief program "arangod"
+################################################################################
+
+bin_arangod_CPPFLAGS = -I@top_srcdir@/arangod $(AM_CPPFLAGS) 
+bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a lib/libarango.a $(LIBS)  @V8_LIBS@
+
+bin_arangod_SOURCES = \
+	arangod/Actions/actions.cpp \
+	arangod/Actions/ActionDispatcherThread.cpp \
+	arangod/Actions/RestActionHandler.cpp \
+	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
+	arangod/Ahuacatl/ahuacatl-ast-node.c \
+	arangod/Ahuacatl/ahuacatl-bind-parameter.c \
+	arangod/Ahuacatl/ahuacatl-codegen.c \
+	arangod/Ahuacatl/ahuacatl-collections.c \
+	arangod/Ahuacatl/ahuacatl-context.c \
+	arangod/Ahuacatl/ahuacatl-conversions.c \
+	arangod/Ahuacatl/ahuacatl-error.c \
+	arangod/Ahuacatl/ahuacatl-explain.c \
+	arangod/Ahuacatl/ahuacatl-functions.c \
+	arangod/Ahuacatl/ahuacatl-grammar.c \
+	arangod/Ahuacatl/ahuacatl-index.c \
+	arangod/Ahuacatl/ahuacatl-node.c \
+	arangod/Ahuacatl/ahuacatl-optimiser.c \
+	arangod/Ahuacatl/ahuacatl-parser-functions.c \
+	arangod/Ahuacatl/ahuacatl-parser.c \
+	arangod/Ahuacatl/ahuacatl-result.c \
+	arangod/Ahuacatl/ahuacatl-scope.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
+	arangod/Ahuacatl/ahuacatl-statement-dump.c \
+	arangod/Ahuacatl/ahuacatl-statement-walker.c \
+	arangod/Ahuacatl/ahuacatl-tokens.c \
+	arangod/Ahuacatl/ahuacatl-variable.c \
+	arangod/GeoIndex/GeoIndex.c \
+	arangod/HashIndex/hasharray.c \
+	arangod/HashIndex/hashindex.c \
+	arangod/PriorityQueue/pqueueindex.c \
+	arangod/PriorityQueue/priorityqueue.c \
+	arangod/RestHandler/RestDocumentHandler.cpp \
+	arangod/RestHandler/RestEdgeHandler.cpp \
+	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
+	arangod/RestServer/ArangoHttpServer.cpp \
+	arangod/RestServer/ArangoServer.cpp \
+	arangod/RestServer/JavascriptDispatcherThread.cpp \
+	arangod/RestServer/arango.cpp \
+	arangod/SkipLists/skiplist.c \
+	arangod/SkipLists/skiplistIndex.c \
+	arangod/SkipLists/sl-operator.c \
+	arangod/V8Server/v8-actions.cpp \
+	arangod/V8Server/v8-objects.cpp \
+	arangod/V8Server/v8-query.cpp \
+	arangod/V8Server/v8-vocbase.cpp \
+	arangod/VocBase/barrier.c \
+	arangod/VocBase/blob-collection.c \
+	arangod/VocBase/collection.c \
+	arangod/VocBase/compactor.c \
+	arangod/VocBase/datafile.c \
+	arangod/VocBase/document-collection.c \
+	arangod/VocBase/general-cursor.c \
+	arangod/VocBase/headers.c \
+	arangod/VocBase/index.c \
+	arangod/VocBase/shadow-data.c \
+	arangod/VocBase/simple-collection.c \
+	arangod/VocBase/synchroniser.c \
+	arangod/VocBase/voc-shaper.c \
+	arangod/VocBase/vocbase.c
+
+if ENABLE_MRUBY
+
+bin_arangod_LDADD += lib/libarango_mruby.a @MRUBY_LIBS@
+
+bin_arangod_SOURCES += \
+	arangod/MRServer/mr-actions.cpp \
+	arangod/RestServer/RubyDispatcherThread.cpp
+
+endif
+
+################################################################################
+## --SECTION--                                                  SCANNER & PARSER
+################################################################################
+
+################################################################################
+### @brief flex
+################################################################################
+
+FLEX_FILES += \
+        arangod/Ahuacatl/ahuacatl-tokens.c
+
+BUILT_SOURCES += $(FLEX_FILES)
+
+################################################################################
+### @brief bison
+################################################################################
+
+BISON_FILES += \
+	arangod/Ahuacatl/ahuacatl-grammar.c
+
+BUILT_SOURCES += $(BISON_FILES)
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

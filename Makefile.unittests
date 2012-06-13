@@ -23,7 +23,7 @@ unittests-brief: \
 unittests-verbose:
 	@echo "################################################################################"
 	@echo "##                                                                            ##"
-	@echo "## ArangoDB Unit-Tests                                                       ##"
+	@echo "## ArangoDB Unit-Tests                                                        ##"
 	@echo "##                                                                            ##"
 	@echo "## > make unittests                                                           ##"
 	@echo "## > make unittests FORCE=1                                                   ##"
@@ -45,8 +45,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
-CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
+SERVER_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
+CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 
 .PHONY: start-server
 
@@ -57,21 +57,22 @@ start-server:
 	@echo "================================================================================"
 	@echo
 
-	@rm -f "$(PIDFILE)"
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	rm -f "$(PIDFILE)"
+	rm -rf "$(VOCDIR)"
+	mkdir -p "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	@test -d "$(VOCDIR)"
 
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
-	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
-	curl -sS http://$(VOCHOST):$(VOCPORT)/version
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/_api/version > /dev/null || sleep 2
+
+	curl -sS http://$(VOCHOST):$(VOCPORT)/_api/version
 
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
 	@echo
 
 ################################################################################
@@ -89,8 +90,8 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	test $(SKIP_BOOST) == "1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "$(FORCE)" == "1"
-	test $(SKIP_GEO) == "1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "$(FORCE)" == "1"
+	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
+	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 	@echo
 
@@ -98,8 +99,8 @@ unittests-boost: UnitTests/basics_suite
 
 noinst_PROGRAMS = UnitTests/basics_suite UnitTests/geo_suite
 
-UnitTests_basics_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/libarango.a
+UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
 	UnitTests/Runner.cpp \
@@ -115,12 +116,14 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
-UnitTests_geo_suite_LDADD = -L@top_builddir@ -larango -lboost_unit_test_framework
-UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/libarango.a
+UnitTests_geo_suite_CPPFLAGS = -I@top_builddir@/arangod -I@top_builddir@/lib
+UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_geo_suite_SOURCES = \
 	UnitTests/Cambridge/Runner.cpp \
-	UnitTests/Cambridge/georeg.cpp
+	UnitTests/Cambridge/georeg.cpp \
+	arangod/GeoIndex/GeoIndex.c
 
 else
 
@@ -146,7 +149,9 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
                @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js
+               @srcdir@/js/common/tests/shell-cap-constraint.js \
+               @srcdir@/js/common/tests/shell-unique-constraint.js \
+               @srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 
@@ -164,23 +169,33 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 ################################################################################
 ## SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
-		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
+			@srcdir@/js/server/tests/ahuacatl-variables.js \
+			@srcdir@/js/server/tests/ahuacatl-bind.js \
+			@srcdir@/js/server/tests/ahuacatl-complex.js \
+			@srcdir@/js/server/tests/ahuacatl-logical.js \
+			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@srcdir@/js/server/tests/ahuacatl-relational.js \
+			@srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@srcdir@/js/server/tests/ahuacatl-parse.js \
+			@srcdir@/js/server/tests/ahuacatl-hash.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @srcdir@/js/server/tests/ahuacatl-operators.js
 
 
 .PHONY: unittests-shell-server-ahuacatl
@@ -197,17 +212,16 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 ################################################################################
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 
@@ -222,13 +236,14 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
+
 	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo
 
 ################################################################################
@@ -246,11 +261,12 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "$(FORCE)" == "1"
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
+
 	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-
 	@echo

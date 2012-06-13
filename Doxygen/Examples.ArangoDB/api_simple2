@@ -1,7 +1,0 @@
-curl --data @- -X PUT --dump - http://localhost:8530/_api/simple/all
-{ "collection" : "examples", "skip" : 1, "limit" : 1 }
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-[ {"_id":"189990:1975069","_rev":1975069,"world":"hallo"} ]

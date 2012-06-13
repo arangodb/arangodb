@@ -5,9 +5,6 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    console,
     ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +35,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var console = require("console");
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      graph module
@@ -116,8 +115,8 @@ function GraphBasicsSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          internal.print("FOUND: ");
+          internal.printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -331,8 +330,8 @@ function VertexSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          internal.print("FOUND: ");
+          internal.printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -462,8 +461,8 @@ function EdgeSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          internal.print("FOUND: ");
+          internal.printObject(graph);
           graph.drop();
         } catch (err1) {
         }

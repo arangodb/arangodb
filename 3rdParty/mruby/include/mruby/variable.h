@@ -1,17 +1,21 @@
 /*
 ** variable.h - mruby variables
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
 #ifndef MRUBY_VARIABLE_H
 #define MRUBY_VARIABLE_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 typedef struct global_variable {
     int   counter;
     mrb_value *data;
-    mrb_value (*getter)();
-    void  (*setter)();
+    mrb_value (*getter)(void);
+    void  (*setter)(void);
     //void  (*marker)();
     //int block_trace;
     //struct trace_var *trace;
@@ -44,4 +48,8 @@ mrb_value mrb_f_global_variables(mrb_state *mrb, mrb_value self);
 mrb_value mrb_gv_get(mrb_state *mrb, mrb_sym sym);
 void mrb_gv_set(mrb_state *mrb, mrb_sym sym, mrb_value val);
 
-#endif	/* MRUBY_VARIABLE_H */
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* MRUBY_VARIABLE_H */

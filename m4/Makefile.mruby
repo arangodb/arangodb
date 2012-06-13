@@ -1,0 +1,37 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                             MRUBY
+################################################################################
+
+################################################################################
+### @brief sets up the directories
+################################################################################
+
+BUILT_SOURCES += .setup-mr-directories
+
+.setup-mr-directories:
+	@test -d mr || mkdir mr
+	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
+	@touch $@
+
+mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
+mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
+	@top_srcdir@/config/mr2c.sh $< > $@
+
+################################################################################
+### @brief cleanup
+################################################################################
+
+CLEANUP += $(JAVASCRIPT_HEADER) .setup-mr-directories
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

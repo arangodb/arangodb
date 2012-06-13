@@ -1,7 +1,8 @@
 <html>
 
   <head>
-    <title>WebAdmin</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>ArangoDB - WebAdmin</title>
     <style type="text/css" title="screen"> 
       @import "css/layout.css";
       @import "css/jquery.snippet.css";
@@ -19,9 +20,13 @@
       <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
       <script type="text/javascript" language="javascript" src="js/master.js"></script>
       <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
+      <script type="text/javascript" language="javascript" src="js/print.js"></script>
+      <script type="text/javascript" language="javascript" src="js/errors.js"></script>
+      <script type="text/javascript" language="javascript" src="js/modules/simple-query-basics.js"></script>
+      <script type="text/javascript" language="javascript" src="js/modules/simple-query.js"></script>
       <script type="text/javascript" language="javascript" src="js/client.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jsunity.js"></script>
-      <script type="text/javascript" language="javascript" src="js/test.js"></script>
+      <!-- <script type="text/javascript" language="javascript" src="js/jsunity.js"></script> -->
+      <!-- <script type="text/javascript" language="javascript" src="js/test.js"></script> -->
     <style>
       a:link {color: #797979; text-decoration: none;}  
       a:visited {color: #797979; text-decoration: none;}
@@ -35,18 +40,16 @@
     <div id="menue" class="ui-layout-north">
 
       <div id="menue-left">
-        <a href="/_admin/html/index.html"><img src="../html/media/images/arangodb_logo.png"></a>
-      </div>
-
-      <div id="menue-center">
+        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png"></a>
       </div>
 
       <div id="menue-right">
         <button class="minimal" id="Collections">Collections</button>
+        <button class="minimal" id="Query">Query</button>
+        <button class="minimal" id="AvocSH">Shell</button>
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Configuration">Configuration</button>
-        <button class="minimal" id="Query">Query</button>
-        <button class="minimal" id="AvocSH">AvocSH</button>
+        <a href="http://www.arangodb.org/manuals/" target="_blank"><button class="minimal" id="Documentation">Documentation</button></a>
       </div>
 
     </div>
@@ -76,7 +79,7 @@
             <th>Name</th>
             <th>Status</th>
             <th>Size Documents</th>
-            <th>Alive</th>
+            <th>Number of Documents</th>
           </tr>
         </thead>
       </table>       
@@ -99,8 +102,16 @@
           <td>
             <input type="text" class="smallInput" id="createCollName"></input>
           </td>
-          <td class="longTD">Enter new collection name here</td>
+          <td class="longTD">New collection name.</td>
           </tr>
+        </tr>
+        <tr><td>journalSize:</td></td>
+        <td>
+          <input type="text" onkeypress='validate(event)' class="smallInput" id="createCollSize"></input>
+        </td>
+        <td class="longTD">
+          (MB) The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
+        </td></tr>
           <tr><td>waitForSync:</td><td>
             <form action="#" id="waitForSyncForm">
               <input type="radio" name="waitForSync" value=true>yes</input>
@@ -118,10 +129,6 @@
           </td> 
           <td class="longTD">If true, create a system collection. In this case collection-name should start with an underscore.
           </td>
-        </tr>
-        <tr><td>journalSize:</td></td><td></td><td class="longTD">
-          The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
-        </td></tr>
         </table>
 
       </div>
@@ -154,9 +161,9 @@
           <a>Add Document</a>
         </button>
 
-       <form id="uploadFile" action="localhost:9999/_api/import/?collection=...&createCollection=false" method="post">
-         <input type="submit" value="Import" />
-         <input type="file" name="filename" />
+       <form id="uploadFile" action="/_api/import/?collection=...&createCollection=false" method=POST enctype="multipart/form-data">
+         <input id="uploadFileImport" type="submit" value="Import" />
+         <input id="uploadFileSearch" type="file" name="filename" />
        </form>
  
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
@@ -200,8 +207,8 @@
             <a>Add row</a>
           </button>
         <button class="minimal enabled" id="toggleEditedDocButton">
-            <a>Source</a>
-            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
+            <a id="toggleEditedDocButtonText">Edit Source</a>
           </button>
         <div id="documentEditTableView">
           <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%">
@@ -234,8 +241,8 @@
             <a>Add row</a>
           </button>
           <button class="minimal enabled" id="toggleNewDocButton">
-            <a>Source</a>
-            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
+            <a id="toggleNewDocButtonText">Edit Source</a>
           </button>
           <div id="NewDocumentTableView">
             <table cellpadding="0" cellspacing="0" border="0" class="display" id="NewDocumentTableID" width="100%">
@@ -278,11 +285,13 @@
               </thead>
             </table>
             <div id="logToolbar">
-                <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-                <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-                <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-                <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-                <a id="logTableID_status">Showing</a>
+             <div id="logToolbarAll">
+             <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
+             <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
+             <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
+             <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+             </div>
+            <a id="logTableID_status">Showing</a>
             </div>
           </div>
 
@@ -296,11 +305,13 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarCrit">
               <button class="enabled" id="critLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
               <a id="critLogTableID_status">Showing</a>
+             </div>
             </div>
           </div>
         
@@ -314,10 +325,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarWarn">
               <button class="enabled" id="warnLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="warnLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="warnLogTableID_status">Showing</a>
             </div>
           </div>
@@ -332,10 +345,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarInfo">
               <button class="enabled" id="infoLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="infoLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="infoLogTableID_status">Showing</a>
             </div> 
           </div>
@@ -350,10 +365,12 @@
               </thead>
             </table>
             <div id="logToolbar">
+             <div id="logToolbarDebu">
               <button class="enabled" id="debugLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="debugLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
+              </div>
               <a id="debugLogTableID_status">Showing</a>
             </div>
           </div>
@@ -366,7 +383,7 @@
       </div>
 
       <div id="configView" style="display: none">
-        <button class="minimal enabled" id="updateConfiguration">
+        <button class="minimal enabled" id="updateConfiguration" style="visibility:hidden">
           <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
           <a>Update configuration</a>
         </button>
@@ -376,20 +393,34 @@
 
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
-          <a id="welcomemsg">Welcome! AvocSH 0.9<a><br><br> 
         </div>
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
+          <button class="minimal" id="refreshShell">Refresh</button>
+            <form action="#" id="formatshellJSONyesno">
+              Format JSON? 
+              <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
+              <input type="radio" name="formatshellJSONyesno" value=false>no</input>
+            </form>
+          <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank">ArangoDB Shell - click for more information</a>
       </div>
 
       <div id="queryView" style="display: none">
-        <form id="queryForm" method="post" onsubmit="return false">
-          <textarea class="editBox" id="queryContent"></textarea><br><button class="minimal" id="submitQuery">Post</button>
-        </form>   
-
         <div id="queryOutput">
+          <a style="padding-left:10px">Please enter your query in the box below</a>
         </div>
+        <form id="queryForm" method="post" onsubmit="return false">
+          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
+          <button class="minimal" id="submitQuery">Execute</button>
+          <a id="aqlinfo" href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
+        <br></br>
+        </form>   
+        <form action="#" id="formatJSONyesno">
+          Format JSON? 
+          <input type="radio" name="formatJSONyesno" value=true checked>yes</input>
+          <input type="radio" name="formatJSONyesno" value=false>no</input>
+        </form>
       </div>
 
     </div> 
@@ -399,7 +430,7 @@
 	<div id="footerSlideContent"> 
           <div id="footerSlideText">
 
-            <div id="footerLeft"> 
+            <div id="footerLeft" style="visibility:hidden"> 
               <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
               <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
               <form class="login-form" id="loginWindow" action="#">
@@ -413,23 +444,7 @@
             <div id="footerCenter">
               ArangoDB<br></br>
               <div id="footerCenterContent">
-                <a> Stay in touch: </a>
-                <a href="http://twitter.com/arangodb">
-                  <img src="/_admin/html/media/icons/twitter.png" width="32" height="32">
-                  Twitter
-                </a>
-                <a href="http://github.com/triAGENS/ArangoDB">
-                  <img src="/_admin/html/media/icons/git.png" width="32" height="32">
-                  GitHub
-                </a>
-                <a href="http://arangodb.org">
-                  <img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32">
-                  ArangoDB.org
-                </a><br>
-                <a href="http://groups.google.com/group/arangodb">
-                  <img src="/_admin/html/media/icons/google.png" width="32" height="32">
-                  GoogleGroup
-                </a>
+                <a> Stay in touch: </a><a href="http://twitter.com/arangodb" target="_blank"><img src="/_admin/html/media/icons/twitter.png" width="32" height="32"></a><a href="http://github.com/triAGENS/ArangoDB" target="_blank"><img src="/_admin/html/media/icons/git.png" width="32" height="32"></a><a href="http://arangodb.org" target="_blank"><img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32"></a><a href="http://groups.google.com/group/arangodb" target="_blank"><img src="/_admin/html/media/icons/google.png" width="32" height="32"></a>
               </div>
             </div>
 

@@ -1,8 +1,14 @@
+##
+# Range
 #
-#  Range
-#
+# ISO 15.2.14
 class Range
-  # 15.2.14.4.4
+
+  ##
+  # Calls the given block for each element of +self+
+  # and pass the respective element.
+  #
+  # ISO 15.2.14.4.4
   def each(&block)
     val = self.first
     unless val.respond_to? :succ
@@ -23,7 +29,10 @@ class Range
   end
 end
 
-# include modules
+##
+# Range is enumerable
+#
+# ISO 15.2.14.3
 module Enumerable; end
 class Range
   include Enumerable

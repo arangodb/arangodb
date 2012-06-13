@@ -1,11 +1,15 @@
 /*
 ** class.h - Class class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
 #ifndef MRUBY_CLASS_H
 #define MRUBY_CLASS_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 struct RClass {
   MRUBY_OBJECT_HEADER;
@@ -51,7 +55,7 @@ mrb_class(mrb_state *mrb, mrb_value v)
     return mrb->nil_class; /* not reach */
 #endif
   default:
-    return ((struct RBasic*)mrb_object(v))->c;
+    return mrb_object(v)->c;
   }
 }
 
@@ -64,14 +68,18 @@ struct RClass *mrb_vm_define_class(mrb_state*, mrb_value, mrb_value, mrb_sym);
 struct RClass *mrb_vm_define_module(mrb_state*, mrb_value, mrb_sym);
 void mrb_define_method_vm(mrb_state*, struct RClass*, mrb_sym, mrb_value);
 void mrb_define_method_raw(mrb_state*, struct RClass*, mrb_sym, struct RProc *);
+void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, int aspec);
 
 struct RClass *mrb_class_outer_module(mrb_state*, struct RClass *);
 struct RProc *mrb_method_search_vm(mrb_state*, struct RClass**, mrb_sym);
 struct RProc *mrb_method_search(mrb_state*, struct RClass*, mrb_sym);
 
-int mrb_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym mid);
-void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, int aspec);
+struct RClass* mrb_class_real(struct RClass* cl);
 
 void mrb_obj_call_init(mrb_state *mrb, mrb_value obj, int argc, mrb_value *argv);
 
-#endif	/* MRUBY_CLASS_H */
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* MRUBY_CLASS_H */

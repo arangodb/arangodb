@@ -51,6 +51,11 @@ var console = require("console");
 /// @FA{options.url} is a prefix of the given url and no longer definition
 /// matches.
 ///
+/// @FA{options.prefix}
+///
+/// If @LIT{false}, then only use the action for excat matches. The default is
+/// @LIT{true}.
+///
 /// @FA{options.context}
 ///
 /// The context to which this actions belongs. Possible values are "admin",
@@ -89,7 +94,7 @@ var console = require("console");
 ///
 /// @FA{options.parameters}
 ///
-/// Normally the paramaters are passed to the callback as strings. You can
+/// Normally the parameters are passed to the callback as strings. You can
 /// use the @FA{options}, to force a converstion of the parameter to
 ///
 /// - @c "collection"
@@ -103,15 +108,16 @@ function DefineHttp (options) {
   var url = options.url;
   var contexts = options.context;
   var callback = options.callback;
-  var parameter = options.parameter;
+  var parameters = options.parameters;
+  var prefix = true;
   var userContext = false;
 
   if (! contexts) {
     contexts = "user";
   }
 
-  if (typeof contexts == "string") {
-    if (contexts == "user") {
+  if (typeof contexts === "string") {
+    if (contexts === "user") {
       userContext = true;
     }
 
@@ -119,7 +125,7 @@ function DefineHttp (options) {
   }
   else {
     for (var i = 0;  i < contexts.length && ! userContext;  ++i) {
-      if (context == "user") {
+      if (context === "user") {
         userContext = true;
       }
     }
@@ -134,36 +140,21 @@ function DefineHttp (options) {
     return;
   }
 
+  if (options.hasOwnProperty("prefix")) {
+    prefix = options.prefix;
+  }
+
+  var parameter = { parameters : parameters, prefix : prefix };
+
   // console.debug("callback: %s", callback);
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
-    var use = false;
-
-    if (context == "admin") {
-      if (SYS_ACTION_QUEUE == "SYSTEM") {
-        use = true;
-      }
-    }
-    else if (context == "api") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "user") {
-      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
-        use = true;
-      }
-    }
-    else if (context == "monitoring") {
-      if (SYS_ACTION_QUEUE == "MONITORING") {
-        use = true;
-      }
-    }
+    var use = (internal.allowedActionContexts[context] === true)
 
     if (use) {
       try {
-        internal.defineAction(url, SYS_ACTION_QUEUE, callback, parameter);
+        internal.defineAction(url, callback, parameter);
         console.debug("defining action '%s' in context '%s' using queue '%s'", url, context, SYS_ACTION_QUEUE);
       }
       catch (err) {
@@ -187,7 +178,7 @@ function DefineHttp (options) {
 function GetErrorMessage (code) {
   for (var key in internal.errors) {
     if (internal.errors.hasOwnProperty(key)) {
-      if (internal.errors[key].code == code) {
+      if (internal.errors[key].code === code) {
         return internal.errors[key].message;
       }
     }
@@ -212,7 +203,7 @@ function GetJsonBody (req, res, code) {
   }
 
   if (! body || ! (body instanceof Object)) {
-    if (code == null) {
+    if (code === undefined) {
       code = exports.ERROR_HTTP_CORRUPTED_JSON;
     }
 
@@ -264,7 +255,7 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   
   res.body = JSON.stringify(result);
 
-  if (headers != undefined) {
+  if (headers !== undefined) {
     res.headers = headers;    
   }
 }
@@ -299,7 +290,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
   res.contentType = "application/json";
   
   // add some default attributes to result
-  if (result == undefined) {
+  if (result === undefined) {
     result = {};
   }
 
@@ -308,7 +299,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
   
   res.body = JSON.stringify(result);
   
-  if (headers != undefined) {
+  if (headers !== undefined) {
     res.headers = headers;    
   }
 }
@@ -322,7 +313,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultBad (req, res, code, msg, headers) {
-  if (msg == null) {
+  if (msg === undefined || msg === null) {
     msg = GetErrorMessage(code);
   }
   else {
@@ -376,21 +367,39 @@ function ResultUnsupported (req, res, headers) {
 /// @brief returns a result set from a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ResultCursor (req, res, cursor, code) {
-  var hasCount = cursor.hasCount();
-  var count = cursor.count();
-  var rows = cursor.getRows();
+function ResultCursor (req, res, cursor, code, options) {
+  var rows;
+  var count;
+  var hasCount;
+  var hasNext;
+  var cursorId;
 
-  // must come after getRows()
-  var hasNext = cursor.hasNext();
-  var cursorId = null;
-   
-  if (hasNext) {
-    cursor.persist();
-    cursorId = cursor.id(); 
+  if (Array.isArray(cursor)) {
+    // performance optimisation: if the value passed in is an array, we can
+    // use it as it is
+    hasCount = ((options && options.countRequested) ? true : false);
+    count = cursor.length;
+    rows = cursor;
+    hasNext = false;
+    cursorId = null;
   }
   else {
-    cursor.dispose();
+    // cursor is assumed to be an ArangoCursor
+    hasCount = cursor.hasCount();
+    count = cursor.count();
+    rows = cursor.getRows();
+
+    // must come after getRows()
+    hasNext = cursor.hasNext();
+    cursorId = null;
+   
+    if (hasNext) {
+      cursor.persist();
+      cursorId = cursor.id(); 
+    }
+    else {
+      cursor.dispose();
+    }
   }
 
   var result = { 
@@ -406,7 +415,7 @@ function ResultCursor (req, res, cursor, code) {
     result["count"] = count;
   }
 
-  if (code == null) {
+  if (code === undefined) {
     code = exports.HTTP_CREATED;
   }
 
@@ -422,7 +431,7 @@ function ResultCursor (req, res, cursor, code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionNotFound (req, res, collection, headers) {
-  if (collection == null) {
+  if (collection === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
@@ -444,13 +453,13 @@ function CollectionNotFound (req, res, collection, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IndexNotFound (req, res, collection, index, headers) {
-  if (collection == null) {
+  if (collection === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
-  else if (index == null) {
+  else if (index === undefined) {
     ResultError(req, res,
                 exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
                 "expecting an index identifier",
@@ -535,18 +544,35 @@ exports.POST                    = "POST";
 exports.PUT                     = "PUT";
 
 // HTTP 2xx
-exports.HTTP_OK                 = 200;
-exports.HTTP_CREATED            = 201;
-exports.HTTP_ACCEPTED           = 202;
+exports.HTTP_OK                  = 200;
+exports.HTTP_CREATED             = 201;
+exports.HTTP_ACCEPTED            = 202;
+exports.HTTP_PARTIAL             = 203;
+exports.HTTP_NO_CONTENT          = 204;
+
+// HTTP 3xx
+exports.HTTP_MOVED_PERMANENTLY   = 301;
+exports.HTTP_FOUND               = 302;
+exports.HTTP_SEE_OTHER           = 303;
+exports.HTTP_NOT_MODIFIED        = 304;
+exports.HTTP_TEMPORARY_REDIRECT  = 307;
 
 // HTTP 4xx
-exports.HTTP_BAD                = 400;
-exports.HTTP_NOT_FOUND          = 404;
-exports.HTTP_METHOD_NOT_ALLOWED = 405;
-exports.HTTP_CONFLICT           = 409;
+exports.HTTP_BAD                 = 400;
+exports.HTTP_UNAUTHORIZED        = 401;
+exports.HTTP_PAYMENT             = 402;
+exports.HTTP_FORBIDDEN           = 403;
+exports.HTTP_NOT_FOUND           = 404;
+exports.HTTP_METHOD_NOT_ALLOWED  = 405;
+exports.HTTP_CONFLICT            = 409;
+exports.HTTP_PRECONDITION_FAILED = 412;
+exports.HTTP_UNPROCESSABLE_ENTIT = 422;
 
 // HTTP 5xx
-exports.HTTP_SERVER_ERROR       = 500;
+exports.HTTP_SERVER_ERROR        = 500;
+exports.HTTP_NOT_IMPLEMENTED     = 501;
+exports.HTTP_BAD_GATEWAY         = 502;
+exports.HTTP_SERVICE_UNAVAILABLE = 503;
 
 // copy error codes
 for (var name in internal.errors) {

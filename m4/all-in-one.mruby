@@ -7,15 +7,15 @@ dnl ----------------------------------------------------------------------------
 AC_ARG_ENABLE(mruby,
   AS_HELP_STRING([--enable-mruby], [enable MRUBY]),
   [tr_MRUBY="${enableval:-yes}"],
-  [tr_MRUBY=yes]
+  [tr_MRUBY=no]
 )
 
 if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
   MRUBY_LDFLAGS=""
-  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-04-27"
+  TRI_MRUBY_VERSION="2012-06-02 (92f192521865137c7e457b4a54c5df4ad2fbb049)"
 
   AC_DEFINE_UNQUOTED(TRI_ENABLE_MRUBY, 1, [true if mruby should be used])
 fi

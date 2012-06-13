@@ -7,30 +7,15 @@
 
 ## What's mruby
 
-mruby is the lightweight implementation of the Ruby language complying to
+mruby is the lightweight implementation of the Ruby language complying to (part of)
 the [ISO standard](http://www.iso.org/iso/iso_catalogue/catalogue_tc/catalogue_detail.htm?csnumber=59579). 
-mruby can run Ruby code in 'interpreter mode' or 'compile and execute it on a virtual machine' depending on the developer's preference.
+mruby can be linked and embedded within your application.  We provide the interpreter program "mruby" and 
+the interactive mruby shell "mirb" as examples.  You can also compile Ruby programs into compiled byte code
+using the mruby compiler "mrbc".  All those tools reside in "bin" directory.  The "mrbc" is also able to
+generate compiled byte code in a C source file.  You can check the "mrbtest" program under the "test" directory.
 
 This achievement was sponsored by the Regional Innovation Creation R&D Programs of
 the Ministry of Economy, Trade and Industry of Japan.
-
-
-## Features of mruby
-
-    | Compatibility with MRI(Matz Ruby Implementation) version... 
-    |
-    |FIXME:
-    |  + Simple Syntax
-    |  + *Normal* Object-Oriented features(ex. class, method calls)
-    |  + *Advanced* Object-Oriented features(ex. Mixin, Singleton-method)
-    |  + Operator Overloading
-    |  + Exception Handling
-    |  + Iterators and Closures
-    |  + Garbage Collection
-    |  + Dynamic Loading of Object files(on some architecture)
-    |  + Highly Portable (works on many Unix-like/POSIX compatible platforms
-    |    as well as Windows, Mac OS X, BeOS etc.)
-    |    cf. http://redmine.ruby-lang.org/wiki/ruby-19/SupportedPlatforms
 
 
 ## How to get mruby

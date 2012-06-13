@@ -1,6 +1,6 @@
 /*
 ** encoding.h - Encoding class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -62,16 +62,16 @@ int mrb_toupper(int c);
 
 #define ENCODING_MAXNAMELEN 42
 
-#define ENC_CODERANGE_MASK	((int)(FL_USER8|FL_USER9))
-#define ENC_CODERANGE_UNKNOWN	0
-#define ENC_CODERANGE_7BIT	((int)FL_USER8)
-#define ENC_CODERANGE_VALID	((int)FL_USER9)
-#define ENC_CODERANGE_BROKEN	((int)(FL_USER8|FL_USER9))
+#define ENC_CODERANGE_MASK      ((int)(FL_USER8|FL_USER9))
+#define ENC_CODERANGE_UNKNOWN   0
+#define ENC_CODERANGE_7BIT      ((int)FL_USER8)
+#define ENC_CODERANGE_VALID     ((int)FL_USER9)
+#define ENC_CODERANGE_BROKEN    ((int)(FL_USER8|FL_USER9))
 #define ENC_CODERANGE(obj) ((int)(RSTRING(obj)->flags & ENC_CODERANGE_MASK))
 #define ENC_CODERANGE_ASCIIONLY(obj) (ENC_CODERANGE(obj) == ENC_CODERANGE_7BIT)
 #ifdef INCLUDE_ENCODING
 #define ENC_CODERANGE_SET(obj,cr) (RSTRING(obj)->flags = \
-				   (RSTRING(obj)->flags & ~ENC_CODERANGE_MASK) | (cr))
+                                   (RSTRING(obj)->flags & ~ENC_CODERANGE_MASK) | (cr))
 #else
 #define ENC_CODERANGE_SET(obj,cr)
 #endif //INCLUDE_ENCODING
@@ -92,7 +92,6 @@ int mrb_toupper(int c);
 
 typedef OnigEncodingType mrb_encoding;
 
-mrb_encoding* mrb_enc_get(mrb_state *mrb, mrb_value obj);
 /* mrb_encoding * -> name */
 #define mrb_enc_name(enc) (enc)->name
 int mrb_enc_get_index(mrb_state *mrb, mrb_value obj);
@@ -175,11 +174,7 @@ int mrb_enc_codelen(mrb_state *mrb, int code, mrb_encoding *enc);
 #endif //INCLUDE_ENCODING
 
 /* code,ptr,encoding -> write buf */
-#ifdef INCLUDE_ENCODING
-#define mrb_enc_mbcput(c,buf,enc) ONIGENC_CODE_TO_MBC(enc,c,(UChar*)(buf))
-#else
-#define mrb_enc_mbcput(c,buf,enc) *(buf) = (char)(c)
-#endif //INCLUDE_ENCODING
+#define mrb_enc_mbcput(c,buf,enc) ((*(buf) = (char)(c)),1)
 
 /* start, ptr, end, encoding -> prev_char */
 #define mrb_enc_prev_char(s,p,e,enc) (char *)onigenc_get_prev_char_head(enc,(UChar*)(s),(UChar*)(p),(UChar*)(e))
@@ -233,9 +228,6 @@ mrb_value mrb_enc_default_internal(mrb_state *mrb);
 void mrb_enc_set_default_external(mrb_state *mrb, mrb_value encoding);
 void mrb_enc_set_default_internal(mrb_state *mrb, mrb_value encoding);
 mrb_value mrb_locale_charmap(mrb_state *mrb, mrb_value klass);
-#ifdef INCLUDE_ENCODING
-int mrb_memsearch(mrb_state *mrb, const void*,int,const void*,int,mrb_encoding*);
-#endif //INCLUDE_ENCODING
 mrb_value mrb_usascii_str_new_cstr(mrb_state *mrb, const char *ptr);
 int mrb_str_buf_cat_escaped_char(mrb_state *mrb, mrb_value result, unsigned int c, int unicode_p);
 
@@ -347,6 +339,9 @@ void mrb_econv_binmode(mrb_econv_t *ec);
 /* end of flags for mrb_econv_convert */
 
 int mrb_isspace(int c);
+
+#define ENCODE_CLASS (mrb_class_obj_get(mrb, "Encoding"))
+#define CONVERTER_CLASS (mrb_class_obj_get(mrb, "Converter"))
 
 #if defined(__cplusplus)
 }  /* extern "C" { */

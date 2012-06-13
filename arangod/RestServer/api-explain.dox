@@ -1,0 +1,64 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpQueryTOC
+///
+/// <ul>
+///  <li>@ref HttpQueries
+///   <ul>
+///    <li>@ref HttpExplainPost "POST /_api/explain"</li>
+///    <li>@ref HttpQueryPost "POST /_api/query"</li>
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpQueries HTTP Interface for AQL Queries
+///
+/// ArangoDB has an Http interface to syntactically validate AQL queries.
+/// Furthermore, it offers an Http interface to retrieve the execution plan for
+/// any valid AQL query.
+///
+/// Both functionalities do not actually execute the supplied AQL query, but 
+/// only inspect it and return meta information about it.
+//////////////////////////////////////////////////////
+///
+/// @anchor HttpExplainPost
+/// @copydetails JSF_POST_api_explain
+///
+/// @anchor HttpQueryPost
+/// @copydetails JSF_POST_api_query
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
