@@ -1168,8 +1168,8 @@ int main (int argc, char* argv[]) {
 #ifdef TRI_STARTUP_MODULES_PATH
     StartupModules = TRI_STARTUP_MODULES_PATH;
 #else
-    StartupModules = string(binaryPath) + "/js/client/modules"
-             + ";" + string(binaryPath) + "/js/common/modules";
+    StartupModules = string(binaryPath) + "/../js/client/modules"
+             + ";" + string(binaryPath) + "/../js/common/modules";
 #endif
 
 #else
