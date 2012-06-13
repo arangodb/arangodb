@@ -152,7 +152,7 @@ function dijkstraSuite() {
       graph.addEdge(v1, v2, 8, 'a');
       graph.addEdge(v1, v3, 9, 'b');
 
-      result_array = v1.getNeighbors('both', ['a']);
+      result_array = v1.getNeighbors('both', ['a', 'c']);
 
       assertEqual(result_array.length, 1);
       assertEqual(result_array[0], 2);
@@ -218,7 +218,72 @@ function dijkstraSuite() {
       assertEqual(path[0].toString(), v1.getId());
       assertEqual(path[1].toString(), v2.getId());
       assertEqual(path[2].toString(), v3.getId());
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path on a directed graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetADirectedDistinctPath : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        e1 = graph.addEdge(v1, v2),
+        e2 = graph.addEdge(v2, v3),
+        e3 = graph.addEdge(v3, v4),
+        e4 = graph.addEdge(v4, v1),
+        pathes = v1.pathTo(v3, {direction: "outbound"});
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v2.getId());
+      assertEqual(pathes[0][2].toString(), v3.getId());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path on a directed graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetADirectedLabeledPath : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        e1 = graph.addEdge(v1, v2, 5, "no"),
+        e2 = graph.addEdge(v1, v3, 6, "yes"),
+        e3 = graph.addEdge(v3, v4, 7, "yeah"),
+        e4 = graph.addEdge(v4, v2, 8, "yes"),
+        pathes = v1.pathTo(v2, { labels: ["yes", "yeah"] });
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v3.getId());
+      assertEqual(pathes[0][2].toString(), v4.getId());
+      assertEqual(pathes[0][3].toString(), v2.getId());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path on a weighted graph
+////////////////////////////////////////////////////////////////////////////////
+
+    /*testGetADirectedWeightedPath : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        e1 = graph.addEdge(v1, v2, 5, "5", { my_weight: 5 }),
+        e2 = graph.addEdge(v1, v3, 6, "6", { my_weight: 1 }),
+        e3 = graph.addEdge(v3, v4, 7, "7", { my_weight: 1 }),
+        e4 = graph.addEdge(v4, v1, 8, "8", { my_weight: 1 }),
+        pathes = v1.pathTo(v2, { weight: "my_weight" });
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v3.getId());
+      assertEqual(pathes[0][2].toString(), v4.getId());
+      assertEqual(pathes[0][3].toString(), v2.getId());
+    }*/
   };
 }
 

@@ -81,6 +81,18 @@ Array.prototype.pushIfNotFound = function (element) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add all elements of the other array, that are not already in here
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.merge = function (other_array) {
+  var i;
+
+  for (i = 0; i < other_array.length; i += 1) {
+    this.pushIfNotFound(other_array[i]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copy properties
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -773,25 +785,23 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shortest path to a certain vertex, return the ID
 ///
-/// @FUN{@FA{vertex}.pathTo(@FA{target_vertex})}
+/// @FUN{@FA{vertex}.pathTo(@FA{target_vertex}, @FA{options})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.pathTo = function (target_vertex) {
-  var predecessors = {}; // { ID => [ID] }
-
-  predecessors = target_vertex.determinePredecessors(this.getId());
+Vertex.prototype.pathTo = function (target_vertex, options) {
+  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {});
   return target_vertex.pathesForTree(predecessors);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function for pathTo
+/// @brief determine all the pathes to this node from source id
 ///
-/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id})}
+/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id}, @FA{options})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.determinePredecessors = function (source_id) {
+Vertex.prototype.determinePredecessors = function (source_id, options) {
   var determined_list = [],  // [ID]
     predecessors = {},       // { ID => [ID] }
     todo_list = [source_id], // [ID]
@@ -803,43 +813,54 @@ Vertex.prototype.determinePredecessors = function (source_id) {
 
   while (todo_list.length > 0) {
     current_vertex_id = this._getShortestDistance(todo_list, distances);
+    current_vertex = this._graph.getVertex(current_vertex_id);
 
     if (current_vertex_id === this.getId()) {
       break;
     } else {
       todo_list.removeLastOccurrenceOf(current_vertex_id);
       determined_list.push(current_vertex_id);
-      current_vertex = this._graph.getVertex(current_vertex_id);
-      current_vertex.processNeighbors(
+
+      todo_list.merge(current_vertex._processNeighbors(
         determined_list,
-        todo_list,
         distances,
-        predecessors
-      );
+        predecessors,
+        options
+      ));
     }
   }
 
   return predecessors;
 };
 
-Vertex.prototype.processNeighbors = function (determined_list, todo_list, distances, predecessors) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function for determinePredecessors (changes distance and predecessors
+///
+/// @FUN{@FA{vertex}._processNeighbors(@FA{determinedt}, @FA{distances}, @FA{predecessors})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype._processNeighbors = function (determined_list, distances, predecessors, options) {
   var i,
     current_neighbor_id,
     current_distance,
     raw_neighborlist,
-    compared_distance;
+    compared_distance,
+    not_determined_neighbors = [];
 
-  // FIXME: Choose the neighbors according to the graph (directed/undirected)
-  raw_neighborlist = this.getNeighbors('both');
+  // FIXME: Choose the neighbors according to labels
+  raw_neighborlist = this.getNeighbors(options.direction || 'both', options.labels);
+  // console.log("Processing Neighbors for: " + this.getId());
+  // console.log(raw_neighborlist);
 
   for (i = 0; i < raw_neighborlist.length; i += 1) {
     current_neighbor_id = raw_neighborlist[i];
 
     if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
-      // FIXME: Take the weight if it is a weighted graph
+      // FIXME: Weights other than 1
       current_distance = distances[this.getId()] + 1;
 
-      todo_list.pushIfNotFound(current_neighbor_id);
+      not_determined_neighbors.push(current_neighbor_id);
 
       compared_distance = distances[current_neighbor_id];
       if ((compared_distance === undefined) || (compared_distance > current_distance)) {
@@ -850,6 +871,8 @@ Vertex.prototype.processNeighbors = function (determined_list, todo_list, distan
       }
     }
   }
+
+  return not_determined_neighbors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
