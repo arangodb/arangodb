@@ -109,8 +109,8 @@ function dijkstraSuite() {
       result_array = v1.getNeighbors('both');
 
       assertEqual(result_array.length, 2);
-      assertEqual(result_array[0], 2);
-      assertEqual(result_array[1], 3);
+      assertEqual(result_array[0].id, 2);
+      assertEqual(result_array[1].id, 3);
     },
 
     testGetOutboundNeighbors : function () {
@@ -125,7 +125,7 @@ function dijkstraSuite() {
       result_array = v1.getNeighbors('outbound');
 
       assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 2);
+      assertEqual(result_array[0].id, 2);
     },
 
     testGetInboundNeighbors : function () {
@@ -140,7 +140,7 @@ function dijkstraSuite() {
       result_array = v1.getNeighbors('inbound');
 
       assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 3);
+      assertEqual(result_array[0].id, 3);
     },
 
     testGetNeighborsWithPathLabel : function () {
@@ -155,7 +155,7 @@ function dijkstraSuite() {
       result_array = v1.getNeighbors('both', ['a', 'c']);
 
       assertEqual(result_array.length, 1);
-      assertEqual(result_array[0], 2);
+      assertEqual(result_array[0].id, 2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +267,7 @@ function dijkstraSuite() {
 /// @brief get a short, distinct path on a weighted graph
 ////////////////////////////////////////////////////////////////////////////////
 
-    /*testGetADirectedWeightedPath : function () {
+    testGetADirectedWeightedPath : function () {
       var v1 = graph.addVertex(1),
         v2 = graph.addVertex(2),
         v3 = graph.addVertex(3),
@@ -275,7 +275,7 @@ function dijkstraSuite() {
         e1 = graph.addEdge(v1, v2, 5, "5", { my_weight: 5 }),
         e2 = graph.addEdge(v1, v3, 6, "6", { my_weight: 1 }),
         e3 = graph.addEdge(v3, v4, 7, "7", { my_weight: 1 }),
-        e4 = graph.addEdge(v4, v1, 8, "8", { my_weight: 1 }),
+        e4 = graph.addEdge(v4, v2, 8, "8", { my_weight: 1 }),
         pathes = v1.pathTo(v2, { weight: "my_weight" });
 
       assertEqual(pathes.length, 1);
@@ -283,7 +283,7 @@ function dijkstraSuite() {
       assertEqual(pathes[0][1].toString(), v3.getId());
       assertEqual(pathes[0][2].toString(), v4.getId());
       assertEqual(pathes[0][3].toString(), v2.getId());
-    }*/
+    }
   };
 }
 

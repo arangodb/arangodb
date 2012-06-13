@@ -846,19 +846,17 @@ Vertex.prototype._processNeighbors = function (determined_list, distances, prede
     current_distance,
     raw_neighborlist,
     compared_distance,
+    current_weight,
     not_determined_neighbors = [];
 
-  // FIXME: Choose the neighbors according to labels
-  raw_neighborlist = this.getNeighbors(options.direction || 'both', options.labels);
-  // console.log("Processing Neighbors for: " + this.getId());
-  // console.log(raw_neighborlist);
+  raw_neighborlist = this.getNeighbors(options.direction || 'both', options.labels, options.weight);
 
   for (i = 0; i < raw_neighborlist.length; i += 1) {
-    current_neighbor_id = raw_neighborlist[i];
+    current_neighbor_id = raw_neighborlist[i].id;
 
     if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
-      // FIXME: Weights other than 1
-      current_distance = distances[this.getId()] + 1;
+      current_weight = raw_neighborlist[i].weight;
+      current_distance = distances[this.getId()] + current_weight;
 
       not_determined_neighbors.push(current_neighbor_id);
 
@@ -910,12 +908,13 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.getNeighbors = function (direction, labels) {
+Vertex.prototype.getNeighbors = function (direction, labels, weight) {
   var i,
     current_edge,
     current_vertex,
     current_label,
-    target_array = [];
+    target_array = [],
+    addNeighborToList;
 
   if ((direction === 'both') || (direction === 'outbound')) {
     for (i = 0; i < this.getOutEdges().length; i++) {
@@ -923,7 +922,13 @@ Vertex.prototype.getNeighbors = function (direction, labels) {
       current_vertex = current_edge.getInVertex();
       current_label = current_edge.getLabel();
       if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
-        target_array.push(current_vertex.getId());
+        neighbor_info = { id: current_vertex.getId() };
+        if (weight === undefined) {
+          neighbor_info.weight = 1;
+        } else {
+          neighbor_info.weight = current_edge.getProperty(weight);
+        }
+        target_array.push(neighbor_info);
       }
     }
   }
@@ -934,7 +939,13 @@ Vertex.prototype.getNeighbors = function (direction, labels) {
       current_vertex = current_edge.getOutVertex();
       current_label = current_edge.getLabel();
       if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
-        target_array.push(current_vertex.getId());
+        neighbor_info = { id: current_vertex.getId() };
+        if (weight === undefined) {
+          neighbor_info.weight = 1;
+        } else {
+          neighbor_info.weight = current_edge.getProperty(weight);
+        }
+        target_array.push(neighbor_info);
       }
     }
   }
