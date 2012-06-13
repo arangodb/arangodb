@@ -31,7 +31,7 @@
 
 #include "Scheduler/Scheduler.h"
 
-#include "Basics/Mutex.h"
+#include "BasicsC/locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class SchedulerLibev
@@ -284,7 +284,7 @@ namespace triagens {
 /// @brief watchers lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Mutex _watcherLock;
+        TRI_spin_t _watcherLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief watchers
