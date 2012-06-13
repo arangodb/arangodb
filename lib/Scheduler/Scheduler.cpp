@@ -28,13 +28,12 @@
 
 #include "Scheduler.h"
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-
-#include "Scheduler/Task.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerThread.h"
+#include "Scheduler/Task.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

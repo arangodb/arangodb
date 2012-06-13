@@ -44,6 +44,10 @@ using namespace triagens::rest;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
 SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool defaultLoop)
   : Thread("scheduler"),
     scheduler(scheduler),
@@ -52,9 +56,20 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
     stopping(0),
     stopped(0),
     hasWork(0) {
+
+  // init lock
+  TRI_InitSpin(&queueLock);
   
   // allow cancelation
   allowAsynchronousCancelation();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+SchedulerThread::~SchedulerThread () {
+  TRI_DestroySpin(&queueLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +112,7 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   else {
 
     // put the register request unto the queue
-    queueLock.lock();
+    TRI_LockSpin(&queueLock);
 
     Work w(SETUP, scheduler, task);
     queue.push_back(w);
@@ -105,7 +120,7 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 
     scheduler->wakeupLoop(loop);
 
-    queueLock.unlock();
+    TRI_UnlockSpin(&queueLock);
   }
 }
 
@@ -130,7 +145,7 @@ void SchedulerThread::unregisterTask (Task* task) {
   else {
 
     // put the unregister request unto the queue
-    queueLock.lock();
+    TRI_LockSpin(&queueLock);
 
     Work w(CLEANUP, 0, task);
     queue.push_back(w);
@@ -138,7 +153,7 @@ void SchedulerThread::unregisterTask (Task* task) {
 
     scheduler->wakeupLoop(loop);
 
-    queueLock.unlock();
+    TRI_UnlockSpin(&queueLock);
   }
 }
 
@@ -165,7 +180,7 @@ void SchedulerThread::destroyTask (Task* task) {
   else {
     
     // put the unregister request unto the queue
-    queueLock.lock();
+    TRI_LockSpin(&queueLock);
     
     Work w(DESTROY, 0, task);
     queue.push_back(w);
@@ -173,7 +188,7 @@ void SchedulerThread::destroyTask (Task* task) {
     
     scheduler->wakeupLoop(loop);
     
-    queueLock.unlock();
+    TRI_UnlockSpin(&queueLock);
   }
 }
 
@@ -224,13 +239,13 @@ void SchedulerThread::run () {
 #endif
 
     if (hasWork != 0) {
-      queueLock.lock();
+      TRI_LockSpin(&queueLock);
       
       while (! queue.empty()) {
         Work w = queue.front();
         queue.pop_front();
         
-        queueLock.unlock();
+        TRI_UnlockSpin(&queueLock);
         
         switch (w.work) {
           case CLEANUP:
@@ -247,12 +262,12 @@ void SchedulerThread::run () {
             break;
         }
 
-        queueLock.lock();
+        TRI_LockSpin(&queueLock);
       }
       
       hasWork = 0;
       
-      queueLock.unlock();
+      TRI_UnlockSpin(&queueLock);
     }
   }
 
@@ -260,13 +275,13 @@ void SchedulerThread::run () {
 
   stopped = 1;
 
-  queueLock.lock();
+  TRI_LockSpin(&queueLock);
       
   while (! queue.empty()) {
     Work w = queue.front();
     queue.pop_front();
         
-    queueLock.unlock();
+    TRI_UnlockSpin(&queueLock);
         
     switch (w.work) {
       case CLEANUP:
@@ -280,15 +295,19 @@ void SchedulerThread::run () {
         break;
     }
 
-    queueLock.lock();
+    TRI_LockSpin(&queueLock);
   }
       
-  queueLock.unlock();
+  TRI_UnlockSpin(&queueLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
