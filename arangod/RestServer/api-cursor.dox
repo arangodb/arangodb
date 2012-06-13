@@ -57,7 +57,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page HttpCursor HTTP Interface for Cursors
+/// @page HttpCursor HTTP Interface for AQL Query Cursors
 ///
 /// This is an introduction to ArangoDB's Http interface for Queries. Results
 /// of AQL and simple queries are returned as cursors in order to batch the

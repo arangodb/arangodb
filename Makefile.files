@@ -96,6 +96,7 @@ WIKI = \
 	HttpCursor \
 	HttpIndex \
 	HttpInterface \
+	HttpQueries \
 	HttpSimple \
 	HttpSystem \
 	ImplementorManual \
