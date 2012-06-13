@@ -101,9 +101,7 @@ static void DumpValue (TRI_aql_dump_t* const state, const TRI_aql_node_t* const 
 /// @brief increase the indent level by one
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Indent (void* data) {
-  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
-
+static inline void Indent (TRI_aql_dump_t* const state) {
   ++state->_indent;
 }
 
@@ -111,8 +109,7 @@ static void Indent (void* data) {
 /// @brief decrease the indent level by one
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Outdent (void* data) {
-  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
+static inline void Outdent (TRI_aql_dump_t* const state) {
 
   assert(state->_indent > 0);
   --state->_indent;
@@ -122,12 +119,15 @@ static void Outdent (void* data) {
 /// @brief dump an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* DumpNode (void* data, TRI_aql_node_t* const node) {
-  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
+static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker, 
+                                 TRI_aql_node_t* const node) {
+  TRI_aql_dump_t* state = (TRI_aql_dump_t*) walker->_data;
 
   if (node == NULL) {
     return node;
   }
+
+  assert(state);
 
   PrintType(state, node->_type);
   Indent(state);
@@ -168,26 +168,30 @@ static TRI_aql_node_t* DumpNode (void* data, TRI_aql_node_t* const node) {
 /// @brief dump a statement
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* DumpStatementStart (void* data, TRI_aql_node_t* const node) {
+static TRI_aql_node_t* DumpStatementStart (TRI_aql_statement_walker_t* const walker,
+                                           TRI_aql_node_t* const node) {
   if (node == NULL) {
     return node;
   }
 
-  Indent((TRI_aql_dump_t*) data);
+  assert(walker);
+  Indent((TRI_aql_dump_t*) walker->_data);
 
-  return DumpNode(data, node);
+  return DumpNode(walker, node);
 }      
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* DumpStatementEnd (void* data, TRI_aql_node_t* const node) {
+static TRI_aql_node_t* DumpStatementEnd (TRI_aql_statement_walker_t* const walker, 
+                                         TRI_aql_node_t* const node) {
   if (node == NULL) {
     return node;
   }
 
-  Outdent((TRI_aql_dump_t*) data);
+  assert(walker);
+  Outdent((TRI_aql_dump_t*) walker->_data);
 
   return node;
 }      

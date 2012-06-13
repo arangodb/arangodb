@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, optimiser
+/// @brief Ahuacatl, explain
 ///
 /// @file
 ///
@@ -25,21 +25,15 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
-#define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_EXPLAIN_H
+#define TRIAGENS_DURHAM_AHUACATL_EXPLAIN_H 1
 
 #include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
+#include <BasicsC/json.h>
 #include <BasicsC/vector.h>
 
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen.h"
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-node.h"
 #include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
@@ -56,6 +50,13 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef struct TRI_aql_explain_s {
+  size_t _count;
+  size_t _level;
+  TRI_json_t* _result;
+}
+TRI_aql_explain_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,10 +71,12 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the statement list
+/// @brief explain a query
+///
+/// note: the caller of this function must free the returned json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_OptimiseAql (TRI_aql_context_t* const); 
+TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

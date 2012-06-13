@@ -42,7 +42,7 @@
 /// @brief check if a node is a bind parameter and convert it into a value node 
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ModifyNode (void* data,
+static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
                                    TRI_aql_node_t* node) {
   TRI_aql_bind_parameter_t* bind;
   TRI_associative_pointer_t* bindValues;
@@ -54,7 +54,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
   }
   
   // we found a parameter node
-  context = (TRI_aql_context_t*) data;
+  context = (TRI_aql_context_t*) walker->_data;
   assert(context);
 
   bindValues = (TRI_associative_pointer_t*) &context->_parameters._values;
@@ -68,7 +68,11 @@ static TRI_aql_node_t* ModifyNode (void* data,
     if (*name == '@') {
       // a collection name bind parameter
       if (bind->_value->_type == TRI_JSON_STRING) {
-        char* collectionName = TRI_RegisterStringAql(context, bind->_value->_value._string.data, strlen(bind->_value->_value._string.data), false);
+        char* collectionName = TRI_RegisterStringAql(context, 
+                                                     bind->_value->_value._string.data, 
+                                                     strlen(bind->_value->_value._string.data), 
+                                                     false);
+
         node = TRI_CreateNodeCollectionAql(context, collectionName);
       }
       else {

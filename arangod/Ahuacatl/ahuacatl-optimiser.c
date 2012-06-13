@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-optimiser.h"
+#include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
@@ -46,13 +47,15 @@
 /// @brief optimise a node recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessNode (void*, TRI_aql_node_t*);
+static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const, 
+                                     TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessStatement (void*, TRI_aql_node_t*);
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const, 
+                                         TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -68,204 +71,79 @@ static TRI_aql_node_t* ProcessStatement (void*, TRI_aql_node_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the current optimiser scope
+/// @brief pick an index for the ranges found
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_aql_optimiser_scope_t* CurrentScope (const TRI_vector_pointer_t* const scopes) {
-  size_t n = scopes->_length;
+static void AttachCollectionHint (TRI_aql_context_t* const context,
+                                  TRI_aql_node_t* const node) {
+  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_vector_pointer_t* availableIndexes;
+  TRI_aql_collection_hint_t* hint;
+  TRI_aql_index_t* idx;
+  TRI_aql_collection_t* collection;
+  char* collectionName;
 
-  assert(n > 0);
+  collectionName = TRI_AQL_NODE_STRING(nameNode);
+  assert(collectionName);
 
-  return TRI_AtVectorPointer(scopes, n - 1);
-}
+  hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add some access information to a for node
-////////////////////////////////////////////////////////////////////////////////
-
-static void PatchForNode (TRI_aql_context_t* const context, 
-                          TRI_aql_node_t* const node,
-                          TRI_aql_field_access_t* fieldAccess) {
-  TRI_vector_pointer_t* previous;
-
-  if (node == NULL || fieldAccess == NULL) {
-    return;
-  }
-
-  assert(node->_type == TRI_AQL_NODE_FOR);
-
-  previous = (TRI_vector_pointer_t*) node->_value._value._data; // might be NULL
-
-  node->_value._value._data = (void*) TRI_AddAccessAql(context, previous, fieldAccess);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief backwards-patch for loops with the range access data we found
-////////////////////////////////////////////////////////////////////////////////
-
-static void PatchForLoops (TRI_aql_context_t* const context) {
-  TRI_aql_optimiser_scope_t* currentScope = CurrentScope(&context->_optimiser._scopes);
-  size_t n;
-
-  if (!currentScope->_ranges) {
-    return;
-  }
-
-  n = context->_optimiser._scopes._length;
-  while (n-- > 0) {
-    TRI_aql_optimiser_scope_t* scope = (TRI_aql_optimiser_scope_t*) TRI_AtVectorPointer(&context->_optimiser._scopes, n);
-    char* prefix;
-    size_t j, len;
-
-    // reached the top level
-    if (scope->_type == TRI_AQL_SCOPE_MAIN) {
-      break;
-    }
-    
-    // we're only interested in for loops
-    if (scope->_type != TRI_AQL_SCOPE_FOR && scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
-      continue;
-    }
-
-    // irrelevant for loop
-    if (!scope->_variableName || !scope->_node) {
-      continue;
-    } 
-    
-    if (!scope->_ranges) {
-      continue;
-    } 
-    
-    // we found a for loop, inspect it
-    prefix = TRI_Concatenate2String(scope->_variableName, ".");
-
-    if (!prefix) {
-      // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      return;
-    }
- 
-    // iterate over all possible field accesses we found in this scope
-    len = scope->_ranges->_length;
-    for (j = 0; j < len; ++j) {
-      TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(scope->_ranges, j);
-
-      // check if the range's variable name is the same as the for variable's name
-      if (!TRI_IsPrefixString(fieldAccess->_fullName, prefix)) { 
-        // names don't match
-        continue;
-      }
-
-      // names match
-
-      // merge the field access found into the already existing field accesses for the node
-      PatchForNode(context, scope->_node, fieldAccess); 
-      break;
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
-    // TODO: we could bubble up some of the filters to higher level loops, but
-    // we would need to find out which ones can safely be moved there first
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an optimiser scope
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeScope (TRI_aql_optimiser_scope_t* const scope) {
-  if (scope->_variableName) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, scope->_variableName);
-  }
-
-  if (scope->_ranges) {
-    TRI_FreeAccessesAql(scope->_ranges);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start an optimiser scope
-////////////////////////////////////////////////////////////////////////////////
-
-static void StartScope (TRI_aql_context_t* const context, 
-                        const TRI_aql_scope_e requestedType,
-                        const TRI_aql_node_t* const node,
-                        const char* const variableName) {
-  TRI_aql_optimiser_scope_t* scope; 
-  TRI_aql_scope_e type = requestedType;
-
-  if (requestedType == TRI_AQL_SCOPE_FOR) {
-    TRI_aql_scope_e previousType = CurrentScope(&context->_optimiser._scopes)->_type;
-
-    if (previousType == TRI_AQL_SCOPE_FOR || previousType == TRI_AQL_SCOPE_FOR_NESTED) {
-      type = TRI_AQL_SCOPE_FOR_NESTED;
-    }
-  }
-
-  scope = (TRI_aql_optimiser_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_optimiser_scope_t), false);
-  if (scope == NULL) {
+  if (hint == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
     return;
   }
 
-  scope->_type = type;
-  scope->_ranges = NULL;
-  scope->_node = NULL;
-  scope->_variableName = NULL;
+  if (hint->_ranges == NULL) {
+    // no ranges found to be used as indexes
 
-  if (variableName != NULL) {
-    scope->_variableName = TRI_DuplicateString(variableName);
-    if (scope->_variableName == NULL) {
-      // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      return;
-    }
-  }
-  
-  if (type == TRI_AQL_SCOPE_FOR || type == TRI_AQL_SCOPE_FOR_NESTED) {
-    // store the node pointer for later for loop patching
-    scope->_node = (TRI_aql_node_t*) node;
+    return;
   }
 
-  if (context->_optimiser._scopes._length > 0) {
-    // copy ranges of parent scope into current one
-    scope->_ranges = TRI_CloneAccessesAql(context, CurrentScope(&context->_optimiser._scopes)->_ranges);
+  collection = TRI_GetCollectionAql(context, collectionName);
+  if (collection == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+    return;
   }
-  
-  // finally, add the new scope 
-  TRI_PushBackVectorPointer(&context->_optimiser._scopes, scope);
+
+  hint->_collection = collection;
+
+  availableIndexes = &(((TRI_sim_collection_t*) collection->_collection->_collection)->_indexes);
+
+  if (availableIndexes == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+    return;
+  }
+
+  idx = TRI_DetermineIndexAql(context, 
+                              availableIndexes, 
+                              collectionName, 
+                              hint->_ranges);
+
+  hint->_index = idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief end an optimiser scope
+/// @brief annotate a node with context information
+///
+/// this is a callback function used by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static void EndScope (TRI_aql_context_t* const context, const bool isReturn) {
-  TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
-    
-  if (isReturn && (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY)) {
-    // dont't close these scopes with a return as they are closed by other functions
-    return;
-  }
-
-  // we are closing at least one scope
-  while (true) {
-    TRI_aql_scope_e type = scope->_type;
-
-    FreeScope(scope);
-
-    TRI_RemoveVectorPointer(&context->_optimiser._scopes, context->_optimiser._scopes._length - 1);
-
-    // break if we reached the top level for loop
-    if (type != TRI_AQL_SCOPE_FOR_NESTED) {
-      break;
-    }
+static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
+                                     TRI_aql_node_t* node) {
+  TRI_aql_context_t* context;
   
-    // next iteration
-    scope = CurrentScope(&context->_optimiser._scopes);
+  if (node->_type != TRI_AQL_NODE_COLLECTION) {
+    return node;
   }
+  
+  context = (TRI_aql_context_t*) walker->_data;
+
+  AttachCollectionHint(context, node);
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +326,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 /// @brief optimise a sort expression
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
+static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(node, 0);
   size_t i, n;
@@ -481,75 +359,72 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_context_t* const context,
     // no members left => sort removed
     TRI_AQL_LOG("optimised away sort");
 
-    return NULL;
+    return TRI_GetDummyNopNodeAql();
   }
 
   return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a filter expression
+/// @brief optimise a constant filter expression
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseFilter (TRI_aql_context_t* const context,
-                                       TRI_aql_node_t* node) {
-  TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
-  TRI_aql_optimiser_scope_t* scope = CurrentScope(&context->_optimiser._scopes);
- 
-TRY_LOOP:  
-  if (!expression) {
-    return node;
-  }
-  
-  if (!TRI_IsConstantValueNodeAql(expression)) {
-    TRI_vector_pointer_t* oldRanges;
-    TRI_vector_pointer_t* newRanges;
-    bool changed = false;
-
-    oldRanges = scope->_ranges;
-    newRanges = TRI_OptimiseRangesAql(context, expression, &changed, oldRanges);
-    
-    if (newRanges) {
-      if (oldRanges) {
-        TRI_FreeAccessesAql(oldRanges);
-      }
-      scope->_ranges = newRanges;
-    }
-    
-    if (changed) {
-      // expression code was changed, re-optimise it
-      node->_members._buffer[0] = ProcessNode((void*) context, expression);
-      expression = TRI_AQL_NODE_MEMBER(node, 0);
-
-      // something changed, now try again
-      goto TRY_LOOP;
-    }
-
-    return node;
-  }
-
-  if (TRI_GetBooleanNodeValueAql(expression)) {
+static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
+  if (TRI_GetBooleanNodeValueAql(node)) {
     // filter expression is always true => remove it
     TRI_AQL_LOG("optimised away constant (true) filter");
 
-    return TRI_GetNopNodeAql();
+    return TRI_GetDummyNopNodeAql();
   }
-  else {
-    // filter expression is always false => patch surrounding scope
-    if (scope->_node) {
-      TRI_aql_field_access_t* impossible;
 
-      impossible = TRI_CreateImpossibleAccessAql(context);
-      if (impossible == NULL) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-        return node;
-      } 
+  // filter expression is always false => invalidate surrounding scope(s)
+  TRI_AQL_LOG("optimised away scope"); 
 
-      PatchForNode(context, scope->_node, impossible);
-      TRI_FreeAccessAql(impossible);
-      
-      TRI_AQL_LOG("optimised away scope"); 
+  return TRI_GetDummyReturnEmptyNodeAql();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise a filter expression
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
+                                       TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+  TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
+ 
+  while (true) {
+    TRI_vector_pointer_t* oldRanges;
+    TRI_vector_pointer_t* newRanges;
+    bool changed;
+
+    if (!expression) {
+      return node;
     }
+
+    if (TRI_IsConstantValueNodeAql(expression)) {
+      // filter expression is a constant value
+      return OptimiseConstantFilter(expression);
+    }
+
+    // filter expression is non-constant
+    oldRanges = TRI_GetCurrentRangesStatementWalkerAql(walker);
+    
+    changed = false;
+    newRanges = TRI_OptimiseRangesAql(context, expression, &changed, oldRanges);
+    
+    if (newRanges) {
+      TRI_SetCurrentRangesStatementWalkerAql(walker, newRanges);
+    }
+    
+    if (!changed) {
+      break;
+    }
+
+    // expression code was changed, set pointer to new value re-optimise it
+    node->_members._buffer[0] = OptimiseNode(walker, expression);
+    expression = TRI_AQL_NODE_MEMBER(node, 0);
+
+    // next iteration
   }
 
   return node;
@@ -557,13 +432,44 @@ TRY_LOOP:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a reference expression
+///
+/// this looks up the source node that defines the variable and checks if the
+/// variable has a constant value. if yes, then the reference is replaced with
+/// the constant value
+/// e.g. in the query "let a = 1 for x in a ...", the latter a would be replaced
+/// by the value "1".
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseReference (TRI_aql_context_t* const context,
+static TRI_aql_node_t* OptimiseReference (TRI_aql_statement_walker_t* const walker,
                                           TRI_aql_node_t* node) {
-  // TODO: find variable in current symbol table
-  // follow references until variable declaration is found
-  // if variable value at source is constant, copy the constant into here as well
+  TRI_aql_variable_t* variable;
+  TRI_aql_node_t* definingNode;
+  char* variableName = (char*) TRI_AQL_NODE_STRING(node);
+
+  assert(variableName);
+  variable = TRI_GetVariableStatementWalkerAql(walker, variableName);
+
+  if (variable == NULL) {
+    return node;
+  }
+
+  definingNode = variable->_definingNode;
+  if (definingNode == NULL) {
+    return node;
+  }
+
+  if (definingNode->_type == TRI_AQL_NODE_LET) {
+    // variable is defined via a let
+    TRI_aql_node_t* expressionNode;
+
+    expressionNode = TRI_AQL_NODE_MEMBER(definingNode, 1);
+    if (expressionNode && TRI_IsConstantValueNodeAql(expressionNode)) {
+      // the source variable is constant, so we can replace the reference with 
+      // the source's value
+      return expressionNode;
+    }
+  }
+
   return node;
 }
 
@@ -905,11 +811,15 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise nodes recursively
+/// @brief optimise a specific node
+///
+/// This is a callback function called by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context, 
+static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker, 
                                      TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+
   assert(node);
 
   // node optimisations
@@ -938,14 +848,10 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
       return OptimiseBinaryArithmeticOperation(context, node);
     case TRI_AQL_NODE_OPERATOR_TERNARY:
       return OptimiseTernaryOperation(context, node);
-    case TRI_AQL_NODE_SORT:
-      return OptimiseSort(context, node);
-    case TRI_AQL_NODE_FILTER:
-      return OptimiseFilter(context, node);
     case TRI_AQL_NODE_FCALL:
       return OptimiseFcall(context, node);
     case TRI_AQL_NODE_REFERENCE:
-      return OptimiseReference(context, node);
+      return OptimiseReference(walker, node);
     default: 
       break;
   }
@@ -957,71 +863,166 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_context_t* const context,
 /// @brief optimise a statement
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseStatement (TRI_aql_context_t* const context, 
+static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walker, 
                                           TRI_aql_node_t* node) {
+  assert(walker);
   assert(node);
-
+   
   // node optimisations
   switch (node->_type) {
     case TRI_AQL_NODE_SORT:
-      return OptimiseSort(context, node);
+      return OptimiseSort(walker, node);
     case TRI_AQL_NODE_FILTER:
-      return OptimiseFilter(context, node);
-    default: 
-      break;
+      return OptimiseFilter(walker, node);
+    default: {
+    }
   }
 
   return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a node recursively
-///
-/// this is the callback function used by the statement walker
+/// @brief patch variables with range information
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessNode (void* data, TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
+static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
+  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+  TRI_vector_pointer_t* ranges;
+  size_t i, n;
 
-  return OptimiseNode(context, node);
+  ranges = TRI_GetCurrentRangesStatementWalkerAql(walker);
+  if (ranges == NULL) {
+    // no ranges defined, exit early
+    return;
+  }
+
+  // iterate over all ranges found
+  n = ranges->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess;
+    TRI_aql_variable_t* variable;
+    TRI_aql_node_t* definingNode;
+    TRI_aql_node_t* expressionNode;
+    char* variableName;
+
+    fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(ranges, i);
+    assert(fieldAccess);
+    assert(fieldAccess->_fullName);
+    assert(fieldAccess->_variableNameLength > 0);
+
+    variableName = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName, fieldAccess->_variableNameLength);
+    if (variableName == NULL) {
+      // out of memory!
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return;
+    }
+
+    variable = TRI_GetVariableStatementWalkerAql(walker, variableName);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
+
+    if (variable == NULL) {
+      continue;
+    }
+
+    // note: we must not modify outer variables of subqueries 
+
+    // get the node that defines the variable
+    definingNode = variable->_definingNode;
+
+    assert(definingNode != NULL);
+
+    expressionNode = NULL;
+    switch (definingNode->_type) {
+      case TRI_AQL_NODE_LET:
+        expressionNode = TRI_AQL_NODE_MEMBER(definingNode, 1);
+        break;
+      case TRI_AQL_NODE_FOR:
+        expressionNode = TRI_AQL_NODE_MEMBER(definingNode, 1);
+        break;
+      default: {
+      }
+    }
+
+    if (expressionNode != NULL) {
+      if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
+        TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(expressionNode));
+
+        // set new value
+        hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
+      }
+    }
+  } 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
 ///
-/// this is the callback function used by the statement walker
+/// this is a callback function used by the statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessStatement (void* data, TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
-  TRI_aql_node_t* result = node;
-
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
+                                         TRI_aql_node_t* node) {
   if (node) {
-    // scope handling
-    if (node->_type == TRI_AQL_NODE_FOR) {
-      TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+    // this may change the node pointer
+    node = OptimiseStatement(walker, node);
 
-      StartScope(context, TRI_AQL_SCOPE_FOR, node, TRI_AQL_NODE_STRING(nameNode));
+    // patch variables with range infos
+    if (node->_type == TRI_AQL_NODE_SCOPE_END) {
+      PatchVariables(walker);
     }
-/*    else if (node->_type == TRI_AQL_NODE_SUBQUERY) {
-      StartScope(context, TRI_AQL_SCOPE_FUNCTION, NULL, NULL);
-    }*/ // TODO: REMOVE
-
-    result = OptimiseStatement(context, node);
-
-    // scope handling
-    if (node->_type == TRI_AQL_NODE_RETURN) {
-      PatchForLoops(context);
-      EndScope(context, true);
-    }
-  /* TODO: REMOVE  
-    else if (node->_type == TRI_AQL_NODE_SUBQUERY) {
-      EndScope(context, false);
-    }
-    */
   }
 
-  return result;
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise the AST
+////////////////////////////////////////////////////////////////////////////////
+
+static bool OptimiseAst (TRI_aql_context_t* const context) {
+  TRI_aql_statement_walker_t* walker;
+
+  walker = TRI_CreateStatementWalkerAql((void*) context, 
+                                        true,
+                                        &OptimiseNode,
+                                        NULL, 
+                                        &ProcessStatement);
+  if (walker == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+    return false;
+  }
+
+  TRI_WalkStatementsAql(walker, context->_statements); 
+
+  TRI_FreeStatementWalkerAql(walker);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine which indexes to use in the query
+////////////////////////////////////////////////////////////////////////////////
+
+static bool DetermineIndexes (TRI_aql_context_t* const context) {
+  TRI_aql_statement_walker_t* walker;
+
+  walker = TRI_CreateStatementWalkerAql((void*) context, 
+                                        false,
+                                        &AnnotateNode, 
+                                        NULL, 
+                                        NULL);
+  if (walker == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+    return false;
+  }
+
+  TRI_WalkStatementsAql(walker, context->_statements); 
+
+  TRI_FreeStatementWalkerAql(walker);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1038,30 +1039,17 @@ static TRI_aql_node_t* ProcessStatement (void* data, TRI_aql_node_t* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the statement list
+/// @brief optimise the query
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_OptimiseAql (TRI_aql_context_t* const context) {
-  TRI_aql_statement_walker_t* walker;
-
-  walker = TRI_CreateStatementWalkerAql((void*) context, 
-                                        true,
-                                        &ProcessNode, 
-                                        NULL, 
-                                        &ProcessStatement);
-  if (walker == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-
+  if (!OptimiseAst(context)) {
     return false;
   }
 
-  StartScope(context, TRI_AQL_SCOPE_MAIN, NULL, NULL);
-
-  TRI_WalkStatementsAql(walker, context->_statements); 
-  
-  EndScope(context, false);
-
-  TRI_FreeStatementWalkerAql(walker);
+  if (!DetermineIndexes(context)) {
+    return false;
+  }
 
   return true;
 }

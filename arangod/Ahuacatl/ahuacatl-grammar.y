@@ -55,6 +55,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
   YYABORT;
 
 #define scanner context->_parser->_scanner
+
 %}
 
 /* define tokens and "nice" token names */

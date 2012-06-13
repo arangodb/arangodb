@@ -49,6 +49,8 @@ static char* AccessName (const TRI_aql_access_e type) {
   switch (type) {
     case TRI_AQL_ACCESS_ALL: 
       return "all";
+    case TRI_AQL_ACCESS_REFERENCE: 
+      return "reference";
     case TRI_AQL_ACCESS_IMPOSSIBLE: 
       return "impossible";
     case TRI_AQL_ACCESS_EXACT: 
@@ -59,11 +61,32 @@ static char* AccessName (const TRI_aql_access_e type) {
       return "single range";
     case TRI_AQL_ACCESS_RANGE_DOUBLE: 
       return "double range";
-    default:
-      return "unknown";
   }
+
+  assert(false);
+  return NULL;
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the length of the variable name for a field access struct
+////////////////////////////////////////////////////////////////////////////////
+
+static void SetNameLength (TRI_aql_field_access_t* const fieldAccess) {
+  char* dotPosition;
+
+  assert(fieldAccess);
+  assert(fieldAccess->_fullName);
+  
+  dotPosition = strchr(fieldAccess->_fullName, '.');
+  if (dotPosition == NULL) {
+    // field does not contain .
+    fieldAccess->_variableNameLength = strlen(fieldAccess->_fullName);
+  }
+  else {
+    fieldAccess->_variableNameLength = dotPosition - fieldAccess->_fullName;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free access member data, but do not free the access struct itself
@@ -74,17 +97,21 @@ static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
 
   switch (fieldAccess->_type) {
     case TRI_AQL_ACCESS_EXACT:
-    case TRI_AQL_ACCESS_LIST:
+    case TRI_AQL_ACCESS_LIST: {
       if (fieldAccess->_value._value) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._value);
       }
       break;
-    case TRI_AQL_ACCESS_RANGE_SINGLE:
+    }
+
+    case TRI_AQL_ACCESS_RANGE_SINGLE: {
       if (fieldAccess->_value._singleRange._value) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._singleRange._value);
       }
       break;
-    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+    }
+
+    case TRI_AQL_ACCESS_RANGE_DOUBLE: {
       if (fieldAccess->_value._between._lower._value) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._between._lower._value);
       }
@@ -92,11 +119,19 @@ static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._between._upper._value);
       }
       break;
+    }
+    
+    case TRI_AQL_ACCESS_REFERENCE: {
+      if (fieldAccess->_value._value) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_value._value);
+      }
+      break;
+    }
 
     case TRI_AQL_ACCESS_ALL:
-    case TRI_AQL_ACCESS_IMPOSSIBLE:
-    default: {
+    case TRI_AQL_ACCESS_IMPOSSIBLE: {
       // nada
+      break;
     }
   }
 }
@@ -110,7 +145,7 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
                                                   const char* const fullName) {
   TRI_aql_field_access_t* fieldAccess;
  
-  fieldAccess  = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
+  fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -124,6 +159,8 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
 
     return NULL;
   }
+
+  SetNameLength(fieldAccess);
 
   fieldAccess->_type = type;
 
@@ -174,6 +211,23 @@ static TRI_aql_field_access_t* MergeAndAll (TRI_aql_context_t* const context,
   TRI_FreeAccessAql(lhs);
 
   return rhs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two access structures using a logical AND
+///
+/// left hand operand is a reference, so it will always be returned
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const context,
+                                                  TRI_aql_field_access_t* lhs,
+                                                  TRI_aql_field_access_t* rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  
+  // reference always wins
+  TRI_FreeAccessAql(rhs);
+
+  return lhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -789,6 +843,35 @@ static TRI_aql_field_access_t* MergeOrAll (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two access structures using a logical OR
 ///
+/// left hand operand is reference access
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const context,
+                                                 TRI_aql_field_access_t* lhs,
+                                                 TRI_aql_field_access_t* rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
+    // if rhs is also a reference, we can keep it if both refer to the same value
+    if (TRI_EqualString(lhs->_value._value->_value._string.data, rhs->_value._value->_value._string.data)) {
+      TRI_FreeAccessAql(rhs);
+
+      return lhs;
+    }
+  }
+
+  // for everything else, we have to use the ALL range unfortunately
+
+  TRI_FreeAccessAql(rhs);
+  FreeAccessMembers(lhs);
+  lhs->_type = TRI_AQL_ACCESS_ALL;
+
+  return lhs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two access structures using a logical OR
+///
 /// left hand operand is the exact match, the result type depends on the right
 /// hand operand type
 ////////////////////////////////////////////////////////////////////////////////
@@ -1109,6 +1192,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
       return MergeAndImpossible(context, lhs, rhs);
     case TRI_AQL_ACCESS_ALL:
       return MergeAndAll(context, lhs, rhs);
+    case TRI_AQL_ACCESS_REFERENCE:
+      return MergeAndReference(context, lhs, rhs);
     case TRI_AQL_ACCESS_EXACT:
       return MergeAndExact(context, lhs, rhs);
     case TRI_AQL_ACCESS_LIST:
@@ -1150,6 +1235,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
       return MergeOrImpossible(context, lhs, rhs);
     case TRI_AQL_ACCESS_ALL:
       return MergeOrAll(context, lhs, rhs);
+    case TRI_AQL_ACCESS_REFERENCE:
+      return MergeOrReference(context, lhs, rhs);
     case TRI_AQL_ACCESS_EXACT:
       return MergeOrExact(context, lhs, rhs);
     case TRI_AQL_ACCESS_LIST:
@@ -1429,6 +1516,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
     return NULL;
   }
 
@@ -1436,19 +1524,23 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
+
     return NULL;
   }
+  SetNameLength(fieldAccess);
   
   if (operator == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
     // create an all items access, and we're done
     fieldAccess->_type = TRI_AQL_ACCESS_ALL;
+
     return fieldAccess;
   } 
 
   // all other operation types require a value...
   value = TRI_NodeJsonAql(context, node);
-  if (!value) {
+  if (value == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
     return NULL;
   }  
 
@@ -1655,15 +1747,31 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_type_e operator;
 
     if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
-      // in is special
+      // in operator is special. if right operand is not a list, we must abort here
       return NULL;
     } 
+
     if (lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(rhs)) {
+      // collection.attribute operator value
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
     }
     else if (rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS && TRI_IsConstantValueNodeAql(lhs)) {
+      // value operator collection.attribute
+      node1 = rhs;
+      node2 = lhs;
+      operator = TRI_ReverseOperatorRelationalAql(node->_type);
+      assert(operator != TRI_AQL_NODE_NOP);
+    }
+    else if (lhs->_type == TRI_AQL_NODE_REFERENCE && TRI_IsConstantValueNodeAql(rhs)) {
+      // variable operator value
+      node1 = lhs;
+      node2 = rhs;
+      operator = node->_type;
+    }
+    else if (rhs->_type == TRI_AQL_NODE_REFERENCE && TRI_IsConstantValueNodeAql(lhs)) {
+      // value operator variable
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
@@ -1820,14 +1928,16 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
 
   switch (source->_type) {
     case TRI_AQL_ACCESS_EXACT:
-    case TRI_AQL_ACCESS_LIST:
+    case TRI_AQL_ACCESS_LIST: {
       fieldAccess->_value._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._value);
       if (fieldAccess->_value._value == NULL) {
         // OOM
         TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
-    case TRI_AQL_ACCESS_RANGE_SINGLE:
+    }
+
+    case TRI_AQL_ACCESS_RANGE_SINGLE: {
       fieldAccess->_value._singleRange._type = source->_value._singleRange._type;
       fieldAccess->_value._singleRange._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._singleRange._value);
       if (fieldAccess->_value._singleRange._value == NULL) {
@@ -1835,7 +1945,9 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
         TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
-    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+    }
+
+    case TRI_AQL_ACCESS_RANGE_DOUBLE: {
       fieldAccess->_value._between._lower._type = source->_value._between._lower._type;
       fieldAccess->_value._between._upper._type = source->_value._between._upper._type;
       fieldAccess->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._between._lower._value);
@@ -1846,11 +1958,18 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
         TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
+    }
+    
+    case TRI_AQL_ACCESS_REFERENCE: {
+      // TODO
+      break;
+    }
+
     case TRI_AQL_ACCESS_ALL:
-    case TRI_AQL_ACCESS_IMPOSSIBLE:
-    default:
+    case TRI_AQL_ACCESS_IMPOSSIBLE: {
       // nada
       break;
+    }
   }
 
   return fieldAccess;
