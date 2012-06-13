@@ -11,5 +11,6 @@ rspec --format d \
 	api-index-spec.rb \
 	api-index-hash-spec.rb \
 	api-index-skiplist-spec.rb \
+        api-explain-spec.rb \
         api-cursor-spec.rb \
         api-simple-spec.rb
