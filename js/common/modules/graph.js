@@ -849,7 +849,7 @@ Vertex.prototype._processNeighbors = function (determined_list, distances, prede
     current_weight,
     not_determined_neighbors = [];
 
-  raw_neighborlist = this.getNeighbors(options.direction || 'both', options.labels, options.weight);
+  raw_neighborlist = this.getNeighbors(options);
 
   for (i = 0; i < raw_neighborlist.length; i += 1) {
     current_neighbor_id = raw_neighborlist[i].id;
@@ -908,13 +908,18 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.getNeighbors = function (direction, labels, weight) {
+Vertex.prototype.getNeighbors = function (options) {
   var i,
     current_edge,
     current_vertex,
     current_label,
     target_array = [],
     addNeighborToList;
+
+  direction = options.direction || 'both';
+  labels = options.labels;
+  weight = options.weight;
+  default_weight = options.default_weight || Infinity;
 
   if ((direction === 'both') || (direction === 'outbound')) {
     for (i = 0; i < this.getOutEdges().length; i++) {
@@ -926,7 +931,7 @@ Vertex.prototype.getNeighbors = function (direction, labels, weight) {
         if (weight === undefined) {
           neighbor_info.weight = 1;
         } else {
-          neighbor_info.weight = current_edge.getProperty(weight);
+          neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
         }
         target_array.push(neighbor_info);
       }
