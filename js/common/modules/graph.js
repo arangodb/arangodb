@@ -836,7 +836,7 @@ Vertex.prototype.determinePredecessors = function (source_id, options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function for determinePredecessors (changes distance and predecessors
 ///
-/// @FUN{@FA{vertex}._processNeighbors(@FA{determinedt}, @FA{distances}, @FA{predecessors})}
+/// @FUN{@FA{vertex}._processNeighbors(@FA{determined}, @FA{distances}, @FA{predecessors})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -874,7 +874,7 @@ Vertex.prototype._processNeighbors = function (determined_list, distances, prede
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get all pathes from root to leave vertices for a given tree
+/// @brief Get all paths from root to leave vertices for a given tree
 ///
 /// @FUN{@FA{vertex}.pathesForTree(@FA{tree}, @FA{path_to_here})}
 ///
@@ -902,9 +902,9 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get all neighbors for this vertex
+/// @brief Get all neighbours for this vertex
 ///
-/// @FUN{@FA{vertex}.getNeighbors()}
+/// @FUN{@FA{vertex}.getNeighbors(@FA{options})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -934,19 +934,17 @@ Vertex.prototype.getNeighbors = function (options) {
   };
 
   if ((direction === 'both') || (direction === 'outbound')) {
-    for (i = 0; i < this.getOutEdges().length; i++) {
-      current_edge = this.getOutEdges()[i];
+    this.getOutEdges().forEach(function (current_edge) {
       current_vertex = current_edge.getInVertex();
       addNeighborToList(current_edge, current_vertex);
-    }
+    });
   }
 
   if ((direction === 'both') || (direction === 'inbound')) {
-    for (i = 0; i < this.getInEdges().length; i++) {
-      current_edge = this.getInEdges()[i];
+    this.getInEdges().forEach(function (current_edge) {
       current_vertex = current_edge.getOutVertex();
       addNeighborToList(current_edge, current_vertex);
-    }
+    });
   }
 
   return target_array;
