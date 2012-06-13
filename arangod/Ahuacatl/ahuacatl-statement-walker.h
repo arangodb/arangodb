@@ -121,7 +121,8 @@ TRI_vector_pointer_t* TRI_GetScopesStatementWalkerAql (TRI_aql_statement_walker_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const,
-                                                       const char* const);
+                                                       const char* const,
+                                                       size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a statement walker

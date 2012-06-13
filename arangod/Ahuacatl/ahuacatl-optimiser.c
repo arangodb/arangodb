@@ -445,9 +445,10 @@ static TRI_aql_node_t* OptimiseReference (TRI_aql_statement_walker_t* const walk
   TRI_aql_variable_t* variable;
   TRI_aql_node_t* definingNode;
   char* variableName = (char*) TRI_AQL_NODE_STRING(node);
+  size_t scopeCount; // ignored
 
   assert(variableName);
-  variable = TRI_GetVariableStatementWalkerAql(walker, variableName);
+  variable = TRI_GetVariableStatementWalkerAql(walker, variableName, &scopeCount);
 
   if (variable == NULL) {
     return node;
@@ -634,13 +635,13 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     func = "GREATER";
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
-    func = "GREATER_EQUAL";
+    func = "GREATEREQUAL";
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
     func = "LESS";
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
-    func = "LESS_EQUAL";
+    func = "LESSEQUAL";
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     func = "IN";
@@ -904,6 +905,8 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     TRI_aql_node_t* definingNode;
     TRI_aql_node_t* expressionNode;
     char* variableName;
+    size_t scopeCount;
+    bool isReference;
 
     fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(ranges, i);
     assert(fieldAccess);
@@ -917,10 +920,18 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
       return;
     }
 
-    variable = TRI_GetVariableStatementWalkerAql(walker, variableName);
+    isReference = (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
+                   fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE_RANGE);
+
+    variable = TRI_GetVariableStatementWalkerAql(walker, variableName, &scopeCount);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
 
     if (variable == NULL) {
+      continue;
+    }
+
+    if (isReference && scopeCount > 0) {
+      // unfortunately, the referenced variable is in an outer scope, so we cannot use it
       continue;
     }
 
