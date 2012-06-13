@@ -28,6 +28,7 @@
 #include "RestDocumentHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
@@ -231,9 +232,9 @@ bool RestDocumentHandler::createDocument () {
 
   // extract the cid
   bool found;
-  string collection = request->value("collection", found);
+  char const* collection = request->value("collection", found);
 
-  if (! found || collection.empty()) {
+  if (! found || *collection == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
@@ -241,8 +242,8 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // shall we create the collection?
-  string createStr = request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(createStr) : false;
+  char const* createStr = request->value("createCollection", found);
+  bool create = found ? TRI_BooleanString(createStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());

@@ -214,7 +214,7 @@ bool RestImportHandler::createByArray () {
   size_t next = 0;
   string line;
   
-  while (next != string::npos && start < request->body().length()) {
+  while (next != string::npos && start < request->bodySize()) {
     
     next = request->body().find('\n', start);
     if (next == string::npos) {
