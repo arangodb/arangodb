@@ -200,7 +200,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
       _versionDataQueued->_queue = "STANDARD";
     }
 
-    factory->addHandler(prefix + "/queued/version",
+    factory->addHandler(prefix + "/queued-version",
                         RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
                         (void*) _versionDataQueued);
   }
