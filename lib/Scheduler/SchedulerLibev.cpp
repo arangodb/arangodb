@@ -245,6 +245,9 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
     _backend(backend) {
 
+  // setup lock
+  TRI_InitSpin(&_watcherLock);
+
   // report status
   LOGGER_TRACE << "supported backends: " << ev_supported_backends();
   LOGGER_TRACE << "recommended backends: " << ev_recommended_backends();
@@ -317,6 +320,9 @@ SchedulerLibev::~SchedulerLibev () {
   // delete threads buffer and wakers
   delete[] threads;
   delete[] (ev_async**)_wakers;
+
+  // destroy lock
+  TRI_DestroySpin(&_watcherLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -631,13 +637,17 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* SchedulerLibev::lookupWatcher (EventToken token) {
-  MUTEX_LOCKER(_watcherLock);
+  TRI_LockSpin(&_watcherLock);
 
   if (token >= _watchers.size()) {
+    TRI_UnlockSpin(&_watcherLock);
     return 0;
   }
   
-  return _watchers[token];
+  void* watcher = _watchers[token];
+
+  TRI_UnlockSpin(&_watcherLock);
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -645,14 +655,18 @@ void* SchedulerLibev::lookupWatcher (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
-  MUTEX_LOCKER(_watcherLock);
+  TRI_LockSpin(&_watcherLock);
   
   if (token >= _watchers.size()) {
+    TRI_UnlockSpin(&_watcherLock);
     return 0;
   }
   
   type = _types[token];
-  return _watchers[token];
+  void* watcher = _watchers[token];
+
+  TRI_UnlockSpin(&_watcherLock);
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,7 +686,7 @@ void* SchedulerLibev::lookupLoop (EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
-  MUTEX_LOCKER(_watcherLock);
+  TRI_LockSpin(&_watcherLock);
   
   EventToken token;
   
@@ -688,6 +702,7 @@ EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
   
   _types[token] = type;
   
+  TRI_UnlockSpin(&_watcherLock);
   return token;
 }
 
@@ -696,10 +711,12 @@ EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::unregisterWatcher (EventToken token) {
-  MUTEX_LOCKER(_watcherLock);
+  TRI_LockSpin(&_watcherLock);
   
   _frees.push_back(token);
   _watchers[token] = 0;
+
+  TRI_UnlockSpin(&_watcherLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
