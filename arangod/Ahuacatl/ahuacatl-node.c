@@ -36,7 +36,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-inline const bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
+inline bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
   if (type == TRI_AQL_NODE_SCOPE_START ||
       type == TRI_AQL_NODE_SCOPE_END ||
       type == TRI_AQL_NODE_SUBQUERY ||
@@ -182,7 +182,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
 /// @brief return true if a node is a list node
 ////////////////////////////////////////////////////////////////////////////////
 
-inline const bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
+inline bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
   return (node->_type == TRI_AQL_NODE_LIST);
 }
 
