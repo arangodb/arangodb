@@ -221,7 +221,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST) {
+              candidate->_type != TRI_AQL_ACCESS_LIST &&
+              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT) {
             // wrong access type for primary index
             continue;
           }
@@ -230,11 +231,12 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST) {
+              candidate->_type != TRI_AQL_ACCESS_LIST &&
+              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT) {
             // wrong access type for hash index
             continue;
           }
-
+          
           if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
             // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
@@ -243,10 +245,15 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          bool candidateIsExact;
+          bool lastIsExact;
+
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
               candidate->_type != TRI_AQL_ACCESS_LIST && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
-              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE) {
+              candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE &&
+              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT &&
+              candidate->_type != TRI_AQL_ACCESS_REFERENCE_RANGE) {
             // wrong access type for skiplists
             continue;
           }
@@ -256,8 +263,11 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             continue;
           }
 
-          if ((candidate->_type == TRI_AQL_ACCESS_EXACT && lastType != TRI_AQL_ACCESS_EXACT) ||
-              (candidate->_type != TRI_AQL_ACCESS_EXACT && lastType != TRI_AQL_ACCESS_EXACT)) {
+          candidateIsExact = (candidate->_type == TRI_AQL_ACCESS_EXACT || candidate->_type == TRI_AQL_ACCESS_REFERENCE_EXACT);
+          lastIsExact = (lastType == TRI_AQL_ACCESS_EXACT || lastType == TRI_AQL_ACCESS_REFERENCE_EXACT);
+
+          if ((candidateIsExact && !lastIsExact) ||
+              (!candidateIsExact && !lastIsExact)) {
             // if we already had a range query, we cannot check for equality after that
             // if we already had a range query, we cannot check another range after that
             continue;

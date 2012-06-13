@@ -494,16 +494,21 @@
 ///
 /// Two documents operands are compared by checking attribute names and value. The
 /// attribute names are compared first. Before attribute names are compared, a 
-/// combined list of all attribute names from both operands is created and sorted.
+/// combined list of all attribute names from both operands is created and sorted
+/// lexicographically.
 /// This means that the order in which attributes are declared in a document is not 
-/// relevant for comparing documents.
+/// relevant when comparing two documents. 
 ///
-/// The combined list of attribute names is then traversed, and the respective 
-/// attributes from the two compared operands are then looked up. If one of the
-/// documents does not have an attribute with the sought name, its attribute value
-/// for the comparison is considered to be @LIT{null}.
-/// If the attribute is found in both compared, documents, the usual data type and
-/// data value comparison is performed as described before.
+/// The combined and sorted list of attribute names is then traversed, and the 
+/// respective attributes from the two compared operands are then looked up. If one 
+/// of the documents does not have an attribute with the sought name, its attribute 
+/// value is considered to be @LIT{null}.
+/// Finally, the attribute value of both documents is compared using the beforementioned
+/// data type and value comparison.
+/// The comparisons are performed for all document attributes until there is an
+/// unambigious comparison result. If an unambigious comparison result is found, the
+/// comparison is finished. If there is no unambigious comparison result, the two
+/// compared documents are considered equal.
 ///
 /// @verbinclude aqlcompareexamples2
 ///
