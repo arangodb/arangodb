@@ -29,6 +29,14 @@
 
 #include <v8.h>
 
+#ifdef TRI_ENABLE_MRUBY
+#include "mruby.h"
+#include "mruby/compile.h"
+#include "mruby/data.h"
+#include "mruby/proc.h"
+#include "mruby/variable.h"
+#endif
+
 #include "build.h"
 
 #include "Actions/RestActionHandler.h"
@@ -65,6 +73,17 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 
+#ifdef TRI_ENABLE_MRUBY
+#include "MRServer/mr-actions.h"
+#include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
+#include "RestServer/RubyDispatcherThread.h"
+#endif
+
+#ifdef TRI_ENABLE_ZEROMQ
+#include "ZeroMQ/ApplicationZeroMQ.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -78,17 +97,6 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
-#include "MRServer/mr-actions.h"
-#include "MRuby/MRLineEditor.h"
-#include "MRuby/MRLoader.h"
-#include "RestServer/RubyDispatcherThread.h"
-
-#include "mruby.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/variable.h"
-
 #include "mr/common/bootstrap/mr-error.h"
 #include "mr/server/mr-server.h"
 #endif
@@ -445,7 +453,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango/arango.conf");
 
   // .............................................................................
-  // allow multi-threading scheduler and dispatcher
+  // multi-threading scheduler and dispatcher
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
@@ -454,6 +462,17 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
+  // ZeroMQ
+  // .............................................................................
+
+#ifdef TRI_ENABLE_ZEROMQ
+
+  _applicationZeroMQ = new ApplicationZeroMQ(_applicationServer);
+  _applicationServer->addFeature(_applicationZeroMQ);
+
+#endif
 
   // .............................................................................
   // and start a simple admin server
@@ -900,8 +919,6 @@ int ArangoServer::startupServer () {
   // start the main event loop
   // .............................................................................
 
-  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
-
   if (useHttpPort) {
     if (shareAdminPort) {
       LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
@@ -921,9 +938,11 @@ int ArangoServer::startupServer () {
     LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
   }
 
+  _applicationServer->start();
+
+  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
 
-  _applicationServer->start();
   _applicationServer->wait();
 
   // .............................................................................

@@ -69,6 +69,11 @@ AM_CPPFLAGS = \
 	@READLINE_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
+if ENABLE_ZEROMQ
+AM_CPPFLAGS += \
+	@ZEROMQ_CPPFLAGS@
+endif
+
 ################################################################################
 ### @brief linker flags
 ################################################################################
@@ -81,6 +86,11 @@ AM_LDFLAGS = \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
 	@V8_LDFLAGS@
+
+if ENABLE_ZEROMQ
+AM_LDFLAGS += \
+	@ZEROMQ_LDFLAGS@
+endif
 
 ################################################################################
 ### @brief libraries
