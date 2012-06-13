@@ -32,6 +32,7 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -46,10 +47,12 @@ using namespace triagens::admin;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler (HttpRequest* request, pair<string,string> const* data)
+RestVersionHandler::RestVersionHandler (HttpRequest* request, version_options_t const* data)
   : RestBaseHandler(request),
-    _name(data->first),
-    _version(data->second) {
+    _name(data->_name),
+    _version(data->_version),
+    _isDirect(data->_isDirect),
+    _queue(data->_queue) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +73,15 @@ RestVersionHandler::RestVersionHandler (HttpRequest* request, pair<string,string
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestVersionHandler::isDirect () {
-  return true;
+  return _isDirect;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestVersionHandler::queue () {
+  return _queue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

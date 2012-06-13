@@ -29,6 +29,7 @@
 #define TRIAGENS_ADMIN_APPLICATION_ADMIN_SERVER_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
+#include "Admin/RestVersionHandler.h"
 
 #include "Rest/AddressPort.h"
 
@@ -267,10 +268,16 @@ namespace triagens {
         string _version;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pair with version name and number
+/// @brief version name and number for RestVersionHandler
 ////////////////////////////////////////////////////////////////////////////////
   
-        pair<string, string>* _versionData;
+        RestVersionHandler::version_options_t* _versionDataDirect;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version name and number for RestVersionHandler
+////////////////////////////////////////////////////////////////////////////////
+  
+        RestVersionHandler::version_options_t* _versionDataQueued;
     };
   }
 }
