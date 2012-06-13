@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statementlist.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  private members
@@ -40,7 +42,13 @@
 /// @brief dummy no-operations node (re-used for ALL non-operations)}
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t NopNode;
+static TRI_aql_node_t* DummyNopNode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dummy empty return node (re-used for multiple operations)
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* DummyReturnEmptyNode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -123,21 +131,49 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief init the no-op node at program start
+/// @brief init the global nodes at program start
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStatementListAql (void) {
-  NopNode._type = TRI_AQL_NODE_NOP;
-
-  TRI_InitVectorPointer(&NopNode._members, TRI_UNKNOWN_MEM_ZONE);
+void TRI_GlobalInitStatementListAql (void) { 
+  DummyNopNode = TRI_CreateNodeNopAql();
+  DummyReturnEmptyNode = TRI_CreateNodeReturnEmptyAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the non-op node
+/// @brief free the global nodes at program end
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_GetNopNodeAql (void) {
-  return &NopNode;
+void TRI_GlobalFreeStatementListAql (void) { 
+  if (DummyNopNode != NULL) {
+    TRI_DestroyVectorPointer(&DummyNopNode->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyNopNode);
+  }
+  
+  if (DummyReturnEmptyNode != NULL) {
+    TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(DummyReturnEmptyNode, 0);
+    
+    TRI_DestroyVectorPointer(&list->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+
+    TRI_DestroyVectorPointer(&DummyReturnEmptyNode->_members);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyReturnEmptyNode);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the address of the dummy non-op node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_GetDummyNopNodeAql (void) {
+  return DummyNopNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the address of the dummy return empty node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void) {
+  return DummyReturnEmptyNode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,24 +211,28 @@ bool TRI_AddStatementListAql (TRI_aql_statement_list_t* const list,
 void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
   size_t i, j, n;
 
-
   assert(list);
 
+  i = 0;
   j = 0;
   n = list->_statements._length;
-  for (i = 0; i < n; ++i) {
+
+  while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
 
     if (node->_type == TRI_AQL_NODE_NOP) {
+      ++i;
       continue;
     }
 
-    if (i == j) {
-      ++j;
-      continue;
+    if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
+      i = TRI_InvalidateStatementListAql(list, i);
+      j = i;
+      continue; 
     }
 
     list->_statements._buffer[j++] = node;
+    ++i;
   }
 
   list->_statements._length = j;
@@ -202,42 +242,54 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
 /// @brief invalidate all statements in current scope and subscopes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
-                                     const size_t position) {
+size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
+                                       const size_t position) {
   size_t i, n;
-  size_t level;
+  size_t start;
+  size_t scopes;
 
   assert(list);
+  assert(position >= 0);
   n = list->_statements._length;
 
   // remove from position backwards to scope start
+  scopes = 1;
   i = position;
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
 
-    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
+    start = i;
 
-    if (type == TRI_AQL_NODE_SCOPE_START || i-- == 0) {
+    if (type == TRI_AQL_NODE_SCOPE_START) {
+      TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+
+      if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
+        break;
+      }
+      scopes++;
+    }
+
+    if (i-- == 0) {
       break;
     }
   }
 
   // remove from position forwards to scope end
-  level = 1;
   i = position;
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
     
-    list->_statements._buffer[i] = TRI_GetNopNodeAql();
+    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
 
     if (type == TRI_AQL_NODE_SCOPE_START) {
-      ++level;
+      ++scopes;
     }
     else if (type == TRI_AQL_NODE_SCOPE_END) {
-      assert(level > 0);
-      if (--level == 0) {
+      assert(scopes > 0);
+      if (--scopes == 0) {
         break;
       }
     }
@@ -246,7 +298,10 @@ void TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
       break;
     }
   }
+  
+  list->_statements._buffer[start] = TRI_GetDummyReturnEmptyNodeAql();
 
+  return start + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

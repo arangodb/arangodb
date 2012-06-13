@@ -55,6 +55,28 @@ inline const bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the node type group
+////////////////////////////////////////////////////////////////////////////////
+      
+const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node) {
+  switch (node->_type) {
+    case TRI_AQL_NODE_VALUE:
+      return "const value";
+    case TRI_AQL_NODE_LIST:
+      return "const list";
+    case TRI_AQL_NODE_ARRAY:
+      return "const document";
+    case TRI_AQL_NODE_REFERENCE:
+      return "reference";
+    case TRI_AQL_NODE_COLLECTION:
+      return "collection";
+    default: {
+      return "expression";
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the "nice" name of an AST node
 ////////////////////////////////////////////////////////////////////////////////
       
@@ -62,6 +84,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
   switch (type) {
     case TRI_AQL_NODE_NOP:
       return "nop";
+    case TRI_AQL_NODE_RETURN_EMPTY:
+      return "return (empty)";
     case TRI_AQL_NODE_SCOPE_START:
       return "scope start";
     case TRI_AQL_NODE_SCOPE_END:
@@ -149,7 +173,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
     case TRI_AQL_NODE_FCALL:
       return "function call";
   }
- 
+
   assert(false);
   return "undefined";
 }

@@ -67,6 +67,7 @@ TRI_aql_scope_e;
 
 typedef struct TRI_aql_scope_s {
   TRI_associative_pointer_t _variables;
+  TRI_vector_pointer_t* _ranges;
   TRI_aql_scope_e _type;
   size_t _id;
 }

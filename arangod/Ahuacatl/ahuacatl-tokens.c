@@ -1185,7 +1185,7 @@ case 40:
 YY_RULE_SETUP
 { 
   /* unquoted string */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
   return T_STRING; 
 }
 	YY_BREAK
@@ -1194,7 +1194,7 @@ case 41:
 YY_RULE_SETUP
 {
   /* string enclosed in backticks */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
   return T_STRING;
 }
 	YY_BREAK
@@ -1203,7 +1203,7 @@ case 42:
 YY_RULE_SETUP
 {
   /* string enclosed in double quotes */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1212,7 +1212,7 @@ case 43:
 YY_RULE_SETUP
 {
   /* string enclosed in single quotes */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 2, true); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1220,7 +1220,7 @@ case 44:
 YY_RULE_SETUP
 {  
   /* a numeric value */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, strlen(yytext), false); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
   return T_NUMBER;
 }
 	YY_BREAK
@@ -1232,7 +1232,7 @@ YY_RULE_SETUP
 {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, strlen(yytext) - 1, false); 
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 1, false); 
   return T_PARAMETER;
 }
 	YY_BREAK

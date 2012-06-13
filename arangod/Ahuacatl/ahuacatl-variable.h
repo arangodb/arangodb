@@ -55,7 +55,6 @@ extern "C" {
 
 typedef struct TRI_aql_variable_s {
   char* _name;
-  uint32_t _refCount;
   TRI_aql_node_t* _definingNode;
 }
 TRI_aql_variable_t;

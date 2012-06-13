@@ -571,6 +571,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-context.c \
 	arangod/Ahuacatl/ahuacatl-conversions.c \
 	arangod/Ahuacatl/ahuacatl-error.c \
+	arangod/Ahuacatl/ahuacatl-explain.c \
 	arangod/Ahuacatl/ahuacatl-functions.c \
 	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-index.c \
@@ -625,6 +626,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-context.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-conversions.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-error.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-explain.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-functions.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-grammar.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-index.$(OBJEXT) \
@@ -1335,6 +1337,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-context.c \
 	arangod/Ahuacatl/ahuacatl-conversions.c \
 	arangod/Ahuacatl/ahuacatl-error.c \
+	arangod/Ahuacatl/ahuacatl-explain.c \
 	arangod/Ahuacatl/ahuacatl-functions.c \
 	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-index.c \
@@ -1480,8 +1483,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
-		        @srcdir@/js/server/tests/ahuacatl-escaping.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-variables.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
@@ -1497,7 +1499,8 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @srcdir@/js/server/tests/ahuacatl-operators.js
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 
@@ -2299,6 +2302,9 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-conversions.$(OBJEXT):  \
 arangod/Ahuacatl/bin_arangod-ahuacatl-error.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-explain.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-functions.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -2576,6 +2582,7 @@ mostlyclean-compile:
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-context.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-conversions.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-error.$(OBJEXT)
+	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-explain.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-functions.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-grammar.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/bin_arangod-ahuacatl-index.$(OBJEXT)
@@ -2821,6 +2828,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-context.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-conversions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-grammar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-index.Po@am__quote@
@@ -3199,6 +3207,22 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-error.obj: arangod/Ahuacatl/ahuacatl-error
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-error.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-error.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-error.obj `if test -f 'arangod/Ahuacatl/ahuacatl-error.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-error.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-error.c'; fi`
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-explain.o: arangod/Ahuacatl/ahuacatl-explain.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-explain.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-explain.o `test -f 'arangod/Ahuacatl/ahuacatl-explain.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-explain.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-explain.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-explain.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-explain.o `test -f 'arangod/Ahuacatl/ahuacatl-explain.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-explain.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-explain.obj: arangod/Ahuacatl/ahuacatl-explain.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-explain.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-explain.obj `if test -f 'arangod/Ahuacatl/ahuacatl-explain.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-explain.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-explain.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-explain.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/Ahuacatl/ahuacatl-explain.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-explain.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-explain.obj `if test -f 'arangod/Ahuacatl/ahuacatl-explain.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-explain.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-explain.c'; fi`
 
 arangod/Ahuacatl/bin_arangod-ahuacatl-functions.o: arangod/Ahuacatl/ahuacatl-functions.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-functions.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-functions.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-functions.o `test -f 'arangod/Ahuacatl/ahuacatl-functions.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-functions.c

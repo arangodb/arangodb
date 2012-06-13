@@ -30,6 +30,7 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-optimiser.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
@@ -110,15 +111,23 @@ static void FreeNodes (TRI_aql_context_t* const context) {
   while (i--) {
     TRI_aql_node_t* node = (TRI_aql_node_t*) context->_memory._nodes._buffer[i];
 
-    if (node) {
-      TRI_DestroyVectorPointer(&node->_members);
-
-      if (node->_type == TRI_AQL_NODE_FOR && node->_value._value._data != NULL) {
-        TRI_FreeAccessesAql((TRI_vector_pointer_t*) node->_value._value._data);
-      }
-      // free node itself
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    if (node == NULL) {
+      continue;
     }
+
+    TRI_DestroyVectorPointer(&node->_members);
+
+    if (node->_type == TRI_AQL_NODE_COLLECTION) {
+      // free attached collection hint
+      TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(node));
+
+      if (hint != NULL) {
+        TRI_FreeCollectionHintAql(hint);
+      }
+    }
+
+    // free node itself
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
   }
 
   TRI_DestroyVectorPointer(&context->_memory._nodes);
@@ -185,7 +194,6 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&context->_optimiser._scopes, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitErrorAql(&context->_error);
 
@@ -250,9 +258,6 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   
   FreeCollections(context);
   
-  // free scopes allocated by optimiser
-  TRI_DestroyVectorPointer(&context->_optimiser._scopes); 
-
   // free parameter values
   TRI_FreeBindParametersAql(context);
   TRI_DestroyAssociativePointer(&context->_parameters._values);
@@ -340,6 +345,8 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
     return false;
   }
 
+  TRI_CompactStatementListAql(context->_statements);
+
   // TRI_DumpStatementsAql(context->_statements);
 
   return true;
@@ -370,54 +377,6 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new variable scope
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_scope2_t* TRI_CreateScopeAql (void) {
-  TRI_aql_scope2_t* scope;
-
-  scope = (TRI_aql_scope2_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope2_t), false);
-  if (!scope) {
-    return NULL;
-  }
-
-  TRI_InitAssociativePointer(&scope->_variables, 
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashVariableAql,
-                             &TRI_EqualVariableAql, 
-                             0);
-  
-  scope->_last = NULL;
-
-  return scope;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a variable scope
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeScopeAql (TRI_aql_scope2_t* const scope) {
-  size_t i, length;
-
-  assert(scope);
- 
-  // free variables lookup hash
-  length = scope->_variables._nrAlloc;
-  for (i = 0; i < length; ++i) {
-    TRI_aql_variable_t* variable = scope->_variables._table[i];
-
-    if (variable) {
-      TRI_FreeVariableAql(variable);
-    }
-  }
-
-  TRI_DestroyAssociativePointer(&scope->_variables);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
