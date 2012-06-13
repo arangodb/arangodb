@@ -321,12 +321,12 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
 
     case HttpRequest::HTTP_REQUEST_DELETE:

@@ -438,10 +438,10 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, str
     return 0;
   }
   else {
-    etag = request->value(parameter, found);
+    char const* cetag = request->value(parameter, found);
 
     if (found) {
-      return StringUtils::uint64(etag.c_str());
+      return TRI_UInt64String(cetag);
     }
     else {
       return 0;
@@ -455,15 +455,13 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, str
 
 TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
   bool found;
-  string policy = request->value("policy", found);
+  char const* policy = request->value("policy", found);
 
   if (found) {
-    policy = StringUtils::tolower(policy);
-
-    if (policy == "error") {
+    if (TRI_CaseEqualString(policy, "error")) {
       return TRI_DOC_UPDATE_ERROR;
     }
-    else if (policy == "last") {
+    else if (TRI_CaseEqualString(policy, "last")) {
       return TRI_DOC_UPDATE_LAST_WRITE;
     }
     else {
@@ -535,7 +533,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body().c_str(), &errmsg);
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body(), &errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {

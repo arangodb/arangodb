@@ -26,8 +26,8 @@
 /// @author Copyright 2004-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HTTP_REQUEST_H
-#define TRIAGENS_REST_HTTP_REQUEST_H 1
+#ifndef TRIAGENS_REST_HTTP_REQUEST_PLAIN_H
+#define TRIAGENS_REST_HTTP_REQUEST_PLAIN_H 1
 
 #include "Basics/Common.h"
 

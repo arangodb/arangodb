@@ -63,24 +63,24 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
   bool found;
 
   if (request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
-    string const& method = StringUtils::tolower(request->value("__METHOD__", found));
+    char const* method = request->value("__METHOD__", found);
 
     if (found) {
-      if (method == "put") {
+      if (TRI_CaseEqualString(method, "put")) {
         LOGGER_TRACE << "forcing method 'put'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_PUT);
       }
-      else if (method == "post") {
+      else if (TRI_CaseEqualString(method, "post")) {
         LOGGER_TRACE << "forcing method 'post'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_POST);
       }
-      else if (method == "delete") {
+      else if (TRI_CaseEqualString(method, "delete")) {
         LOGGER_TRACE << "forcing method 'delete'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_DELETE);
       }
     }
 
-    string const& body = request->value("__BODY__", found);
+    char const* body = request->value("__BODY__", found);
 
     if (found) {
       LOGGER_TRACE << "forcing body";
@@ -88,7 +88,7 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
     }
   }
 
-  string const& format = request->value("__OUTPUT__", found);
+  char const* format = request->value("__OUTPUT__", found);
 
   if (found) {
     LOGGER_TRACE << "forcing output format '" << format << "'";
