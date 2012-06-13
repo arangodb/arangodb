@@ -59,6 +59,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-collection.c \
 	Doxygen/js/actions/system/api-cursor.c \
 	Doxygen/js/actions/system/api-edges.c \
+	Doxygen/js/actions/system/api-explain.c \
 	Doxygen/js/actions/system/api-index.c \
 	Doxygen/js/actions/system/api-query.c \
 	Doxygen/js/actions/system/api-simple.c \
