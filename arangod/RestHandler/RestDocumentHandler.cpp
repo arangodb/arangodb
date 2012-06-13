@@ -391,7 +391,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = request->suffix();
 
   /// check for an etag
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match");
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
   TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference

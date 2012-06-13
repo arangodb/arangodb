@@ -423,25 +423,38 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, string const& parameter) {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char const* parameter) {
   bool found;
-  string etag = StringUtils::trim(request->header(header, found));
+  char const* etag = request->header(header, found);
 
-  if (found && ! etag.empty() && etag[0] == '"' && etag[etag.length()-1] == '"') {
-    return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
-  }
-  else if (found) {
-    return 0;
+  if (found) {
+    char const* s = etag;
+    char const* e = etag + strlen(etag);
+
+    while (s < e && (s[0] == ' ' || s[0] == '\t')) {
+      ++s;
+    }
+
+    while (s < e && (e[-1] == ' ' || e[-1] == '\t')) {
+      --e;
+    }
+
+    if (s + 1 < e && s[0] == '"' && e[-1] == '"') {
+      return TRI_UInt64String2(s + 1, e - s - 2);
+    }
+    else {
+      return 0;
+    }
   }
 
-  if (parameter.empty()) {
+  if (parameter == 0) {
     return 0;
   }
   else {
-    char const* cetag = request->value(parameter, found);
+    etag = request->value(parameter, found);
 
     if (found) {
-      return TRI_UInt64String(cetag);
+      return TRI_UInt64String(etag);
     }
     else {
       return 0;
