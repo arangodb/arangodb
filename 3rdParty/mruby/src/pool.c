@@ -1,11 +1,25 @@
 /*
 ** pool.c - memory pool
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
-#include "pool.h"
+#include "mruby.h"
+#include <stddef.h>
 #include <string.h>
+
+struct mrb_pool_page {
+  struct mrb_pool_page *next;
+  size_t offset;
+  size_t len;
+  void *last;
+  char page[1];
+};
+
+struct mrb_pool {
+  mrb_state *mrb;
+  struct mrb_pool_page *pages;
+};
 
 #undef TEST_POOL
 #ifdef TEST_POOL
@@ -16,6 +30,12 @@
 #endif
 
 #define POOL_PAGE_SIZE 16000
+
+#ifdef ALLOC_ALIGN
+#  define ALIGN_PADDING(x) ((x % ALLOC_ALIGN) ? ALLOC_ALIGN - (x % ALLOC_ALIGN) : 0)
+#else
+#  define ALIGN_PADDING(x) (0)
+#endif
 
 mrb_pool*
 mrb_pool_open(mrb_state *mrb)
@@ -68,7 +88,7 @@ mrb_pool_alloc(mrb_pool *pool, size_t len)
   size_t n;
 
   if (!pool) return 0;
-
+  len += ALIGN_PADDING(len);
   page = pool->pages;
   while (page) {
     if (page->offset + len <= page->len) {
@@ -95,6 +115,7 @@ mrb_pool_can_realloc(mrb_pool *pool, void *p, size_t len)
   struct mrb_pool_page *page;
 
   if (!pool) return 0;
+  len += ALIGN_PADDING(len);
   page = pool->pages;
   while (page) {
     if (page->last == p) {
@@ -116,6 +137,8 @@ mrb_pool_realloc(mrb_pool *pool, void *p, size_t oldlen, size_t newlen)
   void *np;
 
   if (!pool) return 0;
+  oldlen += ALIGN_PADDING(oldlen);
+  newlen += ALIGN_PADDING(newlen);
   page = pool->pages;
   while (page) {
     if (page->last == p) {
@@ -124,8 +147,8 @@ mrb_pool_realloc(mrb_pool *pool, void *p, size_t oldlen, size_t newlen)
       beg = (char*)p - page->page;
       if (beg + oldlen != page->offset) break;
       if (beg + newlen > page->len) {
-	page->offset = beg;
-	break;
+        page->offset = beg;
+        break;
       }
       page->offset = beg + newlen;
       return p;

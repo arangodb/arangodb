@@ -1,11 +1,15 @@
 /*
 ** irep.h - mrb_irep structure
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
 #ifndef MRUBY_IREP_H
 #define MRUBY_IREP_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 typedef struct mrb_irep {
   int idx;
@@ -26,4 +30,8 @@ typedef struct mrb_irep {
 
 void mrb_add_irep(mrb_state *mrb, int n);
 
-#endif	/* MRUBY_IREP_H */
+#if defined(__cplusplus)
+}  /* extern "C" { */
+#endif
+
+#endif  /* MRUBY_IREP_H */

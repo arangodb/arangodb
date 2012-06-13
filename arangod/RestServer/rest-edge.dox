@@ -1,0 +1,156 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestEdgeTOC
+///
+/// <ul>
+///  <li>@ref RestEdge
+///   <ul>
+///    <li>@ref RestEdgeIntro</li>
+///    <li>@ref RestEdgeResource</li>
+///    <li>@ref RestEdgeHttp
+///     @copydetails RestEdgeCallsTOC
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestEdgeCallsTOC
+///
+/// <ul>
+///  <li>@ref RestEdgeRead "GET /_api/edge/document-handle"</li>
+///  <li>@ref RestEdgeCreate "POST /_api/edge?collection=collection-identifier&from=from-handle&to=to-handle"</li>
+///  <li>@ref RestEdgeUpdate "PUT /_api/edge/document-handle"</li>
+///  <li>@ref RestEdgeDelete "DELETE /_api/edge/document-handle"</li>
+///  <li>@ref RestEdgeHead "HEAD /_api/edge/document-handle"</li>
+///  <li>@ref RestEdgeEdges "GET /_api/edges/collection-identifier?vertex=vertex-handle&directory=direction"</li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestEdge REST Interface for Edges
+///
+/// This is an introduction to ArangoDB's REST interface for edges.
+///
+/// AvocacadoDB offers also some graph functionality. A graph consists of nodes,
+/// edges and properties. ArangoDB stores the information how the nodes relate
+/// to each other aside from the properties.
+///
+/// So a graph data model always consists of two collections: the relations
+/// between the nodes in the graphs are stored in an "edges collection", the
+/// nodes in the graph are stored in documents in regular collections.
+///
+/// Example:
+/// - the edge collection stores the information that a company's reception is
+///   sub-unit to the services unit and the services unit is sub-unit to the
+///   CEO. You would express this relationship with the @LIT{_from} and
+///   @LIT{_to} property
+///
+/// - the "normal" collection stores all the properties about the reception,
+///   e.g. that 20 people are working there and the room number etc.
+///
+/// @LIT{_from} is the document handle of the linked vertex (incoming relation),
+/// @LIT{_to} is the document handle of the linked vertex (outgoing relation).
+///
+/// @EMBEDTOC{RestEdgeTOC}
+///
+/// @section RestEdgeIntro Documents, Identifiers, Handles
+//////////////////////////////////////////////////////////////
+///
+/// @copydoc GlossaryEdge
+///
+/// @section RestEdgeResource Address and ETag of an Edge
+/////////////////////////////////////////////////////////
+///
+/// All documents in ArangoDB have a document handle. This handle uniquely
+/// defines a document and is managed by ArangoDB. All documents are
+/// found under the URI
+///
+/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
+///
+/// For edges you can use the special address
+///
+/// @LIT{http://@FA{server}:@FA{port}/_api/edge/@FA{document-handle}}
+///
+/// For example: Assume that the document handle, which is stored in
+/// the @LIT{_id} field of the edge, is @LIT{7254820/362549736},
+/// then the URL of that edge is:
+///
+/// @LIT{http://localhost:8529/_api/edge/7254820/362549736}
+///
+/// @section RestEdgeHttp Working with Edges using REST
+///////////////////////////////////////////////////////
+///
+/// @anchor RestEdgeRead
+////////////////////////
+/// @RESTHEADER{GET /_api/edge,reads an edge}
+///
+/// @REST{GET /_api/edge/@FA{document-handle}}
+///
+/// See @ref RestDocument for details.
+///
+/// @anchor RestEdgeCreate
+//////////////////////////
+/// @copydetails triagens::arango::RestEdgeHandler::createDocument
+///
+/// @anchor RestEdgeUpdate
+//////////////////////////
+/// @RESTHEADER{PUT /_api/edge,updates an edge}
+///
+/// @REST{PUT /_api/edge/@FA{document-handle}}
+///
+/// See @ref RestDocument for details.
+///
+/// @anchor RestEdgeDelete
+//////////////////////////
+/// @RESTHEADER{DELETE /_api/edge,deletes an edge}
+///
+/// @REST{DELETE /_api/edge/@FA{document-handle}}
+///
+/// See @ref RestDocument for details.
+///
+/// @anchor RestEdgeHead
+////////////////////////
+/// @RESTHEADER{GET /_api/edge,reads an edge header}
+///
+/// @REST{HEAD /_api/edge/@FA{document-handle}}
+///
+/// See @ref RestDocument for details.
+///
+/// @anchor RestEdgeEdges
+/////////////////////////
+/// @copydetails JSF_GET_edges
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

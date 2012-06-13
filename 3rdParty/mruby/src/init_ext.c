@@ -1,6 +1,6 @@
 /*
 ** init_ext.c - initialize extend libraries
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 

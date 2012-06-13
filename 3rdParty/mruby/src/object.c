@@ -1,6 +1,6 @@
 /*
 ** object.c - Object, NilClass, TrueClass, FalseClass class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -9,15 +9,7 @@
 #include "mruby/string.h"
 #include <stdio.h>
 #include "mruby/class.h"
-#include "method.h"
 #include "mruby/numeric.h"
-
-#ifdef INCLUDE_REGEXP
-  #define mrb_usascii_str_new2 mrb_usascii_str_new_cstr
-#else
-  #define mrb_usascii_str_new2 mrb_str_new_cstr
-  #define mrb_usascii_str_new  mrb_str_new
-#endif
 
 #ifndef FALSE
 #define FALSE   0
@@ -107,7 +99,7 @@ mrb_true(mrb_state *mrb, mrb_value obj)
 static mrb_value
 nil_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_usascii_str_new(mrb, 0, 0);
+    return mrb_str_new(mrb, 0, 0);
 }
 
 /***********************************************************************
@@ -167,7 +159,7 @@ true_xor(mrb_state *mrb, mrb_value obj)
 static mrb_value
 true_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_usascii_str_new2(mrb, "true");
+    return mrb_str_new_cstr(mrb, "true");
 }
 
 /* 15.2.5.3.4  */
@@ -280,7 +272,7 @@ false_or(mrb_state *mrb, mrb_value obj)
 static mrb_value
 false_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_usascii_str_new2(mrb, "false");
+    return mrb_str_new_cstr(mrb, "false");
 }
 
 void
@@ -291,6 +283,7 @@ mrb_init_object(mrb_state *mrb)
   struct RClass *f;
 
   n = mrb->nil_class   = mrb_define_class(mrb, "NilClass",   mrb->object_class);
+  mrb_undef_method(mrb,  n, "new");
   mrb_define_method(mrb, n, "&",    false_and,      ARGS_REQ(1));  /* 15.2.4.3.1  */
   mrb_define_method(mrb, n, "^",    false_xor,      ARGS_REQ(1));  /* 15.2.4.3.2  */
   mrb_define_method(mrb, n, "|",    false_or,       ARGS_REQ(1));  /* 15.2.4.3.3  */
@@ -298,19 +291,21 @@ mrb_init_object(mrb_state *mrb)
   mrb_define_method(mrb, n, "to_s", nil_to_s,       ARGS_NONE());  /* 15.2.4.3.5  */
 
   t = mrb->true_class  = mrb_define_class(mrb, "TrueClass",  mrb->object_class);
+  mrb_undef_method(mrb,  n, "new");
   mrb_define_method(mrb, t, "&",    true_and,       ARGS_REQ(1));  /* 15.2.5.3.1  */
   mrb_define_method(mrb, t, "^",    true_xor,       ARGS_REQ(1));  /* 15.2.5.3.2  */
   mrb_define_method(mrb, t, "to_s", true_to_s,      ARGS_NONE());  /* 15.2.5.3.3  */
   mrb_define_method(mrb, t, "|",    true_or,        ARGS_REQ(1));  /* 15.2.5.3.4  */
 
   f = mrb->false_class = mrb_define_class(mrb, "FalseClass", mrb->object_class);
+  mrb_undef_method(mrb,  n, "new");
   mrb_define_method(mrb, f, "&",    false_and,      ARGS_REQ(1));  /* 15.2.6.3.1  */
   mrb_define_method(mrb, f, "^",    false_xor,      ARGS_REQ(1));  /* 15.2.6.3.2  */
   mrb_define_method(mrb, f, "to_s", false_to_s,     ARGS_NONE());  /* 15.2.6.3.3  */
   mrb_define_method(mrb, f, "|",    false_or,       ARGS_REQ(1));  /* 15.2.6.3.4  */
 }
 
-mrb_value
+static mrb_value
 convert_type(mrb_state *mrb, mrb_value val, const char *tname, const char *method, int raise)
 {
   mrb_sym m = 0;
@@ -565,8 +560,7 @@ mrb_convert_to_integer(mrb_state *mrb, mrb_value val, int base)
   switch (mrb_type(val)) {
     case MRB_TT_FLOAT:
       if (base != 0) goto arg_error;
-      if (mrb_float(val) <= (double)FIXNUM_MAX
-          && mrb_float(val) >= (double)FIXNUM_MIN) {
+      if (FIXABLE(mrb_float(val))) {
           break;
       }
       return mrb_flt2big(mrb, mrb_float(val));
@@ -625,12 +619,12 @@ mrb_Float(mrb_state *mrb, mrb_value val)
 mrb_value
 mrb_inspect(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_obj_as_string(mrb, mrb_funcall(mrb, obj, "inspect", 0, 0));
+  return mrb_obj_as_string(mrb, mrb_funcall(mrb, obj, "inspect", 0, 0));
 }
 
 int
 mrb_eql(mrb_state *mrb, mrb_value obj1, mrb_value obj2)
 {
-    return RTEST(mrb_funcall(mrb, obj1, "eql?", 1, obj2));
+  if (mrb_obj_eq(mrb, obj1, obj2)) return TRUE;
+  return RTEST(mrb_funcall(mrb, obj1, "eql?", 1, obj2));
 }
-

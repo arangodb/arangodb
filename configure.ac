@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl PREAMBLE                                     triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [0.5.0], [info@triagens.de], [arango], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [1.0.alpha1], [info@triagens.de], [arango], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -184,7 +184,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
 AC_CONFIG_FILES([Makefile Doxygen/arango.template])
-AC_CONFIG_HEADER([config/config.h BasicsC/local-configuration.h])
+AC_CONFIG_HEADER([config/config.h lib/BasicsC/local-configuration.h])
 AC_OUTPUT
 
 dnl ============================================================================

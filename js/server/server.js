@@ -1,3 +1,15 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global require, db, edges, ModuleCache, Module,
+  ArangoCollection, ArangoEdgesCollection, ArangoDatabase,
+  ArangoEdges, ArangoError, ShapedJson,
+  SYS_DEFINE_ACTION */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
 ///
@@ -38,23 +50,36 @@
 /// @brief internal module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/internal"].exports.db = db;
-ModuleCache["/internal"].exports.edges = edges;
-ModuleCache["/internal"].exports.ArangoCollection = ArangoCollection;
-ModuleCache["/internal"].exports.ArangoEdgesCollection = ArangoEdgesCollection;
+(function () {
+  var internal = require("internal");
+  var console = require("console");
 
-if (typeof SYS_DEFINE_ACTION === "undefined") {
-  ModuleCache["/internal"].exports.defineAction = function() {
-    console.error("SYS_DEFINE_ACTION not available");
+  internal.db = db;
+  internal.edges = edges;
+  internal.ArangoCollection = ArangoCollection;
+  internal.ArangoEdgesCollection = ArangoEdgesCollection;
+  internal.allowedActionContexts = {}
+
+  if (typeof SYS_DEFINE_ACTION === "undefined") {
+    internal.defineAction = function() {
+      console.error("SYS_DEFINE_ACTION not available");
+    };
   }
-}
-else {
-  ModuleCache["/internal"].exports.defineAction = SYS_DEFINE_ACTION;
-}
+  else {
+    var i;
+
+    for (i = 0;  i < SYS_ACTION_CONTEXTS.length;  ++i) {
+      internal.allowedActionContexts[SYS_ACTION_CONTEXTS[i]] = true;
+    }
+
+    internal.defineAction = SYS_DEFINE_ACTION;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Module "simple-query"
@@ -65,12 +90,16 @@ else {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-try {
-  require("simple-query");
-}
-catch (err) {
-  console.error("while loading 'simple-query' module: %s", err);
-}
+(function () {
+  var console = require("console");
+
+  try {
+    require("simple-query");
+  }
+  catch (err) {
+    console.error("while loading 'simple-query' module: %s", err);
+  }
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -85,22 +114,27 @@ catch (err) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapedJson.prototype._PRINT = function(seen, path, names, level) {
-  if (this instanceof ShapedJson) {
-    PRINT_OBJECT(this, seen, path, names, level);
-  }
-  else {
-    internal.output(this.toString());
-  }
-};
+  ShapedJson.prototype._PRINT = function(seen, path, names, level) {
+    if (this instanceof ShapedJson) {
+      internal.printObject(this, seen, path, names, level);
+    }
+    else {
+      internal.output(this.toString());
+    }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ArangoError
@@ -111,31 +145,36 @@ ShapedJson.prototype._PRINT = function(seen, path, names, level) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoError.prototype._PRINT = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage;
+  ArangoError.prototype._PRINT = function() {
+    var errorNum = this.errorNum;
+    var errorMessage = this.errorMessage;
 
-  internal.output("[ArangoError ", errorNum, ": ", errorMessage, "]");
-};
+    internal.output("[ArangoError ", errorNum, ": ", errorMessage, "]");
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts error to string
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoError.prototype.toString = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage;
+  ArangoError.prototype.toString = function() {
+    var errorNum = this.errorNum;
+    var errorMessage = this.errorMessage;
 
-  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
-};
+    return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoDatabase
@@ -145,6 +184,9 @@ ArangoError.prototype.toString = function() {
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+(function () {
+  var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
@@ -174,21 +216,22 @@ ArangoError.prototype.toString = function() {
 /// @verbinclude shell_collection-drop-name-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._drop = function(name) {
-  var collection = name;
+  ArangoDatabase.prototype._drop = function(name) {
+    var collection = name;
 
-  if (! (name instanceof ArangoCollection || name instanceof ArangoEdgesCollection)) {
-    collection = internal.db._collection(name);
-  }
+    if (! (name instanceof ArangoCollection
+        || name instanceof ArangoEdgesCollection)) {
+      collection = internal.db._collection(name);
+    }
 
-  if (collection == null) {
-    return;
-  }
+    if (collection === null) {
+      return;
+    }
 
-  return collection.drop()
-};
+    return collection.drop();
+  };
 
-ArangoEdges.prototype._drop = ArangoDatabase.prototype._drop;
+  ArangoEdges.prototype._drop = ArangoDatabase.prototype._drop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -219,25 +262,27 @@ ArangoEdges.prototype._drop = ArangoDatabase.prototype._drop;
 /// @verbinclude shell_collection-truncate-name-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._truncate = function(name) {
-  var collection = name;
+  ArangoDatabase.prototype._truncate = function(name) {
+    var collection = name;
 
-  if (! (name instanceof ArangoCollection || name instanceof ArangoEdgesCollection)) {
-    collection = internal.db._collection(name);
-  }
+    if (! (name instanceof ArangoCollection
+        || name instanceof ArangoEdgesCollection)) {
+      collection = internal.db._collection(name);
+    }
 
-  if (collection == null) {
-    return;
-  }
+    if (collection === null) {
+      return;
+    }
 
-  var all = collection.ALL(null, null).documents;
+    var all = collection.ALL(null, null).documents;
+    var i;
 
-  for (var i = 0;  i < all.length;  ++i) {
-    collection.remove(all[i]._id);
-  }
-};
+    for (i = 0;  i < all.length;  ++i) {
+      collection.remove(all[i]._id);
+    }
+  };
 
-ArangoEdges.prototype._truncate = ArangoDatabase.prototype._truncate;
+  ArangoEdges.prototype._truncate = ArangoDatabase.prototype._truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index
@@ -251,44 +296,46 @@ ArangoEdges.prototype._truncate = ArangoDatabase.prototype._truncate;
 /// @verbinclude shell_index-read-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._index = function(id) {
-  if (id.hasOwnProperty("id")) {
-    id = id.id;
-  }
-
-  var re = /^([0-9]+)\/([0-9]+)/;
-  var pa = re.exec(id);
-
-  if (pa == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message;
-    throw err;
-  }
-
-  var col = this._collection(parseInt(pa[1]));
-
-  if (col == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
-    throw err;
-  }
-
-  var indexes = col.getIndexes();
-
-  for (var i = 0;  i < indexes.length;  ++i) {
-    var index = indexes[i];
-
-    if (index.id == id) {
-      return index;
+  ArangoDatabase.prototype._index = function(id) {
+    if (id.hasOwnProperty("id")) {
+      id = id.id;
     }
-  }
 
-  return null;
-};
+    var re = /^([0-9]+)\/([0-9]+)/;
+    var pa = re.exec(id);
+    var err;
 
-ArangoEdges.prototype._index = ArangoDatabase.prototype._index;
+    if (pa === null) {
+      err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code;
+      err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message;
+      throw err;
+    }
+
+    var col = this._collection(parseInt(pa[1]));
+
+    if (col === null) {
+      err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+      err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+      throw err;
+    }
+
+    var indexes = col.getIndexes();
+    var i;
+
+    for (i = 0;  i < indexes.length;  ++i) {
+      var index = indexes[i];
+
+      if (index.id === id) {
+        return index;
+      }
+    }
+
+    return null;
+  };
+
+  ArangoEdges.prototype._index = ArangoDatabase.prototype._index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
@@ -308,62 +355,65 @@ ArangoEdges.prototype._index = ArangoDatabase.prototype._index;
 /// @verbinclude shell_index-drop-index-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._dropIndex = function(id) {
-  if (id.hasOwnProperty("id")) {
-    id = id.id;
-  }
+  ArangoDatabase.prototype._dropIndex = function(id) {
+    if (id.hasOwnProperty("id")) {
+      id = id.id;
+    }
 
-  var re = /^([0-9]+)\/([0-9]+)/;
-  var pa = re.exec(id);
+    var re = /^([0-9]+)\/([0-9]+)/;
+    var pa = re.exec(id);
+    var err;
 
-  if (pa == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message;
-    throw err;
-  }
+    if (pa === null) {
+      err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code;
+      err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message;
+      throw err;
+    }
 
-  var col = this._collection(parseInt(pa[1]));
+    var col = this._collection(parseInt(pa[1]));
 
-  if (col == null) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
-    throw err;
-  }
+    if (col === null) {
+      err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+      err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+      throw err;
+    }
 
-  return col.dropIndex(id);
-};
+    return col.dropIndex(id);
+  };
 
-ArangoEdges.prototype._dropIndex = ArangoDatabase.prototype._dropIndex;
+  ArangoEdges.prototype._dropIndex = ArangoDatabase.prototype._dropIndex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._PRINT = function(seen, path, names, level) {
-  internal.output("[ArangoDatabase \"" + this._path + "\"]");
-};
+    ArangoDatabase.prototype._PRINT = function(seen, path, names, level) {
+      internal.output("[ArangoDatabase \"" + this._path + "\"]");
+    };
 
-ArangoEdges.prototype._PRINT =  function(seen, path, names, level) {
-  internal.output("[ArangoEdges \"" + this._path + "\"]");
-};
+    ArangoEdges.prototype._PRINT =  function(seen, path, names, level) {
+      internal.output("[ArangoEdges \"" + this._path + "\"]");
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strng representation of a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoDatabase \"" + this._path + "\"]";
-};
+    ArangoDatabase.prototype.toString = function(seen, path, names, level) {
+      return "[ArangoDatabase \"" + this._path + "\"]";
+    };
 
-ArangoEdges.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoEdges \"" + this._path + "\"]";
-};
+    ArangoEdges.prototype.toString = function(seen, path, names, level) {
+      return "[ArangoEdges \"" + this._path + "\"]";
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ArangoCollection
@@ -374,47 +424,50 @@ ArangoEdges.prototype.toString = function(seen, path, names, level) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_CORRUPTED = 0;
-ArangoEdgesCollection.STATUS_CORRUPTED = 0;
+  ArangoCollection.STATUS_CORRUPTED = 0;
+  ArangoEdgesCollection.STATUS_CORRUPTED = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is new born
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_NEW_BORN = 1;
-ArangoEdgesCollection.STATUS_NEW_BORN = 1;
+  ArangoCollection.STATUS_NEW_BORN = 1;
+  ArangoEdgesCollection.STATUS_NEW_BORN = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloaded
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_UNLOADED = 2;
-ArangoEdgesCollection.STATUS_UNLOADED = 2;
+  ArangoCollection.STATUS_UNLOADED = 2;
+  ArangoEdgesCollection.STATUS_UNLOADED = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is loaded
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_LOADED = 3;
-ArangoEdgesCollection.STATUS_LOADED = 3;
+  ArangoCollection.STATUS_LOADED = 3;
+  ArangoEdgesCollection.STATUS_LOADED = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloading
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_UNLOADING = 4;
-ArangoEdgesCollection.STATUS_UNLOADING = 4;
+  ArangoCollection.STATUS_UNLOADING = 4;
+  ArangoEdgesCollection.STATUS_UNLOADING = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.STATUS_DELETED = 5;
-ArangoEdgesCollection.STATUS_DELETED = 5;
+  ArangoCollection.STATUS_DELETED = 5;
+  ArangoEdgesCollection.STATUS_DELETED = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
@@ -425,11 +478,11 @@ ArangoEdgesCollection.STATUS_DELETED = 5;
 /// in a production environment.
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.toArray = function() {
-  return this.ALL(null, null).documents;
-};
+  ArangoCollection.prototype.toArray = function() {
+    return this.ALL(null, null).documents;
+  };
 
-ArangoEdgesCollection.prototype.toArray = ArangoCollection.prototype.toArray;
+  ArangoEdgesCollection.prototype.toArray = ArangoCollection.prototype.toArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -446,11 +499,11 @@ ArangoEdgesCollection.prototype.toArray = ArangoCollection.prototype.toArray;
 /// @verbinclude shell_collection-truncate
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.truncate = function() {
-  return internal.db._truncate(this);
-};
+  ArangoCollection.prototype.truncate = function() {
+    return internal.db._truncate(this);
+  };
 
-ArangoEdgesCollection.prototype.truncate = ArangoCollection.prototype.truncate;
+  ArangoEdgesCollection.prototype.truncate = ArangoCollection.prototype.truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index of a collection
@@ -464,64 +517,69 @@ ArangoEdgesCollection.prototype.truncate = ArangoCollection.prototype.truncate;
 /// @verbinclude shell_index-read
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.index = function(id) {
-  var indexes = this.getIndexes();
+  ArangoCollection.prototype.index = function(id) {
+    var indexes = this.getIndexes();
+    var i;
 
-  if (typeof id == "string") {
-    var re = /^([0-9]+)\/([0-9]+)/;
-    var pa = re.exec(id);
+    if (typeof id === "string") {
+      var re = /^([0-9]+)\/([0-9]+)/;
+      var pa = re.exec(id);
 
-    if (pa == null) {
-      id = this._id + "/" + id;
+      if (pa === null) {
+        id = this._id + "/" + id;
+      }
     }
-  }
-  else if (id.hasOwnProperty("id")) {
-    id = id.id;
-  }
-
-  for (var i = 0;  i < indexes.length;  ++i) {
-    var index = indexes[i];
-
-    if (index.id == id) {
-      return index;
+    else if (id.hasOwnProperty("id")) {
+      id = id.id;
     }
-  }
 
-  return null;
-};
+    for (i = 0;  i < indexes.length;  ++i) {
+      var index = indexes[i];
 
-ArangoEdgesCollection.prototype.index = ArangoCollection.prototype.index;
+      if (index.id === id) {
+        return index;
+      }
+    }
+
+    return null;
+  };
+
+  ArangoEdgesCollection.prototype.index = ArangoCollection.prototype.index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._PRINT = function() {
-  var status = "unknown";
+  ArangoCollection.prototype._PRINT = function() {
+    var status = "unknown";
 
-  switch (this.status()) {
-    case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
-    case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-    case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
-    case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
-    case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-    case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
-  }
-  
-  SYS_OUTPUT("[ArangoCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
-};
+    switch (this.status()) {
+      case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
+      case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+      case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
+      case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
+      case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+      case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
+    }
+
+    internal.output("[ArangoCollection ",
+                    this._id, 
+                    ", \"", this.name(), "\" (status ", status, ")]");
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strng representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoCollection " + this._id + "]";
-};
+  ArangoCollection.prototype.toString = function(seen, path, names, level) {
+    return "[ArangoCollection " + this._id + "]";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            ArangoEdgesCollection
@@ -532,36 +590,43 @@ ArangoCollection.prototype.toString = function(seen, path, names, level) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoEdgesCollection.prototype._PRINT = function() {
-  var status = "unknown";
+  ArangoEdgesCollection.prototype._PRINT = function() {
+    var status = "unknown";
 
-  switch (this.status()) {
-    case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
-    case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-    case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
-    case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
-    case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-    case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
-  }
-  
-  SYS_OUTPUT("[ArangoEdgesCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
-};
+    switch (this.status()) {
+      case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
+      case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+      case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
+      case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
+      case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+      case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
+    }
+
+    internal.output("[ArangoEdgesCollection ",
+                    this._id,
+                    ", \"", this.name(), "\" (status ", status, ")]");
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief strng representation of a collection
+/// @brief string representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoEdgesCollection " + this._id + "]";
-};
+  ArangoCollection.prototype.toString = function(seen, path, names, level) {
+    return "[ArangoEdgesCollection " + this._id + "]";
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+}());
 
 // Local Variables:
 // mode: outline-minor

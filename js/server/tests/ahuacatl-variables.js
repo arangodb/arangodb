@@ -1,0 +1,106 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests for query language, variables
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+var internal = require("internal");
+var jsunity = require("jsunity");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlVariablesTestSuite () {
+  var errors = internal.errors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
+  }
+
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare1 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET a = 1 RETURN 0"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare2 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare3 : function () {
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
+    },
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
+
+jsunity.run(ahuacatlVariablesTestSuite);
+
+return jsunity.done();
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// End:

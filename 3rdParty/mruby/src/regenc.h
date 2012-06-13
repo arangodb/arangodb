@@ -182,12 +182,12 @@ ONIG_EXTERN const unsigned short OnigEncAsciiCtypeTable[];
 extern int ONIG_ENC_REGISTER(const char *, OnigEncodingType*);
 #define OnigEncodingName(n) encoding_##n
 #define OnigEncodingDeclare(n) static OnigEncodingType OnigEncodingName(n)
-#define OnigEncodingDefine(f,n)			     \
-    OnigEncodingDeclare(n);			     \
-    void Init_##f(void) {			     \
-	ONIG_ENC_REGISTER(OnigEncodingName(n).name,  \
-			  &OnigEncodingName(n));     \
-    }						     \
+#define OnigEncodingDefine(f,n)                      \
+    OnigEncodingDeclare(n);                          \
+    void Init_##f(void) {                            \
+        ONIG_ENC_REGISTER(OnigEncodingName(n).name,  \
+                          &OnigEncodingName(n));     \
+    }                                                \
     OnigEncodingDeclare(n)
 #else
 #define OnigEncodingName(n) OnigEncoding##n

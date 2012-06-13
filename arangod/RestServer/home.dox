@@ -1,0 +1,116 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indexes
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Home ArangoDB
+///
+/// My colleagues and I started developing a document-store, which focuses on
+/// durability of the data taking advantage of new technologies like SSD,
+/// support for graph and geo algorithms needed in social networks, ease of use
+/// for the developer and minimal effort to operate for the administrator. The
+/// design goals are described <a href="http://www.arangodb.org/">here</a>.
+///
+/// The ArangoDB consists of a server, a separate shell, which allows you to
+/// administrate the server, and a set of client API for various languages.
+///
+/// @xmlonly The HTML and PDF versions of the manual can be found <ulink url="http://www.arangodb.org/manuals">here</ulink>. @endxmlonly
+///
+/// @warning
+/// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
+/// of May 2012, a multi server version is planned for the third quarter of
+/// 2012. The document is still far from complete. Please contact
+/// <a href="http://www.arangodb.org/connect">us</a>, if you have any questions.
+///
+/// @section ArangoDBUserManual ArgangoDB's User Manuals (Version @VERSION)
+///////////////////////////////////////////////////////////////////////////
+/// 
+/// <ul>
+///   <li>@ref UserManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref DbaManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/dba-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/imp-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref Glossary</li>
+/// </ul>
+/// 
+/// @section ArangoDBAdminManual ArangoDB's Administrator Manuals (Version @VERSION)
+////////////////////////////////////////////////////////////////////////////////////
+/// 
+/// <ul>
+///   <li>@ref InstallManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref Glossary</li>
+/// </ul>
+/// 
+/// @section ArangoDBAPIManual ArangoDB's Developer Manuals (Version @VERSION)
+//////////////////////////////////////////////////////////////////////////////
+/// 
+/// <ul>
+///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref RefManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/ref-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref Glossary</li>
+/// </ul>
+/// 
+/// @section HomeApi API
+////////////////////////
+/// 
+/// @subsection HomeCLINQ C\# / LINQ
+/// 
+/// @subsection HomePHP PHP
+/// 
+/// There is a PHP client available in a separate project:
+/// https://github.com/triAGENS/ArangoDB-PHP
+///
+/// See also Packagist:
+/// http://packagist.org/packages/triagens/ArangoDb
+/// 
+/// @subsection HomePython Python
+/// 
+/// @subsection HomeREST REST
+/// 
+/// @subsection HomeRuby Ruby
+///
+/// There is a Ruby client available in a separate project:
+/// https://github.com/triAGENS/Ashikawa
+///
+/// A discussion group can be found here:
+/// https://groups.google.com/forum/#!forum/ashikawa
+///
+/// @section HomeStayInContact Stay in Contact
+//////////////////////////////////////////////
+///
+/// Frank is twittering for the project on Twitter using <a
+/// href="http://www.twitter.com/fceller">@@fceller</a>. We've also a "generic"
+/// twitter account mainly for announcements called <a
+/// href="http://www.twitter.com/arangodb">@@arangodb</a>
+///
+/// You can also subscribe to a low traffic announcement list on the <a
+/// href="http://www.arangodb.org/connect">connect page</a>.
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

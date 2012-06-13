@@ -1,0 +1,145 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestDocumentTOC
+///
+/// <ul>
+///  <li>@ref RestDocument
+///   <ul>
+///    <li>@ref RestDocumentIntro</li>
+///    <li>@ref RestDocumentResource</li>
+///    <li>@ref RestDocumentHttp
+///      @copydetails RestDocumentCallsTOC
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestDocumentCallsTOC
+///
+/// <ul>
+///  <li>@ref RestDocumentRead "GET /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentCreate "POST /_api/document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentUpdate "PUT /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentDelete "DELETE /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentHead "HEAD /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentReadAll "GET /_api/document?collection=collection-identifier"</li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestDocument REST Interface for Documents
+///
+/// This is an introduction to ArangoDB's REST interface for documents.
+///
+/// @EMBEDTOC{RestDocumentTOC}
+///
+/// @section RestDocumentIntro Documents, Identifiers, Handles
+//////////////////////////////////////////////////////////////
+///
+/// @copydoc GlossaryDocument
+///
+/// For example:
+///
+/// @verbinclude document1
+///
+/// All documents contain two special fields, the document handle in @LIT{_id}
+/// and the etag aka document revision in @LIT{_rev}.
+///
+/// Some examples in the manual assume that you have created some example
+/// collections, see @ref ExamplesSetup.
+///
+/// @copydoc GlossaryDocumentHandle
+///
+/// @copydoc GlossaryDocumentIdentifier
+///
+/// @copydoc GlossaryDocumentRevision
+///
+/// @copydoc GlossaryDocumentEtag
+///
+/// The basic operations (create, read, update, delete) for documents are mapped
+/// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
+/// document revision is returned in the "ETag" header field. If you modify a
+/// document, you can use the "If-Match" field to detect conflicts. The revision
+/// of a document can be checking using the HTTP method HEAD.
+///
+/// @section RestDocumentResource Address and ETag of an Document
+/////////////////////////////////////////////////////////////////
+///
+/// All documents in ArangoDB have a document handle. This handle uniquely
+/// defines a document and is managed by ArangoDB. All documents are
+/// found under the URI:
+///
+/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
+///
+/// For example: Assume that the document handle, which is stored in
+/// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
+/// then the URL of that document is:
+///
+/// @LIT{http://localhost:8529/_api/document/7254820/362549736}
+///
+/// Each document also has a document revision or etag with is returned
+/// in the "ETag" header field when requesting a document.
+///
+/// If you obtain a document using @LIT{GET} and you want to check if a 
+/// newer revision is available, then you can use the "If-None-Match"
+/// header. If the document is unchanged, a @LIT{HTTP 412} is returned.
+///
+/// If you want to update or delete a document, then you can use the
+/// "If-Match" header. If the document has changed, then the
+/// operation is aborted and a @LIT{HTTP 412} is returned.
+///
+/// @section RestDocumentHttp Working with Documents using REST
+///////////////////////////////////////////////////////////////
+///
+/// @anchor RestDocumentRead
+/// @copydetails triagens::arango::RestDocumentHandler::readSingleDocument
+///
+/// @anchor RestDocumentCreate
+/// @copydetails triagens::arango::RestDocumentHandler::createDocument
+///
+/// @anchor RestDocumentUpdate
+/// @copydetails triagens::arango::RestDocumentHandler::updateDocument
+///
+/// @anchor RestDocumentDelete
+/// @copydetails triagens::arango::RestDocumentHandler::deleteDocument
+///
+/// @anchor RestDocumentHead
+/// @copydetails triagens::arango::RestDocumentHandler::checkDocument
+///
+/// @anchor RestDocumentReadAll
+/// @copydetails triagens::arango::RestDocumentHandler::readAllDocuments
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

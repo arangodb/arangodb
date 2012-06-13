@@ -1,0 +1,1 @@
+u.age > 15 || u.active == true ? u.userId : null

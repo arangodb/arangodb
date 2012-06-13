@@ -460,7 +460,7 @@ describe ArangoDB do
       end
 
       it "truncate a collection by identifier" do
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 
 	for i in ( 1 .. 10 )
@@ -496,7 +496,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn)
 	cid = ArangoDB.create_collection(cn)
 
-	cmd = "/document?collection=#{cid}"
+	cmd = "/_api/document?collection=#{cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 
 	for i in ( 1 .. 10 )
@@ -554,7 +554,7 @@ describe ArangoDB do
 
 	body = "{ \"Hallo\" : \"World\" }"
 
-	cmd = "/document?collection=#{cid}"
+	cmd = "/_api/document?collection=#{cid}"
 
 	for i in ( 1 .. 10 )
 	  doc = ArangoDB.post(cmd, :body => body)
@@ -563,7 +563,7 @@ describe ArangoDB do
 	ArangoDB.size_collection(cid).should eq(10)
 	ArangoDB.size_collection(cn).should eq(10)
 
-	cmd = "/document?collection=#{cid2}"
+	cmd = "/_api/document?collection=#{cid2}"
 
 	for i in ( 1 .. 20 )
 	  doc = ArangoDB.post(cmd, :body => body)
@@ -640,7 +640,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn2)
 	cid2 = ArangoDB.create_collection(cn2)
 
-	cmd = "/document?collection=#{cid2}"
+	cmd = "/_api/document?collection=#{cid2}"
 
 	body = "{ \"name\" : \"#{cn2}\" }"
 	cmd = api + "/" + String(cid) + "/rename"
@@ -667,7 +667,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn)
 	cid = ArangoDB.create_collection(cn)
 
-	cmd = "/document?collection=#{cid}"
+	cmd = "/_api/document?collection=#{cid}"
 	body = "{ \"Hallo\" : \"World\" }"
 
 	for i in ( 1 .. 10 )

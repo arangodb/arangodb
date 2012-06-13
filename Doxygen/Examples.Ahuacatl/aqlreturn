@@ -1,0 +1,2 @@
+FOR variable-name IN expression
+  RETURN variable-name

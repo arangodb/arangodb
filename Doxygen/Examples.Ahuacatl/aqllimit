@@ -1,0 +1,4 @@
+FOR u IN users
+  SORT u.firstName, u.lastName, u.id DESC
+  LIMIT 0, 5
+  RETURN u

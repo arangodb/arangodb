@@ -8,7 +8,7 @@ echo "########################################################"
 
 OPTIONS="--disable-dependency-tracking --disable-relative --enable-gcov"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
-RESULTS="arango avocsh"
+RESULTS="arangod arangosh"
 
 export CPPFLAGS=""
 export LDFLAGS=""

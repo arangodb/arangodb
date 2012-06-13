@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +46,85 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throw a runtime exception
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_THROW (error, data) {
+  var err = new ArangoError
+
+  err.errorNum = error.code;
+  if (data) {
+    err.errorMessage = error.message.replace(/%s/, data);
+  }
+  else {
+    err.errorMessage = error.message;
+  }
+
+  throw err;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find an index of a certain type for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_INDEX (collection, indexTypes) {
+  var indexes = collection.getIndexes();
+
+  for (var i = 0; i < indexes.length; ++i) {
+    var index = indexes[i];
+
+    for (var j = 0; j < indexTypes.length; ++j) {
+      if (index.type == indexTypes[j]) {
+        return index.id;
+      }
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a value for comparison, sorting etc.
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NORMALIZE (value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof(value) !== "object") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    var result = [ ];
+    var length = value.length;
+    for (var i = 0; i < length; ++i) {
+      result.push(AHUACATL_NORMALIZE(value[i]));
+    }
+  
+    return result;
+  } 
+  else {
+    var attributes = [ ];
+    for (var attribute in value) {
+      if (!value.hasOwnProperty(attribute)) {
+        continue;
+      }
+      attributes.push(attribute);
+    }
+    attributes.sort();
+
+    var result = { };
+    var length = attributes.length;
+    for (var i = 0; i < length; ++i) {
+      result[attributes[i]] = AHUACATL_NORMALIZE(value[attributes[i]]);
+    }
+
+    return result;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an object
@@ -79,10 +160,20 @@ function AHUACATL_CLONE (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief validate function call argument
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName) {
+  if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief call a function
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_FCALL(name, parameters) {
+function AHUACATL_FCALL (name, parameters) {
   return name.apply(null, parameters);
 }
 
@@ -96,6 +187,40 @@ function AHUACATL_NUMERIC_VALUE (value) {
   }
 
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fix a value for a comparison
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FIX (value) {
+  if (value === undefined) {
+    return null;
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name for a type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TYPENAME (value) {
+  switch (value) {
+    case AHUCATL_TYPEWEIGHT_BOOL:
+      return 'boolean';
+    case AHUCATL_TYPEWEIGHT_NUMBER:
+      return 'number';
+    case AHUCATL_TYPEWEIGHT_STRING:
+      return 'string';
+    case AHUCATL_TYPEWEIGHT_LIST:
+      return 'list';
+    case AHUCATL_TYPEWEIGHT_DOCUMENT:
+      return 'document';
+    case AHUCATL_TYPEWEIGHT_NULL:
+    default:
+      return 'null';
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,15 +258,13 @@ function AHUACATL_TYPEWEIGHT (value) {
 /// @brief get the keys of an array or object in a comparable way
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_KEYS (value) {
+function AHUACATL_KEYS (value, doSort) {
   var keys = [];
   
   if (Array.isArray(value)) {
-    var i = 0;
-    for (var k in value) {
-      if (value.hasOwnProperty(k)) {
-        keys.push(i++);
-      }
+    var n = value.length;
+    for (var j = 0; j < n; ++j) {
+      keys.push(j);
     }
   }
   else {
@@ -151,9 +274,51 @@ function AHUACATL_KEYS (value) {
       }
     }
 
-    // object keys need to be sorted by names
-    keys.sort();
+    if (doSort) {
+      // object keys need to be sorted by names
+      keys.sort();
+    }
   }
+
+  return keys;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the keys of an array or object in a comparable way
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_KEYLIST (lhs, rhs) {
+  var keys = [];
+  
+  if (Array.isArray(lhs)) {
+    // lhs & rhs are lists
+    var n;
+    if (lhs.length > rhs.length) {
+      n = lhs.length;
+    }
+    else {
+      n = rhs.length;
+    }
+    for (var j = 0; j < n; ++j) {
+      keys.push(j);
+    }
+    return keys;
+  }
+
+  // lhs & rhs are arrays
+  var k;
+  for (k in lhs) {
+    keys.push(k);
+  }
+  for (k in rhs) {
+    if (lhs.hasOwnProperty(k)) {
+      continue;
+    }
+    keys.push(k);
+  }
+
+  // object keys need to be sorted by names
+  keys.sort();
 
   return keys;
 }
@@ -169,7 +334,7 @@ function AHUACATL_GET_INDEX (value, index) {
   
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_LIST &&
       AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    throw "expecting list or document for index access";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   var result = value[index];
@@ -209,18 +374,131 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
 
 function AHUACATL_LIST (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection
+/// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS (collection) {
   return internal.db[collection].all().toArray();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the primary index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
+  try {
+    return [ internal.db[collection].document(id) ];
+  }
+  catch (e) {
+    return [ ];
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the primary index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var id = values[i];
+    try {
+      var d = internal.db[collection].document(id);
+      result.push(d);
+    }
+    catch (e) {
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a hash index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
+  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a hash index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
+  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a skiplist
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get names of all collections
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_COLLECTIONS () {
+  var collections = internal.db._collections();
+  var result = [ ];
+
+  for (var i = 0; i < collections.length; ++i) {
+    result.push({ "_id" : collections[i]._id, "name" : collections[i].name() });
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,6 +515,24 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute ternary operator
+///
+/// the condition operand must be a boolean value, returns either the truepart
+/// or the falsepart 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
+  if (AHUACATL_TYPEWEIGHT(condition) !== AHUACATL_TYPEWEIGHT_BOOL) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  if (condition) {
+    return truePart;
+  }
+  return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform logical and
 ///
 /// both operands must be boolean values, returns a boolean, uses short-circuit
@@ -246,7 +542,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 function AHUACATL_LOGICAL_AND (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for and";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (!lhs) {
@@ -266,7 +562,7 @@ function AHUACATL_LOGICAL_AND (lhs, rhs) {
 function AHUACATL_LOGICAL_OR (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operands for or";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
   
   if (lhs) {
@@ -284,7 +580,7 @@ function AHUACATL_LOGICAL_OR (lhs, rhs) {
 
 function AHUACATL_LOGICAL_NOT (lhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    throw "expecting bool operand for not";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   return !lhs;
@@ -321,22 +617,10 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    if (numLeft !== numRight) {
-      return false;
-    }
-
-    for (var i = 0; i < numLeft; ++i) {
-      var key = l[i];
-      if (key !== r[i]) {
-        // keys must be identical
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_EQUAL(lhs[key], rhs[key]);
       if (result === false) {
         return result;
@@ -374,22 +658,10 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    if (numLeft !== numRight) {
-      return true;
-    }
-
-    for (var i = 0; i < numLeft; ++i) {
-      var key = l[i];
-      if (key !== r[i]) {
-        // keys differ => unequality
-        return true;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_UNEQUAL(lhs[key], rhs[key]);
       if (result === true) {
         return result;
@@ -429,36 +701,16 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numLeft; ++i) {
-      if (i >= numRight) {
-        // right operand does not have any more keys
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return true;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numRight > numLeft) {
-      return false;
-    }
-
     return null;
   }
 
@@ -512,35 +764,16 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numLeft; ++i) {
-      if (i >= numRight) {
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return true;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return false;
-      }
-
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numRight > numLeft) {
-      return false;
-    }
-
     return null;
   }
 
@@ -594,36 +827,16 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        // left operand does not have any more keys
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return false;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
-        return true;
-      }
-      // keys are equal
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_LESS_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
     
-    if (numLeft > numRight) {
-      return false;
-    }
-
     return null;
   }
 
@@ -677,32 +890,14 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        return true;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return false;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key
-        return true;
-      }
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
-    }
-
-    if (numLeft > numRight) {
-      return false;
     }
 
     return null;
@@ -761,36 +956,16 @@ function AHUACATL_RELATIONAL_CMP (lhs, rhs) {
 
   if (leftWeight >= AHUACATL_TYPEWEIGHT_LIST) {
     // arrays and objects
-    var l = AHUACATL_KEYS(lhs);
-    var r = AHUACATL_KEYS(rhs);
-    var numLeft = l.length;
-    var numRight = r.length;
+    var keys = AHUACATL_KEYLIST(lhs, rhs);
 
-    for (var i = 0; i < numRight; ++i) {
-      if (i >= numLeft) {
-        // left operand does not have any more keys
-        return -1;
-      }
-      var key = l[i];
-      if (key < r[i]) {
-        // left key is less than right key
-        return 1;
-      } 
-      else if (key > r[i]) {
-        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
-        return -1
-      }
-      // keys are equal, now compare value
+    for (var i in keys) {
+      var key = keys[i];
       var result = AHUACATL_RELATIONAL_CMP(lhs[key], rhs[key]);
       if (result !== 0) {
         return result;
       }
     }
     
-    if (numLeft > numRight) {
-      return 1;
-    }
-
     return 0;
   }
 
@@ -824,15 +999,12 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   var rightWeight = AHUACATL_TYPEWEIGHT(rhs);
   
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
-    throw "expecting list for in";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
   }
-  
-  var r = AHUACATL_KEYS(rhs);
-  var numRight = r.length;
 
+  var numRight = rhs.length;
   for (var i = 0; i < numRight; ++i) {
-    var key = r[i];
-    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[key])) {
+    if (AHUACATL_RELATIONAL_EQUAL(lhs, rhs[i])) {
       return true;
     }
   }
@@ -861,13 +1033,14 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
 
 function AHUACATL_UNARY_PLUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -879,13 +1052,14 @@ function AHUACATL_UNARY_PLUS (value) {
 
 function AHUACATL_UNARY_MINUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting number for unary minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(-value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -898,13 +1072,14 @@ function AHUACATL_UNARY_MINUS (value) {
 function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) { 
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for plus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -917,13 +1092,14 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for minus";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -936,13 +1112,14 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for times";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -955,17 +1132,18 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
 function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for div";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
   
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -978,17 +1156,18 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "expecting numbers for mod";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   if (rhs == 0) {
-    throw "division by zero";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    throw "number out of range";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
+
   return result;
 }
 
@@ -1008,7 +1187,7 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
 ///
-/// both operands must be strings or this function will fail
+/// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_STRING_CONCAT () {
@@ -1020,15 +1199,115 @@ function AHUACATL_STRING_CONCAT () {
     if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
       continue;
     }
-    
-    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_STRING) {
-      throw "expecting strings for string concatenation";
-    }
+
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT");
 
     result += element;
   }
 
   return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform string concatenation using a separator character
+///
+/// all operands must be strings or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_CONCAT_SEPARATOR () {
+  var separator;
+  var found = false;
+  var result = '';
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (i > 0 && AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+    
+    AHUACATL_ARG_CHECK(element, AHUACATL_TYPEWEIGHT_STRING, "CONCAT_SEPARATOR");
+
+    if (i == 0) {
+      separator = element;
+      continue;
+    }
+    else if (found) {
+      result += separator;
+    }
+
+    found = true;
+
+    result += element;
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the length of a string in characters (not bytes)
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_LENGTH (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "STRING_LENGTH");
+
+  return value.length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_LOWER (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "LOWER");
+
+  return value.toLowerCase();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_UPPER (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "UPPER");
+
+  return value.toUpperCase();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a substring of the string
+///
+/// the input operand must be a string or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_SUBSTRING (value, offset, count) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "SUBSTRING");
+  AHUACATL_ARG_CHECK(offset, AHUACATL_TYPEWEIGHT_NUMBER, "SUBSTRING");
+
+  return value.substr(offset, count);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searches a substring in a string
+///
+/// the two input operands must be strings or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_STRING_CONTAINS (value, search) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+  AHUACATL_ARG_CHECK(search, AHUACATL_TYPEWEIGHT_STRING, "CONTAINS");
+
+  if (search.length == 0) {
+    return false;
+  }
+
+  return value.indexOf(search) != -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1045,16 +1324,6 @@ function AHUACATL_STRING_CONCAT () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to null
-///
-/// the operand can have any type, always returns null
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_CAST_NULL (value) {
-  return null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a bool
 ///
 /// the operand can have any type, always returns a bool
@@ -1069,11 +1338,11 @@ function AHUACATL_CAST_BOOL (value) {
     case AHUACATL_TYPEWEIGHT_NUMBER:
       return (value != 0);
     case AHUACATL_TYPEWEIGHT_STRING: 
-      return (value != '');
+      return (value !== '');
     case AHUACATL_TYPEWEIGHT_LIST:
       return (value.length > 0);
     case AHUACATL_TYPEWEIGHT_DOCUMENT:
-      return (AHUACATL_KEYS(value).length > 0);
+      return (AHUACATL_KEYS(value, false).length > 0);
   }
 }
 
@@ -1212,7 +1481,7 @@ function AHUACATL_IS_DOCUMENT (value) {
 
 function AHUACATL_NUMBER_FLOOR (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for floor";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
   return Math.floor(value);
@@ -1224,7 +1493,7 @@ function AHUACATL_NUMBER_FLOOR (value) {
 
 function AHUACATL_NUMBER_CEIL (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for ceil";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
   return Math.ceil(value);
@@ -1236,7 +1505,7 @@ function AHUACATL_NUMBER_CEIL (value) {
 
 function AHUACATL_NUMBER_ROUND (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for round";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
   return Math.round(value);
@@ -1248,7 +1517,7 @@ function AHUACATL_NUMBER_ROUND (value) {
 
 function AHUACATL_NUMBER_ABS (value) {
   if (!AHUACATL_IS_NUMBER(value)) {
-    throw "expecting number for abs";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
   return Math.abs(value);
@@ -1345,11 +1614,24 @@ function AHUACATL_LIMIT (value, offset, count) {
   AHUACATL_LIST(value);
 
   if (count < 0) {
-    throw "negative count is not supported for limit";
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return value.slice(offset, offset + count);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         list processing functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the length of a list
@@ -1364,29 +1646,71 @@ function AHUACATL_LENGTH () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
+/// @brief get the first element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_MERGE () {
-  var result = { };
+function AHUACATL_FIRST () {
+  var value = arguments[0];
 
-  for (var i in arguments) {
-    var element = arguments[i];
+  AHUACATL_LIST(value);
 
-    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      throw "expecting documents for merge";
-    }
-
-    for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
-        continue;
-      }
-
-      result[k] = element[k];
-    }
+  if (value.length == 0) {
+    return null;
   }
 
-  return result; 
+  return value[0];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the last element of a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_LAST () {
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  if (value.length == 0) {
+    return null;
+  }
+
+  return value[value.length - 1];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reverse the elements in a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_REVERSE () {
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  return value.reverse();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of unique elements from the list
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_UNIQUE () {
+  var value = arguments[0];
+
+  AHUACATL_LIST(value);
+
+  var length = value.length;
+  var keys = { };
+  for (var i = 0; i < length; ++i) {
+    var normalized = AHUACATL_NORMALIZE(value[i]);
+    keys[JSON.stringify(normalized)] = normalized;
+  }
+
+  var result = [];
+  for (var i in keys) {
+    result.push(keys[i]);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1400,7 +1724,7 @@ function AHUACATL_UNION () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
-      throw "expecting lists for union";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
     }
 
     for (var k in element) {
@@ -1483,7 +1807,7 @@ function AHUACATL_SUM () {
     }
 
     if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-      throw "expecting number for sum";
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
     }
     
     if (result === null) {
@@ -1495,6 +1819,331 @@ function AHUACATL_SUM () {
   }
 
   return AHUACATL_NUMERIC_VALUE(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     geo functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return at most <limit> documents near a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_NEAR () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var limit = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
+  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return documents within <radius> around a certain point
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GEO_WITHIN () {
+  var collection = arguments[0];
+  var latitude = arguments[1];
+  var longitude = arguments[2];
+  var radius = arguments[3];
+  var distanceAttribute = arguments[4];
+
+  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  if (idx == null) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
+  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
+  if (distanceAttribute == null) {
+    return result.documents;
+  }
+
+  // inject distances
+  var documents = result.documents;
+  var distances = result.distances;
+  var n = documents.length;
+  for (var i = 0; i < n; ++i) {
+    documents[i][distanceAttribute] = distances[i];
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   graph functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GRAPH_PATHS () {
+  var vertices = arguments[0];
+  var edgeCollection = arguments[1];
+  var direction = arguments[2] != undefined ? arguments[2] : "outbound";
+  var followCycles = arguments[3] ? arguments[3] : false;
+
+  var minLength = 0;
+  var maxLength = 10;
+  var searchDirection;
+
+  AHUACATL_LIST(vertices);
+
+  // validate arguments
+  if (direction == "outbound") {
+    searchDirection = 1;
+  }
+  else if (direction == "inbound") {
+    searchDirection = 2;
+  }
+  else if (direction == "any") {
+    searchDirection = 3;
+    maxLength = 3;
+  }
+  else {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+  }
+
+  if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+  }
+
+  var searchAttributes = { 
+    "edgeCollection" : internal.edges[edgeCollection],
+    "minLength" : minLength, 
+    "maxLength" : maxLength, 
+    "direction" : searchDirection,
+    "followCycles" : followCycles,
+  };
+
+  // TODO: restrict allEdges to edges with certain _from values etc.
+
+  var result = [ ];
+  var n = vertices.length;
+  for (var i = 0; i < n; ++i) {
+    var vertex = vertices[i];
+    var visited = { };
+    visited[vertex._id] = true;
+    var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+    for (j = 0; j < connected.length; ++j) {
+      result.push(connected[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph, internal part called recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
+  var result = [ ];
+
+  if (level >= searchAttributes.minLength) {
+    result.push({ 
+        "vertices" : vertices, 
+        "edges" : edges,
+        "source" : vertices[0],
+        "destination" : vertices[vertices.length - 1],
+        });
+  }
+
+  if (level + 1 > searchAttributes.maxLength) {
+    return result;
+  }
+
+  var subEdges;
+
+  if (searchAttributes.direction == 1) {
+    subEdges = searchAttributes.edgeCollection.outEdges(vertexId);
+  }
+  else if (searchAttributes.direction == 2) {
+    subEdges = searchAttributes.edgeCollection.inEdges(vertexId);
+  }
+  else if (searchAttributes.direction == 3) {
+    subEdges = searchAttributes.edgeCollection.edges(vertexId);
+  }
+
+  for (var i = 0; i < subEdges.length; ++i) {
+    var subEdge = subEdges[i];
+    var targets = [ ];
+
+    if (searchAttributes.direction & 1) {
+      targets.push(subEdge._to);
+    }
+    if (searchAttributes.direction & 2) {
+      targets.push(subEdge._from);
+    }
+
+    for (var j = 0; j < targets.length; ++j) {
+      var targetId = targets[j];
+      
+      if (!searchAttributes.followCycles) {
+        if (visited[targetId]) {
+          continue;
+        }
+        visited[targetId] = true;
+      }
+
+      var clonedEdges = AHUACATL_CLONE(edges);
+      var clonedVertices = AHUACATL_CLONE(vertices);
+      clonedEdges.push(subEdge);
+      clonedVertices.push(internal.db._document(targetId));
+      
+      var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
+      for (k = 0; k < connected.length; ++k) {
+        result.push(connected[k]);
+      }
+
+      if (!searchAttributes.followCycles) {
+        delete visited[targetId];
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    misc functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return value if it's not null, otherwise return alternative
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NOT_NULL (value, alternative) {
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL) {
+    return alternative;
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a document has an attribute
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_HAS () {
+  var element = arguments[0];
+  var name = arguments[1];
+  
+  if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+    return false;
+  }
+
+  if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+  }
+
+  return element.hasOwnProperty(name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result[k] = element[k];
+    }
+  }
+
+  return result; 
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief passthru the argument
+///
+/// this function is marked as non-deterministic so its argument withstands
+/// query optimisation. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_PASSTHRU () {
+  var value = arguments[0];
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief always fail
+///
+/// this function is non-deterministic so it is not executed at query 
+/// optimisation time. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FAIL () {
+  var message = arguments[0];
+
+  if (AHUACATL_TYPEWEIGHT(message) === AHUACATL_TYPEWEIGHT_STRING) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, message);
+  }
+
+  AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

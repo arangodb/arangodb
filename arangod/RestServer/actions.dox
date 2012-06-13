@@ -1,0 +1,91 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @page Actions First Steps with Actions
+///
+/// Actions are small JavaScript functions which are used to compute the result
+/// of a request. Normally, the function will use the request parameter
+/// @FA{collection} to locate a collection, compute the result and return this
+/// result as JSON object.
+///
+/// Actions are defined in JaveScript files living in a directory called
+/// _ACTIONS under the database directory. The files must exists when the
+/// server is started. You can use the @CO{action.directory} to use a different
+/// directory during startup.
+///
+/// Inside these files an action is defined using the function
+/// @FN{defineAction}. You need to provide a path, a function, and a description
+/// of the parameters.
+///
+/// @verbinclude action1
+///
+/// This will define a new action accessible under @LIT{/_action/pagination}, with
+/// three parameters @FA{collection}, @FA{blocksize}, and @FA{page}. The action
+/// function is called with two parameters @LIT{req} and @LIT{res}. The variable
+/// @LIT{req} contains the request parameters. The result is stored in the
+/// variable @FA{res}.
+///
+/// The function @FN{queryResult} is predefined. It expects three parameters,
+/// the request, the response, and a result set. The function @FN{queryResult}
+/// uses the parameters @FA{blocksize} and @FA{page} to paginate the result.
+///
+/// @verbinclude action2
+///
+/// The result contains the @LIT{total} number of documents, the number of
+/// documents is returned in @LIT{count}, it also contains the @FA{offset}, the
+/// @FA{blocksize}, the current @FA{page}, and the @FA{documents}.
+///
+/// There is an alternative function @FN{queryReferences}, which will only
+/// return the document references, not the whole document.
+///
+/// @verbinclude action3
+///
+/// You can then use the rest interface to extract the documents.
+///
+/// @verbinclude action4
+///
+/// Next steps: learn more about
+///
+/// - @ref DefineAction
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DefineActionTOC
+///
+/// <ol>
+///  <li>@ref DefineActionDefineAction "defineAction"</li>
+///  <li>@ref DefineActionDefineSystemAction "defineSystemAction"</li>
+///  <li>@ref DefineActionActionResult "actionResult"</li>
+///  <li>@ref DefineActionActionError "actionError"</li>
+///  <li>@ref DefineActionQueryResult "queryResult"</li>
+///  <li>@ref DefineActionQueryReferences "queryReferences"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DefineAction Defining an Action
+///
+/// Actions are user defined functions and are stored in JavaScript files in a
+/// directory called @LIT{_ACTIONS} under the database directory. System action
+/// are predefined actions used by the server. They are stored in system wide
+/// directory.
+///
+/// <hr>
+/// @copydoc DefineActionTOC
+/// <hr>
+///
+/// @anchor DefineActionDefineAction
+/// @copydetails JS_DefineAction
+///
+/// @anchor DefineActionDefineSystemAction
+/// copydetails JS_DefineSystemAction
+///
+/// @anchor DefineActionActionResult
+///
+/// @anchor DefineActionActionError
+///
+/// @anchor DefineActionQueryResult
+/// copydetails JSF_queryResult
+///
+/// @anchor DefineActionQueryReferences
+/// copydetails JSF_queryReferences
+////////////////////////////////////////////////////////////////////////////////
+

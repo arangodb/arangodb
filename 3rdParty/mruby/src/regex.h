@@ -1,6 +1,6 @@
 /*
 ** regex.h - Regexp class
-** 
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -14,8 +14,6 @@ extern "C" {
 #include "oniguruma.h"
 
 #ifndef ONIG_RUBY_M17N
-
-ONIG_EXTERN OnigEncoding    OnigEncDefaultCharEncoding;
 
 #define mbclen(p,e,enc)  mrb_enc_mbclen((p),(e),(enc))
 

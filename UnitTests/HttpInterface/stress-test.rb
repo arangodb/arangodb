@@ -23,7 +23,7 @@ $doc_cv = ConditionVariable.new
 ## print version number of the server
 ################################################################################
 
-doc = ArangoDB.get("/version")
+doc = ArangoDB.get("/_admin/version")
 
 puts "starting stress test, ArangoDB #{doc.parsed_response['version']}"
 
@@ -64,7 +64,7 @@ def read_document (i, pos)
     end
   }
 
-  res = ArangoDB.get("/document/#{did}")
+  res = ArangoDB.get("/_api/document/#{did}")
 
   if res.code == 200
     if $verbose
@@ -92,7 +92,7 @@ end
 def create_document (i)
   len = 0
   body = "{ \"Hallo\" : #{i} }"
-  res = ArangoDB.post("/document?collection=#{$cid}", :body => body)
+  res = ArangoDB.post("/_api/document?collection=#{$cid}", :body => body)
 
   if res.code == 201 or res.code == 202
     did = res.parsed_response['_id']
@@ -135,7 +135,7 @@ def delete_document (i, pos)
     end
   }
 
-  res = ArangoDB.delete("/document/#{did}")
+  res = ArangoDB.delete("/_api/document/#{did}")
 
   if res.code == 200
     if $verbose

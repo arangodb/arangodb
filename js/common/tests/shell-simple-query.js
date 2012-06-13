@@ -4,9 +4,6 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    console,
     ArangoCollection, ArangoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +34,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var internal = require("internal");
+
 var SQB = require("simple-query-basics");
+
 require("simple-query");
 
 // -----------------------------------------------------------------------------
@@ -291,7 +291,7 @@ function SimpleQueryAllSkipLimitSuite () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: skip and limit with a collection
+/// @brief test suite: query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleSuite () {
@@ -393,6 +393,110 @@ function SimpleQueryByExampleSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             basic tests for range
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryRangeSuite () {
+  var cn = "UnitTestsCollectionRange";
+  var collection = null;
+  var age = function(d) { return d.age; };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
+
+      for (var i = 0;  i < 100;  ++i) {
+        collection.save({ age : i });
+      }
+
+      collection.ensureSkiplist("age");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRange : function () {
+      var l = collection.range("age", 10, 13).toArray().map(age).sort();
+      assertEqual([10,11,12], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
+      assertEqual([10,11,12,13], l);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      basic tests for unique range
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryUniqueRangeSuite () {
+  var cn = "UnitTestsCollectionRange";
+  var collection = null;
+  var age = function(d) { return d.age; };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
+
+      for (var i = 0;  i < 100;  ++i) {
+        collection.save({ age : i });
+      }
+
+      collection.ensureUniqueSkiplist("age");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRange : function () {
+      var l = collection.range("age", 10, 13).toArray().map(age).sort();
+      assertEqual([10,11,12], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
+      assertEqual([10,11,12,13], l);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -403,6 +507,8 @@ function SimpleQueryByExampleSuite () {
 jsunity.run(SimpleQueryArraySkipLimitSuite);
 jsunity.run(SimpleQueryAllSkipLimitSuite);
 jsunity.run(SimpleQueryByExampleSuite);
+jsunity.run(SimpleQueryRangeSuite);
+jsunity.run(SimpleQueryUniqueRangeSuite);
 
 return jsunity.done();
 

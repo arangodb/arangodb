@@ -74,7 +74,7 @@ int st_delete(st_table *, st_data_t *, st_data_t *);
 int st_delete_safe(st_table *, st_data_t *, st_data_t *, st_data_t);
 int st_insert(st_table *, st_data_t, st_data_t);
 int st_lookup(st_table *, st_data_t, st_data_t *);
-int st_foreach(st_table *, int (*)(ANYARGS), st_data_t);
+int st_foreach(st_table *, enum st_retval (*)(ANYARGS), st_data_t);
 void st_add_direct(st_table *, st_data_t, st_data_t);
 void st_free_table(st_table *);
 void st_cleanup_safe(st_table *, st_data_t);
@@ -84,11 +84,11 @@ int st_strncasecmp(const char *s1, const char *s2, size_t n);
 #define STRCASECMP(s1, s2) (st_strcasecmp(s1, s2))
 #define STRNCASECMP(s1, s2, n) (st_strncasecmp(s1, s2, n))
 
-#define ST_NUMCMP	((int (*)()) 0)
-#define ST_NUMHASH	((int (*)()) -2)
+#define ST_NUMCMP       ((int (*)()) 0)
+#define ST_NUMHASH      ((int (*)()) -2)
 
-#define st_numcmp	ST_NUMCMP
-#define st_numhash	ST_NUMHASH
+#define st_numcmp       ST_NUMCMP
+#define st_numhash      ST_NUMHASH
 
 int st_strhash();
 

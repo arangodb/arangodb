@@ -1,0 +1,3 @@
+{ name : "Peter" }
+{ "name" : "Vanessa", "age" : 15 }
+{ "name" : "John", likes : [ "Swimming", "Skiing" ], "address" : { "street" : "Cucumber lane", "zip" : "94242" } }

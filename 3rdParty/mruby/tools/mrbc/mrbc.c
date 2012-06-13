@@ -2,15 +2,15 @@
 #include "mruby/proc.h"
 #include "mruby/dump.h"
 #include "mruby/cdump.h"
-#include "compile.h"
+#include "mruby/compile.h"
 #include <stdio.h>
-#include <memory.h>
+#include <string.h>
 #include <stdlib.h>
 
 #define RITEBIN_EXT ".mrb"
 #define C_EXT       ".c"
-void ruby_show_version(mrb_state *);
-void ruby_show_copyright(mrb_state *);
+void mrb_show_version(mrb_state *);
+void mrb_show_copyright(mrb_state *);
 void parser_dump(mrb_state*, struct mrb_ast_node*, int);
 void codedump_all(mrb_state*, int);
 
@@ -96,19 +96,21 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
         args->check_syntax = 1;
         break;
       case 'v':
-        ruby_show_version(mrb);
+        mrb_show_version(mrb);
         args->verbose = 1;
         break;
       case '-':
         if (strcmp((*argv) + 2, "version") == 0) {
-          ruby_show_version(mrb);
+          mrb_show_version(mrb);
+	  exit(0);
         }
         else if (strcmp((*argv) + 2, "verbose") == 0) {
           args->verbose = 1;
           break;
         }
         else if (strcmp((*argv) + 2, "copyright") == 0) {
-          ruby_show_copyright(mrb);
+          mrb_show_copyright(mrb);
+	  exit(0);
         }
         else return -3;
         return 0;
@@ -161,12 +163,14 @@ main(int argc, char **argv)
   if (n < 0 || args.rfp == NULL) {
     cleanup(&args);
     usage(argv[0]);
+    mrb_close(mrb);
     return n;
   }
 
   p = mrb_parse_file(mrb, args.rfp);
   if (!p || !p->tree || p->nerr) {
     cleanup(&args);
+    mrb_close(mrb);
     return -1;
   }
 
@@ -181,6 +185,7 @@ main(int argc, char **argv)
 
   if (n < 0 || args.check_syntax) {
     cleanup(&args);
+    mrb_close(mrb);
     return n;
   }
   if (args.initname) {
@@ -194,13 +199,9 @@ main(int argc, char **argv)
   }
 
   cleanup(&args);
+  mrb_close(mrb);
 
   return n;
-}
-
-void
-mrb_init_ext(mrb_state *mrb)
-{
 }
 
 void

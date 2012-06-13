@@ -1,6 +1,6 @@
 /*
-** etc.c - 
-** 
+** etc.c -
+**
 ** See Copyright Notice in mruby.h
 */
 
@@ -8,6 +8,7 @@
 #include "mruby/string.h"
 #include "error.h"
 #include "mruby/numeric.h"
+#include "mruby/data.h"
 
 #ifndef FALSE
 #define FALSE   0
@@ -17,23 +18,28 @@
 #define TRUE    1
 #endif
 
-void
-ruby_xfree(void *x)
-{
-  //if (x)
-  //    vm_xfree(&mrb_objspace, x);
-}
-
 struct RData*
 mrb_data_object_alloc(mrb_state *mrb, struct RClass *klass, void *ptr, const struct mrb_data_type *type)
 {
   struct RData *data;
 
-  data = mrb_obj_alloc(mrb, MRB_TT_DATA, klass);
+  data = (struct RData*)mrb_obj_alloc(mrb, MRB_TT_DATA, klass);
   data->data = ptr;
-  data->type = type;
+  data->type = (struct mrb_data_type*) type;
 
   return data;
+}
+
+void *
+mrb_get_datatype(mrb_state *mrb, mrb_value obj, const struct mrb_data_type *type)
+{
+  if (SPECIAL_CONST_P(obj) || (mrb_type(obj) != MRB_TT_DATA)) {
+    return NULL;
+  }
+  if (DATA_TYPE(obj) != type) {
+    return NULL;
+  }
+  return DATA_PTR(obj);
 }
 
 void *
@@ -61,6 +67,7 @@ mrb_lastline_get(mrb_state *mrb)
   //return mrb_nil_value();
   mrb_value *argv;
   int argc;
+
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc < 1) {
     return mrb_nil_value();
