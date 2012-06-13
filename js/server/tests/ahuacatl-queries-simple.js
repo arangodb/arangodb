@@ -314,6 +314,259 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter9 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("filter 1 == 0 filter 2 == 3 return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter10 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 filter a > 1 && a < 0 filter a > 2 && a < 1 return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter11 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 filter a == 1 && a == 2 && a == 3 return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter12 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a == b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter13 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a != b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter14 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter15 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter16 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a <= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter17 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a < b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter18 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a <= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter19 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a < b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter20 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a > b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter21 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a >= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter22 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a == b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter23 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a <= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter24 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a < b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter25 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a > b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter26 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a >= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter27 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a == b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter28 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a <= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter29 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a < b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter30 : function () {
+      var expected = [ 2 ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a >= b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a value from a filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnFilter31 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a > b return 2");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sort and return
 ////////////////////////////////////////////////////////////////////////////////
 
