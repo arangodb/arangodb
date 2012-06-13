@@ -29,6 +29,7 @@
 
 #include <boost/scoped_ptr.hpp>
 
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -84,15 +85,8 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
 
     if (found) {
       LOGGER_TRACE << "forcing body";
-      request->setBody(body);
+      request->setBody(body, strlen(body));
     }
-  }
-
-  char const* format = request->value("__OUTPUT__", found);
-
-  if (found) {
-    LOGGER_TRACE << "forcing output format '" << format << "'";
-    request->setHeader("accept", format);
   }
 }
 
@@ -131,6 +125,24 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 /// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (TRI_json_t* json) {
+  response = new HttpResponse(HttpResponse::OK);
+  response->setContentType("application/json; charset=utf-8");
+
+  int res = TRI_StringifyJson(response->body().stringBuffer(), json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    delete response;
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result

@@ -27,7 +27,8 @@
 
 #include "RestVersionHandler.h"
 
-#include "Variant/VariantArray.h"
+#include "BasicsC/json.h"
+#include "BasicsC/strings.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -89,12 +90,21 @@ string const& RestVersionHandler::queue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestVersionHandler::execute () {
-  VariantArray* result = new VariantArray();
+  TRI_json_t result;
+  TRI_json_t server;
+  TRI_json_t version;
 
-  result->add("server", _name);
-  result->add("version", _version);
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
-  generateResult(result);
+  TRI_InitStringJson(TRI_CORE_MEM_ZONE, &server, TRI_DuplicateString(_name.c_str()));
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
+
+  TRI_InitStringJson(TRI_CORE_MEM_ZONE, &version, TRI_DuplicateString(_version.c_str()));
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+
   return HANDLER_DONE;
 }
 
