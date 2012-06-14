@@ -214,14 +214,16 @@ bool RestImportHandler::createByArray () {
   size_t next = 0;
   string line;
   
-  while (next != string::npos && start < request->bodySize()) {
-    
-    next = request->body().find('\n', start);
+  string body(request->body(), request->bodySize());
+
+  while (next != string::npos && start < body.size()) {
+    next = body.find('\n', start);
+
     if (next == string::npos) {
-      line = request->body().substr(start);
+      line = body.substr(start);
     }
     else {
-      line = request->body().substr(start, next - start);
+      line = body.substr(start, next - start);
       start = next + 1;      
     }
 
@@ -311,7 +313,8 @@ bool RestImportHandler::createByList () {
   bool create = found ? StringUtils::boolean(createStr) : false;
 
   size_t start = 0;
-  size_t next = request->body().find('\n', start);
+  string body(request->body(), request->bodySize());
+  size_t next = body.find('\n', start);
   
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
@@ -322,7 +325,7 @@ bool RestImportHandler::createByList () {
   
   TRI_json_t* keys = 0;
     
-  string line = request->body().substr(start, next);
+  string line = body.substr(start, next);
 
   // get first line
   if (line != "") { 
@@ -387,14 +390,14 @@ bool RestImportHandler::createByList () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  while (next != string::npos && start < request->body().length()) {
-    
-    next = request->body().find('\n', start);
+  while (next != string::npos && start < body.length()) {
+    next = body.find('\n', start);
+
     if (next == string::npos) {
-      line = request->body().substr(start);
+      line = body.substr(start);
     }
     else {
-      line = request->body().substr(start, next - start);
+      line = body.substr(start, next - start);
       start = next + 1;      
     }
 

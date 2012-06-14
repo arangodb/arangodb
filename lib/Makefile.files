@@ -68,6 +68,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpRequestPlain.cpp \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp \
 	lib/Rest/JsonContainer.cpp \

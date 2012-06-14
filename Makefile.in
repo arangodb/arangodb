@@ -350,22 +350,22 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
-	lib/Rest/HttpResponse.cpp lib/Rest/Initialise.cpp \
-	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
-	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
-	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
-	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
-	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
-	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
-	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
-	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
-	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
-	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
-	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
-	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
-	lib/ZeroMQ/ApplicationZeroMQ.cpp
+	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
+	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
+	lib/Rest/SslInterface.cpp lib/Rest/Url.cpp \
+	lib/ShapedJson/json-shaper.c lib/ShapedJson/shape-accessor.c \
+	lib/ShapedJson/shaped-json.c lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
+	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
+	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
+	lib/Variant/VariantDouble.cpp lib/Variant/VariantFloat.cpp \
+	lib/Variant/VariantInt16.cpp lib/Variant/VariantInt32.cpp \
+	lib/Variant/VariantInt64.cpp lib/Variant/VariantInt8.cpp \
+	lib/Variant/VariantMatrix2.cpp lib/Variant/VariantNull.cpp \
+	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
+	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
+	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
+	lib/Variant/VariantVector.cpp lib/ZeroMQ/ApplicationZeroMQ.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT)
@@ -414,8 +414,10 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Logger/LoggerTiming.$(OBJEXT) \
 	lib/ProgramOptions/program-options.$(OBJEXT) \
 	lib/Rest/AddressPort.$(OBJEXT) lib/Rest/AnyServer.$(OBJEXT) \
-	lib/Rest/HttpRequest.$(OBJEXT) lib/Rest/HttpResponse.$(OBJEXT) \
-	lib/Rest/Initialise.$(OBJEXT) lib/Rest/JsonContainer.$(OBJEXT) \
+	lib/Rest/HttpRequest.$(OBJEXT) \
+	lib/Rest/HttpRequestPlain.$(OBJEXT) \
+	lib/Rest/HttpResponse.$(OBJEXT) lib/Rest/Initialise.$(OBJEXT) \
+	lib/Rest/JsonContainer.$(OBJEXT) \
 	lib/Rest/SslInterface.$(OBJEXT) lib/Rest/Url.$(OBJEXT) \
 	lib/ShapedJson/json-shaper.$(OBJEXT) \
 	lib/ShapedJson/shape-accessor.$(OBJEXT) \
@@ -1214,22 +1216,22 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
-	lib/Rest/HttpResponse.cpp lib/Rest/Initialise.cpp \
-	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
-	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
-	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
-	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
-	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
-	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
-	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
-	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
-	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
-	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
-	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
-	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
-	$(am__append_7)
+	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
+	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
+	lib/Rest/SslInterface.cpp lib/Rest/Url.cpp \
+	lib/ShapedJson/json-shaper.c lib/ShapedJson/shape-accessor.c \
+	lib/ShapedJson/shaped-json.c lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
+	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
+	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
+	lib/Variant/VariantDouble.cpp lib/Variant/VariantFloat.cpp \
+	lib/Variant/VariantInt16.cpp lib/Variant/VariantInt32.cpp \
+	lib/Variant/VariantInt64.cpp lib/Variant/VariantInt8.cpp \
+	lib/Variant/VariantMatrix2.cpp lib/Variant/VariantNull.cpp \
+	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
+	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
+	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
+	lib/Variant/VariantVector.cpp $(am__append_7)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1753,6 +1755,8 @@ lib/Rest/AddressPort.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 lib/Rest/AnyServer.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/HttpRequest.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+	lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/HttpRequestPlain.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/HttpResponse.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
@@ -2733,6 +2737,7 @@ mostlyclean-compile:
 	-rm -f lib/Rest/AddressPort.$(OBJEXT)
 	-rm -f lib/Rest/AnyServer.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequest.$(OBJEXT)
+	-rm -f lib/Rest/HttpRequestPlain.$(OBJEXT)
 	-rm -f lib/Rest/HttpResponse.$(OBJEXT)
 	-rm -f lib/Rest/Initialise.$(OBJEXT)
 	-rm -f lib/Rest/JsonContainer.$(OBJEXT)
@@ -2979,6 +2984,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AddressPort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AnyServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequestPlain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpResponse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Initialise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/JsonContainer.Po@am__quote@

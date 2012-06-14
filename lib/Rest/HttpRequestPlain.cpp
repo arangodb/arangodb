@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http request
+/// @brief plain http request
 ///
 /// @file
 ///
@@ -26,19 +26,25 @@
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpRequest.h"
+#include "HttpRequestPlain.h"
 
-#include "Logger/Logger.h"
-#include "Basics/StringBuffer.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace std;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   local constants
+// -----------------------------------------------------------------------------
 
 static char const* EMPTY_STR = "";
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoServer
+// --SECTION--                                            class HttpRequestPlain
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -54,42 +60,21 @@ static char const* EMPTY_STR = "";
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest (string const& header)
-  : type(HTTP_REQUEST_ILLEGAL),
+HttpRequestPlain::HttpRequestPlain (char const* header, size_t length)
+  : HttpRequest(),
     _requestPath(EMPTY_STR),
-    _suffix(),
     _headers(5),
     _values(10),
-    bodyValue(EMPTY_STR),
+    _contentLength(0),
+    _body(0),
     _bodySize(0),
-    _connectionInfo(),
-    freeables() {
+    _freeables() {
 
-  // copy request
-  char* request = StringUtils::duplicate(header);
-  freeables.push_back(request);
+  // copy request - we will destroy/rearrange the content to compute the
+  // headers and values in-place
 
-  parseHeader(request, header.size());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http request constructor
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequest (char const* header, size_t length)
-  : type(HTTP_REQUEST_ILLEGAL),
-    _requestPath(EMPTY_STR),
-    _suffix(),
-    _headers(5),
-    _values(10),
-    bodyValue(EMPTY_STR),
-    _bodySize(0),
-    _connectionInfo(),
-    freeables() {
-
-  // copy request
-  char* request = StringUtils::duplicate(header, length);
-  freeables.push_back(request);
+  char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
+  _freeables.push_back(request);
 
   parseHeader(request, length);
 }
@@ -98,24 +83,23 @@ HttpRequest::HttpRequest (char const* header, size_t length)
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest ()
-  : type(HTTP_REQUEST_ILLEGAL),
+HttpRequestPlain::HttpRequestPlain ()
+  : HttpRequest(),
     _requestPath(EMPTY_STR),
-    _suffix(),
-    _headers(5),
-    _values(5),
-    bodyValue(EMPTY_STR),
+    _headers(1),
+    _values(1),
+    _contentLength(0),
+    _body(0),
     _bodySize(0),
-    _connectionInfo(),
-    freeables() {
+    _freeables() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::~HttpRequest () {
-  for (vector<char const*>::iterator i = freeables.begin();  i != freeables.end();  ++i) {
+HttpRequestPlain::~HttpRequestPlain () {
+  for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
 }
@@ -125,7 +109,7 @@ HttpRequest::~HttpRequest () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                               HttpRequest methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,111 +118,48 @@ HttpRequest::~HttpRequest () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the http request type
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::requestType () const {
-  return type;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the http request type
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setRequestType (HttpRequestType newType) {
-  type = newType;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the path of the request
-///
-/// The path consists of the URL without the host and without any parameters.
-////////////////////////////////////////////////////////////////////////////////
-
-char const* HttpRequest::requestPath () const {
+char const* HttpRequestPlain::requestPath () const {
   return _requestPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void setRequestPath (char const* path) {
-  if (_requestPath != EMPTY_STR) {
-    freeables.push_back(_requestPath);
-  }
-
-  _requestPath = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, path);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the content length
-////////////////////////////////////////////////////////////////////////////////
-
-size_t HttpRequest::contentLength () const {
-  char const* cl = header("content-length");
-
-  while (*cl == ' ' || *cl == '\t') {
-    ++cl;
-  }
-
-  if (*cl) {
-    return TRI_UInt64String(cl);
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server IP
-////////////////////////////////////////////////////////////////////////////////
-
-ConnectionInfo const& HttpRequest::connectionInfo () const {
-  return _connectionInfo;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server IP
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setConnectionInfo (ConnectionInfo const& info) {
-  _connectionInfo = info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes representation to string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::write (StringBuffer* buffer) const {
-  switch (type) {
+void HttpRequestPlain::write (TRI_string_buffer_t* buffer) const {
+  switch (_type) {
     case HTTP_REQUEST_GET:
-      buffer->appendText("GET ");
+      TRI_AppendString2StringBuffer(buffer, "GET ", 4);
       break;
 
     case HTTP_REQUEST_POST:
-      buffer->appendText("POST ");
+      TRI_AppendString2StringBuffer(buffer, "POST ", 5);
       break;
 
     case HTTP_REQUEST_PUT:
-      buffer->appendText("PUT ");
+      TRI_AppendString2StringBuffer(buffer, "PUT ", 4);
       break;
 
     case HTTP_REQUEST_DELETE:
-      buffer->appendText("DELETE ");
+      TRI_AppendString2StringBuffer(buffer, "DELETE ", 7);
       break;
 
     case HTTP_REQUEST_HEAD:
-      buffer->appendText("HEAD ");
+      TRI_AppendString2StringBuffer(buffer, "HEAD ", 5);
       break;
 
     default:
-      buffer->appendText("UNKNOWN ");
+      TRI_AppendString2StringBuffer(buffer, "UNKNOWN ", 8);
       break;
   }
 
-  // do not URL decode the path, we need to distingush between
+  // do NOT url-encode the path, we need to distingush between
   // "/document/a/b" and "/document/a%2fb"
-  buffer->appendText(_requestPath);
+
+  TRI_AppendStringStringBuffer(buffer, _requestPath);
 
   // generate the request parameters
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -254,21 +175,21 @@ void HttpRequest::write (StringBuffer* buffer) const {
     }
 
     if (first) {
-      buffer->appendChar('?');
+      TRI_AppendCharStringBuffer(buffer, '?');
       first = false;
     }
     else {
-      buffer->appendChar('&');
+      TRI_AppendCharStringBuffer(buffer, '&');
     }
 
     char const* value = begin->_value;
 
-    buffer->appendText(StringUtils::urlEncode(key));
-    buffer->appendChar('=');
-    buffer->appendText(StringUtils::urlEncode(value));
+    TRI_AppendUrlEncodedStringStringBuffer(buffer, key);
+    TRI_AppendCharStringBuffer(buffer, '=');
+    TRI_AppendUrlEncodedStringStringBuffer(buffer, value);
   }
 
-  buffer->appendText(" HTTP/1.1\r\n");
+  TRI_AppendString2StringBuffer(buffer, " HTTP/1.1\r\n", 11);
 
   // generate the header fields
   for (_headers.range(begin, end);  begin < end;  ++begin) {
@@ -284,40 +205,32 @@ void HttpRequest::write (StringBuffer* buffer) const {
 
     char const* value = begin->_value;
 
-    buffer->appendText(key);
-    buffer->appendText(": ");
-    buffer->appendText(value);
-    buffer->appendText("\r\n");
+    TRI_AppendStringStringBuffer(buffer, key);
+    TRI_AppendString2StringBuffer(buffer, ": ", 2);
+    TRI_AppendStringStringBuffer(buffer, value);
+    TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
   }
 
-  buffer->appendText("content-length: ");
-  buffer->appendInteger(bodyValue.size());
-  buffer->appendText("\r\n\r\n");
-
-  buffer->appendText(bodyValue.c_str(), bodyValue.size());
+  TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
+  TRI_AppendUInt64StringBuffer(buffer, _bodySize);
+  TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
+  TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public header methods
-// -----------------------------------------------------------------------------
+size_t HttpRequestPlain::contentLength () const {
+  return _contentLength;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
-////////////////////////////////////////////////////////////////////////////////
-
-char const* HttpRequest::header (char const* key) const {
-  char const* k = TRI_LowerAsciiString(key);
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, k);
+char const* HttpRequestPlain::header (char const* key) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == 0) {
     return EMPTY_STR;
@@ -328,13 +241,11 @@ char const* HttpRequest::header (char const* key) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::header (char const* key, bool& found) const {
-  char const* k = TRI_LowerAsciiString(key);
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, k);
+char const* HttpRequestPlain::header (char const* key, bool& found) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == 0) {
     found = false;
@@ -347,10 +258,10 @@ char const* HttpRequest::header (char const* key, bool& found) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all header fields
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::headers () const {
+map<string, string> HttpRequestPlain::headers () const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -366,71 +277,17 @@ map<string, string> HttpRequest::headers () const {
     result[key] = begin->_value;
   }
 
+  result["content-length"] = StringUtils::itoa(_contentLength);
+
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set a header field
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setHeader (string const& key, string const& value) {
-  char const* k = StringUtils::duplicate(StringUtils::tolower(key));
-  char const* v = StringUtils::duplicate(value);
-
-  _headers.insert(k, key.size(), v);
-
-  freeables.push_back(k);
-  freeables.push_back(v);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public suffix methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all suffix parts
-////////////////////////////////////////////////////////////////////////////////
-
-vector<string> const& HttpRequest::suffix () const {
-  return _suffix;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a suffix part
-////////////////////////////////////////////////////////////////////////////////
-
-void addSuffix (string const& part) {
-  _suffix.push_back(part);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              public value methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the value of a key
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpRequest::value (string const& key) const {
-  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key.c_str());
+char const* HttpRequestPlain::value (char const* key) const {
+  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == 0) {
     return EMPTY_STR;
@@ -441,11 +298,11 @@ string HttpRequest::value (string const& key) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the value of a key
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpRequest::value (string const& key, bool& found) const {
-  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key.c_str());
+char const* HttpRequestPlain::value (char const* key, bool& found) const {
+  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == 0) {
     found = false;
@@ -458,10 +315,10 @@ string HttpRequest::value (string const& key, bool& found) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all values
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::values () const {
+map<string, string> HttpRequestPlain::values () const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -481,82 +338,32 @@ map<string, string> HttpRequest::values () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the key/values from an url encoded string
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setValues (string const& params) {
-  char* copy = StringUtils::duplicate(params);
-
-  freeables.push_back(copy);
-
-  setValues(copy, copy + params.size());
+char const* HttpRequestPlain::body () const {
+  return _body == 0 ? EMPTY_STR : _body;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a key/value pair
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setValue (string const& key, string const& value) {
-  char const* k = StringUtils::duplicate(key);
-  char const* v = StringUtils::duplicate(value);
-
-  _values.insert(k, key.size(), v);
-
-  freeables.push_back(k);
-  freeables.push_back(v);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               public body methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the body
-////////////////////////////////////////////////////////////////////////////////
-
-char const* body () const {
-  return _body;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the body size
-////////////////////////////////////////////////////////////////////////////////
-
-size_t bodySize () const {
+size_t HttpRequestPlain::bodySize () const {
   return _bodySize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the body
-///
-/// In a POST request the body contains additional key/value pairs. The
-/// function parses the body and adds the corresponding pairs.
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void setBody (char const* newBody) {
-  size_t newLength = strlen(newBody);
-
-  setBody(newBody, newLength);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the body
-////////////////////////////////////////////////////////////////////////////////
-
-void setBody (char const* newBody, size_t length) {
+int HttpRequestPlain::setBody (char const* newBody, size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
   _bodySize = length;
 
-  freeables.push_back(_body);
+  _freeables.push_back(_body);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,7 +383,7 @@ void setBody (char const* newBody, size_t length) {
 /// @brief parses the http header
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseHeader (char* ptr, size_t length) {
+void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
 
@@ -628,6 +435,8 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           valueBegin = valueEnd = keyEnd;
           start = end;
         }
+
+        // there is only a NL
         else if (*e == '\n') {
           valueBegin = valueEnd = keyEnd;
           start = e + 1;
@@ -676,23 +485,23 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
         // check the key
         if (strcmp(keyBegin, "post") == 0) {
-          type = HTTP_REQUEST_POST;
+          _type = HTTP_REQUEST_POST;
         }
         else if (strcmp(keyBegin, "put") == 0) {
-          type = HTTP_REQUEST_PUT;
+          _type = HTTP_REQUEST_PUT;
         }
         else if (strcmp(keyBegin, "delete") == 0) {
-          type = HTTP_REQUEST_DELETE;
+          _type = HTTP_REQUEST_DELETE;
         }
         else if (strcmp(keyBegin, "get") == 0) {
-          type = HTTP_REQUEST_GET;
+          _type = HTTP_REQUEST_GET;
         }
         else if (strcmp(keyBegin, "head") == 0) {
-          type = HTTP_REQUEST_HEAD;
+          _type = HTTP_REQUEST_HEAD;
         }
 
         // extract the path and decode the url and parameters
-        if (type != HTTP_REQUEST_ILLEGAL) {
+        if (_type != HTTP_REQUEST_ILLEGAL) {
           char* pathBegin = valueBegin;
           char* pathEnd = 0;
 
@@ -702,8 +511,9 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           // find a question mark or space
           char* f = pathBegin;
 
-          // do not URL decode the path, we need to distingush between
+          // do NOT url-decode the path, we need to distingush between
           // "/document/a/b" and "/document/a%2fb"
+
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
             ++f;
           }
@@ -760,23 +570,24 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         // skip \r
         if (keyBegin < valueEnd && keyEnd[-1] == '\r') {
           --keyEnd;
+          *keyEnd = '\0';
         }
 
         // check the key
         if (strcmp(keyBegin, "post") == 0) {
-          type = HTTP_REQUEST_POST;
+          _type = HTTP_REQUEST_POST;
         }
         else if (strcmp(keyBegin, "put") == 0) {
-          type = HTTP_REQUEST_PUT;
+          _type = HTTP_REQUEST_PUT;
         }
         else if (strcmp(keyBegin, "delete") == 0) {
-          type = HTTP_REQUEST_DELETE;
+          _type = HTTP_REQUEST_DELETE;
         }
         else if (strcmp(keyBegin, "get") == 0) {
-          type = HTTP_REQUEST_GET;
+          _type = HTTP_REQUEST_GET;
         }
         else if (strcmp(keyBegin, "head") == 0) {
-          type = HTTP_REQUEST_HEAD;
+          _type = HTTP_REQUEST_HEAD;
         }
       }
     }
@@ -858,7 +669,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          _headers.insert(keyBegin, keyEnd - keyBegin, valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin);
         }
       }
 
@@ -879,7 +690,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
         // use empty value
         if (keyBegin < keyEnd) {
-          _headers.insert(keyBegin, keyEnd - keyBegin, keyEnd);
+          setHeader(keyBegin, keyEnd - keyBegin, keyEnd);
         }
       }
     }
@@ -889,10 +700,18 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the path of the request
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequestPlain::setRequestPath (char const* path) {
+  _requestPath = path;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the header values
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setValues (char* buffer, char* end) {
+void HttpRequestPlain::setValues (char* buffer, char* end) {
   char* keyBegin = 0;
   char* key = 0;
 
@@ -995,3 +814,29 @@ void HttpRequest::setValues (char* buffer, char* end) {
     _values.insert(keyBegin, key - keyBegin, valueBegin);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
+  if (keyLength == 14 && TRI_EqualString2(key, "content-length", keyLength)) {
+    _contentLength = TRI_UInt64String(value);
+  }
+  else {
+    _headers.insert(key, keyLength, value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// End:
