@@ -26,8 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef TRIAGENS_BASICS_C_BITINDEXES_BITARRAY_H
-#define TRIAGENS_BASICS_C_BITINDEXES_BITARRAY_H 1
+#ifndef TRIAGENS_DURHAM_BITINDEXES_BITARRAY_H
+#define TRIAGENS_DURHAM_BITINDEXES_BITARRAY_H 1
 
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
@@ -133,8 +133,9 @@ int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, voi
 
 int TRI_LookupBitMaskBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_vector_pointer_t*);  
 
-int TRI_RemoveBitMaskElementBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);
+int TRI_RemoveElementBitarray (TRI_bitarray_t*, void*);
 
+int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* , TRI_bitarray_mask_t*, TRI_bitarray_mask_t*, void*);  
 
 #ifdef __cplusplus
 }
