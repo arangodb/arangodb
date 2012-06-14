@@ -217,6 +217,9 @@ TRI_index_t* TRI_LookupIndex (TRI_doc_collection_t* collection, TRI_idx_iid_t ii
 
 char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
   switch (idx->_type) {
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      return "bitarray";
+      
     case TRI_IDX_TYPE_HASH_INDEX: 
       return "hash";
 
@@ -246,6 +249,12 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
 /// @brief return whether an index supports full coverage only
 ////////////////////////////////////////////////////////////////////////////////
 
+// .............................................................................
+// Full coverage here means that all fields which comprise a index MUST be
+// assigned a value otherwise the index can not return a meaningful result. 
+// Thus this function below returns whether full coverage is required by index.
+// .............................................................................
+
 bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
   // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
   switch (idx->_type) {
@@ -256,7 +265,9 @@ bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return false;
       return false;
   }
 
@@ -2675,11 +2686,11 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
 // .............................................................................
 
 
-static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collection_t* collection) {
-  TRI_json_t*                 jsonObject;
-  TRI_shaped_json_t*          shapedObject;
-  TRI_sl_relation_operator_t* relationOperator;
-  TRI_sl_logical_operator_t*  logicalOperator;
+static void FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_collection_t* collection) {
+  TRI_json_t*                    jsonObject;
+  TRI_shaped_json_t*             shapedObject;
+  TRI_relation_index_operator_t* relationOperator;
+  TRI_logical_index_operator_t*  logicalOperator;
   size_t j;
   
   if (slOperator == NULL) {
@@ -2687,22 +2698,24 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
   }
   
   switch (slOperator->_type) {
-    case TRI_SL_AND_OPERATOR: 
-    case TRI_SL_NOT_OPERATOR:
-    case TRI_SL_OR_OPERATOR: {
-      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
+    case TRI_AND_INDEX_OPERATOR: 
+    case TRI_NOT_INDEX_OPERATOR:
+    case TRI_OR_INDEX_OPERATOR: {
+    
+      logicalOperator = (TRI_logical_index_operator_t*)(slOperator);
       FillLookupSLOperator(logicalOperator->_left,collection);
       FillLookupSLOperator(logicalOperator->_right,collection);
       break;
     }
     
-    case TRI_SL_EQ_OPERATOR: 
-    case TRI_SL_GE_OPERATOR: 
-    case TRI_SL_GT_OPERATOR: 
-    case TRI_SL_NE_OPERATOR: 
-    case TRI_SL_LE_OPERATOR: 
-    case TRI_SL_LT_OPERATOR: {
-      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+    case TRI_EQ_INDEX_OPERATOR: 
+    case TRI_GE_INDEX_OPERATOR: 
+    case TRI_GT_INDEX_OPERATOR: 
+    case TRI_NE_INDEX_OPERATOR: 
+    case TRI_LE_INDEX_OPERATOR: 
+    case TRI_LT_INDEX_OPERATOR: {
+    
+      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
       relationOperator->_collection = collection;
       relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
@@ -2735,7 +2748,7 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
 // .............................................................................
 
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operator_t* slOperator) {
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
   TRI_skiplist_iterator_t* result;
   
@@ -2760,7 +2773,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operat
   // we must deallocate any memory we allocated in FillLookupSLOperator
   // .........................................................................
   
-  TRI_FreeSLOperator(slOperator); 
+  TRI_FreeIndexOperator(slOperator); 
   
   return result;  
 }

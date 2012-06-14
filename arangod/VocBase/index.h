@@ -37,7 +37,7 @@
 #include "HashIndex/hashindex.h"
 #include "PriorityQueue/pqueueindex.h"
 #include "SkipLists/skiplistIndex.h"
-#include "SkipLists/sl-operator.h"
+#include "IndexOperators/index-operator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,6 +78,7 @@ typedef enum {
   TRI_IDX_TYPE_HASH_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX,
+  TRI_IDX_TYPE_BITARRAY_INDEX,
   TRI_IDX_TYPE_CAP_CONSTRAINT
 }
 TRI_idx_type_e;
@@ -116,6 +117,14 @@ typedef struct TRI_index_s {
 }
 TRI_index_t;
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +143,8 @@ typedef struct TRI_geo_index_s {
   bool _constraint;
 }
 TRI_geo_index_t;
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index
@@ -534,7 +545,7 @@ void TRI_FreePriorityQueueIndex (TRI_index_t*);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_sl_operator_t*);
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_index_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index

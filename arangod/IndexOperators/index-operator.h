@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sl-operator (operators used for skiplists and others)
+/// @brief index-operator (operators used for skiplists and other indexes)
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_SKIPLISTS_SL_OPERATOR_H
-#define TRIAGENS_DURHAM_SKIPLISTS_SL_OPERATOR_H 1
+#ifndef TRIAGENS_DURHAM_INDEX_OPERATORS_INDEX_OPERATOR_H
+#define TRIAGENS_DURHAM_INDEX_OPERATORS_INDEX_OPERATOR_H 1
 
 #include "BasicsC/json.h"
 #include "ShapedJson/json-shaper.h"
@@ -53,80 +53,94 @@ extern "C" {
 
 typedef enum {
 
-  TRI_SL_EQ_OPERATOR,
-  TRI_SL_NE_OPERATOR,
-  TRI_SL_LE_OPERATOR,
-  TRI_SL_LT_OPERATOR,
-  TRI_SL_GE_OPERATOR,
-  TRI_SL_GT_OPERATOR,
+  TRI_EQ_INDEX_OPERATOR,
+  TRI_NE_INDEX_OPERATOR,
+  TRI_LE_INDEX_OPERATOR,
+  TRI_LT_INDEX_OPERATOR,
+  TRI_GE_INDEX_OPERATOR,
+  TRI_GT_INDEX_OPERATOR,
   
-  TRI_SL_AND_OPERATOR,
-  TRI_SL_NOT_OPERATOR,
-  TRI_SL_OR_OPERATOR
+  TRI_AND_INDEX_OPERATOR,
+  TRI_NOT_INDEX_OPERATOR,
+  TRI_OR_INDEX_OPERATOR
 }
-TRI_sl_operator_type_e;
+TRI_index_operator_type_e;
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief operands and operators
 ////////////////////////////////////////////////////////////////////////////////
 
-
-typedef struct TRI_sl_operator_s {
-  TRI_sl_operator_type_e _type;
+typedef struct TRI_index_operator_s {
+  TRI_index_operator_type_e _type;
   TRI_shaper_t* _shaper;
-}
-TRI_sl_operator_t;
+} 
+TRI_index_operator_t;
+
+
 //................................................................................
 // Storage for NOT / AND / OR logical operators used in skip list indexes and others
 // It is a binary or unary operator
 //................................................................................
-typedef struct TRI_sl_logical_operator_s {
-  TRI_sl_operator_t _base;
-  TRI_sl_operator_t* _left;  // could be a relation or another logical operator
-  TRI_sl_operator_t* _right; // could be a relation or another logical operator
+
+typedef struct TRI_logical_index_operator_s {
+  TRI_index_operator_t _base;
+  TRI_index_operator_t* _left;  // could be a relation or another logical operator
+  TRI_index_operator_t* _right; // could be a relation or another logical operator or null
 }
-TRI_sl_logical_operator_t;
+TRI_logical_index_operator_t;
 
 
-typedef struct TRI_sl_relation_operator_s {
-  TRI_sl_operator_t _base;
+//................................................................................
+// Storage for relation operator, e.g. <, <=, >, >=, ==
+//................................................................................
+
+typedef struct TRI_relation_index_operator_s {
+  TRI_index_operator_t _base;
   TRI_json_t* _parameters;    // parameters with which this relation was called with 
   TRI_shaped_json_t* _fields; // actual data from the parameters converted from
                               // a json array to a shaped json array  
   size_t _numFields;          // number of fields in the array above
   void* _collection;          // required for the computation of the order operation  
 }
-TRI_sl_relation_operator_t;
+TRI_relation_index_operator_t;
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new skiplist operator of the specified type
+/// @brief create a new index operator of the specified type
 ///
-/// note that the skiplist will take ownership of the json parameters passed 
-/// to it
+/// note that the index which uses these operators  will take ownership of the 
+/// json parameters passed to it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sl_operator_t* TRI_CreateSLOperator (TRI_sl_operator_type_e,
-                                         TRI_sl_operator_t*,
-                                         TRI_sl_operator_t*,
-                                         TRI_json_t*,
-                                         TRI_shaper_t*,
-                                         TRI_shaped_json_t*,
-                                         size_t,
-                                         void*);     
+TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
+                                               TRI_index_operator_t*,
+                                               TRI_index_operator_t*,
+                                               TRI_json_t*,
+                                               TRI_shaper_t*,
+                                               TRI_shaped_json_t*,
+                                               size_t,
+                                               void*);     
 
+                                               
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy a skiplist operator recursively (deep copy)
+/// @brief copy an index  operator recursively (deep copy)
 ////////////////////////////////////////////////////////////////////////////////
                                
-TRI_sl_operator_t* TRI_CopySLOperator (TRI_sl_operator_t*);
+TRI_index_operator_t* TRI_CopyIndexOperator (TRI_index_operator_t*);
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a skiplist operator recursively
+/// @brief free an index operator recursively
 ///
 /// note that this will also free all the bound json parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSLOperator (TRI_sl_operator_t*);
+void TRI_FreeIndexOperator (TRI_index_operator_t*);
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
