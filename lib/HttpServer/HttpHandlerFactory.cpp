@@ -27,10 +27,10 @@
 
 #include "HttpHandlerFactory.h"
 
-#include <Logger/Logger.h>
-#include <Basics/MutexLocker.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/MaintenanceCallback.h>
+#include "Logger/Logger.h"
+#include "Basics/MutexLocker.h"
+#include "Rest/HttpRequestPlain.h"
+#include "Rest/MaintenanceCallback.h"
 
 #include "HttpServer/HttpHandler.h"
 
@@ -113,14 +113,14 @@ namespace triagens {
 
 
     HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) {
-      return new HttpRequest(ptr, length);
+      return new HttpRequestPlain(ptr, length);
     }
 
 
 
     HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       map<string, create_fptr> const& ii = _constructors;
-      string const& path = request->requestPath();
+      string path = request->requestPath();
       map<string, create_fptr>::const_iterator i = ii.find(path);
       void* data = 0;
 
@@ -155,16 +155,17 @@ namespace triagens {
             size_t n = path.find_first_of('/', l);
 
             while (n != string::npos) {
-              request->addSuffix(path.substr(l, n - l));
+              request->addSuffix(path.substr(l, n - l).c_str());
               l = n + 1;
               n = path.find_first_of('/', l);
             }
 
             if (l < path.size()) {
-              request->addSuffix(path.substr(l));
+              request->addSuffix(path.substr(l).c_str());
             }
-            prefix = "/";
-            request->setRequestPath(prefix);            
+
+            path = "/";
+            request->setPrefix(path.c_str());
           }
         }
 
@@ -175,17 +176,19 @@ namespace triagens {
           size_t n = path.find_first_of('/', l);
 
           while (n != string::npos) {
-            request->addSuffix(path.substr(l, n - l));
+            request->addSuffix(path.substr(l, n - l).c_str());
             l = n + 1;
             n = path.find_first_of('/', l);
           }
 
           if (l < path.size()) {
-            request->addSuffix(path.substr(l));
+            request->addSuffix(path.substr(l).c_str());
           }
 
-          request->setRequestPath(prefix);
-          i = ii.find(prefix);
+          path = prefix;
+          request->setPrefix(path.c_str());
+
+          i = ii.find(path);
         }
       }
 
