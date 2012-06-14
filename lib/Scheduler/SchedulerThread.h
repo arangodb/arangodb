@@ -35,6 +35,8 @@
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 
+// #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -232,7 +234,11 @@ namespace triagens {
 /// @brief queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
         TRI_spin_t queueLock;
+#else
+        TRI_mutex_t queueLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work queue
