@@ -428,7 +428,7 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm, TRI_v
 /// @brief Remove an entry from a sequence of bitarray columns
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm, void* element) {
+int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   int result;
   TRI_master_table_position_t* position;
   bool compactColumns;
@@ -449,6 +449,21 @@ int TRI_RemoveBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm
   
   return TRI_ERROR_NO_ERROR;
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief For a data element replaces one bit mask with another
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* ba , 
+                                       TRI_bitarray_mask_t* oldMask, 
+                                       TRI_bitarray_mask_t* newMask, 
+                                       void* element) {
+  assert(0);
+  return TRI_ERROR_NO_ERROR;
+}                                       
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

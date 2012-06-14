@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bitarray index
+/// @brief index iterator
 ///
 /// @file
 ///
@@ -35,113 +35,75 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H
-#define TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H 1
+#include "index-iterator.h"
 
-#include <BasicsC/common.h>
-#include "BitIndexes/bitarray.h"
-#include "IndexIterators/index-iterator.h"
-#include "IndexOperators/index-operator.h"
-#include "ShapedJson/shaped-json.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        bitarrayIndex public types
+// --SECTION--                                             common public methods
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarrayIndex
+/// @addtogroup indexIterator
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
-typedef struct {
-  TRI_bitarray_t* bitarray;
-} BitarrayIndex;
-
-
-typedef struct {
-  size_t numFields;          // the number of fields
-  TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
-  void* data;                // master document pointer
-  void* collection;          // pointer to the collection;
-} BitarrayIndexElement;
-
-typedef struct {
-  size_t _numElements;
-  BitarrayIndexElement* _elements; // simple list of elements
-} BitarrayIndexElements;  
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief Destroys an index iterator witout freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
+void TRI_DestroyIndexIterator(TRI_index_iterator_t* iterator) {
+  
+  // ...........................................................................
+  // Check if we have a valid iterator
+  // ...........................................................................
+  
+  if (iterator == NULL) {
+    return;
+  }
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     bitarrayIndex  public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarrayIndex
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a bitarray index , but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void BitarrayIndex_destroy (BitarrayIndex*);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a bitarray index and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void BitarrayIndex_free (BitarrayIndex*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, bool, bool, void*);
-
-int BitarrayIndex_add (BitarrayIndex*, BitarrayIndexElement*);
-
-TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,  
-                                          TRI_index_operator_t*, 
-                                          TRI_vector_t*,
-                                          bool (*filter) (TRI_index_iterator_t*) );
-
-                                         
-int BitarrayIndex_insert (BitarrayIndex*, BitarrayIndexElement*);
-
-int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*); 
-
-bool BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
-
-
-
-#ifdef __cplusplus
+  // ...........................................................................
+  // Since we have no idea what the structures mean for an iterator (it depends
+  // on what/who created the iterator), we simply callback the appropriate
+  // destroy function.
+  // ...........................................................................
+  
+  if (iterator->_destroyIterator != NULL) {
+    iterator->_destroyIterator(iterator);    
+  }
 }
-#endif
 
-#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Destroys an index iterator and frees the allocated memory
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndexIterator(TRI_index_iterator_t* iterator) {
+
+  // ...........................................................................
+  // Check if we have a valid iterator
+  // ...........................................................................
+  
+  if (iterator == NULL) {
+    return;
+  }
+
+
+  TRI_DestroyIndexIterator(iterator);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, iterator);
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+
 

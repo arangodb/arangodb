@@ -39,8 +39,26 @@
 
 
 
+// .............................................................................
+// forward declaration of static functions used for iterator callbacks
+// .............................................................................
 
-static int generateBitMask (BitarrayIndex* baIndex, BitarrayIndexElement* element, TRI_bitarray_mash_t* mask);
+static bool  BitarrayIndexHasNextIterationCallback (TRI_index_iterator_t*);
+static void* BitarrayIndexNextIterationCallback    (TRI_index_iterator_t*);
+static void* BitarrayIndexNextsIterationCallback   (TRI_index_iterator_t*, int64_t);
+static bool  BitarrayIndexHasPrevIterationCallback (TRI_index_iterator_t*);
+static void* BitarrayIndexPrevIterationCallback    (TRI_index_iterator_t*);
+static void* BitarrayIndexPrevsIterationCallback   (TRI_index_iterator_t*, int64_t);
+static void  BitarrayIndexDestroyIterator          (TRI_index_iterator_t*);
+ 
+// .............................................................................
+// forward declaration of static functions used here
+// .............................................................................
+
+static void BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
+static int  generateBitMask          (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                           bitarrayIndex     common public methods
@@ -86,11 +104,11 @@ void BitarrayIndex_free(BitarrayIndex* baIndex) {
 
 
 //------------------------------------------------------------------------------
-// Public Methods Unique Skiplists
+// Public Methods 
 //------------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new bitarray index
+/// @brief Creates a new bitarray index. Failure will return an appropriate error code
 ////////////////////////////////////////////////////////////////////////////////
 
 int BitarrayIndex_new(BitarrayIndex** baIndex, 
@@ -101,15 +119,39 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
                       void* context) {
   int     result;
   size_t  numArrays;
+
+  
+  // ...........................................................................  
+  // If the bit array index has arealdy been created, return internal error
+  // ...........................................................................  
   
   if (*baIndex != NULL) {
     return TRI_ERROR_INTERNAL;
   }
+
+
+  // ...........................................................................  
+  // If the memory zone is invalid, then return an internal error
+  // ...........................................................................  
+    
+  if (memoryZone == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+
+  // ...........................................................................  
+  // Create the bit array index structure
+  // ...........................................................................  
   
   *baIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(BitarrayIndex), true);
   if (*baIndex == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  
+  // ...........................................................................  
+  // Determine the number of bit columns which will comprise the bit array index.
+  // ...........................................................................  
   
   numArrays = cardinality;
   
@@ -121,8 +163,18 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
     ++numArrays;
   }    
 
+  
+  // ...........................................................................  
+  // Create the bit arrays
+  // ...........................................................................  
+  
   result = TRI_InitBitarray(&((*baIndex)->bitarray), memoryZone, numArrays, NULL);
 
+
+  // ...........................................................................  
+  // return the result of creating the bit  arrays
+  // ...........................................................................  
+  
   return result;
 }
 
@@ -134,7 +186,7 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
 
 int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   int result;
-  TRI_bitarray_mash_t mask;
+  TRI_bitarray_mask_t mask;
   
   // ..........................................................................
   // generate bit mask
@@ -145,38 +197,61 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
     return result;
   }  
   
+  
   // ..........................................................................
   // insert the bit mask into the bit array
   // ..........................................................................
   
-  result = TRI_InsertBitMaskBitarray(baIndex->bitarray, &mask, element->data);  
+  result = TRI_InsertBitMaskElementBitarray(baIndex->bitarray, &mask, element->data);  
   return result;
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate one or more documents which match an index operator
 ////////////////////////////////////////////////////////////////////////////////
 
-int BitarrayIndex_find(BitarrayIndex* baIndex, TRI_sl_operator_t* slOperator, BitarrayIndexElements* elements) {
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), true);
-  if (results == NULL) {
+TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex, 
+                                         TRI_index_operator_t* indexOperator,
+                                         TRI_vector_t* shapeList,
+                                         bool (*filter) (TRI_index_iterator_t*) ) {
+
+  TRI_index_iterator_t* iterator;
+  
+  // ...........................................................................  
+  // Attempt to allocate memory for the index iterator which stores the results
+  // if any of the lookup.
+  // ...........................................................................  
+  
+  iterator = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_t), true);
+  if (iterator == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL; // calling procedure needs to care when the iterator is null
   }  
-  results->_index = skiplistIndex;
-  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
-  results->_currentInterval = 0;
-  results->_cursor          = NULL;
-  results->_hasNext         = SkiplistHasNextIterationCallback;
-  results->_next            = SkiplistNextIterationCallback;
-  results->_nexts           = SkiplistNextsIterationCallback;
-  results->_hasPrev         = SkiplistHasPrevIterationCallback;
-  results->_prev            = SkiplistPrevIterationCallback;
-  results->_prevs           = SkiplistPrevsIterationCallback;
   
-  SkiplistIndex_findHelper(skiplistIndex, shapeList, slOperator, &(results->_intervals));
   
-  return results;
+  // ...........................................................................  
+  // We now initialise the index iterator with all the call back functions.
+  // ...........................................................................  
+  
+  TRI_InitVector(&(iterator->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_interval_t));
+  iterator->_index           = baIndex;  
+  iterator->_currentInterval = 0;  
+  iterator->_cursor          = NULL;
+  
+  iterator->_filter          = filter; 
+  iterator->_hasNext         = BitarrayIndexHasNextIterationCallback;
+  iterator->_next            = BitarrayIndexNextIterationCallback;
+  iterator->_nexts           = BitarrayIndexNextsIterationCallback;
+  iterator->_hasPrev         = BitarrayIndexHasPrevIterationCallback;
+  iterator->_prev            = BitarrayIndexPrevIterationCallback;
+  iterator->_prevs           = BitarrayIndexPrevsIterationCallback;
+  iterator->_destroyIterator = BitarrayIndexDestroyIterator;
+  
+  BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator);
+  
+  return iterator;
 }
 
 
@@ -186,7 +261,7 @@ int BitarrayIndex_find(BitarrayIndex* baIndex, TRI_sl_operator_t* slOperator, Bi
 //////////////////////////////////////////////////////////////////////////////////
 
 int BitarrayIndex_insert(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
-  return BitarrayIndex_add(ba,element);
+  return BitarrayIndex_add(baIndex,element);
 } 
 
 
@@ -197,7 +272,7 @@ int BitarrayIndex_insert(BitarrayIndex* baIndex, BitarrayIndexElement* element) 
 
 int BitarrayIndex_remove(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   int result;
-  result = TRI_RemoveElementBitarray(baIndex->bitarray, element, NULL); 
+  result = TRI_RemoveElementBitarray(baIndex->bitarray, element->data); 
   return result;
 }
 
@@ -210,8 +285,10 @@ int BitarrayIndex_remove(BitarrayIndex* baIndex, BitarrayIndexElement* element) 
 bool BitarrayIndex_update(BitarrayIndex* baIndex, 
                           const BitarrayIndexElement* oldElement, 
                           const BitarrayIndexElement* newElement) {
-  TRI_bitarray_mash_t oldMask;
-  TRI_bitarray_mash_t newMask;
+                          
+  int result;                          
+  TRI_bitarray_mask_t oldMask;
+  TRI_bitarray_mask_t newMask;
                           
   // ..........................................................................
   // updates an entry in the bit arrays and master table
@@ -224,7 +301,8 @@ bool BitarrayIndex_update(BitarrayIndex* baIndex,
   // ..........................................................................
   
   if (oldElement->data != newElement->data) {
-    return TRI_ERROR_INTERNAL; // todo: use appropriate error code
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+    return false;
   }
 
   
@@ -234,28 +312,103 @@ bool BitarrayIndex_update(BitarrayIndex* baIndex,
   
   result = generateBitMask (baIndex, oldElement, &oldMask);
   if (result != TRI_ERROR_NO_ERROR) {
-    return result;
+    TRI_set_errno(result);
+    return false;
   }  
 
   result = generateBitMask (baIndex, newElement, &newMask);
   if (result != TRI_ERROR_NO_ERROR) {
-    return result;
+    TRI_set_errno(result);
+    return false;
   }  
 
   
   // ..........................................................................
-  // insert the bit mask into the bit array
+  // replace the old mask with the new mask into the bit array
   // ..........................................................................
   
-  result = TRI_ReplaceBitMaskBitarray(baIndex->bitarray, oldMask, newMask, oldElement->data);  
+  result = TRI_ReplaceBitMaskElementBitarray(baIndex->bitarray, &oldMask, &newMask, oldElement->data);  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(result);
+    return false;
+  }  
   
-  return result;
+  return true;
 }
 
 
 
 
 
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Implementation of static functions forward declared above
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+
+// .............................................................................
+// forward declaration of static functions used for iterator callbacks
+// .............................................................................
+
+bool  BitarrayIndexHasNextIterationCallback(TRI_index_iterator_t* iterator) {
+  assert(0);
+  return false;
+}
+
+  
+void* BitarrayIndexNextIterationCallback(TRI_index_iterator_t* iterator) {
+  assert(0);
+  return NULL;
+}
+
+
+void* BitarrayIndexNextsIterationCallback(TRI_index_iterator_t* iterator, int64_t jumpSize) {
+  assert(0);
+  return NULL;
+}
+
+  
+bool BitarrayIndexHasPrevIterationCallback(TRI_index_iterator_t* iterator) {
+  assert(0);
+  return false;
+}
+
+  
+void* BitarrayIndexPrevIterationCallback(TRI_index_iterator_t* iterator) {
+  assert(0);
+  return NULL;
+}
+
+  
+void* BitarrayIndexPrevsIterationCallback(TRI_index_iterator_t* iterator, int64_t jumpSize) {
+  assert(0);
+  return NULL;
+}
+
+  
+void BitarrayIndexDestroyIterator(TRI_index_iterator_t* iterator) {
+  assert(0);
+}  
+ 
+ 
+// .............................................................................
+// forward declaration of static functions used internally here
+// .............................................................................
+
+void BitarrayIndex_findHelper(BitarrayIndex* baIndex, 
+                              TRI_vector_t* shapeList, 
+                              TRI_index_operator_t* indexOperator, 
+                              TRI_index_iterator_t* iterator) {
+  assert(0);                              
+}
+            
+
+            
+int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
+  assert(0);
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
