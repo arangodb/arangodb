@@ -450,9 +450,11 @@ bool TRI_ValueStringAql (TRI_string_buffer_t* const buffer,
 bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer, 
                         const TRI_aql_node_t* const node) {
   switch (node->_type) {
-    case TRI_AQL_NODE_VALUE:
+    case TRI_AQL_NODE_VALUE: {
       return TRI_ValueStringAql(buffer, &node->_value, node->_value._type);
-    case TRI_AQL_NODE_ARRAY_ELEMENT: 
+    }
+
+    case TRI_AQL_NODE_ARRAY_ELEMENT: {
       if (!TRI_ValueStringAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
         return false;
       }
@@ -462,7 +464,9 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       }
 
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0));
-    case TRI_AQL_NODE_LIST: 
+    }
+
+    case TRI_AQL_NODE_LIST: {
       if (TRI_AppendStringStringBuffer(buffer, "[ ") != TRI_ERROR_NO_ERROR) {
         return false;
       }
@@ -472,7 +476,9 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       }
 
       return (TRI_AppendStringStringBuffer(buffer, " ]") == TRI_ERROR_NO_ERROR);
-    case TRI_AQL_NODE_ARRAY: 
+    }
+
+    case TRI_AQL_NODE_ARRAY: {
       if (TRI_AppendStringStringBuffer(buffer, "{ ") != TRI_ERROR_NO_ERROR) {
         return false;
       }
@@ -482,13 +488,17 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       }
      
       return (TRI_AppendStringStringBuffer(buffer, " }") == TRI_ERROR_NO_ERROR);
+    }
+
     case TRI_AQL_NODE_OPERATOR_UNARY_PLUS:
     case TRI_AQL_NODE_OPERATOR_UNARY_MINUS:
-    case TRI_AQL_NODE_OPERATOR_UNARY_NOT:
+    case TRI_AQL_NODE_OPERATOR_UNARY_NOT: {
       if (TRI_AppendStringStringBuffer(buffer, GetStringOperator(node->_type)) != TRI_ERROR_NO_ERROR) {
         return false;
       }
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0));
+    }
+
     case TRI_AQL_NODE_OPERATOR_BINARY_AND:
     case TRI_AQL_NODE_OPERATOR_BINARY_OR:
     case TRI_AQL_NODE_OPERATOR_BINARY_PLUS:
@@ -502,7 +512,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     case TRI_AQL_NODE_OPERATOR_BINARY_LE:
     case TRI_AQL_NODE_OPERATOR_BINARY_GT:
     case TRI_AQL_NODE_OPERATOR_BINARY_GE:
-    case TRI_AQL_NODE_OPERATOR_BINARY_IN: {
+    case TRI_AQL_NODE_OPERATOR_BINARY_IN: { 
       if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
@@ -512,6 +522,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       }
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1));
     }
+
     case TRI_AQL_NODE_OPERATOR_TERNARY: {
       if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
@@ -531,6 +542,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
 
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 2));
     }
+
     case TRI_AQL_NODE_ATTRIBUTE_ACCESS: {
       if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
@@ -542,6 +554,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
 
       return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
     }
+
     case TRI_AQL_NODE_INDEXED: {
       if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
@@ -557,6 +570,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       
       return TRI_AppendStringStringBuffer(buffer, "]") == TRI_ERROR_NO_ERROR;
     }
+
     case TRI_AQL_NODE_FCALL: {
       TRI_aql_function_t* function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
       
@@ -574,21 +588,26 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
 
       return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
     }
+
     case TRI_AQL_NODE_EXPAND: {
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 3));
     }
+
     case TRI_AQL_NODE_REFERENCE: {
       return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
     }
+
     case TRI_AQL_NODE_COLLECTION: {
       TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
       char* name = TRI_AQL_NODE_STRING(nameNode);
       
       return TRI_AppendStringStringBuffer(buffer, name) == TRI_ERROR_NO_ERROR;
     }
+
     case TRI_AQL_NODE_SORT: {
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0));
     }
+
     case TRI_AQL_NODE_SORT_ELEMENT: {
       if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
@@ -596,7 +615,24 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
 
       return TRI_AppendStringStringBuffer(buffer, (TRI_AQL_NODE_BOOL(node) ? " ASC" : " DESC")) == TRI_ERROR_NO_ERROR;
     }
+    
+    case TRI_AQL_NODE_ASSIGN: {
+      TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+      char* name = TRI_AQL_NODE_STRING(nameNode);
+      
+      if (TRI_AppendStringStringBuffer(buffer, name) != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (TRI_AppendStringStringBuffer(buffer, " = ") != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1));
+    }
+
     default: {
+      // nadata
     }
   }
 
