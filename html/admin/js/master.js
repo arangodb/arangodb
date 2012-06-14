@@ -224,10 +224,10 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"read_only","bSortable": false, "sWidth": "80px"}, 
-                  {"sClass":"read_only","bSortable": false, "sWidth": "125px"}, 
-                  {"sClass":"read_only","bSortable": false, "sWidth": "60px"}, 
-                  {"bSortable": false}],
+    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth": "80px"}, 
+                 { "sClass":"read_only","bSortable": false, "sWidth": "150px"}, 
+                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"}, 
+                 {"bSortable": false}],
     "oLanguage": {"sEmptyTable": "No documents"}
   });
 
@@ -2003,8 +2003,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 100) {
-    return escaped(string.substr(0, 100)) + '...';
+  if (string.length > 90) {
+    return escaped(string.substr(0, 90)) + '...';
   }
   return escaped(string);
 }
