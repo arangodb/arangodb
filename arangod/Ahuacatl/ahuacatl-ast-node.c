@@ -269,7 +269,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_COLLECT)
 
   ADD_MEMBER(list)
-  if (name) {
+  if (name != NULL) {
     TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
   }

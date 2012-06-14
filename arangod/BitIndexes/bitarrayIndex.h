@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unique hash index
+/// @brief bitarray index
 ///
 /// @file
 ///
@@ -35,11 +35,12 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_SKIPLIST_INDEX_H
-#define TRIAGENS_DURHAM_VOC_BASE_SKIPLIST_INDEX_H 1
+#ifndef TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H
+#define TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H 1
 
 #include <BasicsC/common.h>
-#include "SkipLists/skiplist.h"
+#include "BitIndexes/bitarray.h"
+#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
@@ -48,23 +49,19 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        skiplistIndex public types
+// --SECTION--                                        bitarrayIndex public types
 // -----------------------------------------------------------------------------
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup skiplistIndex
+/// @addtogroup bitarrayIndex
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 
 typedef struct {
-  union {
-    TRI_skiplist_t* uniqueSkiplist;
-    TRI_skiplist_multi_t* nonUniqueSkiplist;
-  } skiplist;   
-  bool unique; 
-} SkiplistIndex;
+  TRI_bitarray_t* bitarray;
+} BitarrayIndex;
 
 
 typedef struct {
@@ -72,35 +69,14 @@ typedef struct {
   TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
   void* data;                // master document pointer
   void* collection;          // pointer to the collection;
-} SkiplistIndexElement;
+} BitarrayIndexElement;
 
 typedef struct {
   size_t _numElements;
-  SkiplistIndexElement* _elements; // simple list of elements
-} SkiplistIndexElements;  
+  BitarrayIndexElement* _elements; // simple list of elements
+} BitarrayIndexElements;  
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Iterator structure for skip list. We require a start and stop node
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_iterator_interval_s {
-  void*  _leftEndPoint;
-  void*  _rightEndPoint;  
-} TRI_skiplist_iterator_interval_t;
-
-typedef struct TRI_skiplist_iterator_s {
-  SkiplistIndex* _index;
-  TRI_vector_t _intervals;  
-  size_t _currentInterval; // starts with 0
-  void* _cursor; // initially null
-  bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
-  void* (*_next)    (struct TRI_skiplist_iterator_s*);
-  void* (*_nexts)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);
-  bool  (*_hasPrev) (struct TRI_skiplist_iterator_s*);
-  void* (*_prev)    (struct TRI_skiplist_iterator_s*);
-  void* (*_prevs)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);  
-} TRI_skiplist_iterator_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,32 +86,27 @@ typedef struct TRI_skiplist_iterator_s {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     skiplistIndex  public methods
+// --SECTION--                                     bitarrayIndex  public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup skiplistIndex
+/// @addtogroup bitarrayIndex
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a skiplist iterator
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list index , but does not free the pointer
+/// @brief destroys a bitarray index , but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIndex_destroy (SkiplistIndex*);
+void BitarrayIndex_destroy (BitarrayIndex*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list index and frees the pointer
+/// @brief destroys a bitarray index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIndex_free (SkiplistIndex*);
+void BitarrayIndex_free (BitarrayIndex*);
 
 
 
@@ -143,43 +114,24 @@ void SkiplistIndex_free (SkiplistIndex*);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-// Unique skiplist indexes
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-
-SkiplistIndex* SkiplistIndex_new (void);
-
-int SkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
-
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
-
-int SkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
-
-int SkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
-
-bool SkiplistIndex_update (SkiplistIndex*, const SkiplistIndexElement*, const SkiplistIndexElement*);
 
 
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-// Multi-skiplist non-unique skiplist indexes
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
+int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, bool, bool, void*);
 
+int BitarrayIndex_add (BitarrayIndex*, BitarrayIndexElement*);
 
-SkiplistIndex* MultiSkiplistIndex_new (void);
+TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,  
+                                          TRI_index_operator_t*, 
+                                          TRI_vector_t*,
+                                          bool (*filter) (TRI_index_iterator_t*) );
 
-int MultiSkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
+                                         
+int BitarrayIndex_insert (BitarrayIndex*, BitarrayIndexElement*);
 
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
+int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*); 
 
-int MultiSkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
+bool BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
 
-int MultiSkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
-
-bool MultiSkiplistIndex_update (SkiplistIndex*, SkiplistIndexElement*, SkiplistIndexElement*);
 
 
 #ifdef __cplusplus

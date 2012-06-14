@@ -46,9 +46,13 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statement-walker.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
+	arangod/BitIndexes/bitarray.c \
+	arangod/BitIndexes/bitarrayIndex.c \
 	arangod/GeoIndex/GeoIndex.c \
 	arangod/HashIndex/hasharray.c \
 	arangod/HashIndex/hashindex.c \
+	arangod/IndexIterators/index-iterator.c \
+	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
 	arangod/RestHandler/RestDocumentHandler.cpp \
@@ -61,7 +65,6 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
-	arangod/SkipLists/sl-operator.c \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp \
 	arangod/V8Server/v8-query.cpp \

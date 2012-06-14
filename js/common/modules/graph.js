@@ -1,6 +1,6 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 80,
+         maxlen: 100,
          sloppy: true,
          plusplus: true */
 /*global require, WeakDictionary, exports */
@@ -28,7 +28,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,6 +50,47 @@ var internal = require("internal"),
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove elements from an array
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.remove = function (from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove last occurrence of element from an array
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.removeLastOccurrenceOf = function (element) {
+  var index = this.lastIndexOf(element);
+  return this.remove(index);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push if the element was not found in the list
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.pushIfNotFound = function (element) {
+  if (this.lastIndexOf(element) === -1) {
+    this.push(element);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add all elements of the other array, that are not already in here
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.merge = function (other_array) {
+  var i;
+
+  for (i = 0; i < other_array.length; i += 1) {
+    this.pushIfNotFound(other_array[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copy properties
@@ -98,8 +139,7 @@ findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._create(name);
-  } 
-  else if (!(col instanceof ArangoCollection)) {
+  } else if (!(col instanceof ArangoCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -119,8 +159,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.edges._create(name);
-  } 
-  else if (!(col instanceof ArangoEdgesCollection)) {
+  } else if (!(col instanceof ArangoEdgesCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -164,8 +203,7 @@ function Edge(graph, id) {
   if (props) {
     // extract the custom identifier, label, edges
     this._properties = props;
-  } 
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -357,16 +395,13 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  } 
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    } 
-    else {
+    } else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  } 
-  else {
+  } else {
     internal.output("Edge(<", this._id, ">)");
   }
 };
@@ -403,8 +438,7 @@ function Vertex(graph, id) {
   if (props) {
     // extract the custom identifier
     this._properties = props;
-  } 
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -549,8 +583,7 @@ Vertex.prototype.getInEdges = function () {
 
   if (arguments.length === 0) {
     result = this.inbound();
-  } 
-  else {
+  } else {
     labels = {};
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -589,8 +622,7 @@ Vertex.prototype.getOutEdges = function () {
 
   if (arguments.length === 0) {
     result = this.outbound();
-  } 
-  else {
+  } else {
     labels = {};
     for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
@@ -751,6 +783,199 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shortest path to a certain vertex, return the ID
+///
+/// @FUN{@FA{vertex}.pathTo(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.pathTo = function (target_vertex, options) {
+  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {});
+  return target_vertex.pathesForTree(predecessors);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine all the pathes to this node from source id
+///
+/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.determinePredecessors = function (source_id, options) {
+  var determined_list = [],  // [ID]
+    predecessors = {},       // { ID => [ID] }
+    todo_list = [source_id], // [ID]
+    distances = {},          // { ID => Number }
+    current_vertex,          // Vertex
+    current_vertex_id;       // ID
+
+  distances[source_id] = 0;
+
+  while (todo_list.length > 0) {
+    current_vertex_id = this._getShortestDistance(todo_list, distances);
+    current_vertex = this._graph.getVertex(current_vertex_id);
+
+    if (current_vertex_id === this.getId()) {
+      break;
+    } else {
+      todo_list.removeLastOccurrenceOf(current_vertex_id);
+      determined_list.push(current_vertex_id);
+
+      todo_list.merge(current_vertex._processNeighbors(
+        determined_list,
+        distances,
+        predecessors,
+        options
+      ));
+    }
+  }
+
+  return predecessors;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function for determinePredecessors (changes distance and predecessors
+///
+/// @FUN{@FA{vertex}._processNeighbors(@FA{determined}, @FA{distances}, @FA{predecessors})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype._processNeighbors = function (determined_list, distances, predecessors, options) {
+  var i,
+    current_neighbor_id,
+    current_distance,
+    raw_neighborlist,
+    compared_distance,
+    current_weight,
+    not_determined_neighbors = [];
+
+  raw_neighborlist = this.getNeighbors(options);
+
+  for (i = 0; i < raw_neighborlist.length; i += 1) {
+    current_neighbor_id = raw_neighborlist[i].id;
+
+    if (determined_list.lastIndexOf(current_neighbor_id) === -1) {
+      current_weight = raw_neighborlist[i].weight;
+      current_distance = distances[this.getId()] + current_weight;
+
+      not_determined_neighbors.push(current_neighbor_id);
+
+      compared_distance = distances[current_neighbor_id];
+      if ((compared_distance === undefined) || (compared_distance > current_distance)) {
+        predecessors[current_neighbor_id] = [this.getId()];
+        distances[current_neighbor_id] = current_distance;
+      } else if (compared_distance === current_distance) {
+        predecessors[current_neighbor_id].push(this.getId());
+      }
+    }
+  }
+
+  return not_determined_neighbors;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get all paths from root to leave vertices for a given tree
+///
+/// @FUN{@FA{vertex}.pathesForTree(@FA{tree}, @FA{path_to_here})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.pathesForTree = function (tree, path_to_here) {
+  var my_children = tree[this.getId()],
+    i,
+    my_child,
+    pathes = [];
+
+  path_to_here = path_to_here || [];
+  path_to_here = path_to_here.concat(this.getId());
+
+  if (my_children === undefined) {
+    pathes = [path_to_here.reverse()];
+  } else {
+    for (i = 0; i < my_children.length; i += 1) {
+      my_child = this._graph.getVertex(my_children[i]);
+      pathes = pathes.concat(my_child.pathesForTree(tree, path_to_here));
+    }
+  }
+
+  return pathes;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get all neighbours for this vertex
+///
+/// @FUN{@FA{vertex}.getNeighbors(@FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.getNeighbors = function (options) {
+  var i,
+    current_edge,
+    current_vertex,
+    target_array = [],
+    addNeighborToList,
+    direction = options.direction || 'both',
+    labels = options.labels,
+    weight = options.weight,
+    default_weight = options.default_weight || Infinity;
+
+  addNeighborToList = function (current_edge, current_vertex) {
+    var neighbor_info, current_label = current_edge.getLabel();
+
+    if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
+      neighbor_info = { id: current_vertex.getId() };
+      if (weight === undefined) {
+        neighbor_info.weight = 1;
+      } else {
+        neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
+      }
+      target_array.push(neighbor_info);
+    }
+  };
+
+  if ((direction === 'both') || (direction === 'outbound')) {
+    this.getOutEdges().forEach(function (current_edge) {
+      current_vertex = current_edge.getInVertex();
+      addNeighborToList(current_edge, current_vertex);
+    });
+  }
+
+  if ((direction === 'both') || (direction === 'inbound')) {
+    this.getInEdges().forEach(function (current_edge) {
+      current_vertex = current_edge.getOutVertex();
+      addNeighborToList(current_edge, current_vertex);
+    });
+  }
+
+  return target_array;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the shortest distance for a given list of vertices and
+/// their distances
+///
+/// @FUN{@FA{vertex}._getShortestDistance(@FA{todo_list}, @FA{distances})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype._getShortestDistance = function (todo_list, distances) {
+  var shortest_distance = Infinity,
+    vertex = null,
+    i,
+    distance;
+
+  for (i = 0; i < todo_list.length; i += 1) {
+    distance = distances[todo_list[i]];
+    if (distance < shortest_distance) {
+      shortest_distance = distance;
+      vertex = todo_list[i];
+    }
+  }
+
+  return vertex;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -773,16 +998,13 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  } 
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    } 
-    else {
+    } else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  } 
-  else {
+  } else {
     internal.output("Vertex(<", this._id, ">)");
   }
 };
@@ -838,7 +1060,7 @@ function Graph(name, vertices, edges) {
     // Currently buggy:
     // gdb.ensureUniqueConstraint("name");
   }
-  
+
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }
@@ -851,11 +1073,10 @@ function Graph(name, vertices, edges) {
     if (graphProperties === null) {
       try {
         graphProperties = gdb.document(name);
-      }
-      catch (e) {
+      } catch (e) {
         throw "no graph named '" + name + "' found";
       }
-      
+
       if (graphProperties === null) {
         throw "no graph named '" + name + "' found";
       }
@@ -873,14 +1094,11 @@ function Graph(name, vertices, edges) {
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-  } 
-  else if (typeof vertices !== "string" || vertices === "") {
+  } else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
-  } 
-  else if (typeof edges !== "string" || edges === "") {
+  } else if (typeof edges !== "string" || edges === "") {
     throw "<edges> must be a string or null";
-  } 
-  else {
+  } else {
 
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
@@ -910,12 +1128,10 @@ function Graph(name, vertices, edges) {
                        'name' : name });
 
         graphProperties = gdb.document(graphPropertiesId);
-      } 
-      else {
+      } else {
         throw "found graph but has different <name>";
       }
-    } 
-    else {
+    } else {
       if (graphProperties.vertices !== vertices._id) {
         throw "found graph but has different <vertices>";
       }
@@ -1087,17 +1303,30 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {    
+  } else {
     try {
       vertex = this.constructVertex(id);
-    }
-    catch (e) {
+    } catch (e) {
       vertex = null;
     }
-  } 
+  }
 
   return vertex;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a vertex from the graph, create it if it doesn't exist
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getOrAddVertex = function (id) {
+  var v = this.getVertex(id);
+  if (v === null) {
+    v = this.addVertex(id);
+  }
+  return v;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for all vertices

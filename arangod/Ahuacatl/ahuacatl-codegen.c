@@ -1266,6 +1266,7 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
     case TRI_IDX_TYPE_GEO2_INDEX: 
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
       // these index types are not yet supported
       generator->_error = true;
       break;

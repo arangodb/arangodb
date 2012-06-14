@@ -1,6 +1,7 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 80 */
+         maxlen: 80,
+         sloppy: true */
 /*global require,
     db,
     assertEqual, assertTrue,
@@ -117,13 +118,11 @@ function GraphBasicsSuite() {
           internal.print("FOUND: ");
           internal.printObject(graph);
           graph.drop();
-        } 
-        catch (err1) {
+        } catch (err1) {
         }
 
         graph = new Graph(graph_name, vertex, edge);
-      } 
-      catch (err2) {
+      } catch (err2) {
         console.error("[FAILED] setup failed:" + err2);
       }
     },
@@ -137,8 +136,7 @@ function GraphBasicsSuite() {
         if (graph !== null) {
           graph.drop();
         }
-      } 
-      catch (err) {
+      } catch (err) {
         console.error("[FAILED] tear-down failed:" + err);
       }
     },
@@ -335,13 +333,11 @@ function VertexSuite() {
           internal.print("FOUND: ");
           internal.printObject(graph);
           graph.drop();
-        } 
-        catch (err1) {
+        } catch (err1) {
         }
 
         graph = new Graph(graph_name, vertex, edge);
-      } 
-      catch (err2) {
+      } catch (err2) {
         console.error("[FAILED] setup failed:" + err2);
       }
     },
@@ -355,8 +351,7 @@ function VertexSuite() {
         if (graph !== null) {
           graph.drop();
         }
-      } 
-      catch (err) {
+      } catch (err) {
         console.error("[FAILED] tear-down failed:" + err);
       }
     },
@@ -469,13 +464,11 @@ function EdgeSuite() {
           internal.print("FOUND: ");
           internal.printObject(graph);
           graph.drop();
-        } 
-        catch (err1) {
+        } catch (err1) {
         }
 
         graph = new Graph(graph_name, vertex, edge);
-      } 
-      catch (err2) {
+      } catch (err2) {
         console.error("[FAILED] setup failed:" + err2);
       }
     },
@@ -489,8 +482,7 @@ function EdgeSuite() {
         if (graph !== null) {
           graph.drop();
         }
-      } 
-      catch (err) {
+      } catch (err) {
         console.error("[FAILED] tear-down failed:" + err);
       }
     },
