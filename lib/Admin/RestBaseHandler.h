@@ -30,8 +30,13 @@
 
 #include "HttpServer/HttpHandler.h"
 
+#include "BasicsC/json.h"
 #include "JsonParserX/InputParser.h"
 #include "Rest/HttpResponse.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               forward declaration
+// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace basics {
@@ -111,6 +116,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (TRI_json_t* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result

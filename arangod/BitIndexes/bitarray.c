@@ -429,7 +429,6 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm, TRI_v
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
-  int result;
   TRI_master_table_position_t* position;
   bool compactColumns;
   MasterTable_t* mt;
@@ -445,7 +444,7 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
     return TRI_ERROR_INTERNAL; // Todo: return correct error
   }  
 
-  result = removeElementMasterTable(mt, position, &compactColumns);  
+  removeElementMasterTable(mt, position, &compactColumns);  
   
   return TRI_ERROR_NO_ERROR;
 }

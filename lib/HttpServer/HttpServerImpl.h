@@ -34,12 +34,12 @@
 #include "GeneralServer/GeneralServerDispatcher.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/ServiceUnavailableHandler.h"
+#include "Rest/HttpRequestPlain.h"
 
 namespace triagens {
   namespace rest {
     class HttpHandlerFactory;
     class HttpListenTask;
-    class HttpRequest;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief http server implementation
@@ -123,7 +123,7 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         HttpRequest* createMaintenanceRequest (char const* ptr, size_t length) const {
-          return new HttpRequest(ptr, length);
+          return new HttpRequestPlain(ptr, length);
         }
 
         ////////////////////////////////////////////////////////////////////////////////

@@ -94,6 +94,7 @@ namespace triagens {
 
     template <typename KEY, typename ELEMENT, typename DESC, typename FUH = ExtendAtFillup>
     class AssociativeArray {
+      private:
         AssociativeArray (AssociativeArray const&);
         AssociativeArray& operator= (AssociativeArray const&);
 

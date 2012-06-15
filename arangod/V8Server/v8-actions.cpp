@@ -321,12 +321,12 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body().c_str()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
 
     case HttpRequest::HTTP_REQUEST_DELETE:
@@ -343,7 +343,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   // copy request parameter
-  v8::Handle<v8::Array> parametersArray = v8::Array::New();
+  v8::Handle<v8::Object> valuesObject = v8::Object::New();
   map<string, string> values = request->values();
 
   for (map<string, string>::iterator i = values.begin();  i != values.end();  ++i) {
@@ -353,7 +353,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
 
     if (p == action->_parameters.end()) {
-      parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+      valuesObject->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
     }
     else {
       TRI_action_parameter_type_e const& ap = p->second;
@@ -372,7 +372,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             }
 
             if (collection != 0) {
-              parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+              valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
             }
           }
 
@@ -383,7 +383,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
           TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
 
           if (collection != 0) {
-            parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
           }
 
           break;
@@ -395,25 +395,25 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             TRI_UInt64String(v.c_str()));
 
           if (collection != 0) {
-            parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
           }
 
           break;
         }
 
         case TRI_ACT_NUMBER:
-          parametersArray->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
+          valuesObject->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
           break;
 
         case TRI_ACT_STRING: {
-          parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+          valuesObject->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
           break;
         }
       }
     }
   }
 
-  req->Set(v8g->ParametersKey, parametersArray);
+  req->Set(v8g->ParametersKey, valuesObject);
 
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();

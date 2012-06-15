@@ -122,10 +122,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   // need an action
   if (_action == 0) {
-    string n = request->requestPath();
-    n += StringUtils::join(request->suffix(), "/");
-
-    generateNotImplemented(n);
+    generateNotImplemented(request->requestPath());
   }
 
   // need a context
