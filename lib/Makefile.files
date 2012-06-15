@@ -68,6 +68,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpRequestPlain.cpp \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp \
 	lib/Rest/JsonContainer.cpp \
@@ -99,6 +100,13 @@ lib_libarango_a_SOURCES = \
 	lib/Variant/VariantUInt8.cpp \
 	lib/Variant/VariantVector.cpp
 
+if ENABLE_ZEROMQ
+
+lib_libarango_a_SOURCES += \
+	lib/ZeroMQ/ApplicationZeroMQ.cpp
+
+endif
+
 ################################################################################
 ### @brief library "libarango.a", client part
 ################################################################################
@@ -118,12 +126,10 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
+	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \
-	lib/ApplicationServer/ApplicationServerImpl.cpp \
-	lib/ApplicationServer/ApplicationServerSchedulerImpl.cpp \
-	lib/Dispatcher/ApplicationServerDispatcher.cpp \
-	lib/Dispatcher/ApplicationServerDispatcherImpl.cpp \
-	lib/Dispatcher/DispatcherImpl.cpp \
+	lib/Dispatcher/ApplicationDispatcher.cpp \
+	lib/Dispatcher/Dispatcher.cpp \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
@@ -149,6 +155,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/PhpResultGenerator.cpp \
 	lib/ResultGenerator/ResultGenerator.cpp \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
+	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
@@ -206,8 +213,6 @@ endif
 FLEX_FILES += \
 	lib/JsonParser/json-parser.c
 
-BUILT_SOURCES += $(FLEX_FILES)
-
 ################################################################################
 ### @brief flex++
 ################################################################################
@@ -216,8 +221,6 @@ FLEXXX_FILES += \
 	lib/V8/v8-json.cpp \
 	lib/JsonParserX/JsonScannerX.cpp
 
-BUILT_SOURCES += $(FLEXXX_FILES)
-
 ################################################################################
 ### @brief bison++
 ################################################################################
@@ -225,7 +228,12 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 BISONXX_FILES += \
 	lib/JsonParserX/JsonParserX.cpp
 
-BUILT_SOURCES += $(BISONXX_FILES)
+################################################################################
+### @brief protocol buffers
+################################################################################
+
+PROTOBUF_FILES += \
+	lib/ProtocolBuffers/arangodb.pb.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

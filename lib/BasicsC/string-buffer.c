@@ -124,7 +124,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) 
   memset(self, 0, sizeof(TRI_string_buffer_t));
   self->_memoryZone = zone;
 
-  Reserve(self, 1);
+  Reserve(self, 100);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,6 +379,58 @@ int TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * t
 
 int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
   return TRI_AppendCharStringBuffer(self, '\n');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends characters but url-encode the string
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AppendUrlEncodedStringStringBuffer (TRI_string_buffer_t * self,
+                                            char const * src) {
+  static char hexChars[16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
+  size_t len = strlen(src);
+  int res;
+
+  char const* end;
+
+  res = Reserve(self, len * 3);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  end = src + len;
+
+  for (; src < end;  ++src) {
+    if ('0' <= *src && *src <= '9') {
+      AppendChar(self, *src);
+    }
+
+    else if ('a' <= *src && *src <= 'z') {
+      AppendChar(self, *src);
+    }
+
+    else if ('A' <= *src && *src <= 'Z') {
+      AppendChar(self, *src);
+    }
+
+    else if (*src == '-' || *src == '_' || *src == '.' || *src == '~') {
+      AppendChar(self, *src);
+    }
+
+    else {
+      uint8_t n = (uint8_t)(*src);
+      uint8_t n1 = n >> 4;
+      uint8_t n2 = n & 0x0F;
+
+      AppendChar(self, '%');
+      AppendChar(self, hexChars[n1]);
+      AppendChar(self, hexChars[n2]);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

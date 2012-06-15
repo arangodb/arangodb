@@ -35,6 +35,18 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 
+#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
+#define SCHEDULER_INIT TRI_InitSpin
+#define SCHEDULER_DESTROY TRI_DestroySpin
+#define SCHEDULER_LOCK TRI_LockSpin
+#define SCHEDULER_UNLOCK TRI_UnlockSpin
+#else
+#define SCHEDULER_INIT TRI_InitMutex
+#define SCHEDULER_DESTROY TRI_DestroyMutex
+#define SCHEDULER_LOCK TRI_LockMutex
+#define SCHEDULER_UNLOCK TRI_UnlockMutex
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -44,17 +56,32 @@ using namespace triagens::rest;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
 SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool defaultLoop)
-  : Thread("SchedulerThread"),
+  : Thread("scheduler"),
     scheduler(scheduler),
     defaultLoop(defaultLoop),
     loop(loop),
     stopping(0),
     stopped(0),
     hasWork(0) {
+
+  // init lock
+  SCHEDULER_INIT(&queueLock);
   
   // allow cancelation
   allowAsynchronousCancelation();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+SchedulerThread::~SchedulerThread () {
+  SCHEDULER_DESTROY(&queueLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +124,7 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   else {
 
     // put the register request unto the queue
-    queueLock.lock();
+    SCHEDULER_LOCK(&queueLock);
 
     Work w(SETUP, scheduler, task);
     queue.push_back(w);
@@ -105,7 +132,7 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 
     scheduler->wakeupLoop(loop);
 
-    queueLock.unlock();
+    SCHEDULER_UNLOCK(&queueLock);
   }
 }
 
@@ -130,7 +157,7 @@ void SchedulerThread::unregisterTask (Task* task) {
   else {
 
     // put the unregister request unto the queue
-    queueLock.lock();
+    SCHEDULER_LOCK(&queueLock);
 
     Work w(CLEANUP, 0, task);
     queue.push_back(w);
@@ -138,7 +165,7 @@ void SchedulerThread::unregisterTask (Task* task) {
 
     scheduler->wakeupLoop(loop);
 
-    queueLock.unlock();
+    SCHEDULER_UNLOCK(&queueLock);
   }
 }
 
@@ -165,7 +192,7 @@ void SchedulerThread::destroyTask (Task* task) {
   else {
     
     // put the unregister request unto the queue
-    queueLock.lock();
+    SCHEDULER_LOCK(&queueLock);
     
     Work w(DESTROY, 0, task);
     queue.push_back(w);
@@ -173,7 +200,7 @@ void SchedulerThread::destroyTask (Task* task) {
     
     scheduler->wakeupLoop(loop);
     
-    queueLock.unlock();
+    SCHEDULER_UNLOCK(&queueLock);
   }
 }
 
@@ -224,13 +251,13 @@ void SchedulerThread::run () {
 #endif
 
     if (hasWork != 0) {
-      queueLock.lock();
+      SCHEDULER_LOCK(&queueLock);
       
       while (! queue.empty()) {
         Work w = queue.front();
         queue.pop_front();
         
-        queueLock.unlock();
+        SCHEDULER_UNLOCK(&queueLock);
         
         switch (w.work) {
           case CLEANUP:
@@ -247,12 +274,12 @@ void SchedulerThread::run () {
             break;
         }
 
-        queueLock.lock();
+        SCHEDULER_LOCK(&queueLock);
       }
       
       hasWork = 0;
       
-      queueLock.unlock();
+      SCHEDULER_UNLOCK(&queueLock);
     }
   }
 
@@ -260,13 +287,13 @@ void SchedulerThread::run () {
 
   stopped = 1;
 
-  queueLock.lock();
+  SCHEDULER_LOCK(&queueLock);
       
   while (! queue.empty()) {
     Work w = queue.front();
     queue.pop_front();
         
-    queueLock.unlock();
+    SCHEDULER_UNLOCK(&queueLock);
         
     switch (w.work) {
       case CLEANUP:
@@ -280,15 +307,19 @@ void SchedulerThread::run () {
         break;
     }
 
-    queueLock.lock();
+    SCHEDULER_LOCK(&queueLock);
   }
       
-  queueLock.unlock();
+  SCHEDULER_UNLOCK(&queueLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

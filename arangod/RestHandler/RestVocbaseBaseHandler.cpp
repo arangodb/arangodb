@@ -423,25 +423,38 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, string const& parameter) {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char const* parameter) {
   bool found;
-  string etag = StringUtils::trim(request->header(header, found));
+  char const* etag = request->header(header, found);
 
-  if (found && ! etag.empty() && etag[0] == '"' && etag[etag.length()-1] == '"') {
-    return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
-  }
-  else if (found) {
-    return 0;
+  if (found) {
+    char const* s = etag;
+    char const* e = etag + strlen(etag);
+
+    while (s < e && (s[0] == ' ' || s[0] == '\t')) {
+      ++s;
+    }
+
+    while (s < e && (e[-1] == ' ' || e[-1] == '\t')) {
+      --e;
+    }
+
+    if (s + 1 < e && s[0] == '"' && e[-1] == '"') {
+      return TRI_UInt64String2(s + 1, e - s - 2);
+    }
+    else {
+      return 0;
+    }
   }
 
-  if (parameter.empty()) {
+  if (parameter == 0) {
     return 0;
   }
   else {
     etag = request->value(parameter, found);
 
     if (found) {
-      return StringUtils::uint64(etag.c_str());
+      return TRI_UInt64String(etag);
     }
     else {
       return 0;
@@ -455,15 +468,13 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, str
 
 TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
   bool found;
-  string policy = request->value("policy", found);
+  char const* policy = request->value("policy", found);
 
   if (found) {
-    policy = StringUtils::tolower(policy);
-
-    if (policy == "error") {
+    if (TRI_CaseEqualString(policy, "error")) {
       return TRI_DOC_UPDATE_ERROR;
     }
-    else if (policy == "last") {
+    else if (TRI_CaseEqualString(policy, "last")) {
       return TRI_DOC_UPDATE_LAST_WRITE;
     }
     else {
@@ -535,7 +546,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body().c_str(), &errmsg);
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body(), &errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {

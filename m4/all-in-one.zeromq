@@ -1,0 +1,56 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for ZEROMQ support
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_ENABLE(zeromq,
+  AS_HELP_STRING([--enable-zeromq], [enable ZeroMQ]),
+  [tr_ZEROMQ="${enableval:-yes}"],
+  [tr_ZEROMQ=no]
+)
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  ZEROMQ_CPPFLAGS="-I${srcdir}/3rdParty/zeromq-2.2.0/BUILD/include"
+  ZEROMQ_LDFLAGS=""
+  ZEROMQ_LIBS="${srcdir}/3rdParty/zeromq-2.2.0/BUILD/lib${tr_BITS}/libzmq.a -luuid -lrt"
+
+  TRI_ZEROMQ_VERSION="2.2.0"
+
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_ZEROMQ, 1, [true if zeromq should be used])
+fi
+
+AM_CONDITIONAL(ENABLE_ZEROMQ, test "x$tr_ZEROMQ" = "xyes")
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AC_SUBST(ZEROMQ_CPPFLAGS)
+AC_SUBST(ZEROMQ_LDFLAGS)
+AC_SUBST(ZEROMQ_LIBS)
+
+ZEROMQ_CPPFLAGS="${ZEROMQ_CPPFLAGS} -DTRI_ZEROMQ_VERSION='\"${TRI_ZEROMQ_VERSION}\"'"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: enabled"
+
+  LIB_INFO="$LIB_INFO|ZEROMQ VERSION: ${TRI_ZEROMQ_VERSION}"
+
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_CPPFLAGS: ${ZEROMQ_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LDFLAGS:  ${ZEROMQ_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LIBS:     ${ZEROMQ_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
+else
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: disabled"
+fi
+
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:
