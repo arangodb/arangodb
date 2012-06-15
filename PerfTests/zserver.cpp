@@ -3,18 +3,14 @@
 #include <unistd.h>
 #include <string.h>
 
-void* context = 0;
-char const* connection = "tcp://*:5555";
-
-void* ThreadStarter (void* data) {
+int main (int argc, char* argv[])
+{
+  void *context = zmq_init (16);
+  char const* connection = "tcp://*:5555";
   void *responder;
 
-  if (2 < argc) {
-    conc = atoi(argv[2]);
-  }
-
-  if (3 < argc) {
-    connection = argv[3];
+  if (1 < argc) {
+    connection = argv[1];
   }
 
   // Socket to talk to clients
@@ -41,18 +37,6 @@ void* ThreadStarter (void* data) {
   }
   // We never get here but if we did, this would be how we end
   zmq_close (responder);
-}
-
-int main (int argc, char* argv[])
-{
-  if (1 < argc) {
-    connection = argv[1];
-  }
-
-  context = zmq_init (16);
-
-
-
   zmq_term (context);
   return 0;
 }

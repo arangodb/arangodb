@@ -1,11 +1,8 @@
 //
 // Hello World client
-
 // Connects REQ socket to tcp://localhost:5555
 // Sends "Hello" to server, expects "World" back
 //
-#include "BasicsC/common.h"
-
 #include <zmq.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,8 +16,6 @@ void* context = 0;
 size_t loop = 10000;
 char const* connection = "tcp://localhost:5555";
 
-#include <sys/prctl.h>
-
 
 // Aufruf:
 //
@@ -29,9 +24,9 @@ char const* connection = "tcp://localhost:5555";
 // -h <key> <value>     where <key> is converted to all lowercase
 // -v <key> <value>
 // -P <pipeline>        send <number> request in one message
-// -c <concurrency>     use <concurrency> parallel requests
+// -c <concurrency>     use <concurrency> parallel threads
 // -n <count>           send a total of <count> requests
-// -C <concurrency>     ZeroMQ concurrency
+
 
 
 void* ThreadStarter (void* data) {
@@ -46,8 +41,6 @@ void* ThreadStarter (void* data) {
     printf("ERROR zmq_connect: %d\n", errno);
   }
   
-  prctl(PR_SET_NAME, "zclient-W", 0, 0, 0);
-
   for (n = 0;  n < loop;  n++) {
     zmq_msg_t request;
     zmq_msg_t reply;
