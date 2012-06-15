@@ -246,7 +246,7 @@ bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e);
 /// @brief get the node type group
 ////////////////////////////////////////////////////////////////////////////////
       
-const char* TRI_NodeGroupAql (const TRI_aql_node_t* const);
+const char* TRI_NodeGroupAql (const TRI_aql_node_t* const, const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the "nice" name of an AST node

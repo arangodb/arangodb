@@ -1,0 +1,1011 @@
+'\" t
+.\"     Title: zmq_getsockopt
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/04/2012
+.\"    Manual: 0MQ Manual
+.\"    Source: 0MQ 2.2.0
+.\"  Language: English
+.\"
+.TH "ZMQ_GETSOCKOPT" "3" "04/04/2012" "0MQ 2\&.2\&.0" "0MQ Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+zmq_getsockopt \- get 0MQ socket options
+.SH "SYNOPSIS"
+.sp
+\fBint zmq_getsockopt (void \fR\fB\fI*socket\fR\fR\fB, int \fR\fB\fIoption_name\fR\fR\fB, void \fR\fB\fI*option_value\fR\fR\fB, size_t \fR\fB\fI*option_len\fR\fR\fB);\fR
+.SH "DESCRIPTION"
+.sp
+The \fIzmq_getsockopt()\fR function shall retrieve the value for the option specified by the \fIoption_name\fR argument for the 0MQ socket pointed to by the \fIsocket\fR argument, and store it in the buffer pointed to by the \fIoption_value\fR argument\&. The \fIoption_len\fR argument is the size in bytes of the buffer pointed to by \fIoption_value\fR; upon successful completion \fIzmq_getsockopt()\fR shall modify the \fIoption_len\fR argument to indicate the actual size of the option value stored in the buffer\&.
+.sp
+The following options can be retrieved with the \fIzmq_getsockopt()\fR function:
+.SS "ZMQ_TYPE: Retrieve socket type"
+.sp
+The \fIZMQ_TYPE\fR option shall retrieve the socket type for the specified \fIsocket\fR\&. The socket type is specified at socket creation time and cannot be modified afterwards\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_RCVMORE: More message parts to follow"
+.sp
+The \fIZMQ_RCVMORE\fR option shall return a boolean value indicating if the multi\-part message currently being read from the specified \fIsocket\fR has more message parts to follow\&. If there are no message parts to follow or if the message currently being read is not a multi\-part message a value of zero shall be returned\&. Otherwise, a value of 1 shall be returned\&.
+.sp
+Refer to \fBzmq_send\fR(3) and \fBzmq_recv\fR(3) for a detailed description of sending/receiving multi\-part messages\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+boolean
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_HWM: Retrieve high water mark"
+.sp
+The \fIZMQ_HWM\fR option shall retrieve the high water mark for the specified \fIsocket\fR\&. The high water mark is a hard limit on the maximum number of outstanding messages 0MQ shall queue in memory for any single peer that the specified \fIsocket\fR is communicating with\&.
+.sp
+If this limit has been reached the socket shall enter an exceptional state and depending on the socket type, 0MQ shall take appropriate action such as blocking or dropping sent messages\&. Refer to the individual socket descriptions in \fBzmq_socket\fR(3) for details on the exact action taken for each socket type\&.
+.sp
+The default \fIZMQ_HWM\fR value of zero means "no limit"\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+uint64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+messages
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_RCVTIMEO: Maximum time before a socket operation returns with EAGAIN"
+.sp
+Retrieve the timeout for recv operation on the socket\&. If the value is 0, \fIzmq_recv(3)\fR will return immediately, with a EAGAIN error if there is no message to receive\&. If the value is \-1, it will block until a message is available\&. For all other values, it will wait for a message for that amount of time before returning with an EAGAIN error\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+milliseconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+\-1 (infinite)
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_SNDTIMEO: Maximum time before a socket operation returns with EAGAIN"
+.sp
+Retrieve the timeout for send operation on the socket\&. If the value is 0, \fIzmq_send(3)\fR will return immediately, with a EAGAIN error if the message cannot be sent\&. If the value is \-1, it will block until the message is sent\&. For all other values, it will try to send the message for that amount of time before returning with an EAGAIN error\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+milliseconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+\-1 (infinite)
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_SWAP: Retrieve disk offload size"
+.sp
+The \fIZMQ_SWAP\fR option shall retrieve the disk offload (swap) size for the specified \fIsocket\fR\&. A socket which has \fIZMQ_SWAP\fR set to a non\-zero value may exceed its high water mark; in this case outstanding messages shall be offloaded to storage on disk rather than held in memory\&.
+.sp
+The value of \fIZMQ_SWAP\fR defines the maximum size of the swap space in bytes\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+bytes
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_AFFINITY: Retrieve I/O thread affinity"
+.sp
+The \fIZMQ_AFFINITY\fR option shall retrieve the I/O thread affinity for newly created connections on the specified \fIsocket\fR\&.
+.sp
+Affinity determines which threads from the 0MQ I/O thread pool associated with the socket\(cqs \fIcontext\fR shall handle newly created connections\&. A value of zero specifies no affinity, meaning that work shall be distributed fairly among all 0MQ I/O threads in the thread pool\&. For non\-zero values, the lowest bit corresponds to thread 1, second lowest bit to thread 2 and so on\&. For example, a value of 3 specifies that subsequent connections on \fIsocket\fR shall be handled exclusively by I/O threads 1 and 2\&.
+.sp
+See also \fBzmq_init\fR(3) for details on allocating the number of I/O threads for a specific \fIcontext\fR\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+uint64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+N/A (bitmap)
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+N/A
+T}
+.TE
+.sp 1
+.SS "ZMQ_IDENTITY: Retrieve socket identity"
+.sp
+The \fIZMQ_IDENTITY\fR option shall retrieve the identity of the specified \fIsocket\fR\&. Socket identity determines if existing 0MQ infrastructure (\fImessage queues\fR, \fIforwarding devices\fR) shall be identified with a specific application and persist across multiple runs of the application\&.
+.sp
+If the socket has no identity, each run of an application is completely separate from other runs\&. However, with identity set the socket shall re\-use any existing 0MQ infrastructure configured by the previous run(s)\&. Thus the application may receive messages that were sent in the meantime, \fImessage queue\fR limits shall be shared with previous run(s) and so on\&.
+.sp
+Identity can be at least one byte and at most 255 bytes long\&. Identities starting with binary zero are reserved for use by 0MQ infrastructure\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+binary data
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+NULL
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_RATE: Retrieve multicast data rate"
+.sp
+The \fIZMQ_RATE\fR option shall retrieve the maximum send or receive data rate for multicast transports using the specified \fIsocket\fR\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+kilobits per second
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+100
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, when using multicast transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_RECOVERY_IVL: Get multicast recovery interval"
+.sp
+The \fIZMQ_RECOVERY_IVL\fR option shall retrieve the recovery interval for multicast transports using the specified \fIsocket\fR\&. The recovery interval determines the maximum time in seconds that a receiver can be absent from a multicast group before unrecoverable data loss will occur\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+seconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+10
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, when using multicast transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_RECOVERY_IVL_MSEC: Get multicast recovery interval in milliseconds"
+.sp
+The \fIZMQ_RECOVERY_IVL\(cq_MSEC option shall retrieve the recovery interval, in milliseconds, for multicast transports using the specified \*(Aqsocket\fR\&. The recovery interval determines the maximum time in seconds that a receiver can be absent from a multicast group before unrecoverable data loss will occur\&.
+.sp
+For backward compatibility, the default value of \fIZMQ_RECOVERY_IVL_MSEC\fR is \-1 indicating that the recovery interval should be obtained from the \fIZMQ_RECOVERY_IVL\fR option\&. However, if the \fIZMQ_RECOVERY_IVL_MSEC\fR value is not zero, then it will take precedence, and be used\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+milliseconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+\-1
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, when using multicast transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_MCAST_LOOP: Control multicast loop\-back"
+.sp
+The \fIZMQ_MCAST_LOOP\fR option controls whether data sent via multicast transports can also be received by the sending host via loop\-back\&. A value of zero indicates that the loop\-back functionality is disabled, while the default value of 1 indicates that the loop\-back functionality is enabled\&. Leaving multicast loop\-back enabled when it is not required can have a negative impact on performance\&. Where possible, disable \fIZMQ_MCAST_LOOP\fR in production environments\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+boolean
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+1
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, when using multicast transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_SNDBUF: Retrieve kernel transmit buffer size"
+.sp
+The \fIZMQ_SNDBUF\fR option shall retrieve the underlying kernel transmit buffer size for the specified \fIsocket\fR\&. A value of zero means that the OS default is in effect\&. For details refer to your operating system documentation for the \fISO_SNDBUF\fR socket option\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+uint64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+bytes
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_RCVBUF: Retrieve kernel receive buffer size"
+.sp
+The \fIZMQ_RCVBUF\fR option shall retrieve the underlying kernel receive buffer size for the specified \fIsocket\fR\&. A value of zero means that the OS default is in effect\&. For details refer to your operating system documentation for the \fISO_RCVBUF\fR socket option\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+uint64_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+bytes
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_LINGER: Retrieve linger period for socket shutdown"
+.sp
+The \fIZMQ_LINGER\fR option shall retrieve the linger period for the specified \fIsocket\fR\&. The linger period determines how long pending messages which have yet to be sent to a peer shall linger in memory after a socket is closed with \fBzmq_close\fR(3), and further affects the termination of the socket\(cqs context with \fBzmq_term\fR(3)\&. The following outlines the different behaviours:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+The default value of
+\fI\-1\fR
+specifies an infinite linger period\&. Pending messages shall not be discarded after a call to
+\fIzmq_close()\fR; attempting to terminate the socket\(cqs context with
+\fIzmq_term()\fR
+shall block until all pending messages have been sent to a peer\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+The value of
+\fI0\fR
+specifies no linger period\&. Pending messages shall be discarded immediately when the socket is closed with
+\fIzmq_close()\fR\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Positive values specify an upper bound for the linger period in milliseconds\&. Pending messages shall not be discarded after a call to
+\fIzmq_close()\fR; attempting to terminate the socket\(cqs context with
+\fIzmq_term()\fR
+shall block until either all pending messages have been sent to a peer, or the linger period expires, after which any pending messages shall be discarded\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+Option value type
+T}:T{
+int
+T}
+T{
+Option value unit
+T}:T{
+milliseconds
+T}
+T{
+Default value
+T}:T{
+\-1 (infinite)
+T}
+T{
+Applicable socket types
+T}:T{
+all
+T}
+.TE
+.sp 1
+.RE
+.SS "ZMQ_RECONNECT_IVL: Retrieve reconnection interval"
+.sp
+The \fIZMQ_RECONNECT_IVL\fR option shall retrieve the initial reconnection interval for the specified \fIsocket\fR\&. The reconnection interval is the period 0MQ shall wait between attempts to reconnect disconnected peers when using connection\-oriented transports\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+The reconnection interval may be randomized by 0MQ to prevent reconnection storms in topologies with a large number of peers per socket\&.
+.sp .5v
+.RE
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+milliseconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+100
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, only for connection\-oriented transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_RECONNECT_IVL_MAX: Retrieve maximum reconnection interval"
+.sp
+The \fIZMQ_RECONNECT_IVL_MAX\fR option shall retrieve the maximum reconnection interval for the specified \fIsocket\fR\&. This is the maximum period 0MQ shall wait between attempts to reconnect\&. On each reconnect attempt, the previous interval shall be doubled untill ZMQ_RECONNECT_IVL_MAX is reached\&. This allows for exponential backoff strategy\&. Default value means no exponential backoff is performed and reconnect interval calculations are only based on ZMQ_RECONNECT_IVL\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Values less than ZMQ_RECONNECT_IVL will be ignored\&.
+.sp .5v
+.RE
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+milliseconds
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+0 (only use ZMQ_RECONNECT_IVL)
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, only for connection\-oriented transport
+T}
+.TE
+.sp 1
+.SS "ZMQ_BACKLOG: Retrieve maximum length of the queue of outstanding connections"
+.sp
+The \fIZMQ_BACKLOG\fR option shall retrieve the maximum length of the queue of outstanding peer connections for the specified \fIsocket\fR; this only applies to connection\-oriented transports\&. For details refer to your operating system documentation for the \fIlisten\fR function\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+connections
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+100
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all, only for connection\-oriented transports
+T}
+.TE
+.sp 1
+.SS "ZMQ_FD: Retrieve file descriptor associated with the socket"
+.sp
+The \fIZMQ_FD\fR option shall retrieve the file descriptor associated with the specified \fIsocket\fR\&. The returned file descriptor can be used to integrate the socket into an existing event loop; the 0MQ library shall signal any pending events on the socket in an \fIedge\-triggered\fR fashion by making the file descriptor become ready for reading\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+The ability to read from the returned file descriptor does not necessarily indicate that messages are available to be read from, or can be written to, the underlying socket; applications must retrieve the actual event state with a subsequent retrieval of the \fIZMQ_EVENTS\fR option\&.
+.sp .5v
+.RE
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBCaution\fR
+.ps -1
+.br
+.sp
+The returned file descriptor is intended for use with a \fIpoll\fR or similar system call only\&. Applications must never attempt to read or write data to it directly, neither should they try to close it\&.
+.sp .5v
+.RE
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+int on POSIX systems, SOCKET on Windows
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SS "ZMQ_EVENTS: Retrieve socket event state"
+.sp
+The \fIZMQ_EVENTS\fR option shall retrieve the event state for the specified \fIsocket\fR\&. The returned value is a bit mask constructed by OR\(cqing a combination of the following event flags:
+.PP
+\fBZMQ_POLLIN\fR
+.RS 4
+Indicates that at least one message may be received from the specified socket without blocking\&.
+.RE
+.PP
+\fBZMQ_POLLOUT\fR
+.RS 4
+Indicates that at least one message may be sent to the specified socket without blocking\&.
+.RE
+.sp
+The combination of a file descriptor returned by the \fIZMQ_FD\fR option being ready for reading but no actual events returned by a subsequent retrieval of the \fIZMQ_EVENTS\fR option is valid; applications should simply ignore this case and restart their polling operation/event loop\&.
+.TS
+tab(:);
+lt lt
+lt lt
+lt lt
+lt lt.
+T{
+.sp
+Option value type
+T}:T{
+.sp
+uint32_t
+T}
+T{
+.sp
+Option value unit
+T}:T{
+.sp
+N/A (flags)
+T}
+T{
+.sp
+Default value
+T}:T{
+.sp
+N/A
+T}
+T{
+.sp
+Applicable socket types
+T}:T{
+.sp
+all
+T}
+.TE
+.sp 1
+.SH "RETURN VALUE"
+.sp
+The \fIzmq_getsockopt()\fR function shall return zero if successful\&. Otherwise it shall return \-1 and set \fIerrno\fR to one of the values defined below\&.
+.SH "ERRORS"
+.PP
+\fBEINVAL\fR
+.RS 4
+The requested option
+\fIoption_name\fR
+is unknown, or the requested
+\fIoption_len\fR
+or
+\fIoption_value\fR
+is invalid, or the size of the buffer pointed to by
+\fIoption_value\fR, as specified by
+\fIoption_len\fR, is insufficient for storing the option value\&.
+.RE
+.PP
+\fBETERM\fR
+.RS 4
+The 0MQ
+\fIcontext\fR
+associated with the specified
+\fIsocket\fR
+was terminated\&.
+.RE
+.PP
+\fBENOTSOCK\fR
+.RS 4
+The provided
+\fIsocket\fR
+was invalid\&.
+.RE
+.PP
+\fBEINTR\fR
+.RS 4
+The operation was interrupted by delivery of a signal\&.
+.RE
+.SH "EXAMPLE"
+.PP
+\fBRetrieving the high water mark\fR. 
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+/* Retrieve high water mark into hwm */
+int64_t hwm;
+size_t hwm_size = sizeof (hwm);
+rc = zmq_getsockopt (socket, ZMQ_HWM, &hwm, &hwm_size);
+assert (rc == 0);
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.sp
+\fBzmq_setsockopt\fR(3) \fBzmq_socket\fR(3) \fBzmq\fR(7)
+.SH "AUTHORS"
+.sp
+This manual page was written by the 0MQ community\&.

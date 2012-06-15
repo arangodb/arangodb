@@ -29,7 +29,12 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 #include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            THREAD
@@ -51,6 +56,7 @@
 typedef struct thread_data_s {
   void (*starter) (void*);
   void* _data;
+  char* _name;
 }
 thread_data_t;
 
@@ -79,12 +85,19 @@ static void* ThreadStarter (void* data) {
   pthread_sigmask(SIG_SETMASK, &all, 0);
 
   d = data;
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+  prctl(PR_SET_NAME, d->_name, 0, 0, 0);
+#endif
+
   d->starter(d->_data);
 
   if (d) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     d = NULL;
   }
+
   return 0;
 }
 
@@ -154,7 +167,10 @@ TRI_tid_t TRI_CurrentThreadId () {
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) {
+bool TRI_StartThread (TRI_thread_t* thread,
+                      char const* name,
+                      void (*starter)(void*),
+                      void* data) {
   thread_data_t* d;
   int rc;
 
@@ -162,6 +178,7 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) 
 
   d->starter = starter;
   d->_data = data;
+  d->_name = TRI_DuplicateString(name);
 
   rc = pthread_create(thread, 0, &ThreadStarter, d);
 
