@@ -353,6 +353,7 @@ form {
 }
 
 #formatshellJSONyesno {
+  font-weight:0.8em; 
   float:right; 
   padding-right:10px; 
   margin-top: -3px; 
