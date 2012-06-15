@@ -28,13 +28,12 @@
 
 #include "Scheduler.h"
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-
-#include "Scheduler/Task.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerThread.h"
+#include "Scheduler/Task.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -49,7 +48,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a scheduler
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 Scheduler::Scheduler (size_t nrThreads)
@@ -77,7 +76,7 @@ Scheduler::Scheduler (size_t nrThreads)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a scheduler
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 Scheduler::~Scheduler () {
@@ -337,6 +336,10 @@ void Scheduler::initialiseSignalHandlers () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

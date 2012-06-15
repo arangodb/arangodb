@@ -29,6 +29,14 @@
 
 #include <v8.h>
 
+#ifdef TRI_ENABLE_MRUBY
+#include "mruby.h"
+#include "mruby/compile.h"
+#include "mruby/data.h"
+#include "mruby/proc.h"
+#include "mruby/variable.h"
+#endif
+
 #include "build.h"
 
 #include "Actions/RestActionHandler.h"
@@ -42,8 +50,8 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "Dispatcher/ApplicationServerDispatcher.h"
-#include "Dispatcher/DispatcherImpl.h"
+#include "Dispatcher/ApplicationDispatcher.h"
+#include "Dispatcher/Dispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
@@ -53,6 +61,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestServer/ArangoHttpServer.h"
 #include "RestServer/JavascriptDispatcherThread.h"
+#include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -63,6 +72,17 @@
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
+
+#ifdef TRI_ENABLE_MRUBY
+#include "MRServer/mr-actions.h"
+#include "MRuby/MRLineEditor.h"
+#include "MRuby/MRLoader.h"
+#include "RestServer/RubyDispatcherThread.h"
+#endif
+
+#ifdef TRI_ENABLE_ZEROMQ
+#include "ZeroMQ/ApplicationZeroMQ.h"
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -77,17 +97,6 @@ using namespace triagens::arango;
 #include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
-#include "MRServer/mr-actions.h"
-#include "MRuby/MRLineEditor.h"
-#include "MRuby/MRLoader.h"
-#include "RestServer/RubyDispatcherThread.h"
-
-#include "mruby.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/variable.h"
-
 #include "mr/common/bootstrap/mr-error.h"
 #include "mr/server/mr-server.h"
 #endif
@@ -316,8 +325,12 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _binaryPath(),
-    _applicationAdminServer(0),
+    _applicationScheduler(0),
+    _applicationDispatcher(0),
     _applicationHttpServer(0),
+    _applicationHttpsServer(0),
+    _applicationAdminServer(0),
+    _applicationUserManager(0),
     _httpServer(0),
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
@@ -439,15 +452,30 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
-  _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
-
+  _applicationServer = new ApplicationServer("[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setUserConfigFile(".arango/arango.conf");
 
   // .............................................................................
-  // allow multi-threading scheduler
+  // multi-threading scheduler and dispatcher
   // .............................................................................
 
-  _applicationServer->allowMultiScheduler(true);
+  _applicationScheduler = new ApplicationScheduler(_applicationServer);
+  _applicationScheduler->allowMultiScheduler(true);
+  _applicationServer->addFeature(_applicationScheduler);
+
+  _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+  _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
+  // ZeroMQ
+  // .............................................................................
+
+#ifdef TRI_ENABLE_ZEROMQ
+
+  _applicationZeroMQ = new ApplicationZeroMQ(_applicationServer);
+  _applicationServer->addFeature(_applicationZeroMQ);
+
+#endif
 
   // .............................................................................
   // and start a simple admin server
@@ -534,7 +562,7 @@ void ArangoServer::buildApplicationServer () {
   // a http server
   // .............................................................................
 
-  _applicationHttpServer = ApplicationHttpServer::create(_applicationServer);
+  _applicationHttpServer = ApplicationHttpServer::create(_applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
@@ -788,15 +816,15 @@ int ArangoServer::startupServer () {
   // create the various parts of the Arango server
   // .............................................................................
 
-  _applicationServer->buildScheduler();
-  _applicationServer->buildSchedulerReporter();
-  _applicationServer->buildControlCHandler();
+  _applicationScheduler->buildScheduler();
+  _applicationScheduler->buildSchedulerReporter();
+  _applicationScheduler->buildControlCHandler();
 
-  safe_cast<ApplicationServerDispatcher*>(_applicationServer)->buildDispatcher();
-  safe_cast<ApplicationServerDispatcher*>(_applicationServer)->buildDispatcherReporter();
-  safe_cast<ApplicationServerDispatcher*>(_applicationServer)->buildStandardQueue(_dispatcherThreads);
+  _applicationDispatcher->buildDispatcher();
+  _applicationDispatcher->buildDispatcherReporter();
+  _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
 
-  Dispatcher* dispatcher = safe_cast<ApplicationServerDispatcher*>(_applicationServer)->dispatcher();
+  Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
 
   if (_actionThreadsJS < 1) {
     _actionThreadsJS = 1;
@@ -804,22 +832,22 @@ int ArangoServer::startupServer () {
 
   // if we share a the server port for admin and client, only create a CLIENT queue
   if (0 < _actionThreadsJS) {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-JAVASCRIPT", ClientActionDispatcherThreadCreatorJS, _actionThreadsJS);
+    dispatcher->addQueue("CLIENT-JAVASCRIPT", ClientActionDispatcherThreadCreatorJS, _actionThreadsJS);
   }
 
 #if TRI_ENABLE_MRUBY
   if (0 < _actionThreadsMR) {
-    safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
+    dispatcher->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
   }
 #endif
 
   // use a separate queue for administrator requests
   if (! shareAdminPort) {
     if (useAdminPort) {
-      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
+      dispatcher->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
 
 #if TRI_ENABLE_MRUBY
-      safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
+      dispatcher->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
 #endif
     }
   }
@@ -828,7 +856,7 @@ int ArangoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
-  Scheduler* scheduler = _applicationServer->scheduler();
+  Scheduler* scheduler = _applicationScheduler->scheduler();
 
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -894,8 +922,6 @@ int ArangoServer::startupServer () {
   // start the main event loop
   // .............................................................................
 
-  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
-
   if (useHttpPort) {
     if (shareAdminPort) {
       LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
@@ -915,9 +941,11 @@ int ArangoServer::startupServer () {
     LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
   }
 
+  _applicationServer->start();
+
+  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
 
-  _applicationServer->start();
   _applicationServer->wait();
 
   // .............................................................................

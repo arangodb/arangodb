@@ -247,12 +247,12 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       mrb_iv_set(mrb, req, id, mrb_str_new_cstr(mrb, "POST"));
-      mrb_iv_set(mrb, req, bodyId, mrb_str_new(mrb, request->body().c_str(), request->body().size()));
+      mrb_iv_set(mrb, req, bodyId, mrb_str_new(mrb, request->body(), request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       mrb_iv_set(mrb, req, id, mrb_str_new_cstr(mrb, "PUT"));
-      mrb_iv_set(mrb, req, bodyId, mrb_str_new(mrb, request->body().c_str(), request->body().size()));
+      mrb_iv_set(mrb, req, bodyId, mrb_str_new(mrb, request->body(), request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_DELETE:

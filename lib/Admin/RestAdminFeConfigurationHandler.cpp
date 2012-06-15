@@ -166,7 +166,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
 
 HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
   if (_filename.empty()) {
-    transientResult = request->body().c_str();
+    transientResult = request->body();
   }
   else {
     try {

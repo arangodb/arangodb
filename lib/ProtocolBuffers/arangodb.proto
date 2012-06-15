@@ -1,0 +1,27 @@
+enum ArangoMessageType {
+  BLOB_MSG = 1;
+}
+
+message ArangoMessage {
+  required ArangoMessageType type = 1;
+  optional ArangoBlobMessage blob = 2;  
+}
+
+message ArangoKeyValue {
+  required string key = 1;
+  required string value = 2;
+}
+
+enum ArangoMessageContentType {
+  NO_CONTENT = 0;
+  TEXT_CONTENT = 1;
+  JSON_CONTENT = 2;
+}
+
+message ArangoBlobMessage {
+  required string url = 1;
+  repeated ArangoKeyValue parameters = 2;
+  repeated ArangoKeyValue headers = 3;
+  required ArangoMessageContentType contentType = 4;
+  optional string content = 5;
+}

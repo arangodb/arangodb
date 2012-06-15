@@ -176,7 +176,8 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
   _started = 1;
 
-  bool ok = TRI_StartThread(&_thread, &startThread, this);
+  string text = "[" + _name + "]";
+  bool ok = TRI_StartThread(&_thread, text.c_str(), &startThread, this);
 
   if (! ok) {
     LOGGER_ERROR << "could not start thread '" << _name << "': " << strerror(errno);

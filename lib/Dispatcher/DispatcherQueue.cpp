@@ -41,7 +41,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
-                                      DispatcherImpl::newDispatcherThread_fptr creator,
+                                      Dispatcher::newDispatcherThread_fptr creator,
                                       size_t nrThreads)
       : stopping(0),
         monopolizer(0),

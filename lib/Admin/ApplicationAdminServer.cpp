@@ -32,7 +32,6 @@
 #include "Admin/RestAdminFeConfigurationHandler.h"
 #include "Admin/RestAdminLogHandler.h"
 #include "Admin/RestHandlerCreator.h"
-#include "Admin/RestVersionHandler.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
@@ -88,7 +87,8 @@ ApplicationAdminServer::ApplicationAdminServer ()
     _feConfiguration(),
     _name(),
     _version(),
-    _versionData(0) {
+    _versionDataDirect(0),
+    _versionDataQueued(0) {
   _pathOptions = new PathHandler::Options();
 }
 
@@ -99,8 +99,12 @@ ApplicationAdminServer::ApplicationAdminServer ()
 ApplicationAdminServer::~ApplicationAdminServer () {
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
 
-  if (_versionData) {
-    delete _versionData;
+  if (_versionDataDirect != 0) {
+    delete _versionDataDirect;
+  }
+
+  if (_versionDataQueued != 0) {
+    delete _versionDataQueued;
   }
 }
 
@@ -177,10 +181,28 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
   if (_allowVersion) {
-    if (!_versionData) {
-      _versionData = new pair<string, string>(_name, _version);
+    if (!_versionDataDirect) {
+      _versionDataDirect = new RestVersionHandler::version_options_t;
+      _versionDataDirect->_name = _name;
+      _versionDataDirect->_version = _version;
+      _versionDataDirect->_isDirect = true;
     }
-    factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string, string> const*>, (void*) _versionData);
+
+    factory->addHandler(prefix + "/version",
+                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
+                        (void*) _versionDataDirect);
+
+    if (!_versionDataQueued) {
+      _versionDataQueued = new RestVersionHandler::version_options_t;
+      _versionDataQueued->_name = _name;
+      _versionDataQueued->_version = _version;
+      _versionDataQueued->_isDirect = false;
+      _versionDataQueued->_queue = "STANDARD";
+    }
+
+    factory->addHandler(prefix + "/queued-version",
+                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
+                        (void*) _versionDataQueued);
   }
 }
 

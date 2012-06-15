@@ -221,7 +221,7 @@ int TRI_FreeBitarray(TRI_bitarray_t* ba) {
 /// @brief Inserts a bit mask into the bit array columns
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* element) {
+int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* element) {
   MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
   TRI_master_table_position_t position;
   int result;
