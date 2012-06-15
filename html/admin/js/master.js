@@ -95,7 +95,7 @@ $("#documents_last").live('click', function () {
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
-$('#logView ul').append('<button class="enabled" id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField"></input><button id="submitLogSearch">Search</button></form></div>');
+$('#logView ul').append('<button class="enabled" id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField" placeholder="Search..."></input><button id="submitLogSearch" style="visibility:hidden;"></button></form></div>');
 
 ///////////////////////////////////////////////////////////////////////////////
 /// initialize jquery tabs 
@@ -2003,8 +2003,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 90) {
-    return escaped(string.substr(0, 90)) + '...';
+  if (string.length > 70) {
+    return escaped(string.substr(0, 70)) + '...';
   }
   return escaped(string);
 }
