@@ -7,7 +7,6 @@
     assertEqual, assertTrue,
     print,
     PRINT_OBJECT,
-    console,
     AvocadoCollection, AvocadoEdgesCollection,
     processCsvFile */
 
@@ -39,17 +38,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity"),
-  Helper = require("test-helper").Helper;
+  Helper = require("test-helper").Helper,
+  console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Dijkstra
+/// @brief test suite: Get Neighbor Function
 ////////////////////////////////////////////////////////////////////////////////
 
-function dijkstraSuite() {
+function neighborSuite() {
   var Graph = require("graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -156,6 +156,56 @@ function dijkstraSuite() {
 
       assertEqual(result_array.length, 1);
       assertEqual(result_array[0].id, 2);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Dijkstra
+////////////////////////////////////////////////////////////////////////////////
+
+function dijkstraSuite() {
+  var Graph = require("graph").Graph,
+    graph_name = "UnitTestsCollectionGraph",
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        try {
+          // Drop the graph if it exsits
+          graph = new Graph(graph_name);
+          print("FOUND: ");
+          PRINT_OBJECT(graph);
+          graph.drop();
+        } catch (err1) {
+        }
+
+        graph = new Graph(graph_name, vertex, edge);
+      } catch (err2) {
+        console.error("[FAILED] setup failed:" + err2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      try {
+        if (graph !== null) {
+          graph.drop();
+        }
+      } catch (err) {
+        console.error("[FAILED] tear-down failed:" + err);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,6 +431,56 @@ function dijkstraSuite() {
       assertEqual(pathes[0][1].toString(), v3.getId());
       assertEqual(pathes[0][2].toString(), v4.getId());
       assertEqual(pathes[0][3].toString(), v2.getId());
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Common Neighbors and Attributes
+////////////////////////////////////////////////////////////////////////////////
+
+function commonSuite() {
+  var Graph = require("graph").Graph,
+    graph_name = "UnitTestsCollectionGraph",
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        try {
+          // Drop the graph if it exsits
+          graph = new Graph(graph_name);
+          print("FOUND: ");
+          PRINT_OBJECT(graph);
+          graph.drop();
+        } catch (err1) {
+        }
+
+        graph = new Graph(graph_name, vertex, edge);
+      } catch (err2) {
+        console.error("[FAILED] setup failed:" + err2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      try {
+        if (graph !== null) {
+          graph.drop();
+        }
+      } catch (err) {
+        console.error("[FAILED] tear-down failed:" + err);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +502,29 @@ function dijkstraSuite() {
       commonNeighbors = v1.commonNeighborsWith(v2);
 
       assertEqual(commonNeighbors, 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test normalized CommonNeighborsWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testNormalizedCommonNeighborsWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        e1 = graph.addEdge(v1, v3),
+        e2 = graph.addEdge(v1, v4),
+        e3 = graph.addEdge(v2, v4),
+        e4 = graph.addEdge(v2, v5),
+        commonNeighbors;
+
+      commonNeighbors = v1.commonNeighborsWith(v2, { normalized: true});
+
+      assertEqual(commonNeighbors, (1 / 3));
     }
+
   };
 }
 
@@ -410,5 +532,8 @@ function dijkstraSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(neighborSuite);
 jsunity.run(dijkstraSuite);
+jsunity.run(commonSuite);
+
 return jsunity.done();
