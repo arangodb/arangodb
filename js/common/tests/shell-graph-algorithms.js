@@ -543,6 +543,26 @@ function commonSuite() {
       commonProperties = v1.commonPropertiesWith(v2);
 
       assertEqual(commonProperties, 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Normalized CommonPropertiesWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testNormalizedCommonPropertiesWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        commonProperties;
+
+      v1.setProperty("a", 1);
+      v2.setProperty("a", 2);
+      v1.setProperty("b", 1);
+      v2.setProperty("b", 1);
+      v2.setProperty("c", 0);
+
+      commonProperties = v1.commonPropertiesWith(v2, { normalized: true });
+
+      assertEqual(commonProperties, (1 / 3));
     }
   };
 }
