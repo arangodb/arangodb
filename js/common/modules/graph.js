@@ -783,6 +783,35 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of common neighbors
+///
+/// @FUN{@FA{vertex}.commonNeighborsWith(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
+  var neighbor_set_one,
+    neighbor_set_two,
+    id_only,
+    common_neighbors;
+
+  options |= {};
+
+  id_only = function (neighbor) {
+    return neighbor.id;
+  };
+
+  neighbor_set_one = this.getNeighbors(options).map(id_only);
+  neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
+
+  common_neighbors = neighbor_set_one.filter(function(element) {
+    return (neighbor_set_two.indexOf(element) > -1);
+  });
+
+  return common_neighbors.length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shortest path to a certain vertex, return the ID
 ///
 /// @FUN{@FA{vertex}.pathTo(@FA{target_vertex}, @FA{options})}

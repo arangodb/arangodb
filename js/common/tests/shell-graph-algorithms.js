@@ -381,6 +381,27 @@ function dijkstraSuite() {
       assertEqual(pathes[0][1].toString(), v3.getId());
       assertEqual(pathes[0][2].toString(), v4.getId());
       assertEqual(pathes[0][3].toString(), v2.getId());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test CommonNeighborsWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonNeighborsWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        e1 = graph.addEdge(v1, v3),
+        e2 = graph.addEdge(v1, v4),
+        e3 = graph.addEdge(v2, v4),
+        e4 = graph.addEdge(v2, v5),
+        commonNeighbors;
+
+      commonNeighbors = v1.commonNeighborsWith(v2);
+
+      assertEqual(commonNeighbors, 1);
     }
   };
 }
