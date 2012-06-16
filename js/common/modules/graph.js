@@ -795,9 +795,11 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
 
   common_neighbors = neighbor_set_one.intersect(neighbor_set_two);
-  all_neighbors = neighbor_set_one.unite(neighbor_set_two);
 
-  if ((options.normalized !== undefined) && (options.normalized === true)) {
+  if ((options.listed !== undefined) && (options.listed === true)) {
+    return_value = common_neighbors;
+  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+    all_neighbors = neighbor_set_one.unite(neighbor_set_two);
     return_value = (common_neighbors.length / all_neighbors.length);
   } else {
     return_value = common_neighbors.length;
@@ -829,7 +831,9 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
     }
   });
 
-  if ((options.normalized !== undefined) && (options.normalized === true)) {
+  if ((options.listed !== undefined) && (options.listed === true)) {
+    return_value = shared_properties;
+  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
     return_value = shared_properties.length / property_names.length;
   } else {
     return_value = shared_properties.length;

@@ -526,6 +526,29 @@ function commonSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Test listed CommonNeighborsWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testListedCommonNeighborsWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        e1 = graph.addEdge(v1, v3),
+        e2 = graph.addEdge(v1, v4),
+        e3 = graph.addEdge(v2, v4),
+        e4 = graph.addEdge(v2, v5),
+        commonNeighbors;
+
+      commonNeighbors = v1.commonNeighborsWith(v2, { listed: true});
+
+      assertEqual(commonNeighbors.length, 1);
+      assertEqual(commonNeighbors[0], v4.getId());
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Test CommonPropertiesWith
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -563,6 +586,27 @@ function commonSuite() {
       commonProperties = v1.commonPropertiesWith(v2, { normalized: true });
 
       assertEqual(commonProperties, (1 / 3));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Listed CommonPropertiesWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testListedCommonPropertiesWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        commonProperties;
+
+      v1.setProperty("a", 1);
+      v2.setProperty("a", 2);
+      v1.setProperty("b", 1);
+      v2.setProperty("b", 1);
+      v2.setProperty("c", 0);
+
+      commonProperties = v1.commonPropertiesWith(v2, { listed: true });
+
+      assertEqual(commonProperties.length, 1);
+      assertEqual(commonProperties[0], "b");
     }
   };
 }
@@ -571,8 +615,8 @@ function commonSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(neighborSuite);
-//jsunity.run(dijkstraSuite);
+jsunity.run(neighborSuite);
+jsunity.run(dijkstraSuite);
 jsunity.run(commonSuite);
 
 return jsunity.done();
