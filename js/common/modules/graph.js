@@ -65,7 +65,7 @@ Array.prototype.removeLastOccurrenceOf = function (element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Array.prototype.unite = function (other_array) {
-  return other_array.concat(this.filter(function(element) {
+  return other_array.concat(this.filter(function (element) {
     return (other_array.indexOf(element) === -1);
   }));
 };
@@ -75,7 +75,7 @@ Array.prototype.unite = function (other_array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Array.prototype.intersect = function (other_array) {
-  return this.filter(function(element) {
+  return this.filter(function (element) {
     return (other_array.indexOf(element) > -1);
   });
 };
@@ -825,7 +825,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 
   property_names = this_vertex.getPropertyKeys().unite(other_vertex.getPropertyKeys());
 
-  property_names.forEach(function(property) {
+  property_names.forEach(function (property) {
     if (this_vertex.getProperty(property) === other_vertex.getProperty(property)) {
       shared_properties.push(property);
     }
@@ -978,7 +978,7 @@ Vertex.prototype.getNeighbors = function (options) {
     labels = options.labels,
     weight = options.weight,
     weight_function = options.weight_function,
-    default_weight = options.default_weight || Infinity;
+    default_weight = options.default_weight || Infinity,
     only = options.only;
 
   addNeighborToList = function (current_edge, current_vertex) {
