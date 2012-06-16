@@ -325,8 +325,35 @@ function dijkstraSuite() {
       assertEqual(pathes.length, 1);
       assertEqual(pathes[0][0].toString(), v1.getId());
       assertEqual(pathes[0][1].toString(), v2.getId());
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path on a weighted graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetAPathWithACustomWeightFunction : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        e1 = graph.addEdge(v1, v2, 5, "5", { my_weight: 5 }),
+        e2 = graph.addEdge(v1, v3, 6, "6", { my_weight: 1 }),
+        e3 = graph.addEdge(v3, v4, 7, "7", { my_weight: 1 }),
+        e4 = graph.addEdge(v4, v2, 8, "8", { my_weight: 1 }),
+        pathes;
+
+      pathes = v1.pathTo(v2, {
+        weight_function: function(edge) {
+          return edge.getProperty("my_weight");
+        }
+      });
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v3.getId());
+      assertEqual(pathes[0][2].toString(), v4.getId());
+      assertEqual(pathes[0][3].toString(), v2.getId());
+    }
   };
 }
 
