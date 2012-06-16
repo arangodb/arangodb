@@ -523,8 +523,27 @@ function commonSuite() {
       commonNeighbors = v1.commonNeighborsWith(v2, { normalized: true});
 
       assertEqual(commonNeighbors, (1 / 3));
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test CommonPropertiesWith
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonPropertiesWith: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        commonProperties;
+
+      v1.setProperty("a", 1);
+      v2.setProperty("a", 2);
+      v1.setProperty("b", 1);
+      v2.setProperty("b", 1);
+      v2.setProperty("c", 0);
+
+      commonProperties = v1.commonPropertiesWith(v2);
+
+      assertEqual(commonProperties, 1);
+    }
   };
 }
 
@@ -532,8 +551,8 @@ function commonSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(neighborSuite);
-jsunity.run(dijkstraSuite);
+//jsunity.run(neighborSuite);
+//jsunity.run(dijkstraSuite);
 jsunity.run(commonSuite);
 
 return jsunity.done();

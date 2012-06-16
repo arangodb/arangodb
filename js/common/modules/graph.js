@@ -797,7 +797,6 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   common_neighbors = neighbor_set_one.intersect(neighbor_set_two);
   all_neighbors = neighbor_set_one.unite(neighbor_set_two);
 
-
   if ((options.normalized !== undefined) || (options.normalized === true)) {
     return_value = (common_neighbors.length / all_neighbors.length);
   } else {
@@ -805,6 +804,29 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   }
 
   return return_value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of common properties
+///
+/// @FUN{@FA{vertex}.commonPropertiesWith(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
+  var property_names,
+    shared_properties = [],
+    this_vertex = this;
+
+  property_names = this_vertex.getPropertyKeys().unite(other_vertex.getPropertyKeys());
+
+  property_names.forEach(function(property) {
+    if (this_vertex.getProperty(property) === other_vertex.getProperty(property)) {
+      shared_properties.push(property);
+    }
+  });
+
+  return shared_properties.length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
