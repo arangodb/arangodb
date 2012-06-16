@@ -393,7 +393,7 @@ function dijkstraSuite() {
         pathes;
 
       pathes = v1.pathTo(v2, {
-        weight_function: function(edge) {
+        weight_function: function (edge) {
           return edge.getProperty("my_weight");
         }
       });
@@ -421,7 +421,7 @@ function dijkstraSuite() {
         pathes;
 
       pathes = v1.pathTo(v2, {
-        only: function(edge) {
+        only: function (edge) {
           return (edge.getProperty("rating") > 3);
         }
       });
