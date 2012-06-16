@@ -52,44 +52,32 @@ var internal = require("internal"),
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove elements from an array
-////////////////////////////////////////////////////////////////////////////////
-
-Array.prototype.remove = function (from, to) {
-  var rest = this.slice((to || from) + 1 || this.length);
-  this.length = from < 0 ? this.length + from : from;
-  return this.push.apply(this, rest);
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove last occurrence of element from an array
 ////////////////////////////////////////////////////////////////////////////////
 
 Array.prototype.removeLastOccurrenceOf = function (element) {
   var index = this.lastIndexOf(element);
-  return this.remove(index);
+  return this.splice(index, 1);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief push if the element was not found in the list
+/// @brief return the union with another array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.pushIfNotFound = function (element) {
-  if (this.lastIndexOf(element) === -1) {
-    this.push(element);
-  }
+Array.prototype.unite = function (other_array) {
+  return other_array.concat(this.filter(function(element) {
+    return (other_array.indexOf(element) === -1);
+  }));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add all elements of the other array, that are not already in here
+/// @brief return the intersection with another array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.merge = function (other_array) {
-  var i;
-
-  for (i = 0; i < other_array.length; i += 1) {
-    this.pushIfNotFound(other_array[i]);
-  }
+Array.prototype.intersect = function (other_array) {
+  return this.filter(function(element) {
+    return (other_array.indexOf(element) > -1);
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,9 +781,11 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   var neighbor_set_one,
     neighbor_set_two,
     id_only,
-    common_neighbors;
+    common_neighbors,
+    all_neighbors,
+    return_value;
 
-  options |= {};
+  options = options || {};
 
   id_only = function (neighbor) {
     return neighbor.id;
@@ -804,11 +794,17 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   neighbor_set_one = this.getNeighbors(options).map(id_only);
   neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
 
-  common_neighbors = neighbor_set_one.filter(function(element) {
-    return (neighbor_set_two.indexOf(element) > -1);
-  });
+  common_neighbors = neighbor_set_one.intersect(neighbor_set_two);
+  all_neighbors = neighbor_set_one.unite(neighbor_set_two);
 
-  return common_neighbors.length;
+
+  if ((options.normalized !== undefined) || (options.normalized === true)) {
+    return_value = (common_neighbors.length / all_neighbors.length);
+  } else {
+    return_value = common_neighbors.length;
+  }
+
+  return return_value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -850,7 +846,7 @@ Vertex.prototype.determinePredecessors = function (source_id, options) {
       todo_list.removeLastOccurrenceOf(current_vertex_id);
       determined_list.push(current_vertex_id);
 
-      todo_list.merge(current_vertex._processNeighbors(
+      todo_list = todo_list.unite(current_vertex._processNeighbors(
         determined_list,
         distances,
         predecessors,
