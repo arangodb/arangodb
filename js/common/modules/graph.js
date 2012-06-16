@@ -917,6 +917,7 @@ Vertex.prototype.getNeighbors = function (options) {
     direction = options.direction || 'both',
     labels = options.labels,
     weight = options.weight,
+    weight_function = options.weight_function,
     default_weight = options.default_weight || Infinity;
 
   addNeighborToList = function (current_edge, current_vertex) {
@@ -924,10 +925,12 @@ Vertex.prototype.getNeighbors = function (options) {
 
     if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
       neighbor_info = { id: current_vertex.getId() };
-      if (weight === undefined) {
-        neighbor_info.weight = 1;
-      } else {
+      if (weight !== undefined) {
         neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
+      } else if (weight_function !== undefined) {
+        neighbor_info.weight = weight_function(current_edge);
+      } else {
+        neighbor_info.weight = 1;
       }
       target_array.push(neighbor_info);
     }
