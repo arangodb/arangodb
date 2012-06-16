@@ -328,7 +328,7 @@ function dijkstraSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a short, distinct path on a weighted graph
+/// @brief get a short, distinct path on a weighted graph with a custom function
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetAPathWithACustomWeightFunction : function () {
@@ -345,6 +345,34 @@ function dijkstraSuite() {
       pathes = v1.pathTo(v2, {
         weight_function: function(edge) {
           return edge.getProperty("my_weight");
+        }
+      });
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v3.getId());
+      assertEqual(pathes[0][2].toString(), v4.getId());
+      assertEqual(pathes[0][3].toString(), v2.getId());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a short, distinct path while excluding certain edges
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetAPathWithEdgeExclusion: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        e1 = graph.addEdge(v1, v2, 5, "5", { rating: 3 }),
+        e2 = graph.addEdge(v1, v3, 6, "6", { rating: 5 }),
+        e3 = graph.addEdge(v3, v4, 7, "7", { rating: 4 }),
+        e4 = graph.addEdge(v4, v2, 8, "8", { rating: 6 }),
+        pathes;
+
+      pathes = v1.pathTo(v2, {
+        only: function(edge) {
+          return (edge.getProperty("rating") > 3);
         }
       });
 
