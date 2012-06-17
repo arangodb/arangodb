@@ -120,7 +120,7 @@ bool Dispatcher::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::addQueue (string const& name, size_t nrThreads) {
-  _queues[name] = new DispatcherQueue(this, defaultDispatcherThread, nrThreads);
+  _queues[name] = new DispatcherQueue(this, name, defaultDispatcherThread, nrThreads);
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -128,7 +128,7 @@ void Dispatcher::addQueue (string const& name, size_t nrThreads) {
 /////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
-  _queues[name] = new DispatcherQueue(this, func, nrThreads);
+  _queues[name] = new DispatcherQueue(this, name, func, nrThreads);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
