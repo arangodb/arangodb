@@ -41,6 +41,8 @@ void* ThreadStarter (void* data) {
     printf("ERROR zmq_connect: %d\n", errno);
   }
   
+  printf("connected\n");
+
   for (n = 0;  n < loop;  n++) {
     zmq_msg_t request;
     zmq_msg_t reply;
