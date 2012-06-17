@@ -16,6 +16,7 @@ bin_zclient_LDADD = \
 	@ZEROMQ_LIBS@
 
 bin_zclient_SOURCES = \
+	lib/ProtocolBuffers/arangodb.pb.cpp \
 	PerfTests/zclient.cpp
 
 ################################################################################
