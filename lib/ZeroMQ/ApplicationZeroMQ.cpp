@@ -113,8 +113,9 @@ namespace {
 
 ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
   : _applicationServer(applicationServer),
-    _zeroMQThread(0),
+    _zeroMQThreads(0),
     _nrZeroMQThreads(1),
+    _zeroMQConcurrency(1),
     _context(0),
     _connection() {
 }
@@ -128,7 +129,13 @@ ApplicationZeroMQ::~ApplicationZeroMQ () {
     zmq_term(_context);
   }
 
-  delete _zeroMQThread;
+  if (_zeroMQThreads != 0) {
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      delete _zeroMQThreads[i];
+    }
+
+    delete _zeroMQThreads;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,6 +171,7 @@ void ApplicationZeroMQ::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options["THREAD Options:help-admin"]
     ("zeromq.threads", &_nrZeroMQThreads, "number of threads for ZeroMQ scheduler")
+    ("zeromq.concurrency", &_zeroMQConcurrency, "concurrency of the ZeroMQ context")
   ;
 }
 
@@ -182,7 +190,7 @@ bool ApplicationZeroMQ::parsePhase1 (basics::ProgramOptions& options) {
 bool ApplicationZeroMQ::parsePhase2 (basics::ProgramOptions& options) {
   if (! _connection.empty()) {
     if (_nrZeroMQThreads < 0) {
-      LOGGER_FATAL << "ZeroMQ connection '" << _connection << "' request without negativ threads";
+      LOGGER_FATAL << "ZeroMQ connection '" << _connection << "' request with negative number of threads";
       return false;
     }
   }
@@ -196,22 +204,43 @@ bool ApplicationZeroMQ::parsePhase2 (basics::ProgramOptions& options) {
 
 bool ApplicationZeroMQ::start () {
   if (! _connection.empty()) {
-    _context = zmq_init(_nrZeroMQThreads);
+    _context = zmq_init(_zeroMQConcurrency);
 
     if (_context == 0) {
       LOGGER_FATAL << "cannot create the ZeroMQ context: " << strerror(errno);
       return false;
     }
 
-    _zeroMQThread = new ZeroMQThread(_context, _connection);
+    // setup a thread pool
+    _zeroMQThreads = (Thread**) new ZeroMQThread*[_nrZeroMQThreads];
 
-    _zeroMQThread->start(0);
-
-    while (! _zeroMQThread->isRunning()) {
-      usleep(1000);
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      _zeroMQThreads[i] = new ZeroMQThread(_context, _connection);
     }
 
-    LOGGER_INFO << "started ZeroMQ on '" << _connection << "'";
+    // and start all threads
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      _zeroMQThreads[i]->start(0);
+    }
+
+    // wait for all threads to be started
+    bool starting = true;
+
+    while (starting) {
+      starting = false;
+
+      for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+        if (! _zeroMQThreads[i]->isRunning()) {
+          starting = true;
+        }
+
+        if (starting) {
+          usleep(1000);
+        }
+      }
+    }
+
+    LOGGER_INFO << "started ZeroMQ on '" << _connection << "' with " << _nrZeroMQThreads << " and concurrency " << _zeroMQConcurrency;
   }
 
   return true;
@@ -222,8 +251,12 @@ bool ApplicationZeroMQ::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationZeroMQ::isRunning () {
-  if (_zeroMQThread != 0) {
-    return _zeroMQThread->isRunning();
+  if (_zeroMQThreads != 0) {
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      if (_zeroMQThreads[i]->isRunning()) {
+        return true;
+      }
+    }
   }
 
   return false;
@@ -234,8 +267,10 @@ bool ApplicationZeroMQ::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationZeroMQ::beginShutdown () {
-  if (_zeroMQThread != 0) {
-    static_cast<ZeroMQThread*>(_zeroMQThread)->beginShutdown();
+  if (_zeroMQThreads != 0) {
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      static_cast<ZeroMQThread*>(_zeroMQThreads[i])->beginShutdown();
+    }
   }
 
   if (_context != 0) {
@@ -249,16 +284,16 @@ void ApplicationZeroMQ::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationZeroMQ::shutdown () {
-  if (_zeroMQThread != 0) {
+  if (_zeroMQThreads != 0) {
     int count = 0;
 
-    while (++count < 6 && _zeroMQThread->isRunning()) {
+    while (++count < 6 && isRunning()) {
       LOGGER_TRACE << "waiting for scheduler to stop";
       sleep(1);
     }
 
-    if (_zeroMQThread->isRunning()) {
-      _zeroMQThread->stop();
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      _zeroMQThreads[i]->stop();
     }
   }
 }
