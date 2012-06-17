@@ -103,7 +103,8 @@ lib_libarango_a_SOURCES = \
 if ENABLE_ZEROMQ
 
 lib_libarango_a_SOURCES += \
-	lib/ZeroMQ/ApplicationZeroMQ.cpp
+	lib/ZeroMQ/ApplicationZeroMQ.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp
 
 endif
 

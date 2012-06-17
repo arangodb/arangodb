@@ -41,6 +41,7 @@ namespace triagens {
 
   namespace rest {
     class ApplicationServer;
+    class ZeroMQThread;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class ApplicationScheduler
@@ -190,7 +191,7 @@ namespace triagens {
 /// @brief ZeroMQ worker thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Thread** _zeroMQThreads;
+        ZeroMQThread** _zeroMQThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of ZeroMQ thread
