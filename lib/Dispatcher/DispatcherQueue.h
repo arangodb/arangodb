@@ -52,6 +52,7 @@ namespace triagens {
         /////////////////////////////////////////////////////////////////////////////
 
         DispatcherQueue (Dispatcher* dispatcher,
+                         std::string const& name,
                          Dispatcher::newDispatcherThread_fptr,
                          size_t nrThreads);
 
@@ -180,6 +181,7 @@ namespace triagens {
         Dispatcher* dispatcher;
 
       private:
+        string const _name;
         Dispatcher::newDispatcherThread_fptr createDispatcherThread;
     };
   }
