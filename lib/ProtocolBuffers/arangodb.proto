@@ -40,6 +40,14 @@ enum PB_ArangoMessageContentType {
   PB_JSON_CONTENT = 2;
 }
 
+enum PB_ArangoRequestType {
+  PB_REQUEST_TYPE_DELETE = 0;
+  PB_REQUEST_TYPE_GET = 1;
+  PB_REQUEST_TYPE_HEAD = 2;
+  PB_REQUEST_TYPE_POST = 3;
+  PB_REQUEST_TYPE_PUT = 4;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           general
 // -----------------------------------------------------------------------------
@@ -64,11 +72,13 @@ message PB_ArangoBatchMessage {
 // -----------------------------------------------------------------------------
 
 message PB_ArangoBlobRequest {
-  required string url = 1;
-  repeated PB_ArangoKeyValue values = 2;  // case of key is significant
-  repeated PB_ArangoKeyValue headers = 3; // key must be lowercase
-  required PB_ArangoMessageContentType contentType = 4;
-  required string content = 5;
+  required PB_ArangoRequestType requestType = 1;
+  required string url = 2;
+  repeated PB_ArangoKeyValue values = 3;  // case of key is significant
+  repeated PB_ArangoKeyValue headers = 4; // key must be lowercase
+  required PB_ArangoMessageContentType contentType = 5;
+  required int32 contentLength = 6;
+  required string content = 7;
 }
 
 // -----------------------------------------------------------------------------

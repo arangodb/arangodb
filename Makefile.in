@@ -239,6 +239,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/depcomp config/install-sh config/missing
 @ENABLE_ZEROMQ_TRUE@am__append_8 = \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.cpp
 
 @ENABLE_MRUBY_TRUE@am__append_9 = \
@@ -381,10 +382,12 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
 	lib/Variant/VariantVector.cpp lib/ZeroMQ/ApplicationZeroMQ.cpp \
+	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
@@ -734,7 +737,9 @@ am_bin_arangosh_OBJECTS =  \
 bin_arangosh_OBJECTS = $(am_bin_arangosh_OBJECTS)
 bin_arangosh_DEPENDENCIES = lib/libarango_v8.a lib/libarango_client.a \
 	lib/libarango.a $(am__DEPENDENCIES_2)
-am_bin_zclient_OBJECTS = PerfTests/bin_zclient-zclient.$(OBJEXT)
+am_bin_zclient_OBJECTS =  \
+	lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT) \
+	PerfTests/bin_zclient-zclient.$(OBJEXT)
 bin_zclient_OBJECTS = $(am_bin_zclient_OBJECTS)
 bin_zclient_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_bin_zserver_OBJECTS = PerfTests/bin_zserver-zserver.$(OBJEXT)
@@ -1477,6 +1482,7 @@ bin_zclient_LDADD = \
 	@ZEROMQ_LIBS@
 
 bin_zclient_SOURCES = \
+	lib/ProtocolBuffers/arangodb.pb.cpp \
 	PerfTests/zclient.cpp
 
 
@@ -1912,6 +1918,9 @@ lib/ProtocolBuffers/$(am__dirstamp):
 lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/ProtocolBuffers/$(DEPDIR)
 	@: > lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
+lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT):  \
+	lib/ProtocolBuffers/$(am__dirstamp) \
+	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
 lib/ProtocolBuffers/arangodb.pb.$(OBJEXT):  \
 	lib/ProtocolBuffers/$(am__dirstamp) \
 	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
@@ -2657,6 +2666,9 @@ arangosh/V8Client/bin_arangosh-arangosh.$(OBJEXT):  \
 bin/arangosh$(EXEEXT): $(bin_arangosh_OBJECTS) $(bin_arangosh_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangosh$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangosh_OBJECTS) $(bin_arangosh_LDADD) $(LIBS)
+lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT):  \
+	lib/ProtocolBuffers/$(am__dirstamp) \
+	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
 PerfTests/$(am__dirstamp):
 	@$(MKDIR_P) PerfTests
 	@: > PerfTests/$(am__dirstamp)
@@ -2852,7 +2864,9 @@ mostlyclean-compile:
 	-rm -f lib/MRuby/MRLoader.$(OBJEXT)
 	-rm -f lib/MRuby/mr-utils.$(OBJEXT)
 	-rm -f lib/ProgramOptions/program-options.$(OBJEXT)
+	-rm -f lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
+	-rm -f lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT)
 	-rm -f lib/Rest/AddressPort.$(OBJEXT)
 	-rm -f lib/Rest/AnyServer.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequest.$(OBJEXT)
@@ -3105,7 +3119,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/MRLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/HttpRequestProtobuf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/arangodb.pb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AddressPort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AnyServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
@@ -4430,6 +4446,22 @@ arangosh/V8Client/bin_arangosh-arangosh.obj: arangosh/V8Client/arangosh.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/arangosh.cpp' object='arangosh/V8Client/bin_arangosh-arangosh.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangosh_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangosh-arangosh.obj `if test -f 'arangosh/V8Client/arangosh.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangosh.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangosh.cpp'; fi`
+
+lib/ProtocolBuffers/bin_zclient-arangodb.pb.o: lib/ProtocolBuffers/arangodb.pb.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ProtocolBuffers/bin_zclient-arangodb.pb.o -MD -MP -MF lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.o `test -f 'lib/ProtocolBuffers/arangodb.pb.cpp' || echo '$(srcdir)/'`lib/ProtocolBuffers/arangodb.pb.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lib/ProtocolBuffers/arangodb.pb.cpp' object='lib/ProtocolBuffers/bin_zclient-arangodb.pb.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.o `test -f 'lib/ProtocolBuffers/arangodb.pb.cpp' || echo '$(srcdir)/'`lib/ProtocolBuffers/arangodb.pb.cpp
+
+lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj: lib/ProtocolBuffers/arangodb.pb.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj -MD -MP -MF lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj `if test -f 'lib/ProtocolBuffers/arangodb.pb.cpp'; then $(CYGPATH_W) 'lib/ProtocolBuffers/arangodb.pb.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ProtocolBuffers/arangodb.pb.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lib/ProtocolBuffers/arangodb.pb.cpp' object='lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj `if test -f 'lib/ProtocolBuffers/arangodb.pb.cpp'; then $(CYGPATH_W) 'lib/ProtocolBuffers/arangodb.pb.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ProtocolBuffers/arangodb.pb.cpp'; fi`
 
 PerfTests/bin_zclient-zclient.o: PerfTests/zclient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT PerfTests/bin_zclient-zclient.o -MD -MP -MF PerfTests/$(DEPDIR)/bin_zclient-zclient.Tpo -c -o PerfTests/bin_zclient-zclient.o `test -f 'PerfTests/zclient.cpp' || echo '$(srcdir)/'`PerfTests/zclient.cpp

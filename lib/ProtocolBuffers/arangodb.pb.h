@@ -75,6 +75,28 @@ inline bool PB_ArangoMessageContentType_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoMessageContentType>(
     PB_ArangoMessageContentType_descriptor(), name, value);
 }
+enum PB_ArangoRequestType {
+  PB_REQUEST_TYPE_DELETE = 0,
+  PB_REQUEST_TYPE_GET = 1,
+  PB_REQUEST_TYPE_HEAD = 2,
+  PB_REQUEST_TYPE_POST = 3,
+  PB_REQUEST_TYPE_PUT = 4
+};
+bool PB_ArangoRequestType_IsValid(int value);
+const PB_ArangoRequestType PB_ArangoRequestType_MIN = PB_REQUEST_TYPE_DELETE;
+const PB_ArangoRequestType PB_ArangoRequestType_MAX = PB_REQUEST_TYPE_PUT;
+const int PB_ArangoRequestType_ARRAYSIZE = PB_ArangoRequestType_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* PB_ArangoRequestType_descriptor();
+inline const ::std::string& PB_ArangoRequestType_Name(PB_ArangoRequestType value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    PB_ArangoRequestType_descriptor(), value);
+}
+inline bool PB_ArangoRequestType_Parse(
+    const ::std::string& name, PB_ArangoRequestType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoRequestType>(
+    PB_ArangoRequestType_descriptor(), name, value);
+}
 // ===================================================================
 
 class PB_ArangoKeyValue : public ::google::protobuf::Message {
@@ -420,10 +442,17 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   
   // accessors -------------------------------------------------------
   
-  // required string url = 1;
+  // required .PB_ArangoRequestType requestType = 1;
+  inline bool has_requesttype() const;
+  inline void clear_requesttype();
+  static const int kRequestTypeFieldNumber = 1;
+  inline PB_ArangoRequestType requesttype() const;
+  inline void set_requesttype(PB_ArangoRequestType value);
+  
+  // required string url = 2;
   inline bool has_url() const;
   inline void clear_url();
-  static const int kUrlFieldNumber = 1;
+  static const int kUrlFieldNumber = 2;
   inline const ::std::string& url() const;
   inline void set_url(const ::std::string& value);
   inline void set_url(const char* value);
@@ -431,10 +460,10 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline ::std::string* mutable_url();
   inline ::std::string* release_url();
   
-  // repeated .PB_ArangoKeyValue values = 2;
+  // repeated .PB_ArangoKeyValue values = 3;
   inline int values_size() const;
   inline void clear_values();
-  static const int kValuesFieldNumber = 2;
+  static const int kValuesFieldNumber = 3;
   inline const ::PB_ArangoKeyValue& values(int index) const;
   inline ::PB_ArangoKeyValue* mutable_values(int index);
   inline ::PB_ArangoKeyValue* add_values();
@@ -443,10 +472,10 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
       mutable_values();
   
-  // repeated .PB_ArangoKeyValue headers = 3;
+  // repeated .PB_ArangoKeyValue headers = 4;
   inline int headers_size() const;
   inline void clear_headers();
-  static const int kHeadersFieldNumber = 3;
+  static const int kHeadersFieldNumber = 4;
   inline const ::PB_ArangoKeyValue& headers(int index) const;
   inline ::PB_ArangoKeyValue* mutable_headers(int index);
   inline ::PB_ArangoKeyValue* add_headers();
@@ -455,17 +484,24 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
       mutable_headers();
   
-  // required .PB_ArangoMessageContentType contentType = 4;
+  // required .PB_ArangoMessageContentType contentType = 5;
   inline bool has_contenttype() const;
   inline void clear_contenttype();
-  static const int kContentTypeFieldNumber = 4;
+  static const int kContentTypeFieldNumber = 5;
   inline PB_ArangoMessageContentType contenttype() const;
   inline void set_contenttype(PB_ArangoMessageContentType value);
   
-  // required string content = 5;
+  // required int32 contentLength = 6;
+  inline bool has_contentlength() const;
+  inline void clear_contentlength();
+  static const int kContentLengthFieldNumber = 6;
+  inline ::google::protobuf::int32 contentlength() const;
+  inline void set_contentlength(::google::protobuf::int32 value);
+  
+  // required string content = 7;
   inline bool has_content() const;
   inline void clear_content();
-  static const int kContentFieldNumber = 5;
+  static const int kContentFieldNumber = 7;
   inline const ::std::string& content() const;
   inline void set_content(const ::std::string& value);
   inline void set_content(const char* value);
@@ -475,10 +511,14 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   
   // @@protoc_insertion_point(class_scope:PB_ArangoBlobRequest)
  private:
+  inline void set_has_requesttype();
+  inline void clear_has_requesttype();
   inline void set_has_url();
   inline void clear_has_url();
   inline void set_has_contenttype();
   inline void clear_has_contenttype();
+  inline void set_has_contentlength();
+  inline void clear_has_contentlength();
   inline void set_has_content();
   inline void clear_has_content();
   
@@ -486,12 +526,14 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   
   ::std::string* url_;
   ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > values_;
+  int requesttype_;
+  int contenttype_;
   ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > headers_;
   ::std::string* content_;
-  int contenttype_;
+  ::google::protobuf::int32 contentlength_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
   
   friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
   friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
@@ -860,15 +902,38 @@ inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::release_response() {
 
 // PB_ArangoBlobRequest
 
-// required string url = 1;
-inline bool PB_ArangoBlobRequest::has_url() const {
+// required .PB_ArangoRequestType requestType = 1;
+inline bool PB_ArangoBlobRequest::has_requesttype() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void PB_ArangoBlobRequest::set_has_url() {
+inline void PB_ArangoBlobRequest::set_has_requesttype() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void PB_ArangoBlobRequest::clear_has_url() {
+inline void PB_ArangoBlobRequest::clear_has_requesttype() {
   _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoBlobRequest::clear_requesttype() {
+  requesttype_ = 0;
+  clear_has_requesttype();
+}
+inline PB_ArangoRequestType PB_ArangoBlobRequest::requesttype() const {
+  return static_cast< PB_ArangoRequestType >(requesttype_);
+}
+inline void PB_ArangoBlobRequest::set_requesttype(PB_ArangoRequestType value) {
+  GOOGLE_DCHECK(PB_ArangoRequestType_IsValid(value));
+  set_has_requesttype();
+  requesttype_ = value;
+}
+
+// required string url = 2;
+inline bool PB_ArangoBlobRequest::has_url() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void PB_ArangoBlobRequest::set_has_url() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void PB_ArangoBlobRequest::clear_has_url() {
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void PB_ArangoBlobRequest::clear_url() {
   if (url_ != &::google::protobuf::internal::kEmptyString) {
@@ -918,7 +983,7 @@ inline ::std::string* PB_ArangoBlobRequest::release_url() {
   }
 }
 
-// repeated .PB_ArangoKeyValue values = 2;
+// repeated .PB_ArangoKeyValue values = 3;
 inline int PB_ArangoBlobRequest::values_size() const {
   return values_.size();
 }
@@ -943,7 +1008,7 @@ PB_ArangoBlobRequest::mutable_values() {
   return &values_;
 }
 
-// repeated .PB_ArangoKeyValue headers = 3;
+// repeated .PB_ArangoKeyValue headers = 4;
 inline int PB_ArangoBlobRequest::headers_size() const {
   return headers_.size();
 }
@@ -968,15 +1033,15 @@ PB_ArangoBlobRequest::mutable_headers() {
   return &headers_;
 }
 
-// required .PB_ArangoMessageContentType contentType = 4;
+// required .PB_ArangoMessageContentType contentType = 5;
 inline bool PB_ArangoBlobRequest::has_contenttype() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void PB_ArangoBlobRequest::set_has_contenttype() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void PB_ArangoBlobRequest::clear_has_contenttype() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void PB_ArangoBlobRequest::clear_contenttype() {
   contenttype_ = 0;
@@ -991,15 +1056,37 @@ inline void PB_ArangoBlobRequest::set_contenttype(PB_ArangoMessageContentType va
   contenttype_ = value;
 }
 
-// required string content = 5;
+// required int32 contentLength = 6;
+inline bool PB_ArangoBlobRequest::has_contentlength() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void PB_ArangoBlobRequest::set_has_contentlength() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void PB_ArangoBlobRequest::clear_has_contentlength() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void PB_ArangoBlobRequest::clear_contentlength() {
+  contentlength_ = 0;
+  clear_has_contentlength();
+}
+inline ::google::protobuf::int32 PB_ArangoBlobRequest::contentlength() const {
+  return contentlength_;
+}
+inline void PB_ArangoBlobRequest::set_contentlength(::google::protobuf::int32 value) {
+  set_has_contentlength();
+  contentlength_ = value;
+}
+
+// required string content = 7;
 inline bool PB_ArangoBlobRequest::has_content() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void PB_ArangoBlobRequest::set_has_content() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void PB_ArangoBlobRequest::clear_has_content() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void PB_ArangoBlobRequest::clear_content() {
   if (content_ != &::google::protobuf::internal::kEmptyString) {
@@ -1195,6 +1282,10 @@ inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoMessageType>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoMessageContentType>() {
   return PB_ArangoMessageContentType_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoRequestType>() {
+  return PB_ArangoRequestType_descriptor();
 }
 
 }  // namespace google

@@ -12,6 +12,10 @@
 
 #include <pthread.h>
 
+#include "ProtocolBuffers/arangodb.pb.h"
+
+using namespace std;
+
 void* context = 0;
 size_t loop = 10000;
 char const* connection = "tcp://localhost:5555";
@@ -47,9 +51,27 @@ void* ThreadStarter (void* data) {
     zmq_msg_t request;
     zmq_msg_t reply;
 
+    PB_ArangoMessage messages;
+    PB_ArangoBatchMessage* batch;
+    PB_ArangoBlobRequest* blob;
+
+    batch = messages.add_messages();
+
+    batch->set_type(PB_BLOB_REQUEST);
+    blob = batch->mutable_request();
+
+    blob->set_requesttype(PB_REQUEST_TYPE_GET);
+    blob->set_url("/_api/version");
+    blob->set_contenttype(PB_NO_CONTENT);
+    blob->set_contentlength(0);
+    blob->set_content("");
+
+    string data;
+    messages.SerializeToString(&data);
+
     // send
-    zmq_msg_init_size (&request, 5);
-    memcpy (zmq_msg_data (&request), "Hello", 5);
+    zmq_msg_init_size (&request, data.size());
+    memcpy (zmq_msg_data(&request), data.c_str(), data.size());
 
     res = zmq_send (requester, &request, 0);
 

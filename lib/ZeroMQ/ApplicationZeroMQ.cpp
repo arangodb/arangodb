@@ -30,9 +30,10 @@
 #include <zmq.h>
 
 #include "Basics/Thread.h"
+#include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "ProtocolBuffers/arangodb.pb.h"
+#include "ProtocolBuffers/HttpRequestProtobuf.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -46,17 +47,36 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpRequest* HttpRequestProtobuf (void* data, size_t size) {
-  PB_ArangoMessage message;
+void HandleArangoMessage (void* data, size_t size, zmq_msg_t* reply) {
+  PB_ArangoMessage messages;
 
-  int ok = message.ParseFromArray(data, size);
+  int ok = messages.ParseFromArray(data, size);
 
   if (! ok) {
     LOGGER_DEBUG << "received corrupted message via ZeroMQ";
-    return 0;
+
+    zmq_msg_init_size(reply, 0);
+    return;
   }
 
-  return 0;
+  // handle all messages inside the batch
+  for (::google::protobuf::RepeatedPtrField< PB_ArangoBatchMessage >::const_iterator i = messages.messages().begin();
+       i != messages.messages().end();
+       ++i) {
+    PB_ArangoBatchMessage const& message = *i;
+    HttpRequestProtobuf request(message);
+
+    if (request.isValid()) {
+      StringBuffer sb(TRI_UNKNOWN_MEM_ZONE);
+
+      request.write(sb.stringBuffer());
+
+      cout << sb.c_str() << endl;
+    }
+    else {
+      LOGGER_DEBUG << "received invalid message via ZeroMQ";
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -145,15 +165,16 @@ namespace {
             continue;
           }
     
-          // convert body to HttpRequest
-          HttpRequest* httpRequest = HttpRequestProtobuf(zmq_msg_data(&request), zmq_msg_size(&request));
+          // handle all messages inside the batch
+          zmq_msg_t reply;
+          HandleArangoMessage(zmq_msg_data(&request), zmq_msg_size(&request), &reply);
 
           // close the request
           zmq_msg_close(&request);
 
           // received illegal message, force client to shutdown
+#if 0
           if (httpRequest == 0) {
-            zmq_msg_t reply;
             zmq_msg_init_size(&reply, 0);
 
             zmq_send(responder, &reply, 0);
@@ -161,9 +182,9 @@ namespace {
 
             continue;
           }
+#endif
 
           // send reply back to client
-          zmq_msg_t reply;
           zmq_msg_init_size(&reply, 5);
           memcpy(zmq_msg_data(&reply), "World", 5);
 
