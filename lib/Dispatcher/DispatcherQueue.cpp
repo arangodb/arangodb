@@ -44,8 +44,7 @@ namespace triagens {
                                       string const& name,
                                       Dispatcher::newDispatcherThread_fptr creator,
                                       size_t nrThreads)
-      : _name(name),
-        stopping(0),
+      : stopping(0),
         monopolizer(0),
         nrStarted(0),
         nrRunning(0),
@@ -54,6 +53,7 @@ namespace triagens {
         nrSpecial(0),
         nrThreads(nrThreads),
         dispatcher(dispatcher),
+        _name(name),
         createDispatcherThread(creator) {
     }
 
