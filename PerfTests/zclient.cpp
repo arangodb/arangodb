@@ -11,25 +11,34 @@
 #include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
-
 #include <pthread.h>
+
+#include <string>
+#include <map>
+#include <algorithm>
+#include <iostream>
 
 #include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace std;
 
 void* context = 0;
+
+// default values
 size_t loop = 10000;
 size_t concurrency = 1;
 size_t pipelined = 1;
 char const* connection = "tcp://localhost:5555";
 char const* path = "/_api/version";
+bool verbose = false;
+map<string, string> headers;
+map<string, string> values;
 
 
 
 void* ThreadStarter (void* data) {
   int res;
-  size_t n, p;
+  size_t n;
   void* requester;
 
   requester = zmq_socket(context, ZMQ_REQ);
@@ -40,7 +49,9 @@ void* ThreadStarter (void* data) {
     exit(EXIT_FAILURE);
   }
   
-  printf("connected\n");
+  if (verbose) {
+    printf("connected\n");
+  }
 
   for (n = 0; n < loop; n += pipelined) {
     zmq_msg_t request;
@@ -49,12 +60,27 @@ void* ThreadStarter (void* data) {
     PB_ArangoMessage messages;
     PB_ArangoBatchMessage* batch;
     PB_ArangoBlobRequest* blob;
+    PB_ArangoKeyValue* kv;
 
-    for (p = 0; p < pipelined; p++) {
+    for (size_t p = 0; p < pipelined; p++) {
       batch = messages.add_messages();
 
       batch->set_type(PB_BLOB_REQUEST);
       blob = batch->mutable_request();
+
+      map<string, string>::iterator it;
+
+      for (it = headers.begin(); it != headers.end(); ++it) {
+        kv = blob->add_headers();
+        kv->set_key((*it).first);
+        kv->set_value((*it).second);
+      }
+      
+      for (it = values.begin(); it != values.end(); ++it) {
+        kv = blob->add_values();
+        kv->set_key((*it).first);
+        kv->set_value((*it).second);
+      }
 
       blob->set_requesttype(PB_REQUEST_TYPE_GET);
       blob->set_url(path);
@@ -106,6 +132,37 @@ int timeval_subtract(struct timeval* result, struct timeval* t2, struct timeval*
 }
 
 
+void addHeader (char* arg) {
+  string header(arg);
+  size_t found = header.find('=', 0);
+
+  if (found == string::npos) {
+    fprintf(stderr, "invalid header %s\n", arg);
+    exit(EXIT_FAILURE);
+  }
+
+  string key(header.substr(0, found));
+  string value(header.substr(found + 1, header.length() - found - 1));
+
+  std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+  headers[key] = value;
+}
+
+void addValue (char* arg) {
+  string data(arg);
+  size_t found = data.find('=', 0);
+
+  if (found == string::npos) {
+    fprintf(stderr, "invalid value %s\n", arg);
+    exit(EXIT_FAILURE);
+  }
+
+  string key(data.substr(0, found));
+  string value(data.substr(found + 1, data.length() - found - 1));
+
+  values[key] = value;
+}
+
 
 int main (int argc, char* argv[]) {
   struct timeval start, end, result;
@@ -124,7 +181,7 @@ int main (int argc, char* argv[]) {
 // -c <concurrency>     use <concurrency> parallel threads
 // -n <count>           send a total of <count> requests
 
-  while ((opt = getopt(argc, argv, "C:u:h:P:c:n:")) != -1) {
+  while ((opt = getopt(argc, argv, "C:u:h:v:P:c:n:d")) != -1) {
     switch (opt) {
       case 'C':
         connection = optarg;
@@ -133,7 +190,10 @@ int main (int argc, char* argv[]) {
         path = optarg;
         break;
       case 'h':
-        // TODO
+        addHeader(optarg);
+        break;
+      case 'v':
+        addValue(optarg);
         break;
       case 'P':
         pipelined = atoi(optarg);
@@ -152,8 +212,11 @@ int main (int argc, char* argv[]) {
       case 'n':
         loop = atoi(optarg);
         break;
+      case 'd':
+        verbose = true;
+        break;
       default: /* '?' */
-        fprintf(stderr, "Usage: %s [-C connection] [-u path] [-h key value] [-P pipeline] [-c concurrency] [-n count]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [-C connection] [-u path] [-h \"key=value\"] [-v \"key=value\"] [-P pipeline] [-c concurrency] [-n count] [-d]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
   }
@@ -164,8 +227,9 @@ int main (int argc, char* argv[]) {
 
   context = zmq_init(16);
 
-  // Socket to talk to server
-  printf("Connecting to server…\n");
+  if (verbose) {
+    printf("Connecting to server…\n");
+  }
 
   threads = (pthread_t*) malloc(sizeof(pthread_t) * concurrency);
 
@@ -188,6 +252,9 @@ int main (int argc, char* argv[]) {
 
   zmq_term(context);
   free(threads);
+
+  threads = 0;
+  context = 0;
 
   return 0;
 }
