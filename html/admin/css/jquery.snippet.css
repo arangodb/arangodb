@@ -1,15 +1,17 @@
-.snippet-wrap .snippet-num li {list-style:decimal-leading-zero outside none;}
-.snippet-no-num {    list-style-type: none; }
+.snippet-wrap .snippet-num li {
+  list-style:decimal-leading-zero outside none;
+}
+
+.snippet-no-num {    
+  list-style-type: none; 
+  padding-left: 0;   
+}
 
 .prettify {
-  font-size: 1.1em; 
-  height:8px;  
-  margin-left: -30px;
-  padding-bottom: 4px;      
+  font-size: 1.2em; 
 }
 
 #documentsView tr td {
-  height: 5px; 
 }
 
 .sh_number {
