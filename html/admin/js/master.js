@@ -225,7 +225,7 @@ var documentsTable = $('#documentsTableID').dataTable({
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth":"80px"}, 
-                 { "sClass":"read_only","bSortable": false, "sWidth": "150px"}, 
+                 { "sClass":"read_only","bSortable": false, "sWidth": "200px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
                  { "bSortable": false, "sClass": "cuttedContent"}],
     "oLanguage": { "sEmptyTable": "No documents"}
