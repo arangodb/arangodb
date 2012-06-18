@@ -221,14 +221,14 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bSortable": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
+    "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth": "80px"}, 
+    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth":"80px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "150px"}, 
-                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"}, 
-                 {"bSortable": false}],
-    "oLanguage": {"sEmptyTable": "No documents"}
+                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
+                 { "bSortable": false, "sClass": "cuttedContent"}],
+    "oLanguage": { "sEmptyTable": "No documents"}
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -492,8 +492,9 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + JSON.stringify(v) + "</pre>"]);  
           });
+//TODO
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
         },
