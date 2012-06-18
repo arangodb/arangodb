@@ -23,6 +23,10 @@
 using namespace std;
 
 void* context = 0;
+size_t errors = 0;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+bool canStart = false;
 
 // default values
 size_t loop = 10000;
@@ -37,7 +41,7 @@ map<string, string> values;
 
 
 void* ThreadStarter (void* data) {
-  int res;
+  int res, rc;
   size_t n;
   void* requester;
 
@@ -52,6 +56,14 @@ void* ThreadStarter (void* data) {
   if (verbose) {
     printf("connected\n");
   }
+
+  rc = pthread_mutex_lock(&mutex);
+    
+  while (!canStart) {
+    rc = pthread_cond_wait(&condition, &mutex);
+  }
+                      
+  rc = pthread_mutex_unlock(&mutex);
 
   for (n = 0; n < loop; n += pipelined) {
     zmq_msg_t request;
@@ -100,6 +112,7 @@ void* ThreadStarter (void* data) {
 
     if (res != 0) {
       printf("ERROR zmq_send: %d %d %s\n", (int) res, (int) errno, strerror(errno));
+      ++errors;
     }
 
     zmq_msg_close(&request);
@@ -111,6 +124,7 @@ void* ThreadStarter (void* data) {
 
     if (res != 0) {
       printf("ERROR zmq_recv: %d %d %s\n", (int) res, (int) errno, strerror(errno));
+      ++errors;
     }
 
     zmq_msg_close(&reply);
@@ -180,7 +194,7 @@ int main (int argc, char* argv[]) {
   struct timeval start, end, result;
   float rps, runtime;
   size_t i;
-  int opt;
+  int opt, rc;
   pthread_t* threads;
 
   while ((opt = getopt(argc, argv, "C:u:h:v:P:c:n:d")) != -1) {
@@ -240,23 +254,28 @@ int main (int argc, char* argv[]) {
   }
 
   gettimeofday(&start, 0);
+  rc = pthread_mutex_lock(&mutex);
+  canStart = true;
+  rc = pthread_cond_broadcast(&condition);
+  rc = pthread_mutex_unlock(&mutex);
 
   for (i = 0;  i < concurrency;  ++i) {
     pthread_join(threads[i], 0);
   }
-  
+
   gettimeofday(&end, 0);
   timeval_subtract(&result, &end, &start);
   runtime = (float) result.tv_sec + (float) ((float) result.tv_usec / 1000000.0);
 
   rps = (float) loop * (float) concurrency / runtime;
   printf("runtime %f sec, req/sec %f, req/sec/thread %f\n", runtime, rps, rps / (float) concurrency);
+  printf("errors %ld\n", (long int) errors);
 
   zmq_term(context);
   free(threads);
 
-  threads = 0;
-  context = 0;
+  pthread_cond_destroy(&condition);
+  pthread_mutex_destroy(&mutex);
 
   return 0;
 }
