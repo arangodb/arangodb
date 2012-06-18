@@ -10,7 +10,7 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
 
 
 // documents global vars
