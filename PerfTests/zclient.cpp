@@ -162,6 +162,18 @@ void addValue (char* arg) {
 
   values[key] = value;
 }
+        
+void printUsage (char* prg) {        
+  fprintf(stderr, "Usage: %s [-C connection] [-u path] [-h \"key=value\"] [-v \"key=value\"] [-P pipeline] [-c concurrency] [-n count] [-d]\n", prg);
+  fprintf(stderr, "Options:\n");
+  fprintf(stderr, "-C connection       connection string, e.g. tcp://localhost:5555\n");
+  fprintf(stderr, "-u path             endpoint to call, e.g. /_api/version\n");
+  fprintf(stderr, "-h \"key=value\"      add arbitrary header\n");
+  fprintf(stderr, "-v \"key=value\"      add arbitrary body value\n");
+  fprintf(stderr, "-P pipeline         send <pipeline> values in each batch (default: 1)\n");
+  fprintf(stderr, "-c concurrency      number of concurrent client threads (default: 1)\n");
+  fprintf(stderr, "-n count            number of requests to perform per client thread\n");
+}
 
 
 int main (int argc, char* argv[]) {
@@ -170,16 +182,6 @@ int main (int argc, char* argv[]) {
   size_t i;
   int opt;
   pthread_t* threads;
-
-// Aufruf:
-//
-// -C <zeromq-connection>
-// -u <path>            where <path> is of the form "/_api/version"
-// -h <key> <value>     where <key> is converted to all lowercase
-// -v <key> <value>
-// -P <pipeline>        send <number> request in one message
-// -c <concurrency>     use <concurrency> parallel threads
-// -n <count>           send a total of <count> requests
 
   while ((opt = getopt(argc, argv, "C:u:h:v:P:c:n:d")) != -1) {
     switch (opt) {
@@ -215,8 +217,8 @@ int main (int argc, char* argv[]) {
       case 'd':
         verbose = true;
         break;
-      default: /* '?' */
-        fprintf(stderr, "Usage: %s [-C connection] [-u path] [-h \"key=value\"] [-v \"key=value\"] [-P pipeline] [-c concurrency] [-n count] [-d]\n", argv[0]);
+      default: 
+        printUsage(argv[0]);
         exit(EXIT_FAILURE);
     }
   }
