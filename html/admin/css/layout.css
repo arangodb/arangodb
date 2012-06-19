@@ -1,3 +1,9 @@
+.cuttedContent, .prettify ul li {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 .read_only {
   min-width: 70px !important; 
 }

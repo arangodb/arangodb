@@ -242,8 +242,12 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // shall we create the collection?
-  char const* createStr = request->value("createCollection", found);
-  bool create = found ? TRI_BooleanString(createStr) : false;
+  char const* valueStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // shall we reuse document and revision id?
+  valueStr = request->value("useId", found);
+  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
@@ -271,7 +275,7 @@ bool RestDocumentHandler::createDocument () {
   TRI_voc_cid_t cid = _documentCollection->base._cid;
 
   // note: unlocked is performed by createJson()
-  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
+  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, true);
 
   // .............................................................................
   // outside write transaction
