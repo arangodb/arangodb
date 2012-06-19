@@ -42,7 +42,7 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ZeroMQThread::ZeroMQThread (void* context) 
+ZeroMQThread::ZeroMQThread (zctx_t* context) 
   : Thread("ZeroMQThread"),
     _context(context),
     _stopping(0) {

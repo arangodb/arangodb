@@ -96,13 +96,12 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(PB_ArangoBatchMessage));
   PB_ArangoBlobRequest_descriptor_ = file->message_type(3);
-  static const int PB_ArangoBlobRequest_offsets_[7] = {
+  static const int PB_ArangoBlobRequest_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, requesttype_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, url_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, values_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, headers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, contenttype_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, contentlength_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, content_),
   };
   PB_ArangoBlobRequest_reflection_ =
@@ -117,10 +116,11 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(PB_ArangoBlobRequest));
   PB_ArangoBlobResponse_descriptor_ = file->message_type(4);
-  static const int PB_ArangoBlobResponse_offsets_[4] = {
+  static const int PB_ArangoBlobResponse_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, status_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, headers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, contenttype_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, contentlength_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, content_),
   };
   PB_ArangoBlobResponse_reflection_ =
@@ -210,17 +210,17 @@ void protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
     "essageType\022*\n\013blobRequest\030\002 \001(\0132\025.PB_Ara"
     "ngoBlobRequest\022,\n\014blobResponse\030\003 \001(\0132\026.P"
     "B_ArangoBlobResponse\022.\n\rerrorResponse\030\004 "
-    "\001(\0132\027.PB_ArangoErrorResponse\"\363\001\n\024PB_Aran"
+    "\001(\0132\027.PB_ArangoErrorResponse\"\334\001\n\024PB_Aran"
     "goBlobRequest\022*\n\013requestType\030\001 \002(\0162\025.PB_"
     "ArangoRequestType\022\013\n\003url\030\002 \002(\t\022\"\n\006values"
     "\030\003 \003(\0132\022.PB_ArangoKeyValue\022#\n\007headers\030\004 "
     "\003(\0132\022.PB_ArangoKeyValue\0221\n\013contentType\030\005"
-    " \002(\0162\034.PB_ArangoMessageContentType\022\025\n\rco"
-    "ntentLength\030\006 \002(\005\022\017\n\007content\030\007 \001(\t\"\220\001\n\025P"
-    "B_ArangoBlobResponse\022\016\n\006status\030\001 \002(\005\022#\n\007"
-    "headers\030\002 \003(\0132\022.PB_ArangoKeyValue\0221\n\013con"
-    "tentType\030\003 \002(\0162\034.PB_ArangoMessageContent"
-    "Type\022\017\n\007content\030\004 \001(\t\")\n\026PB_ArangoErrorR"
+    " \002(\0162\034.PB_ArangoMessageContentType\022\017\n\007co"
+    "ntent\030\007 \001(\t\"\247\001\n\025PB_ArangoBlobResponse\022\016\n"
+    "\006status\030\001 \002(\005\022#\n\007headers\030\002 \003(\0132\022.PB_Aran"
+    "goKeyValue\0221\n\013contentType\030\003 \002(\0162\034.PB_Ara"
+    "ngoMessageContentType\022\025\n\rcontentLength\030\006"
+    " \002(\005\022\017\n\007content\030\004 \001(\t\")\n\026PB_ArangoErrorR"
     "esponse\022\017\n\007message\030\001 \002(\t*X\n\024PB_ArangoMes"
     "sageType\022\023\n\017PB_BLOB_REQUEST\020\000\022\024\n\020PB_BLOB"
     "_RESPONSE\020\001\022\025\n\021PB_ERROR_RESPONSE\020\002*Z\n\033PB"
@@ -1156,7 +1156,6 @@ const int PB_ArangoBlobRequest::kUrlFieldNumber;
 const int PB_ArangoBlobRequest::kValuesFieldNumber;
 const int PB_ArangoBlobRequest::kHeadersFieldNumber;
 const int PB_ArangoBlobRequest::kContentTypeFieldNumber;
-const int PB_ArangoBlobRequest::kContentLengthFieldNumber;
 const int PB_ArangoBlobRequest::kContentFieldNumber;
 #endif  // !_MSC_VER
 
@@ -1179,7 +1178,6 @@ void PB_ArangoBlobRequest::SharedCtor() {
   requesttype_ = 0;
   url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   contenttype_ = 0;
-  contentlength_ = 0;
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -1228,7 +1226,6 @@ void PB_ArangoBlobRequest::Clear() {
       }
     }
     contenttype_ = 0;
-    contentlength_ = 0;
     if (has_content()) {
       if (content_ != &::google::protobuf::internal::kEmptyString) {
         content_->clear();
@@ -1331,22 +1328,6 @@ bool PB_ArangoBlobRequest::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(48)) goto parse_contentLength;
-        break;
-      }
-      
-      // required int32 contentLength = 6;
-      case 6: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_contentLength:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 input, &contentlength_)));
-          set_has_contentlength();
-        } else {
-          goto handle_uninterpreted;
-        }
         if (input->ExpectTag(58)) goto parse_content;
         break;
       }
@@ -1419,11 +1400,6 @@ void PB_ArangoBlobRequest::SerializeWithCachedSizes(
       5, this->contenttype(), output);
   }
   
-  // required int32 contentLength = 6;
-  if (has_contentlength()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(6, this->contentlength(), output);
-  }
-  
   // optional string content = 7;
   if (has_content()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
@@ -1477,11 +1453,6 @@ void PB_ArangoBlobRequest::SerializeWithCachedSizes(
       5, this->contenttype(), target);
   }
   
-  // required int32 contentLength = 6;
-  if (has_contentlength()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(6, this->contentlength(), target);
-  }
-  
   // optional string content = 7;
   if (has_content()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
@@ -1520,13 +1491,6 @@ int PB_ArangoBlobRequest::ByteSize() const {
     if (has_contenttype()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->contenttype());
-    }
-    
-    // required int32 contentLength = 6;
-    if (has_contentlength()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::Int32Size(
-          this->contentlength());
     }
     
     // optional string content = 7;
@@ -1590,9 +1554,6 @@ void PB_ArangoBlobRequest::MergeFrom(const PB_ArangoBlobRequest& from) {
     if (from.has_contenttype()) {
       set_contenttype(from.contenttype());
     }
-    if (from.has_contentlength()) {
-      set_contentlength(from.contentlength());
-    }
     if (from.has_content()) {
       set_content(from.content());
     }
@@ -1613,7 +1574,7 @@ void PB_ArangoBlobRequest::CopyFrom(const PB_ArangoBlobRequest& from) {
 }
 
 bool PB_ArangoBlobRequest::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000033) != 0x00000033) return false;
+  if ((_has_bits_[0] & 0x00000013) != 0x00000013) return false;
   
   for (int i = 0; i < values_size(); i++) {
     if (!this->values(i).IsInitialized()) return false;
@@ -1631,7 +1592,6 @@ void PB_ArangoBlobRequest::Swap(PB_ArangoBlobRequest* other) {
     values_.Swap(&other->values_);
     headers_.Swap(&other->headers_);
     std::swap(contenttype_, other->contenttype_);
-    std::swap(contentlength_, other->contentlength_);
     std::swap(content_, other->content_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
@@ -1654,6 +1614,7 @@ void PB_ArangoBlobRequest::Swap(PB_ArangoBlobRequest* other) {
 const int PB_ArangoBlobResponse::kStatusFieldNumber;
 const int PB_ArangoBlobResponse::kHeadersFieldNumber;
 const int PB_ArangoBlobResponse::kContentTypeFieldNumber;
+const int PB_ArangoBlobResponse::kContentLengthFieldNumber;
 const int PB_ArangoBlobResponse::kContentFieldNumber;
 #endif  // !_MSC_VER
 
@@ -1675,6 +1636,7 @@ void PB_ArangoBlobResponse::SharedCtor() {
   _cached_size_ = 0;
   status_ = 0;
   contenttype_ = 0;
+  contentlength_ = 0;
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -1715,6 +1677,7 @@ void PB_ArangoBlobResponse::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     status_ = 0;
     contenttype_ = 0;
+    contentlength_ = 0;
     if (has_content()) {
       if (content_ != &::google::protobuf::internal::kEmptyString) {
         content_->clear();
@@ -1796,6 +1759,22 @@ bool PB_ArangoBlobResponse::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(48)) goto parse_contentLength;
+        break;
+      }
+      
+      // required int32 contentLength = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_contentLength:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                 input, &contentlength_)));
+          set_has_contentlength();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1844,6 +1823,11 @@ void PB_ArangoBlobResponse::SerializeWithCachedSizes(
       4, this->content(), output);
   }
   
+  // required int32 contentLength = 6;
+  if (has_contentlength()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(6, this->contentlength(), output);
+  }
+  
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -1880,6 +1864,11 @@ void PB_ArangoBlobResponse::SerializeWithCachedSizes(
         4, this->content(), target);
   }
   
+  // required int32 contentLength = 6;
+  if (has_contentlength()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(6, this->contentlength(), target);
+  }
+  
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1902,6 +1891,13 @@ int PB_ArangoBlobResponse::ByteSize() const {
     if (has_contenttype()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->contenttype());
+    }
+    
+    // required int32 contentLength = 6;
+    if (has_contentlength()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int32Size(
+          this->contentlength());
     }
     
     // optional string content = 4;
@@ -1953,6 +1949,9 @@ void PB_ArangoBlobResponse::MergeFrom(const PB_ArangoBlobResponse& from) {
     if (from.has_contenttype()) {
       set_contenttype(from.contenttype());
     }
+    if (from.has_contentlength()) {
+      set_contentlength(from.contentlength());
+    }
     if (from.has_content()) {
       set_content(from.content());
     }
@@ -1973,7 +1972,7 @@ void PB_ArangoBlobResponse::CopyFrom(const PB_ArangoBlobResponse& from) {
 }
 
 bool PB_ArangoBlobResponse::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000005) != 0x00000005) return false;
+  if ((_has_bits_[0] & 0x0000000d) != 0x0000000d) return false;
   
   for (int i = 0; i < headers_size(); i++) {
     if (!this->headers(i).IsInitialized()) return false;
@@ -1986,6 +1985,7 @@ void PB_ArangoBlobResponse::Swap(PB_ArangoBlobResponse* other) {
     std::swap(status_, other->status_);
     headers_.Swap(&other->headers_);
     std::swap(contenttype_, other->contenttype_);
+    std::swap(contentlength_, other->contentlength_);
     std::swap(content_, other->content_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);

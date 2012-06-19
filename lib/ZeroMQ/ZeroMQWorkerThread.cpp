@@ -52,7 +52,7 @@ using namespace std;
 
 ZeroMQWorkerThread::ZeroMQWorkerThread (Dispatcher* dispatcher,
                                         HttpHandlerFactory* handlerFactory,
-                                        void* context,
+                                        zctx_t* context,
                                         string const& connection)
   : Thread("zeromq-worker"),
     ZeroMQThread(context),
@@ -81,29 +81,23 @@ ZeroMQWorkerThread::ZeroMQWorkerThread (Dispatcher* dispatcher,
 void ZeroMQWorkerThread::run () {
 
   // create a socket for the server
-  void* responder = zmq_socket(_context, ZMQ_DEALER);
+  void* responder = zsocket_new(_context, ZMQ_DEALER);
 
   if (responder == 0) {
     LOGGER_FATAL << "cannot initialize ZeroMQ worker socket: " << zmq_strerror(errno);
-    zmq_term(_context);
+    zctx_destroy(&_context);
     exit(EXIT_FAILURE);
   }
 
   // and bind it to the connection
-  int res = zmq_bind(responder, _connection.c_str());
-
-  if (res != 0) {
-    LOGGER_FATAL << "cannot bind ZeroMQ worker socket: " << zmq_strerror(errno);
-    zmq_close(responder);
-    zmq_term(_context);
-    exit(EXIT_FAILURE);
-  }
+  zsocket_connect(responder, _connection.c_str());
 
   // handle messages
   while (_stopping == 0) {
 
     // receive next message
     zmsg_t* request = zmsg_recv(responder);
+    zmsg_dump(request);
 
     if (request == 0) {
       if (errno == ETERM) {
@@ -115,6 +109,7 @@ void ZeroMQWorkerThread::run () {
 
     // extract the address and the content
     zframe_t* address = zmsg_pop(request);
+    zmsg_pop(request);
     zframe_t* content = zmsg_pop(request);
     zmsg_destroy(&request);
 
@@ -169,7 +164,7 @@ void ZeroMQWorkerThread::run () {
     }
   }
 
-  zmq_close(responder);
+  zsocket_destroy(_context, &responder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -504,13 +504,6 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline PB_ArangoMessageContentType contenttype() const;
   inline void set_contenttype(PB_ArangoMessageContentType value);
   
-  // required int32 contentLength = 6;
-  inline bool has_contentlength() const;
-  inline void clear_contentlength();
-  static const int kContentLengthFieldNumber = 6;
-  inline ::google::protobuf::int32 contentlength() const;
-  inline void set_contentlength(::google::protobuf::int32 value);
-  
   // optional string content = 7;
   inline bool has_content() const;
   inline void clear_content();
@@ -530,8 +523,6 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline void clear_has_url();
   inline void set_has_contenttype();
   inline void clear_has_contenttype();
-  inline void set_has_contentlength();
-  inline void clear_has_contentlength();
   inline void set_has_content();
   inline void clear_has_content();
   
@@ -543,10 +534,9 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   int contenttype_;
   ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > headers_;
   ::std::string* content_;
-  ::google::protobuf::int32 contentlength_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
   
   friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
   friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
@@ -637,6 +627,13 @@ class PB_ArangoBlobResponse : public ::google::protobuf::Message {
   inline PB_ArangoMessageContentType contenttype() const;
   inline void set_contenttype(PB_ArangoMessageContentType value);
   
+  // required int32 contentLength = 6;
+  inline bool has_contentlength() const;
+  inline void clear_contentlength();
+  static const int kContentLengthFieldNumber = 6;
+  inline ::google::protobuf::int32 contentlength() const;
+  inline void set_contentlength(::google::protobuf::int32 value);
+  
   // optional string content = 4;
   inline bool has_content() const;
   inline void clear_content();
@@ -654,6 +651,8 @@ class PB_ArangoBlobResponse : public ::google::protobuf::Message {
   inline void clear_has_status();
   inline void set_has_contenttype();
   inline void clear_has_contenttype();
+  inline void set_has_contentlength();
+  inline void clear_has_contentlength();
   inline void set_has_content();
   inline void clear_has_content();
   
@@ -663,9 +662,10 @@ class PB_ArangoBlobResponse : public ::google::protobuf::Message {
   ::google::protobuf::int32 status_;
   int contenttype_;
   ::std::string* content_;
+  ::google::protobuf::int32 contentlength_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
   
   friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
   friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
@@ -1184,37 +1184,15 @@ inline void PB_ArangoBlobRequest::set_contenttype(PB_ArangoMessageContentType va
   contenttype_ = value;
 }
 
-// required int32 contentLength = 6;
-inline bool PB_ArangoBlobRequest::has_contentlength() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void PB_ArangoBlobRequest::set_has_contentlength() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void PB_ArangoBlobRequest::clear_has_contentlength() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void PB_ArangoBlobRequest::clear_contentlength() {
-  contentlength_ = 0;
-  clear_has_contentlength();
-}
-inline ::google::protobuf::int32 PB_ArangoBlobRequest::contentlength() const {
-  return contentlength_;
-}
-inline void PB_ArangoBlobRequest::set_contentlength(::google::protobuf::int32 value) {
-  set_has_contentlength();
-  contentlength_ = value;
-}
-
 // optional string content = 7;
 inline bool PB_ArangoBlobRequest::has_content() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void PB_ArangoBlobRequest::set_has_content() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void PB_ArangoBlobRequest::clear_has_content() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void PB_ArangoBlobRequest::clear_content() {
   if (content_ != &::google::protobuf::internal::kEmptyString) {
@@ -1338,15 +1316,37 @@ inline void PB_ArangoBlobResponse::set_contenttype(PB_ArangoMessageContentType v
   contenttype_ = value;
 }
 
-// optional string content = 4;
-inline bool PB_ArangoBlobResponse::has_content() const {
+// required int32 contentLength = 6;
+inline bool PB_ArangoBlobResponse::has_contentlength() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void PB_ArangoBlobResponse::set_has_content() {
+inline void PB_ArangoBlobResponse::set_has_contentlength() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void PB_ArangoBlobResponse::clear_has_content() {
+inline void PB_ArangoBlobResponse::clear_has_contentlength() {
   _has_bits_[0] &= ~0x00000008u;
+}
+inline void PB_ArangoBlobResponse::clear_contentlength() {
+  contentlength_ = 0;
+  clear_has_contentlength();
+}
+inline ::google::protobuf::int32 PB_ArangoBlobResponse::contentlength() const {
+  return contentlength_;
+}
+inline void PB_ArangoBlobResponse::set_contentlength(::google::protobuf::int32 value) {
+  set_has_contentlength();
+  contentlength_ = value;
+}
+
+// optional string content = 4;
+inline bool PB_ArangoBlobResponse::has_content() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void PB_ArangoBlobResponse::set_has_content() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void PB_ArangoBlobResponse::clear_has_content() {
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void PB_ArangoBlobResponse::clear_content() {
   if (content_ != &::google::protobuf::internal::kEmptyString) {

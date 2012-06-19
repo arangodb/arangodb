@@ -211,7 +211,7 @@ void JavascriptDispatcherThread::initialise () {
   _isolate->Enter();
 
   // create the context
-  _context = v8::Context::New(0);
+  _context = v8::Context::New();
 
   if (_context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";

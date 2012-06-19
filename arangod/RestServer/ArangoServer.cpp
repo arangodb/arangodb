@@ -919,6 +919,33 @@ int ArangoServer::startupServer () {
   }
 
   // .............................................................................
+  // create a http handler factory for zeromq
+  // .............................................................................
+
+  // we pass the options be reference, so keep them until shutdown
+  RestActionHandler::action_options_t zeromqOptions;
+  zeromqOptions._vocbase = _vocbase;
+  zeromqOptions._queue = "CLIENT-";
+
+  // only construct factory if ZeroMQ is active
+  if (_applicationZeroMQ->isActive()) {
+    HttpHandlerFactory* factory = new HttpHandlerFactory();
+
+    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
+
+    if (shareAdminPort) {
+      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+    }
+
+    // add action handler
+    factory->addPrefixHandler("/",
+                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                              (void*) &httpOptions);
+
+    _applicationZeroMQ->setHttpHandlerFactory(factory);
+  }
+
+  // .............................................................................
   // start the main event loop
   // .............................................................................
 

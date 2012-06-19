@@ -78,7 +78,7 @@ namespace triagens {
 
         ZeroMQWorkerThread (Dispatcher*,
                             HttpHandlerFactory*,
-                            void* context,
+                            zctx_t* context,
                             string const& connection);
 
 ////////////////////////////////////////////////////////////////////////////////

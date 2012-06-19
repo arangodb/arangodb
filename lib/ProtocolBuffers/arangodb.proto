@@ -79,7 +79,6 @@ message PB_ArangoBlobRequest {
   repeated PB_ArangoKeyValue values = 3;  // case of key is significant
   repeated PB_ArangoKeyValue headers = 4; // key must be lowercase
   required PB_ArangoMessageContentType contentType = 5;
-  required int32 contentLength = 6;
   optional string content = 7;
 }
 
@@ -91,6 +90,7 @@ message PB_ArangoBlobResponse {
   required int32 status = 1;
   repeated PB_ArangoKeyValue headers = 2; // key must be lowercase
   required PB_ArangoMessageContentType contentType = 3;
+  required int32 contentLength = 6;
   optional string content = 4;
 }
 
