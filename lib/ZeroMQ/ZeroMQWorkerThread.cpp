@@ -97,7 +97,6 @@ void ZeroMQWorkerThread::run () {
 
     // receive next message
     zmsg_t* request = zmsg_recv(responder);
-    zmsg_dump(request);
 
     if (request == 0) {
       if (errno == ETERM) {
