@@ -1,0 +1,157 @@
+zframe(7)
+=========
+
+NAME
+----
+zframe - working with single message frames
+
+SYNOPSIS
+--------
+----
+#define ZFRAME_MORE     1
+#define ZFRAME_REUSE    2
+
+//  Create a new frame with optional size, and optional data
+zframe_t *
+    zframe_new (const void *data, size_t size);
+
+//  Destroy a frame
+void
+    zframe_destroy (zframe_t **self_p);
+
+//  Receive frame from socket, returns zframe_t object or NULL if the recv
+//  was interrupted. Does a blocking recv, if you want to not block then use
+//  zframe_recv_nowait().
+zframe_t *
+    zframe_recv (void *socket);
+
+//  Receive a new frame off the socket. Returns newly allocated frame, or
+//  NULL if there was no input waiting, or if the read was interrupted.
+zframe_t *
+    zframe_recv_nowait (void *socket);
+
+//  Send a frame to a socket, destroy frame after sending
+void
+    zframe_send (zframe_t **self_p, void *socket, int flags);
+
+//  Return number of bytes in frame data
+size_t
+    zframe_size (zframe_t *self);
+
+//  Return address of frame data
+byte *
+    zframe_data (zframe_t *self);
+
+//  Create a new frame that duplicates an existing frame
+zframe_t *
+    zframe_dup (zframe_t *self);
+
+//  Return frame data encoded as printable hex string
+char *
+    zframe_strhex (zframe_t *self);
+
+//  Return frame data copied into freshly allocated string
+char *
+    zframe_strdup (zframe_t *self);
+
+//  Return TRUE if frame body is equal to string, excluding terminator
+Bool
+    zframe_streq (zframe_t *self, char *string);
+
+//  Return frame 'more' property
+int
+    zframe_more (zframe_t *self);
+
+//  Return TRUE if two frames have identical size and data
+//  If either frame is NULL, equality is always false.
+Bool
+    zframe_eq (zframe_t *self, zframe_t *other);
+
+//  Print contents of frame to stderr
+void
+    zframe_print (zframe_t *self, char *prefix);
+
+//  Set new contents for frame
+void
+    zframe_reset (zframe_t *self, const void *data, size_t size);
+
+//  Self test of this class
+int
+    zframe_test (Bool verbose);
+----
+
+DESCRIPTION
+-----------
+
+The zframe class provides methods to send and receive single message
+frames across 0MQ sockets. A 'frame' corresponds to one zmq_msg_t. When
+you read a frame from a socket, the zframe_more() method indicates if the
+frame is part of an unfinished multipart message. The zframe_send method
+normally destroys the frame, but with the ZFRAME_REUSE flag, you can send
+the same frame many times. Frames are binary, and this class has no
+special support for text data.
+
+
+EXAMPLE
+-------
+.From zframe_test method
+----
+    zctx_t *ctx = zctx_new ();
+
+    void *output = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_bind (output, "inproc://zframe.test");
+    void *input = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_connect (input, "inproc://zframe.test");
+
+    //  Send five different frames, test ZFRAME_MORE
+    int frame_nbr;
+    for (frame_nbr = 0; frame_nbr < 5; frame_nbr++) {
+        zframe_t *frame = zframe_new ("Hello", 5);
+        zframe_send (&frame, output, ZFRAME_MORE);
+    }
+    //  Send same frame five times, test ZFRAME_REUSE
+    zframe_t *frame = zframe_new ("Hello", 5);
+    for (frame_nbr = 0; frame_nbr < 5; frame_nbr++) {
+        zframe_send (&frame, output, ZFRAME_MORE + ZFRAME_REUSE);
+    }
+    assert (frame);
+    zframe_t *copy = zframe_dup (frame);
+    assert (zframe_eq (frame, copy));
+    zframe_destroy (&frame);
+    assert (!zframe_eq (frame, copy));
+    assert (zframe_size (copy) == 5);
+    zframe_destroy (&copy);
+    assert (!zframe_eq (frame, copy));
+
+    //  Send END frame
+    frame = zframe_new ("NOT", 3);
+    zframe_reset (frame, "END", 3);
+    char *string = zframe_strhex (frame);
+    assert (streq (string, "454E44"));
+    free (string);
+    string = zframe_strdup (frame);
+    assert (streq (string, "END"));
+    free (string);
+    zframe_send (&frame, output, 0);
+
+    //  Read and count until we receive END
+    frame_nbr = 0;
+    for (frame_nbr = 0;; frame_nbr++) {
+        zframe_t *frame = zframe_recv (input);
+        if (zframe_streq (frame, "END")) {
+            zframe_destroy (&frame);
+            break;
+        }
+        assert (zframe_more (frame));
+        zframe_destroy (&frame);
+    }
+    assert (frame_nbr == 10);
+    frame = zframe_recv_nowait (input);
+    assert (frame == NULL);
+
+    zctx_destroy (&ctx);
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]

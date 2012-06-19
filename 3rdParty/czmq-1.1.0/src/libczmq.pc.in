@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libczmq
+Description: High-level C binding for 0MQ
+Version: @VERSION@
+Libs: -L${libdir} -lczmq
+Cflags: -I${includedir}
