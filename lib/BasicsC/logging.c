@@ -1010,6 +1010,10 @@ bool TRI_IsDebugLogging (char const* file) {
       return false;
     }
 
+    while (file[0] == '.' && file[1] == '.' && file[2] == '/') {
+      file += 3;
+    }
+
     return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];
   }
   else {
@@ -1025,6 +1029,10 @@ bool TRI_IsTraceLogging (char const* file) {
   if (UseFileBasedLogging) {
     if (! IsTrace || file == NULL) {
       return false;
+    }
+
+    while (file[0] == '.' && file[1] == '.' && file[2] == '/') {
+      file += 3;
     }
 
     return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];

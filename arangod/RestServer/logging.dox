@@ -64,6 +64,9 @@
 /// @anchor CommandLineLoggingLogThread
 /// @copydetails triagens::rest::ApplicationServerImpl::logThreadId
 ///
+/// @anchor CommandLineLoggingLogFilter
+/// @copydetails triagens::rest::ApplicationServerImpl::logFilter
+///
 /// @section CommandLineLoggingMachine Maschine Readable Logging
 ////////////////////////////////////////////////////////////////
 ///
