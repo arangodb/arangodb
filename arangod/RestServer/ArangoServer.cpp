@@ -816,9 +816,7 @@ int ArangoServer::startupServer () {
   // create the various parts of the Arango server
   // .............................................................................
 
-  _applicationScheduler->buildScheduler();
-  _applicationScheduler->buildSchedulerReporter();
-  _applicationScheduler->buildControlCHandler();
+  _applicationScheduler->prepare();
 
   _applicationDispatcher->buildDispatcher();
   _applicationDispatcher->buildDispatcherReporter();
