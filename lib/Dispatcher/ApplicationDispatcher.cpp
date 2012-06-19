@@ -89,7 +89,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationDispatcher::ApplicationDispatcher (ApplicationScheduler* applicationScheduler)
-  : _applicationScheduler(applicationScheduler),
+  : ApplicationFeature("dispatcher"),
+    _applicationScheduler(applicationScheduler),
     _dispatcher(0),
     _dispatcherReporterTask(0),
     _reportIntervall(60.0) {
@@ -124,36 +125,6 @@ ApplicationDispatcher::~ApplicationDispatcher () {
 
 Dispatcher* ApplicationDispatcher::dispatcher () const {
   return _dispatcher;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationDispatcher::buildDispatcher () {
-  if (_dispatcher != 0) {
-    LOGGER_FATAL << "a dispatcher has already been created";
-    exit(EXIT_FAILURE);
-  }
-
-  _dispatcher = new Dispatcher();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the dispatcher reporter
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationDispatcher::buildDispatcherReporter () {
-  if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher reporter";
-    exit(EXIT_FAILURE);
-  }
-
-  if (0.0 < _reportIntervall) {
-    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportIntervall);
-
-    _applicationScheduler->registerTask(_dispatcherReporterTask);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,17 +185,62 @@ void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationDispatcher::start () {
-  if (_dispatcher != 0) {
-    bool ok = _dispatcher->start();
+bool ApplicationDispatcher::prepare () {
+  buildDispatcher();
+  buildDispatcherReporter();
 
-    if (! ok) {
-      LOGGER_FATAL << "cannot start dispatcher";
-      return false;
-    }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationDispatcher::isStartable () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationDispatcher::start () {
+  bool ok = _dispatcher->start();
+
+  if (! ok) {
+    LOGGER_FATAL << "cannot start dispatcher";
+
+    delete _dispatcher;
+    _dispatcher = 0;
+
+    return false;
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationDispatcher::isStarted () {
+  if (_dispatcher != 0) {
+    return _dispatcher->isStarted();
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationDispatcher::open () {
+  if (_dispatcher != 0) {
+    return _dispatcher->open();
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +277,49 @@ void ApplicationDispatcher::shutdown () {
       LOGGER_TRACE << "waiting for dispatcher to stop";
       sleep(1);
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Dispatcher
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::buildDispatcher () {
+  if (_dispatcher != 0) {
+    LOGGER_FATAL << "a dispatcher has already been created";
+    exit(EXIT_FAILURE);
+  }
+
+  _dispatcher = new Dispatcher();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the dispatcher reporter
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::buildDispatcherReporter () {
+  if (_dispatcher == 0) {
+    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher reporter";
+    exit(EXIT_FAILURE);
+  }
+
+  if (0.0 < _reportIntervall) {
+    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportIntervall);
+
+    _applicationScheduler->registerTask(_dispatcherReporterTask);
   }
 }
 

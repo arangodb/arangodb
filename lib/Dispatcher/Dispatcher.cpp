@@ -73,8 +73,11 @@ DispatcherThread* Dispatcher::defaultDispatcherThread (DispatcherQueue* queue) {
 Dispatcher::Dispatcher ()
   : _accessDispatcher(),
     _stopping(0),
-    _queues(),
-    _zeroMQContext(0) {
+    _queues()
+#ifdef TRI_ENABLE_ZEROMQ
+  , _zeroMQContext(0)
+#endif
+    {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
