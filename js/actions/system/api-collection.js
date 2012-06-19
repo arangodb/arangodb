@@ -129,6 +129,7 @@ function POST_api_collection (req, res) {
 
   var name = body.name;
   var parameter = { waitForSync : false };
+  var cid = undefined;
 
   if (body.hasOwnProperty("waitForSync")) {
     parameter.waitForSync = body.waitForSync;
@@ -142,8 +143,12 @@ function POST_api_collection (req, res) {
     parameter.isSystem = body.isSystem;
   }
 
+  if (body.hasOwnProperty("_id")) {
+    cid = body._id;
+  }
+
   try {
-    var collection = internal.db._create(name, parameter);
+    var collection = internal.db._create(name, parameter, cid);
 
     var result = {};
     var headers = {};

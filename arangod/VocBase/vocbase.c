@@ -1270,13 +1270,20 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_parameter_t* parameter) {
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                                TRI_col_parameter_t* parameter,
+                                                TRI_voc_cid_t cid) {
   TRI_doc_collection_t* doc;
   TRI_vocbase_col_t* collection;
   TRI_col_type_e type;
   char const* name;
   char wrong;
   void const* found;
+
+  // collection id (cid) is normally passed with a value of 0
+  // this means that the system will assign a new collection id automatically
+  // using a cid of > 0 is supported to import dumps from other servers etc.
+  // but the functionality is not advertised
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -1325,7 +1332,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
   if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     TRI_sim_collection_t* sim;
 
-    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, 0);
+    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, cid);
 
     if (sim == NULL) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
