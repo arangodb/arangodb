@@ -149,3 +149,8 @@ VC++
 3rdParty/zeromq-2.2.0/tests/test_timeo
 .zeromq-build-64
 3rdParty/zeromq-2.2.0/BUILD/
+.czmq-build-64
+3rdParty/czmq-1.1.0/libtool
+3rdParty/czmq-1.1.0/src/czmq_selftest
+3rdParty/czmq-1.1.0/src/libczmq.pc
+3rdParty/czmq-1.1.0/src/platform.h

@@ -24,7 +24,12 @@
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////#include "HttpRequestProtobuf.h"#include "BasicsC/strings.h"#include "Basics/StringUtils.h"
+////////////////////////////////////////////////////////////////////////////////
+
+#include "HttpRequestProtobuf.h"
+
+#include "BasicsC/strings.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -59,7 +64,7 @@ HttpRequestProtobuf::HttpRequestProtobuf (PB_ArangoBatchMessage const& message)
     _request(0) {
   if (message.type() == PB_BLOB_REQUEST) {
     _valid = true;
-    _request = &message.request();
+    _request = &message.blobrequest();
 
     switch (_request->requesttype()) {
       case PB_REQUEST_TYPE_DELETE:

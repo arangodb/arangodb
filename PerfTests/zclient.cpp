@@ -58,7 +58,7 @@ void* ThreadStarter (void* data) {
     batch = messages.add_messages();
 
     batch->set_type(PB_BLOB_REQUEST);
-    blob = batch->mutable_request();
+    blob = batch->mutable_blobrequest();
 
     blob->set_requesttype(PB_REQUEST_TYPE_GET);
     blob->set_url("/_api/version");

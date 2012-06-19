@@ -35,14 +35,16 @@ class PB_ArangoMessage;
 class PB_ArangoBatchMessage;
 class PB_ArangoBlobRequest;
 class PB_ArangoBlobResponse;
+class PB_ArangoErrorResponse;
 
 enum PB_ArangoMessageType {
   PB_BLOB_REQUEST = 0,
-  PB_BLOB_RESPONSE = 1
+  PB_BLOB_RESPONSE = 1,
+  PB_ERROR_RESPONSE = 2
 };
 bool PB_ArangoMessageType_IsValid(int value);
 const PB_ArangoMessageType PB_ArangoMessageType_MIN = PB_BLOB_REQUEST;
-const PB_ArangoMessageType PB_ArangoMessageType_MAX = PB_BLOB_RESPONSE;
+const PB_ArangoMessageType PB_ArangoMessageType_MAX = PB_ERROR_RESPONSE;
 const int PB_ArangoMessageType_ARRAYSIZE = PB_ArangoMessageType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* PB_ArangoMessageType_descriptor();
@@ -345,39 +347,50 @@ class PB_ArangoBatchMessage : public ::google::protobuf::Message {
   inline PB_ArangoMessageType type() const;
   inline void set_type(PB_ArangoMessageType value);
   
-  // optional .PB_ArangoBlobRequest request = 2;
-  inline bool has_request() const;
-  inline void clear_request();
-  static const int kRequestFieldNumber = 2;
-  inline const ::PB_ArangoBlobRequest& request() const;
-  inline ::PB_ArangoBlobRequest* mutable_request();
-  inline ::PB_ArangoBlobRequest* release_request();
+  // optional .PB_ArangoBlobRequest blobRequest = 2;
+  inline bool has_blobrequest() const;
+  inline void clear_blobrequest();
+  static const int kBlobRequestFieldNumber = 2;
+  inline const ::PB_ArangoBlobRequest& blobrequest() const;
+  inline ::PB_ArangoBlobRequest* mutable_blobrequest();
+  inline ::PB_ArangoBlobRequest* release_blobrequest();
   
-  // optional .PB_ArangoBlobResponse response = 3;
-  inline bool has_response() const;
-  inline void clear_response();
-  static const int kResponseFieldNumber = 3;
-  inline const ::PB_ArangoBlobResponse& response() const;
-  inline ::PB_ArangoBlobResponse* mutable_response();
-  inline ::PB_ArangoBlobResponse* release_response();
+  // optional .PB_ArangoBlobResponse blobResponse = 3;
+  inline bool has_blobresponse() const;
+  inline void clear_blobresponse();
+  static const int kBlobResponseFieldNumber = 3;
+  inline const ::PB_ArangoBlobResponse& blobresponse() const;
+  inline ::PB_ArangoBlobResponse* mutable_blobresponse();
+  inline ::PB_ArangoBlobResponse* release_blobresponse();
+  
+  // optional .PB_ArangoErrorResponse errorResponse = 4;
+  inline bool has_errorresponse() const;
+  inline void clear_errorresponse();
+  static const int kErrorResponseFieldNumber = 4;
+  inline const ::PB_ArangoErrorResponse& errorresponse() const;
+  inline ::PB_ArangoErrorResponse* mutable_errorresponse();
+  inline ::PB_ArangoErrorResponse* release_errorresponse();
   
   // @@protoc_insertion_point(class_scope:PB_ArangoBatchMessage)
  private:
   inline void set_has_type();
   inline void clear_has_type();
-  inline void set_has_request();
-  inline void clear_has_request();
-  inline void set_has_response();
-  inline void clear_has_response();
+  inline void set_has_blobrequest();
+  inline void clear_has_blobrequest();
+  inline void set_has_blobresponse();
+  inline void clear_has_blobresponse();
+  inline void set_has_errorresponse();
+  inline void clear_has_errorresponse();
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
-  ::PB_ArangoBlobRequest* request_;
-  ::PB_ArangoBlobResponse* response_;
+  ::PB_ArangoBlobRequest* blobrequest_;
+  ::PB_ArangoBlobResponse* blobresponse_;
+  ::PB_ArangoErrorResponse* errorresponse_;
   int type_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
   
   friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
   friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
@@ -498,7 +511,7 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline ::google::protobuf::int32 contentlength() const;
   inline void set_contentlength(::google::protobuf::int32 value);
   
-  // required string content = 7;
+  // optional string content = 7;
   inline bool has_content() const;
   inline void clear_content();
   static const int kContentFieldNumber = 7;
@@ -624,7 +637,7 @@ class PB_ArangoBlobResponse : public ::google::protobuf::Message {
   inline PB_ArangoMessageContentType contenttype() const;
   inline void set_contenttype(PB_ArangoMessageContentType value);
   
-  // required string content = 4;
+  // optional string content = 4;
   inline bool has_content() const;
   inline void clear_content();
   static const int kContentFieldNumber = 4;
@@ -660,6 +673,92 @@ class PB_ArangoBlobResponse : public ::google::protobuf::Message {
   
   void InitAsDefaultInstance();
   static PB_ArangoBlobResponse* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoErrorResponse : public ::google::protobuf::Message {
+ public:
+  PB_ArangoErrorResponse();
+  virtual ~PB_ArangoErrorResponse();
+  
+  PB_ArangoErrorResponse(const PB_ArangoErrorResponse& from);
+  
+  inline PB_ArangoErrorResponse& operator=(const PB_ArangoErrorResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoErrorResponse& default_instance();
+  
+  void Swap(PB_ArangoErrorResponse* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoErrorResponse* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoErrorResponse& from);
+  void MergeFrom(const PB_ArangoErrorResponse& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required string message = 1;
+  inline bool has_message() const;
+  inline void clear_message();
+  static const int kMessageFieldNumber = 1;
+  inline const ::std::string& message() const;
+  inline void set_message(const ::std::string& value);
+  inline void set_message(const char* value);
+  inline void set_message(const char* value, size_t size);
+  inline ::std::string* mutable_message();
+  inline ::std::string* release_message();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoErrorResponse)
+ private:
+  inline void set_has_message();
+  inline void clear_has_message();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::std::string* message_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoErrorResponse* default_instance_;
 };
 // ===================================================================
 
@@ -840,61 +939,90 @@ inline void PB_ArangoBatchMessage::set_type(PB_ArangoMessageType value) {
   type_ = value;
 }
 
-// optional .PB_ArangoBlobRequest request = 2;
-inline bool PB_ArangoBatchMessage::has_request() const {
+// optional .PB_ArangoBlobRequest blobRequest = 2;
+inline bool PB_ArangoBatchMessage::has_blobrequest() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void PB_ArangoBatchMessage::set_has_request() {
+inline void PB_ArangoBatchMessage::set_has_blobrequest() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void PB_ArangoBatchMessage::clear_has_request() {
+inline void PB_ArangoBatchMessage::clear_has_blobrequest() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void PB_ArangoBatchMessage::clear_request() {
-  if (request_ != NULL) request_->::PB_ArangoBlobRequest::Clear();
-  clear_has_request();
+inline void PB_ArangoBatchMessage::clear_blobrequest() {
+  if (blobrequest_ != NULL) blobrequest_->::PB_ArangoBlobRequest::Clear();
+  clear_has_blobrequest();
 }
-inline const ::PB_ArangoBlobRequest& PB_ArangoBatchMessage::request() const {
-  return request_ != NULL ? *request_ : *default_instance_->request_;
+inline const ::PB_ArangoBlobRequest& PB_ArangoBatchMessage::blobrequest() const {
+  return blobrequest_ != NULL ? *blobrequest_ : *default_instance_->blobrequest_;
 }
-inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::mutable_request() {
-  set_has_request();
-  if (request_ == NULL) request_ = new ::PB_ArangoBlobRequest;
-  return request_;
+inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::mutable_blobrequest() {
+  set_has_blobrequest();
+  if (blobrequest_ == NULL) blobrequest_ = new ::PB_ArangoBlobRequest;
+  return blobrequest_;
 }
-inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::release_request() {
-  clear_has_request();
-  ::PB_ArangoBlobRequest* temp = request_;
-  request_ = NULL;
+inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::release_blobrequest() {
+  clear_has_blobrequest();
+  ::PB_ArangoBlobRequest* temp = blobrequest_;
+  blobrequest_ = NULL;
   return temp;
 }
 
-// optional .PB_ArangoBlobResponse response = 3;
-inline bool PB_ArangoBatchMessage::has_response() const {
+// optional .PB_ArangoBlobResponse blobResponse = 3;
+inline bool PB_ArangoBatchMessage::has_blobresponse() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void PB_ArangoBatchMessage::set_has_response() {
+inline void PB_ArangoBatchMessage::set_has_blobresponse() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void PB_ArangoBatchMessage::clear_has_response() {
+inline void PB_ArangoBatchMessage::clear_has_blobresponse() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void PB_ArangoBatchMessage::clear_response() {
-  if (response_ != NULL) response_->::PB_ArangoBlobResponse::Clear();
-  clear_has_response();
+inline void PB_ArangoBatchMessage::clear_blobresponse() {
+  if (blobresponse_ != NULL) blobresponse_->::PB_ArangoBlobResponse::Clear();
+  clear_has_blobresponse();
 }
-inline const ::PB_ArangoBlobResponse& PB_ArangoBatchMessage::response() const {
-  return response_ != NULL ? *response_ : *default_instance_->response_;
+inline const ::PB_ArangoBlobResponse& PB_ArangoBatchMessage::blobresponse() const {
+  return blobresponse_ != NULL ? *blobresponse_ : *default_instance_->blobresponse_;
 }
-inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::mutable_response() {
-  set_has_response();
-  if (response_ == NULL) response_ = new ::PB_ArangoBlobResponse;
-  return response_;
+inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::mutable_blobresponse() {
+  set_has_blobresponse();
+  if (blobresponse_ == NULL) blobresponse_ = new ::PB_ArangoBlobResponse;
+  return blobresponse_;
 }
-inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::release_response() {
-  clear_has_response();
-  ::PB_ArangoBlobResponse* temp = response_;
-  response_ = NULL;
+inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::release_blobresponse() {
+  clear_has_blobresponse();
+  ::PB_ArangoBlobResponse* temp = blobresponse_;
+  blobresponse_ = NULL;
+  return temp;
+}
+
+// optional .PB_ArangoErrorResponse errorResponse = 4;
+inline bool PB_ArangoBatchMessage::has_errorresponse() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void PB_ArangoBatchMessage::set_has_errorresponse() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void PB_ArangoBatchMessage::clear_has_errorresponse() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void PB_ArangoBatchMessage::clear_errorresponse() {
+  if (errorresponse_ != NULL) errorresponse_->::PB_ArangoErrorResponse::Clear();
+  clear_has_errorresponse();
+}
+inline const ::PB_ArangoErrorResponse& PB_ArangoBatchMessage::errorresponse() const {
+  return errorresponse_ != NULL ? *errorresponse_ : *default_instance_->errorresponse_;
+}
+inline ::PB_ArangoErrorResponse* PB_ArangoBatchMessage::mutable_errorresponse() {
+  set_has_errorresponse();
+  if (errorresponse_ == NULL) errorresponse_ = new ::PB_ArangoErrorResponse;
+  return errorresponse_;
+}
+inline ::PB_ArangoErrorResponse* PB_ArangoBatchMessage::release_errorresponse() {
+  clear_has_errorresponse();
+  ::PB_ArangoErrorResponse* temp = errorresponse_;
+  errorresponse_ = NULL;
   return temp;
 }
 
@@ -1078,7 +1206,7 @@ inline void PB_ArangoBlobRequest::set_contentlength(::google::protobuf::int32 va
   contentlength_ = value;
 }
 
-// required string content = 7;
+// optional string content = 7;
 inline bool PB_ArangoBlobRequest::has_content() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
@@ -1210,7 +1338,7 @@ inline void PB_ArangoBlobResponse::set_contenttype(PB_ArangoMessageContentType v
   contenttype_ = value;
 }
 
-// required string content = 4;
+// optional string content = 4;
 inline bool PB_ArangoBlobResponse::has_content() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -1264,6 +1392,68 @@ inline ::std::string* PB_ArangoBlobResponse::release_content() {
   } else {
     ::std::string* temp = content_;
     content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoErrorResponse
+
+// required string message = 1;
+inline bool PB_ArangoErrorResponse::has_message() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoErrorResponse::set_has_message() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoErrorResponse::clear_has_message() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoErrorResponse::clear_message() {
+  if (message_ != &::google::protobuf::internal::kEmptyString) {
+    message_->clear();
+  }
+  clear_has_message();
+}
+inline const ::std::string& PB_ArangoErrorResponse::message() const {
+  return *message_;
+}
+inline void PB_ArangoErrorResponse::set_message(const ::std::string& value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+}
+inline void PB_ArangoErrorResponse::set_message(const char* value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+}
+inline void PB_ArangoErrorResponse::set_message(const char* value, size_t size) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* PB_ArangoErrorResponse::mutable_message() {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  return message_;
+}
+inline ::std::string* PB_ArangoErrorResponse::release_message() {
+  clear_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = message_;
+    message_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }

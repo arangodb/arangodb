@@ -34,6 +34,8 @@
 #include <Basics/Dictionary.h>
 #include <Basics/StringBuffer.h>
 
+class PB_ArangoBatchMessage;
+
 namespace triagens {
   namespace rest {
 
@@ -215,6 +217,16 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void writeHeader (basics::StringBuffer*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief writes the message to a protocol buffer
+        ///
+        /// You should call writeHeader only after the body has been created.
+        ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZEROMQ
+        void write (PB_ArangoBatchMessage*);
+#endif
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief returns the size of the body

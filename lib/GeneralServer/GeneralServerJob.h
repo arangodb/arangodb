@@ -144,6 +144,15 @@ namespace triagens {
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
+        void finish (void*) {
+          LOGGER_ERROR << "finished called for GeneralServerJob";
+          cleanup();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
         void handleError (basics::TriagensError const& ex) {
           _handler->handleError(ex);
         }
