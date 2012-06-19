@@ -137,6 +137,16 @@ namespace triagens {
       void setCreateCollection (const bool value) {
         _createCollection = value;
       }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the useIds flag
+      ///
+      /// @param bool value         reuse the _id and _rev values from the import data
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setUseIds (const bool value) {
+        _useIds = value;
+      }
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the number of read lines
@@ -199,6 +209,7 @@ namespace triagens {
       char _quote;
       char _separator;
       bool _createCollection; 
+      bool _useIds; 
       
       size_t _numberLines;
       size_t _numberOk;
