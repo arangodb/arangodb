@@ -39,12 +39,13 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief
 ////////////////////////////////////////////////////////////////////////////////
 
 void HandleArangoMessage (void* data, size_t size, zmq_msg_t* reply) {
@@ -77,128 +78,6 @@ void HandleArangoMessage (void* data, size_t size, zmq_msg_t* reply) {
       LOGGER_DEBUG << "received invalid message via ZeroMQ";
     }
   }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ZeroMQThread
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-    class ZeroMQThread : virtual public Thread {
-      public:
-        ZeroMQThread (void* context)
-          : Thread("zeromq-res"),
-            _stopping(0),
-            _context(context) {
-        }
-        
-      public:
-        void beginShutdown () {
-          _stopping = 1;
-        }
-        
-      protected:
-        sig_atomic_t _stopping;
-        void* _context;
-    };
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class ZeroMQWorkerThread
-// -----------------------------------------------------------------------------
-
-namespace {
-  class ZeroMQWorkerThread : public ZeroMQThread {
-    public:
-      ZeroMQWorkerThread (void* context, string const& connection, bool bind)
-        : Thread("zeromq-worker"),
-          ZeroMQThread(context),
-          _connection(connection),
-          _bind(bind) {
-      }
-
-    protected:
-      void run () {
-
-        // create a socket for the server
-        void* responder = zmq_socket(_context, ZMQ_REP);
-
-        if (responder == 0) {
-          LOGGER_FATAL << "cannot initialize ZeroMQ worker socket: " << strerror(errno);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        // and bind it to the connection
-        int res;
-
-        if (_bind) {
-          res = zmq_bind(responder, _connection.c_str());
-        }
-        else {
-          res = zmq_connect(responder, _connection.c_str());
-        }
-
-        if (res != 0) {
-          LOGGER_FATAL << "cannot bind ZeroMQ worker socket: " << strerror(errno);
-          zmq_close(responder);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        while (_stopping == 0) {
-          zmq_msg_t request;
-          zmq_msg_init(&request);
-
-          // receive next message
-          res = zmq_recv(responder, &request, 0);
-
-          if (res < 0) {
-            zmq_msg_close(&request);
-
-            if (errno == ETERM) {
-              break;
-            }
-
-            continue;
-          }
-    
-          // handle all messages inside the batch
-          zmq_msg_t reply;
-          HandleArangoMessage(zmq_msg_data(&request), zmq_msg_size(&request), &reply);
-
-          // close the request
-          zmq_msg_close(&request);
-
-          // received illegal message, force client to shutdown
-#if 0
-          if (httpRequest == 0) {
-            zmq_msg_init_size(&reply, 0);
-
-            zmq_send(responder, &reply, 0);
-            zmq_msg_close(&reply);
-
-            continue;
-          }
-#endif
-
-          // send reply back to client
-          zmq_msg_init_size(&reply, 5);
-          memcpy(zmq_msg_data(&reply), "World", 5);
-
-          zmq_send(responder, &reply, 0);
-          zmq_msg_close(&reply);
-        }
-
-        zmq_close(responder);
-      }
-
-    private:
-      string const _connection;
-      bool _bind;
-  };
 }
 
 // -----------------------------------------------------------------------------
@@ -320,10 +199,6 @@ ApplicationZeroMQ::~ApplicationZeroMQ () {
     delete _zeroMQThreads;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

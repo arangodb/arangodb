@@ -32,6 +32,7 @@
 enum PB_ArangoMessageType {
   PB_BLOB_REQUEST = 0;
   PB_BLOB_RESPONSE = 1;
+  PB_ERROR_RESPONSE = 2;
 }
 
 enum PB_ArangoMessageContentType {
@@ -63,12 +64,13 @@ message PB_ArangoMessage {
 
 message PB_ArangoBatchMessage {
   required PB_ArangoMessageType type = 1;
-  optional PB_ArangoBlobRequest request = 2;
-  optional PB_ArangoBlobResponse response = 3;
+  optional PB_ArangoBlobRequest blobRequest = 2;
+  optional PB_ArangoBlobResponse blobResponse = 3;
+  optional PB_ArangoErrorResponse errorResponse = 4;
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           request
+// --SECTION--                                                      blob request
 // -----------------------------------------------------------------------------
 
 message PB_ArangoBlobRequest {
@@ -78,18 +80,26 @@ message PB_ArangoBlobRequest {
   repeated PB_ArangoKeyValue headers = 4; // key must be lowercase
   required PB_ArangoMessageContentType contentType = 5;
   required int32 contentLength = 6;
-  required string content = 7;
+  optional string content = 7;
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          response
+// --SECTION--                                                     blob response
 // -----------------------------------------------------------------------------
 
 message PB_ArangoBlobResponse {
   required int32 status = 1;
   repeated PB_ArangoKeyValue headers = 2; // key must be lowercase
   required PB_ArangoMessageContentType contentType = 3;
-  required string content = 4;
+  optional string content = 4;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    error response
+// -----------------------------------------------------------------------------
+
+message PB_ArangoErrorResponse {
+  required string message = 1;
 }
 
 // -----------------------------------------------------------------------------

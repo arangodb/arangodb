@@ -238,9 +238,12 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
 @ENABLE_ZEROMQ_TRUE@am__append_8 = \
-@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.cpp
+@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
 @ENABLE_MRUBY_TRUE@am__append_9 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
@@ -381,14 +384,18 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
 	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp lib/ZeroMQ/ApplicationZeroMQ.cpp \
+	lib/Variant/VariantVector.cpp \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp
+	lib/ProtocolBuffers/arangodb.pb.cpp \
+	lib/ZeroMQ/ApplicationZeroMQ.cpp lib/ZeroMQ/ZeroMQBatchJob.cpp \
+	lib/ZeroMQ/ZeroMQThread.cpp lib/ZeroMQ/ZeroMQWorkerThread.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
+@ENABLE_ZEROMQ_TRUE@am__objects_1 = lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT) \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
 	lib/Basics/FileUtils.$(OBJEXT) lib/Basics/Initialise.$(OBJEXT) \
@@ -1585,6 +1592,7 @@ UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_CFLAGS_X = -m32 -O2 -g
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_LDFLAGS_X = 
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_LDFLAGS_X = -m32
+@ENABLE_ZEROMQ_TRUE@ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -1904,14 +1912,6 @@ lib/Variant/VariantUInt8.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
 lib/Variant/VariantVector.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
-lib/ZeroMQ/$(am__dirstamp):
-	@$(MKDIR_P) lib/ZeroMQ
-	@: > lib/ZeroMQ/$(am__dirstamp)
-lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/ZeroMQ/$(DEPDIR)
-	@: > lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
-lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
-	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/ProtocolBuffers/$(am__dirstamp):
 	@$(MKDIR_P) lib/ProtocolBuffers
 	@: > lib/ProtocolBuffers/$(am__dirstamp)
@@ -1924,6 +1924,20 @@ lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT):  \
 lib/ProtocolBuffers/arangodb.pb.$(OBJEXT):  \
 	lib/ProtocolBuffers/$(am__dirstamp) \
 	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/$(am__dirstamp):
+	@$(MKDIR_P) lib/ZeroMQ
+	@: > lib/ZeroMQ/$(am__dirstamp)
+lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib/ZeroMQ/$(DEPDIR)
+	@: > lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ZeroMQThread.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/$(am__dirstamp):
 	@$(MKDIR_P) lib
 	@: > lib/$(am__dirstamp)
@@ -2939,6 +2953,9 @@ mostlyclean-compile:
 	-rm -f lib/Variant/VariantUInt8.$(OBJEXT)
 	-rm -f lib/Variant/VariantVector.$(OBJEXT)
 	-rm -f lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT)
+	-rm -f lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT)
+	-rm -f lib/ZeroMQ/ZeroMQThread.$(OBJEXT)
+	-rm -f lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -3194,6 +3211,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantUInt8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantVector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ApplicationZeroMQ.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQBatchJob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQThread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQWorkerThread.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -5433,7 +5453,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 ################################################################################
 
-@ENABLE_ZEROMQ_TRUE@@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@
+@ENABLE_ZEROMQ_TRUE@@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@ .czmq-build-@TRI_BITS@
 
 @ENABLE_ZEROMQ_TRUE@.zeromq-build-@TRI_BITS@:
 @ENABLE_ZEROMQ_TRUE@	@echo
@@ -5442,7 +5462,12 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo
 
-@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && ./configure --disable-shared --prefix=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD --libdir=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD/lib@TRI_BITS@
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 \
+@ENABLE_ZEROMQ_TRUE@		&& ./configure \
+@ENABLE_ZEROMQ_TRUE@			--disable-dependency-tracking \
+@ENABLE_ZEROMQ_TRUE@			--disable-shared \
+@ENABLE_ZEROMQ_TRUE@			--prefix=$(ZMQDIR) \
+@ENABLE_ZEROMQ_TRUE@			--libdir=$(ZMQDIR)/lib@TRI_BITS@
 @ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && $(MAKE) install
 
 @ENABLE_ZEROMQ_TRUE@	touch .zeromq-build-@TRI_BITS@
@@ -5450,6 +5475,32 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@	@echo
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo "BUILD ZeroMQ FINISHED"
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo
+
+@ENABLE_ZEROMQ_TRUE@.czmq-build-@TRI_BITS@: .zeromq-build-@TRI_BITS@
+@ENABLE_ZEROMQ_TRUE@	@echo
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo "BUILDING CZMQ"
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo
+
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/czmq-1.1.0 \
+@ENABLE_ZEROMQ_TRUE@		&& ./configure \
+@ENABLE_ZEROMQ_TRUE@			--disable-dependency-tracking \
+@ENABLE_ZEROMQ_TRUE@			--disable-shared \
+@ENABLE_ZEROMQ_TRUE@			--prefix=$(ZMQDIR) \
+@ENABLE_ZEROMQ_TRUE@			--libdir=$(ZMQDIR)/lib@TRI_BITS@ \
+@ENABLE_ZEROMQ_TRUE@			CPPFLAGS=-I$(ZMQDIR)/include \
+@ENABLE_ZEROMQ_TRUE@			LDFLAGS=-L$(ZMQDIR)/lib@TRI_BITS@ \
+@ENABLE_ZEROMQ_TRUE@			LIBS="-luuid -lrt -lstdc++"
+@ENABLE_ZEROMQ_TRUE@	cd @top_srcdir@/3rdParty/czmq-1.1.0 && $(MAKE) install
+
+@ENABLE_ZEROMQ_TRUE@	touch .czmq-build-@TRI_BITS@
+
+@ENABLE_ZEROMQ_TRUE@	@echo
+@ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ZEROMQ_TRUE@	@echo "BUILD CZMQ FINISHED"
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo
 
