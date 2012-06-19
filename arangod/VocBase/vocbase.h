@@ -442,7 +442,9 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*,
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, struct TRI_col_parameter_s*);
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, 
+                                                struct TRI_col_parameter_s*,
+                                                TRI_voc_cid_t cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a (document) collection

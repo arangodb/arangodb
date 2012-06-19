@@ -52,7 +52,7 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
                                  TRI_shaped_json_t const* json,
                                  void const* data) {
   document->beginWrite(document);
-  return document->create(document, type, json, data, true)._did;
+  return document->create(document, type, json, data, 0, 0, true)._did;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,10 +63,13 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
                                   TRI_df_marker_type_e type,
                                   TRI_json_t const* json,
                                   void const* data,
+                                  bool reuseId,
                                   bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
-  
+  TRI_voc_did_t did = 0;
+  TRI_voc_rid_t rid = 0;
+ 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
@@ -74,8 +77,20 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
     memset(&result, 0, sizeof(result));
     return result;
   }
+  
+  if (reuseId && json != NULL && json->_type == TRI_JSON_ARRAY) {
+    TRI_json_t* id = TRI_LookupArrayJson((TRI_json_t*) json, "_id");
+    TRI_json_t* rev = TRI_LookupArrayJson((TRI_json_t*) json, "_rev");
 
-  result = collection->create(collection, type, shaped, data, release);
+    if (id != NULL && id->_type == TRI_JSON_NUMBER && 
+        rev != NULL && rev->_type == TRI_JSON_NUMBER) {
+      // read existing document id and revision id from document
+      did = (TRI_voc_did_t) id->_value._number;
+      rid = (TRI_voc_rid_t) rev->_value._number;
+    }
+  }
+
+  result = collection->create(collection, type, shaped, data, did, rid, release);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 

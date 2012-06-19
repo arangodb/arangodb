@@ -189,8 +189,12 @@ bool RestImportHandler::createByArray () {
   }
   
   // shall we create the collection?
-  string createStr = request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(createStr) : false;
+  char const* valueStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // shall we reuse document and revision id?
+  valueStr = request->value("useId", found);
+  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // find and load collection given by name or identifier
   int res = useCollection(collection, create);
@@ -237,7 +241,7 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, values, 0, false);
+      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false);
       if (mptr._did != 0) {
         ++numCreated;
       }
@@ -309,8 +313,12 @@ bool RestImportHandler::createByList () {
   }
   
   // shall we create the collection?
-  string createStr = request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(createStr) : false;
+  char const* valueStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // shall we reuse document and revision id?
+  valueStr = request->value("useId", found);
+  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   size_t start = 0;
   string body(request->body(), request->bodySize());
@@ -424,7 +432,7 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, false);
+      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
       if (mptr._did != 0) {
         ++numCreated;
       }

@@ -166,7 +166,7 @@
          <input id="uploadFileSearch" type="file" name="filename" />
        </form>
  
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%" style="table-layout:fixed">
           <thead>
             <tr>
               <th></th>
@@ -407,9 +407,11 @@
       </div>
 
       <div id="queryView" style="display: none">
+        <a style="color:#797979; font-size:0.9em;">Output:</a>
         <div id="queryOutput">
           <a style="padding-left:10px">Please enter your query in the box below</a>
         </div>
+        <a style="color:#797979; font-size:0.9em;">Input:</a>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>

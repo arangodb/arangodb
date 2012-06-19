@@ -73,6 +73,7 @@ namespace triagens {
       _quote = '"';
       _separator = ',';
       _createCollection = false;
+      _useIds = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
       regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_ICASE | REG_EXTENDED);
       _hasError = false;
@@ -240,6 +241,10 @@ namespace triagens {
 
       if (_createCollection) {
         part += "&createCollection=yes";
+      }
+      
+      if (_useIds) {
+        part += "&useId=yes";
       }
 
       return part;
