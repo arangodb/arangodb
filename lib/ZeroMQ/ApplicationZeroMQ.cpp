@@ -30,133 +30,32 @@
 #include <zmq.h>
 
 #include "Basics/Thread.h"
-#include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
-#include "ProtocolBuffers/HttpRequestProtobuf.h"
+#include "ZeroMQ/ZeroMQQueueThread.h"
+#include "ZeroMQ/ZeroMQWorkerThread.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief
+/// @addtogroup Scheduler
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void HandleArangoMessage (void* data, size_t size, zmq_msg_t* reply) {
-  PB_ArangoMessage messages;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the internal worker bridge
+////////////////////////////////////////////////////////////////////////////////
 
-  int ok = messages.ParseFromArray(data, size);
+string const ApplicationZeroMQ::ZEROMQ_INTERNAL_BRIDGE = "inproc://arango-zeromq";
 
-  if (! ok) {
-    LOGGER_DEBUG << "received corrupted message via ZeroMQ";
-
-    zmq_msg_init_size(reply, 0);
-    return;
-  }
-
-  // handle all messages inside the batch
-  for (::google::protobuf::RepeatedPtrField< PB_ArangoBatchMessage >::const_iterator i = messages.messages().begin();
-       i != messages.messages().end();
-       ++i) {
-    PB_ArangoBatchMessage const& message = *i;
-    HttpRequestProtobuf request(message);
-
-    if (request.isValid()) {
-      StringBuffer sb(TRI_UNKNOWN_MEM_ZONE);
-
-      request.write(sb.stringBuffer());
-
-      cout << sb.c_str() << endl;
-    }
-    else {
-      LOGGER_DEBUG << "received invalid message via ZeroMQ";
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ZeroMQQueueThread
-// -----------------------------------------------------------------------------
-
-namespace {
-  class ZeroMQQueueThread : public ZeroMQThread {
-    public:
-      ZeroMQQueueThread (void* context, string const& connection, string const& inproc)
-        : Thread("zeromq-queue"),
-          ZeroMQThread(context),
-          _connection(connection),
-          _inproc(inproc) {
-      }
-
-    protected:
-      void run () {
-
-        // create a socket for the workers
-        void* workers = zmq_socket(_context, ZMQ_XREQ);
-
-        if (workers == 0) {
-          LOGGER_FATAL << "cannot initialize ZeroMQ workers socket: " << strerror(errno);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        // and bind it to the connection
-        int res = zmq_bind(workers, _inproc.c_str());
-
-        if (res != 0) {
-          LOGGER_FATAL << "cannot bind ZeroMQ workers socket: " << strerror(errno);
-          zmq_close(workers);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        // create a socket for the server
-        void* clients = zmq_socket(_context, ZMQ_XREP);
-
-        if (clients == 0) {
-          LOGGER_FATAL << "cannot initialize ZeroMQ clients socket: " << strerror(errno);
-          zmq_close(workers);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        // and bind it to the connection
-        res = zmq_bind(clients, _connection.c_str());
-
-        if (res != 0) {
-          LOGGER_FATAL << "cannot bind ZeroMQ clients socket: " << strerror(errno);
-          zmq_close(workers);
-          zmq_close(clients);
-          zmq_term(_context);
-          exit(EXIT_FAILURE);
-        }
-
-        zmq_device(ZMQ_QUEUE, clients, workers);
-
-        if (_stopping == 0) {
-          LOGGER_FATAL << "cannot setup queue: " << strerror(errno);
-          exit(EXIT_FAILURE);
-        }
-
-        zmq_close(clients);
-        zmq_close(workers);
-      }
-
-    private:
-      string const _connection;
-      string const _inproc;
-  };
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION-- class ApplicationZeroMQ
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -269,49 +168,28 @@ bool ApplicationZeroMQ::start () {
       return false;
     }
 
-    // .............................................................................
-    // case single threaded: only use one worker thread
-    // .............................................................................
+    // setup a thread pool for workers
+    ++_nrZeroMQThreads;
+    _zeroMQThreads = new ZeroMQThread*[_nrZeroMQThreads + 1];
 
-    if (_nrZeroMQThreads == 1) {
-
-      // setup a thread pool
-      _zeroMQThreads = new ZeroMQThread*[_nrZeroMQThreads];
-
-      for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
-        _zeroMQThreads[i] = new ZeroMQWorkerThread(_context, _connection, true);
-      }
+    for (size_t i = 0;  i < _nrZeroMQThreads - 1;  ++i) {
+      _zeroMQThreads[1 + i] = new ZeroMQWorkerThread(_dispatcher,
+                                                     _handlerFactory,
+                                                     _context,
+                                                     ZEROMQ_INTERNAL_BRIDGE);
     }
 
-    // .............................................................................
-    // case single threaded: only use one worker thread
-    // .............................................................................
+    // and queue
+    _zeroMQThreads[0] = new ZeroMQQueueThread(_context, _connection, ZEROMQ_INTERNAL_BRIDGE);
 
-    else {
-      static string inproc = "inproc://arango-zeromq";
-
-      // setup a thread pool
-      ++_nrZeroMQThreads;
-      _zeroMQThreads = new ZeroMQThread*[_nrZeroMQThreads + 1];
-
-      for (size_t i = 0;  i < _nrZeroMQThreads - 1;  ++i) {
-        _zeroMQThreads[1 + i] = new ZeroMQWorkerThread(_context, inproc, false);
-      }
-
-      // must be started first
-      _zeroMQThreads[0] = new ZeroMQQueueThread(_context, _connection, inproc);
-    }
-
-    // .............................................................................
     // and start all threads
-    // .............................................................................
-
     for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
       _zeroMQThreads[i]->start(0);
     }
 
     bool starting = true;
 
+    // wait until all threads are up and running
     while (starting) {
       starting = false;
 

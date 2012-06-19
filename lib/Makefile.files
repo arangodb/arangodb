@@ -108,6 +108,7 @@ lib_libarango_a_SOURCES += \
 	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 	lib/ZeroMQ/ZeroMQThread.cpp \
+	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
 endif
