@@ -212,6 +212,8 @@ void ApplicationServer::setupLogging () {
 
   bool threaded = TRI_ShutdownLogging();
 
+  TRI_InitialiseLogging(threaded);
+
   Logger::setApplicationName(_logApplicationName);
   Logger::setHostName(_logHostName);
   Logger::setFacility(_logFacility);
@@ -234,7 +236,9 @@ void ApplicationServer::setupLogging () {
   TRI_SetPrefixLogging(_logPrefix);
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  TRI_InitialiseLogging(threaded);
+  for (vector<string>::iterator i = _logFilter.begin();  i != _logFilter.end();  ++i) {
+    TRI_SetFileToLog(i->c_str());
+  }
 
   TRI_CreateLogAppenderFile(_logFile);
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
@@ -535,20 +539,21 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // .............................................................................
 
   options[OPTIONS_LOGGER]
-    ("log.level,l", &_logLevel, "log level for severity 'human'")
     ("log.file", &_logFile, "log to file")
+    ("log.level,l", &_logLevel, "log level for severity 'human'")
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
-    ("log.thread", "log the thread identifier for severity 'human'")
-    ("log.severity", &_logSeverity, "log severities")
-    ("log.format", &_logFormat, "log format")
     ("log.application", &_logApplicationName, "application name")
     ("log.facility", &_logFacility, "facility name")
+    ("log.filter", &_logFilter, "filter for debug and trace")
+    ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")
-    ("log.prefix", &_logPrefix, "prefix log")
-    ("log.syslog", &_logSyslog, "use syslog facility")
     ("log.line-number", "always log file and line number")
+    ("log.prefix", &_logPrefix, "prefix log")
+    ("log.severity", &_logSeverity, "log severities")
+    ("log.syslog", &_logSyslog, "use syslog facility")
+    ("log.thread", "log the thread identifier for severity 'human'")
   ;
 
   options[OPTIONS_HIDDEN]
