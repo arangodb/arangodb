@@ -121,8 +121,8 @@ void ZeroMQQueueThread::run () {
     if (items[0].revents & ZMQ_POLLIN) {
       zmsg_t *msg = zmsg_recv(clients);
 
-      puts("Request from client:");
-      zmsg_dump (msg);
+      // puts("Request from client:");
+      // zmsg_dump (msg);
 
       zmsg_send(&msg, workers);
     }
@@ -130,8 +130,8 @@ void ZeroMQQueueThread::run () {
     if (items[1].revents & ZMQ_POLLIN) {
       zmsg_t *msg = zmsg_recv(workers);
 
-      puts("Reply from worker:");
-      zmsg_dump (msg);
+      // puts("Reply from worker:");
+      // zmsg_dump (msg);
 
       zmsg_send(&msg, clients);
     }

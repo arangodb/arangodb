@@ -93,6 +93,7 @@ void* ThreadStarter (void* data) {
       printf("ERROR zmq_recv: %d %d %s\n", (int) res, (int) errno, strerror(errno));
     }
     else {
+#if 0
       printf("received reply\n");
 
       void* data = zmq_msg_data(&reply);
@@ -130,6 +131,7 @@ void* ThreadStarter (void* data) {
           printf("error response\n");
         }
       }
+#endif
     }
 
     zmq_msg_close(&reply);
@@ -167,7 +169,7 @@ int main (int argc, char* argv[])
   printf("Concurrency %d\n", conc);
   printf("Connection %s\n", connection);
 
-  context = zmq_init(16);
+  context = zmq_init(1);
 
   // Socket to talk to server
   printf ("Connecting to hello world server…\n");

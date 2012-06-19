@@ -61,8 +61,7 @@ ZeroMQBatchJob::ZeroMQBatchJob (zframe_t* address,
     _address(address),
     _handlerFactory(handlerFactory),
     _handler(0),
-    _nrCurrentRequest(0),
-    _request(0) {
+    _nrCurrentRequest(0) {
   int ok = _requests.ParseFromArray(data, length);
 
   if (! ok) {
@@ -89,12 +88,6 @@ ZeroMQBatchJob::~ZeroMQBatchJob () {
   if (_handler != 0) {
     delete _handler;
     _handler = 0;
-  }
-
-  // clear the current request
-  if (_request != 0) {
-    delete _request;
-    _request = 0;
   }
 }
 
@@ -255,23 +248,21 @@ void ZeroMQBatchJob::handleError (TriagensError const& ex) {
 
 void ZeroMQBatchJob::extractNextRequest () {
 
-  // clear the current handler
+  // clear the current handler, this will clear the current request
   if (_handler != 0) {
     delete _handler;
     _handler = 0;
   }
 
-  // clear the current request
-  if (_request != 0) {
-    delete _request;
-    _request = 0;
-  }
-
   if (_nrCurrentRequest < (size_t) _requests.messages().size()) {
-    _request = new HttpRequestProtobuf(_requests.messages().Get(_nrCurrentRequest));
+    HttpRequest* request = new HttpRequestProtobuf(_requests.messages().Get(_nrCurrentRequest));
 
     if (_handlerFactory != 0) {
-      _handler = _handlerFactory->createHandler(_request);
+      _handler = _handlerFactory->createHandler(request);
+    }
+
+    if (_handler == 0) {
+      delete request;
     }
   }
 }
@@ -281,7 +272,7 @@ void ZeroMQBatchJob::extractNextRequest () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+/ --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

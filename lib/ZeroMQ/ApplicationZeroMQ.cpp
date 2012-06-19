@@ -217,8 +217,10 @@ bool ApplicationZeroMQ::start () {
     zctx_set_iothreads(_context, _zeroMQConcurrency);
   }
   
-  // setup a thread pool for workers
+  // need one more thread for queue
   ++_nrZeroMQThreads;
+
+  // setup a thread pool for workers
   _zeroMQThreads = new ZeroMQThread*[_nrZeroMQThreads + 1];
   
   for (size_t i = 0;  i < _nrZeroMQThreads - 1;  ++i) {
@@ -254,7 +256,7 @@ bool ApplicationZeroMQ::start () {
     }
   }
   
-  LOGGER_INFO << "started ZeroMQ on '" << _connection << "' with " << _nrZeroMQThreads << " threads and concurrency " << _zeroMQConcurrency;
+  LOGGER_INFO << "started ZeroMQ on '" << _connection << "' with " << (_nrZeroMQThreads-1) << " threads and concurrency " << _zeroMQConcurrency;
   return true;
 }
 
