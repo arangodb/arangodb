@@ -9,11 +9,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <iostream>
 
 #include <pthread.h>
 
 #include "ProtocolBuffers/arangodb.pb.h"
 
+#include <google/protobuf/text_format.h>
+
+using namespace google::protobuf;
 using namespace std;
 
 void* context = 0;
@@ -63,37 +67,75 @@ void* ThreadStarter (void* data) {
     blob->set_requesttype(PB_REQUEST_TYPE_GET);
     blob->set_url("/_api/version");
     blob->set_contenttype(PB_NO_CONTENT);
-    blob->set_contentlength(0);
     blob->set_content("");
 
     string data;
     messages.SerializeToString(&data);
 
     // send
-    zmq_msg_init_size (&request, data.size());
-    memcpy (zmq_msg_data(&request), data.c_str(), data.size());
+    zmq_msg_init_size(&request, data.size());
+    memcpy(zmq_msg_data(&request), data.c_str(), data.size());
 
-    res = zmq_send (requester, &request, 0);
+    res = zmq_send(requester, &request, 0);
 
     if (res != 0) {
       printf("ERROR zmq_send: %d %d %s\n", (int) res, (int) errno, strerror(errno));
     }
 
-    zmq_msg_close (&request);
+    zmq_msg_close(&request);
 
     // receive
-    zmq_msg_init (&reply);
+    zmq_msg_init(&reply);
 
-    res = zmq_recv (requester, &reply, 0);
+    res = zmq_recv(requester, &reply, 0);
 
     if (res != 0) {
       printf("ERROR zmq_recv: %d %d %s\n", (int) res, (int) errno, strerror(errno));
     }
+    else {
+      printf("received reply\n");
 
-    zmq_msg_close (&reply);
+      void* data = zmq_msg_data(&reply);
+      size_t size = zmq_msg_size(&reply);
+
+      PB_ArangoMessage response;
+      response.ParseFromArray(data, size);
+
+      string out;
+      TextFormat::PrintToString(response, &out);
+      cout << "--------------------------------------------------------------------------------\n"
+           << out << "\n"
+           << "--------------------------------------------------------------------------------\n"
+           << endl;
+
+      size_t num = response.messages().size();
+
+      printf("size %d\n", (int) num);
+
+      for (size_t i = 0;  i < num;  ++i) {
+        printf("RESPONSE #%d\n", (int) i);
+
+        PB_ArangoBatchMessage const& bm = response.messages().Get(i);
+
+        printf("type: %d\n", (int) bm.type());
+
+        if (bm.type() == PB_BLOB_RESPONSE) {
+          PB_ArangoBlobResponse const& br = bm.blobresponse();
+
+          printf("status: %d\n", (int) br.status());
+
+          cout << "content: " << br.content() << endl;
+        }
+        else if (bm.type() == PB_ERROR_RESPONSE) {
+          printf("error response\n");
+        }
+      }
+    }
+
+    zmq_msg_close(&reply);
   }
 
-  zmq_close (requester);
+  zmq_close(requester);
   return 0;
 }
 

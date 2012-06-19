@@ -48,7 +48,7 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ZeroMQQueueThread::ZeroMQQueueThread (void* context,
+ZeroMQQueueThread::ZeroMQQueueThread (zctx_t* context,
                                       string const& connection,
                                       string const& inproc)
   : Thread("zeromq-queue"),
@@ -77,54 +77,68 @@ ZeroMQQueueThread::ZeroMQQueueThread (void* context,
 void ZeroMQQueueThread::run () {
 
   // create a socket for the workers
-  void* workers = zmq_socket(_context, ZMQ_DEALER);
+  void* workers = zsocket_new(_context, ZMQ_DEALER);
 
   if (workers == 0) {
     LOGGER_FATAL << "cannot initialize ZeroMQ workers socket: " << strerror(errno);
-    zmq_term(_context);
+    zctx_destroy(&_context);
     exit(EXIT_FAILURE);
   }
 
   // and bind it to the connection
-  int res = zmq_bind(workers, _inproc.c_str());
-
-  if (res != 0) {
-    LOGGER_FATAL << "cannot bind ZeroMQ workers socket: " << strerror(errno);
-    zmq_close(workers);
-    zmq_term(_context);
-    exit(EXIT_FAILURE);
-  }
+  zsocket_bind(workers, _inproc.c_str());
 
   // create a socket for the server
-  void* clients = zmq_socket(_context, ZMQ_ROUTER);
+  void* clients = zsocket_new(_context, ZMQ_ROUTER);
 
   if (clients == 0) {
     LOGGER_FATAL << "cannot initialize ZeroMQ clients socket: " << strerror(errno);
-    zmq_close(workers);
-    zmq_term(_context);
+    zsocket_destroy(_context, &workers);
+    zctx_destroy(&_context);
     exit(EXIT_FAILURE);
   }
 
   // and bind it to the connection
-  res = zmq_bind(clients, _connection.c_str());
+  int res = zsocket_bind(clients, _connection.c_str());
 
-  if (res != 0) {
-    LOGGER_FATAL << "cannot bind ZeroMQ clients socket: " << strerror(errno);
-    zmq_close(workers);
-    zmq_close(clients);
-    zmq_term(_context);
+  if (res == 0) {
+    LOGGER_FATAL << "cannot bind ZeroMQ clients socket '" << _connection << "': " << strerror(errno);
+    zsocket_destroy(_context, &clients);
+    zsocket_destroy(_context, &workers);
+    zctx_destroy(&_context);
     exit(EXIT_FAILURE);
   }
 
-  zmq_device(ZMQ_QUEUE, clients, workers);
+  // loop until we are stopping
+  while (_stopping == 0) {
+    zmq_pollitem_t items[] = {
+      { clients, 0, ZMQ_POLLIN, 0 },
+      { workers, 0, ZMQ_POLLIN, 0 }
+    };
 
-  if (_stopping == 0) {
-    LOGGER_FATAL << "cannot setup queue: " << strerror(errno);
-    exit(EXIT_FAILURE);
+    zmq_poll(items, 2, -1);
+
+    if (items[0].revents & ZMQ_POLLIN) {
+      zmsg_t *msg = zmsg_recv(clients);
+
+      puts("Request from client:");
+      zmsg_dump (msg);
+
+      zmsg_send(&msg, workers);
+    }
+
+    if (items[1].revents & ZMQ_POLLIN) {
+      zmsg_t *msg = zmsg_recv(workers);
+
+      puts("Reply from worker:");
+      zmsg_dump (msg);
+
+      zmsg_send(&msg, clients);
+    }
   }
 
-  zmq_close(clients);
-  zmq_close(workers);
+  zsocket_destroy(_context, &clients);
+  zsocket_destroy(_context, &workers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

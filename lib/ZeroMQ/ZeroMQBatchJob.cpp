@@ -223,10 +223,12 @@ void ZeroMQBatchJob::finish (void* bridge) {
     _responses.SerializeToString(&data);
 
     // copy serialized data into message
+    zframe_t* empty = zframe_new("", 0);
     zframe_t* content = zframe_new(data.c_str(), data.size());
 
     // send the peer address, followed by the content
     zframe_send(&_address, bridge, ZFRAME_MORE);
+    zframe_send(&empty, bridge, ZFRAME_MORE);
     zframe_send(&content, bridge, 0);
   }
 
@@ -385,6 +387,7 @@ void ZeroMQBatchJob::handleNotFound () {
 
   response->set_status(HttpResponse::NOT_FOUND);
   response->set_contenttype(PB_NO_CONTENT);
+  response->set_contentlength(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

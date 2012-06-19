@@ -190,7 +190,7 @@ void HttpRequestProtobuf::write (TRI_string_buffer_t* buffer) const {
   }
 
   TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
-  TRI_AppendUInt64StringBuffer(buffer, _request->contentlength());
+  TRI_AppendUInt64StringBuffer(buffer, _request->content().size());
   TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
   TRI_AppendString2StringBuffer(buffer, _request->content().c_str(), _request->content().size());
 }
@@ -200,7 +200,7 @@ void HttpRequestProtobuf::write (TRI_string_buffer_t* buffer) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t HttpRequestProtobuf::contentLength () const {
-  return _request->contentlength();
+  return _request->content().size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +260,7 @@ map<string, string> HttpRequestProtobuf::headers () const {
     result[kv.key()] = kv.value();
   }
 
-  result["content-length"] = StringUtils::itoa(_request->contentlength());
+  result["content-length"] = StringUtils::itoa(_request->content().size());
 
   return result;
 }

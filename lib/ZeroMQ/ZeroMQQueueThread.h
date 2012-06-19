@@ -70,7 +70,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ZeroMQQueueThread (void* context,
+        ZeroMQQueueThread (zctx_t* context,
                            string const& connection,
                            string const& inproc);
 

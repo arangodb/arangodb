@@ -63,8 +63,8 @@ DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
     _nrWaiting(0),
     _nrStopped(0),
     _nrSpecial(0),
-    _nrThreads(_nrThreads),
-    _dispatcher(_dispatcher),
+    _nrThreads(nrThreads),
+    _dispatcher(dispatcher),
     createDispatcherThread(creator) {
 }
 
