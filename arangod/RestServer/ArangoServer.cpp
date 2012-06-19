@@ -481,7 +481,7 @@ void ArangoServer::buildApplicationServer () {
   // and start a simple admin server
   // .............................................................................
 
-  _applicationAdminServer = ApplicationAdminServer::create(_applicationServer);
+  _applicationAdminServer = new ApplicationAdminServer();
   _applicationServer->addFeature(_applicationAdminServer);
 
   _applicationAdminServer->allowLogViewer();
@@ -491,7 +491,7 @@ void ArangoServer::buildApplicationServer () {
   // build the application user manager
   // .............................................................................
 
-  _applicationUserManager = ApplicationUserManager::create(_applicationServer);
+  _applicationUserManager = new ApplicationUserManager(_applicationServer);
   _applicationServer->addFeature(_applicationUserManager);
 
   // create manager role
@@ -562,7 +562,7 @@ void ArangoServer::buildApplicationServer () {
   // a http server
   // .............................................................................
 
-  _applicationHttpServer = ApplicationHttpServer::create(_applicationScheduler, _applicationDispatcher);
+  _applicationHttpServer = new ApplicationHttpServer(_applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
@@ -803,7 +803,7 @@ int ArangoServer::startupServer () {
   openDatabase();
 
   // .............................................................................
-  // create the action dispatcher thread infor
+  // create the action dispatcher thread info
   // .............................................................................
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
@@ -813,13 +813,15 @@ int ArangoServer::startupServer () {
   GcIntervalJS = _gcIntervalJS;
 
   // .............................................................................
-  // create the various parts of the Arango server
+  // prepare the various parts of the Arango server
   // .............................................................................
 
-  _applicationScheduler->prepare();
+  _applicationServer->prepare();
 
-  _applicationDispatcher->buildDispatcher();
-  _applicationDispatcher->buildDispatcherReporter();
+  // .............................................................................
+  // create the dispatcher
+  // .............................................................................
+
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
 
   Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
@@ -851,7 +853,7 @@ int ArangoServer::startupServer () {
   }
 
   // .............................................................................
-  // create a http server and http handler factory
+  // create a client http server and http handler factory
   // .............................................................................
 
   Scheduler* scheduler = _applicationScheduler->scheduler();
@@ -887,7 +889,7 @@ int ArangoServer::startupServer () {
   }
 
   // .............................................................................
-  // create a http server and http handler factory
+  // create a admin http server and http handler factory
   // .............................................................................
 
   // we pass the options be reference, so keep them until shutdown
@@ -920,6 +922,8 @@ int ArangoServer::startupServer () {
   // create a http handler factory for zeromq
   // .............................................................................
 
+#ifdef TRI_ENABLE_ZEROMQ
+
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t zeromqOptions;
   zeromqOptions._vocbase = _vocbase;
@@ -942,6 +946,8 @@ int ArangoServer::startupServer () {
 
     _applicationZeroMQ->setHttpHandlerFactory(factory);
   }
+
+#endif
 
   // .............................................................................
   // start the main event loop

@@ -28,17 +28,16 @@
 
 #include "DispatcherThread.h"
 
-#ifdef TRI_ENABLE_ZEROMQ
-#include <zmq.h>
-#endif
-
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
 #include "Logger/Logger.h"
+
+#ifdef TRI_ENABLE_ZEROMQ
 #include "ZeroMQ/ApplicationZeroMQ.h"
+#endif
 
 using namespace triagens::basics;
 using namespace triagens::rest;

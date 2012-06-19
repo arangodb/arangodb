@@ -55,7 +55,7 @@ namespace {
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
-        : Task("Control-C"), SignalTask(), _server(server) {
+        : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
         addSignal(SIGQUIT);
@@ -63,13 +63,27 @@ namespace {
 
     public:
       bool handleSignal () {
-        LOGGER_INFO << "control-c received, shutting down";
-        _server->beginShutdown();
+        if (_seen == 0) {
+          LOGGER_INFO << "control-c received, beginning shut down sequence";
+          _server->beginShutdown();
+        }
+        else if (_seen == 1) {
+          LOGGER_INFO << "control-c received, shutting down";
+          _server->shutdown();
+        }
+        else {
+          LOGGER_INFO << "control-c received, terminating";
+          exit(EXIT_FAILURE);
+        }
+
+        ++_seen;
+
         return true;
       }
 
     private:
       ApplicationServer* _server;
+      uint32_t _seen;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +149,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer)
-  : _applicationServer(applicationServer),
+  : ApplicationFeature("scheduler"),
+    _applicationServer(applicationServer),
     _scheduler(0),
     _tasks(),
     _reportIntervall(60.0),
@@ -195,7 +210,7 @@ Scheduler* ApplicationScheduler::scheduler () const {
 /// @brief installs a signal handler
 ////////////////////////////////////////////////////////////////////////////////
 
-xxx void ApplicationScheduler::installSignalHandler (SignalTask* task) {
+void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   if (_scheduler == 0) {
     LOGGER_FATAL << "no scheduler is known, cannot install signal handler";
     exit(EXIT_FAILURE);
@@ -216,7 +231,7 @@ bool ApplicationScheduler::addressReuseAllowed () {
 /// @brief register a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-xxx void ApplicationScheduler::registerTask (Task* task) {
+void ApplicationScheduler::registerTask (Task* task) {
   if (_scheduler == 0) {
     LOGGER_FATAL << "no scheduler is known, cannot create tasks";
     exit(EXIT_FAILURE);
@@ -317,7 +332,11 @@ bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::isStartable () {
+bool ApplicationScheduler::prepare () {
+  buildScheduler();
+  buildSchedulerReporter();
+  buildControlCHandler();
+
   return true;
 }
 
@@ -325,11 +344,7 @@ bool ApplicationScheduler::isStartable () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::prepare () {
-  buildScheduler();
-  buildSchedulerReporter();
-  buildControlCHandler();
-
+bool ApplicationScheduler::isStartable () {
   return true;
 }
 
@@ -444,6 +459,11 @@ void ApplicationScheduler::buildScheduler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::buildSchedulerReporter () {
+  if (_scheduler == 0) {
+    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
+    exit(EXIT_FAILURE);
+  }
+
   if (0.0 < _reportIntervall) {
     registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
   }
