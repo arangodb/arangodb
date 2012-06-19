@@ -243,6 +243,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
 @ENABLE_MRUBY_TRUE@am__append_9 = \
@@ -388,13 +389,15 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/ZeroMQ/ApplicationZeroMQ.cpp lib/ZeroMQ/ZeroMQBatchJob.cpp \
-	lib/ZeroMQ/ZeroMQThread.cpp lib/ZeroMQ/ZeroMQWorkerThread.cpp
+	lib/ZeroMQ/ZeroMQThread.cpp lib/ZeroMQ/ZeroMQQueueThread.cpp \
+	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@am__objects_1 = lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQQueueThread.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
@@ -1936,6 +1939,8 @@ lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
 	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/ZeroMQ/ZeroMQThread.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
 	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
+lib/ZeroMQ/ZeroMQQueueThread.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
+	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT): lib/ZeroMQ/$(am__dirstamp) \
 	lib/ZeroMQ/$(DEPDIR)/$(am__dirstamp)
 lib/$(am__dirstamp):
@@ -2954,6 +2959,7 @@ mostlyclean-compile:
 	-rm -f lib/Variant/VariantVector.$(OBJEXT)
 	-rm -f lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT)
 	-rm -f lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT)
+	-rm -f lib/ZeroMQ/ZeroMQQueueThread.$(OBJEXT)
 	-rm -f lib/ZeroMQ/ZeroMQThread.$(OBJEXT)
 	-rm -f lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 
@@ -3212,6 +3218,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Variant/$(DEPDIR)/VariantVector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ApplicationZeroMQ.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQBatchJob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQQueueThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ZeroMQ/$(DEPDIR)/ZeroMQWorkerThread.Po@am__quote@
 

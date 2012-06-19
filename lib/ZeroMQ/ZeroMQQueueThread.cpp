@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ZeroMQ worker thread
+/// @brief ZeroMQ queue thread
 ///
 /// @file
 ///
@@ -25,13 +25,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ZeroMQWorkerThread.h"
+#include "ZeroMQQueueThread.h"
 
 #include <czmq.h>
 
-#include "Dispatcher/Dispatcher.h"
 #include "Logger/Logger.h"
-#include "ZeroMQ/ZeroMQBatchJob.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -50,15 +48,13 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ZeroMQWorkerThread::ZeroMQWorkerThread (Dispatcher* dispatcher,
-                                        HttpHandlerFactory* handlerFactory,
-                                        void* context,
-                                        string const& connection)
-  : Thread("zeromq-worker"),
+ZeroMQQueueThread::ZeroMQQueueThread (void* context,
+                                      string const& connection,
+                                      string const& inproc)
+  : Thread("zeromq-queue"),
     ZeroMQThread(context),
     _connection(connection),
-    _dispatcher(dispatcher),
-    _handlerFactory(handlerFactory) {
+    _inproc(inproc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,98 +74,57 @@ ZeroMQWorkerThread::ZeroMQWorkerThread (Dispatcher* dispatcher,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ZeroMQWorkerThread::run () {
+void ZeroMQQueueThread::run () {
 
-  // create a socket for the server
-  void* responder = zmq_socket(_context, ZMQ_DEALER);
+  // create a socket for the workers
+  void* workers = zmq_socket(_context, ZMQ_DEALER);
 
-  if (responder == 0) {
-    LOGGER_FATAL << "cannot initialize ZeroMQ worker socket: " << zmq_strerror(errno);
+  if (workers == 0) {
+    LOGGER_FATAL << "cannot initialize ZeroMQ workers socket: " << strerror(errno);
     zmq_term(_context);
     exit(EXIT_FAILURE);
   }
 
   // and bind it to the connection
-  int res = zmq_bind(responder, _connection.c_str());
+  int res = zmq_bind(workers, _inproc.c_str());
 
   if (res != 0) {
-    LOGGER_FATAL << "cannot bind ZeroMQ worker socket: " << zmq_strerror(errno);
-    zmq_close(responder);
+    LOGGER_FATAL << "cannot bind ZeroMQ workers socket: " << strerror(errno);
+    zmq_close(workers);
     zmq_term(_context);
     exit(EXIT_FAILURE);
   }
 
-  // handle messages
-  while (_stopping == 0) {
+  // create a socket for the server
+  void* clients = zmq_socket(_context, ZMQ_ROUTER);
 
-    // receive next message
-    zmsg_t* request = zmsg_recv(responder);
-
-    if (request == 0) {
-      if (errno == ETERM) {
-        break;
-      }
-
-      continue;
-    }
-
-    // extract the address and the content
-    zframe_t* address = zmsg_pop(request);
-    zframe_t* content = zmsg_pop(request);
-    zmsg_destroy(&request);
-
-    if (address == 0 || content == 0) {
-      if (address != 0) {
-        zframe_destroy(&address);
-      }
-
-      if (content != 0) {
-        zframe_destroy(&content);
-      }
-
-      continue;
-    }
-
-    // create a Job for next batch
-    ZeroMQBatchJob* job = new ZeroMQBatchJob(address,
-                                             _handlerFactory,
-                                             (char const*) zframe_data(content), 
-                                             zframe_size(content));
-
-    zframe_destroy(&content);
-
-    // check if message contains any requests
-    if (job->isDone()) {
-      job->finish(responder);
-    }
-
-    // handle any direct requests
-    else {
-      job->extractNextRequest();
-
-      // handle request directly
-      if (job->isDirect()) {
-        Job::status_e status = job->work();
-
-        if (status == Job::JOB_DONE_ZEROMQ) {
-          job->finish(responder);
-        }
-        else if (status == Job::JOB_REQUEUE) {
-          _dispatcher->addJob(job);
-        }
-        else {
-          continue;
-        }
-      }
-
-      // let the dispatcher deal with the jobs
-      else {
-        _dispatcher->addJob(job);
-      }
-    }
+  if (clients == 0) {
+    LOGGER_FATAL << "cannot initialize ZeroMQ clients socket: " << strerror(errno);
+    zmq_close(workers);
+    zmq_term(_context);
+    exit(EXIT_FAILURE);
   }
 
-  zmq_close(responder);
+  // and bind it to the connection
+  res = zmq_bind(clients, _connection.c_str());
+
+  if (res != 0) {
+    LOGGER_FATAL << "cannot bind ZeroMQ clients socket: " << strerror(errno);
+    zmq_close(workers);
+    zmq_close(clients);
+    zmq_term(_context);
+    exit(EXIT_FAILURE);
+  }
+
+  zmq_device(ZMQ_QUEUE, clients, workers);
+
+  if (_stopping == 0) {
+    LOGGER_FATAL << "cannot setup queue: " << strerror(errno);
+    exit(EXIT_FAILURE);
+  }
+
+  zmq_close(clients);
+  zmq_close(workers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
