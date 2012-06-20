@@ -24,6 +24,13 @@ echo
 
 case $TRI_OS_LONG in
 
+  Linux-openSUSE-12*)
+    echo "Using configuration for openSuSE 12"
+    OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test --enable-mruby"
+    LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
+    ;;
+
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"
     OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test --enable-mruby"
