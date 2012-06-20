@@ -48,42 +48,49 @@ case $TRI_OS_LONG in
     echo "Using configuration for openSuSE"
     package_type="rpm"
     START_SCRIPT="rc.arangodb.OpenSuSE"
-    export insserv="true"
     runlevels="runlevel(035)"
     docdir=${prefix}/share/doc/packages/voc/${vers_dir}
+
+    # export "insserv" for the epm configuration file
+    export insserv="true"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Debian"
-    export insserv="true"
     runlevels="runlevel(035)"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
+
+    # export "insserv" for the epm configuration file
+    export insserv="true"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
     package_type="rpm"
     START_SCRIPT="rc.arangodb.Centos"
-    export insserv="true"
     runlevels="runlevel(0235)"
 
+    # export "insserv" for the epm configuration file
+    export insserv="true"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Ubuntu"
-    export insserv="true"
     runlevels="runlevel(0235)"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
+
+    # export "insserv" for the epm configuration file
+    export insserv="true"
     ;;
 
   Darwin*)
@@ -95,6 +102,8 @@ case $TRI_OS_LONG in
     susr=root
     sgrp=wheel
     package_type="dmg"
+
+    # export "macosx" for the epm configuration file
     export macosx="true"
     ;;
 
@@ -168,9 +177,27 @@ sudo -E mkdir -p ${hudson_base}/${archfolder}
 sudo -E mkdir -p ${hudson_base}/${archfolder}/BUILD
 sudo -E mkdir -p ${hudson_base}/${archfolder}/buildroot
 
-################################################################################
-## Export vars for epm 
-################################################################################
+echo 
+echo "########################################################"
+echo "Export vars for epm"
+echo "   export arangodb_version=$arangodb_version"
+echo "   export arangodb_release=$arangodb_release"
+echo "   export rusr=$rusr"
+echo "   export rgrp=$rgrp"
+echo "   export susr=$susr"
+echo "   export sgrp=$sgrp"
+echo "   export prefix=$prefix"
+echo "   export exec_prefix=$exec_prefix"
+echo "   export bindir=$bindir"
+echo "   export datadir=$datadir"
+echo "   export vers_dir=$vers_dir"
+echo "   export START_SCRIPT=$START_SCRIPT"
+echo "   export runlevels=$runlevels"
+echo "   export docdir=$docdir"
+echo "   export project_dir=${sfolder_name}"
+echo "########################################################"
+echo 
+
 export arangodb_version
 export arangodb_release
 export rusr
@@ -185,7 +212,6 @@ export vers_dir
 export START_SCRIPT
 export runlevels
 export docdir
-
 export project_dir=${sfolder_name}
 
 
