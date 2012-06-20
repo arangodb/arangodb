@@ -7,7 +7,7 @@ echo
 
 . config/detect_distro.sh
 
-hudson_base="/home"
+hudson_base="$HOME"
 rusr=root
 rgrp=root
 susr=arango
@@ -88,7 +88,6 @@ case $TRI_OS_LONG in
 
   Darwin*)
     echo "Using configuration for DARWIN"
-    hudson_base="/Users"
     ostype="macosx"
     osvers=${RELEASE}
     rusr=root
@@ -130,7 +129,7 @@ echo "package_name: $package_name"
 echo "########################################################"
 echo
 
-EPM_RPM_OPTION="--buildroot ${hudson_base}/hudson/${archfolder}/buildroot"
+EPM_RPM_OPTION="--buildroot ${hudson_base}/${archfolder}/buildroot"
 export EPM_RPM_OPTION
 
 test -f ${SUBLIST} && rm -f ${SUBLIST}
@@ -163,9 +162,11 @@ echo "Call mkepmlist to create a sublist"
 echo "########################################################"
 echo 
 
-sudo -E rm -rf ${sfolder_name}/${archfolder}
-sudo -E mkdir -p ${sfolder_name}/${archfolder}
-sudo -E mkdir -p ${sfolder_name}/${archfolder}/BUILD
+cd ${hudson_base}
+sudo -E rm -rf ${hudson_base}/${archfolder}
+sudo -E mkdir -p ${hudson_base}/${archfolder}
+sudo -E mkdir -p ${hudson_base}/${archfolder}/BUILD
+sudo -E mkdir -p ${hudson_base}/${archfolder}/buildroot
 
 ################################################################################
 ## Export vars for epm 
@@ -185,6 +186,8 @@ export START_SCRIPT
 export runlevels
 export docdir
 
+export project_dir=${sfolder_name}
+
 
 echo 
 echo "########################################################"
@@ -200,12 +203,12 @@ echo "########################################################"
 echo 
 
 # Delete old package in hudson's home folder.
-rm -f ${hudson_base}/hudson/${package_name} > /dev/null
+rm -f ${hudson_base}/${package_name} > /dev/null
 
 echo 
 echo "########################################################"
 echo "Copy package '${product_name}*.${package_type}' to '${package_name}'."
-echo "    cp -p ${sfolder_name}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/hudson/${package_name}"
-cp -p ${sfolder_name}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/hudson/${package_name}
+echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}"
+cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}
 echo "########################################################"
 echo 

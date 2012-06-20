@@ -25,9 +25,9 @@ $release=${arangodb_release}
 
 d 0755 ${susr} ${sgrp} /etc/voc -
 d 0755 ${susr} ${sgrp} /etc/voc/${vers_dir} -
-f 0644 ${susr} ${sgrp} /etc/voc/${vers_dir}/arango.conf.template Installation/arango.conf
+f 0644 ${susr} ${sgrp} /etc/voc/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
 
-f 0755 ${susr} ${sgrp} ${bindir}/arangod-${arangodb_version} arangod
+f 0755 ${susr} ${sgrp} ${bindir}/arangod-${arangodb_version} ${project_dir}/arangod
 
 d 0755 ${rusr} ${rgrp} ${datadir}/voc -
 d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir} -
@@ -43,7 +43,7 @@ d 0755 ${susr} ${sgrp} /var/run/voc/${vers_dir}/ -
 d 0755 ${rusr} ${rgrp} /var/log/voc -
 d 0755 ${susr} ${sgrp} /var/log/voc/${vers_dir}/ -
 
-%include Installation/arangodb.sublist
+%include ${project_dir}/Installation/arangodb.sublist
 
 ################################################################################
 ## Pre/Post Install
@@ -55,7 +55,7 @@ EOF
 
 %ifdef macosx
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
-f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template Installation/MacOSX/MacPorts/org.arangodb.plist
+f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template ${project_dir}/Installation/MacOSX/MacPorts/org.arangodb.plist
 %postinstall <<EOF
 sed -e 's%@BINARY@%${bindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc/voc/${vers_dir}/%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
@@ -89,5 +89,5 @@ EOF
 %endif
 
 %system linux
-i 0755 ${rusr} ${rgrp} arango Installation/${START_SCRIPT} ${runlevels}
+i 0755 ${rusr} ${rgrp} arango ${project_dir}/Installation/${START_SCRIPT} ${runlevels}
 # l 000 ${rusr} ${rgrp} ${bindir}/rcarango /etc/init.d/arango 
