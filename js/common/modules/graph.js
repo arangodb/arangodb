@@ -37,8 +37,6 @@ var internal = require("internal"),
   edges = internal.edges,
   ArangoCollection = internal.ArangoCollection,
   ArangoEdgesCollection = internal.ArangoEdgesCollection,
-  shallowCopy,
-  propertyKeys,
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
 
@@ -55,68 +53,74 @@ var internal = require("internal"),
 /// @brief remove last occurrence of element from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.removeLastOccurrenceOf = function (element) {
-  var index = this.lastIndexOf(element);
-  return this.splice(index, 1);
-};
+Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
+  value: function (element) {
+    var index = this.lastIndexOf(element);
+    return this.splice(index, 1);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the union with another array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.unite = function (other_array) {
-  return other_array.concat(this.filter(function (element) {
-    return (other_array.indexOf(element) === -1);
-  }));
-};
+Object.defineProperty(Array.prototype, "unite", {
+  value: function (other_array) {
+    return other_array.concat(this.filter(function (element) {
+      return (other_array.indexOf(element) === -1);
+    }));
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the intersection with another array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.intersect = function (other_array) {
-  return this.filter(function (element) {
-    return (other_array.indexOf(element) > -1);
-  });
-};
+Object.defineProperty(Array.prototype, "intersect", {
+  value: function (other_array) {
+    return this.filter(function (element) {
+      return (other_array.indexOf(element) > -1);
+    });
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copy properties
 ////////////////////////////////////////////////////////////////////////////////
 
-shallowCopy = function (props) {
-  var shallow,
-    key;
+Object.defineProperty(Object.prototype, "shallowCopy", {
+  get: function() {
+    var shallow = {},
+      key;
 
-  shallow = {};
-
-  for (key in props) {
-    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-      shallow[key] = props[key];
+    for (key in this) {
+      if (this.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+        shallow[key] = this[key];
+      }
     }
-  }
 
-  return shallow;
-};
+    return shallow;
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief property keys
 ////////////////////////////////////////////////////////////////////////////////
 
-propertyKeys = function (props) {
-  var keys,
-    key;
+Object.defineProperty(Object.prototype, "propertyKeys", {
+  get: function() {
+    var keys = [],
+      key;
 
-  keys = [];
-
-  for (key in props) {
-    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-      keys.push(key);
+    for (key in this) {
+      if (this.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+        keys.push(key);
+      }
     }
-  }
 
-  return keys;
-};
+    return keys;
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
@@ -303,7 +307,7 @@ Edge.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
-  return propertyKeys(this._properties);
+  return this._properties.propertyKeys;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +323,7 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties),
+  var shallow = this._properties.shallowCopy,
     id;
 
   shallow.$id = this._properties.$id;
@@ -346,7 +350,7 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  var shallow = shallowCopy(this._properties);
+  var shallow = this._properties.shallowCopy;
 
   delete shallow.$id;
   delete shallow.$label;
@@ -658,7 +662,7 @@ Vertex.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
-  return propertyKeys(this._properties);
+  return this._properties.propertyKeys;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,7 +738,7 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  var shallow = shallowCopy(this._properties);
+  var shallow = this._properties.shallowCopy;
 
   delete shallow.$id;
 
@@ -757,7 +761,7 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties),
+  var shallow = this._properties.shallowCopy,
     id;
 
   shallow.$id = this._properties.$id;
@@ -1299,7 +1303,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
     data = {};
   }
 
-  shallow = shallowCopy(data);
+  shallow = data.shallowCopy;
 
   shallow.$id = id || null;
   shallow.$label = label || null;
@@ -1341,7 +1345,7 @@ Graph.prototype.addVertex = function (id, data) {
     data = {};
   }
 
-  shallow = shallowCopy(data);
+  shallow = data.shallowCopy;
 
   shallow.$id = id || null;
 
