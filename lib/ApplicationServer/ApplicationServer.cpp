@@ -457,7 +457,7 @@ void ApplicationServer::start () {
 
     LOGGER_INFO << "starting server feature '" << feature->getName() << "'";
 
-    while (feature->isStarted()) {
+    while (! feature->isStarted()) {
       usleep(1000);
     }
 
@@ -465,7 +465,7 @@ void ApplicationServer::start () {
   }
 
   // now open all features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
     bool ok = feature->open();

@@ -36,7 +36,7 @@
 #include <Rest/HttpRequest.h>
 
 #include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpServerImpl.h"
+#include "HttpServer/HttpServer.h"
 
 using namespace triagens::basics;
 
@@ -63,12 +63,12 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    HttpsAsyncCommTask::HttpsAsyncCommTask (HttpServerImpl* server,
+    HttpsAsyncCommTask::HttpsAsyncCommTask (HttpServer* server,
                                             socket_t fd,
                                             ConnectionInfo const& info,
                                             BIO* bio)
       : Task("HttpsAsyncCommTask"),
-        GeneralAsyncCommTask<HttpServerImpl, HttpHandlerFactory, HttpCommTask>(server, fd, info),
+        GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>(server, fd, info),
         accepted(false),
         readBlocked(false),
         readBlockedOnWrite(false),
@@ -104,7 +104,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     bool HttpsAsyncCommTask::handleEvent (EventToken token, EventType revents) {
-      bool result = GeneralAsyncCommTask<HttpServerImpl, HttpHandlerFactory, HttpCommTask>::handleEvent(token, revents);
+      bool result = GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>::handleEvent(token, revents);
 
       if (result) {
         if (readBlockedOnWrite) {

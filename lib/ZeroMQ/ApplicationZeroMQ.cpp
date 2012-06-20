@@ -72,7 +72,8 @@ string const ApplicationZeroMQ::ZEROMQ_INTERNAL_BRIDGE = "inproc://arango-zeromq
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
-  : _applicationServer(applicationServer),
+  : ApplicationFeature("ZeroMQ"),
+    _applicationServer(applicationServer),
     _dispatcher(0),
     _handlerFactory(0),
     _zeroMQThreads(0),

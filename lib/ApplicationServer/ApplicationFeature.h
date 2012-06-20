@@ -197,7 +197,7 @@ namespace triagens {
 /// @brief name of the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& _name;
+        string const _name;
     };
   }
 }

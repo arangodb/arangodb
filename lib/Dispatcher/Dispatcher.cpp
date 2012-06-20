@@ -185,6 +185,32 @@ bool Dispatcher::start () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the dispatcher queues are up and running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Dispatcher::isStarted () {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    bool started = i->second->isStarted();
+
+    if (! started) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens the dispatcher for business
+////////////////////////////////////////////////////////////////////////////////
+
+bool Dispatcher::open () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief begins shutdown process
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -203,6 +229,20 @@ void Dispatcher::beginShutdown () {
     for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
       i->second->beginShutdown();
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut downs the queue
+////////////////////////////////////////////////////////////////////////////////
+
+void Dispatcher::shutdown () {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  LOGGER_DEBUG << "shutting down the dispatcher";
+
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    i->second->shutdown();
   }
 }
 
