@@ -6,7 +6,7 @@
 /*global require, WeakDictionary, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript actions functions
+/// @brief Graph functionality
 ///
 /// @file
 ///
@@ -891,9 +891,7 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getNeighbors = function (options) {
-  var i,
-    current_edge,
-    current_vertex,
+  var current_vertex,
     target_array = [],
     addNeighborToList,
     direction = options.direction || 'both',
