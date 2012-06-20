@@ -38,20 +38,20 @@
 namespace triagens {
   namespace rest {
     class HttpHandlerFactory;
-    class HttpServerImpl;
+    class HttpServer;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief task for http communication
     ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpCommTask : public GeneralCommTask<HttpServerImpl, HttpHandlerFactory> {
+    class HttpCommTask : public GeneralCommTask<HttpServer, HttpHandlerFactory> {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief constructors
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpCommTask (HttpServerImpl* server, socket_t fd, ConnectionInfo const&);
+        HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo const&);
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief destructors

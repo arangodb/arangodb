@@ -491,7 +491,7 @@ void ArangoServer::buildApplicationServer () {
   // build the application user manager
   // .............................................................................
 
-  _applicationUserManager = new ApplicationUserManager(_applicationServer);
+  _applicationUserManager = new ApplicationUserManager();
   _applicationServer->addFeature(_applicationUserManager);
 
   // create manager role
@@ -983,7 +983,9 @@ int ArangoServer::startupServer () {
   // and cleanup
   // .............................................................................
 
+  _applicationServer->shutdown();
   closeDatabase();
+
   return 0;
 }
 

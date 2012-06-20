@@ -271,6 +271,8 @@ void ApplicationDispatcher::beginShutdown () {
 
 void ApplicationDispatcher::shutdown () {
   if (_dispatcher != 0) {
+    _dispatcher->shutdown();
+
     int count = 0;
 
     while (++count < 6 && _dispatcher->isRunning()) {

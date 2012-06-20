@@ -108,6 +108,7 @@ void DispatcherThread::run () {
 
   _queue->_nrStarted--;
   _queue->_nrRunning++;
+  _queue->_nrUp++;
 
   _queue->_startedThreads.insert(this);
 
@@ -292,6 +293,8 @@ void DispatcherThread::run () {
   if (_jobType == Job::SPECIAL_JOB) {
     _queue->_nrSpecial--;
   }
+
+  _queue->_nrUp--;
 
   _queue->_accessQueue.unlock();
 

@@ -59,6 +59,7 @@ DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
     _startedThreads(),
     _stoppedThreads(),
     _nrStarted(0),
+    _nrUp(0),
     _nrRunning(0),
     _nrWaiting(0),
     _nrStopped(0),
@@ -108,67 +109,6 @@ void DispatcherQueue::addJob (Job* job) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the queue
-////////////////////////////////////////////////////////////////////////////////
-
-void DispatcherQueue::beginShutdown () {
-  if (_stopping != 0) {
-    return;
-  }
-
-  LOGGER_DEBUG << "beginning shutdown sequence of _dispatcher queue '" << _name <<"'";
-
-  // broadcast the we want to stop
-  size_t const MAX_TRIES = 10;
-
-  _stopping = 1;
-
-  for (size_t count = 0;  count < MAX_TRIES;  ++count) {
-    {
-      CONDITION_LOCKER(guard, _accessQueue);
-
-      LOGGER_TRACE << "shutting down _dispatcher queue '" << _name << "', "
-                   << _nrRunning << " running threads, "
-                   << _nrWaiting << " waiting threads, "
-                   << _nrSpecial << " special threads";
-
-      if (0 == _nrRunning + _nrWaiting) {
-        break;
-      }
-
-      guard.broadcast();
-    }
-
-    usleep(10000);
-  }
-
-  LOGGER_DEBUG << "shutting down _dispatcher queue '" << _name << "', "
-               << _nrRunning << " running threads, "
-               << _nrWaiting << " waiting threads, "
-               << _nrSpecial << " special threads";
-
-  // try to stop threads forcefully
-  set<DispatcherThread*> threads;
-
-  {
-    CONDITION_LOCKER(guard, _accessQueue);
-
-    threads.insert(_startedThreads.begin(), _startedThreads.end());
-    threads.insert(_stoppedThreads.begin(), _stoppedThreads.end());
-  }
-
-  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
-    (*i)->stop();
-  }
-
-  usleep(10000);
-
-  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
-    delete *i;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief downgrades the thread to special
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -205,6 +145,85 @@ bool DispatcherQueue::start () {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begins the shutdown sequence the queue
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::beginShutdown () {
+  if (_stopping != 0) {
+    return;
+  }
+
+  LOGGER_DEBUG << "beginning shutdown sequence of dispatcher queue '" << _name <<"'";
+
+  // broadcast the we want to stop
+  size_t const MAX_TRIES = 10;
+
+  _stopping = 1;
+
+  for (size_t count = 0;  count < MAX_TRIES;  ++count) {
+    {
+      CONDITION_LOCKER(guard, _accessQueue);
+
+      LOGGER_TRACE << "shutdown sequence dispatcher queue '" << _name << "', status: "
+                   << _nrRunning << " running threads, "
+                   << _nrWaiting << " waiting threads, "
+                   << _nrSpecial << " special threads";
+
+      if (0 == _nrRunning + _nrWaiting) {
+        break;
+      }
+
+      guard.broadcast();
+    }
+
+    usleep(10000);
+  }
+
+  LOGGER_DEBUG << "shutdown sequence dispatcher queue '" << _name << "', status: "
+               << _nrRunning << " running threads, "
+               << _nrWaiting << " waiting threads, "
+               << _nrSpecial << " special threads";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut downs the queue
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::shutdown () {
+  LOGGER_DEBUG << "shutting down the dispatcher queue '" << _name << "'";
+
+  // try to stop threads forcefully
+  set<DispatcherThread*> threads;
+
+  {
+    CONDITION_LOCKER(guard, _accessQueue);
+
+    threads.insert(_startedThreads.begin(), _startedThreads.end());
+    threads.insert(_stoppedThreads.begin(), _stoppedThreads.end());
+  }
+
+  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
+    (*i)->stop();
+  }
+
+  usleep(10000);
+
+  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
+    delete *i;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the dispatcher thread is up and running
+////////////////////////////////////////////////////////////////////////////////
+
+bool DispatcherQueue::isStarted () {
+  CONDITION_LOCKER(guard, _accessQueue);
+
+  return (_nrStarted + _nrRunning + _nrSpecial) <= _nrUp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
