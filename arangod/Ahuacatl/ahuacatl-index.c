@@ -179,6 +179,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       case TRI_IDX_TYPE_GEO2_INDEX:
       case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
       case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      case TRI_IDX_TYPE_BITARRAY_INDEX:
         // ignore all these index types for now
         continue;
       case TRI_IDX_TYPE_PRIMARY_INDEX:

@@ -8,8 +8,16 @@
 ### @brief program "arangod"
 ################################################################################
 
-bin_arangod_CPPFLAGS = -I@top_srcdir@/arangod $(AM_CPPFLAGS) 
-bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a lib/libarango.a $(LIBS)  @V8_LIBS@
+bin_arangod_CPPFLAGS = \
+	-I@top_srcdir@/arangod \
+	$(AM_CPPFLAGS) 
+
+bin_arangod_LDADD = \
+	lib/libarango_fe.a \
+	lib/libarango_v8.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
@@ -38,9 +46,13 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statement-walker.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
+	arangod/BitIndexes/bitarray.c \
+	arangod/BitIndexes/bitarrayIndex.c \
 	arangod/GeoIndex/GeoIndex.c \
 	arangod/HashIndex/hasharray.c \
 	arangod/HashIndex/hashindex.c \
+	arangod/IndexIterators/index-iterator.c \
+	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
 	arangod/RestHandler/RestDocumentHandler.cpp \
@@ -53,7 +65,6 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
-	arangod/SkipLists/sl-operator.c \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp \
 	arangod/V8Server/v8-query.cpp \
@@ -73,14 +84,26 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
 
+
+
 if ENABLE_MRUBY
 
-bin_arangod_LDADD += lib/libarango_mruby.a @MRUBY_LIBS@
+bin_arangod_LDADD += \
+	lib/libarango_mruby.a \
+	@MRUBY_LIBS@
 
 bin_arangod_SOURCES += \
 	arangod/MRServer/mr-actions.cpp \
 	arangod/RestServer/RubyDispatcherThread.cpp
 
+endif
+
+
+
+if ENABLE_ZEROMQ
+
+bin_arangod_LDADD += \
+	@ZEROMQ_LIBS@
 endif
 
 ################################################################################
@@ -94,16 +117,12 @@ endif
 FLEX_FILES += \
         arangod/Ahuacatl/ahuacatl-tokens.c
 
-BUILT_SOURCES += $(FLEX_FILES)
-
 ################################################################################
 ### @brief bison
 ################################################################################
 
 BISON_FILES += \
 	arangod/Ahuacatl/ahuacatl-grammar.c
-
-BUILT_SOURCES += $(BISON_FILES)
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

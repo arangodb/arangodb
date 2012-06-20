@@ -29,6 +29,7 @@
 
 #include <boost/scoped_ptr.hpp>
 
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -63,36 +64,29 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
   bool found;
 
   if (request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
-    string const& method = StringUtils::tolower(request->value("__METHOD__", found));
+    char const* method = request->value("__METHOD__", found);
 
     if (found) {
-      if (method == "put") {
+      if (TRI_CaseEqualString(method, "put")) {
         LOGGER_TRACE << "forcing method 'put'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_PUT);
       }
-      else if (method == "post") {
+      else if (TRI_CaseEqualString(method, "post")) {
         LOGGER_TRACE << "forcing method 'post'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_POST);
       }
-      else if (method == "delete") {
+      else if (TRI_CaseEqualString(method, "delete")) {
         LOGGER_TRACE << "forcing method 'delete'";
         request->setRequestType(HttpRequest::HTTP_REQUEST_DELETE);
       }
     }
 
-    string const& body = request->value("__BODY__", found);
+    char const* body = request->value("__BODY__", found);
 
     if (found) {
       LOGGER_TRACE << "forcing body";
-      request->setBody(body);
+      request->setBody(body, strlen(body));
     }
-  }
-
-  string const& format = request->value("__OUTPUT__", found);
-
-  if (found) {
-    LOGGER_TRACE << "forcing output format '" << format << "'";
-    request->setHeader("accept", format);
   }
 }
 
@@ -131,6 +125,24 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 /// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (TRI_json_t* json) {
+  response = new HttpResponse(HttpResponse::OK);
+  response->setContentType("application/json; charset=utf-8");
+
+  int res = TRI_StringifyJson(response->body().stringBuffer(), json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    delete response;
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result

@@ -31,10 +31,11 @@
 
 #include "Basics/Thread.h"
 
-#include "Basics/Mutex.h"
-
+#include "BasicsC/locks.h"
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
+
+// #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -72,11 +73,17 @@ namespace triagens {
 
       public:
 
-/////////////////////////////////////////////////////////////////////////
-/// @brief constructs a scheduler thread
-/////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
         SchedulerThread (Scheduler*, EventLoop, bool defaultLoop);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~SchedulerThread ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -227,7 +234,11 @@ namespace triagens {
 /// @brief queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Mutex queueLock;
+#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
+        TRI_spin_t queueLock;
+#else
+        TRI_mutex_t queueLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work queue
@@ -249,6 +260,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

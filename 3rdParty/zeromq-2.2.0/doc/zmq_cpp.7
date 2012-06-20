@@ -1,0 +1,399 @@
+'\" t
+.\"     Title: zmq_cpp
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/04/2012
+.\"    Manual: 0MQ Manual
+.\"    Source: 0MQ 2.2.0
+.\"  Language: English
+.\"
+.TH "ZMQ_CPP" "7" "04/04/2012" "0MQ 2\&.2\&.0" "0MQ Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+zmq_cpp \- interface between 0MQ and C++ applications
+.SH "SYNOPSIS"
+.sp
+\fB#include <zmq\&.hpp>\fR
+.sp
+\fBc++\fR [\fIflags\fR] \fIfiles\fR \fB\-lzmq\fR [\fIlibraries\fR]
+.SH "DESCRIPTION"
+.sp
+This manual page describes how the 0MQ C++ language binding maps to the underlying 0MQ C library functions\&.
+.sp
+All 0MQ constants defined by \fIzmq\&.h\fR are also available to the C++ language binding\&.
+.sp
+The following classes are provided in the \fIzmq\fR namespace:
+.SS "Context"
+.sp
+The \fIcontext_t\fR class encapsulates functionality dealing with the initialisation and termination of a 0MQ \fIcontext\fR\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBConstructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBcontext_t::context_t(int \fR\fB\fIio_threads\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_init()\fR function, as described in \fBzmq_init\fR(3)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBDestructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBcontext_t::~context_t(void)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_term()\fR function, as described in \fBzmq_term\fR(3)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBMethods\fR
+.RS 4
+.sp
+None\&.
+.RE
+.SS "Socket"
+.sp
+The \fIsocket_t\fR class encapsulates a 0MQ socket\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBConstructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBsocket_t::socket_t(context_t \fR\fB\fI&context\fR\fR\fB, int \fR\fB\fItype\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_socket()\fR function, as described in \fBzmq_socket\fR(3)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBDestructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBsocket_t::~socket_t(void)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Calls the \fIzmq_close()\fR function, as described in \fBzmq_close\fR(3)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBMethods\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid socket_t::getsockopt(int \fR\fB\fIoption_name\fR\fR\fB, void \fR\fB\fI*option_value\fR\fR\fB, size_t
+\fR\fB\fI*option_len\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_getsockopt()\fR function, as described in \fBzmq_getsockopt\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid socket_t::setsockopt(int \fR\fB\fIoption_name\fR\fR\fB, const void \fR\fB\fI*option_value\fR\fR\fB, size_t
+\fR\fB\fIoption_len\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_setsockopt()\fR function, as described in \fBzmq_setsockopt\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid socket_t::bind(const char \fR\fB\fI*endpoint\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_bind()\fR function, as described in \fBzmq_bind\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid socket_t::connect(const char \fR\fB\fI*endpoint\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_connect()\fR function, as described in \fBzmq_connect\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBbool socket_t::send(message_t \fR\fB\fI&msg\fR\fR\fB, int \fR\fB\fIflags\fR\fR\fB = 0)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_send()\fR function, as described in \fBzmq_send\fR(3)\&. Returns true if message is successfully sent, false if it is not\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBbool socket_t::recv(message_t \fR\fB\fI*msg\fR\fR\fB, int \fR\fB\fIflags\fR\fR\fB = 0)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_recv()\fR function, as described in \fBzmq_recv\fR(3)\&. Returns true if message is successfully received, false if it is not\&.
+.RE
+.SS "Message"
+.sp
+The \fIzmq::message_t\fR class encapsulates the \fIzmq_msg_t\fR structure and functions to construct, destruct and manipulate 0MQ messages\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBConstructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBmessage_t::message_t(void)\fR
+\fBmessage_t::message_t(size_t \fR\fB\fIsize\fR\fR\fB)\fR
+\fBmessage_t::message_t(void \fR\fB\fI*data\fR\fR\fB, size_t \fR\fB\fIsize\fR\fR\fB, free_fn \fR\fB\fI*ffn\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+These map to the \fIzmq_msg_init()\fR, \fIzmq_msg_init_size()\fR and \fIzmq_msg_init_data()\fR functions, described in \fBzmq_msg_init\fR(3), \fBzmq_msg_init_size\fR(3) and \fBzmq_msg_init_data\fR(3) respectively\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBDestructor\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBmessage_t::~message_t(void)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Calls the \fIzmq_msg_close()\fR function, as described in \fBzmq_msg_close\fR(3)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBMethods\fR
+.RS 4
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid *message_t::data (void)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_msg_data()\fR function, as described in \fBzmq_msg_data\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBsize_t message_t::size (void)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_msg_size()\fR function, as described in \fBzmq_msg_size\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid message_t::copy (message_t \fR\fB\fI*src\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_msg_copy()\fR function, as described in \fBzmq_msg_copy\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBvoid message_t::move (message_t \fR\fB\fI*src\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Maps to the \fIzmq_msg_move()\fR function, as described in \fBzmq_msg_move\fR(3)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBmessage_t::rebuild(void)\fR
+\fBmessage_t::rebuild(size_t \fR\fB\fIsize\fR\fR\fB)\fR
+\fBmessage_t::rebuild(void \fR\fB\fI*data\fR\fR\fB, size_t \fR\fB\fIsize\fR\fR\fB, free_fn \fR\fB\fI*ffn\fR\fR\fB)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Equivalent to calling the \fIzmq_msg_close()\fR function followed by the corresponding \fIzmq_msg_init()\fR function\&.
+.RE
+.SS "Input/output multiplexing"
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\fBint poll (zmq_pollitem_t *items, int nitems, long timeout = \-1)\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+The \fIpoll()\fR function is a namespaced equivalent of the \fIzmq_poll()\fR function, as described in \fBzmq_poll\fR(3)\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+To obtain a 0MQ \fIsocket\fR for use in a \fIzmq_pollitem_t\fR structure, you should cast an instance of the \fIsocket_t\fR class to (void *)\&.
+.sp .5v
+.RE
+.SH "ERROR HANDLING"
+.sp
+All errors reported by the underlying 0MQ C library functions are automatically converted to exceptions by the C++ language binding\&. The \fIzmq::error_t\fR class is derived from the \fIstd::exception\fR class and uses the \fIzmq_strerror()\fR function to convert the error code to human\-readable string\&.
+.SH "EXAMPLE"
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+zmq::context_t ctx (1);
+zmq::socket_t s (ctx, ZMQ_PUB);
+s\&.connect ("tcp://192\&.168\&.0\&.115:5555");
+zmq::message_t msg (100);
+memset (msg\&.data (), 0, 100);
+s\&.send (msg);
+.fi
+.if n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.sp
+\fBzmq\fR(7)
+.SH "AUTHORS"
+.sp
+This manual page was written by the 0MQ community\&.

@@ -176,7 +176,8 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
   _started = 1;
 
-  bool ok = TRI_StartThread(&_thread, &startThread, this);
+  string text = "[" + _name + "]";
+  bool ok = TRI_StartThread(&_thread, text.c_str(), &startThread, this);
 
   if (! ok) {
     LOGGER_ERROR << "could not start thread '" << _name << "': " << strerror(errno);
@@ -195,7 +196,7 @@ void Thread::stop () {
     TRI_StopThread(&_thread);
   }
   else {
-    LOGGER_DEBUG << "trying to cancel (aka stop) stopped thread " << _name;
+    LOGGER_DEBUG << "trying to cancel (aka stop) an already stopped thread " << _name;
   }
 }
 
@@ -301,6 +302,10 @@ void Thread::runMe () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

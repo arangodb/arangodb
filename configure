@@ -609,6 +609,11 @@ BUILD_H
 BOOST_LIBS
 BOOST_LDFLAGS
 BOOST_CPPFLAGS
+ZEROMQ_LIBS
+ZEROMQ_LDFLAGS
+ZEROMQ_CPPFLAGS
+ENABLE_ZEROMQ_FALSE
+ENABLE_ZEROMQ_TRUE
 MRUBY_LIBS
 MRUBY_LDFLAGS
 MRUBY_CPPFLAGS
@@ -744,16 +749,18 @@ build_os
 build_vendor
 build_cpu
 build
-ENABLE_BOOST_TEST_FALSE
-ENABLE_BOOST_TEST_TRUE
 ENABLE_INSTALL_DBDIR_FALSE
 ENABLE_INSTALL_DBDIR_TRUE
-ENABLE_ERRORS_DEPENDENCY_FALSE
-ENABLE_ERRORS_DEPENDENCY_TRUE
+ENABLE_BOOST_TEST_FALSE
+ENABLE_BOOST_TEST_TRUE
 ENABLE_3RD_PARTY_BOOST_FALSE
 ENABLE_3RD_PARTY_BOOST_TRUE
 ENABLE_ALL_IN_ONE_FALSE
 ENABLE_ALL_IN_ONE_TRUE
+ENABLE_PROTOBUF_DEPENDENCY_FALSE
+ENABLE_PROTOBUF_DEPENDENCY_TRUE
+ENABLE_ERRORS_DEPENDENCY_FALSE
+ENABLE_ERRORS_DEPENDENCY_TRUE
 ENABLE_FLEX_FALSE
 ENABLE_FLEX_TRUE
 ENABLE_BISON_FALSE
@@ -801,12 +808,13 @@ ac_user_opts='
 enable_option_checking
 enable_bison
 enable_flex
+enable_errors_dependency
+enable_protobuf_dependency
 enable_all_in_one
 enable_3rd_party_boost
-enable_errors_dependency
+with_boost_test
 enable_install_dbdir
 enable_relative
-with_boost_test
 enable_silent_rules
 enable_dependency_tracking
 enable_error_on_warning
@@ -840,6 +848,7 @@ with_v8
 with_v8_lib
 enable_static_v8
 enable_mruby
+enable_zeromq
 with_boost
 with_boost_libdir
 '
@@ -1479,11 +1488,13 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-bison          enable BISON
   --enable-flex           enable FLEX
+  --enable-errors-dependency
+                          generate dependencies for error files
+  --enable-protobuf-dependency
+                          generate dependencies for protocol buffers
   --enable-all-in-one     use supplied V8 and LIBEV from 3rdParty directory
   --enable-3rd-party-boost
                           use supplied BOOST from 3rdParty directory
-  --enable-errors-dependency
-                          generate dependencies for error files
   --enable-install-dbdir  install an empty database directory
   --enable-relative       all path are relative to the binary (yes/no/devel
                           [default])
@@ -1519,6 +1530,7 @@ Optional Features:
   --enable-static-libev   using static library 'libev' (default: no)
   --enable-static-v8      using static library 'v8' (default: no)
   --enable-mruby          enable MRUBY
+  --enable-zeromq         enable ZeroMQ
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2469,6 +2481,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 
+
 # Check whether --enable-bison was given.
 if test "${enable_bison+set}" = set; then :
   enableval=$enable_bison; tr_BISON="${enableval:-yes}"
@@ -2488,7 +2501,6 @@ fi
 
 
 
-
 # Check whether --enable-flex was given.
 if test "${enable_flex+set}" = set; then :
   enableval=$enable_flex; tr_FLEX="${enableval:-yes}"
@@ -2504,6 +2516,44 @@ fi
 else
   ENABLE_FLEX_TRUE='#'
   ENABLE_FLEX_FALSE=
+fi
+
+
+
+# Check whether --enable-errors-dependency was given.
+if test "${enable_errors_dependency+set}" = set; then :
+  enableval=$enable_errors_dependency; tr_ERRORS_DEPENDENCY="${enableval:-yes}"
+else
+  tr_ERRORS_DEPENDENCY=no
+
+fi
+
+
+ if test "x$tr_ERRORS_DEPENDENCY" = xyes; then
+  ENABLE_ERRORS_DEPENDENCY_TRUE=
+  ENABLE_ERRORS_DEPENDENCY_FALSE='#'
+else
+  ENABLE_ERRORS_DEPENDENCY_TRUE='#'
+  ENABLE_ERRORS_DEPENDENCY_FALSE=
+fi
+
+
+
+# Check whether --enable-protobuf-dependency was given.
+if test "${enable_protobuf_dependency+set}" = set; then :
+  enableval=$enable_protobuf_dependency; tr_PROTOBUF_DEPENDENCY="${enableval:-yes}"
+else
+  tr_PROTOBUF_DEPENDENCY=no
+
+fi
+
+
+ if test "x$tr_PROTOBUF_DEPENDENCY" = xyes; then
+  ENABLE_PROTOBUF_DEPENDENCY_TRUE=
+  ENABLE_PROTOBUF_DEPENDENCY_FALSE='#'
+else
+  ENABLE_PROTOBUF_DEPENDENCY_TRUE='#'
+  ENABLE_PROTOBUF_DEPENDENCY_FALSE=
 fi
 
 
@@ -2528,7 +2578,6 @@ fi
 
 
 
-
 # Check whether --enable-3rd-party-boost was given.
 if test "${enable_3rd_party_boost+set}" = set; then :
   enableval=$enable_3rd_party_boost; tr_3RD_PARTY_BOOST="${enableval:-yes}"
@@ -2549,21 +2598,20 @@ fi
 
 
 
-# Check whether --enable-errors-dependency was given.
-if test "${enable_errors_dependency+set}" = set; then :
-  enableval=$enable_errors_dependency; tr_ERRORS_DEPENDENCY="${enableval:-yes}"
+# Check whether --with-boost-test was given.
+if test "${with_boost_test+set}" = set; then :
+  withval=$with_boost_test; tr_BOOST_TEST=yes
 else
-  tr_ERRORS_DEPENDENCY=no
-
+  tr_BOOST_TEST=no
 fi
 
 
- if test "x$tr_ERRORS_DEPENDENCY" = xyes; then
-  ENABLE_ERRORS_DEPENDENCY_TRUE=
-  ENABLE_ERRORS_DEPENDENCY_FALSE='#'
+ if test "x$tr_BOOST_TEST" = xyes; then
+  ENABLE_BOOST_TEST_TRUE=
+  ENABLE_BOOST_TEST_FALSE='#'
 else
-  ENABLE_ERRORS_DEPENDENCY_TRUE='#'
-  ENABLE_ERRORS_DEPENDENCY_FALSE=
+  ENABLE_BOOST_TEST_TRUE='#'
+  ENABLE_BOOST_TEST_FALSE=
 fi
 
 
@@ -2585,7 +2633,6 @@ else
   ENABLE_INSTALL_DBDIR_TRUE='#'
   ENABLE_INSTALL_DBDIR_FALSE=
 fi
-
 
 
 
@@ -2615,27 +2662,6 @@ else
   tr_RELATIVE=no
 fi
 fi
-
-
-
-
-# Check whether --with-boost-test was given.
-if test "${with_boost_test+set}" = set; then :
-  withval=$with_boost_test; tr_BOOST_TEST=yes
-else
-  tr_BOOST_TEST=no
-fi
-
-
- if test "x$tr_BOOST_TEST" = xyes; then
-  ENABLE_BOOST_TEST_TRUE=
-  ENABLE_BOOST_TEST_FALSE='#'
-else
-  ENABLE_BOOST_TEST_TRUE='#'
-  ENABLE_BOOST_TEST_FALSE=
-fi
-
-
 
 
 
@@ -6969,6 +6995,8 @@ FLAG_INFO="$FLAG_INFO|."
 
 
 
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR MATH" >&5
@@ -7036,6 +7064,8 @@ if test "x$tr_MATH" = xyes;  then
   FLAG_INFO="$FLAG_INFO|MATH_LDFLAGS:  ${MATH_LDFLAGS}"
   FLAG_INFO="$FLAG_INFO|MATH_LIBS:     ${MATH_LIBS}"
 fi
+
+
 
 
 
@@ -7696,6 +7726,8 @@ fi
  # before readline
 
 
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR READLINE" >&5
@@ -7966,6 +7998,8 @@ if test "x$tr_READLINE" = xyes;  then
 else
   LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
 fi
+
+
 
 
 
@@ -8429,6 +8463,7 @@ fi
 
 
 
+
 if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
 
 
@@ -8468,52 +8503,7 @@ FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
 FLAG_INFO="$FLAG_INFO|."
 
 
-
-
-V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
-V8_LDFLAGS=""
-V8_TARGET="native"
-
-if test x$tr_DARWIN == xyes;  then
-  if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
-  else
-    V8_TARGET="ia32.release"
-  fi
-
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
-else
-  if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
-  else
-    V8_TARGET="ia32.release"
-  fi
-
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
-fi
-
-TRI_V8_VERSION="3.9.4"
-
-
-
-
-
-
-
-V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
-
-
-LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
-
-FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
-FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
-
-
-
-  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-LIBEV: enabled"
 else
 
 
@@ -8822,6 +8812,58 @@ else
 fi
 
 
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-LIBEV: disabled"
+fi
+
+
+if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
+
+
+V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
+V8_LDFLAGS=""
+V8_TARGET="native"
+
+if test x$tr_DARWIN == xyes;  then
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
+else
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
+fi
+
+TRI_V8_VERSION="3.9.4"
+
+
+
+
+
+
+
+V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
+
+
+LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
+FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+
+
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-V8: enabled"
+else
 
 
 V8_CPPFLAGS=""
@@ -9028,8 +9070,9 @@ FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
 FLAG_INFO="$FLAG_INFO|."
 
 
-  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-V8: disabled"
 fi
+
 
 
 
@@ -9085,6 +9128,66 @@ if test "x$tr_MRUBY" = "xyes";  then
 else
   BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
 fi
+
+
+
+
+
+
+
+# Check whether --enable-zeromq was given.
+if test "${enable_zeromq+set}" = set; then :
+  enableval=$enable_zeromq; tr_ZEROMQ="${enableval:-yes}"
+else
+  tr_ZEROMQ=no
+
+fi
+
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  ZEROMQ_CPPFLAGS="-I${srcdir}/3rdParty/zeromq-2.2.0/BUILD/include -I${srcdir}/3rdParty/protobuf-2.4.1/src"
+  ZEROMQ_LDFLAGS=""
+  ZEROMQ_LIBS="${srcdir}/3rdParty/zeromq-2.2.0/BUILD/lib${tr_BITS}/libzmq.a ${srcdir}/3rdParty/protobuf-2.4.1/src/.libs/libprotobuf.a -luuid -lrt"
+
+  TRI_ZEROMQ_VERSION="2.2.0"
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_ZEROMQ 1
+_ACEOF
+
+fi
+
+ if test "x$tr_ZEROMQ" = "xyes"; then
+  ENABLE_ZEROMQ_TRUE=
+  ENABLE_ZEROMQ_FALSE='#'
+else
+  ENABLE_ZEROMQ_TRUE='#'
+  ENABLE_ZEROMQ_FALSE=
+fi
+
+
+
+
+
+
+
+ZEROMQ_CPPFLAGS="${ZEROMQ_CPPFLAGS} -DTRI_ZEROMQ_VERSION='\"${TRI_ZEROMQ_VERSION}\"'"
+
+
+if test "x$tr_ZEROMQ" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: enabled"
+
+  LIB_INFO="$LIB_INFO|ZEROMQ VERSION: ${TRI_ZEROMQ_VERSION}"
+
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_CPPFLAGS: ${ZEROMQ_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LDFLAGS:  ${ZEROMQ_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|ZEROMQ_LIBS:     ${ZEROMQ_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
+else
+  BASIC_INFO="$BASIC_INFO|ZEROMQ: disabled"
+fi
+
 
 
 
@@ -9583,6 +9686,14 @@ if test -z "${ENABLE_FLEX_TRUE}" && test -z "${ENABLE_FLEX_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FLEX\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${ENABLE_ERRORS_DEPENDENCY_TRUE}" && test -z "${ENABLE_ERRORS_DEPENDENCY_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ERRORS_DEPENDENCY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_PROTOBUF_DEPENDENCY_TRUE}" && test -z "${ENABLE_PROTOBUF_DEPENDENCY_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_PROTOBUF_DEPENDENCY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${ENABLE_ALL_IN_ONE_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -9591,16 +9702,12 @@ if test -z "${ENABLE_3RD_PARTY_BOOST_TRUE}" && test -z "${ENABLE_3RD_PARTY_BOOST
   as_fn_error $? "conditional \"ENABLE_3RD_PARTY_BOOST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ENABLE_ERRORS_DEPENDENCY_TRUE}" && test -z "${ENABLE_ERRORS_DEPENDENCY_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_ERRORS_DEPENDENCY\" was never defined.
+if test -z "${ENABLE_BOOST_TEST_TRUE}" && test -z "${ENABLE_BOOST_TEST_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_BOOST_TEST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${ENABLE_BOOST_TEST_TRUE}" && test -z "${ENABLE_BOOST_TEST_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_BOOST_TEST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_DARWIN_TRUE}" && test -z "${ENABLE_DARWIN_FALSE}"; then
@@ -9701,6 +9808,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_MRUBY_TRUE}" && test -z "${ENABLE_MRUBY_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_MRUBY\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_ZEROMQ_TRUE}" && test -z "${ENABLE_ZEROMQ_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ZEROMQ\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
@@ -11116,4 +11227,6 @@ done
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
+
+
 

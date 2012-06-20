@@ -28,6 +28,7 @@
 #include "RestEdgeHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
 #include "VocBase/simple-collection.h"
@@ -112,9 +113,9 @@ bool RestEdgeHandler::createDocument () {
 
   // extract the from
   bool found;
-  string from = request->value("from", found);
+  char const* from = request->value("from", found);
 
-  if (! found || from.empty()) {
+  if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'from' is missing, expecting " + EDGE_PATH + "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
@@ -122,9 +123,9 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the to
-  string to = request->value("to", found);
+  char const* to = request->value("to", found);
 
-  if (! found || to.empty()) {
+  if (! found || *to == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'to' is missing, expecting " + EDGE_PATH + "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
@@ -142,8 +143,12 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // shall we create the collection?
-  string createStr = request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(createStr) : false;
+  char const* valueStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // shall we reuse document and revision id?
+  valueStr = request->value("useId", found);
+  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
@@ -197,7 +202,7 @@ bool RestEdgeHandler::createDocument () {
   TRI_voc_cid_t cid = _documentCollection->base._cid;
 
   // note: unlocked is performed by createJson()
-  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_EDGE, json, &edge, true);
+  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_EDGE, json, &edge, reuseId, true);
 
   // .............................................................................
   // outside write transaction

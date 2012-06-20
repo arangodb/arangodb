@@ -1636,6 +1636,8 @@ namespace triagens {
 
 
       string urlEncode (const char* src, const size_t len) {
+        static char hexChars[16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
         char const* end = src + len;
 
         if (len >= (SIZE_MAX - 1) / 3) {
@@ -1644,8 +1646,6 @@ namespace triagens {
 
         char* buffer = new char[3 * len + 1];
         char* ptr = buffer;
-
-        char hexChars[16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
 
         for (; src < end;  ++src) {

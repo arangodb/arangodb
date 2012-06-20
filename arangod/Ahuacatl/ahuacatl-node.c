@@ -58,14 +58,25 @@ inline bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
 /// @brief get the node type group
 ////////////////////////////////////////////////////////////////////////////////
       
-const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node) {
+const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node, 
+                              const bool inspect) {
   switch (node->_type) {
     case TRI_AQL_NODE_VALUE:
       return "const value";
     case TRI_AQL_NODE_LIST:
-      return "const list";
+      if (inspect && TRI_IsConstantValueNodeAql(node)) {
+        return "const list";
+      }
+      else {
+        return "list";
+      }
     case TRI_AQL_NODE_ARRAY:
-      return "const document";
+      if (inspect && TRI_IsConstantValueNodeAql(node)) {
+        return "const document";
+      }
+      else {
+        return "document";
+      }
     case TRI_AQL_NODE_REFERENCE:
       return "reference";
     case TRI_AQL_NODE_COLLECTION:

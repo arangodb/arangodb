@@ -448,13 +448,14 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // directory must not exists
+  // directory must not exist
   if (TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
-              parameter->_name, path);
+    LOG_ERROR("cannot create collection '%s' in '%s', filename already exists",
+              parameter->_name, filename);
+    
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return NULL;
   }

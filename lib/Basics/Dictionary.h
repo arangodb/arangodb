@@ -41,7 +41,7 @@ namespace triagens {
   namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class AssociativeArray
+// --SECTION--                                                  class Dictionary
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +55,7 @@ namespace triagens {
 
     template <typename ELEMENT>
     class Dictionary {
+      private:
         Dictionary (Dictionary const&);
         Dictionary& operator= (Dictionary const&);
 
