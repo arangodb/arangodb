@@ -1,0 +1,93 @@
+################################################################################
+## epm configuration file
+## Documentation: http://www.epmhome.org
+################################################################################
+
+$version=${arangodb_version}
+$release=${arangodb_release}
+
+################################################################################
+## ArangoDB
+################################################################################
+
+%product ArangoDB
+%copyright 2012 by triAGENS GmbH
+%vendor triAGENS GmbH
+%license COPYING
+%readme README
+%description ArangoDB Software
+%version ${version}
+%release ${release}
+
+################################################################################
+## File List
+################################################################################
+
+d 0755 ${susr} ${sgrp} /etc/voc -
+d 0755 ${susr} ${sgrp} /etc/voc/${vers_dir} -
+f 0644 ${susr} ${sgrp} /etc/voc/${vers_dir}/arango.conf.template Installation/arango.conf
+
+f 0755 ${susr} ${sgrp} ${bindir}/arangod-${arangodb_version} arangod
+
+d 0755 ${rusr} ${rgrp} ${datadir}/voc -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir} -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js/modules -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js/system -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/html -
+d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/html/admin -
+
+d 0755 ${susr} ${sgrp} /var/lib/arango -
+d 0755 ${rusr} ${rgrp} /var/run/voc -
+d 0755 ${susr} ${sgrp} /var/run/voc/${vers_dir}/ -
+d 0755 ${rusr} ${rgrp} /var/log/voc -
+d 0755 ${susr} ${sgrp} /var/log/voc/${vers_dir}/ -
+
+%include Installation/arangodb.sublist
+
+################################################################################
+## Pre/Post Install
+################################################################################
+
+%postinstall <<EOF
+sed -e 's%@LOGDIR@%/var/log/voc/${vers_dir}%g' -e 's%@DATADIR@%${datadir}/voc/${vers_dir}%' -e 's%@DATABASE@%/var/lib/arango%g' /etc/voc/${vers_dir}/arango.conf.template > /etc/voc/${vers_dir}/arango.conf
+EOF
+
+%ifdef macosx
+d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
+f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template Installation/MacOSX/MacPorts/org.arangodb.plist
+%postinstall <<EOF
+sed -e 's%@BINARY@%${bindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc/voc/${vers_dir}/%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
+launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
+launchctl load /Library/LaunchDaemons/de.triagens.arango.plist
+launchctl start de.triagens.arango
+EOF
+
+%preremove <<EOF
+launchctl stop de.triagens.arango
+launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
+EOF
+
+%else
+%preinstall <<EOF
+getent group arango >/dev/null || groupadd -r arango 
+getent passwd arango >/dev/null || useradd -r -g arango -d /usr/share/arango -s /bin/false -c "ArangoDB Application User" arango 
+EOF
+%endif
+
+%ifdef insserv
+%postinstall <<EOF
+test -x /sbin/insserv && /sbin/insserv /etc/init.d/arango 2&>1 > /dev/null
+exit 0
+EOF
+
+%preremove <<EOF
+/etc/init.d/arango stop 2&>1 > /dev/null
+test -x /sbin/insserv && /sbin/insserv -r /etc/init.d/arango 2&>1 > /dev/null
+exit 0
+EOF
+%endif
+
+%system linux
+i 0755 ${rusr} ${rgrp} arango Installation/${START_SCRIPT} ${runlevels}
+# l 000 ${rusr} ${rgrp} ${bindir}/rcarango /etc/init.d/arango 
