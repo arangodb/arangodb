@@ -141,7 +141,7 @@ pre ul li span{
   vertical-align: middle;
 }
 
-#addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton {
+#cancelEditedDocument, #undoEditedDocument, #addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton, #saveNewCollection, #cancelNewCollection, #cancelNewDocument, #undoNewDocument {
   font-size: 0.8em; 
 }
 

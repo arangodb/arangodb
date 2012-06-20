@@ -494,7 +494,6 @@ var logTable = $('#logTableID').dataTable({
           $.each(data.result, function(k, v) {
             documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + JSON.stringify(v) + "</pre>"]);  
           });
-//TODO
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
         },
@@ -991,6 +990,26 @@ var logTable = $('#logTableID').dataTable({
   });
 
 ///////////////////////////////////////////////////////////////////////////////
+/// cancel editing a doc  
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#cancelEditedDocument').live('click', function () {
+    var start = window.location.hash.indexOf('?'); 
+    var end = window.location.hash.indexOf('/'); 
+    var collectionID = window.location.hash.substring(start + 1, end); 
+    window.location.href = "#showCollection?" + collectionID; 
+    $('#nav1').removeClass('highlighted'); 
+  });
+
+///////////////////////////////////////////////////////////////////////////////
+/// undo live changes of an edited document  
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#undoEditedDocument').live('click', function () {
+    location.reload();  
+  });
+
+///////////////////////////////////////////////////////////////////////////////
 /// perform logout 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1119,6 +1138,18 @@ var logTable = $('#logTableID').dataTable({
       }
 
     }
+  });
+
+///////////////////////////////////////////////////////////////////////////////
+/// cancel new doc view 
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#cancelNewDocument').live('click', function () {
+    var start = window.location.hash.indexOf('?'); 
+    var end = window.location.hash.indexOf('=');  
+    var collectionID = window.location.hash.substring(start + 1, end); 
+    window.location.href = "#showCollection?" + collectionID; 
+    $('#nav1').removeClass('highlighted'); 
   });
 
 ///////////////////////////////////////////////////////////////////////////////

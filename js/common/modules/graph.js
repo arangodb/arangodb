@@ -6,7 +6,7 @@
 /*global require, WeakDictionary, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript actions functions
+/// @brief Graph functionality
 ///
 /// @file
 ///
@@ -37,98 +37,8 @@ var internal = require("internal"),
   edges = internal.edges,
   ArangoCollection = internal.ArangoCollection,
   ArangoEdgesCollection = internal.ArangoEdgesCollection,
-  shallowCopy,
-  propertyKeys,
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove elements from an array
-////////////////////////////////////////////////////////////////////////////////
-
-Array.prototype.remove = function (from, to) {
-  var rest = this.slice((to || from) + 1 || this.length);
-  this.length = from < 0 ? this.length + from : from;
-  return this.push.apply(this, rest);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove last occurrence of element from an array
-////////////////////////////////////////////////////////////////////////////////
-
-Array.prototype.removeLastOccurrenceOf = function (element) {
-  var index = this.lastIndexOf(element);
-  return this.remove(index);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief push if the element was not found in the list
-////////////////////////////////////////////////////////////////////////////////
-
-Array.prototype.pushIfNotFound = function (element) {
-  if (this.lastIndexOf(element) === -1) {
-    this.push(element);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add all elements of the other array, that are not already in here
-////////////////////////////////////////////////////////////////////////////////
-
-Array.prototype.merge = function (other_array) {
-  var i;
-
-  for (i = 0; i < other_array.length; i += 1) {
-    this.pushIfNotFound(other_array[i]);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copy properties
-////////////////////////////////////////////////////////////////////////////////
-
-shallowCopy = function (props) {
-  var shallow,
-    key;
-
-  shallow = {};
-
-  for (key in props) {
-    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-      shallow[key] = props[key];
-    }
-  }
-
-  return shallow;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief property keys
-////////////////////////////////////////////////////////////////////////////////
-
-propertyKeys = function (props) {
-  var keys,
-    key;
-
-  keys = [];
-
-  for (key in props) {
-    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-      keys.push(key);
-    }
-  }
-
-  return keys;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
@@ -315,7 +225,7 @@ Edge.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
-  return propertyKeys(this._properties);
+  return this._properties.propertyKeys;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +241,7 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties),
+  var shallow = this._properties.shallowCopy,
     id;
 
   shallow.$id = this._properties.$id;
@@ -358,7 +268,7 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  var shallow = shallowCopy(this._properties);
+  var shallow = this._properties.shallowCopy;
 
   delete shallow.$id;
   delete shallow.$label;
@@ -670,7 +580,7 @@ Vertex.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
-  return propertyKeys(this._properties);
+  return this._properties.propertyKeys;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -746,7 +656,7 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  var shallow = shallowCopy(this._properties);
+  var shallow = this._properties.shallowCopy;
 
   delete shallow.$id;
 
@@ -769,7 +679,7 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties),
+  var shallow = this._properties.shallowCopy,
     id;
 
   shallow.$id = this._properties.$id;
@@ -780,6 +690,78 @@ Vertex.prototype.setProperty = function (name, value) {
   this._properties = this._graph._vertices.document(id);
 
   return value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of common neighbors
+///
+/// @FUN{@FA{vertex}.commonNeighborsWith(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
+  var neighbor_set_one,
+    neighbor_set_two,
+    id_only,
+    common_neighbors,
+    all_neighbors,
+    return_value;
+
+  options = options || {};
+
+  id_only = function (neighbor) {
+    return neighbor.id;
+  };
+
+  neighbor_set_one = this.getNeighbors(options).map(id_only);
+  neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
+
+  common_neighbors = neighbor_set_one.intersect(neighbor_set_two);
+
+  if ((options.listed !== undefined) && (options.listed === true)) {
+    return_value = common_neighbors;
+  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+    all_neighbors = neighbor_set_one.unite(neighbor_set_two);
+    return_value = (common_neighbors.length / all_neighbors.length);
+  } else {
+    return_value = common_neighbors.length;
+  }
+
+  return return_value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of common properties
+///
+/// @FUN{@FA{vertex}.commonPropertiesWith(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
+  var property_names,
+    shared_properties = [],
+    this_vertex = this,
+    return_value;
+
+  options = options || {};
+
+  property_names = this_vertex.getPropertyKeys().unite(other_vertex.getPropertyKeys());
+
+  property_names.forEach(function (property) {
+    if (this_vertex.getProperty(property) === other_vertex.getProperty(property)) {
+      shared_properties.push(property);
+    }
+  });
+
+  if ((options.listed !== undefined) && (options.listed === true)) {
+    return_value = shared_properties;
+  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+    return_value = shared_properties.length / property_names.length;
+  } else {
+    return_value = shared_properties.length;
+  }
+
+  return return_value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -821,7 +803,7 @@ Vertex.prototype.determinePredecessors = function (source_id, options) {
       todo_list.removeLastOccurrenceOf(current_vertex_id);
       determined_list.push(current_vertex_id);
 
-      todo_list.merge(current_vertex._processNeighbors(
+      todo_list = todo_list.unite(current_vertex._processNeighbors(
         determined_list,
         distances,
         predecessors,
@@ -909,27 +891,32 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getNeighbors = function (options) {
-  var i,
-    current_edge,
-    current_vertex,
+  var current_vertex,
     target_array = [],
     addNeighborToList,
     direction = options.direction || 'both',
     labels = options.labels,
     weight = options.weight,
-    default_weight = options.default_weight || Infinity;
+    weight_function = options.weight_function,
+    default_weight = options.default_weight || Infinity,
+    only = options.only;
 
   addNeighborToList = function (current_edge, current_vertex) {
     var neighbor_info, current_label = current_edge.getLabel();
 
     if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
       neighbor_info = { id: current_vertex.getId() };
-      if (weight === undefined) {
-        neighbor_info.weight = 1;
-      } else {
+      if (weight !== undefined) {
         neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
+      } else if (weight_function !== undefined) {
+        neighbor_info.weight = weight_function(current_edge);
+      } else {
+        neighbor_info.weight = 1;
       }
-      target_array.push(neighbor_info);
+
+      if ((only === undefined) || (only(current_edge))) {
+        target_array.push(neighbor_info);
+      }
     }
   };
 
@@ -1232,7 +1219,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
     data = {};
   }
 
-  shallow = shallowCopy(data);
+  shallow = data.shallowCopy;
 
   shallow.$id = id || null;
   shallow.$label = label || null;
@@ -1274,7 +1261,7 @@ Graph.prototype.addVertex = function (id, data) {
     data = {};
   }
 
-  shallow = shallowCopy(data);
+  shallow = data.shallowCopy;
 
   shallow.$id = id || null;
 
