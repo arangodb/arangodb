@@ -40,8 +40,6 @@ var internal = require("internal"),
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
 
-require("monkeypatches");
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
