@@ -6,7 +6,7 @@
 /*global require, WeakDictionary, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph interface to the database
+/// @brief JavaScript actions functions
 ///
 /// @file
 ///
@@ -39,15 +39,6 @@ var internal = require("internal"),
   ArangoEdgesCollection = internal.ArangoEdgesCollection,
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
