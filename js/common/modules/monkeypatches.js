@@ -38,8 +38,7 @@
 
 Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
   value: function (element) {
-    var index = this.lastIndexOf(element);
-    return this.splice(index, 1);
+    return this.splice(this.lastIndexOf(element), 1);
   }
 });
 
@@ -73,16 +72,9 @@ Object.defineProperty(Array.prototype, "intersect", {
 
 Object.defineProperty(Object.prototype, "shallowCopy", {
   get: function () {
-    var shallow = {},
-      key;
-
-    for (key in this) {
-      if (this.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-        shallow[key] = this[key];
-      }
-    }
-
-    return shallow;
+    return this.propertyKeys.reduce(function (previousValue, key) {
+      previousValue[key] = this[key]; return previousValue;
+    }, {});
   }
 });
 
@@ -92,16 +84,9 @@ Object.defineProperty(Object.prototype, "shallowCopy", {
 
 Object.defineProperty(Object.prototype, "propertyKeys", {
   get: function () {
-    var keys = [],
-      key;
-
-    for (key in this) {
-      if (this.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-        keys.push(key);
-      }
-    }
-
-    return keys;
+    return Object.keys(this).filter(function (element) {
+      return (element[0] !== '_' && element[0] !== '$');
+    });
   }
 });
 
