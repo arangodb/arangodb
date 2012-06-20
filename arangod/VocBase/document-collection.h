@@ -273,17 +273,17 @@ typedef struct TRI_doc_collection_s {
   void (*createHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool release);
-  TRI_doc_mptr_t (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool release);
+  TRI_doc_mptr_t (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_did_t, TRI_voc_rid_t, bool);
+  TRI_doc_mptr_t (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
   TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
 
   TRI_doc_mptr_t (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
-  TRI_doc_mptr_t (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
-  TRI_doc_mptr_t (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  TRI_doc_mptr_t (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
+  TRI_doc_mptr_t (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
   int (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
-  int (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  int (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
   int (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);

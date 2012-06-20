@@ -34,7 +34,8 @@
 
 namespace triagens {
   namespace rest {
-    class ApplicationServer;
+    class ApplicationScheduler;
+    class ApplicationDispatcher;
     class HttpHandlerFactory;
     class HttpsServer;
 
@@ -49,7 +50,7 @@ namespace triagens {
         /// @brief creates a new feature
         ////////////////////////////////////////////////////////////////////////////////
 
-        static ApplicationHttpsServer* create (ApplicationServer*);
+        static ApplicationHttpsServer* create (ApplicationScheduler*, ApplicationDispatcher*);
 
       public:
 

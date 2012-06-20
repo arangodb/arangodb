@@ -1,4 +1,4 @@
-#line 2 "JsonParser/json-parser.l"
+#line 2 "lib/JsonParser/json-parser.l"
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json parser
 ///
@@ -42,7 +42,7 @@ int fileno(FILE *stream);
 
 
 
-#line 46 "JsonParser/json-parser.c"
+#line 46 "lib/JsonParser/json-parser.c"
 
 #define  YY_INT_ALIGNED short int
 

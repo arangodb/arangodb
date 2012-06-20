@@ -40,7 +40,7 @@
 
 #include <BasicsC/common.h>
 #include "SkipLists/skiplist.h"
-#include "SkipLists/sl-operator.h"
+#include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
 #ifdef __cplusplus
@@ -153,7 +153,7 @@ SkiplistIndex* SkiplistIndex_new (void);
 
 int SkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
 
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_sl_operator_t*); 
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
 int SkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 
@@ -173,7 +173,7 @@ SkiplistIndex* MultiSkiplistIndex_new (void);
 
 int MultiSkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
 
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_sl_operator_t*); 
+TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
 int MultiSkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 

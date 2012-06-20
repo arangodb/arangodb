@@ -27,13 +27,13 @@
 
 #include "ApplicationHttpServerImpl.h"
 
-#include <Basics/delete_object.h>
-#include <Basics/ProgramOptions.h>
-#include <Basics/ProgramOptionsDescription.h>
-
-#include "Dispatcher/ApplicationServerDispatcher.h"
+#include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/delete_object.h"
+#include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerImpl.h"
+#include "Scheduler/ApplicationScheduler.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -46,19 +46,21 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    ApplicationHttpServerImpl::ApplicationHttpServerImpl (ApplicationServer* applicationServer)
-      : applicationServer(applicationServer),
-        showPort(true),
-        requireKeepAlive(false),
-        httpServers(),
-        httpPorts(),
-        httpAddressPorts() {
+    ApplicationHttpServerImpl::ApplicationHttpServerImpl (ApplicationScheduler* applicationScheduler,
+                                                          ApplicationDispatcher* applicationDispatcher)
+      : _applicationScheduler(applicationScheduler),
+        _applicationDispatcher(applicationDispatcher),
+        _showPort(true),
+        _requireKeepAlive(false),
+        _httpServers(),
+        _httpPorts(),
+        _httpAddressPorts() {
     }
 
 
 
     ApplicationHttpServerImpl::~ApplicationHttpServerImpl () {
-      for_each(httpServers.begin(), httpServers.end(), DeleteObject());
+      for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
     }
 
     // -----------------------------------------------------------------------------
@@ -66,9 +68,9 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void ApplicationHttpServerImpl::setupOptions (map<string, ProgramOptionsDescription>& options) {
-      if (showPort) {
+      if (_showPort) {
         options[ApplicationServer::OPTIONS_SERVER]
-          ("server.port", &httpPorts, "listen port or address:port")
+          ("server.port", &_httpPorts, "listen port or address:port")
         ;
       }
 
@@ -81,10 +83,10 @@ namespace triagens {
 
     bool ApplicationHttpServerImpl::parsePhase2 (ProgramOptions& options) {
       if (options.has("server.require-keep-alive")) {
-        requireKeepAlive= true;
+        _requireKeepAlive= true;
       }
 
-      for (vector<string>::const_iterator i = httpPorts.begin();  i != httpPorts.end();  ++i) {
+      for (vector<string>::const_iterator i = _httpPorts.begin();  i != _httpPorts.end();  ++i) {
         addPort(*i);
       }
 
@@ -100,7 +102,7 @@ namespace triagens {
         LOGGER_ERROR << "unknown server:port definition '" << name << "'";
       }
       else {
-        httpAddressPorts.push_back(ap);
+        _httpAddressPorts.push_back(ap);
       }
 
       return ap;
@@ -109,7 +111,7 @@ namespace triagens {
 
 
     HttpServer* ApplicationHttpServerImpl::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-      return buildHttpServer(0, httpHandlerFactory, httpAddressPorts);
+      return buildHttpServer(0, httpHandlerFactory, _httpAddressPorts);
     }
 
 
@@ -145,7 +147,7 @@ namespace triagens {
     HttpServerImpl* ApplicationHttpServerImpl::buildHttpServer (HttpServerImpl* httpServer,
                                                                 HttpHandlerFactory* httpHandlerFactory,
                                                                 vector<AddressPort> const& ports) {
-      Scheduler* scheduler = applicationServer->scheduler();
+      Scheduler* scheduler = _applicationScheduler->scheduler();
 
       if (scheduler == 0) {
         LOGGER_FATAL << "no scheduler is known, cannot create http server";
@@ -156,10 +158,9 @@ namespace triagens {
       // create new server
       if (httpServer == 0) {
         Dispatcher* dispatcher = 0;
-        ApplicationServerDispatcher* asd = dynamic_cast<ApplicationServerDispatcher*>(applicationServer);
 
-        if (asd != 0) {
-          dispatcher = asd->dispatcher();
+        if (_applicationDispatcher != 0) {
+          dispatcher = _applicationDispatcher->dispatcher();
         }
 
         httpServer = new HttpServerImpl(scheduler, dispatcher);
@@ -167,12 +168,12 @@ namespace triagens {
 
       httpServer->setHandlerFactory(httpHandlerFactory);
 
-      if (requireKeepAlive) {
+      if (_requireKeepAlive) {
         httpServer->setCloseWithoutKeepAlive(true);
       }
 
       // keep a list of active server
-      httpServers.push_back(httpServer);
+      _httpServers.push_back(httpServer);
 
       // open http ports
       deque<AddressPort> addresses;
@@ -190,14 +191,14 @@ namespace triagens {
         if (bindAddress.empty()) {
           LOGGER_TRACE << "trying to open port " << port << " for http requests";
 
-          result = httpServer->addPort(port, applicationServer->addressReuseAllowed());
+          result = httpServer->addPort(port, _applicationScheduler->addressReuseAllowed());
         }
         else {
           LOGGER_TRACE << "trying to open address " << bindAddress
                        << " on port " << port
                        << " for http requests";
 
-          result = httpServer->addPort(bindAddress, port, applicationServer->addressReuseAllowed());
+          result = httpServer->addPort(bindAddress, port, _applicationScheduler->addressReuseAllowed());
         }
 
         if (result) {

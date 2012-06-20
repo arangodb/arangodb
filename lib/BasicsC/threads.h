@@ -104,7 +104,7 @@ TRI_tid_t TRI_CurrentThreadId (void);
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data);
+bool TRI_StartThread (TRI_thread_t* thread, char const* name, void (*starter)(void*), void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief trys to stops a thread

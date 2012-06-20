@@ -1,0 +1,121 @@
+'\" t
+.\"     Title: zmq_device
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/04/2012
+.\"    Manual: 0MQ Manual
+.\"    Source: 0MQ 2.2.0
+.\"  Language: English
+.\"
+.TH "ZMQ_DEVICE" "3" "04/04/2012" "0MQ 2\&.2\&.0" "0MQ Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+zmq_device \- start built\-in 0MQ device
+.SH "SYNOPSIS"
+.sp
+\fBint zmq_device (int \fR\fB\fIdevice\fR\fR\fB, const void \fR\fB\fI*frontend\fR\fR\fB, const void \fR\fB\fI*backend\fR\fR\fB);\fR
+.SH "DESCRIPTION"
+.sp
+The \fIzmq_device()\fR function starts a built\-in 0MQ device\&. The \fIdevice\fR argument is one of:
+.PP
+\fIZMQ_QUEUE\fR
+.RS 4
+starts a queue device
+.RE
+.PP
+\fIZMQ_FORWARDER\fR
+.RS 4
+starts a forwarder device
+.RE
+.PP
+\fIZMQ_STREAMER\fR
+.RS 4
+starts a streamer device
+.RE
+.sp
+The device connects a frontend socket to a backend socket\&. Conceptually, data flows from frontend to backend\&. Depending on the socket types, replies may flow in the opposite direction\&.
+.sp
+Before calling \fIzmq_device()\fR you must set any socket options, and connect or bind both frontend and backend sockets\&. The two conventional device models are:
+.PP
+\fBproxy\fR
+.RS 4
+bind frontend socket to an endpoint, and connect backend socket to downstream components\&. A proxy device model does not require changes to the downstream topology but that topology is static (any changes require reconfiguring the device)\&.
+.RE
+.PP
+\fBbroker\fR
+.RS 4
+bind frontend socket to one endpoint and bind backend socket to a second endpoint\&. Downstream components must now connect into the device\&. A broker device model allows a dynamic downstream topology (components can come and go at any time)\&.
+.RE
+.sp
+\fIzmq_device()\fR runs in the current thread and returns only if/when the current context is closed\&.
+.SH "QUEUE DEVICE"
+.sp
+\fIZMQ_QUEUE\fR creates a shared queue that collects requests from a set of clients, and distributes these fairly among a set of services\&. Requests are fair\-queued from frontend connections and load\-balanced between backend connections\&. Replies automatically return to the client that made the original request\&.
+.sp
+This device is part of the \fIrequest\-reply\fR pattern\&. The frontend speaks to clients and the backend speaks to services\&. You should use \fIZMQ_QUEUE\fR with a \fIZMQ_XREP\fR socket for the frontend and a \fIZMQ_XREQ\fR socket for the backend\&. Other combinations are not documented\&.
+.sp
+Refer to \fBzmq_socket\fR(3) for a description of these socket types\&.
+.SH "FORWARDER DEVICE"
+.sp
+\fIZMQ_FORWARDER\fR collects messages from a set of publishers and forwards these to a set of subscribers\&. You will generally use this to bridge networks, e\&.g\&. read on TCP unicast and forward on multicast\&.
+.sp
+This device is part of the \fIpublish\-subscribe\fR pattern\&. The frontend speaks to publishers and the backend speaks to subscribers\&. You should use \fIZMQ_FORWARDER\fR with a \fIZMQ_SUB\fR socket for the frontend and a \fIZMQ_PUB\fR socket for the backend\&. Other combinations are not documented\&.
+.sp
+Refer to \fBzmq_socket\fR(3) for a description of these socket types\&.
+.SH "STREAMER DEVICE"
+.sp
+\fIZMQ_STREAMER\fR collects tasks from a set of pushers and forwards these to a set of pullers\&. You will generally use this to bridge networks\&. Messages are fair\-queued from pushers and load\-balanced to pullers\&.
+.sp
+This device is part of the \fIpipeline\fR pattern\&. The frontend speaks to pushers and the backend speaks to pullers\&. You should use \fIZMQ_STREAMER\fR with a \fIZMQ_PULL\fR socket for the frontend and a \fIZMQ_PUSH\fR socket for the backend\&. Other combinations are not documented\&.
+.sp
+Refer to \fBzmq_socket\fR(3) for a description of these socket types\&.
+.SH "RETURN VALUE"
+.sp
+The \fIzmq_device()\fR function always returns \-1 and \fIerrno\fR set to \fBETERM\fR (the 0MQ \fIcontext\fR associated with either of the specified sockets was terminated)\&.
+.SH "EXAMPLE"
+.PP
+\fBCreating a queue broker\fR. 
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+//  Create frontend and backend sockets
+void *frontend = zmq_socket (context, ZMQ_XREP);
+assert (backend);
+void *backend = zmq_socket (context, ZMQ_XREQ);
+assert (frontend);
+//  Bind both sockets to TCP ports
+assert (zmq_bind (frontend, "tcp://*:5555") == 0);
+assert (zmq_bind (backend, "tcp://*:5556") == 0);
+//  Start a queue device
+zmq_device (ZMQ_QUEUE, frontend, backend);
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.sp
+\fBzmq_bind\fR(3) \fBzmq_connect\fR(3) \fBzmq_socket\fR(3) \fBzmq\fR(7)
+.SH "AUTHORS"
+.sp
+This manual page was written by the 0MQ community\&.

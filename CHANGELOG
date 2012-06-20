@@ -1,6 +1,8 @@
 1.0.alpha2 (2012-06-??)
 -----------------------
 
+* fixed issue #84 explain command 
+
 * fixed issue #100: "count" attribute exists in cursor response with "count: false"
 
 * fixed issue #103: Should we cleanup the directory structure

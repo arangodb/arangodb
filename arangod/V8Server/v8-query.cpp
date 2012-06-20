@@ -221,10 +221,10 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
 /// @brief sets up the skiplist operator for a skiplist condition query
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
-                                                   TRI_shaper_t* shaper,
-                                                   v8::Handle<v8::Object> conditions) {
-  TRI_sl_operator_t* lastOperator = 0;
+static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
+                                                      TRI_shaper_t* shaper,
+                                                      v8::Handle<v8::Object> conditions) {
+  TRI_index_operator_t* lastOperator = 0;
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
   size_t lastNonEq = 0;
@@ -298,18 +298,18 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           goto MEM_ERROR;
         }
 
-        TRI_sl_operator_type_e opType;
+        TRI_index_operator_type_e opType;
         if (opValue == ">") {
-          opType = TRI_SL_GT_OPERATOR;
+          opType = TRI_GT_INDEX_OPERATOR;
         }
         else if (opValue == ">=") {
-          opType = TRI_SL_GE_OPERATOR;
+          opType = TRI_GE_INDEX_OPERATOR;
         }
         else if (opValue == "<") {
-          opType = TRI_SL_LT_OPERATOR;
+          opType = TRI_LT_INDEX_OPERATOR;
         }
         else if (opValue == "<=") {
-          opType = TRI_SL_LE_OPERATOR;
+          opType = TRI_LE_INDEX_OPERATOR;
         }
         else {
           // wrong operator type
@@ -332,14 +332,14 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
             goto MEM_ERROR;
           }
-          lastOperator = TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
+          lastOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
           numEq = 0;
         }
 
-        TRI_sl_operator_t* current = 0;
+        TRI_index_operator_t* current = 0;
 
         // create the operator for the current condition
-        current = TRI_CreateSLOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
+        current = TRI_CreateIndexOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
         if (current == 0) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
           goto MEM_ERROR;
@@ -350,10 +350,10 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         }
         else {
           // merge the current operator with previous operators using logical AND
-          TRI_sl_operator_t* newOperator = TRI_CreateSLOperator(TRI_SL_AND_OPERATOR, lastOperator, current, NULL, shaper, NULL, 2, NULL);
+          TRI_index_operator_t* newOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lastOperator, current, NULL, shaper, NULL, 2, NULL);
 
           if (newOperator == 0) {
-            TRI_FreeSLOperator(current);
+            TRI_FreeIndexOperator(current);
             goto MEM_ERROR;
           }
           else {
@@ -374,7 +374,7 @@ static TRI_sl_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
     if (clonedParams == 0) {
       goto MEM_ERROR;
     }
-    lastOperator = TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
+    lastOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -385,7 +385,7 @@ MEM_ERROR:
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
   if (lastOperator == 0) {
-    TRI_FreeSLOperator(lastOperator);
+    TRI_FreeIndexOperator(lastOperator);
   }
 
   return 0;
@@ -398,9 +398,9 @@ MEM_ERROR:
 /// at the end, one skiplist equality operator is created for the entire list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_sl_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
-                                                TRI_shaper_t* shaper,
-                                                v8::Handle<v8::Object> example) {
+static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
+                                                   TRI_shaper_t* shaper,
+                                                   v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (parameters == 0) {
@@ -429,7 +429,7 @@ static TRI_sl_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
 
   if (parameters->_value._objects._length > 0) {
     // example means equality comparisons only
-    return TRI_CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
+    return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -573,7 +573,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
   }
 
-  TRI_sl_operator_t* skiplistOperator;
+  TRI_index_operator_t* skiplistOperator;
   v8::Handle<v8::Object> values = argv[1]->ToObject();
   if (type == QUERY_EXAMPLE) {
     skiplistOperator = SetupExampleSkiplist(idx, shaper, values);

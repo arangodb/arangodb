@@ -25,7 +25,7 @@ mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
 ### @brief cleanup
 ################################################################################
 
-CLEANUP += $(JAVASCRIPT_HEADER) .setup-mr-directories
+CLEANUP += $(MRUBY_HEADER) .setup-mr-directories
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

@@ -1,3 +1,13 @@
+.cuttedContent, .prettify ul li {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.read_only {
+  min-width: 70px !important; 
+}
+
 .DataTables_sort_wrapper {
   text-align: center !important; 
 }
@@ -131,7 +141,7 @@ pre ul li span{
   vertical-align: middle;
 }
 
-#addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton {
+#cancelEditedDocument, #undoEditedDocument, #addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton, #saveNewCollection, #cancelNewCollection, #cancelNewDocument, #undoNewDocument {
   font-size: 0.8em; 
 }
 
@@ -213,6 +223,7 @@ pre ul li span{
 }
 
 #menue {
+  min-width: 1024px; 
   height:55px;
   vertical-align: middle;
   text-align: center;  
@@ -220,6 +231,7 @@ pre ul li span{
 }
 
 #brotkruemelnavi {
+  min-width: 1024px; 
   font-size: 1em;
   height:30px;
   line-height: 30px;
@@ -347,6 +359,7 @@ form {
 }
 
 #formatshellJSONyesno {
+  font-weight:0.8em; 
   float:right; 
   padding-right:10px; 
   margin-top: -3px; 
@@ -456,6 +469,7 @@ form {
 }
 
 #centerView {
+  min-width: 1024px; 
   //background: #f1eee0 url(../media/images/bg.jpg);
   background-color: white;
   overflow-y: auto; 

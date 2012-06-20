@@ -41,7 +41,8 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
-                                      DispatcherImpl::newDispatcherThread_fptr creator,
+                                      string const& name,
+                                      Dispatcher::newDispatcherThread_fptr creator,
                                       size_t nrThreads)
       : stopping(0),
         monopolizer(0),
@@ -52,6 +53,7 @@ namespace triagens {
         nrSpecial(0),
         nrThreads(nrThreads),
         dispatcher(dispatcher),
+        _name(name),
         createDispatcherThread(creator) {
     }
 
@@ -86,7 +88,7 @@ namespace triagens {
         return;
       }
 
-      LOGGER_DEBUG << "beginning shutdown sequence of dispatcher queue";
+      LOGGER_DEBUG << "beginning shutdown sequence of dispatcher queue '" << _name <<"'"; 
 
       // broadcast the we want to stop
       size_t const MAX_TRIES = 10;
@@ -97,7 +99,7 @@ namespace triagens {
         {
           CONDITION_LOCKER(guard, accessQueue);
 
-          LOGGER_TRACE << "shutting down dispatcher queue, "
+          LOGGER_TRACE << "shutting down dispatcher queue '" << _name << "', "
                        << nrRunning << " running threads, "
                        << nrWaiting << " waiting threads, "
                        << nrSpecial << " special threads";
@@ -112,7 +114,7 @@ namespace triagens {
         usleep(10000);
       }
 
-      LOGGER_DEBUG << "shutting down dispatcher queue, "
+      LOGGER_DEBUG << "shutting down dispatcher queue '" << _name << "', "
                    << nrRunning << " running threads, "
                    << nrWaiting << " waiting threads, "
                    << nrSpecial << " special threads";

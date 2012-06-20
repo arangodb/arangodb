@@ -45,7 +45,7 @@ namespace triagens {
     /////////////////////////////////////////////////////////////////////////////
 
     class DispatcherThread : public basics::Thread {
-      friend class DispatcherImpl;
+      friend class Dispatcher;
       friend class DispatcherQueue;
 
       DispatcherThread (DispatcherThread const&);

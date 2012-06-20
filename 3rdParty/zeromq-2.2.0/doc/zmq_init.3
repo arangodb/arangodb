@@ -1,0 +1,60 @@
+'\" t
+.\"     Title: zmq_init
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/04/2012
+.\"    Manual: 0MQ Manual
+.\"    Source: 0MQ 2.2.0
+.\"  Language: English
+.\"
+.TH "ZMQ_INIT" "3" "04/04/2012" "0MQ 2\&.2\&.0" "0MQ Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+zmq_init \- initialise 0MQ context
+.SH "SYNOPSIS"
+.sp
+\fBvoid *zmq_init (int \fR\fB\fIio_threads\fR\fR\fB);\fR
+.SH "DESCRIPTION"
+.sp
+The \fIzmq_init()\fR function initialises a 0MQ \fIcontext\fR\&.
+.sp
+The \fIio_threads\fR argument specifies the size of the 0MQ thread pool to handle I/O operations\&. If your application is using only the \fIinproc\fR transport for messaging you may set this to zero, otherwise set it to at least one\&.
+.PP
+\fBThread safety\fR. A 0MQ
+\fIcontext\fR
+is thread safe and may be shared among as many application threads as necessary, without any additional locking required on the part of the caller\&.
+.SH "RETURN VALUE"
+.sp
+The \fIzmq_init()\fR function shall return an opaque handle to the initialised \fIcontext\fR if successful\&. Otherwise it shall return NULL and set \fIerrno\fR to one of the values defined below\&.
+.SH "ERRORS"
+.PP
+\fBEINVAL\fR
+.RS 4
+An invalid number of
+\fIio_threads\fR
+was requested\&.
+.RE
+.SH "SEE ALSO"
+.sp
+\fBzmq\fR(7) \fBzmq_term\fR(3)
+.SH "AUTHORS"
+.sp
+This manual page was written by the 0MQ community\&.
