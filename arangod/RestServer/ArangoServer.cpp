@@ -69,6 +69,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -465,6 +466,13 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
+  // V8 engine
+  // .............................................................................
+
+  _applicationV8 = new ApplicationV8(_binaryPath);
+  _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
   // ZeroMQ

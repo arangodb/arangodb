@@ -637,6 +637,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/barrier.c \
@@ -697,6 +698,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplistIndex.$(OBJEXT) \
+	arangod/V8Server/bin_arangod-ApplicationV8.$(OBJEXT) \
 	arangod/V8Server/bin_arangod-v8-actions.$(OBJEXT) \
 	arangod/V8Server/bin_arangod-v8-objects.$(OBJEXT) \
 	arangod/V8Server/bin_arangod-v8-query.$(OBJEXT) \
@@ -1418,6 +1420,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/barrier.c \
@@ -2551,6 +2554,9 @@ arangod/V8Server/$(am__dirstamp):
 arangod/V8Server/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/V8Server/$(DEPDIR)
 	@: > arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
+arangod/V8Server/bin_arangod-ApplicationV8.$(OBJEXT):  \
+	arangod/V8Server/$(am__dirstamp) \
+	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/bin_arangod-v8-actions.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
@@ -2760,6 +2766,7 @@ mostlyclean-compile:
 	-rm -f arangod/RestServer/bin_arangod-arango.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplistIndex.$(OBJEXT)
+	-rm -f arangod/V8Server/bin_arangod-ApplicationV8.$(OBJEXT)
 	-rm -f arangod/V8Server/bin_arangod-v8-actions.$(OBJEXT)
 	-rm -f arangod/V8Server/bin_arangod-v8-objects.$(OBJEXT)
 	-rm -f arangod/V8Server/bin_arangod-v8-query.$(OBJEXT)
@@ -3017,6 +3024,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplistIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-objects.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-query.Po@am__quote@
@@ -4234,6 +4242,22 @@ arangod/RestServer/bin_arangod-arango.obj: arangod/RestServer/arango.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/arango.cpp' object='arangod/RestServer/bin_arangod-arango.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-arango.obj `if test -f 'arangod/RestServer/arango.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arango.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arango.cpp'; fi`
+
+arangod/V8Server/bin_arangod-ApplicationV8.o: arangod/V8Server/ApplicationV8.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/bin_arangod-ApplicationV8.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Tpo -c -o arangod/V8Server/bin_arangod-ApplicationV8.o `test -f 'arangod/V8Server/ApplicationV8.cpp' || echo '$(srcdir)/'`arangod/V8Server/ApplicationV8.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Tpo arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/V8Server/ApplicationV8.cpp' object='arangod/V8Server/bin_arangod-ApplicationV8.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/bin_arangod-ApplicationV8.o `test -f 'arangod/V8Server/ApplicationV8.cpp' || echo '$(srcdir)/'`arangod/V8Server/ApplicationV8.cpp
+
+arangod/V8Server/bin_arangod-ApplicationV8.obj: arangod/V8Server/ApplicationV8.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/bin_arangod-ApplicationV8.obj -MD -MP -MF arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Tpo -c -o arangod/V8Server/bin_arangod-ApplicationV8.obj `if test -f 'arangod/V8Server/ApplicationV8.cpp'; then $(CYGPATH_W) 'arangod/V8Server/ApplicationV8.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/ApplicationV8.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Tpo arangod/V8Server/$(DEPDIR)/bin_arangod-ApplicationV8.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/V8Server/ApplicationV8.cpp' object='arangod/V8Server/bin_arangod-ApplicationV8.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/bin_arangod-ApplicationV8.obj `if test -f 'arangod/V8Server/ApplicationV8.cpp'; then $(CYGPATH_W) 'arangod/V8Server/ApplicationV8.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/ApplicationV8.cpp'; fi`
 
 arangod/V8Server/bin_arangod-v8-actions.o: arangod/V8Server/v8-actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/bin_arangod-v8-actions.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/bin_arangod-v8-actions.Tpo -c -o arangod/V8Server/bin_arangod-v8-actions.o `test -f 'arangod/V8Server/v8-actions.cpp' || echo '$(srcdir)/'`arangod/V8Server/v8-actions.cpp
