@@ -112,24 +112,6 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_t* Vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 gc interval
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t GcIntervalJS;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 module path
-////////////////////////////////////////////////////////////////////////////////
-
-static string StartupModulesJS;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 startup loader
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -189,36 +171,6 @@ static MRLoader ActionLoaderMR;
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript action dispatcher thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-static DispatcherThread* ClientActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
-  return new JavascriptDispatcherThread(queue,
-                                        Vocbase,
-                                        GcIntervalJS,
-                                        "CLIENT-JAVASCRIPT",
-                                        AllowedClientActions,
-                                        StartupModulesJS,
-                                        &StartupLoaderJS,
-                                        &ActionLoaderJS);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript system action dispatcher thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-static DispatcherThread* SystemActionDispatcherThreadCreatorJS (DispatcherQueue* queue) {
-  return new JavascriptDispatcherThread(queue,
-                                        Vocbase,
-                                        GcIntervalJS,
-                                        "SYSTEM-JAVASCRIPT",
-                                        AllowedAdminActions,
-                                        StartupModulesJS,
-                                        &StartupLoaderJS,
-                                        &ActionLoaderJS);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript action dispatcher thread creator
@@ -337,11 +289,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpPort("127.0.0.1:8529"),
     _adminPort(),
     _dispatcherThreads(8),
-    _startupPathJS(),
-    _startupModulesJS("js/modules"),
-    _actionPathJS(),
     _actionThreadsJS(8),
-    _gcIntervalJS(1000),
 #ifdef TRI_ENABLE_MRUBY
     _startupPathMR(),
     _startupModulesMR("mr/modules"),
@@ -386,19 +334,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
   // .............................................................................
 
 #ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_SYSTEM_ACTION_PATH
-    _actionPathJS = TRI_SYSTEM_ACTION_PATH;
-#else
-    _actionPathJS = _binaryPath + "/../js/actions/system";
-#endif
-
-#ifdef TRI_STARTUP_MODULES_PATH
-    _startupModulesJS = TRI_STARTUP_MODULES_PATH;
-#else
-    _startupModulesJS = _binaryPath + "/../js/server/modules"
-                + ";" + _binaryPath + "/../js/common/modules";
-#endif
 
 #ifdef TRI_ENABLE_MRUBY
     _actionPathMR = _binaryPath + "/../mr/actions/system";
@@ -630,16 +565,6 @@ void ArangoServer::buildApplicationServer () {
   // JavaScript options
   // .............................................................................
 
-  additional["JAVASCRIPT Options:help-admin"]
-    ("javascript.gc-interval", &_gcIntervalJS, "JavaScript garbage collection interval (each x requests)")
-  ;
-
-  additional["DIRECTORY Options:help-admin"]
-    ("javascript.action-directory", &_actionPathJS, "path to the JavaScript action directory")
-    ("javascript.modules-path", &_startupModulesJS, "one or more directories separated by (semi-) colons")
-    ("javascript.startup-directory", &_startupPathJS, "path to the directory containing alternate JavaScript startup scripts")
-  ;
-
   additional["THREAD Options:help-admin"]
     ("javascript.action-threads", &_actionThreadsJS, "number of threads for JavaScript actions")
   ;
@@ -694,27 +619,6 @@ void ArangoServer::buildApplicationServer () {
   }
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
-  }
-
-  if (_startupPathJS.empty()) {
-    LOGGER_INFO << "using built-in JavaScript startup files";
-    StartupLoaderJS.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-    StartupLoaderJS.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-    StartupLoaderJS.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-    StartupLoaderJS.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
-    StartupLoaderJS.defineScript("server/server.js", JS_server_server);
-  }
-  else {
-    LOGGER_INFO << "using JavaScript startup files at '" << _startupPathJS << "'";
-    StartupLoaderJS.setDirectory(_startupPathJS);
-  }
-
-  if (! _actionPathJS.empty()) {
-    ActionLoaderJS.setDirectory(_actionPathJS);
-    LOGGER_INFO << "using JavaScript action files at '" << _actionPathJS << "'";
-  }
-  else {
-    LOGGER_INFO << "actions are disabled, empty system action path";
   }
 
 #ifdef TRI_ENABLE_MRUBY
@@ -811,18 +715,23 @@ int ArangoServer::startupServer () {
   openDatabase();
 
   // .............................................................................
-  // create the action dispatcher thread info
-  // .............................................................................
-
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
-
-  Vocbase = _vocbase;
-  StartupModulesJS = _startupModulesJS;
-  GcIntervalJS = _gcIntervalJS;
-
-  // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
+
+  if (_dispatcherThreads < 1) {
+    _dispatcherThreads = 1;
+  }
+
+  size_t actionConcurrency = _dispatcherThreads;
+
+  if (! shareAdminPort) {
+    if (useAdminPort) {
+      actionConcurrency += 2;
+    }
+  }
+
+  _applicationV8->setVocbase(_vocbase);
+  _applicationV8->setConcurrency(actionConcurrency);
 
   _applicationServer->prepare();
 
@@ -834,15 +743,6 @@ int ArangoServer::startupServer () {
 
   Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
 
-  if (_actionThreadsJS < 1) {
-    _actionThreadsJS = 1;
-  }
-
-  // if we share a the server port for admin and client, only create a CLIENT queue
-  if (0 < _actionThreadsJS) {
-    dispatcher->addQueue("CLIENT-JAVASCRIPT", ClientActionDispatcherThreadCreatorJS, _actionThreadsJS);
-  }
-
 #if TRI_ENABLE_MRUBY
   if (0 < _actionThreadsMR) {
     dispatcher->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
@@ -852,7 +752,7 @@ int ArangoServer::startupServer () {
   // use a separate queue for administrator requests
   if (! shareAdminPort) {
     if (useAdminPort) {
-      dispatcher->addQueue("SYSTEM-JAVASCRIPT", SystemActionDispatcherThreadCreatorJS, 2);
+      dispatcher->addQueue("SYSTEM", 2);
 
 #if TRI_ENABLE_MRUBY
       dispatcher->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
@@ -869,14 +769,14 @@ int ArangoServer::startupServer () {
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
-  httpOptions._queue = "CLIENT-";
+  httpOptions._queue = "STANDARD";
 
   // if we want a http port create the factory
   if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    AllowedClientActions.insert("user");
-    AllowedClientActions.insert("api");
+    httpOptions._contexts.insert("user");
+    httpOptions._contexts.insert("api");
 
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
@@ -885,7 +785,7 @@ int ArangoServer::startupServer () {
 
     if (shareAdminPort) {
       DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-      AllowedClientActions.insert("admin");
+      httpOptions._contexts.insert("admin");
     }
 
     // add action handler
@@ -903,14 +803,14 @@ int ArangoServer::startupServer () {
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t adminOptions;
   adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM-";
+  adminOptions._queue = "SYSTEM";
 
   // if we want a admin http port create the factory
   if (useAdminPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    AllowedAdminActions.insert("api");
-    AllowedAdminActions.insert("admin");
+    adminOptions._contexts.insert("api");
+    adminOptions._contexts.insert("admin");
 
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
@@ -1015,6 +915,7 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::executeShell (shell_operation_mode_e mode) {
+#if 0
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
@@ -1208,6 +1109,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
   Random::shutdown();
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

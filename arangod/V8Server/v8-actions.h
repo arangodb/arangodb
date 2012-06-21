@@ -33,6 +33,16 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace arango {
+    class ApplicationV8;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                           ACTIONS
 // -----------------------------------------------------------------------------
 
@@ -49,9 +59,7 @@
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        std::string const& actionQueue,
-                        std::set<std::string> const& allowedContexts);
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, triagens::arango::ApplicationV8*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
