@@ -44,21 +44,24 @@ class SafepointGenerator;
 class LCodeGen BASE_EMBEDDED {
  public:
   LCodeGen(LChunk* chunk, MacroAssembler* assembler, CompilationInfo* info)
-      : chunk_(chunk),
+      : zone_(info->zone()),
+        chunk_(chunk),
         masm_(assembler),
         info_(info),
         current_block_(-1),
         current_instruction_(-1),
         instructions_(chunk->instructions()),
-        deoptimizations_(4),
-        deopt_jump_table_(4),
-        deoptimization_literals_(8),
+        deoptimizations_(4, info->zone()),
+        deopt_jump_table_(4, info->zone()),
+        deoptimization_literals_(8, info->zone()),
         inlined_function_count_(0),
         scope_(info->scope()),
         status_(UNUSED),
-        deferred_(8),
+        translations_(info->zone()),
+        deferred_(8, info->zone()),
         osr_pc_offset_(-1),
         last_lazy_deopt_pc_(0),
+        safepoints_(info->zone()),
         resolver_(this),
         expected_safepoint_kind_(Safepoint::kSimple) {
     PopulateDeoptimizationLiteralsWithInlinedFunctions();
@@ -71,6 +74,7 @@ class LCodeGen BASE_EMBEDDED {
   Isolate* isolate() const { return info_->isolate(); }
   Factory* factory() const { return isolate()->factory(); }
   Heap* heap() const { return isolate()->heap(); }
+  Zone* zone() const { return zone_; }
 
   // Support for converting LOperands to assembler types.
   // LOperand must be a register.
@@ -110,8 +114,10 @@ class LCodeGen BASE_EMBEDDED {
   void DoDeferredTaggedToI(LTaggedToI* instr);
   void DoDeferredMathAbsTaggedHeapNumber(LUnaryMathOperation* instr);
   void DoDeferredStackCheck(LStackCheck* instr);
+  void DoDeferredRandom(LRandom* instr);
   void DoDeferredStringCharCodeAt(LStringCharCodeAt* instr);
   void DoDeferredStringCharFromCode(LStringCharFromCode* instr);
+  void DoDeferredAllocateObject(LAllocateObject* instr);
   void DoDeferredInstanceOfKnownGlobal(LInstanceOfKnownGlobal* instr,
                                        Label* map_check);
 
@@ -171,7 +177,7 @@ class LCodeGen BASE_EMBEDDED {
   void Abort(const char* format, ...);
   void Comment(const char* format, ...);
 
-  void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code); }
+  void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code, zone()); }
 
   // Code generation passes.  Returns true if code generation should
   // continue.
@@ -210,12 +216,18 @@ class LCodeGen BASE_EMBEDDED {
                                int argc,
                                LInstruction* instr);
 
+  enum A1State {
+    A1_UNINITIALIZED,
+    A1_CONTAINS_TARGET
+  };
+
   // Generate a direct call to a known function.  Expects the function
   // to be in a1.
   void CallKnownFunction(Handle<JSFunction> function,
                          int arity,
                          LInstruction* instr,
-                         CallKind call_kind);
+                         CallKind call_kind,
+                         A1State a1_state);
 
   void LoadHeapObject(Register result, Handle<HeapObject> object);
 
@@ -321,7 +333,8 @@ class LCodeGen BASE_EMBEDDED {
   void EmitLoadFieldOrConstantFunction(Register result,
                                        Register object,
                                        Handle<Map> type,
-                                       Handle<String> name);
+                                       Handle<String> name,
+                                       LEnvironment* env);
 
   // Emits optimized code to deep-copy the contents of statically known
   // object graphs (e.g. object literal boilerplate).
@@ -340,6 +353,7 @@ class LCodeGen BASE_EMBEDDED {
 
   void EnsureSpaceForLazyDeopt();
 
+  Zone* zone_;
   LChunk* const chunk_;
   MacroAssembler* const masm_;
   CompilationInfo* const info_;

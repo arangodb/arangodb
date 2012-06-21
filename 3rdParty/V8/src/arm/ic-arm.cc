@@ -399,7 +399,7 @@ void CallICBase::GenerateMonomorphicCacheProbe(MacroAssembler* masm,
                                          NORMAL,
                                          argc);
   Isolate::Current()->stub_cache()->GenerateProbe(
-      masm, flags, r1, r2, r3, r4, r5);
+      masm, flags, r1, r2, r3, r4, r5, r6);
 
   // If the stub cache probing failed, the receiver might be a value.
   // For value objects, we use the map of the prototype objects for
@@ -438,7 +438,7 @@ void CallICBase::GenerateMonomorphicCacheProbe(MacroAssembler* masm,
   // Probe the stub cache for the value object.
   __ bind(&probe);
   Isolate::Current()->stub_cache()->GenerateProbe(
-      masm, flags, r1, r2, r3, r4, r5);
+      masm, flags, r1, r2, r3, r4, r5, r6);
 
   __ bind(&miss);
 }
@@ -706,7 +706,7 @@ void LoadIC::GenerateMegamorphic(MacroAssembler* masm) {
   Code::Flags flags =
       Code::ComputeFlags(Code::LOAD_IC, MONOMORPHIC);
   Isolate::Current()->stub_cache()->GenerateProbe(
-      masm, flags, r0, r2, r3, r4, r5);
+      masm, flags, r0, r2, r3, r4, r5, r6);
 
   // Cache miss: Jump to runtime.
   GenerateMiss(masm);
@@ -774,7 +774,7 @@ static MemOperand GenerateMappedArgumentsLookup(MacroAssembler* masm,
   __ b(lt, slow_case);
 
   // Check that the key is a positive smi.
-  __ tst(key, Operand(0x8000001));
+  __ tst(key, Operand(0x80000001));
   __ b(ne, slow_case);
 
   // Load the elements into scratch1 and check its map.
@@ -1249,7 +1249,7 @@ void KeyedStoreIC::GenerateTransitionElementsSmiToDouble(MacroAssembler* masm) {
   // Must return the modified receiver in r0.
   if (!FLAG_trace_elements_transitions) {
     Label fail;
-    ElementsTransitionGenerator::GenerateSmiOnlyToDouble(masm, &fail);
+    ElementsTransitionGenerator::GenerateSmiToDouble(masm, &fail);
     __ mov(r0, r2);
     __ Ret();
     __ bind(&fail);
@@ -1462,27 +1462,27 @@ void KeyedStoreIC::GenerateGeneric(MacroAssembler* masm,
   __ CompareRoot(r4, Heap::kHeapNumberMapRootIndex);
   __ b(ne, &non_double_value);
 
-  // Value is a double. Transition FAST_SMI_ONLY_ELEMENTS ->
+  // Value is a double. Transition FAST_SMI_ELEMENTS ->
   // FAST_DOUBLE_ELEMENTS and complete the store.
-  __ LoadTransitionedArrayMapConditional(FAST_SMI_ONLY_ELEMENTS,
+  __ LoadTransitionedArrayMapConditional(FAST_SMI_ELEMENTS,
                                          FAST_DOUBLE_ELEMENTS,
                                          receiver_map,
                                          r4,
                                          &slow);
   ASSERT(receiver_map.is(r3));  // Transition code expects map in r3
-  ElementsTransitionGenerator::GenerateSmiOnlyToDouble(masm, &slow);
+  ElementsTransitionGenerator::GenerateSmiToDouble(masm, &slow);
   __ ldr(elements, FieldMemOperand(receiver, JSObject::kElementsOffset));
   __ jmp(&fast_double_without_map_check);
 
   __ bind(&non_double_value);
-  // Value is not a double, FAST_SMI_ONLY_ELEMENTS -> FAST_ELEMENTS
-  __ LoadTransitionedArrayMapConditional(FAST_SMI_ONLY_ELEMENTS,
+  // Value is not a double, FAST_SMI_ELEMENTS -> FAST_ELEMENTS
+  __ LoadTransitionedArrayMapConditional(FAST_SMI_ELEMENTS,
                                          FAST_ELEMENTS,
                                          receiver_map,
                                          r4,
                                          &slow);
   ASSERT(receiver_map.is(r3));  // Transition code expects map in r3
-  ElementsTransitionGenerator::GenerateSmiOnlyToObject(masm);
+  ElementsTransitionGenerator::GenerateMapChangeElementsTransition(masm);
   __ ldr(elements, FieldMemOperand(receiver, JSObject::kElementsOffset));
   __ jmp(&finish_object_store);
 
@@ -1516,7 +1516,7 @@ void StoreIC::GenerateMegamorphic(MacroAssembler* masm,
       Code::ComputeFlags(Code::STORE_IC, MONOMORPHIC, strict_mode);
 
   Isolate::Current()->stub_cache()->GenerateProbe(
-      masm, flags, r1, r2, r3, r4, r5);
+      masm, flags, r1, r2, r3, r4, r5, r6);
 
   // Cache miss: Jump to runtime.
   GenerateMiss(masm);
@@ -1690,12 +1690,12 @@ void CompareIC::UpdateCaches(Handle<Object> x, Handle<Object> y) {
 
   // Activate inlined smi code.
   if (previous_state == UNINITIALIZED) {
-    PatchInlinedSmiCode(address());
+    PatchInlinedSmiCode(address(), ENABLE_INLINED_SMI_CHECK);
   }
 }
 
 
-void PatchInlinedSmiCode(Address address) {
+void PatchInlinedSmiCode(Address address, InlinedSmiCheck check) {
   Address cmp_instruction_address =
       address + Assembler::kCallTargetAddressOffset;
 
@@ -1729,34 +1729,31 @@ void PatchInlinedSmiCode(Address address) {
   Instr instr_at_patch = Assembler::instr_at(patch_address);
   Instr branch_instr =
       Assembler::instr_at(patch_address + Instruction::kInstrSize);
-  ASSERT(Assembler::IsCmpRegister(instr_at_patch));
-  ASSERT_EQ(Assembler::GetRn(instr_at_patch).code(),
-            Assembler::GetRm(instr_at_patch).code());
+  // This is patching a conditional "jump if not smi/jump if smi" site.
+  // Enabling by changing from
+  //   cmp rx, rx
+  //   b eq/ne, <target>
+  // to
+  //   tst rx, #kSmiTagMask
+  //   b ne/eq, <target>
+  // and vice-versa to be disabled again.
+  CodePatcher patcher(patch_address, 2);
+  Register reg = Assembler::GetRn(instr_at_patch);
+  if (check == ENABLE_INLINED_SMI_CHECK) {
+    ASSERT(Assembler::IsCmpRegister(instr_at_patch));
+    ASSERT_EQ(Assembler::GetRn(instr_at_patch).code(),
+              Assembler::GetRm(instr_at_patch).code());
+    patcher.masm()->tst(reg, Operand(kSmiTagMask));
+  } else {
+    ASSERT(check == DISABLE_INLINED_SMI_CHECK);
+    ASSERT(Assembler::IsTstImmediate(instr_at_patch));
+    patcher.masm()->cmp(reg, reg);
+  }
   ASSERT(Assembler::IsBranch(branch_instr));
   if (Assembler::GetCondition(branch_instr) == eq) {
-    // This is patching a "jump if not smi" site to be active.
-    // Changing
-    //   cmp rx, rx
-    //   b eq, <target>
-    // to
-    //   tst rx, #kSmiTagMask
-    //   b ne, <target>
-    CodePatcher patcher(patch_address, 2);
-    Register reg = Assembler::GetRn(instr_at_patch);
-    patcher.masm()->tst(reg, Operand(kSmiTagMask));
     patcher.EmitCondition(ne);
   } else {
     ASSERT(Assembler::GetCondition(branch_instr) == ne);
-    // This is patching a "jump if smi" site to be active.
-    // Changing
-    //   cmp rx, rx
-    //   b ne, <target>
-    // to
-    //   tst rx, #kSmiTagMask
-    //   b eq, <target>
-    CodePatcher patcher(patch_address, 2);
-    Register reg = Assembler::GetRn(instr_at_patch);
-    patcher.masm()->tst(reg, Operand(kSmiTagMask));
     patcher.EmitCondition(eq);
   }
 }

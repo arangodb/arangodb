@@ -74,11 +74,9 @@ namespace internal {
   V(Map, hash_table_map, HashTableMap)                                         \
   V(FixedArray, empty_fixed_array, EmptyFixedArray)                            \
   V(ByteArray, empty_byte_array, EmptyByteArray)                               \
-  V(FixedDoubleArray, empty_fixed_double_array, EmptyFixedDoubleArray)         \
   V(String, empty_string, EmptyString)                                         \
   V(DescriptorArray, empty_descriptor_array, EmptyDescriptorArray)             \
   V(Smi, stack_limit, StackLimit)                                              \
-  V(Oddball, frame_alignment_marker, FrameAlignmentMarker)                     \
   V(Oddball, arguments_marker, ArgumentsMarker)                                \
   /* The first 32 roots above this line should be boring from a GC point of */ \
   /* view.  This means they are never in new space and never on a page that */ \
@@ -131,6 +129,7 @@ namespace internal {
   V(Map, catch_context_map, CatchContextMap)                                   \
   V(Map, with_context_map, WithContextMap)                                     \
   V(Map, block_context_map, BlockContextMap)                                   \
+  V(Map, module_context_map, ModuleContextMap)                                 \
   V(Map, oddball_map, OddballMap)                                              \
   V(Map, message_object_map, JSMessageObjectMap)                               \
   V(Map, foreign_map, ForeignMap)                                              \
@@ -150,7 +149,8 @@ namespace internal {
   V(Script, empty_script, EmptyScript)                                         \
   V(Smi, real_stack_limit, RealStackLimit)                                     \
   V(StringDictionary, intrinsic_function_names, IntrinsicFunctionNames)        \
-  V(Smi, arguments_adaptor_deopt_pc_offset, ArgumentsAdaptorDeoptPCOffset)
+  V(Smi, arguments_adaptor_deopt_pc_offset, ArgumentsAdaptorDeoptPCOffset)     \
+  V(Smi, construct_stub_deopt_pc_offset, ConstructStubDeoptPCOffset)
 
 #define ROOT_LIST(V)                                  \
   STRONG_ROOT_LIST(V)                                 \
@@ -177,6 +177,7 @@ namespace internal {
   V(eval_symbol, "eval")                                                 \
   V(function_symbol, "function")                                         \
   V(length_symbol, "length")                                             \
+  V(module_symbol, "module")                                             \
   V(name_symbol, "name")                                                 \
   V(native_symbol, "native")                                             \
   V(null_symbol, "null")                                                 \
@@ -205,12 +206,10 @@ namespace internal {
   V(InitializeConstGlobal_symbol, "InitializeConstGlobal")               \
   V(KeyedLoadElementMonomorphic_symbol,                                  \
     "KeyedLoadElementMonomorphic")                                       \
-  V(KeyedLoadElementPolymorphic_symbol,                                  \
-    "KeyedLoadElementPolymorphic")                                       \
   V(KeyedStoreElementMonomorphic_symbol,                                 \
     "KeyedStoreElementMonomorphic")                                      \
-  V(KeyedStoreElementPolymorphic_symbol,                                 \
-    "KeyedStoreElementPolymorphic")                                      \
+  V(KeyedStoreAndGrowElementMonomorphic_symbol,                          \
+    "KeyedStoreAndGrowElementMonomorphic")                               \
   V(stack_overflow_symbol, "kStackOverflowBoilerplate")                  \
   V(illegal_access_symbol, "illegal access")                             \
   V(out_of_memory_symbol, "out-of-memory")                               \
@@ -244,7 +243,8 @@ namespace internal {
   V(compare_ic_symbol, ".compare_ic")                                    \
   V(infinity_symbol, "Infinity")                                         \
   V(minus_infinity_symbol, "-Infinity")                                  \
-  V(hidden_stack_trace_symbol, "v8::hidden_stack_trace")
+  V(hidden_stack_trace_symbol, "v8::hidden_stack_trace")                 \
+  V(query_colon_symbol, "(?:)")
 
 // Forward declarations.
 class GCTracer;
@@ -347,7 +347,7 @@ class PromotionQueue {
           NewSpacePage::FromAddress(reinterpret_cast<Address>(front_));
       ASSERT(!front_page->prev_page()->is_anchor());
       front_ =
-          reinterpret_cast<intptr_t*>(front_page->prev_page()->body_limit());
+          reinterpret_cast<intptr_t*>(front_page->prev_page()->area_end());
     }
     *target = reinterpret_cast<HeapObject*>(*(--front_));
     *size = static_cast<int>(*(--front_));
@@ -486,9 +486,6 @@ class Heap {
   // all available bytes. Check MaxHeapObjectSize() instead.
   intptr_t Available();
 
-  // Returns the maximum object size in paged space.
-  inline int MaxObjectSizeInPagedSpace();
-
   // Returns of size of all objects residing in the heap.
   intptr_t SizeOfObjects();
 
@@ -532,6 +529,8 @@ class Heap {
   // Please note this does not perform a garbage collection.
   MUST_USE_RESULT MaybeObject* AllocateJSObject(
       JSFunction* constructor, PretenureFlag pretenure = NOT_TENURED);
+
+  MUST_USE_RESULT MaybeObject* AllocateJSModule();
 
   // Allocate a JSArray with no elements
   MUST_USE_RESULT MaybeObject* AllocateEmptyJSArray(
@@ -622,7 +621,7 @@ class Heap {
   MUST_USE_RESULT MaybeObject* AllocateMap(
       InstanceType instance_type,
       int instance_size,
-      ElementsKind elements_kind = FAST_ELEMENTS);
+      ElementsKind elements_kind = TERMINAL_FAST_ELEMENTS_KIND);
 
   // Allocates a partial map for bootstrapping.
   MUST_USE_RESULT MaybeObject* AllocatePartialMap(InstanceType instance_type,
@@ -642,6 +641,12 @@ class Heap {
 
   // Allocates a pre-tenured empty AccessorPair.
   MUST_USE_RESULT MaybeObject* AllocateAccessorPair();
+
+  // Allocates an empty TypeFeedbackInfo.
+  MUST_USE_RESULT MaybeObject* AllocateTypeFeedbackInfo();
+
+  // Allocates an AliasedArgumentsEntry.
+  MUST_USE_RESULT MaybeObject* AllocateAliasedArgumentsEntry(int slot);
 
   // Clear the Instanceof cache (used when a prototype changes).
   inline void ClearInstanceofCache();
@@ -817,6 +822,10 @@ class Heap {
 
   // Allocate a global (but otherwise uninitialized) context.
   MUST_USE_RESULT MaybeObject* AllocateGlobalContext();
+
+  // Allocate a module context.
+  MUST_USE_RESULT MaybeObject* AllocateModuleContext(Context* previous,
+                                                     ScopeInfo* scope_info);
 
   // Allocate a function context.
   MUST_USE_RESULT MaybeObject* AllocateFunctionContext(int length,
@@ -1038,8 +1047,14 @@ class Heap {
                              const char* gc_reason = NULL);
 
   static const int kNoGCFlags = 0;
-  static const int kMakeHeapIterableMask = 1;
+  static const int kSweepPreciselyMask = 1;
   static const int kReduceMemoryFootprintMask = 2;
+  static const int kAbortIncrementalMarkingMask = 4;
+
+  // Making the heap iterable requires us to sweep precisely and abort any
+  // incremental marking as well.
+  static const int kMakeHeapIterableMask =
+      kSweepPreciselyMask | kAbortIncrementalMarkingMask;
 
   // Performs a full garbage collection.  If (flags & kMakeHeapIterableMask) is
   // non-zero, then the slower precise sweeper is used, which leaves the heap
@@ -1222,6 +1237,10 @@ class Heap {
   // Verify the heap is in its normal state before or after a GC.
   void Verify();
 
+  // Verify that AccessorPairs are not shared, i.e. make sure that they have
+  // exactly one pointer to them.
+  void VerifyNoAccessorPairSharing();
+
   void OldPointerSpaceCheckStoreBuffer();
   void MapSpaceCheckStoreBuffer();
   void LargeObjectSpaceCheckStoreBuffer();
@@ -1314,7 +1333,8 @@ class Heap {
 
   // Adjusts the amount of registered external memory.
   // Returns the adjusted value.
-  inline int AdjustAmountOfExternalAllocatedMemory(int change_in_bytes);
+  inline intptr_t AdjustAmountOfExternalAllocatedMemory(
+      intptr_t change_in_bytes);
 
   // Allocate uninitialized fixed array.
   MUST_USE_RESULT MaybeObject* AllocateRawFixedArray(int length);
@@ -1322,7 +1342,7 @@ class Heap {
                                                      PretenureFlag pretenure);
 
   inline intptr_t PromotedTotalSize() {
-    return PromotedSpaceSize() + PromotedExternalMemorySize();
+    return PromotedSpaceSizeOfObjects() + PromotedExternalMemorySize();
   }
 
   // True if we have reached the allocation limit in the old generation that
@@ -1335,37 +1355,17 @@ class Heap {
     return old_gen_allocation_limit_ - PromotedTotalSize();
   }
 
-  static const intptr_t kMinimumPromotionLimit = 5 * Page::kPageSize;
-  static const intptr_t kMinimumAllocationLimit =
+  inline intptr_t OldGenerationCapacityAvailable() {
+    return max_old_generation_size_ - PromotedTotalSize();
+  }
+
+  static const intptr_t kMinPromotionLimit = 5 * Page::kPageSize;
+  static const intptr_t kMinAllocationLimit =
       8 * (Page::kPageSize > MB ? Page::kPageSize : MB);
 
-  // When we sweep lazily we initially guess that there is no garbage on the
-  // heap and set the limits for the next GC accordingly.  As we sweep we find
-  // out that some of the pages contained garbage and we have to adjust
-  // downwards the size of the heap.  This means the limits that control the
-  // timing of the next GC also need to be adjusted downwards.
-  void LowerOldGenLimits(intptr_t adjustment) {
-    size_of_old_gen_at_last_old_space_gc_ -= adjustment;
-    old_gen_promotion_limit_ =
-        OldGenPromotionLimit(size_of_old_gen_at_last_old_space_gc_);
-    old_gen_allocation_limit_ =
-        OldGenAllocationLimit(size_of_old_gen_at_last_old_space_gc_);
-  }
-
-  intptr_t OldGenPromotionLimit(intptr_t old_gen_size) {
-    const int divisor = FLAG_stress_compaction ? 10 : 3;
-    intptr_t limit =
-        Max(old_gen_size + old_gen_size / divisor, kMinimumPromotionLimit);
-    limit += new_space_.Capacity();
-    limit *= old_gen_limit_factor_;
-    intptr_t halfway_to_the_max = (old_gen_size + max_old_generation_size_) / 2;
-    return Min(limit, halfway_to_the_max);
-  }
-
-  intptr_t OldGenAllocationLimit(intptr_t old_gen_size) {
+  intptr_t OldGenLimit(intptr_t old_gen_size, intptr_t min_limit) {
     const int divisor = FLAG_stress_compaction ? 8 : 2;
-    intptr_t limit =
-        Max(old_gen_size + old_gen_size / divisor, kMinimumAllocationLimit);
+    intptr_t limit = Max(old_gen_size + old_gen_size / divisor, min_limit);
     limit += new_space_.Capacity();
     limit *= old_gen_limit_factor_;
     intptr_t halfway_to_the_max = (old_gen_size + max_old_generation_size_) / 2;
@@ -1394,6 +1394,12 @@ class Heap {
     kStrongRootListLength = kSymbolTableRootIndex,
     kRootListLength
   };
+
+  STATIC_CHECK(kUndefinedValueRootIndex == Internals::kUndefinedValueRootIndex);
+  STATIC_CHECK(kNullValueRootIndex == Internals::kNullValueRootIndex);
+  STATIC_CHECK(kTrueValueRootIndex == Internals::kTrueValueRootIndex);
+  STATIC_CHECK(kFalseValueRootIndex == Internals::kFalseValueRootIndex);
+  STATIC_CHECK(kempty_symbolRootIndex == Internals::kEmptySymbolRootIndex);
 
   MUST_USE_RESULT MaybeObject* NumberToString(
       Object* number, bool check_number_string_cache = true);
@@ -1426,6 +1432,8 @@ class Heap {
   inline bool NextGCIsLikelyToBeFull() {
     if (FLAG_gc_global) return true;
 
+    if (FLAG_stress_compaction && (gc_count_ & 1) != 0) return true;
+
     intptr_t total_promoted = PromotedTotalSize();
 
     intptr_t adjusted_promotion_limit =
@@ -1436,7 +1444,7 @@ class Heap {
     intptr_t adjusted_allocation_limit =
         old_gen_allocation_limit_ - new_space_.Capacity() / 5;
 
-    if (PromotedSpaceSize() >= adjusted_allocation_limit) return true;
+    if (PromotedSpaceSizeOfObjects() >= adjusted_allocation_limit) return true;
 
     return false;
   }
@@ -1464,10 +1472,16 @@ class Heap {
 
   void ClearNormalizedMapCaches();
 
+  // Clears the cache of ICs related to this map.
+  void ClearCacheOnMap(Map* map) {
+    if (FLAG_cleanup_code_caches_at_gc) {
+      map->ClearCodeCache(this);
+    }
+  }
+
   GCTracer* tracer() { return tracer_; }
 
   // Returns the size of objects residing in non new spaces.
-  intptr_t PromotedSpaceSize();
   intptr_t PromotedSpaceSizeOfObjects();
 
   double total_regexp_code_generated() { return total_regexp_code_generated_; }
@@ -1546,10 +1560,6 @@ class Heap {
   // The roots that have an index less than this are always in old space.
   static const int kOldSpaceRoots = 0x20;
 
-  bool idle_notification_will_schedule_next_gc() {
-    return idle_notification_will_schedule_next_gc_;
-  }
-
   uint32_t HashSeed() {
     uint32_t seed = static_cast<uint32_t>(hash_seed()->value());
     ASSERT(FLAG_randomize_hashes || seed == 0);
@@ -1561,12 +1571,32 @@ class Heap {
     set_arguments_adaptor_deopt_pc_offset(Smi::FromInt(pc_offset));
   }
 
+  void SetConstructStubDeoptPCOffset(int pc_offset) {
+    ASSERT(construct_stub_deopt_pc_offset() == Smi::FromInt(0));
+    set_construct_stub_deopt_pc_offset(Smi::FromInt(pc_offset));
+  }
+
+  // For post mortem debugging.
+  void RememberUnmappedPage(Address page, bool compacted);
+
+  // Global inline caching age: it is incremented on some GCs after context
+  // disposal. We use it to flush inline caches.
+  int global_ic_age() {
+    return global_ic_age_;
+  }
+
+  void AgeInlineCaches() {
+    global_ic_age_ = (global_ic_age_ + 1) & SharedFunctionInfo::ICAgeBits::kMax;
+  }
+
  private:
   Heap();
 
   // This can be calculated directly from a pointer to the heap; however, it is
   // more expedient to get at the isolate directly from within Heap methods.
   Isolate* isolate_;
+
+  Object* roots_[kRootListLength];
 
   intptr_t code_range_size_;
   int reserved_semispace_size_;
@@ -1588,6 +1618,8 @@ class Heap {
   // For keeping track of context disposals.
   int contexts_disposed_;
 
+  int global_ic_age_;
+
   int scan_on_scavenge_pages_;
 
 #if defined(V8_TARGET_ARCH_X64)
@@ -1607,10 +1639,15 @@ class Heap {
   int gc_post_processing_depth_;
 
   // Returns the amount of external memory registered since last global gc.
-  int PromotedExternalMemorySize();
+  intptr_t PromotedExternalMemorySize();
 
   int ms_count_;  // how many mark-sweep collections happened
   unsigned int gc_count_;  // how many gc happened
+
+  // For post mortem debugging.
+  static const int kRememberedUnmappedPages = 128;
+  int remembered_unmapped_pages_index_;
+  Address remembered_unmapped_pages_[kRememberedUnmappedPages];
 
   // Total length of the strings we failed to flatten since the last GC.
   int unflattened_strings_length_;
@@ -1667,16 +1704,14 @@ class Heap {
 
   // The amount of external memory registered through the API kept alive
   // by global handles
-  int amount_of_external_allocated_memory_;
+  intptr_t amount_of_external_allocated_memory_;
 
   // Caches the amount of external memory registered at the last global gc.
-  int amount_of_external_allocated_memory_at_last_global_gc_;
+  intptr_t amount_of_external_allocated_memory_at_last_global_gc_;
 
   // Indicates that an allocation has failed in the old generation since the
   // last GC.
   int old_gen_exhausted_;
-
-  Object* roots_[kRootListLength];
 
   Object* global_contexts_list_;
 
@@ -1758,7 +1793,6 @@ class Heap {
 
 
   inline void UpdateOldSpaceLimits();
-
 
   // Allocate an uninitialized object in map space.  The behavior is identical
   // to Heap::AllocateRaw(size_in_bytes, MAP_SPACE), except that (a) it doesn't
@@ -1931,15 +1965,23 @@ class Heap {
     return (scavenges_since_last_idle_round_ >= kIdleScavengeThreshold);
   }
 
-  bool WorthStartingGCWhenIdle() {
-    if (contexts_disposed_ > 0) {
-      return true;
-    }
-    return incremental_marking()->WorthActivating();
+  // Estimates how many milliseconds a Mark-Sweep would take to complete.
+  // In idle notification handler we assume that this function will return:
+  // - a number less than 10 for small heaps, which are less than 8Mb.
+  // - a number greater than 10 for large heaps, which are greater than 32Mb.
+  int TimeMarkSweepWouldTakeInMs() {
+    // Rough estimate of how many megabytes of heap can be processed in 1 ms.
+    static const int kMbPerMs = 2;
+
+    int heap_size_mb = static_cast<int>(SizeOfObjects() / MB);
+    return heap_size_mb / kMbPerMs;
   }
 
   // Returns true if no more GC work is left.
   bool IdleGlobalGC();
+
+  void AdvanceIdleIncrementalMarking(intptr_t step_size);
+
 
   static const int kInitialSymbolTableSize = 2048;
   static const int kInitialEvalCacheSize = 64;
@@ -1971,7 +2013,6 @@ class Heap {
   unsigned int last_idle_notification_gc_count_;
   bool last_idle_notification_gc_count_init_;
 
-  bool idle_notification_will_schedule_next_gc_;
   int mark_sweeps_since_idle_round_started_;
   int ms_count_at_last_idle_notification_;
   unsigned int gc_count_at_last_idle_gc_;

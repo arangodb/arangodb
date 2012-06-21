@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -276,7 +276,7 @@ void ArmDebugger::Debug() {
   // make them invisible to all commands.
   UndoBreakpoints();
 
-  while (!done) {
+  while (!done && !sim_->has_bad_pc()) {
     if (last_pc != sim_->get_pc()) {
       disasm::NameConverter converter;
       disasm::Disassembler dasm(converter);
@@ -1277,9 +1277,9 @@ void Simulator::WriteDW(int32_t addr, int32_t value1, int32_t value2) {
 
 // Returns the limit of the stack area to enable checking for stack overflows.
 uintptr_t Simulator::StackLimit() const {
-  // Leave a safety margin of 512 bytes to prevent overrunning the stack when
+  // Leave a safety margin of 1024 bytes to prevent overrunning the stack when
   // pushing values.
-  return reinterpret_cast<uintptr_t>(stack_) + 512;
+  return reinterpret_cast<uintptr_t>(stack_) + 1024;
 }
 
 

@@ -72,6 +72,10 @@ class DeclarationContext {
 
   void InitializeIfNeeded();
 
+  // Perform optional initialization steps on the context after it has
+  // been created. Defaults to none but may be overwritten.
+  virtual void PostInitializeContext(Handle<Context> context) {}
+
   // Get the holder for the interceptor. Default to the instance template
   // but may be overwritten.
   virtual Local<ObjectTemplate> GetHolder(Local<FunctionTemplate> function) {
@@ -120,6 +124,7 @@ void DeclarationContext::InitializeIfNeeded() {
   context_ = Context::New(0, function->InstanceTemplate(), Local<Value>());
   context_->Enter();
   is_initialized_ = true;
+  PostInitializeContext(context_);
 }
 
 
@@ -521,6 +526,7 @@ class ExistsInPrototypeContext: public DeclarationContext {
 
 
 TEST(ExistsInPrototype) {
+  i::FLAG_es52_globals = true;
   HandleScope scope;
 
   // Sanity check to make sure that the holder of the interceptor
@@ -535,17 +541,17 @@ TEST(ExistsInPrototype) {
 
   { ExistsInPrototypeContext context;
     context.Check("var x; x",
-                  1,  // get
                   0,
-                  1,  // declaration
-                  EXPECT_EXCEPTION);
+                  0,
+                  0,
+                  EXPECT_RESULT, Undefined());
   }
 
   { ExistsInPrototypeContext context;
     context.Check("var x = 0; x",
                   0,
                   0,
-                  1,  // declaration
+                  0,
                   EXPECT_RESULT, Number::New(0));
   }
 
@@ -553,7 +559,7 @@ TEST(ExistsInPrototype) {
     context.Check("const x; x",
                   0,
                   0,
-                  1,  // declaration
+                  0,
                   EXPECT_RESULT, Undefined());
   }
 
@@ -561,7 +567,7 @@ TEST(ExistsInPrototype) {
     context.Check("const x = 0; x",
                   0,
                   0,
-                  1,  // declaration
+                  0,
                   EXPECT_RESULT, Number::New(0));
   }
 }
@@ -583,13 +589,95 @@ class AbsentInPrototypeContext: public DeclarationContext {
 
 
 TEST(AbsentInPrototype) {
+  i::FLAG_es52_globals = true;
   HandleScope scope;
 
   { AbsentInPrototypeContext context;
     context.Check("if (false) { var x = 0; }; x",
                   0,
                   0,
-                  1,  // declaration
+                  0,
                   EXPECT_RESULT, Undefined());
+  }
+}
+
+
+
+class ExistsInHiddenPrototypeContext: public DeclarationContext {
+ public:
+  ExistsInHiddenPrototypeContext() {
+    hidden_proto_ = FunctionTemplate::New();
+    hidden_proto_->SetHiddenPrototype(true);
+  }
+
+ protected:
+  virtual v8::Handle<Integer> Query(Local<String> key) {
+    // Let it seem that the property exists in the hidden prototype object.
+    return Integer::New(v8::None);
+  }
+
+  // Install the hidden prototype after the global object has been created.
+  virtual void PostInitializeContext(Handle<Context> context) {
+    Local<Object> global_object = context->Global();
+    Local<Object> hidden_proto = hidden_proto_->GetFunction()->NewInstance();
+    context->DetachGlobal();
+    context->Global()->SetPrototype(hidden_proto);
+    context->ReattachGlobal(global_object);
+  }
+
+  // Use the hidden prototype as the holder for the interceptors.
+  virtual Local<ObjectTemplate> GetHolder(Local<FunctionTemplate> function) {
+    return hidden_proto_->InstanceTemplate();
+  }
+
+ private:
+  Local<FunctionTemplate> hidden_proto_;
+};
+
+
+TEST(ExistsInHiddenPrototype) {
+  i::FLAG_es52_globals = true;
+  HandleScope scope;
+
+  { ExistsInHiddenPrototypeContext context;
+    context.Check("var x; x",
+                  1,  // access
+                  0,
+                  2,  // declaration + initialization
+                  EXPECT_EXCEPTION);  // x is not defined!
+  }
+
+  { ExistsInHiddenPrototypeContext context;
+    context.Check("var x = 0; x",
+                  1,  // access
+                  1,  // initialization
+                  2,  // declaration + initialization
+                  EXPECT_RESULT, Number::New(0));
+  }
+
+  { ExistsInHiddenPrototypeContext context;
+    context.Check("function x() { }; x",
+                  0,
+                  0,
+                  0,
+                  EXPECT_RESULT);
+  }
+
+  // TODO(mstarzinger): The semantics of global const is vague.
+  { ExistsInHiddenPrototypeContext context;
+    context.Check("const x; x",
+                  0,
+                  0,
+                  1,  // (re-)declaration
+                  EXPECT_RESULT, Undefined());
+  }
+
+  // TODO(mstarzinger): The semantics of global const is vague.
+  { ExistsInHiddenPrototypeContext context;
+    context.Check("const x = 0; x",
+                  0,
+                  0,
+                  1,  // (re-)declaration
+                  EXPECT_RESULT, Number::New(0));
   }
 }

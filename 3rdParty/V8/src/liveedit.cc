@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -30,6 +30,7 @@
 
 #include "liveedit.h"
 
+#include "code-stubs.h"
 #include "compilation-cache.h"
 #include "compiler.h"
 #include "debug.h"
@@ -53,8 +54,8 @@ void SetElementNonStrict(Handle<JSObject> object,
   // Ignore return value from SetElement. It can only be a failure if there
   // are element setters causing exceptions and the debugger context has none
   // of these.
-  Handle<Object> no_failure;
-  no_failure = JSObject::SetElement(object, index, value, kNonStrictMode);
+  Handle<Object> no_failure =
+      JSObject::SetElement(object, index, value, NONE, kNonStrictMode);
   ASSERT(!no_failure.is_null());
   USE(no_failure);
 }
@@ -600,7 +601,7 @@ static void CompileScriptForTracker(Isolate* isolate, Handle<Script> script) {
   PostponeInterruptsScope postpone(isolate);
 
   // Build AST.
-  CompilationInfo info(script);
+  CompilationInfoWithZone info(script);
   info.MarkAsGlobal();
   // Parse and don't allow skipping lazy functions.
   if (ParserApi::Parse(&info, kNoParsingFlags)) {
@@ -824,7 +825,8 @@ class FunctionInfoListener {
 
   // Saves full information about a function: its code, its scope info
   // and a SharedFunctionInfo object.
-  void FunctionInfo(Handle<SharedFunctionInfo> shared, Scope* scope) {
+  void FunctionInfo(Handle<SharedFunctionInfo> shared, Scope* scope,
+                    Zone* zone) {
     if (!shared->IsSharedFunctionInfo()) {
       return;
     }
@@ -835,14 +837,14 @@ class FunctionInfoListener {
         Handle<Object>(shared->scope_info()));
     info.SetSharedFunctionInfo(shared);
 
-    Handle<Object> scope_info_list(SerializeFunctionScope(scope));
+    Handle<Object> scope_info_list(SerializeFunctionScope(scope, zone));
     info.SetOuterScopeInfo(scope_info_list);
   }
 
   Handle<JSArray> GetResult() { return result_; }
 
  private:
-  Object* SerializeFunctionScope(Scope* scope) {
+  Object* SerializeFunctionScope(Scope* scope, Zone* zone) {
     HandleScope handle_scope;
 
     Handle<JSArray> scope_info_list = FACTORY->NewJSArray(10);
@@ -856,8 +858,8 @@ class FunctionInfoListener {
       return HEAP->undefined_value();
     }
     do {
-      ZoneList<Variable*> stack_list(outer_scope->StackLocalCount());
-      ZoneList<Variable*> context_list(outer_scope->ContextLocalCount());
+      ZoneList<Variable*> stack_list(outer_scope->StackLocalCount(), zone);
+      ZoneList<Variable*> context_list(outer_scope->ContextLocalCount(), zone);
       outer_scope->CollectStackAndContextLocals(&stack_list, &context_list);
       context_list.Sort(&Variable::CompareIndex);
 
@@ -892,7 +894,6 @@ class FunctionInfoListener {
 JSArray* LiveEdit::GatherCompileInfo(Handle<Script> script,
                                      Handle<String> source) {
   Isolate* isolate = Isolate::Current();
-  ZoneScope zone_scope(isolate, DELETE_ON_EXIT);
 
   FunctionInfoListener listener;
   Handle<Object> original_source = Handle<Object>(script->source());
@@ -921,33 +922,35 @@ void LiveEdit::WrapSharedFunctionInfos(Handle<JSArray> array) {
 }
 
 
-// Visitor that collects all references to a particular code object,
-// including "CODE_TARGET" references in other code objects.
-// It works in context of ZoneScope.
-class ReferenceCollectorVisitor : public ObjectVisitor {
+// Visitor that finds all references to a particular code object,
+// including "CODE_TARGET" references in other code objects and replaces
+// them on the fly.
+class ReplacingVisitor : public ObjectVisitor {
  public:
-  explicit ReferenceCollectorVisitor(Code* original)
-    : original_(original), rvalues_(10), reloc_infos_(10), code_entries_(10) {
+  explicit ReplacingVisitor(Code* original, Code* substitution)
+    : original_(original), substitution_(substitution) {
   }
 
   virtual void VisitPointers(Object** start, Object** end) {
     for (Object** p = start; p < end; p++) {
       if (*p == original_) {
-        rvalues_.Add(p);
+        *p = substitution_;
       }
     }
   }
 
   virtual void VisitCodeEntry(Address entry) {
     if (Code::GetObjectFromEntryAddress(entry) == original_) {
-      code_entries_.Add(entry);
+      Address substitution_entry = substitution_->instruction_start();
+      Memory::Address_at(entry) = substitution_entry;
     }
   }
 
   virtual void VisitCodeTarget(RelocInfo* rinfo) {
     if (RelocInfo::IsCodeTarget(rinfo->rmode()) &&
         Code::GetCodeFromTargetAddress(rinfo->target_address()) == original_) {
-      reloc_infos_.Add(*rinfo);
+      Address substitution_entry = substitution_->instruction_start();
+      rinfo->set_target_address(substitution_entry);
     }
   }
 
@@ -955,27 +958,9 @@ class ReferenceCollectorVisitor : public ObjectVisitor {
     VisitCodeTarget(rinfo);
   }
 
-  // Post-visiting method that iterates over all collected references and
-  // modifies them.
-  void Replace(Code* substitution) {
-    for (int i = 0; i < rvalues_.length(); i++) {
-      *(rvalues_[i]) = substitution;
-    }
-    Address substitution_entry = substitution->instruction_start();
-    for (int i = 0; i < reloc_infos_.length(); i++) {
-      reloc_infos_[i].set_target_address(substitution_entry);
-    }
-    for (int i = 0; i < code_entries_.length(); i++) {
-      Address entry = code_entries_[i];
-      Memory::Address_at(entry) = substitution_entry;
-    }
-  }
-
  private:
   Code* original_;
-  ZoneList<Object**> rvalues_;
-  ZoneList<RelocInfo> reloc_infos_;
-  ZoneList<Address> code_entries_;
+  Code* substitution_;
 };
 
 
@@ -983,28 +968,21 @@ class ReferenceCollectorVisitor : public ObjectVisitor {
 static void ReplaceCodeObject(Code* original, Code* substitution) {
   ASSERT(!HEAP->InNewSpace(substitution));
 
-  HeapIterator iterator;
   AssertNoAllocation no_allocations_please;
 
-  // A zone scope for ReferenceCollectorVisitor.
-  ZoneScope scope(Isolate::Current(), DELETE_ON_EXIT);
-
-  ReferenceCollectorVisitor visitor(original);
+  ReplacingVisitor visitor(original, substitution);
 
   // Iterate over all roots. Stack frames may have pointer into original code,
   // so temporary replace the pointers with offset numbers
   // in prologue/epilogue.
-  {
-    HEAP->IterateStrongRoots(&visitor, VISIT_ALL);
-  }
+  HEAP->IterateRoots(&visitor, VISIT_ALL);
 
   // Now iterate over all pointers of all objects, including code_target
   // implicit pointers.
+  HeapIterator iterator;
   for (HeapObject* obj = iterator.next(); obj != NULL; obj = iterator.next()) {
     obj->Iterate(&visitor);
   }
-
-  visitor.Replace(substitution);
 }
 
 
@@ -1475,26 +1453,36 @@ static const char* DropFrames(Vector<StackFrame*> frames,
   // Check the nature of the top frame.
   Isolate* isolate = Isolate::Current();
   Code* pre_top_frame_code = pre_top_frame->LookupCode();
+  bool frame_has_padding;
   if (pre_top_frame_code->is_inline_cache_stub() &&
       pre_top_frame_code->ic_state() == DEBUG_BREAK) {
     // OK, we can drop inline cache calls.
     *mode = Debug::FRAME_DROPPED_IN_IC_CALL;
+    frame_has_padding = Debug::FramePaddingLayout::kIsSupported;
   } else if (pre_top_frame_code ==
              isolate->debug()->debug_break_slot()) {
     // OK, we can drop debug break slot.
     *mode = Debug::FRAME_DROPPED_IN_DEBUG_SLOT_CALL;
+    frame_has_padding = Debug::FramePaddingLayout::kIsSupported;
   } else if (pre_top_frame_code ==
       isolate->builtins()->builtin(
           Builtins::kFrameDropper_LiveEdit)) {
     // OK, we can drop our own code.
     *mode = Debug::FRAME_DROPPED_IN_DIRECT_CALL;
+    frame_has_padding = false;
   } else if (pre_top_frame_code ==
       isolate->builtins()->builtin(Builtins::kReturn_DebugBreak)) {
     *mode = Debug::FRAME_DROPPED_IN_RETURN_CALL;
+    frame_has_padding = Debug::FramePaddingLayout::kIsSupported;
   } else if (pre_top_frame_code->kind() == Code::STUB &&
-      pre_top_frame_code->major_key()) {
-    // Entry from our unit tests, it's fine, we support this case.
+      pre_top_frame_code->major_key() == CodeStub::CEntry) {
+    // Entry from our unit tests on 'debugger' statement.
+    // It's fine, we support this case.
     *mode = Debug::FRAME_DROPPED_IN_DIRECT_CALL;
+    // We don't have a padding from 'debugger' statement call.
+    // Here the stub is CEntry, it's not debug-only and can't be padded.
+    // If anyone would complain, a proxy padded stub could be added.
+    frame_has_padding = false;
   } else {
     return "Unknown structure of stack above changing function";
   }
@@ -1504,8 +1492,49 @@ static const char* DropFrames(Vector<StackFrame*> frames,
       - Debug::kFrameDropperFrameSize * kPointerSize  // Size of the new frame.
       + kPointerSize;  // Bigger address end is exclusive.
 
+  Address* top_frame_pc_address = top_frame->pc_address();
+
+  // top_frame may be damaged below this point. Do not used it.
+  ASSERT(!(top_frame = NULL));
+
   if (unused_stack_top > unused_stack_bottom) {
-    return "Not enough space for frame dropper frame";
+    if (frame_has_padding) {
+      int shortage_bytes =
+          static_cast<int>(unused_stack_top - unused_stack_bottom);
+
+      Address padding_start = pre_top_frame->fp() -
+          Debug::FramePaddingLayout::kFrameBaseSize * kPointerSize;
+
+      Address padding_pointer = padding_start;
+      Smi* padding_object =
+          Smi::FromInt(Debug::FramePaddingLayout::kPaddingValue);
+      while (Memory::Object_at(padding_pointer) == padding_object) {
+        padding_pointer -= kPointerSize;
+      }
+      int padding_counter =
+          Smi::cast(Memory::Object_at(padding_pointer))->value();
+      if (padding_counter * kPointerSize < shortage_bytes) {
+        return "Not enough space for frame dropper frame "
+            "(even with padding frame)";
+      }
+      Memory::Object_at(padding_pointer) =
+          Smi::FromInt(padding_counter - shortage_bytes / kPointerSize);
+
+      StackFrame* pre_pre_frame = frames[top_frame_index - 2];
+
+      memmove(padding_start + kPointerSize - shortage_bytes,
+          padding_start + kPointerSize,
+          Debug::FramePaddingLayout::kFrameBaseSize * kPointerSize);
+
+      pre_top_frame->UpdateFp(pre_top_frame->fp() - shortage_bytes);
+      pre_pre_frame->SetCallerFp(pre_top_frame->fp());
+      unused_stack_top -= shortage_bytes;
+
+      STATIC_ASSERT(sizeof(Address) == kPointerSize);
+      top_frame_pc_address -= shortage_bytes / kPointerSize;
+    } else {
+      return "Not enough space for frame dropper frame";
+    }
   }
 
   // Committing now. After this point we should return only NULL value.
@@ -1515,7 +1544,7 @@ static const char* DropFrames(Vector<StackFrame*> frames,
   ASSERT(!FixTryCatchHandler(pre_top_frame, bottom_js_frame));
 
   Handle<Code> code = Isolate::Current()->builtins()->FrameDropper_LiveEdit();
-  top_frame->set_pc(code->entry());
+  *top_frame_pc_address = code->entry();
   pre_top_frame->SetCallerFp(bottom_js_frame->fp());
 
   *restarter_frame_function_pointer =
@@ -1537,16 +1566,36 @@ static bool IsDropableFrame(StackFrame* frame) {
   return !frame->is_exit();
 }
 
-// Fills result array with statuses of functions. Modifies the stack
-// removing all listed function if possible and if do_drop is true.
-static const char* DropActivationsInActiveThread(
-    Handle<JSArray> shared_info_array, Handle<JSArray> result, bool do_drop) {
+
+// Describes a set of call frames that execute any of listed functions.
+// Finding no such frames does not mean error.
+class MultipleFunctionTarget {
+ public:
+  MultipleFunctionTarget(Handle<JSArray> shared_info_array,
+      Handle<JSArray> result)
+      : m_shared_info_array(shared_info_array),
+        m_result(result) {}
+  bool MatchActivation(StackFrame* frame,
+      LiveEdit::FunctionPatchabilityStatus status) {
+    return CheckActivation(m_shared_info_array, m_result, frame, status);
+  }
+  const char* GetNotFoundMessage() {
+    return NULL;
+  }
+ private:
+  Handle<JSArray> m_shared_info_array;
+  Handle<JSArray> m_result;
+};
+
+// Drops all call frame matched by target and all frames above them.
+template<typename TARGET>
+static const char* DropActivationsInActiveThreadImpl(
+    TARGET& target, bool do_drop, Zone* zone) {
   Isolate* isolate = Isolate::Current();
   Debug* debug = isolate->debug();
-  ZoneScope scope(isolate, DELETE_ON_EXIT);
-  Vector<StackFrame*> frames = CreateStackMap();
+  ZoneScope scope(zone, DELETE_ON_EXIT);
+  Vector<StackFrame*> frames = CreateStackMap(zone);
 
-  int array_len = Smi::cast(shared_info_array->length())->value();
 
   int top_frame_index = -1;
   int frame_index = 0;
@@ -1556,8 +1605,8 @@ static const char* DropActivationsInActiveThread(
       top_frame_index = frame_index;
       break;
     }
-    if (CheckActivation(shared_info_array, result, frame,
-                        LiveEdit::FUNCTION_BLOCKED_UNDER_NATIVE_CODE)) {
+    if (target.MatchActivation(
+            frame, LiveEdit::FUNCTION_BLOCKED_UNDER_NATIVE_CODE)) {
       // We are still above break_frame. It is not a target frame,
       // it is a problem.
       return "Debugger mark-up on stack is not found";
@@ -1566,7 +1615,7 @@ static const char* DropActivationsInActiveThread(
 
   if (top_frame_index == -1) {
     // We haven't found break frame, but no function is blocking us anyway.
-    return NULL;
+    return target.GetNotFoundMessage();
   }
 
   bool target_frame_found = false;
@@ -1579,8 +1628,8 @@ static const char* DropActivationsInActiveThread(
       c_code_found = true;
       break;
     }
-    if (CheckActivation(shared_info_array, result, frame,
-                        LiveEdit::FUNCTION_BLOCKED_ON_ACTIVE_STACK)) {
+    if (target.MatchActivation(
+            frame, LiveEdit::FUNCTION_BLOCKED_ON_ACTIVE_STACK)) {
       target_frame_found = true;
       bottom_js_frame_index = frame_index;
     }
@@ -1592,8 +1641,8 @@ static const char* DropActivationsInActiveThread(
     for (; frame_index < frames.length(); frame_index++) {
       StackFrame* frame = frames[frame_index];
       if (frame->is_java_script()) {
-        if (CheckActivation(shared_info_array, result, frame,
-                            LiveEdit::FUNCTION_BLOCKED_UNDER_NATIVE_CODE)) {
+        if (target.MatchActivation(
+                frame, LiveEdit::FUNCTION_BLOCKED_UNDER_NATIVE_CODE)) {
           // Cannot drop frame under C frames.
           return NULL;
         }
@@ -1608,7 +1657,7 @@ static const char* DropActivationsInActiveThread(
 
   if (!target_frame_found) {
     // Nothing to drop.
-    return NULL;
+    return target.GetNotFoundMessage();
   }
 
   Debug::FrameDropMode drop_mode = Debug::FRAMES_UNTOUCHED;
@@ -1631,6 +1680,23 @@ static const char* DropActivationsInActiveThread(
   }
   debug->FramesHaveBeenDropped(new_id, drop_mode,
                                restarter_frame_function_pointer);
+  return NULL;
+}
+
+// Fills result array with statuses of functions. Modifies the stack
+// removing all listed function if possible and if do_drop is true.
+static const char* DropActivationsInActiveThread(
+    Handle<JSArray> shared_info_array, Handle<JSArray> result, bool do_drop,
+    Zone* zone) {
+  MultipleFunctionTarget target(shared_info_array, result);
+
+  const char* message =
+      DropActivationsInActiveThreadImpl(target, do_drop, zone);
+  if (message) {
+    return message;
+  }
+
+  int array_len = Smi::cast(shared_info_array->length())->value();
 
   // Replace "blocked on active" with "replaced on active" status.
   for (int i = 0; i < array_len; i++) {
@@ -1671,7 +1737,7 @@ class InactiveThreadActivationsChecker : public ThreadVisitor {
 
 
 Handle<JSArray> LiveEdit::CheckAndDropActivations(
-    Handle<JSArray> shared_info_array, bool do_drop) {
+    Handle<JSArray> shared_info_array, bool do_drop, Zone* zone) {
   int len = Smi::cast(shared_info_array->length())->value();
 
   Handle<JSArray> result = FACTORY->NewJSArray(len);
@@ -1696,7 +1762,7 @@ Handle<JSArray> LiveEdit::CheckAndDropActivations(
 
   // Try to drop activations from the current stack.
   const char* error_message =
-      DropActivationsInActiveThread(shared_info_array, result, do_drop);
+      DropActivationsInActiveThread(shared_info_array, result, do_drop, zone);
   if (error_message != NULL) {
     // Add error message as an array extra element.
     Vector<const char> vector_message(error_message, StrLength(error_message));
@@ -1704,6 +1770,41 @@ Handle<JSArray> LiveEdit::CheckAndDropActivations(
     SetElementNonStrict(result, len, str);
   }
   return result;
+}
+
+
+// Describes a single callframe a target. Not finding this frame
+// means an error.
+class SingleFrameTarget {
+ public:
+  explicit SingleFrameTarget(JavaScriptFrame* frame) : m_frame(frame) {}
+
+  bool MatchActivation(StackFrame* frame,
+      LiveEdit::FunctionPatchabilityStatus status) {
+    if (frame->fp() == m_frame->fp()) {
+      m_saved_status = status;
+      return true;
+    }
+    return false;
+  }
+  const char* GetNotFoundMessage() {
+    return "Failed to found requested frame";
+  }
+  LiveEdit::FunctionPatchabilityStatus saved_status() {
+    return m_saved_status;
+  }
+ private:
+  JavaScriptFrame* m_frame;
+  LiveEdit::FunctionPatchabilityStatus m_saved_status;
+};
+
+
+// Finds a drops required frame and all frames above.
+// Returns error message or NULL.
+const char* LiveEdit::RestartFrame(JavaScriptFrame* frame, Zone* zone) {
+  SingleFrameTarget target(frame);
+
+  return DropActivationsInActiveThreadImpl(target, true, zone);
 }
 
 
@@ -1724,9 +1825,11 @@ LiveEditFunctionTracker::~LiveEditFunctionTracker() {
 
 
 void LiveEditFunctionTracker::RecordFunctionInfo(
-    Handle<SharedFunctionInfo> info, FunctionLiteral* lit) {
+    Handle<SharedFunctionInfo> info, FunctionLiteral* lit,
+    Zone* zone) {
   if (isolate_->active_function_info_listener() != NULL) {
-    isolate_->active_function_info_listener()->FunctionInfo(info, lit->scope());
+    isolate_->active_function_info_listener()->FunctionInfo(info, lit->scope(),
+                                                            zone);
   }
 }
 

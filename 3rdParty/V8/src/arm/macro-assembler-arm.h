@@ -85,7 +85,14 @@ enum SmiCheck { INLINE_SMI_CHECK, OMIT_SMI_CHECK };
 enum LinkRegisterStatus { kLRHasNotBeenSaved, kLRHasBeenSaved };
 
 
-bool AreAliased(Register r1, Register r2, Register r3, Register r4);
+#ifdef DEBUG
+bool AreAliased(Register reg1,
+                Register reg2,
+                Register reg3 = no_reg,
+                Register reg4 = no_reg,
+                Register reg5 = no_reg,
+                Register reg6 = no_reg);
+#endif
 
 
 // MacroAssembler implements a collection of frequently used macros.
@@ -505,7 +512,8 @@ class MacroAssembler: public Assembler {
   // Load the initial map for new Arrays from a JSFunction.
   void LoadInitialArrayMap(Register function_in,
                            Register scratch,
-                           Register map_out);
+                           Register map_out,
+                           bool can_have_holes);
 
   void LoadGlobalFunction(int index, Register function);
 
@@ -582,20 +590,18 @@ class MacroAssembler: public Assembler {
   // Exception handling
 
   // Push a new try handler and link into try handler chain.
-  void PushTryHandler(CodeLocation try_location,
-                      HandlerType type,
-                      int handler_index);
+  void PushTryHandler(StackHandler::Kind kind, int handler_index);
 
   // Unlink the stack handler on top of the stack from the try handler chain.
   // Must preserve the result register.
   void PopTryHandler();
 
-  // Passes thrown value (in r0) to the handler of top of the try handler chain.
+  // Passes thrown value to the handler of top of the try handler chain.
   void Throw(Register value);
 
   // Propagates an uncatchable exception to the top of the current JS stack's
   // handler chain.
-  void ThrowUncatchable(UncatchableExceptionType type, Register value);
+  void ThrowUncatchable(Register value);
 
   // ---------------------------------------------------------------------------
   // Inline caching support
@@ -797,9 +803,9 @@ class MacroAssembler: public Assembler {
 
   // Check if a map for a JSObject indicates that the object has fast smi only
   // elements.  Jump to the specified label if it does not.
-  void CheckFastSmiOnlyElements(Register map,
-                                Register scratch,
-                                Label* fail);
+  void CheckFastSmiElements(Register map,
+                            Register scratch,
+                            Label* fail);
 
   // Check to see if maybe_number can be stored as a double in
   // FastDoubleElements. If it can, store it at the index specified by key in
@@ -821,6 +827,13 @@ class MacroAssembler: public Assembler {
   // compare sequences branches to early_success.
   void CompareMap(Register obj,
                   Register scratch,
+                  Handle<Map> map,
+                  Label* early_success,
+                  CompareMapMode mode = REQUIRE_EXACT_MAP);
+
+  // As above, but the map of the object is already loaded into the register
+  // which is preserved by the code generated.
+  void CompareMap(Register obj_map,
                   Handle<Map> map,
                   Label* early_success,
                   CompareMapMode mode = REQUIRE_EXACT_MAP);
@@ -1261,6 +1274,10 @@ class MacroAssembler: public Assembler {
   void EnterFrame(StackFrame::Type type);
   void LeaveFrame(StackFrame::Type type);
 
+  // Expects object in r0 and returns map with validated enum cache
+  // in r0.  Assumes that any other register can be used as a scratch.
+  void CheckEnumCache(Register null_value, Label* call_runtime);
+
  private:
   void CallCFunctionHelper(Register function,
                            int num_reg_arguments,
@@ -1319,7 +1336,6 @@ class MacroAssembler: public Assembler {
 };
 
 
-#ifdef ENABLE_DEBUGGER_SUPPORT
 // The code patcher is used to patch (typically) small parts of code e.g. for
 // debugging and other types of instrumentation. When using the code patcher
 // the exact number of bytes specified must be emitted. It is not legal to emit
@@ -1349,7 +1365,6 @@ class CodePatcher {
   int size_;  // Number of bytes of the expected patch size.
   MacroAssembler masm_;  // Macro assembler used to generate the code.
 };
-#endif  // ENABLE_DEBUGGER_SUPPORT
 
 
 // -----------------------------------------------------------------------------
