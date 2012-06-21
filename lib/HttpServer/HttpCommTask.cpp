@@ -74,10 +74,8 @@ namespace triagens {
 
       if (! readRequestBody) {
         const char * ptr = readBuffer->c_str() + readPosition;
-        // TODO FIXME: HTTP request might be shorter than 4 bytes if malformed
         const char * end = readBuffer->end() - 3;
 
-        // TODO FIXME: HTTP request might not contain \r\n\r\n at all if malformed
         for (;  ptr < end;  ptr++) {
           if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
             break;
