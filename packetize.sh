@@ -127,8 +127,6 @@ else
   archfolder="${ostype}-${osvers}-${TRI_MACH}"
 fi
 
-package_name="$product_name-$arangodb_version-$arangodb_release-$TRI_DIST-$TRI_RELEASE-$TRI_MACH.$package_type"
-
 echo
 echo "########################################################"
 echo "arangodb_version: $arangodb_version"
@@ -142,7 +140,6 @@ echo "package_type: $package_type"
 echo "product_name: $product_name"
 echo "project_name: $project_name"
 echo "archfolder: $archfolder"
-echo "package_name: $package_name"
 echo "########################################################"
 echo
 
@@ -240,12 +237,14 @@ fi
 echo "########################################################"
 echo 
 
-# Delete old package in hudson's home folder.
-rm -f ${hudson_base}/${package_name} > /dev/null
-
 if [ ${package_type} == "osx" ] ; then
   package_type="dmg"
 fi
+
+package_name="$product_name-$arangodb_version-$arangodb_release-$TRI_DIST-$TRI_RELEASE-$TRI_MACH.$package_type"
+
+# Delete old package in hudson's home folder.
+rm -f ${hudson_base}/${package_name} > /dev/null
 
 echo 
 echo "########################################################"
