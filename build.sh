@@ -16,6 +16,16 @@ export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
 
+HAS_ICECC=$(ps aux | grep -v "grep" | grep iceccd)
+if [ "x$HAS_ICECC" != "" ] ; then
+  PATH=usr/lib/icecc/bin/:$PATH
+  export MAKEJ=14
+  echo "########################################################"
+  echo "Using ICECC"
+  echo "   PATH=$PATH"
+  echo "########################################################"
+fi
+
 echo
 echo "########################################################"
 echo "Building on $TRI_OS_LONG"
