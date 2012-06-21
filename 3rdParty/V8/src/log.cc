@@ -35,7 +35,6 @@
 #include "global-handles.h"
 #include "log.h"
 #include "macro-assembler.h"
-#include "platform.h"
 #include "runtime-profiler.h"
 #include "serialize.h"
 #include "string-stream.h"
@@ -462,20 +461,18 @@ class Logger::NameBuffer {
       utf8_pos_ += utf8_length;
       return;
     }
-    int uc16_length = Min(str->length(), kUtf16BufferSize);
-    String::WriteToFlat(str, utf16_buffer, 0, uc16_length);
-    int previous = unibrow::Utf16::kNoPreviousCharacter;
+    int uc16_length = Min(str->length(), kUc16BufferSize);
+    String::WriteToFlat(str, uc16_buffer_, 0, uc16_length);
     for (int i = 0; i < uc16_length && utf8_pos_ < kUtf8BufferSize; ++i) {
-      uc16 c = utf16_buffer[i];
+      uc16 c = uc16_buffer_[i];
       if (c <= String::kMaxAsciiCharCodeU) {
         utf8_buffer_[utf8_pos_++] = static_cast<char>(c);
       } else {
-        int char_length = unibrow::Utf8::Length(c, previous);
+        int char_length = unibrow::Utf8::Length(c);
         if (utf8_pos_ + char_length > kUtf8BufferSize) break;
-        unibrow::Utf8::Encode(utf8_buffer_ + utf8_pos_, c, previous);
+        unibrow::Utf8::Encode(utf8_buffer_ + utf8_pos_, c);
         utf8_pos_ += char_length;
       }
-      previous = c;
     }
   }
 
@@ -507,11 +504,11 @@ class Logger::NameBuffer {
 
  private:
   static const int kUtf8BufferSize = 512;
-  static const int kUtf16BufferSize = 128;
+  static const int kUc16BufferSize = 128;
 
   int utf8_pos_;
   char utf8_buffer_[kUtf8BufferSize];
-  uc16 utf16_buffer[kUtf16BufferSize];
+  uc16 uc16_buffer_[kUc16BufferSize];
 };
 
 
@@ -1729,21 +1726,13 @@ void Logger::EnableSlidingStateWindow() {
   }
 }
 
-// Protects the state below.
-static Mutex* active_samplers_mutex = NULL;
 
+Mutex* SamplerRegistry::mutex_ = OS::CreateMutex();
 List<Sampler*>* SamplerRegistry::active_samplers_ = NULL;
 
 
-void SamplerRegistry::SetUp() {
-  if (!active_samplers_mutex) {
-    active_samplers_mutex = OS::CreateMutex();
-  }
-}
-
-
 bool SamplerRegistry::IterateActiveSamplers(VisitSampler func, void* param) {
-  ScopedLock lock(active_samplers_mutex);
+  ScopedLock lock(mutex_);
   for (int i = 0;
        ActiveSamplersExist() && i < active_samplers_->length();
        ++i) {
@@ -1770,7 +1759,7 @@ SamplerRegistry::State SamplerRegistry::GetState() {
 
 void SamplerRegistry::AddActiveSampler(Sampler* sampler) {
   ASSERT(sampler->IsActive());
-  ScopedLock lock(active_samplers_mutex);
+  ScopedLock lock(mutex_);
   if (active_samplers_ == NULL) {
     active_samplers_ = new List<Sampler*>;
   } else {
@@ -1782,7 +1771,7 @@ void SamplerRegistry::AddActiveSampler(Sampler* sampler) {
 
 void SamplerRegistry::RemoveActiveSampler(Sampler* sampler) {
   ASSERT(sampler->IsActive());
-  ScopedLock lock(active_samplers_mutex);
+  ScopedLock lock(mutex_);
   ASSERT(active_samplers_ != NULL);
   bool removed = active_samplers_->RemoveElement(sampler);
   ASSERT(removed);

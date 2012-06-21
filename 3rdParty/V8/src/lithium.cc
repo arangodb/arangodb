@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -94,37 +94,6 @@ void LOperand::PrintTo(StringStream* stream) {
   }
 }
 
-#define DEFINE_OPERAND_CACHE(name, type)                      \
-  L##name* L##name::cache = NULL;                             \
-                                                              \
-  void L##name::SetUpCache() {                                \
-    if (cache) return;                                        \
-    cache = new L##name[kNumCachedOperands];                  \
-    for (int i = 0; i < kNumCachedOperands; i++) {            \
-      cache[i].ConvertTo(type, i);                            \
-    }                                                         \
-  }                                                           \
-                                                              \
-  void L##name::TearDownCache() {                             \
-    delete[] cache;                                           \
-  }
-
-LITHIUM_OPERAND_LIST(DEFINE_OPERAND_CACHE)
-#undef DEFINE_OPERAND_CACHE
-
-void LOperand::SetUpCaches() {
-#define LITHIUM_OPERAND_SETUP(name, type) L##name::SetUpCache();
-  LITHIUM_OPERAND_LIST(LITHIUM_OPERAND_SETUP)
-#undef LITHIUM_OPERAND_SETUP
-}
-
-
-void LOperand::TearDownCaches() {
-#define LITHIUM_OPERAND_TEARDOWN(name, type) L##name::TearDownCache();
-  LITHIUM_OPERAND_LIST(LITHIUM_OPERAND_TEARDOWN)
-#undef LITHIUM_OPERAND_TEARDOWN
-}
-
 
 bool LParallelMove::IsRedundant() const {
   for (int i = 0; i < move_operands_.length(); ++i) {
@@ -171,11 +140,11 @@ void LEnvironment::PrintTo(StringStream* stream) {
 }
 
 
-void LPointerMap::RecordPointer(LOperand* op, Zone* zone) {
+void LPointerMap::RecordPointer(LOperand* op) {
   // Do not record arguments as pointers.
   if (op->IsStackSlot() && op->index() < 0) return;
   ASSERT(!op->IsDoubleRegister() && !op->IsDoubleStackSlot());
-  pointer_operands_.Add(op, zone);
+  pointer_operands_.Add(op);
 }
 
 
@@ -192,11 +161,11 @@ void LPointerMap::RemovePointer(LOperand* op) {
 }
 
 
-void LPointerMap::RecordUntagged(LOperand* op, Zone* zone) {
+void LPointerMap::RecordUntagged(LOperand* op) {
   // Do not record arguments as pointers.
   if (op->IsStackSlot() && op->index() < 0) return;
   ASSERT(!op->IsDoubleRegister() && !op->IsDoubleStackSlot());
-  untagged_operands_.Add(op, zone);
+  untagged_operands_.Add(op);
 }
 
 
@@ -225,12 +194,9 @@ int ElementsKindToShiftSize(ElementsKind elements_kind) {
       return 2;
     case EXTERNAL_DOUBLE_ELEMENTS:
     case FAST_DOUBLE_ELEMENTS:
-    case FAST_HOLEY_DOUBLE_ELEMENTS:
       return 3;
-    case FAST_SMI_ELEMENTS:
+    case FAST_SMI_ONLY_ELEMENTS:
     case FAST_ELEMENTS:
-    case FAST_HOLEY_SMI_ELEMENTS:
-    case FAST_HOLEY_ELEMENTS:
     case DICTIONARY_ELEMENTS:
     case NON_STRICT_ARGUMENTS_ELEMENTS:
       return kPointerSizeLog2;

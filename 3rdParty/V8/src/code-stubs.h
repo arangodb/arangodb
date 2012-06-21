@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -55,7 +55,6 @@ namespace internal {
   V(ConvertToDouble)                     \
   V(WriteInt32ToHeapNumber)              \
   V(StackCheck)                          \
-  V(Interrupt)                           \
   V(FastNewClosure)                      \
   V(FastNewContext)                      \
   V(FastNewBlockContext)                 \
@@ -298,18 +297,6 @@ class StackCheckStub : public CodeStub {
 };
 
 
-class InterruptStub : public CodeStub {
- public:
-  InterruptStub() { }
-
-  void Generate(MacroAssembler* masm);
-
- private:
-  Major MajorKey() { return Interrupt; }
-  int MinorKey() { return 0; }
-};
-
-
 class ToNumberStub: public CodeStub {
  public:
   ToNumberStub() { }
@@ -498,7 +485,6 @@ class ICCompareStub: public CodeStub {
 
   virtual void FinishCode(Handle<Code> code) {
     code->set_compare_state(state_);
-    code->set_compare_operation(op_);
   }
 
   virtual CodeStub::Major MajorKey() { return CompareIC; }
@@ -646,6 +632,9 @@ class CEntryStub : public CodeStub {
                     Label* throw_out_of_memory_exception,
                     bool do_gc,
                     bool always_allocate_scope);
+  void GenerateThrowTOS(MacroAssembler* masm);
+  void GenerateThrowUncatchable(MacroAssembler* masm,
+                                UncatchableExceptionType type);
 
   // Number of pointers/values returned.
   const int result_size_;
@@ -996,29 +985,20 @@ class KeyedLoadElementStub : public CodeStub {
 class KeyedStoreElementStub : public CodeStub {
  public:
   KeyedStoreElementStub(bool is_js_array,
-                        ElementsKind elements_kind,
-                        KeyedAccessGrowMode grow_mode)
-      : is_js_array_(is_js_array),
-        elements_kind_(elements_kind),
-        grow_mode_(grow_mode) { }
+                        ElementsKind elements_kind)
+    : is_js_array_(is_js_array),
+    elements_kind_(elements_kind) { }
 
   Major MajorKey() { return KeyedStoreElement; }
   int MinorKey() {
-    return ElementsKindBits::encode(elements_kind_) |
-        IsJSArrayBits::encode(is_js_array_) |
-        GrowModeBits::encode(grow_mode_);
+    return (is_js_array_ ? 0 : kElementsKindCount) + elements_kind_;
   }
 
   void Generate(MacroAssembler* masm);
 
  private:
-  class ElementsKindBits: public BitField<ElementsKind,    0, 8> {};
-  class GrowModeBits: public BitField<KeyedAccessGrowMode, 8, 1> {};
-  class IsJSArrayBits: public BitField<bool,               9, 1> {};
-
   bool is_js_array_;
   ElementsKind elements_kind_;
-  KeyedAccessGrowMode grow_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyedStoreElementStub);
 };
@@ -1096,28 +1076,24 @@ class ElementsTransitionAndStoreStub : public CodeStub {
   ElementsTransitionAndStoreStub(ElementsKind from,
                                  ElementsKind to,
                                  bool is_jsarray,
-                                 StrictModeFlag strict_mode,
-                                 KeyedAccessGrowMode grow_mode)
+                                 StrictModeFlag strict_mode)
       : from_(from),
         to_(to),
         is_jsarray_(is_jsarray),
-        strict_mode_(strict_mode),
-        grow_mode_(grow_mode) {}
+        strict_mode_(strict_mode) {}
 
  private:
-  class FromBits:       public BitField<ElementsKind,      0, 8> {};
-  class ToBits:         public BitField<ElementsKind,      8, 8> {};
-  class IsJSArrayBits:  public BitField<bool,              16, 1> {};
-  class StrictModeBits: public BitField<StrictModeFlag,    17, 1> {};
-  class GrowModeBits: public BitField<KeyedAccessGrowMode, 18, 1> {};
+  class FromBits:       public BitField<ElementsKind,    0, 8> {};
+  class ToBits:         public BitField<ElementsKind,    8, 8> {};
+  class IsJSArrayBits:  public BitField<bool,           16, 8> {};
+  class StrictModeBits: public BitField<StrictModeFlag, 24, 8> {};
 
   Major MajorKey() { return ElementsTransitionAndStore; }
   int MinorKey() {
     return FromBits::encode(from_) |
         ToBits::encode(to_) |
         IsJSArrayBits::encode(is_jsarray_) |
-        StrictModeBits::encode(strict_mode_) |
-        GrowModeBits::encode(grow_mode_);
+        StrictModeBits::encode(strict_mode_);
   }
 
   void Generate(MacroAssembler* masm);
@@ -1126,7 +1102,6 @@ class ElementsTransitionAndStoreStub : public CodeStub {
   ElementsKind to_;
   bool is_jsarray_;
   StrictModeFlag strict_mode_;
-  KeyedAccessGrowMode grow_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(ElementsTransitionAndStoreStub);
 };

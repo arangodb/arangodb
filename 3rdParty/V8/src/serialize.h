@@ -210,6 +210,7 @@ class SnapshotByteSource {
 class SerializerDeserializer: public ObjectVisitor {
  public:
   static void Iterate(ObjectVisitor* visitor);
+  static void SetSnapshotCacheSize(int size);
 
  protected:
   // Where the pointed-to object can be found:
@@ -484,7 +485,7 @@ class Serializer : public SerializerDeserializer {
  protected:
   static const int kInvalidRootIndex = -1;
 
-  int RootIndex(HeapObject* heap_object, HowToCode from);
+  int RootIndex(HeapObject* heap_object);
   virtual bool ShouldBeInThePartialSnapshotCache(HeapObject* o) = 0;
   intptr_t root_index_wave_front() { return root_index_wave_front_; }
   void set_root_index_wave_front(intptr_t value) {
@@ -555,9 +556,6 @@ class Serializer : public SerializerDeserializer {
     return external_reference_encoder_->Encode(addr);
   }
 
-  int SpaceAreaSize(int space);
-
-  Isolate* isolate_;
   // Keep track of the fullness of each space in order to generate
   // relative addresses for back references.  Large objects are
   // just numbered sequentially since relative addresses make no

@@ -183,8 +183,8 @@ class Safepoint BASE_EMBEDDED {
   static const int kNoDeoptimizationIndex =
       (1 << (SafepointEntry::kDeoptIndexBits)) - 1;
 
-  void DefinePointerSlot(int index, Zone* zone) { indexes_->Add(index, zone); }
-  void DefinePointerRegister(Register reg, Zone* zone);
+  void DefinePointerSlot(int index) { indexes_->Add(index); }
+  void DefinePointerRegister(Register reg);
 
  private:
   Safepoint(ZoneList<int>* indexes, ZoneList<int>* registers) :
@@ -198,14 +198,13 @@ class Safepoint BASE_EMBEDDED {
 
 class SafepointTableBuilder BASE_EMBEDDED {
  public:
-  explicit SafepointTableBuilder(Zone* zone)
-      : deoptimization_info_(32, zone),
-        deopt_index_list_(32, zone),
-        indexes_(32, zone),
-        registers_(32, zone),
+  SafepointTableBuilder()
+      : deoptimization_info_(32),
+        deopt_index_list_(32),
+        indexes_(32),
+        registers_(32),
         emitted_(false),
-        last_lazy_safepoint_(0),
-        zone_(zone) { }
+        last_lazy_safepoint_(0) { }
 
   // Get the offset of the emitted safepoint table in the code.
   unsigned GetCodeOffset() const;
@@ -242,8 +241,6 @@ class SafepointTableBuilder BASE_EMBEDDED {
   unsigned offset_;
   bool emitted_;
   int last_lazy_safepoint_;
-
-  Zone* zone_;
 
   DISALLOW_COPY_AND_ASSIGN(SafepointTableBuilder);
 };

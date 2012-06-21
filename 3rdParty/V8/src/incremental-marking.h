@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -46,11 +46,6 @@ class IncrementalMarking {
     COMPLETE
   };
 
-  enum CompletionAction {
-    GC_VIA_STACK_GUARD,
-    NO_GC_VIA_STACK_GUARD
-  };
-
   explicit IncrementalMarking(Heap* heap);
 
   void TearDown();
@@ -87,7 +82,7 @@ class IncrementalMarking {
 
   void Abort();
 
-  void MarkingComplete(CompletionAction action);
+  void MarkingComplete();
 
   // It's hard to know how much work the incremental marker should do to make
   // progress in the face of the mutator creating new work for it.  We start
@@ -107,11 +102,10 @@ class IncrementalMarking {
   static const intptr_t kMaxAllocationMarkingFactor = 1000;
 
   void OldSpaceStep(intptr_t allocated) {
-    Step(allocated * kFastMarking / kInitialAllocationMarkingFactor,
-         GC_VIA_STACK_GUARD);
+    Step(allocated * kFastMarking / kInitialAllocationMarkingFactor);
   }
 
-  void Step(intptr_t allocated, CompletionAction action);
+  void Step(intptr_t allocated);
 
   inline void RestartIfNotMarking() {
     if (state_ == COMPLETE) {
@@ -154,6 +148,8 @@ class IncrementalMarking {
 
   inline void WhiteToGreyAndPush(HeapObject* obj, MarkBit mark_bit);
 
+  inline void WhiteToGrey(HeapObject* obj, MarkBit mark_bit);
+
   // Does white->black or keeps gray or black color. Returns true if converting
   // white to black.
   inline bool MarkBlackOrKeepGrey(MarkBit mark_bit) {
@@ -166,16 +162,6 @@ class IncrementalMarking {
     ASSERT(Marking::IsBlack(mark_bit));
     return true;
   }
-
-  // Marks the object grey and pushes it on the marking stack.
-  // Returns true if object needed marking and false otherwise.
-  // This is for incremental marking only.
-  INLINE(bool MarkObjectAndPush(HeapObject* obj));
-
-  // Marks the object black without pushing it on the marking stack.
-  // Returns true if object needed marking and false otherwise.
-  // This is for incremental marking only.
-  INLINE(bool MarkObjectWithoutPush(HeapObject* obj));
 
   inline int steps_count() {
     return steps_count_;
@@ -268,7 +254,6 @@ class IncrementalMarking {
   VirtualMemory* marking_deque_memory_;
   bool marking_deque_memory_committed_;
   MarkingDeque marking_deque_;
-  Marker<IncrementalMarking> marker_;
 
   int steps_count_;
   double steps_took_;

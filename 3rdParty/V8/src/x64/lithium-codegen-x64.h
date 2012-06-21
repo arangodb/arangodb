@@ -46,24 +46,21 @@ class SafepointGenerator;
 class LCodeGen BASE_EMBEDDED {
  public:
   LCodeGen(LChunk* chunk, MacroAssembler* assembler, CompilationInfo* info)
-      : zone_(info->zone()),
-        chunk_(chunk),
+      : chunk_(chunk),
         masm_(assembler),
         info_(info),
         current_block_(-1),
         current_instruction_(-1),
         instructions_(chunk->instructions()),
-        deoptimizations_(4, info->zone()),
-        jump_table_(4, info->zone()),
-        deoptimization_literals_(8, info->zone()),
+        deoptimizations_(4),
+        jump_table_(4),
+        deoptimization_literals_(8),
         inlined_function_count_(0),
         scope_(info->scope()),
         status_(UNUSED),
-        translations_(info->zone()),
-        deferred_(8, info->zone()),
+        deferred_(8),
         osr_pc_offset_(-1),
         last_lazy_deopt_pc_(0),
-        safepoints_(info->zone()),
         resolver_(this),
         expected_safepoint_kind_(Safepoint::kSimple) {
     PopulateDeoptimizationLiteralsWithInlinedFunctions();
@@ -75,7 +72,6 @@ class LCodeGen BASE_EMBEDDED {
   Isolate* isolate() const { return info_->isolate(); }
   Factory* factory() const { return isolate()->factory(); }
   Heap* heap() const { return isolate()->heap(); }
-  Zone* zone() const { return zone_; }
 
   // Support for converting LOperands to assembler types.
   Register ToRegister(LOperand* op) const;
@@ -101,10 +97,8 @@ class LCodeGen BASE_EMBEDDED {
   void DoDeferredTaggedToI(LTaggedToI* instr);
   void DoDeferredMathAbsTaggedHeapNumber(LUnaryMathOperation* instr);
   void DoDeferredStackCheck(LStackCheck* instr);
-  void DoDeferredRandom(LRandom* instr);
   void DoDeferredStringCharCodeAt(LStringCharCodeAt* instr);
   void DoDeferredStringCharFromCode(LStringCharFromCode* instr);
-  void DoDeferredAllocateObject(LAllocateObject* instr);
   void DoDeferredInstanceOfKnownGlobal(LInstanceOfKnownGlobal* instr,
                                        Label* map_check);
 
@@ -159,7 +153,7 @@ class LCodeGen BASE_EMBEDDED {
   void Abort(const char* format, ...);
   void Comment(const char* format, ...);
 
-  void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code, zone()); }
+  void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code); }
 
   // Code generation passes.  Returns true if code generation should
   // continue.
@@ -200,18 +194,12 @@ class LCodeGen BASE_EMBEDDED {
                                int argc,
                                LInstruction* instr);
 
-  enum RDIState {
-    RDI_UNINITIALIZED,
-    RDI_CONTAINS_TARGET
-  };
-
   // Generate a direct call to a known function.  Expects the function
   // to be in rdi.
   void CallKnownFunction(Handle<JSFunction> function,
                          int arity,
                          LInstruction* instr,
-                         CallKind call_kind,
-                         RDIState rdi_state);
+                         CallKind call_kind);
 
 
   void RecordSafepointWithLazyDeopt(LInstruction* instr,
@@ -235,8 +223,7 @@ class LCodeGen BASE_EMBEDDED {
       LOperand* elements_pointer,
       LOperand* key,
       ElementsKind elements_kind,
-      uint32_t offset,
-      uint32_t additional_index = 0);
+      uint32_t offset);
 
   // Specific math operations - used from DoUnaryMathOperation.
   void EmitIntegerMathAbs(LUnaryMathOperation* instr);
@@ -300,8 +287,7 @@ class LCodeGen BASE_EMBEDDED {
   void EmitLoadFieldOrConstantFunction(Register result,
                                        Register object,
                                        Handle<Map> type,
-                                       Handle<String> name,
-                                       LEnvironment* env);
+                                       Handle<String> name);
 
   // Emits code for pushing either a tagged constant, a (non-double)
   // register, or a stack slot operand.
@@ -324,7 +310,6 @@ class LCodeGen BASE_EMBEDDED {
 
   void EnsureSpaceForLazyDeopt(int space_needed);
 
-  Zone* zone_;
   LChunk* const chunk_;
   MacroAssembler* const masm_;
   CompilationInfo* const info_;

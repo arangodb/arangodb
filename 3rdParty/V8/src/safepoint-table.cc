@@ -116,8 +116,8 @@ void SafepointTable::PrintBits(uint8_t byte, int digits) {
 }
 
 
-void Safepoint::DefinePointerRegister(Register reg, Zone* zone) {
-  registers_->Add(reg.code(), zone);
+void Safepoint::DefinePointerRegister(Register reg) {
+  registers_->Add(reg.code());
 }
 
 
@@ -131,16 +131,15 @@ Safepoint SafepointTableBuilder::DefineSafepoint(
   info.pc = assembler->pc_offset();
   info.arguments = arguments;
   info.has_doubles = (kind & Safepoint::kWithDoubles);
-  deoptimization_info_.Add(info, zone_);
-  deopt_index_list_.Add(Safepoint::kNoDeoptimizationIndex, zone_);
+  deoptimization_info_.Add(info);
+  deopt_index_list_.Add(Safepoint::kNoDeoptimizationIndex);
   if (deopt_mode == Safepoint::kNoLazyDeopt) {
     last_lazy_safepoint_ = deopt_index_list_.length();
   }
-  indexes_.Add(new(zone_) ZoneList<int>(8, zone_), zone_);
+  indexes_.Add(new ZoneList<int>(8));
   registers_.Add((kind & Safepoint::kWithRegisters)
-      ? new(zone_) ZoneList<int>(4, zone_)
-      : NULL,
-      zone_);
+      ? new ZoneList<int>(4)
+      : NULL);
   return Safepoint(indexes_.last(), registers_.last());
 }
 
@@ -191,12 +190,12 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
   }
 
   // Emit table of bitmaps.
-  ZoneList<uint8_t> bits(bytes_per_entry, zone_);
+  ZoneList<uint8_t> bits(bytes_per_entry);
   for (int i = 0; i < length; i++) {
     ZoneList<int>* indexes = indexes_[i];
     ZoneList<int>* registers = registers_[i];
     bits.Clear();
-    bits.AddBlock(0, bytes_per_entry, zone_);
+    bits.AddBlock(0, bytes_per_entry);
 
     // Run through the registers (if any).
     ASSERT(IsAligned(kNumSafepointRegisters, kBitsPerByte));

@@ -34,7 +34,7 @@
 // in this test case.  Depending on whether smi-only arrays are actually
 // enabled, this test takes the appropriate code path to check smi-only arrays.
 
-support_smi_only_arrays = %HasFastSmiElements(new Array(1,2,3,4,5,6,7,8));
+support_smi_only_arrays = %HasFastSmiOnlyElements(new Array(1,2,3,4,5,6,7,8));
 
 if (support_smi_only_arrays) {
   print("Tests include smi-only arrays.");
@@ -59,8 +59,8 @@ var elements_kind = {
 }
 
 function getKind(obj) {
-  if (%HasFastSmiElements(obj)) return elements_kind.fast_smi_only;
-  if (%HasFastObjectElements(obj)) return elements_kind.fast;
+  if (%HasFastSmiOnlyElements(obj)) return elements_kind.fast_smi_only;
+  if (%HasFastElements(obj)) return elements_kind.fast;
   if (%HasFastDoubleElements(obj)) return elements_kind.fast_double;
   if (%HasDictionaryElements(obj)) return elements_kind.dictionary;
   // Every external kind is also an external array.
@@ -116,7 +116,7 @@ if (support_smi_only_arrays) {
   assertKind(elements_kind.fast_smi_only, too);
 }
 
-// Make sure the element kind transitions from smi when a non-smi is stored.
+// Make sure the element kind transitions from smionly when a non-smi is stored.
 var you = new Array();
 assertKind(elements_kind.fast_smi_only, you);
 for (var i = 0; i < 1337; i++) {
@@ -147,7 +147,6 @@ assertKind(elements_kind.external_pixel,          new PixelArray(512));
 
 // Crankshaft support for smi-only array elements.
 function monomorphic(array) {
-  assertKind(elements_kind.fast_smi_only, array);
   for (var i = 0; i < 3; i++) {
     array[i] = i + 10;
   }
@@ -158,7 +157,6 @@ function monomorphic(array) {
   }
 }
 var smi_only = new Array(1, 2, 3);
-assertKind(elements_kind.fast_smi_only, smi_only);
 for (var i = 0; i < 3; i++) monomorphic(smi_only);
 %OptimizeFunctionOnNextCall(monomorphic);
 monomorphic(smi_only);
@@ -224,11 +222,9 @@ if (support_smi_only_arrays) {
   for (var i = 0; i < 3; i++) {
     convert_mixed(doubles, "three", elements_kind.fast);
   }
-  convert_mixed(construct_smis(), "three", elements_kind.fast);
-  convert_mixed(construct_doubles(), "three", elements_kind.fast);
-  %OptimizeFunctionOnNextCall(convert_mixed);
   smis = construct_smis();
   doubles = construct_doubles();
+  %OptimizeFunctionOnNextCall(convert_mixed);
   convert_mixed(smis, 1, elements_kind.fast);
   convert_mixed(doubles, 1, elements_kind.fast);
   assertTrue(%HaveSameMap(smis, doubles));

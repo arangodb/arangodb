@@ -35,25 +35,25 @@ namespace internal {
 
 
 template<typename T, class P>
-void List<T, P>::Add(const T& element, P alloc) {
+void List<T, P>::Add(const T& element) {
   if (length_ < capacity_) {
     data_[length_++] = element;
   } else {
-    List<T, P>::ResizeAdd(element, alloc);
+    List<T, P>::ResizeAdd(element);
   }
 }
 
 
 template<typename T, class P>
-void List<T, P>::AddAll(const List<T, P>& other, P alloc) {
-  AddAll(other.ToVector(), alloc);
+void List<T, P>::AddAll(const List<T, P>& other) {
+  AddAll(other.ToVector());
 }
 
 
 template<typename T, class P>
-void List<T, P>::AddAll(const Vector<T>& other, P alloc) {
+void List<T, P>::AddAll(const Vector<T>& other) {
   int result_length = length_ + other.length();
-  if (capacity_ < result_length) Resize(result_length, alloc);
+  if (capacity_ < result_length) Resize(result_length);
   for (int i = 0; i < other.length(); i++) {
     data_[length_ + i] = other.at(i);
   }
@@ -64,13 +64,13 @@ void List<T, P>::AddAll(const Vector<T>& other, P alloc) {
 // Use two layers of inlining so that the non-inlined function can
 // use the same implementation as the inlined version.
 template<typename T, class P>
-void List<T, P>::ResizeAdd(const T& element, P alloc) {
-  ResizeAddInternal(element, alloc);
+void List<T, P>::ResizeAdd(const T& element) {
+  ResizeAddInternal(element);
 }
 
 
 template<typename T, class P>
-void List<T, P>::ResizeAddInternal(const T& element, P alloc) {
+void List<T, P>::ResizeAddInternal(const T& element) {
   ASSERT(length_ >= capacity_);
   // Grow the list capacity by 100%, but make sure to let it grow
   // even when the capacity is zero (possible initial case).
@@ -78,14 +78,14 @@ void List<T, P>::ResizeAddInternal(const T& element, P alloc) {
   // Since the element reference could be an element of the list, copy
   // it out of the old backing storage before resizing.
   T temp = element;
-  Resize(new_capacity, alloc);
+  Resize(new_capacity);
   data_[length_++] = temp;
 }
 
 
 template<typename T, class P>
-void List<T, P>::Resize(int new_capacity, P alloc) {
-  T* new_data = NewData(new_capacity, alloc);
+void List<T, P>::Resize(int new_capacity) {
+  T* new_data = List<T, P>::NewData(new_capacity);
   memcpy(new_data, data_, capacity_ * sizeof(T));
   List<T, P>::DeleteData(data_);
   data_ = new_data;
@@ -94,17 +94,17 @@ void List<T, P>::Resize(int new_capacity, P alloc) {
 
 
 template<typename T, class P>
-Vector<T> List<T, P>::AddBlock(T value, int count, P alloc) {
+Vector<T> List<T, P>::AddBlock(T value, int count) {
   int start = length_;
-  for (int i = 0; i < count; i++) Add(value, alloc);
+  for (int i = 0; i < count; i++) Add(value);
   return Vector<T>(&data_[start], count);
 }
 
 
 template<typename T, class P>
-void List<T, P>::InsertAt(int index, const T& elm, P alloc) {
+void List<T, P>::InsertAt(int index, const T& elm) {
   ASSERT(index >= 0 && index <= length_);
-  Add(elm, alloc);
+  Add(elm);
   for (int i = length_ - 1; i > index; --i) {
     data_[i] = data_[i - 1];
   }
@@ -137,21 +137,9 @@ bool List<T, P>::RemoveElement(const T& elm) {
 
 
 template<typename T, class P>
-void List<T, P>::Allocate(int length, P allocator) {
-  DeleteData(data_);
-  Initialize(length, allocator);
-  length_ = length;
-}
-
-
-template<typename T, class P>
 void List<T, P>::Clear() {
   DeleteData(data_);
-  // We don't call Initialize(0) since that requires passing a Zone,
-  // which we don't really need.
-  data_ = NULL;
-  capacity_ = 0;
-  length_ = 0;
+  Initialize(0);
 }
 
 
@@ -211,27 +199,28 @@ void List<T, P>::Sort() {
 
 
 template<typename T, class P>
-void List<T, P>::Initialize(int capacity, P allocator) {
+void List<T, P>::Initialize(int capacity) {
   ASSERT(capacity >= 0);
-  data_ = (capacity > 0) ? NewData(capacity, allocator) : NULL;
+  data_ = (capacity > 0) ? NewData(capacity) : NULL;
   capacity_ = capacity;
   length_ = 0;
 }
 
 
-template <typename T, typename P>
-int SortedListBSearch(const List<T>& list, P cmp) {
+template <typename T>
+int SortedListBSearch(
+    const List<T>& list, T elem, int (*cmp)(const T* x, const T* y)) {
   int low = 0;
   int high = list.length() - 1;
   while (low <= high) {
     int mid = (low + high) / 2;
     T mid_elem = list[mid];
 
-    if (cmp(&mid_elem) > 0) {
+    if (cmp(&mid_elem, &elem) > 0) {
       high = mid - 1;
       continue;
     }
-    if (cmp(&mid_elem) < 0) {
+    if (cmp(&mid_elem, &elem) < 0) {
       low = mid + 1;
       continue;
     }
@@ -242,21 +231,9 @@ int SortedListBSearch(const List<T>& list, P cmp) {
 }
 
 
-template<typename T>
-class ElementCmp {
- public:
-  explicit ElementCmp(T e) : elem_(e) {}
-  int operator()(const T* other) {
-    return PointerValueCompare(other, &elem_);
-  }
- private:
-  T elem_;
-};
-
-
 template <typename T>
 int SortedListBSearch(const List<T>& list, T elem) {
-  return SortedListBSearch<T, ElementCmp<T> > (list, ElementCmp<T>(elem));
+  return SortedListBSearch<T>(list, elem, PointerValueCompare<T>);
 }
 
 

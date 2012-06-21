@@ -37,22 +37,6 @@ namespace internal {
 
 #define __ ACCESS_MASM(masm)
 
-UnaryMathFunction CreateTranscendentalFunction(TranscendentalCache::Type type) {
-  switch (type) {
-    case TranscendentalCache::SIN: return &sin;
-    case TranscendentalCache::COS: return &cos;
-    case TranscendentalCache::TAN: return &tan;
-    case TranscendentalCache::LOG: return &log;
-    default: UNIMPLEMENTED();
-  }
-  return NULL;
-}
-
-
-UnaryMathFunction CreateSqrtFunction() {
-  return &sqrt;
-}
-
 // -------------------------------------------------------------------------
 // Platform-specific RuntimeCallHelper functions.
 
@@ -73,7 +57,7 @@ void StubRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
 // -------------------------------------------------------------------------
 // Code generators
 
-void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
+void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
     MacroAssembler* masm) {
   // ----------- S t a t e -------------
   //  -- r0    : value
@@ -96,7 +80,7 @@ void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
 }
 
 
-void ElementsTransitionGenerator::GenerateSmiToDouble(
+void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
     MacroAssembler* masm, Label* fail) {
   // ----------- S t a t e -------------
   //  -- r0    : value
@@ -106,16 +90,11 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   //  -- r3    : target map, scratch for subsequent call
   //  -- r4    : scratch (elements)
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required, only_change_map, done;
+  Label loop, entry, convert_hole, gc_required;
   bool vfp3_supported = CpuFeatures::IsSupported(VFP3);
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ ldr(r4, FieldMemOperand(r2, JSObject::kElementsOffset));
-  __ CompareRoot(r4, Heap::kEmptyFixedArrayRootIndex);
-  __ b(eq, &only_change_map);
-
   __ push(lr);
+
+  __ ldr(r4, FieldMemOperand(r2, JSObject::kElementsOffset));
   __ ldr(r5, FieldMemOperand(r4, FixedArray::kLengthOffset));
   // r4: source FixedArray
   // r5: number of elements (smi-tagged)
@@ -138,7 +117,7 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
                       r9,
                       kLRHasBeenSaved,
                       kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
+                      EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created FixedDoubleArray.
   __ add(r3, r6, Operand(kHeapObjectTag));
@@ -166,18 +145,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   if (!vfp3_supported) __ Push(r1, r0);
 
   __ b(&entry);
-
-  __ bind(&only_change_map);
-  __ str(r3, FieldMemOperand(r2, HeapObject::kMapOffset));
-  __ RecordWriteField(r2,
-                      HeapObject::kMapOffset,
-                      r3,
-                      r9,
-                      kLRHasBeenSaved,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
-  __ b(&done);
 
   // Call into runtime if GC is required.
   __ bind(&gc_required);
@@ -227,7 +194,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
 
   if (!vfp3_supported) __ Pop(r1, r0);
   __ pop(lr);
-  __ bind(&done);
 }
 
 
@@ -241,15 +207,10 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   //  -- r3    : target map, scratch for subsequent call
   //  -- r4    : scratch (elements)
   // -----------------------------------
-  Label entry, loop, convert_hole, gc_required, only_change_map;
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ ldr(r4, FieldMemOperand(r2, JSObject::kElementsOffset));
-  __ CompareRoot(r4, Heap::kEmptyFixedArrayRootIndex);
-  __ b(eq, &only_change_map);
+  Label entry, loop, convert_hole, gc_required;
 
   __ push(lr);
+  __ ldr(r4, FieldMemOperand(r2, JSObject::kElementsOffset));
   __ Push(r3, r2, r1, r0);
   __ ldr(r5, FieldMemOperand(r4, FixedArray::kLengthOffset));
   // r4: source FixedDoubleArray
@@ -319,6 +280,16 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   __ b(lt, &loop);
 
   __ Pop(r3, r2, r1, r0);
+  // Update receiver's map.
+  __ str(r3, FieldMemOperand(r2, HeapObject::kMapOffset));
+  __ RecordWriteField(r2,
+                      HeapObject::kMapOffset,
+                      r3,
+                      r9,
+                      kLRHasBeenSaved,
+                      kDontSaveFPRegs,
+                      EMIT_REMEMBERED_SET,
+                      OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created and filled FixedArray.
   __ str(r6, FieldMemOperand(r2, JSObject::kElementsOffset));
   __ RecordWriteField(r2,
@@ -330,18 +301,6 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
                       EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   __ pop(lr);
-
-  __ bind(&only_change_map);
-  // Update receiver's map.
-  __ str(r3, FieldMemOperand(r2, HeapObject::kMapOffset));
-  __ RecordWriteField(r2,
-                      HeapObject::kMapOffset,
-                      r3,
-                      r9,
-                      kLRHasNotBeenSaved,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
 }
 
 

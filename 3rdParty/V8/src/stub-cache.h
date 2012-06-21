@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -69,10 +69,9 @@ class StubCache {
   struct Entry {
     String* key;
     Code* value;
-    Map* map;
   };
 
-  void Initialize();
+  void Initialize(bool create_heap_objects);
 
 
   // Computes the right stub matching. Inserts the result in the
@@ -89,11 +88,6 @@ class StubCache {
                                    Handle<JSObject> receiver,
                                    Handle<JSObject> holder,
                                    Handle<AccessorInfo> callback);
-
-  Handle<Code> ComputeLoadViaGetter(Handle<String> name,
-                                    Handle<JSObject> receiver,
-                                    Handle<JSObject> holder,
-                                    Handle<JSFunction> getter);
 
   Handle<Code> ComputeLoadConstant(Handle<String> name,
                                    Handle<JSObject> receiver,
@@ -162,11 +156,6 @@ class StubCache {
                                     Handle<AccessorInfo> callback,
                                     StrictModeFlag strict_mode);
 
-  Handle<Code> ComputeStoreViaSetter(Handle<String> name,
-                                     Handle<JSObject> receiver,
-                                     Handle<JSFunction> setter,
-                                     StrictModeFlag strict_mode);
-
   Handle<Code> ComputeStoreInterceptor(Handle<String> name,
                                        Handle<JSObject> receiver,
                                        StrictModeFlag strict_mode);
@@ -179,7 +168,7 @@ class StubCache {
                                       Handle<Map> transition,
                                       StrictModeFlag strict_mode);
 
-  Handle<Code> ComputeKeyedLoadOrStoreElement(Handle<Map> receiver_map,
+  Handle<Code> ComputeKeyedLoadOrStoreElement(Handle<JSObject> receiver,
                                               KeyedIC::StubKind stub_kind,
                                               StrictModeFlag strict_mode);
 
@@ -260,11 +249,10 @@ class StubCache {
   void CollectMatchingMaps(SmallMapList* types,
                            String* name,
                            Code::Flags flags,
-                           Handle<Context> global_context,
-                           Zone* zone);
+                           Handle<Context> global_context);
 
   // Generate code for probing the stub cache table.
-  // Arguments extra, extra2 and extra3 may be used to pass additional scratch
+  // Arguments extra and extra2 may be used to pass additional scratch
   // registers. Set to no_reg if not needed.
   void GenerateProbe(MacroAssembler* masm,
                      Code::Flags flags,
@@ -272,8 +260,7 @@ class StubCache {
                      Register name,
                      Register scratch,
                      Register extra,
-                     Register extra2 = no_reg,
-                     Register extra3 = no_reg);
+                     Register extra2 = no_reg);
 
   enum Table {
     kPrimary,
@@ -284,12 +271,6 @@ class StubCache {
   SCTableReference key_reference(StubCache::Table table) {
     return SCTableReference(
         reinterpret_cast<Address>(&first_entry(table)->key));
-  }
-
-
-  SCTableReference map_reference(StubCache::Table table) {
-    return SCTableReference(
-        reinterpret_cast<Address>(&first_entry(table)->map));
   }
 
 
@@ -313,22 +294,13 @@ class StubCache {
   Factory* factory() { return isolate()->factory(); }
 
  private:
-  StubCache(Isolate* isolate, Zone* zone);
+  explicit StubCache(Isolate* isolate);
 
   Handle<Code> ComputeCallInitialize(int argc,
                                      RelocInfo::Mode mode,
                                      Code::Kind kind);
 
-  // The stub cache has a primary and secondary level.  The two levels have
-  // different hashing algorithms in order to avoid simultaneous collisions
-  // in both caches.  Unlike a probing strategy (quadratic or otherwise) the
-  // update strategy on updates is fairly clear and simple:  Any existing entry
-  // in the primary cache is moved to the secondary cache, and secondary cache
-  // entries are overwritten.
-
-  // Hash algorithm for the primary table.  This algorithm is replicated in
-  // assembler for every architecture.  Returns an index into the table that
-  // is scaled by 1 << kHeapObjectTagSize.
+  // Computes the hashed offsets for primary and secondary caches.
   static int PrimaryOffset(String* name, Code::Flags flags, Map* map) {
     // This works well because the heap object tag size and the hash
     // shift are equal.  Shifting down the length field to get the
@@ -352,30 +324,23 @@ class StubCache {
     return key & ((kPrimaryTableSize - 1) << kHeapObjectTagSize);
   }
 
-  // Hash algorithm for the secondary table.  This algorithm is replicated in
-  // assembler for every architecture.  Returns an index into the table that
-  // is scaled by 1 << kHeapObjectTagSize.
   static int SecondaryOffset(String* name, Code::Flags flags, int seed) {
     // Use the seed from the primary cache in the secondary cache.
     uint32_t string_low32bits =
         static_cast<uint32_t>(reinterpret_cast<uintptr_t>(name));
-    // We always set the in_loop bit to zero when generating the lookup code
-    // so do it here too so the hash codes match.
-    uint32_t iflags =
-        (static_cast<uint32_t>(flags) & ~Code::kFlagsNotUsedInLookup);
-    uint32_t key = (seed - string_low32bits) + iflags;
+    uint32_t key = seed - string_low32bits + flags;
     return key & ((kSecondaryTableSize - 1) << kHeapObjectTagSize);
   }
 
   // Compute the entry for a given offset in exactly the same way as
   // we do in generated code.  We generate an hash code that already
-  // ends in String::kHashShift 0s.  Then we multiply it so it is a multiple
+  // ends in String::kHashShift 0s.  Then we shift it so it is a multiple
   // of sizeof(Entry).  This makes it easier to avoid making mistakes
   // in the hashed offset computations.
   static Entry* entry(Entry* table, int offset) {
-    const int multiplier = sizeof(*table) >> String::kHashShift;
+    const int shift_amount = kPointerSizeLog2 + 1 - String::kHashShift;
     return reinterpret_cast<Entry*>(
-        reinterpret_cast<Address>(table) + offset * multiplier);
+        reinterpret_cast<Address>(table) + (offset << shift_amount));
   }
 
   static const int kPrimaryTableBits = 11;
@@ -471,16 +436,14 @@ class StubCompiler BASE_EMBEDDED {
                                             Register scratch2,
                                             Label* miss_label);
 
-  void GenerateStoreField(MacroAssembler* masm,
-                          Handle<JSObject> object,
-                          int index,
-                          Handle<Map> transition,
-                          Handle<String> name,
-                          Register receiver_reg,
-                          Register name_reg,
-                          Register scratch1,
-                          Register scratch2,
-                          Label* miss_label);
+  static void GenerateStoreField(MacroAssembler* masm,
+                                 Handle<JSObject> object,
+                                 int index,
+                                 Handle<Map> transition,
+                                 Register receiver_reg,
+                                 Register name_reg,
+                                 Register scratch,
+                                 Label* miss_label);
 
   static void GenerateLoadMiss(MacroAssembler* masm,
                                Code::Kind kind);
@@ -523,7 +486,6 @@ class StubCompiler BASE_EMBEDDED {
                            Handle<String> name,
                            int save_at_depth,
                            Label* miss);
-
 
  protected:
   Handle<Code> GetCodeWithFlags(Code::Flags flags, const char* name);
@@ -606,11 +568,6 @@ class LoadStubCompiler: public StubCompiler {
                                    Handle<JSObject> object,
                                    Handle<JSObject> holder,
                                    Handle<AccessorInfo> callback);
-
-  Handle<Code> CompileLoadViaGetter(Handle<String> name,
-                                    Handle<JSObject> receiver,
-                                    Handle<JSObject> holder,
-                                    Handle<JSFunction> getter);
 
   Handle<Code> CompileLoadConstant(Handle<JSObject> object,
                                    Handle<JSObject> holder,
@@ -697,10 +654,6 @@ class StoreStubCompiler: public StubCompiler {
                                     Handle<AccessorInfo> callback,
                                     Handle<String> name);
 
-  Handle<Code> CompileStoreViaSetter(Handle<JSObject> receiver,
-                                     Handle<JSFunction> setter,
-                                     Handle<String> name);
-
   Handle<Code> CompileStoreInterceptor(Handle<JSObject> object,
                                        Handle<String> name);
 
@@ -717,12 +670,8 @@ class StoreStubCompiler: public StubCompiler {
 
 class KeyedStoreStubCompiler: public StubCompiler {
  public:
-  KeyedStoreStubCompiler(Isolate* isolate,
-                         StrictModeFlag strict_mode,
-                         KeyedAccessGrowMode grow_mode)
-    : StubCompiler(isolate),
-      strict_mode_(strict_mode),
-      grow_mode_(grow_mode) { }
+  KeyedStoreStubCompiler(Isolate* isolate, StrictModeFlag strict_mode)
+    : StubCompiler(isolate), strict_mode_(strict_mode) { }
 
   Handle<Code> CompileStoreField(Handle<JSObject> object,
                                  int index,
@@ -737,12 +686,10 @@ class KeyedStoreStubCompiler: public StubCompiler {
 
   static void GenerateStoreFastElement(MacroAssembler* masm,
                                        bool is_js_array,
-                                       ElementsKind element_kind,
-                                       KeyedAccessGrowMode grow_mode);
+                                       ElementsKind element_kind);
 
   static void GenerateStoreFastDoubleElement(MacroAssembler* masm,
-                                             bool is_js_array,
-                                             KeyedAccessGrowMode grow_mode);
+                                             bool is_js_array);
 
   static void GenerateStoreExternalArray(MacroAssembler* masm,
                                          ElementsKind elements_kind);
@@ -755,7 +702,6 @@ class KeyedStoreStubCompiler: public StubCompiler {
                        InlineCacheState state = MONOMORPHIC);
 
   StrictModeFlag strict_mode_;
-  KeyedAccessGrowMode grow_mode_;
 };
 
 

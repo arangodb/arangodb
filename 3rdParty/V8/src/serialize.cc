@@ -37,7 +37,6 @@
 #include "platform.h"
 #include "runtime.h"
 #include "serialize.h"
-#include "snapshot.h"
 #include "stub-cache.h"
 #include "v8threads.h"
 
@@ -245,7 +244,7 @@ void ExternalReferenceTable::PopulateTable(Isolate* isolate) {
     "Isolate::" #hacker_name "_address",
     FOR_EACH_ISOLATE_ADDRESS_NAME(BUILD_NAME_LITERAL)
     NULL
-#undef BUILD_NAME_LITERAL
+#undef C
   };
 
   for (uint16_t i = 0; i < Isolate::kIsolateAddressCount; ++i) {
@@ -274,22 +273,14 @@ void ExternalReferenceTable::PopulateTable(Isolate* isolate) {
       STUB_CACHE_TABLE,
       2,
       "StubCache::primary_->value");
-  Add(stub_cache->map_reference(StubCache::kPrimary).address(),
-      STUB_CACHE_TABLE,
-      3,
-      "StubCache::primary_->map");
   Add(stub_cache->key_reference(StubCache::kSecondary).address(),
       STUB_CACHE_TABLE,
-      4,
+      3,
       "StubCache::secondary_->key");
   Add(stub_cache->value_reference(StubCache::kSecondary).address(),
       STUB_CACHE_TABLE,
-      5,
+      4,
       "StubCache::secondary_->value");
-  Add(stub_cache->map_reference(StubCache::kSecondary).address(),
-      STUB_CACHE_TABLE,
-      6,
-      "StubCache::secondary_->map");
 
   // Runtime entries
   Add(ExternalReference::perform_gc_function(isolate).address(),
@@ -503,14 +494,6 @@ void ExternalReferenceTable::PopulateTable(Isolate* isolate) {
       UNCLASSIFIED,
       45,
       "the_hole_nan");
-  Add(ExternalReference::get_date_field_function(isolate).address(),
-      UNCLASSIFIED,
-      46,
-      "JSDate::GetField");
-  Add(ExternalReference::date_cache_stamp(isolate).address(),
-      UNCLASSIFIED,
-      47,
-      "date_cache_stamp");
 }
 
 
@@ -675,6 +658,10 @@ void Deserializer::Deserialize() {
   ASSERT_EQ(NULL, isolate_->thread_manager()->FirstThreadStateInUse());
   // No active handles.
   ASSERT(isolate_->handle_scope_implementer()->blocks()->is_empty());
+  // Make sure the entire partial snapshot cache is traversed, filling it with
+  // valid object pointers.
+  isolate_->set_serialize_partial_snapshot_cache_length(
+      Isolate::kPartialSnapshotCacheCapacity);
   ASSERT_EQ(NULL, external_reference_decoder_);
   external_reference_decoder_ = new ExternalReferenceDecoder();
   isolate_->heap()->IterateStrongRoots(this, VISIT_ONLY_STRONG);
@@ -846,12 +833,13 @@ void Deserializer::ReadChunk(Object** current,
           if (how == kFromCode) {                                              \
             Address location_of_branch_data =                                  \
                 reinterpret_cast<Address>(current);                            \
-            Assembler::deserialization_set_special_target_at(                  \
-                location_of_branch_data,                                       \
-                reinterpret_cast<Address>(new_object));                        \
-            location_of_branch_data += Assembler::kSpecialTargetSize;          \
-            current = reinterpret_cast<Object**>(location_of_branch_data);     \
-            current_was_incremented = true;                                    \
+            Assembler::set_target_at(location_of_branch_data,                  \
+                                     reinterpret_cast<Address>(new_object));   \
+            if (within == kFirstInstruction) {                                 \
+              location_of_branch_data += Assembler::kCallTargetSize;           \
+              current = reinterpret_cast<Object**>(location_of_branch_data);   \
+              current_was_incremented = true;                                  \
+            }                                                                  \
           } else {                                                             \
             *current = new_object;                                             \
           }                                                                    \
@@ -987,21 +975,6 @@ void Deserializer::ReadChunk(Object** current,
       // Find a recently deserialized object using its offset from the current
       // allocation point and write a pointer to it to the current object.
       ALL_SPACES(kBackref, kPlain, kStartOfObject)
-#if V8_TARGET_ARCH_MIPS
-      // Deserialize a new object from pointer found in code and write
-      // a pointer to it to the current object. Required only for MIPS, and
-      // omitted on the other architectures because it is fully unrolled and
-      // would cause bloat.
-      ONE_PER_SPACE(kNewObject, kFromCode, kStartOfObject)
-      // Find a recently deserialized code object using its offset from the
-      // current allocation point and write a pointer to it to the current
-      // object. Required only for MIPS.
-      ALL_SPACES(kBackref, kFromCode, kStartOfObject)
-      // Find an already deserialized code object using its offset from
-      // the start and write a pointer to it to the current object.
-      // Required only for MIPS.
-      ALL_SPACES(kFromStart, kFromCode, kStartOfObject)
-#endif
       // Find a recently deserialized code object using its offset from the
       // current allocation point and write a pointer to its first instruction
       // to the current code object or the instruction pointer in a function
@@ -1115,10 +1088,9 @@ Serializer::Serializer(SnapshotByteSink* sink)
       external_reference_encoder_(new ExternalReferenceEncoder),
       large_object_total_(0),
       root_index_wave_front_(0) {
-  isolate_ = Isolate::Current();
   // The serializer is meant to be used only to generate initial heap images
   // from a context in which there is only one isolate.
-  ASSERT(isolate_->IsDefaultIsolate());
+  ASSERT(Isolate::Current()->IsDefaultIsolate());
   for (int i = 0; i <= LAST_SPACE; i++) {
     fullness_[i] = 0;
   }
@@ -1146,6 +1118,22 @@ void StartupSerializer::SerializeStrongReferences() {
 
 void PartialSerializer::Serialize(Object** object) {
   this->VisitPointer(object);
+  Isolate* isolate = Isolate::Current();
+
+  // After we have done the partial serialization the partial snapshot cache
+  // will contain some references needed to decode the partial snapshot.  We
+  // fill it up with undefineds so it has a predictable length so the
+  // deserialization code doesn't need to know the length.
+  for (int index = isolate->serialize_partial_snapshot_cache_length();
+       index < Isolate::kPartialSnapshotCacheCapacity;
+       index++) {
+    isolate->serialize_partial_snapshot_cache()[index] =
+        isolate->heap()->undefined_value();
+    startup_serializer_->VisitPointer(
+        &isolate->serialize_partial_snapshot_cache()[index]);
+  }
+  isolate->set_serialize_partial_snapshot_cache_length(
+      Isolate::kPartialSnapshotCacheCapacity);
 }
 
 
@@ -1175,29 +1163,26 @@ void Serializer::VisitPointers(Object** start, Object** end) {
 
 // This ensures that the partial snapshot cache keeps things alive during GC and
 // tracks their movement.  When it is called during serialization of the startup
-// snapshot nothing happens.  When the partial (context) snapshot is created,
-// this array is populated with the pointers that the partial snapshot will
-// need. As that happens we emit serialized objects to the startup snapshot
-// that correspond to the elements of this cache array.  On deserialization we
-// therefore need to visit the cache array.  This fills it up with pointers to
-// deserialized objects.
+// snapshot the partial snapshot is empty, so nothing happens.  When the partial
+// (context) snapshot is created, this array is populated with the pointers that
+// the partial snapshot will need. As that happens we emit serialized objects to
+// the startup snapshot that correspond to the elements of this cache array.  On
+// deserialization we therefore need to visit the cache array.  This fills it up
+// with pointers to deserialized objects.
 void SerializerDeserializer::Iterate(ObjectVisitor* visitor) {
-  if (Serializer::enabled()) return;
   Isolate* isolate = Isolate::Current();
-  for (int i = 0; ; i++) {
-    if (isolate->serialize_partial_snapshot_cache_length() <= i) {
-      // Extend the array ready to get a value from the visitor when
-      // deserializing.
-      isolate->PushToPartialSnapshotCache(Smi::FromInt(0));
-    }
-    Object** cache = isolate->serialize_partial_snapshot_cache();
-    visitor->VisitPointers(&cache[i], &cache[i + 1]);
-    // Sentinel is the undefined object, which is a root so it will not normally
-    // be found in the cache.
-    if (cache[i] == isolate->heap()->undefined_value()) {
-      break;
-    }
-  }
+  visitor->VisitPointers(
+      isolate->serialize_partial_snapshot_cache(),
+      &isolate->serialize_partial_snapshot_cache()[
+          isolate->serialize_partial_snapshot_cache_length()]);
+}
+
+
+// When deserializing we need to set the size of the snapshot cache.  This means
+// the root iteration code (above) will iterate over array elements, writing the
+// references to deserialized objects in them.
+void SerializerDeserializer::SetSnapshotCacheSize(int size) {
+  Isolate::Current()->set_serialize_partial_snapshot_cache_length(size);
 }
 
 
@@ -1215,32 +1200,24 @@ int PartialSerializer::PartialSnapshotCacheIndex(HeapObject* heap_object) {
   // then visit the pointer so that it becomes part of the startup snapshot
   // and we can refer to it from the partial snapshot.
   int length = isolate->serialize_partial_snapshot_cache_length();
-  isolate->PushToPartialSnapshotCache(heap_object);
-  startup_serializer_->VisitPointer(reinterpret_cast<Object**>(&heap_object));
+  CHECK(length < Isolate::kPartialSnapshotCacheCapacity);
+  isolate->serialize_partial_snapshot_cache()[length] = heap_object;
+  startup_serializer_->VisitPointer(
+      &isolate->serialize_partial_snapshot_cache()[length]);
   // We don't recurse from the startup snapshot generator into the partial
   // snapshot generator.
-  ASSERT(length == isolate->serialize_partial_snapshot_cache_length() - 1);
+  ASSERT(length == isolate->serialize_partial_snapshot_cache_length());
+  isolate->set_serialize_partial_snapshot_cache_length(length + 1);
   return length;
 }
 
 
-int Serializer::RootIndex(HeapObject* heap_object, HowToCode from) {
+int Serializer::RootIndex(HeapObject* heap_object) {
   Heap* heap = HEAP;
   if (heap->InNewSpace(heap_object)) return kInvalidRootIndex;
   for (int i = 0; i < root_index_wave_front_; i++) {
     Object* root = heap->roots_array_start()[i];
-    if (!root->IsSmi() && root == heap_object) {
-#if V8_TARGET_ARCH_MIPS
-      if (from == kFromCode) {
-        // In order to avoid code bloat in the deserializer we don't have
-        // support for the encoding that specifies a particular root should
-        // be written into the lui/ori instructions on MIPS.  Therefore we
-        // should not generate such serialization data for MIPS.
-        return kInvalidRootIndex;
-      }
-#endif
-      return i;
-    }
+    if (!root->IsSmi() && root == heap_object) return i;
   }
   return kInvalidRootIndex;
 }
@@ -1293,7 +1270,7 @@ void StartupSerializer::SerializeObject(
   HeapObject* heap_object = HeapObject::cast(o);
 
   int root_index;
-  if ((root_index = RootIndex(heap_object, how_to_code)) != kInvalidRootIndex) {
+  if ((root_index = RootIndex(heap_object)) != kInvalidRootIndex) {
     PutRoot(root_index, heap_object, how_to_code, where_to_point);
     return;
   }
@@ -1318,14 +1295,12 @@ void StartupSerializer::SerializeObject(
 
 
 void StartupSerializer::SerializeWeakReferences() {
-  // This phase comes right after the partial serialization (of the snapshot).
-  // After we have done the partial serialization the partial snapshot cache
-  // will contain some references needed to decode the partial snapshot.  We
-  // add one entry with 'undefined' which is the sentinel that the deserializer
-  // uses to know it is done deserializing the array.
-  Isolate* isolate = Isolate::Current();
-  Object* undefined = isolate->heap()->undefined_value();
-  VisitPointer(&undefined);
+  for (int i = Isolate::Current()->serialize_partial_snapshot_cache_length();
+       i < Isolate::kPartialSnapshotCacheCapacity;
+       i++) {
+    sink_->Put(kRootArray + kPlain + kStartOfObject, "RootSerialization");
+    sink_->PutInt(Heap::kUndefinedValueRootIndex, "root_index");
+  }
   HEAP->IterateWeakRoots(this, VISIT_ALL);
 }
 
@@ -1367,7 +1342,7 @@ void PartialSerializer::SerializeObject(
   }
 
   int root_index;
-  if ((root_index = RootIndex(heap_object, how_to_code)) != kInvalidRootIndex) {
+  if ((root_index = RootIndex(heap_object)) != kInvalidRootIndex) {
     PutRoot(root_index, heap_object, how_to_code, where_to_point);
     return;
   }
@@ -1447,7 +1422,7 @@ void Serializer::ObjectSerializer::VisitPointers(Object** start,
 
     while (current < end && !(*current)->IsSmi()) {
       HeapObject* current_contents = HeapObject::cast(*current);
-      int root_index = serializer_->RootIndex(current_contents, kPlain);
+      int root_index = serializer_->RootIndex(current_contents);
       // Repeats are not subject to the write barrier so there are only some
       // objects that can be used in a repeat encoding.  These are the early
       // ones in the root array that are never in new space.
@@ -1667,8 +1642,8 @@ int Serializer::Allocate(int space, int size, bool* new_page) {
     // serialized address.
     CHECK(IsPowerOf2(Page::kPageSize));
     int used_in_this_page = (fullness_[space] & (Page::kPageSize - 1));
-    CHECK(size <= SpaceAreaSize(space));
-    if (used_in_this_page + size > SpaceAreaSize(space)) {
+    CHECK(size <= Page::kObjectAreaSize);
+    if (used_in_this_page + size > Page::kObjectAreaSize) {
       *new_page = true;
       fullness_[space] = RoundUp(fullness_[space], Page::kPageSize);
     }
@@ -1676,15 +1651,6 @@ int Serializer::Allocate(int space, int size, bool* new_page) {
   int allocation_address = fullness_[space];
   fullness_[space] = allocation_address + size;
   return allocation_address;
-}
-
-
-int Serializer::SpaceAreaSize(int space) {
-  if (space == CODE_SPACE) {
-    return isolate_->memory_allocator()->CodePageAreaSize();
-  } else {
-    return Page::kPageSize - Page::kObjectStartOffset;
-  }
 }
 
 

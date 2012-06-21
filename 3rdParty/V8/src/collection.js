@@ -25,11 +25,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"use strict";
 
-var $Set = global.Set;
-var $Map = global.Map;
-var $WeakMap = global.WeakMap;
+const $Set = global.Set;
+const $Map = global.Map;
+const $WeakMap = global.WeakMap;
 
 //-------------------------------------------------------------------
 
@@ -79,12 +78,7 @@ function SetDelete(key) {
   if (IS_UNDEFINED(key)) {
     key = undefined_sentinel;
   }
-  if (%SetHas(this, key)) {
-    %SetDelete(this, key);
-    return true;
-  } else {
-    return false;
-  }
+  return %SetDelete(this, key);
 }
 
 

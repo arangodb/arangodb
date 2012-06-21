@@ -32,7 +32,6 @@
 #include "isolate.h"
 #include "list-inl.h"
 #include "objects.h"
-#include "platform.h"
 #include "v8-counters.h"
 #include "store-buffer.h"
 #include "store-buffer-inl.h"
@@ -50,7 +49,7 @@ void PromotionQueue::insert(HeapObject* target, int size) {
     NewSpacePage* rear_page =
         NewSpacePage::FromAddress(reinterpret_cast<Address>(rear_));
     ASSERT(!rear_page->prev_page()->is_anchor());
-    rear_ = reinterpret_cast<intptr_t*>(rear_page->prev_page()->area_end());
+    rear_ = reinterpret_cast<intptr_t*>(rear_page->prev_page()->body_limit());
     ActivateGuardIfOnTheSamePage();
   }
 
@@ -79,6 +78,11 @@ void PromotionQueue::ActivateGuardIfOnTheSamePage() {
   guard_ = guard_ ||
       heap_->new_space()->active_space()->current_page()->address() ==
       GetHeadPage()->address();
+}
+
+
+int Heap::MaxObjectSizeInPagedSpace() {
+  return Page::kMaxHeapObjectSize;
 }
 
 
@@ -115,7 +119,7 @@ MaybeObject* Heap::AllocateAsciiSymbol(Vector<const char> str,
 
   // Allocate string.
   Object* result;
-  { MaybeObject* maybe_result = (size > Page::kMaxNonCodeHeapObjectSize)
+  { MaybeObject* maybe_result = (size > MaxObjectSizeInPagedSpace())
                    ? lo_space_->AllocateRaw(size, NOT_EXECUTABLE)
                    : old_data_space_->AllocateRaw(size);
     if (!maybe_result->ToObject(&result)) return maybe_result;
@@ -149,7 +153,7 @@ MaybeObject* Heap::AllocateTwoByteSymbol(Vector<const uc16> str,
 
   // Allocate string.
   Object* result;
-  { MaybeObject* maybe_result = (size > Page::kMaxNonCodeHeapObjectSize)
+  { MaybeObject* maybe_result = (size > MaxObjectSizeInPagedSpace())
                    ? lo_space_->AllocateRaw(size, NOT_EXECUTABLE)
                    : old_data_space_->AllocateRaw(size);
     if (!maybe_result->ToObject(&result)) return maybe_result;
@@ -460,16 +464,15 @@ MaybeObject* Heap::PrepareForCompare(String* str) {
 }
 
 
-intptr_t Heap::AdjustAmountOfExternalAllocatedMemory(
-    intptr_t change_in_bytes) {
+int Heap::AdjustAmountOfExternalAllocatedMemory(int change_in_bytes) {
   ASSERT(HasBeenSetUp());
-  intptr_t amount = amount_of_external_allocated_memory_ + change_in_bytes;
+  int amount = amount_of_external_allocated_memory_ + change_in_bytes;
   if (change_in_bytes >= 0) {
     // Avoid overflow.
     if (amount > amount_of_external_allocated_memory_) {
       amount_of_external_allocated_memory_ = amount;
     }
-    intptr_t amount_since_last_global_gc =
+    int amount_since_last_global_gc =
         amount_of_external_allocated_memory_ -
         amount_of_external_allocated_memory_at_last_global_gc_;
     if (amount_since_last_global_gc > external_allocation_limit_) {
@@ -595,24 +598,12 @@ void ExternalStringTable::Iterate(ObjectVisitor* v) {
 void ExternalStringTable::Verify() {
 #ifdef DEBUG
   for (int i = 0; i < new_space_strings_.length(); ++i) {
-    Object* obj = Object::cast(new_space_strings_[i]);
-    // TODO(yangguo): check that the object is indeed an external string.
-    ASSERT(heap_->InNewSpace(obj));
-    ASSERT(obj != HEAP->raw_unchecked_the_hole_value());
-    if (obj->IsExternalAsciiString()) {
-      ExternalAsciiString* string = ExternalAsciiString::cast(obj);
-      ASSERT(String::IsAscii(string->GetChars(), string->length()));
-    }
+    ASSERT(heap_->InNewSpace(new_space_strings_[i]));
+    ASSERT(new_space_strings_[i] != HEAP->raw_unchecked_the_hole_value());
   }
   for (int i = 0; i < old_space_strings_.length(); ++i) {
-    Object* obj = Object::cast(old_space_strings_[i]);
-    // TODO(yangguo): check that the object is indeed an external string.
-    ASSERT(!heap_->InNewSpace(obj));
-    ASSERT(obj != HEAP->raw_unchecked_the_hole_value());
-    if (obj->IsExternalAsciiString()) {
-      ExternalAsciiString* string = ExternalAsciiString::cast(obj);
-      ASSERT(String::IsAscii(string->GetChars(), string->length()));
-    }
+    ASSERT(!heap_->InNewSpace(old_space_strings_[i]));
+    ASSERT(old_space_strings_[i] != HEAP->raw_unchecked_the_hole_value());
   }
 #endif
 }
@@ -672,15 +663,15 @@ double TranscendentalCache::SubCache::Calculate(double input) {
     case ATAN:
       return atan(input);
     case COS:
-      return fast_cos(input);
+      return cos(input);
     case EXP:
       return exp(input);
     case LOG:
-      return fast_log(input);
+      return log(input);
     case SIN:
-      return fast_sin(input);
+      return sin(input);
     case TAN:
-      return fast_tan(input);
+      return tan(input);
     default:
       return 0.0;  // Never happens.
   }

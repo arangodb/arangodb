@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2009 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -347,7 +347,7 @@ v8::Handle<v8::String> ReadFile(const char* name) {
   char* chars = new char[size + 1];
   chars[size] = '\0';
   for (int i = 0; i < size;) {
-    int read = static_cast<int>(fread(&chars[i], 1, size - i, file));
+    int read = fread(&chars[i], 1, size - i, file);
     i += read;
   }
   fclose(file);
@@ -434,9 +434,9 @@ v8::Handle<v8::String> ReadLine() {
   }
   if (res == NULL) {
     v8::Handle<v8::Primitive> t = v8::Undefined();
-    return v8::Handle<v8::String>(v8::String::Cast(*t));
+    return reinterpret_cast<v8::Handle<v8::String>&>(t);
   }
-  // Remove newline char
+  // remove newline char
   for (char* pos = buffer; *pos != '\0'; pos++) {
     if (*pos == '\n') {
       *pos = '\0';
