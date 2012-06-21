@@ -31,6 +31,7 @@
 #include "Rest/AnyServer.h"
 
 #include "Admin/ApplicationAdminServer.h"
+#include "lib/V8/v8-globals.h"
 #include "HttpServer/ApplicationHttpServer.h"
 #include "VocBase/vocbase.h"
 
@@ -509,6 +510,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief v8 globals
+////////////////////////////////////////////////////////////////////////////////
+ 
+        TRI_v8_global_t* _v8g;
+
     };
   }
 }
