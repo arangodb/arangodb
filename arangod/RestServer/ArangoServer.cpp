@@ -39,6 +39,7 @@
 
 #include "build.h"
 
+#include "Actions/actions.h"
 #include "Actions/RestActionHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/FileUtils.h"
@@ -59,6 +60,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestBatchHandler.h"
 #include "RestServer/ArangoHttpServer.h"
 #include "RestServer/JavascriptDispatcherThread.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -220,6 +222,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add import handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+  
+  // add batch handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
 }
 
@@ -629,22 +636,22 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (_applicationServer->programOptions().has("console")) {
-    int res = executeShell(MODE_CONSOLE);
+    int res = executeConsole(MODE_CONSOLE);
     exit(res);
   }
   else if (! _unitTests.empty()) {
-    int res = executeShell(MODE_UNITTESTS);
+    int res = executeConsole(MODE_UNITTESTS);
     exit(res);
   }
   else if (_applicationServer->programOptions().has("jslint")) {
-    int res = executeShell(MODE_JSLINT);
+    int res = executeConsole(MODE_JSLINT);
     exit(res);
   }
 
 
 #ifdef TRI_ENABLE_MRUBY
   if (_applicationServer->programOptions().has("ruby-console")) {
-    int res = executeRubyShell();
+    int res = executeRubyConsole();
     exit(res);
   }
 #endif
@@ -871,6 +878,7 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // and cleanup
   // .............................................................................
+  
 
   _applicationServer->shutdown();
   closeDatabase();
@@ -895,7 +903,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeShell (shell_operation_mode_e mode) {
+int ArangoServer::executeConsole (server_operation_mode_e mode) {
   bool ok;
 
   // only simple logging
@@ -1070,7 +1078,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the MRuby emergency console
+/// @brief executes the MRuby emergency shell
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MRUBY
@@ -1154,7 +1162,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 #endif
 
 
-int ArangoServer::executeRubyShell () {
+int ArangoServer::executeRubyConsole () {
   struct mrb_parser_state* p;
   size_t i;
   char const* files[] = { "common/bootstrap/error.rb",
@@ -1286,6 +1294,7 @@ void ArangoServer::closeDatabase () {
 
   TRI_DestroyVocBase(_vocbase);
   _vocbase = 0;
+
   LOGGER_INFO << "ArangoDB has been shut down";
 }
 

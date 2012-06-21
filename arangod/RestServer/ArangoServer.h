@@ -31,6 +31,7 @@
 #include "Rest/AnyServer.h"
 
 #include "Admin/ApplicationAdminServer.h"
+#include "lib/V8/v8-globals.h"
 #include "HttpServer/ApplicationHttpServer.h"
 #include "VocBase/vocbase.h"
 
@@ -72,7 +73,7 @@ namespace triagens {
       MODE_UNITTESTS,
       MODE_JSLINT,
     }
-    shell_operation_mode_e;
+    server_operation_mode_e;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,14 +152,14 @@ namespace triagens {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-        int executeShell (shell_operation_mode_e);
+        int executeConsole (server_operation_mode_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the ruby emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MRUBY
-        int executeRubyShell ();
+        int executeRubyConsole ();
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
