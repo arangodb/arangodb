@@ -743,22 +743,22 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (_applicationServer->programOptions().has("console")) {
-    int res = executeShell(MODE_CONSOLE);
+    int res = executeConsole(MODE_CONSOLE);
     exit(res);
   }
   else if (! _unitTests.empty()) {
-    int res = executeShell(MODE_UNITTESTS);
+    int res = executeConsole(MODE_UNITTESTS);
     exit(res);
   }
   else if (_applicationServer->programOptions().has("jslint")) {
-    int res = executeShell(MODE_JSLINT);
+    int res = executeConsole(MODE_JSLINT);
     exit(res);
   }
 
 
 #ifdef TRI_ENABLE_MRUBY
   if (_applicationServer->programOptions().has("ruby-console")) {
-    int res = executeRubyShell();
+    int res = executeRubyConsole();
     exit(res);
   }
 #endif
@@ -981,7 +981,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeShell (shell_operation_mode_e mode) {
+int ArangoServer::executeConsole (server_operation_mode_e mode) {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
@@ -1041,8 +1041,8 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
     }
   }
 
-  // run the shell
-  printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+  // run the console
+  printf("ArangoDB JavaScript console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
 
   v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context);
@@ -1178,7 +1178,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the MRuby emergency console
+/// @brief executes the MRuby emergency shell
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MRUBY
@@ -1262,7 +1262,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 #endif
 
 
-int ArangoServer::executeRubyShell () {
+int ArangoServer::executeRubyConsole () {
   struct mrb_parser_state* p;
   size_t i;
   char const* files[] = { "common/bootstrap/error.rb",
