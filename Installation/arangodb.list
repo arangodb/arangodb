@@ -46,7 +46,7 @@ d 0755 ${susr} ${sgrp} ${static_dir}/html -
 d 0755 ${susr} ${sgrp} /var/run/arangod -
 
 # logfile directory
-d 0755 ${rusr} ${rgrp} /var/log/arangodb -
+d 0755 ${rusr} ${rgrp} /var/log/arangod -
 
 %include ${project_dir}/Installation/arangodb.sublist
 
@@ -55,7 +55,7 @@ d 0755 ${rusr} ${rgrp} /var/log/arangodb -
 ################################################################################
 
 %postinstall <<EOF
-sed -e 's%@LOGDIR@%/var/log/arangodb%g' -e 's%@DATABASE@%${data_dir}/arango%g' -e 's%@STATICFILES@%${static_dir}/arango%g' /etc/arangodb/${vers_dir}/arango.conf.template > /etc/arango.conf
+sed -e 's%@LOGDIR@%/var/log/arangod%g' -e 's%@DATABASE@%${data_dir}/arango%g' -e 's%@STATICFILES@%${static_dir}/arango%g' /etc/arangodb/${vers_dir}/arango.conf.template > /etc/arango.conf
 EOF
 
 %ifdef macosx
