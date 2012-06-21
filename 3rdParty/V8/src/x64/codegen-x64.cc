@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -53,75 +53,6 @@ void StubRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
 
 
 #define __ masm.
-
-
-UnaryMathFunction CreateTranscendentalFunction(TranscendentalCache::Type type) {
-  size_t actual_size;
-  // Allocate buffer in executable space.
-  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
-                                                 &actual_size,
-                                                 true));
-  if (buffer == NULL) {
-    // Fallback to library function if function cannot be created.
-    switch (type) {
-      case TranscendentalCache::SIN: return &sin;
-      case TranscendentalCache::COS: return &cos;
-      case TranscendentalCache::TAN: return &tan;
-      case TranscendentalCache::LOG: return &log;
-      default: UNIMPLEMENTED();
-    }
-  }
-
-  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
-  // xmm0: raw double input.
-  // Move double input into registers.
-  __ push(rbx);
-  __ push(rdi);
-  __ movq(rbx, xmm0);
-  __ push(rbx);
-  __ fld_d(Operand(rsp, 0));
-  TranscendentalCacheStub::GenerateOperation(&masm, type);
-  // The return value is expected to be in xmm0.
-  __ fstp_d(Operand(rsp, 0));
-  __ pop(rbx);
-  __ movq(xmm0, rbx);
-  __ pop(rdi);
-  __ pop(rbx);
-  __ Ret();
-
-  CodeDesc desc;
-  masm.GetCode(&desc);
-  ASSERT(desc.reloc_size == 0);
-
-  CPU::FlushICache(buffer, actual_size);
-  OS::ProtectCode(buffer, actual_size);
-  return FUNCTION_CAST<UnaryMathFunction>(buffer);
-}
-
-
-UnaryMathFunction CreateSqrtFunction() {
-  size_t actual_size;
-  // Allocate buffer in executable space.
-  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
-                                                 &actual_size,
-                                                 true));
-  if (buffer == NULL) return &sqrt;
-
-  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
-  // xmm0: raw double input.
-  // Move double input into registers.
-  __ sqrtsd(xmm0, xmm0);
-  __ Ret();
-
-  CodeDesc desc;
-  masm.GetCode(&desc);
-  ASSERT(desc.reloc_size == 0);
-
-  CPU::FlushICache(buffer, actual_size);
-  OS::ProtectCode(buffer, actual_size);
-  return FUNCTION_CAST<UnaryMathFunction>(buffer);
-}
-
 
 #ifdef _WIN64
 typedef double (*ModuloFunction)(double, double);
@@ -220,7 +151,7 @@ ModuloFunction CreateModuloFunction() {
 
 #define __ ACCESS_MASM(masm)
 
-void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
+void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
     MacroAssembler* masm) {
   // ----------- S t a t e -------------
   //  -- rax    : value
@@ -241,7 +172,7 @@ void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
 }
 
 
-void ElementsTransitionGenerator::GenerateSmiToDouble(
+void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
     MacroAssembler* masm, Label* fail) {
   // ----------- S t a t e -------------
   //  -- rax    : value
@@ -251,28 +182,19 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   //  -- rsp[0] : return address
   // -----------------------------------
   // The fail label is not actually used since we do not allocate.
-  Label allocated, new_backing_store, only_change_map, done;
+  Label allocated, cow_array;
 
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
+  // Check backing store for COW-ness.  If the negative case, we do not have to
+  // allocate a new array, since FixedArray and FixedDoubleArray do not differ
+  // in size.
   __ movq(r8, FieldOperand(rdx, JSObject::kElementsOffset));
-  __ CompareRoot(r8, Heap::kEmptyFixedArrayRootIndex);
-  __ j(equal, &only_change_map);
-
-  // Check backing store for COW-ness.  For COW arrays we have to
-  // allocate a new backing store.
   __ SmiToInteger32(r9, FieldOperand(r8, FixedDoubleArray::kLengthOffset));
   __ CompareRoot(FieldOperand(r8, HeapObject::kMapOffset),
                  Heap::kFixedCOWArrayMapRootIndex);
-  __ j(equal, &new_backing_store);
-  // Check if the backing store is in new-space. If not, we need to allocate
-  // a new one since the old one is in pointer-space.
-  // If in new space, we can reuse the old backing store because it is
-  // the same size.
-  __ JumpIfNotInNewSpace(r8, rdi, &new_backing_store);
-
+  __ j(equal, &cow_array);
   __ movq(r14, r8);  // Destination array equals source array.
 
+  __ bind(&allocated);
   // r8 : source FixedArray
   // r9 : elements array length
   // r14: destination FixedDoubleArray
@@ -280,7 +202,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   __ LoadRoot(rdi, Heap::kFixedDoubleArrayMapRootIndex);
   __ movq(FieldOperand(r14, HeapObject::kMapOffset), rdi);
 
-  __ bind(&allocated);
   // Set transitioned map.
   __ movq(FieldOperand(rdx, HeapObject::kMapOffset), rbx);
   __ RecordWriteField(rdx,
@@ -301,13 +222,10 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   // r15: the-hole NaN
   __ jmp(&entry);
 
-  // Allocate new backing store.
-  __ bind(&new_backing_store);
+  // Allocate new array if the source array is a COW array.
+  __ bind(&cow_array);
   __ lea(rdi, Operand(r9, times_pointer_size, FixedArray::kHeaderSize));
   __ AllocateInNewSpace(rdi, r14, r11, r15, fail, TAG_OBJECT);
-  // Set backing store's map
-  __ LoadRoot(rdi, Heap::kFixedDoubleArrayMapRootIndex);
-  __ movq(FieldOperand(r14, HeapObject::kMapOffset), rdi);
   // Set receiver's backing store.
   __ movq(FieldOperand(rdx, JSObject::kElementsOffset), r14);
   __ movq(r11, r14);
@@ -322,18 +240,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   __ Integer32ToSmi(r11, r9);
   __ movq(FieldOperand(r14, FixedDoubleArray::kLengthOffset), r11);
   __ jmp(&allocated);
-
-  __ bind(&only_change_map);
-  // Set transitioned map.
-  __ movq(FieldOperand(rdx, HeapObject::kMapOffset), rbx);
-  __ RecordWriteField(rdx,
-                      HeapObject::kMapOffset,
-                      rbx,
-                      rdi,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
-  __ jmp(&done);
 
   // Conversion loop.
   __ bind(&loop);
@@ -358,8 +264,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   __ bind(&entry);
   __ decq(r9);
   __ j(not_sign, &loop);
-
-  __ bind(&done);
 }
 
 
@@ -372,14 +276,7 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   //  -- rdx    : receiver
   //  -- rsp[0] : return address
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required, only_change_map;
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ movq(r8, FieldOperand(rdx, JSObject::kElementsOffset));
-  __ CompareRoot(r8, Heap::kEmptyFixedArrayRootIndex);
-  __ j(equal, &only_change_map);
-
+  Label loop, entry, convert_hole, gc_required;
   __ push(rax);
 
   __ movq(r8, FieldOperand(rdx, JSObject::kElementsOffset));
@@ -448,6 +345,15 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   __ decq(r9);
   __ j(not_sign, &loop);
 
+  // Set transitioned map.
+  __ movq(FieldOperand(rdx, HeapObject::kMapOffset), rbx);
+  __ RecordWriteField(rdx,
+                      HeapObject::kMapOffset,
+                      rbx,
+                      rdi,
+                      kDontSaveFPRegs,
+                      EMIT_REMEMBERED_SET,
+                      OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created and filled FixedArray.
   __ movq(FieldOperand(rdx, JSObject::kElementsOffset), r11);
   __ RecordWriteField(rdx,
@@ -459,17 +365,6 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
                       OMIT_SMI_CHECK);
   __ pop(rax);
   __ movq(rsi, Operand(rbp, StandardFrameConstants::kContextOffset));
-
-  __ bind(&only_change_map);
-  // Set transitioned map.
-  __ movq(FieldOperand(rdx, HeapObject::kMapOffset), rbx);
-  __ RecordWriteField(rdx,
-                      HeapObject::kMapOffset,
-                      rbx,
-                      rdi,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
 }
 
 

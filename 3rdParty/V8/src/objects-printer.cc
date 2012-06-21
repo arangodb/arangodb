@@ -135,9 +135,6 @@ void HeapObject::HeapObjectPrint(FILE* out) {
     case ODDBALL_TYPE:
       Oddball::cast(this)->to_string()->Print(out);
       break;
-    case JS_MODULE_TYPE:
-      JSModule::cast(this)->JSModulePrint(out);
-      break;
     case JS_FUNCTION_TYPE:
       JSFunction::cast(this)->JSFunctionPrint(out);
       break;
@@ -153,9 +150,6 @@ void HeapObject::HeapObjectPrint(FILE* out) {
     case JS_VALUE_TYPE:
       PrintF(out, "Value wrapper around:");
       JSValue::cast(this)->value()->Print(out);
-      break;
-    case JS_DATE_TYPE:
-      JSDate::cast(this)->JSDatePrint(out);
       break;
     case CODE_TYPE:
       Code::cast(this)->CodePrint(out);
@@ -273,6 +267,25 @@ void JSObject::PrintProperties(FILE* out) {
           descs->GetCallbacksObject(i)->ShortPrint(out);
           PrintF(out, " (callback)\n");
           break;
+        case ELEMENTS_TRANSITION: {
+          PrintF(out, "(elements transition to ");
+          Object* descriptor_contents = descs->GetValue(i);
+          if (descriptor_contents->IsMap()) {
+            Map* map = Map::cast(descriptor_contents);
+            PrintElementsKind(out, map->elements_kind());
+          } else {
+            FixedArray* map_array = FixedArray::cast(descriptor_contents);
+            for (int i = 0; i < map_array->length(); ++i) {
+              Map* map = Map::cast(map_array->get(i));
+              if (i != 0) {
+                PrintF(out, ", ");
+              }
+              PrintElementsKind(out, map->elements_kind());
+            }
+          }
+          PrintF(out, ")\n");
+          break;
+        }
         case MAP_TRANSITION:
           PrintF(out, "(map transition)\n");
           break;
@@ -299,9 +312,7 @@ void JSObject::PrintElements(FILE* out) {
   // Don't call GetElementsKind, its validation code can cause the printer to
   // fail when debugging.
   switch (map()->elements_kind()) {
-    case FAST_HOLEY_SMI_ELEMENTS:
-    case FAST_SMI_ELEMENTS:
-    case FAST_HOLEY_ELEMENTS:
+    case FAST_SMI_ONLY_ELEMENTS:
     case FAST_ELEMENTS: {
       // Print in array notation for non-sparse arrays.
       FixedArray* p = FixedArray::cast(elements());
@@ -312,19 +323,16 @@ void JSObject::PrintElements(FILE* out) {
       }
       break;
     }
-    case FAST_HOLEY_DOUBLE_ELEMENTS:
     case FAST_DOUBLE_ELEMENTS: {
       // Print in array notation for non-sparse arrays.
-      if (elements()->length() > 0) {
-        FixedDoubleArray* p = FixedDoubleArray::cast(elements());
-        for (int i = 0; i < p->length(); i++) {
-          if (p->is_the_hole(i)) {
-            PrintF(out, "   %d: <the hole>", i);
-          } else {
-            PrintF(out, "   %d: %g", i, p->get_scalar(i));
-          }
-          PrintF(out, "\n");
+      FixedDoubleArray* p = FixedDoubleArray::cast(elements());
+      for (int i = 0; i < p->length(); i++) {
+        if (p->is_the_hole(i)) {
+          PrintF(out, "   %d: <the hole>", i);
+        } else {
+          PrintF(out, "   %d: %g", i, p->get_scalar(i));
         }
+        PrintF(out, "\n");
       }
       break;
     }
@@ -419,22 +427,6 @@ void JSObject::JSObjectPrint(FILE* out) {
   PrintF(out,
          "]\n - prototype = %p\n",
          reinterpret_cast<void*>(GetPrototype()));
-  PrintF(out,
-         " - elements transition to = %p\n",
-         reinterpret_cast<void*>(map()->elements_transition_map()));
-  PrintF(out, " {\n");
-  PrintProperties(out);
-  PrintElements(out);
-  PrintF(out, " }\n");
-}
-
-
-void JSModule::JSModulePrint(FILE* out) {
-  HeapObject::PrintHeader(out, "JSModule");
-  PrintF(out, " - map = 0x%p\n", reinterpret_cast<void*>(map()));
-  PrintF(out, " - context = ");
-  context()->Print(out);
-  PrintElementsKind(out, this->map()->elements_kind());
   PrintF(out, " {\n");
   PrintProperties(out);
   PrintElements(out);
@@ -488,7 +480,6 @@ static const char* TypeToString(InstanceType type) {
     case ODDBALL_TYPE: return "ODDBALL";
     case JS_GLOBAL_PROPERTY_CELL_TYPE: return "JS_GLOBAL_PROPERTY_CELL";
     case SHARED_FUNCTION_INFO_TYPE: return "SHARED_FUNCTION_INFO";
-    case JS_MODULE_TYPE: return "JS_MODULE";
     case JS_FUNCTION_TYPE: return "JS_FUNCTION";
     case CODE_TYPE: return "CODE";
     case JS_ARRAY_TYPE: return "JS_ARRAY";
@@ -543,8 +534,6 @@ void Map::MapPrint(FILE* out) {
   prototype()->ShortPrint(out);
   PrintF(out, "\n - constructor: ");
   constructor()->ShortPrint(out);
-  PrintF(out, "\n - code cache: ");
-  code_cache()->ShortPrint(out);
   PrintF(out, "\n");
 }
 
@@ -562,21 +551,6 @@ void PolymorphicCodeCache::PolymorphicCodeCachePrint(FILE* out) {
   HeapObject::PrintHeader(out, "PolymorphicCodeCache");
   PrintF(out, "\n - cache: ");
   cache()->ShortPrint(out);
-}
-
-
-void TypeFeedbackInfo::TypeFeedbackInfoPrint(FILE* out) {
-  HeapObject::PrintHeader(out, "TypeFeedbackInfo");
-  PrintF(out, "\n - ic_total_count: %d, ic_with_type_info_count: %d",
-         ic_total_count(), ic_with_type_info_count());
-  PrintF(out, "\n - type_feedback_cells: ");
-  type_feedback_cells()->FixedArrayPrint(out);
-}
-
-
-void AliasedArgumentsEntry::AliasedArgumentsEntryPrint(FILE* out) {
-  HeapObject::PrintHeader(out, "AliasedArgumentsEntry");
-  PrintF(out, "\n - aliased_context_slot: %d", aliased_context_slot());
 }
 
 
@@ -671,30 +645,6 @@ char* String::ToAsciiArray() {
 }
 
 
-static const char* const weekdays[] = {
-  "???", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-};
-
-void JSDate::JSDatePrint(FILE* out) {
-  HeapObject::PrintHeader(out, "JSDate");
-  PrintF(out, " - map = 0x%p\n", reinterpret_cast<void*>(map()));
-  PrintF(out, " - value = ");
-  value()->Print(out);
-  if (!year()->IsSmi()) {
-    PrintF(out, " - time = NaN\n");
-  } else {
-    PrintF(out, " - time = %s %04d/%02d/%02d %02d:%02d:%02d\n",
-           weekdays[weekday()->IsSmi() ? Smi::cast(weekday())->value() + 1 : 0],
-           year()->IsSmi() ? Smi::cast(year())->value() : -1,
-           month()->IsSmi() ? Smi::cast(month())->value() : -1,
-           day()->IsSmi() ? Smi::cast(day())->value() : -1,
-           hour()->IsSmi() ? Smi::cast(hour())->value() : -1,
-           min()->IsSmi() ? Smi::cast(min())->value() : -1,
-           sec()->IsSmi() ? Smi::cast(sec())->value() : -1);
-  }
-}
-
-
 void JSProxy::JSProxyPrint(FILE* out) {
   HeapObject::PrintHeader(out, "JSProxy");
   PrintF(out, " - map = 0x%p\n", reinterpret_cast<void*>(map()));
@@ -761,10 +711,8 @@ void SharedFunctionInfo::SharedFunctionInfoPrint(FILE* out) {
   instance_class_name()->Print(out);
   PrintF(out, "\n - code = ");
   code()->ShortPrint(out);
-  if (HasSourceCode()) {
-    PrintF(out, "\n - source code = ");
-    GetSourceCode()->ShortPrint(out);
-  }
+  PrintF(out, "\n - source code = ");
+  GetSourceCode()->ShortPrint(out);
   // Script files are often large, hard to read.
   // PrintF(out, "\n - script =");
   // script()->Print(out);

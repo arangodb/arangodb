@@ -197,9 +197,10 @@ static bool HasDebugInfo(v8::Handle<v8::Function> fun) {
 // number.
 static int SetBreakPoint(Handle<v8::internal::JSFunction> fun, int position) {
   static int break_point = 0;
+  Handle<v8::internal::SharedFunctionInfo> shared(fun->shared());
   v8::internal::Debug* debug = v8::internal::Isolate::Current()->debug();
   debug->SetBreakPoint(
-      fun,
+      shared,
       Handle<Object>(v8::internal::Smi::FromInt(++break_point)),
       &position);
   return break_point;
@@ -514,7 +515,7 @@ void CheckDebugBreakFunction(DebugLocalContext* env,
   // there
   ClearBreakPoint(bp);
   CHECK(!debug->HasDebugInfo(shared));
-  CHECK(debug->EnsureDebugInfo(shared, fun));
+  CHECK(debug->EnsureDebugInfo(shared));
   TestBreakLocationIterator it2(Debug::GetDebugInfo(shared));
   it2.FindBreakLocationFromPosition(position);
   actual_mode = it2.it()->rinfo()->rmode();
@@ -2744,7 +2745,7 @@ TEST(DebugStepKeyedLoadLoop) {
   foo->Call(env->Global(), kArgc, args);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(34, break_point_hit_count);
+  CHECK_EQ(33, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2791,7 +2792,7 @@ TEST(DebugStepKeyedStoreLoop) {
   foo->Call(env->Global(), kArgc, args);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(33, break_point_hit_count);
+  CHECK_EQ(32, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2835,7 +2836,7 @@ TEST(DebugStepNamedLoadLoop) {
   foo->Call(env->Global(), 0, NULL);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(54, break_point_hit_count);
+  CHECK_EQ(53, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2879,7 +2880,7 @@ static void DoDebugStepNamedStoreLoop(int expected) {
 
 // Test of the stepping mechanism for named load in a loop.
 TEST(DebugStepNamedStoreLoop) {
-  DoDebugStepNamedStoreLoop(23);
+  DoDebugStepNamedStoreLoop(22);
 }
 
 
@@ -3251,7 +3252,7 @@ TEST(DebugStepForContinue) {
   v8::Handle<v8::Value> argv_10[argc] = { v8::Number::New(10) };
   result = foo->Call(env->Global(), argc, argv_10);
   CHECK_EQ(5, result->Int32Value());
-  CHECK_EQ(51, break_point_hit_count);
+  CHECK_EQ(50, break_point_hit_count);
 
   // Looping 100 times.
   step_action = StepIn;
@@ -3259,7 +3260,7 @@ TEST(DebugStepForContinue) {
   v8::Handle<v8::Value> argv_100[argc] = { v8::Number::New(100) };
   result = foo->Call(env->Global(), argc, argv_100);
   CHECK_EQ(50, result->Int32Value());
-  CHECK_EQ(456, break_point_hit_count);
+  CHECK_EQ(455, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(NULL);
@@ -3303,7 +3304,7 @@ TEST(DebugStepForBreak) {
   v8::Handle<v8::Value> argv_10[argc] = { v8::Number::New(10) };
   result = foo->Call(env->Global(), argc, argv_10);
   CHECK_EQ(9, result->Int32Value());
-  CHECK_EQ(54, break_point_hit_count);
+  CHECK_EQ(53, break_point_hit_count);
 
   // Looping 100 times.
   step_action = StepIn;
@@ -3311,7 +3312,7 @@ TEST(DebugStepForBreak) {
   v8::Handle<v8::Value> argv_100[argc] = { v8::Number::New(100) };
   result = foo->Call(env->Global(), argc, argv_100);
   CHECK_EQ(99, result->Int32Value());
-  CHECK_EQ(504, break_point_hit_count);
+  CHECK_EQ(503, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(NULL);
@@ -4221,9 +4222,9 @@ TEST(InterceptorPropertyMirror) {
 
   // Get mirrors for the three objects with interceptor.
   CompileRun(
-      "var named_mirror = debug.MakeMirror(intercepted_named);"
-      "var indexed_mirror = debug.MakeMirror(intercepted_indexed);"
-      "var both_mirror = debug.MakeMirror(intercepted_both)");
+      "named_mirror = debug.MakeMirror(intercepted_named);"
+      "indexed_mirror = debug.MakeMirror(intercepted_indexed);"
+      "both_mirror = debug.MakeMirror(intercepted_both)");
   CHECK(CompileRun(
        "named_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun(
@@ -4264,7 +4265,7 @@ TEST(InterceptorPropertyMirror) {
   CHECK_EQ(5, CompileRun(source)->Int32Value());
 
   // Get the interceptor properties for the object with only named interceptor.
-  CompileRun("var named_values = named_mirror.properties()");
+  CompileRun("named_values = named_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 3; i++) {
@@ -4283,7 +4284,7 @@ TEST(InterceptorPropertyMirror) {
 
   // Get the interceptor properties for the object with only indexed
   // interceptor.
-  CompileRun("var indexed_values = indexed_mirror.properties()");
+  CompileRun("indexed_values = indexed_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 2; i++) {
@@ -4295,7 +4296,7 @@ TEST(InterceptorPropertyMirror) {
 
   // Get the interceptor properties for the object with both types of
   // interceptors.
-  CompileRun("var both_values = both_mirror.properties()");
+  CompileRun("both_values = both_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 5; i++) {
@@ -4351,10 +4352,10 @@ TEST(HiddenPrototypePropertyMirror) {
 
   // Get mirrors for the four objects.
   CompileRun(
-      "var o0_mirror = debug.MakeMirror(o0);"
-      "var o1_mirror = debug.MakeMirror(o1);"
-      "var o2_mirror = debug.MakeMirror(o2);"
-      "var o3_mirror = debug.MakeMirror(o3)");
+      "o0_mirror = debug.MakeMirror(o0);"
+      "o1_mirror = debug.MakeMirror(o1);"
+      "o2_mirror = debug.MakeMirror(o2);"
+      "o3_mirror = debug.MakeMirror(o3)");
   CHECK(CompileRun("o0_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun("o1_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun("o2_mirror instanceof debug.ObjectMirror")->BooleanValue());
@@ -4440,11 +4441,11 @@ TEST(NativeGetterPropertyMirror) {
   CHECK_EQ(10, CompileRun("instance.x")->Int32Value());
 
   // Get mirror for the object with property getter.
-  CompileRun("var instance_mirror = debug.MakeMirror(instance);");
+  CompileRun("instance_mirror = debug.MakeMirror(instance);");
   CHECK(CompileRun(
       "instance_mirror instanceof debug.ObjectMirror")->BooleanValue());
 
-  CompileRun("var named_names = instance_mirror.propertyNames();");
+  CompileRun("named_names = instance_mirror.propertyNames();");
   CHECK_EQ(1, CompileRun("named_names.length")->Int32Value());
   CHECK(CompileRun("named_names[0] == 'x'")->BooleanValue());
   CHECK(CompileRun(
@@ -4476,7 +4477,7 @@ TEST(NativeGetterThrowingErrorPropertyMirror) {
   env->Global()->Set(v8::String::New("instance"), named->NewInstance());
 
   // Get mirror for the object with property getter.
-  CompileRun("var instance_mirror = debug.MakeMirror(instance);");
+  CompileRun("instance_mirror = debug.MakeMirror(instance);");
   CHECK(CompileRun(
       "instance_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CompileRun("named_names = instance_mirror.propertyNames();");
@@ -5012,10 +5013,7 @@ static void ThreadedMessageHandler(const v8::Debug::Message& message) {
   if (IsBreakEventMessage(print_buffer)) {
     // Check that we are inside the while loop.
     int source_line = GetSourceLineFromBreakEventMessage(print_buffer);
-    // TODO(2047): This should really be 8 <= source_line <= 13; but we
-    // currently have an off-by-one error when calculating the source
-    // position corresponding to the program counter at the debug break.
-    CHECK(7 <= source_line && source_line <= 13);
+    CHECK(8 <= source_line && source_line <= 13);
     threaded_debugging_barriers.barrier_2.Wait();
   }
 }
@@ -7210,10 +7208,10 @@ static void TestDebugBreakInLoop(const char* loop_head,
   // Receive 100 breaks for each test and then terminate JavaScript execution.
   static const int kBreaksPerTest = 100;
 
-  for (int i = 0; loop_bodies[i] != NULL; i++) {
+  for (int i = 0; i < 1 && loop_bodies[i] != NULL; i++) {
     // Perform a lazy deoptimization after various numbers of breaks
     // have been hit.
-    for (int j = 0; j < 11; j++) {
+    for (int j = 0; j < 10; j++) {
       break_point_hit_count_deoptimize = j;
       if (j == 10) {
         break_point_hit_count_deoptimize = kBreaksPerTest;

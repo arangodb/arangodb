@@ -36,10 +36,8 @@
 #include "contexts.h"
 #include "execution.h"
 #include "frames.h"
-#include "date.h"
 #include "global-handles.h"
 #include "handles.h"
-#include "hashmap.h"
 #include "heap.h"
 #include "regexp-stack.h"
 #include "runtime-profiler.h"
@@ -282,6 +280,23 @@ class ThreadLocalTop BASE_EMBEDDED {
   Address try_catch_handler_address_;
 };
 
+#if defined(V8_TARGET_ARCH_ARM) || defined(V8_TARGET_ARCH_MIPS)
+
+#define ISOLATE_PLATFORM_INIT_LIST(V)                                          \
+  /* VirtualFrame::SpilledScope state */                                       \
+  V(bool, is_virtual_frame_in_spilled_scope, false)                            \
+  /* CodeGenerator::EmitNamedStore state */                                    \
+  V(int, inlined_write_barrier_size, -1)
+
+#if !defined(__arm__) && !defined(__mips__)
+class HashMap;
+#endif
+
+#else
+
+#define ISOLATE_PLATFORM_INIT_LIST(V)
+
+#endif
 
 #ifdef ENABLE_DEBUGGER_SUPPORT
 
@@ -307,6 +322,7 @@ class ThreadLocalTop BASE_EMBEDDED {
 
 #define ISOLATE_INIT_ARRAY_LIST(V)                                             \
   /* SerializerDeserializer state. */                                          \
+  V(Object*, serialize_partial_snapshot_cache, kPartialSnapshotCacheCapacity)  \
   V(int, jsregexp_static_offsets_vector, kJSRegexpStaticOffsetsVectorSize)     \
   V(int, bad_char_shift_table, kUC16AlphabetSize)                              \
   V(int, good_suffix_shift_table, (kBMMaxShift + 1))                           \
@@ -314,13 +330,13 @@ class ThreadLocalTop BASE_EMBEDDED {
   V(uint32_t, private_random_seed, 2)                                          \
   ISOLATE_INIT_DEBUG_ARRAY_LIST(V)
 
-typedef List<HeapObject*, PreallocatedStorageAllocationPolicy> DebugObjectCache;
+typedef List<HeapObject*, PreallocatedStorage> DebugObjectCache;
 
 #define ISOLATE_INIT_LIST(V)                                                   \
+  /* AssertNoZoneAllocation state. */                                          \
+  V(bool, zone_allow_allocation, true)                                         \
   /* SerializerDeserializer state. */                                          \
   V(int, serialize_partial_snapshot_cache_length, 0)                           \
-  V(int, serialize_partial_snapshot_cache_capacity, 0)                         \
-  V(Object**, serialize_partial_snapshot_cache, NULL)                          \
   /* Assembler state. */                                                       \
   /* A previously allocated buffer of kMinimalBufferSize bytes, or NULL. */    \
   V(byte*, assembler_spare_buffer, NULL)                                       \
@@ -353,6 +369,7 @@ typedef List<HeapObject*, PreallocatedStorageAllocationPolicy> DebugObjectCache;
   V(uint64_t, enabled_cpu_features, 0)                                         \
   V(CpuProfiler*, cpu_profiler, NULL)                                          \
   V(HeapProfiler*, heap_profiler, NULL)                                        \
+  ISOLATE_PLATFORM_INIT_LIST(V)                                                \
   ISOLATE_DEBUGGER_INIT_LIST(V)
 
 class Isolate {
@@ -423,7 +440,7 @@ class Isolate {
   enum AddressId {
 #define DECLARE_ENUM(CamelName, hacker_name) k##CamelName##Address,
     FOR_EACH_ISOLATE_ADDRESS_NAME(DECLARE_ENUM)
-#undef DECLARE_ENUM
+#undef C
     kIsolateAddressCount
   };
 
@@ -498,8 +515,6 @@ class Isolate {
   static Thread::LocalStorageKey thread_id_key() {
     return thread_id_key_;
   }
-
-  static Thread::LocalStorageKey per_isolate_thread_data_key();
 
   // If a client attempts to create a Locker without specifying an isolate,
   // we assume that the client is using legacy behavior. Set up the current
@@ -579,20 +594,6 @@ class Isolate {
   MaybeObject** scheduled_exception_address() {
     return &thread_local_top_.scheduled_exception_;
   }
-
-  Address pending_message_obj_address() {
-    return reinterpret_cast<Address>(&thread_local_top_.pending_message_obj_);
-  }
-
-  Address has_pending_message_address() {
-    return reinterpret_cast<Address>(&thread_local_top_.has_pending_message_);
-  }
-
-  Address pending_message_script_address() {
-    return reinterpret_cast<Address>(
-        &thread_local_top_.pending_message_script_);
-  }
-
   MaybeObject* scheduled_exception() {
     ASSERT(has_scheduled_exception());
     return thread_local_top_.scheduled_exception_;
@@ -610,9 +611,6 @@ class Isolate {
     return (exception != Failure::OutOfMemoryException()) &&
         (exception != heap()->termination_exception());
   }
-
-  // Serializer.
-  void PushToPartialSnapshotCache(Object* obj);
 
   // JS execution stack (see frames.h).
   static Address c_entry_fp(ThreadLocalTop* thread) {
@@ -726,7 +724,7 @@ class Isolate {
   // Re-throw an exception.  This involves no error reporting since
   // error reporting was handled when the exception was thrown
   // originally.
-  Failure* ReThrow(MaybeObject* exception);
+  Failure* ReThrow(MaybeObject* exception, MessageLocation* location = NULL);
   void ScheduleThrow(Object* exception);
   void ReportPendingMessages();
   Failure* ThrowIllegalOperation();
@@ -854,7 +852,7 @@ class Isolate {
     ASSERT(handle_scope_implementer_);
     return handle_scope_implementer_;
   }
-  Zone* runtime_zone() { return &runtime_zone_; }
+  Zone* zone() { return &zone_; }
 
   UnicodeCache* unicode_cache() {
     return unicode_cache_;
@@ -945,7 +943,6 @@ class Isolate {
   }
 #endif
 
-  inline bool IsDebuggerActive();
   inline bool DebuggerHasBreakPoints();
 
 #ifdef DEBUG
@@ -983,7 +980,7 @@ class Isolate {
   // SerializerDeserializer state.
   static const int kPartialSnapshotCacheCapacity = 1400;
 
-  static const int kJSRegexpStaticOffsetsVectorSize = 128;
+  static const int kJSRegexpStaticOffsetsVectorSize = 50;
 
   Address external_callback() {
     return thread_local_top_.external_callback_;
@@ -1039,34 +1036,8 @@ class Isolate {
     return OS::TimeCurrentMillis() - time_millis_at_init_;
   }
 
-  DateCache* date_cache() {
-    return date_cache_;
-  }
-
-  void set_date_cache(DateCache* date_cache) {
-    if (date_cache != date_cache_) {
-      delete date_cache_;
-    }
-    date_cache_ = date_cache;
-  }
-
  private:
   Isolate();
-
-  friend struct GlobalState;
-  friend struct InitializeGlobalState;
-
-  enum State {
-    UNINITIALIZED,    // Some components may not have been allocated.
-    INITIALIZED       // All components are fully initialized.
-  };
-
-  // These fields are accessed through the API, offsets must be kept in sync
-  // with v8::internal::Internals (in include/v8.h) constants. This is also
-  // verified in Isolate::Init() using runtime checks.
-  State state_;  // Will be padded to kApiPointerSize.
-  void* embedder_data_;
-  Heap heap_;
 
   // The per-process lock should be acquired before the ThreadDataTable is
   // modified.
@@ -1125,6 +1096,14 @@ class Isolate {
   static void SetIsolateThreadLocals(Isolate* isolate,
                                      PerIsolateThreadData* data);
 
+  enum State {
+    UNINITIALIZED,    // Some components may not have been allocated.
+    INITIALIZED       // All components are fully initialized.
+  };
+
+  State state_;
+  EntryStackItem* entry_stack_;
+
   // Allocate and insert PerIsolateThreadData into the ThreadDataTable
   // (regardless of whether such data already exists).
   PerIsolateThreadData* AllocatePerIsolateThreadData(ThreadId thread_id);
@@ -1133,7 +1112,7 @@ class Isolate {
   // If one does not yet exist, allocate a new one.
   PerIsolateThreadData* FindOrAllocatePerThreadDataForThisThread();
 
-  // PreInits and returns a default isolate. Needed when a new thread tries
+// PreInits and returns a default isolate. Needed when a new thread tries
   // to create a Locker for the first time (the lock itself is in the isolate).
   static Isolate* GetDefaultIsolateForLocking();
 
@@ -1168,13 +1147,13 @@ class Isolate {
   // the Error object.
   bool IsErrorObject(Handle<Object> obj);
 
-  EntryStackItem* entry_stack_;
   int stack_trace_nesting_level_;
   StringStream* incomplete_message_;
   // The preallocated memory thread singleton.
   PreallocatedMemoryThread* preallocated_memory_thread_;
   Address isolate_addresses_[kIsolateAddressCount + 1];  // NOLINT
   NoAllocationStringAllocator* preallocated_message_space_;
+
   Bootstrapper* bootstrapper_;
   RuntimeProfiler* runtime_profiler_;
   CompilationCache* compilation_cache_;
@@ -1183,6 +1162,7 @@ class Isolate {
   Mutex* break_access_;
   Atomic32 debugger_initialized_;
   Mutex* debugger_access_;
+  Heap heap_;
   Logger* logger_;
   StackGuard stack_guard_;
   StatsTable* stats_table_;
@@ -1200,7 +1180,7 @@ class Isolate {
   v8::ImplementationUtilities::HandleScopeData handle_scope_data_;
   HandleScopeImplementer* handle_scope_implementer_;
   UnicodeCache* unicode_cache_;
-  Zone runtime_zone_;
+  Zone zone_;
   PreallocatedStorage in_use_list_;
   PreallocatedStorage free_list_;
   bool preallocated_storage_preallocated_;
@@ -1223,8 +1203,8 @@ class Isolate {
   unibrow::Mapping<unibrow::Ecma262Canonicalize>
       regexp_macro_assembler_canonicalize_;
   RegExpStack* regexp_stack_;
-  DateCache* date_cache_;
   unibrow::Mapping<unibrow::Ecma262Canonicalize> interp_canonicalize_mapping_;
+  void* embedder_data_;
 
   // The garbage collector should be a little more aggressive when it knows
   // that a context was recently exited.
@@ -1412,6 +1392,7 @@ class PostponeInterruptsScope BASE_EMBEDDED {
 #define HEAP (v8::internal::Isolate::Current()->heap())
 #define FACTORY (v8::internal::Isolate::Current()->factory())
 #define ISOLATE (v8::internal::Isolate::Current())
+#define ZONE (v8::internal::Isolate::Current()->zone())
 #define LOGGER (v8::internal::Isolate::Current()->logger())
 
 

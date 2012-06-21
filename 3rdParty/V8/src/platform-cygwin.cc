@@ -41,7 +41,6 @@
 
 #include "v8.h"
 
-#include "platform-posix.h"
 #include "platform.h"
 #include "v8threads.h"
 #include "vm-state-inl.h"
@@ -62,9 +61,17 @@ double ceiling(double x) {
 static Mutex* limit_mutex = NULL;
 
 
-void OS::PostSetUp() {
-  POSIXPostSetUp();
+void OS::SetUp() {
+  // Seed the random number generator.
+  // Convert the current time to a 64-bit integer first, before converting it
+  // to an unsigned. Going directly can cause an overflow and the seed to be
+  // set to all ones. The seed will be identical for different instances that
+  // call this setup code within the same millisecond.
+  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
 }
+
 
 uint64_t OS::CpuFeaturesImpliedByPlatform() {
   return 0;  // Nothing special about Cygwin.
@@ -348,17 +355,6 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 }
 
 
-bool VirtualMemory::Guard(void* address) {
-  if (NULL == VirtualAlloc(address,
-                           OS::CommitPageSize(),
-                           MEM_COMMIT,
-                           PAGE_READONLY | PAGE_GUARD)) {
-    return false;
-  }
-  return true;
-}
-
-
 class Thread::PlatformData : public Malloced {
  public:
   PlatformData() : thread_(kNoThread) {}
@@ -369,9 +365,16 @@ class Thread::PlatformData : public Malloced {
 
 
 Thread::Thread(const Options& options)
-    : data_(new PlatformData()),
-      stack_size_(options.stack_size()) {
-  set_name(options.name());
+    : data_(new PlatformData),
+      stack_size_(options.stack_size) {
+  set_name(options.name);
+}
+
+
+Thread::Thread(const char* name)
+    : data_(new PlatformData),
+      stack_size_(0) {
+  set_name(name);
 }
 
 
@@ -614,14 +617,9 @@ class Sampler::PlatformData : public Malloced {
 
 class SamplerThread : public Thread {
  public:
-  static const int kSamplerThreadStackSize = 64 * KB;
-
   explicit SamplerThread(int interval)
-      : Thread(Thread::Options("SamplerThread", kSamplerThreadStackSize)),
+      : Thread("SamplerThread"),
         interval_(interval) {}
-
-  static void SetUp() { if (!mutex_) mutex_ = OS::CreateMutex(); }
-  static void TearDown() { delete mutex_; }
 
   static void AddActiveSampler(Sampler* sampler) {
     ScopedLock lock(mutex_);
@@ -729,27 +727,8 @@ class SamplerThread : public Thread {
 };
 
 
-Mutex* SamplerThread::mutex_ = NULL;
+Mutex* SamplerThread::mutex_ = OS::CreateMutex();
 SamplerThread* SamplerThread::instance_ = NULL;
-
-
-void OS::SetUp() {
-  // Seed the random number generator.
-  // Convert the current time to a 64-bit integer first, before converting it
-  // to an unsigned. Going directly can cause an overflow and the seed to be
-  // set to all ones. The seed will be identical for different instances that
-  // call this setup code within the same millisecond.
-  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
-  SamplerThread::SetUp();
-}
-
-
-void OS::TearDown() {
-  SamplerThread::TearDown();
-  delete limit_mutex;
-}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

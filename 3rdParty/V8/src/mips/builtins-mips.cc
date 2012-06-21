@@ -67,11 +67,9 @@ void Builtins::Generate_Adaptor(MacroAssembler* masm,
     ASSERT(extra_args == NO_EXTRA_ARGUMENTS);
   }
 
-  // JumpToExternalReference expects s0 to contain the number of arguments
+  // JumpToExternalReference expects a0 to contain the number of arguments
   // including the receiver and the extra arguments.
-  __ Addu(s0, a0, num_extra_args + 1);
-  __ sll(s1, s0, kPointerSizeLog2);
-  __ Subu(s1, s1, kPointerSize);
+  __ Addu(a0, a0, Operand(num_extra_args + 1));
   __ JumpToExternalReference(ExternalReference(id, masm->isolate()));
 }
 
@@ -118,7 +116,7 @@ static void AllocateEmptyJSArray(MacroAssembler* masm,
                                  Label* gc_required) {
   const int initial_capacity = JSArray::kPreallocatedArrayElements;
   STATIC_ASSERT(initial_capacity >= 0);
-  __ LoadInitialArrayMap(array_function, scratch2, scratch1, false);
+  __ LoadGlobalInitialConstructedArrayMap(array_function, scratch2, scratch1);
 
   // Allocate the JSArray object together with space for a fixed array with the
   // requested elements.
@@ -214,8 +212,8 @@ static void AllocateJSArray(MacroAssembler* masm,
                             bool fill_with_hole,
                             Label* gc_required) {
   // Load the initial map from the array function.
-  __ LoadInitialArrayMap(array_function, scratch2,
-                         elements_array_storage, fill_with_hole);
+  __ LoadGlobalInitialConstructedArrayMap(array_function, scratch2,
+                                          elements_array_storage);
 
   if (FLAG_debug_code) {  // Assert that array size is not zero.
     __ Assert(
@@ -324,7 +322,7 @@ static void ArrayNativeCode(MacroAssembler* masm,
                             Label* call_generic_code) {
   Counters* counters = masm->isolate()->counters();
   Label argc_one_or_more, argc_two_or_more, not_empty_array, empty_array,
-      has_non_smi_element, finish, cant_transition_map, not_double;
+      has_non_smi_element;
 
   // Check for array construction with zero arguments or one.
   __ Branch(&argc_one_or_more, ne, a0, Operand(zero_reg));
@@ -420,16 +418,14 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ mov(t3, sp);
   __ bind(&loop);
   __ lw(a2, MemOperand(t3));
+  __ Addu(t3, t3, kPointerSize);
   if (FLAG_smi_only_arrays) {
     __ JumpIfNotSmi(a2, &has_non_smi_element);
   }
-  __ Addu(t3, t3, kPointerSize);
   __ Addu(t1, t1, -kPointerSize);
   __ sw(a2, MemOperand(t1));
   __ bind(&entry);
   __ Branch(&loop, lt, t0, Operand(t1));
-
-  __ bind(&finish);
   __ mov(sp, t3);
 
   // Remove caller arguments and receiver from the stack, setup return value and
@@ -442,39 +438,8 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ Ret();
 
   __ bind(&has_non_smi_element);
-  // Double values are handled by the runtime.
-  __ CheckMap(
-      a2, t5, Heap::kHeapNumberMapRootIndex, &not_double, DONT_DO_SMI_CHECK);
-  __ bind(&cant_transition_map);
   __ UndoAllocationInNewSpace(a3, t0);
-  __ Branch(call_generic_code);
-
-  __ bind(&not_double);
-  // Transition FAST_SMI_ELEMENTS to FAST_ELEMENTS.
-  // a3: JSArray
-  __ lw(a2, FieldMemOperand(a3, HeapObject::kMapOffset));
-  __ LoadTransitionedArrayMapConditional(FAST_SMI_ELEMENTS,
-                                         FAST_ELEMENTS,
-                                         a2,
-                                         t5,
-                                         &cant_transition_map);
-  __ sw(a2, FieldMemOperand(a3, HeapObject::kMapOffset));
-  __ RecordWriteField(a3,
-                      HeapObject::kMapOffset,
-                      a2,
-                      t5,
-                      kRAHasNotBeenSaved,
-                      kDontSaveFPRegs,
-                      EMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
-  Label loop2;
-  __ bind(&loop2);
-  __ lw(a2, MemOperand(t3));
-  __ Addu(t3, t3, kPointerSize);
-  __ Subu(t1, t1, kPointerSize);
-  __ sw(a2, MemOperand(t1));
-  __ Branch(&loop2, lt, t0, Operand(t1));
-  __ Branch(&finish);
+  __ b(call_generic_code);
 }
 
 
@@ -959,15 +924,22 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
     // t4: JSObject
     __ bind(&allocated);
     __ push(t4);
-    __ push(t4);
+
+    // Push the function and the allocated receiver from the stack.
+    // sp[0]: receiver (newly allocated object)
+    // sp[1]: constructor function
+    // sp[2]: number of arguments (smi-tagged)
+    __ lw(a1, MemOperand(sp, kPointerSize));
+    __ MultiPushReversed(a1.bit() | t4.bit());
 
     // Reload the number of arguments from the stack.
+    // a1: constructor function
     // sp[0]: receiver
-    // sp[1]: receiver
-    // sp[2]: constructor function
-    // sp[3]: number of arguments (smi-tagged)
-    __ lw(a1, MemOperand(sp, 2 * kPointerSize));
-    __ lw(a3, MemOperand(sp, 3 * kPointerSize));
+    // sp[1]: constructor function
+    // sp[2]: receiver
+    // sp[3]: constructor function
+    // sp[4]: number of arguments (smi-tagged)
+    __ lw(a3, MemOperand(sp, 4 * kPointerSize));
 
     // Set up pointer to last argument.
     __ Addu(a2, fp, Operand(StandardFrameConstants::kCallerSPOffset));
@@ -981,9 +953,10 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
     // a2: address of last argument (caller sp)
     // a3: number of arguments (smi-tagged)
     // sp[0]: receiver
-    // sp[1]: receiver
-    // sp[2]: constructor function
-    // sp[3]: number of arguments (smi-tagged)
+    // sp[1]: constructor function
+    // sp[2]: receiver
+    // sp[3]: constructor function
+    // sp[4]: number of arguments (smi-tagged)
     Label loop, entry;
     __ jmp(&entry);
     __ bind(&loop);
@@ -1011,10 +984,13 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
                         NullCallWrapper(), CALL_AS_METHOD);
     }
 
-    // Store offset of return address for deoptimizer.
-    if (!is_api_function && !count_constructions) {
-      masm->isolate()->heap()->SetConstructStubDeoptPCOffset(masm->pc_offset());
-    }
+    // Pop the function from the stack.
+    // v0: result
+    // sp[0]: constructor function
+    // sp[2]: receiver
+    // sp[3]: constructor function
+    // sp[4]: number of arguments (smi-tagged)
+    __ Pop();
 
     // Restore context from the frame.
     __ lw(cp, MemOperand(fp, StandardFrameConstants::kContextOffset));
@@ -1097,6 +1073,8 @@ static void Generate_JSEntryTrampolineHelper(MacroAssembler* masm,
 
     // Set up the context from the function argument.
     __ lw(cp, FieldMemOperand(a1, JSFunction::kContextOffset));
+
+    __ InitializeRootRegister();
 
     // Push the function and the receiver onto the stack.
     __ Push(a1, a2);
@@ -1736,6 +1714,8 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
     __ bind(&too_few);
     EnterArgumentsAdaptorFrame(masm);
 
+    // TODO(MIPS): Optimize these loops.
+
     // Calculate copy start address into a0 and copy end address is fp.
     // a0: actual number of arguments as a smi
     // a1: function
@@ -1757,10 +1737,9 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
     Label copy;
     __ bind(&copy);
     __ lw(t0, MemOperand(a0));  // Adjusted above for return addr and receiver.
-    __ Subu(sp, sp, kPointerSize);
+    __ push(t0);
     __ Subu(a0, a0, kPointerSize);
-    __ Branch(USE_DELAY_SLOT, &copy, ne, a0, Operand(t3));
-    __ sw(t0, MemOperand(sp));  // In the delay slot.
+    __ Branch(&copy, ne, a0, Operand(t3));
 
     // Fill the remaining expected arguments with undefined.
     // a1: function
@@ -1773,9 +1752,8 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
 
     Label fill;
     __ bind(&fill);
-    __ Subu(sp, sp, kPointerSize);
-    __ Branch(USE_DELAY_SLOT, &fill, ne, sp, Operand(a2));
-    __ sw(t0, MemOperand(sp));
+    __ push(t0);
+    __ Branch(&fill, ne, sp, Operand(a2));
   }
 
   // Call the entry point.
@@ -1783,9 +1761,7 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
 
   __ Call(a3);
 
-  // Store offset of return address for deoptimizer.
   masm->isolate()->heap()->SetArgumentsAdaptorDeoptPCOffset(masm->pc_offset());
-
   // Exit frame and return.
   LeaveArgumentsAdaptorFrame(masm);
   __ Ret();

@@ -40,16 +40,10 @@
               'toolsets': ['target'],
             }],
             ['v8_use_snapshot=="true"', {
-              # The dependency on v8_base should come from a transitive
-              # dependency however the Android toolchain requires libv8_base.a
-              # to appear before libv8_snapshot.a so it's listed explicitly.
-              'dependencies': ['v8_base', 'v8_snapshot'],
+              'dependencies': ['v8_snapshot'],
             },
             {
-              # The dependency on v8_base should come from a transitive
-              # dependency however the Android toolchain requires libv8_base.a
-              # to appear before libv8_snapshot.a so it's listed explicitly.
-              'dependencies': ['v8_base', 'v8_nosnapshot'],
+              'dependencies': ['v8_nosnapshot'],
             }],
             ['component=="shared_library"', {
               'type': '<(component)',
@@ -58,20 +52,24 @@
                 # has some sources to link into the component.
                 '../../src/v8dll-main.cc',
               ],
-              'defines': [
-                'V8_SHARED',
-                'BUILDING_V8_SHARED',
-              ],
-              'direct_dependent_settings': {
-                'defines': [
-                  'V8_SHARED',
-                  'USING_V8_SHARED',
-                ],
-              },
               'conditions': [
-                ['OS=="mac"', {
-                  'xcode_settings': {
-                    'OTHER_LDFLAGS': ['-dynamiclib', '-all_load']
+                ['OS=="win"', {
+                  'defines': [
+                    'BUILDING_V8_SHARED',
+                  ],
+                  'direct_dependent_settings': {
+                    'defines': [
+                      'USING_V8_SHARED',
+                    ],
+                  },
+                }, {
+                  'defines': [
+                    'V8_SHARED',
+                  ],
+                  'direct_dependent_settings': {
+                    'defines': [
+                      'V8_SHARED',
+                    ],
                   },
                 }],
                 ['soname_version!=""', {
@@ -101,16 +99,27 @@
               'dependencies': ['mksnapshot', 'js2c'],
             }],
             ['component=="shared_library"', {
-              'defines': [
-                'V8_SHARED',
-                'BUILDING_V8_SHARED',
+              'conditions': [
+                ['OS=="win"', {
+                  'defines': [
+                    'BUILDING_V8_SHARED',
+                  ],
+                  'direct_dependent_settings': {
+                    'defines': [
+                      'USING_V8_SHARED',
+                    ],
+                  },
+                }, {
+                  'defines': [
+                    'V8_SHARED',
+                  ],
+                  'direct_dependent_settings': {
+                    'defines': [
+                      'V8_SHARED',
+                    ],
+                  },
+                }],
               ],
-              'direct_dependent_settings': {
-                'defines': [
-                  'V8_SHARED',
-                  'USING_V8_SHARED',
-                ],
-              },
             }],
           ],
           'dependencies': [
@@ -232,7 +241,6 @@
             '../../src/assembler.h',
             '../../src/ast.cc',
             '../../src/ast.h',
-            '../../src/atomicops.h',
             '../../src/atomicops_internals_x86_gcc.cc',
             '../../src/bignum.cc',
             '../../src/bignum.h',
@@ -274,8 +282,6 @@
             '../../src/cpu-profiler.h',
             '../../src/data-flow.cc',
             '../../src/data-flow.h',
-            '../../src/date.cc',
-            '../../src/date.h',
             '../../src/dateparser.cc',
             '../../src/dateparser.h',
             '../../src/dateparser-inl.h',
@@ -295,8 +301,6 @@
             '../../src/dtoa.h',
             '../../src/elements.cc',
             '../../src/elements.h',
-            '../../src/elements-kind.cc',
-            '../../src/elements-kind.h',
             '../../src/execution.cc',
             '../../src/execution.h',
             '../../src/factory.cc',
@@ -321,6 +325,7 @@
             '../../src/handles-inl.h',
             '../../src/handles.cc',
             '../../src/handles.h',
+            '../../src/hashmap.cc',
             '../../src/hashmap.h',
             '../../src/heap-inl.h',
             '../../src/heap.cc',
@@ -338,8 +343,6 @@
             '../../src/incremental-marking.h',
             '../../src/inspector.cc',
             '../../src/inspector.h',
-            '../../src/interface.cc',
-            '../../src/interface.h',
             '../../src/interpreter-irregexp.cc',
             '../../src/interpreter-irregexp.h',
             '../../src/json-parser.h',
@@ -347,7 +350,6 @@
             '../../src/jsregexp.h',
             '../../src/isolate.cc',
             '../../src/isolate.h',
-            '../../src/lazy-instance.h',
             '../../src/list-inl.h',
             '../../src/list.h',
             '../../src/lithium.cc',
@@ -378,11 +380,8 @@
             '../../src/objects-visiting.h',
             '../../src/objects.cc',
             '../../src/objects.h',
-            '../../src/once.cc',
-            '../../src/once.h',
             '../../src/parser.cc',
             '../../src/parser.h',
-            '../../src/platform-posix.h',
             '../../src/platform-tls-mac.h',
             '../../src/platform-tls-win32.h',
             '../../src/platform-tls.h',
@@ -902,8 +901,6 @@
             '../../include/v8stdint.h',
             '../../src/allocation.cc',
             '../../src/allocation.h',
-            '../../src/atomicops.h',
-            '../../src/atomicops_internals_x86_gcc.cc',
             '../../src/bignum.cc',
             '../../src/bignum.h',
             '../../src/bignum-dtoa.cc',
@@ -926,11 +923,10 @@
             '../../src/fixed-dtoa.cc',
             '../../src/fixed-dtoa.h',
             '../../src/globals.h',
+            '../../src/hashmap.cc',
             '../../src/hashmap.h',
             '../../src/list-inl.h',
             '../../src/list.h',
-            '../../src/once.cc',
-            '../../src/once.h',
             '../../src/preparse-data-format.h',
             '../../src/preparse-data.cc',
             '../../src/preparse-data.h',

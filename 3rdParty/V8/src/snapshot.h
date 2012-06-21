@@ -40,8 +40,6 @@ class Snapshot {
   // could be found.
   static bool Initialize(const char* snapshot_file = NULL);
 
-  static bool HaveASnapshotToStartFrom();
-
   // Create a new context using the internal partial snapshot.
   static Handle<Context> NewContextFromSnapshot();
 

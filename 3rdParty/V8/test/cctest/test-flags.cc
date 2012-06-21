@@ -159,7 +159,7 @@ TEST(Flags6) {
   CHECK_EQ(3, FlagList::SetFlagsFromCommandLine(&argc,
                                                 const_cast<char **>(argv),
                                                 true));
-  CHECK_EQ(2, argc);
+  CHECK_EQ(4, argc);
 }
 
 
@@ -232,16 +232,3 @@ TEST(FlagsJSArguments4) {
   CHECK_EQ(0, FLAG_js_arguments.argc());
 }
 
-
-TEST(FlagsRemoveIncomplete) {
-  // Test that processed command line arguments are removed, even
-  // if the list of arguments ends unexpectedly.
-  SetFlagsToDefault();
-  int argc = 3;
-  const char* argv[] = { "", "--crankshaft", "--expose-debug-as" };
-  CHECK_EQ(2, FlagList::SetFlagsFromCommandLine(&argc,
-                                                const_cast<char **>(argv),
-                                                true));
-  CHECK_NE(NULL, argv[1]);
-  CHECK_EQ(argc, 2);
-}

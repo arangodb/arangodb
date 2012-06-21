@@ -51,7 +51,7 @@ namespace v8 {
 namespace internal {
 
 
-CompilationInfo::CompilationInfo(Handle<Script> script, Zone* zone)
+CompilationInfo::CompilationInfo(Handle<Script> script)
     : isolate_(script->GetIsolate()),
       flags_(LanguageModeField::encode(CLASSIC_MODE)),
       function_(NULL),
@@ -60,14 +60,12 @@ CompilationInfo::CompilationInfo(Handle<Script> script, Zone* zone)
       script_(script),
       extension_(NULL),
       pre_parse_data_(NULL),
-      osr_ast_id_(AstNode::kNoNumber),
-      zone_(zone) {
-  Initialize(BASE);
+      osr_ast_id_(AstNode::kNoNumber) {
+  Initialize(NONOPT);
 }
 
 
-CompilationInfo::CompilationInfo(Handle<SharedFunctionInfo> shared_info,
-                                 Zone* zone)
+CompilationInfo::CompilationInfo(Handle<SharedFunctionInfo> shared_info)
     : isolate_(shared_info->GetIsolate()),
       flags_(LanguageModeField::encode(CLASSIC_MODE) |
              IsLazy::encode(true)),
@@ -78,13 +76,12 @@ CompilationInfo::CompilationInfo(Handle<SharedFunctionInfo> shared_info,
       script_(Handle<Script>(Script::cast(shared_info->script()))),
       extension_(NULL),
       pre_parse_data_(NULL),
-      osr_ast_id_(AstNode::kNoNumber),
-      zone_(zone) {
+      osr_ast_id_(AstNode::kNoNumber) {
   Initialize(BASE);
 }
 
 
-CompilationInfo::CompilationInfo(Handle<JSFunction> closure, Zone* zone)
+CompilationInfo::CompilationInfo(Handle<JSFunction> closure)
     : isolate_(closure->GetIsolate()),
       flags_(LanguageModeField::encode(CLASSIC_MODE) |
              IsLazy::encode(true)),
@@ -96,8 +93,7 @@ CompilationInfo::CompilationInfo(Handle<JSFunction> closure, Zone* zone)
       script_(Handle<Script>(Script::cast(shared_info_->script()))),
       extension_(NULL),
       pre_parse_data_(NULL),
-      osr_ast_id_(AstNode::kNoNumber),
-      zone_(zone) {
+      osr_ast_id_(AstNode::kNoNumber) {
   Initialize(BASE);
 }
 
@@ -111,19 +107,6 @@ void CompilationInfo::DisableOptimization() {
     !scope_->outer_scope_calls_non_strict_eval() &&
     !scope_->inside_with();
   SetMode(is_optimizable_closure ? BASE : NONOPT);
-}
-
-
-// Primitive functions are unlikely to be picked up by the stack-walking
-// profiler, so they trigger their own optimization when they're called
-// for the SharedFunctionInfo::kCallsUntilPrimitiveOptimization-th time.
-bool CompilationInfo::ShouldSelfOptimize() {
-  return FLAG_self_optimization &&
-      FLAG_crankshaft &&
-      !function()->flags()->Contains(kDontSelfOptimize) &&
-      !function()->flags()->Contains(kDontOptimize) &&
-      function()->scope()->AllowsLazyCompilation() &&
-      (shared_info().is_null() || !shared_info()->optimization_disabled());
 }
 
 
@@ -141,8 +124,9 @@ void CompilationInfo::AbortOptimization() {
 // all. However crankshaft support recompilation of functions, so in this case
 // the full compiler need not be be used if a debugger is attached, but only if
 // break points has actually been set.
-static bool IsDebuggerActive(Isolate* isolate) {
+static bool is_debugging_active() {
 #ifdef ENABLE_DEBUGGER_SUPPORT
+  Isolate* isolate = Isolate::Current();
   return V8::UseCrankshaft() ?
     isolate->debug()->has_break_points() :
     isolate->debugger()->IsDebuggerActive();
@@ -152,8 +136,8 @@ static bool IsDebuggerActive(Isolate* isolate) {
 }
 
 
-static bool AlwaysFullCompiler(Isolate* isolate) {
-  return FLAG_always_full_compiler || IsDebuggerActive(isolate);
+static bool AlwaysFullCompiler() {
+  return FLAG_always_full_compiler || is_debugging_active();
 }
 
 
@@ -186,8 +170,10 @@ static void FinishOptimization(Handle<JSFunction> function, int64_t start) {
 static bool MakeCrankshaftCode(CompilationInfo* info) {
   // Test if we can optimize this function when asked to. We can only
   // do this after the scopes are computed.
-  if (!V8::UseCrankshaft()) {
+  if (!info->AllowOptimize()) {
     info->DisableOptimization();
+  } else if (info->IsOptimizable()) {
+    info->EnableDeoptimizationSupport();
   }
 
   // In case we are not optimizing simply return the code from
@@ -208,7 +194,7 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
   // Fall back to using the full code generator if it's not possible
   // to use the Hydrogen-based optimizing compiler. We already have
   // generated code for this from the shared function object.
-  if (AlwaysFullCompiler(info->isolate())) {
+  if (AlwaysFullCompiler()) {
     info->SetCode(code);
     return true;
   }
@@ -219,7 +205,8 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
       FLAG_deopt_every_n_times == 0 ? Compiler::kDefaultMaxOptCount : 1000;
   if (info->shared_info()->opt_count() > kMaxOptCount) {
     info->AbortOptimization();
-    info->shared_info()->DisableOptimization();
+    Handle<JSFunction> closure = info->closure();
+    info->shared_info()->DisableOptimization(*closure);
     // True indicates the compilation pipeline is still going, not
     // necessarily that we optimized the code.
     return true;
@@ -239,22 +226,20 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
       (info->osr_ast_id() != AstNode::kNoNumber &&
        scope->num_parameters() + 1 + scope->num_stack_slots() > locals_limit)) {
     info->AbortOptimization();
-    info->shared_info()->DisableOptimization();
+    Handle<JSFunction> closure = info->closure();
+    info->shared_info()->DisableOptimization(*closure);
     // True indicates the compilation pipeline is still going, not
     // necessarily that we optimized the code.
     return true;
   }
 
   // Take --hydrogen-filter into account.
+  Vector<const char> filter = CStrVector(FLAG_hydrogen_filter);
   Handle<String> name = info->function()->debug_name();
-  if (*FLAG_hydrogen_filter != '\0') {
-    Vector<const char> filter = CStrVector(FLAG_hydrogen_filter);
-    if ((filter[0] == '-'
-         && name->IsEqualTo(filter.SubVector(1, filter.length())))
-        || (filter[0] != '-' && !name->IsEqualTo(filter))) {
-      info->SetCode(code);
-      return true;
-    }
+  bool match = filter.is_empty() || name->IsEqualTo(filter);
+  if (!match) {
+    info->SetCode(code);
+    return true;
   }
 
   // Recompile the unoptimized version of the code if the current version
@@ -265,7 +250,7 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
   bool should_recompile = !info->shared_info()->has_deoptimization_support();
   if (should_recompile || FLAG_hydrogen_stats) {
     HPhase phase(HPhase::kFullCodeGen);
-    CompilationInfoWithZone unoptimized(info->shared_info());
+    CompilationInfo unoptimized(info->shared_info());
     // Note that we use the same AST that we will use for generating the
     // optimized code.
     unoptimized.SetFunction(info->function());
@@ -297,8 +282,7 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
   }
 
   Handle<Context> global_context(info->closure()->context()->global_context());
-  TypeFeedbackOracle oracle(code, global_context, info->isolate(),
-                            info->zone());
+  TypeFeedbackOracle oracle(code, global_context, info->isolate());
   HGraphBuilder builder(info, &oracle);
   HPhase phase(HPhase::kTotal);
   HGraph* graph = builder.CreateGraph();
@@ -308,7 +292,7 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
   }
 
   if (graph != NULL) {
-    Handle<Code> optimized_code = graph->Compile();
+    Handle<Code> optimized_code = graph->Compile(info);
     if (!optimized_code.is_null()) {
       info->SetCode(optimized_code);
       FinishOptimization(info->closure(), start);
@@ -321,7 +305,8 @@ static bool MakeCrankshaftCode(CompilationInfo* info) {
   if (!builder.inline_bailout()) {
     // Mark the shared code as unoptimizable unless it was an inlined
     // function that bailed out.
-    info->shared_info()->DisableOptimization();
+    Handle<JSFunction> closure = info->closure();
+    info->shared_info()->DisableOptimization(*closure);
   }
   // True indicates the compilation pipeline is still going, not necessarily
   // that we optimized the code.
@@ -350,8 +335,7 @@ bool Compiler::MakeCodeForLiveEdit(CompilationInfo* info) {
   // the compilation info is set if compilation succeeded.
   bool succeeded = MakeCode(info);
   if (!info->shared_info().is_null()) {
-    Handle<ScopeInfo> scope_info = ScopeInfo::Create(info->scope(),
-                                                     info->zone());
+    Handle<ScopeInfo> scope_info = ScopeInfo::Create(info->scope());
     info->shared_info()->set_scope_info(*scope_info);
   }
   return succeeded;
@@ -361,7 +345,7 @@ bool Compiler::MakeCodeForLiveEdit(CompilationInfo* info) {
 
 static Handle<SharedFunctionInfo> MakeFunctionInfo(CompilationInfo* info) {
   Isolate* isolate = info->isolate();
-  ZoneScope zone_scope(info->zone(), DELETE_ON_EXIT);
+  ZoneScope zone_scope(isolate, DELETE_ON_EXIT);
   PostponeInterruptsScope postpone(isolate);
 
   ASSERT(!isolate->global_context().is_null());
@@ -425,7 +409,7 @@ static Handle<SharedFunctionInfo> MakeFunctionInfo(CompilationInfo* info) {
           lit->name(),
           lit->materialized_literal_count(),
           info->code(),
-          ScopeInfo::Create(info->scope(), info->zone()));
+          ScopeInfo::Create(info->scope()));
 
   ASSERT_EQ(RelocInfo::kNoPosition, lit->function_token_position());
   Compiler::SetFunctionInfo(result, lit, true, script);
@@ -458,16 +442,13 @@ static Handle<SharedFunctionInfo> MakeFunctionInfo(CompilationInfo* info) {
   // the instances of the function.
   SetExpectedNofPropertiesFromEstimate(result, lit->expected_property_count());
 
-  script->set_compilation_state(
-      Smi::FromInt(Script::COMPILATION_STATE_COMPILED));
-
 #ifdef ENABLE_DEBUGGER_SUPPORT
   // Notify debugger
   isolate->debugger()->OnAfterCompile(
       script, Debugger::NO_AFTER_COMPILE_FLAGS);
 #endif
 
-  live_edit_tracker.RecordFunctionInfo(result, lit, info->zone());
+  live_edit_tracker.RecordFunctionInfo(result, lit);
 
   return result;
 }
@@ -509,6 +490,13 @@ Handle<SharedFunctionInfo> Compiler::Compile(Handle<String> source,
     // for small sources, odds are that there aren't many functions
     // that would be compiled lazily anyway, so we skip the preparse step
     // in that case too.
+    int flags = kNoParsingFlags;
+    if ((natives == NATIVES_CODE) || FLAG_allow_natives_syntax) {
+      flags |= kAllowNativesSyntax;
+    }
+    if (natives != NATIVES_CODE && FLAG_harmony_scoping) {
+      flags |= EXTENDED_MODE;
+    }
 
     // Create a script object describing the script to be compiled.
     Handle<Script> script = FACTORY->NewScript(source);
@@ -525,20 +513,13 @@ Handle<SharedFunctionInfo> Compiler::Compile(Handle<String> source,
                                            : *script_data);
 
     // Compile the function and add it to the cache.
-    CompilationInfoWithZone info(script);
+    CompilationInfo info(script);
     info.MarkAsGlobal();
     info.SetExtension(extension);
     info.SetPreParseData(pre_data);
-    if (FLAG_use_strict) {
-      info.SetLanguageMode(FLAG_harmony_scoping ? EXTENDED_MODE : STRICT_MODE);
-    }
     result = MakeFunctionInfo(&info);
     if (extension == NULL && !result.is_null()) {
       compilation_cache->PutScript(source, result);
-    }
-  } else {
-    if (result->ic_age() != HEAP->global_ic_age()) {
-      result->ResetForNewContext(HEAP->global_ic_age());
     }
   }
 
@@ -573,17 +554,13 @@ Handle<SharedFunctionInfo> Compiler::CompileEval(Handle<String> source,
   if (result.is_null()) {
     // Create a script object describing the script to be compiled.
     Handle<Script> script = isolate->factory()->NewScript(source);
-    CompilationInfoWithZone info(script);
+    CompilationInfo info(script);
     info.MarkAsEval();
     if (is_global) info.MarkAsGlobal();
     info.SetLanguageMode(language_mode);
     info.SetCallingContext(context);
     result = MakeFunctionInfo(&info);
     if (!result.is_null()) {
-      // Explicitly disable optimization for eval code. We're not yet prepared
-      // to handle eval-code in the optimizing compiler.
-      result->DisableOptimization();
-
       // If caller is strict mode, the result must be in strict mode or
       // extended mode as well, but not the other way around. Consider:
       // eval("'use strict'; ...");
@@ -595,10 +572,6 @@ Handle<SharedFunctionInfo> Compiler::CompileEval(Handle<String> source,
       compilation_cache->PutEval(
           source, context, is_global, result, scope_position);
     }
-  } else {
-    if (result->ic_age() != HEAP->global_ic_age()) {
-      result->ResetForNewContext(HEAP->global_ic_age());
-    }
   }
 
   return result;
@@ -608,7 +581,7 @@ Handle<SharedFunctionInfo> Compiler::CompileEval(Handle<String> source,
 bool Compiler::CompileLazy(CompilationInfo* info) {
   Isolate* isolate = info->isolate();
 
-  ZoneScope zone_scope(info->zone(), DELETE_ON_EXIT);
+  ZoneScope zone_scope(isolate, DELETE_ON_EXIT);
 
   // The VM is in the COMPILER state until exiting this function.
   VMState state(isolate, COMPILER);
@@ -618,25 +591,6 @@ bool Compiler::CompileLazy(CompilationInfo* info) {
   Handle<SharedFunctionInfo> shared = info->shared_info();
   int compiled_size = shared->end_position() - shared->start_position();
   isolate->counters()->total_compile_size()->Increment(compiled_size);
-
-  if (FLAG_cache_optimized_code && info->IsOptimizing()) {
-    Handle<JSFunction> function = info->closure();
-    ASSERT(!function.is_null());
-    Handle<Context> global_context(function->context()->global_context());
-    int index = function->shared()->SearchOptimizedCodeMap(*global_context);
-    if (index > 0) {
-      if (FLAG_trace_opt) {
-        PrintF("  [Found optimized code for");
-        function->PrintName();
-        PrintF("\n");
-      }
-      Code* code = Code::cast(
-          FixedArray::cast(shared->optimized_code_map())->get(index));
-      ASSERT(code != NULL);
-      function->ReplaceCode(code);
-      return true;
-    }
-  }
 
   // Generate the AST for the lazily compiled function.
   if (ParserApi::Parse(info, kNoParsingFlags)) {
@@ -669,34 +623,13 @@ bool Compiler::CompileLazy(CompilationInfo* info) {
       if (info->IsOptimizing()) {
         ASSERT(shared->scope_info() != ScopeInfo::Empty());
         function->ReplaceCode(*code);
-        if (FLAG_cache_optimized_code &&
-            code->kind() == Code::OPTIMIZED_FUNCTION) {
-          Handle<SharedFunctionInfo> shared(function->shared());
-          Handle<Context> global_context(function->context()->global_context());
-
-          // Create literals array that will be shared for this global context.
-          int number_of_literals = shared->num_literals();
-          Handle<FixedArray> literals =
-              isolate->factory()->NewFixedArray(number_of_literals);
-          if (number_of_literals > 0) {
-            // Store the object, regexp and array functions in the literals
-            // array prefix.  These functions will be used when creating
-            // object, regexp and array literals in this function.
-            literals->set(JSFunction::kLiteralGlobalContextIndex,
-                          function->context()->global_context());
-          }
-
-          SharedFunctionInfo::AddToOptimizedCodeMap(
-              shared, global_context, code, literals);
-        }
       } else {
         // Update the shared function info with the compiled code and the
         // scope info.  Please note, that the order of the shared function
         // info initialization is important since set_scope_info might
         // trigger a GC, causing the ASSERT below to be invalid if the code
         // was flushed. By setting the code object last we avoid this.
-        Handle<ScopeInfo> scope_info =
-            ScopeInfo::Create(info->scope(), info->zone());
+        Handle<ScopeInfo> scope_info = ScopeInfo::Create(info->scope());
         shared->set_scope_info(*scope_info);
         shared->set_code(*code);
         if (!function.is_null()) {
@@ -719,19 +652,16 @@ bool Compiler::CompileLazy(CompilationInfo* info) {
         // Check the function has compiled code.
         ASSERT(shared->is_compiled());
         shared->set_code_age(0);
-        shared->set_dont_optimize(lit->flags()->Contains(kDontOptimize));
+        shared->set_dont_crankshaft(lit->flags()->Contains(kDontOptimize));
         shared->set_dont_inline(lit->flags()->Contains(kDontInline));
-        shared->set_ast_node_count(lit->ast_node_count());
 
-        if (V8::UseCrankshaft()&&
-            !function.is_null() &&
-            !shared->optimization_disabled()) {
+        if (info->AllowOptimize() && !shared->optimization_disabled()) {
           // If we're asked to always optimize, we compile the optimized
           // version of the function right away - unless the debugger is
           // active as it makes no sense to compile optimized code then.
           if (FLAG_always_opt &&
               !Isolate::Current()->DebuggerHasBreakPoints()) {
-            CompilationInfoWithZone optimized(function);
+            CompilationInfo optimized(function);
             optimized.SetOptimizing(AstNode::kNoNumber);
             return CompileLazy(&optimized);
           }
@@ -750,7 +680,7 @@ bool Compiler::CompileLazy(CompilationInfo* info) {
 Handle<SharedFunctionInfo> Compiler::BuildFunctionInfo(FunctionLiteral* literal,
                                                        Handle<Script> script) {
   // Precondition: code has been parsed and scopes have been analyzed.
-  CompilationInfoWithZone info(script);
+  CompilationInfo info(script);
   info.SetFunction(literal);
   info.SetScope(literal->scope());
   info.SetLanguageMode(literal->scope()->language_mode());
@@ -761,14 +691,8 @@ Handle<SharedFunctionInfo> Compiler::BuildFunctionInfo(FunctionLiteral* literal,
   // builtins cannot be handled lazily by the parser, since we have to know
   // if a function uses the special natives syntax, which is something the
   // parser records.
-  // If the debugger requests compilation for break points, we cannot be
-  // aggressive about lazy compilation, because it might trigger compilation
-  // of functions without an outer context when setting a breakpoint through
-  // Runtime::FindSharedFunctionInfoInScript.
-  bool allow_lazy_without_ctx = literal->AllowsLazyCompilationWithoutContext();
   bool allow_lazy = literal->AllowsLazyCompilation() &&
-      !LiveEditFunctionTracker::IsActive(info.isolate()) &&
-      (!info.isolate()->DebuggerHasBreakPoints() || allow_lazy_without_ctx);
+      !LiveEditFunctionTracker::IsActive(info.isolate());
 
   Handle<ScopeInfo> scope_info(ScopeInfo::Empty());
 
@@ -779,7 +703,7 @@ Handle<SharedFunctionInfo> Compiler::BuildFunctionInfo(FunctionLiteral* literal,
   } else if ((V8::UseCrankshaft() && MakeCrankshaftCode(&info)) ||
              (!V8::UseCrankshaft() && FullCodeGenerator::MakeCode(&info))) {
     ASSERT(!info.code().is_null());
-    scope_info = ScopeInfo::Create(info.scope(), info.zone());
+    scope_info = ScopeInfo::Create(info.scope());
   } else {
     return Handle<SharedFunctionInfo>::null();
   }
@@ -793,13 +717,12 @@ Handle<SharedFunctionInfo> Compiler::BuildFunctionInfo(FunctionLiteral* literal,
   SetFunctionInfo(result, literal, false, script);
   RecordFunctionCompilation(Logger::FUNCTION_TAG, &info, result);
   result->set_allows_lazy_compilation(allow_lazy);
-  result->set_allows_lazy_compilation_without_context(allow_lazy_without_ctx);
 
   // Set the expected number of properties for instances and return
   // the resulting function.
   SetExpectedNofPropertiesFromEstimate(result,
                                        literal->expected_property_count());
-  live_edit_tracker.RecordFunctionInfo(result, literal, info.zone());
+  live_edit_tracker.RecordFunctionInfo(result, literal);
   return result;
 }
 
@@ -826,14 +749,11 @@ void Compiler::SetFunctionInfo(Handle<SharedFunctionInfo> function_info,
       lit->has_only_simple_this_property_assignments(),
       *lit->this_property_assignments());
   function_info->set_allows_lazy_compilation(lit->AllowsLazyCompilation());
-  function_info->set_allows_lazy_compilation_without_context(
-      lit->AllowsLazyCompilationWithoutContext());
   function_info->set_language_mode(lit->language_mode());
   function_info->set_uses_arguments(lit->scope()->arguments() != NULL);
   function_info->set_has_duplicate_parameters(lit->has_duplicate_parameters());
   function_info->set_ast_node_count(lit->ast_node_count());
-  function_info->set_is_function(lit->is_function());
-  function_info->set_dont_optimize(lit->flags()->Contains(kDontOptimize));
+  function_info->set_dont_crankshaft(lit->flags()->Contains(kDontOptimize));
   function_info->set_dont_inline(lit->flags()->Contains(kDontInline));
 }
 

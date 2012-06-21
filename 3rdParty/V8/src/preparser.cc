@@ -581,8 +581,9 @@ PreParser::Statement PreParser::ParseWithStatement(bool* ok) {
   ParseExpression(true, CHECK_OK);
   Expect(i::Token::RPAREN, CHECK_OK);
 
-  Scope::InsideWith iw(scope_);
+  scope_->EnterWith();
   ParseStatement(CHECK_OK);
+  scope_->LeaveWith();
   return Statement::Default();
 }
 
@@ -748,9 +749,10 @@ PreParser::Statement PreParser::ParseTryStatement(bool* ok) {
       return Statement::Default();
     }
     Expect(i::Token::RPAREN, CHECK_OK);
-    { Scope::InsideWith iw(scope_);
-      ParseBlock(CHECK_OK);
-    }
+    scope_->EnterWith();
+    ParseBlock(ok);
+    scope_->LeaveWith();
+    if (!*ok) Statement::Default();
     catch_or_finally_seen = true;
   }
   if (peek() == i::Token::FINALLY) {
@@ -1212,7 +1214,7 @@ void PreParser::CheckDuplicate(DuplicateFinder* finder,
     old_type = finder->AddAsciiSymbol(scanner_->literal_ascii_string(),
                                       type);
   } else {
-    old_type = finder->AddUtf16Symbol(scanner_->literal_utf16_string(), type);
+    old_type = finder->AddUC16Symbol(scanner_->literal_uc16_string(), type);
   }
   if (HasConflict(old_type, type)) {
     if (IsDataDataConflict(old_type, type)) {
@@ -1385,7 +1387,7 @@ PreParser::Expression PreParser::ParseFunctionLiteral(bool* ok) {
           duplicate_finder.AddAsciiSymbol(scanner_->literal_ascii_string(), 1);
     } else {
       prev_value =
-          duplicate_finder.AddUtf16Symbol(scanner_->literal_utf16_string(), 1);
+          duplicate_finder.AddUC16Symbol(scanner_->literal_uc16_string(), 1);
     }
 
     if (prev_value != 0) {
@@ -1483,7 +1485,7 @@ void PreParser::LogSymbol() {
   if (scanner_->is_literal_ascii()) {
     log_->LogAsciiSymbol(identifier_pos, scanner_->literal_ascii_string());
   } else {
-    log_->LogUtf16Symbol(identifier_pos, scanner_->literal_utf16_string());
+    log_->LogUC16Symbol(identifier_pos, scanner_->literal_uc16_string());
   }
 }
 
@@ -1655,7 +1657,7 @@ int DuplicateFinder::AddAsciiSymbol(i::Vector<const char> key, int value) {
   return AddSymbol(i::Vector<const byte>::cast(key), true, value);
 }
 
-int DuplicateFinder::AddUtf16Symbol(i::Vector<const uint16_t> key, int value) {
+int DuplicateFinder::AddUC16Symbol(i::Vector<const uint16_t> key, int value) {
   return AddSymbol(i::Vector<const byte>::cast(key), false, value);
 }
 

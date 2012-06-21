@@ -65,7 +65,6 @@
 #include "log-inl.h"
 #include "cpu-profiler-inl.h"
 #include "handles-inl.h"
-#include "zone-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -96,9 +95,6 @@ class V8 : public AllStatic {
   // Allows an entropy source to be provided for use in random number
   // generation.
   static void SetEntropySource(EntropySource source);
-  // Support for return-address rewriting profilers.
-  static void SetReturnAddressLocationResolver(
-      ReturnAddressLocationResolver resolver);
   // Random number generation support. Not cryptographically safe.
   static uint32_t Random(Context* context);
   // We use random numbers internally in memory allocation and in the
@@ -117,7 +113,6 @@ class V8 : public AllStatic {
   static void FireCallCompletedCallback(Isolate* isolate);
 
  private:
-  static void InitializeOncePerProcessImpl();
   static void InitializeOncePerProcess();
 
   // True if engine is currently running

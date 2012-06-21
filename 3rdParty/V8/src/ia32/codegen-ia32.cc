@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -30,7 +30,6 @@
 #if defined(V8_TARGET_ARCH_IA32)
 
 #include "codegen.h"
-#include "heap.h"
 #include "macro-assembler.h"
 
 namespace v8 {
@@ -55,85 +54,6 @@ void StubRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
 
 
 #define __ masm.
-
-
-UnaryMathFunction CreateTranscendentalFunction(TranscendentalCache::Type type) {
-  size_t actual_size;
-  // Allocate buffer in executable space.
-  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
-                                                 &actual_size,
-                                                 true));
-  if (buffer == NULL) {
-    // Fallback to library function if function cannot be created.
-    switch (type) {
-      case TranscendentalCache::SIN: return &sin;
-      case TranscendentalCache::COS: return &cos;
-      case TranscendentalCache::TAN: return &tan;
-      case TranscendentalCache::LOG: return &log;
-      default: UNIMPLEMENTED();
-    }
-  }
-
-  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
-  // esp[1 * kPointerSize]: raw double input
-  // esp[0 * kPointerSize]: return address
-  // Move double input into registers.
-
-  __ push(ebx);
-  __ push(edx);
-  __ push(edi);
-  __ fld_d(Operand(esp, 4 * kPointerSize));
-  __ mov(ebx, Operand(esp, 4 * kPointerSize));
-  __ mov(edx, Operand(esp, 5 * kPointerSize));
-  TranscendentalCacheStub::GenerateOperation(&masm, type);
-  // The return value is expected to be on ST(0) of the FPU stack.
-  __ pop(edi);
-  __ pop(edx);
-  __ pop(ebx);
-  __ Ret();
-
-  CodeDesc desc;
-  masm.GetCode(&desc);
-  ASSERT(desc.reloc_size == 0);
-
-  CPU::FlushICache(buffer, actual_size);
-  OS::ProtectCode(buffer, actual_size);
-  return FUNCTION_CAST<UnaryMathFunction>(buffer);
-}
-
-
-UnaryMathFunction CreateSqrtFunction() {
-  size_t actual_size;
-  // Allocate buffer in executable space.
-  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
-                                                 &actual_size,
-                                                 true));
-  // If SSE2 is not available, we can use libc's implementation to ensure
-  // consistency since code by fullcodegen's calls into runtime in that case.
-  if (buffer == NULL || !CpuFeatures::IsSupported(SSE2)) return &sqrt;
-  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
-  // esp[1 * kPointerSize]: raw double input
-  // esp[0 * kPointerSize]: return address
-  // Move double input into registers.
-  {
-    CpuFeatures::Scope use_sse2(SSE2);
-    __ movdbl(xmm0, Operand(esp, 1 * kPointerSize));
-    __ sqrtsd(xmm0, xmm0);
-    __ movdbl(Operand(esp, 1 * kPointerSize), xmm0);
-    // Load result into floating point register as return value.
-    __ fld_d(Operand(esp, 1 * kPointerSize));
-    __ Ret();
-  }
-
-  CodeDesc desc;
-  masm.GetCode(&desc);
-  ASSERT(desc.reloc_size == 0);
-
-  CPU::FlushICache(buffer, actual_size);
-  OS::ProtectCode(buffer, actual_size);
-  return FUNCTION_CAST<UnaryMathFunction>(buffer);
-}
-
 
 static void MemCopyWrapper(void* dest, const void* src, size_t size) {
   memcpy(dest, src, size);
@@ -351,7 +271,7 @@ OS::MemCopyFunction CreateMemCopyFunction() {
 
 #define __ ACCESS_MASM(masm)
 
-void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
+void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
     MacroAssembler* masm) {
   // ----------- S t a t e -------------
   //  -- eax    : value
@@ -372,7 +292,7 @@ void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
 }
 
 
-void ElementsTransitionGenerator::GenerateSmiToDouble(
+void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
     MacroAssembler* masm, Label* fail) {
   // ----------- S t a t e -------------
   //  -- eax    : value
@@ -381,40 +301,18 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
   //  -- edx    : receiver
   //  -- esp[0] : return address
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required, only_change_map;
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
-  __ cmp(edi, Immediate(masm->isolate()->factory()->empty_fixed_array()));
-  __ j(equal, &only_change_map);
-
+  Label loop, entry, convert_hole, gc_required;
   __ push(eax);
   __ push(ebx);
 
+  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
   __ mov(edi, FieldOperand(edi, FixedArray::kLengthOffset));
 
   // Allocate new FixedDoubleArray.
   // edx: receiver
   // edi: length of source FixedArray (smi-tagged)
-  __ lea(esi, Operand(edi,
-                      times_4,
-                      FixedDoubleArray::kHeaderSize + kPointerSize));
+  __ lea(esi, Operand(edi, times_4, FixedDoubleArray::kHeaderSize));
   __ AllocateInNewSpace(esi, eax, ebx, no_reg, &gc_required, TAG_OBJECT);
-
-  Label aligned, aligned_done;
-  __ test(eax, Immediate(kDoubleAlignmentMask - kHeapObjectTag));
-  __ j(zero, &aligned, Label::kNear);
-  __ mov(FieldOperand(eax, 0),
-         Immediate(masm->isolate()->factory()->one_pointer_filler_map()));
-  __ add(eax, Immediate(kPointerSize));
-  __ jmp(&aligned_done);
-
-  __ bind(&aligned);
-  __ mov(Operand(eax, esi, times_1, -kPointerSize-1),
-         Immediate(masm->isolate()->factory()->one_pointer_filler_map()));
-
-  __ bind(&aligned_done);
 
   // eax: destination FixedDoubleArray
   // edi: number of elements
@@ -501,11 +399,6 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
 
   __ pop(ebx);
   __ pop(eax);
-
-  // Restore esi.
-  __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
-
-  __ bind(&only_change_map);
   // eax: value
   // ebx: target map
   // Set transitioned map.
@@ -515,8 +408,10 @@ void ElementsTransitionGenerator::GenerateSmiToDouble(
                       ebx,
                       edi,
                       kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
+                      EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
+  // Restore esi.
+  __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
 }
 
 
@@ -529,18 +424,12 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   //  -- edx    : receiver
   //  -- esp[0] : return address
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required, only_change_map, success;
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
-  __ cmp(edi, Immediate(masm->isolate()->factory()->empty_fixed_array()));
-  __ j(equal, &only_change_map);
-
+  Label loop, entry, convert_hole, gc_required;
   __ push(eax);
   __ push(edx);
   __ push(ebx);
 
+  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
   __ mov(ebx, FieldOperand(edi, FixedDoubleArray::kLengthOffset));
 
   // Allocate new FixedArray.
@@ -556,20 +445,6 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
 
   __ jmp(&entry);
-
-  // ebx: target map
-  // edx: receiver
-  // Set transitioned map.
-  __ bind(&only_change_map);
-  __ mov(FieldOperand(edx, HeapObject::kMapOffset), ebx);
-  __ RecordWriteField(edx,
-                      HeapObject::kMapOffset,
-                      ebx,
-                      edi,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
-  __ jmp(&success);
 
   // Call into runtime if GC is required.
   __ bind(&gc_required);
@@ -632,7 +507,7 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
                       ebx,
                       edi,
                       kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
+                      EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created and filled FixedArray.
   __ mov(FieldOperand(edx, JSObject::kElementsOffset), eax);
@@ -647,8 +522,6 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   // Restore registers.
   __ pop(eax);
   __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
-
-  __ bind(&success);
 }
 
 

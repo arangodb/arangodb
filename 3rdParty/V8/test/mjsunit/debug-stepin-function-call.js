@@ -135,15 +135,8 @@ function apply4() {
   var yetAnotherLocal = 10;
 }
 
-// Test step into bound function.
-function bind1() {
-  var bound = g.bind(null, 3);
-  debugger;
-  bound();
-}
-
 var testFunctions =
-    [call1, call2, call3, call4, apply1, apply2, apply3, apply4, bind1];
+    [call1, call2, call3, call4, apply1, apply2, apply3, apply4];
 
 for (var i = 0; i < testFunctions.length; i++) {
   state = 0;
@@ -151,14 +144,6 @@ for (var i = 0; i < testFunctions.length; i++) {
   assertNull(exception);
   assertEquals(3, state);
 }
-
-// Test global bound function.
-state = 0;
-var globalBound = g.bind(null, 3);
-debugger;
-globalBound();
-assertNull(exception);
-assertEquals(3, state);
 
 // Get rid of the debug event listener.
 Debug.setListener(null);

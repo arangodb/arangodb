@@ -75,7 +75,7 @@ var assertTrue;
 // Checks that the found value is false.
 var assertFalse;
 
-// Checks that the found value is null. Kept for historical compatibility,
+// Checks that the found value is null. Kept for historical compatability,
 // please just use assertEquals(null, expected).
 var assertNull;
 
@@ -221,8 +221,6 @@ var assertUnreachable;
 
 
   assertSame = function assertSame(expected, found, name_opt) {
-    // TODO(mstarzinger): We should think about using Harmony's egal operator
-    // or the function equivalent Object.is() here.
     if (found === expected) {
       if (expected !== 0 || (1 / expected) == (1 / found)) return;
     } else if ((expected !== expected) && (found !== found)) {

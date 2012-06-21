@@ -51,7 +51,6 @@
 
 #include "v8.h"
 
-#include "platform-posix.h"
 #include "platform.h"
 #include "v8threads.h"
 #include "vm-state-inl.h"
@@ -100,8 +99,11 @@ static void* GetRandomMmapAddr() {
 }
 
 
-void OS::PostSetUp() {
-  POSIXPostSetUp();
+void OS::SetUp() {
+  // Seed the random number generator. We preserve microsecond resolution.
+  uint64_t seed = Ticks() ^ (getpid() << 16);
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
 }
 
 
@@ -456,12 +458,6 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 }
 
 
-bool VirtualMemory::Guard(void* address) {
-  OS::Guard(address, OS::CommitPageSize());
-  return true;
-}
-
-
 void* VirtualMemory::ReserveRegion(size_t size) {
   void* result = mmap(GetRandomMmapAddr(),
                       size,
@@ -793,9 +789,6 @@ class SignalSender : public Thread {
         vm_tgid_(getpid()),
         interval_(interval) {}
 
-  static void SetUp() { if (!mutex_) mutex_ = OS::CreateMutex(); }
-  static void TearDown() { delete mutex_; }
-
   static void InstallSignalHandler() {
     struct sigaction sa;
     sa.sa_sigaction = ProfilerSignalHandler;
@@ -930,25 +923,10 @@ class SignalSender : public Thread {
 };
 
 
-Mutex* SignalSender::mutex_ = NULL;
+Mutex* SignalSender::mutex_ = OS::CreateMutex();
 SignalSender* SignalSender::instance_ = NULL;
 struct sigaction SignalSender::old_signal_handler_;
 bool SignalSender::signal_handler_installed_ = false;
-
-
-void OS::SetUp() {
-  // Seed the random number generator. We preserve microsecond resolution.
-  uint64_t seed = Ticks() ^ (getpid() << 16);
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
-  SignalSender::SetUp();
-}
-
-
-void OS::TearDown() {
-  SignalSender::TearDown();
-  delete limit_mutex;
-}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

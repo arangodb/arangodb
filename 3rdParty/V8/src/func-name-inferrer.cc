@@ -34,12 +34,11 @@
 namespace v8 {
 namespace internal {
 
-FuncNameInferrer::FuncNameInferrer(Isolate* isolate, Zone* zone)
+FuncNameInferrer::FuncNameInferrer(Isolate* isolate)
     : isolate_(isolate),
-      entries_stack_(10, zone),
-      names_stack_(5, zone),
-      funcs_to_infer_(4, zone),
-      zone_(zone) {
+      entries_stack_(10),
+      names_stack_(5),
+      funcs_to_infer_(4) {
 }
 
 
@@ -49,21 +48,21 @@ void FuncNameInferrer::PushEnclosingName(Handle<String> name) {
   // and starts with a capital letter.
   if (name->length() > 0 && Runtime::IsUpperCaseChar(
           isolate()->runtime_state(), name->Get(0))) {
-    names_stack_.Add(Name(name, kEnclosingConstructorName), zone());
+    names_stack_.Add(Name(name, kEnclosingConstructorName));
   }
 }
 
 
 void FuncNameInferrer::PushLiteralName(Handle<String> name) {
   if (IsOpen() && !isolate()->heap()->prototype_symbol()->Equals(*name)) {
-    names_stack_.Add(Name(name, kLiteralName), zone());
+    names_stack_.Add(Name(name, kLiteralName));
   }
 }
 
 
 void FuncNameInferrer::PushVariableName(Handle<String> name) {
   if (IsOpen() && !isolate()->heap()->result_symbol()->Equals(*name)) {
-    names_stack_.Add(Name(name, kVariableName), zone());
+    names_stack_.Add(Name(name, kVariableName));
   }
 }
 

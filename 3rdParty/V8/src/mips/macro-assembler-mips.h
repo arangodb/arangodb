@@ -81,16 +81,6 @@ enum BranchDelaySlot {
   PROTECT
 };
 
-// Flags used for the li macro-assembler function.
-enum LiFlags {
-  // If the constant value can be represented in just 16 bits, then
-  // optimize the li to use a single instruction, rather than lui/ori pair.
-  OPTIMIZE_SIZE = 0,
-  // Always use 2 instructions (lui/ori pair), even if the constant could
-  // be loaded with just one, so that this value is patchable later.
-  CONSTANT_SIZE = 1
-};
-
 
 enum RememberedSetAction { EMIT_REMEMBERED_SET, OMIT_REMEMBERED_SET };
 enum SmiCheck { INLINE_SMI_CHECK, OMIT_SMI_CHECK };
@@ -194,12 +184,6 @@ class MacroAssembler: public Assembler {
     Ret(cond, rs, rt, bd);
   }
 
-  void Branch(Label* L,
-              Condition cond,
-              Register rs,
-              Heap::RootListIndex index,
-              BranchDelaySlot bdslot = PROTECT);
-
 #undef COND_ARGS
 
   // Emit code to discard a non-negative number of pointer-sized elements
@@ -209,14 +193,10 @@ class MacroAssembler: public Assembler {
             Register reg = no_reg,
             const Operand& op = Operand(no_reg));
 
-  // Trivial case of DropAndRet that utilizes the delay slot and only emits
-  // 2 instructions.
-  void DropAndRet(int drop);
-
-  void DropAndRet(int drop,
-                  Condition cond,
-                  Register reg,
-                  const Operand& op);
+  void DropAndRet(int drop = 0,
+                  Condition cond = cc_always,
+                  Register reg = no_reg,
+                  const Operand& op = Operand(no_reg));
 
   // Swap two registers.  If the scratch register is omitted then a slightly
   // less efficient form using xor instead of mov is emitted.
@@ -246,14 +226,7 @@ class MacroAssembler: public Assembler {
     mtc1(src_high, FPURegister::from_code(dst.code() + 1));
   }
 
-  // Conditional move.
   void Move(FPURegister dst, double imm);
-  void Movz(Register rd, Register rs, Register rt);
-  void Movn(Register rd, Register rs, Register rt);
-  void Movt(Register rd, Register rs, uint16_t cc = 0);
-  void Movf(Register rd, Register rs, uint16_t cc = 0);
-
-  void Clz(Register rd, Register rs);
 
   // Jump unconditionally to given label.
   // We NEED a nop in the branch delay slot, as it used by v8, for example in
@@ -263,6 +236,7 @@ class MacroAssembler: public Assembler {
   void jmp(Label* L) {
     Branch(L);
   }
+
 
   // Load an object from the root table.
   void LoadRoot(Register destination,
@@ -594,13 +568,12 @@ class MacroAssembler: public Assembler {
   void mov(Register rd, Register rt) { or_(rd, rt, zero_reg); }
 
   // Load int32 in the rd register.
-  void li(Register rd, Operand j, LiFlags mode = OPTIMIZE_SIZE);
-  inline void li(Register rd, int32_t j, LiFlags mode = OPTIMIZE_SIZE) {
-    li(rd, Operand(j), mode);
+  void li(Register rd, Operand j, bool gen2instr = false);
+  inline void li(Register rd, int32_t j, bool gen2instr = false) {
+    li(rd, Operand(j), gen2instr);
   }
-  inline void li(Register dst, Handle<Object> value,
-                 LiFlags mode = OPTIMIZE_SIZE) {
-    li(dst, Operand(value), mode);
+  inline void li(Register dst, Handle<Object> value, bool gen2instr = false) {
+    li(dst, Operand(value), gen2instr);
   }
 
   // Push multiple registers on the stack.
@@ -719,10 +692,6 @@ class MacroAssembler: public Assembler {
   void Trunc_uw_d(FPURegister fd, FPURegister fs, FPURegister scratch);
   void Trunc_uw_d(FPURegister fd, Register rs, FPURegister scratch);
 
-  void Trunc_w_d(FPURegister fd, FPURegister fs);
-  void Round_w_d(FPURegister fd, FPURegister fs);
-  void Floor_w_d(FPURegister fd, FPURegister fs);
-  void Ceil_w_d(FPURegister fd, FPURegister fs);
   // Wrapper function for the different cmp/branch types.
   void BranchF(Label* target,
                Label* nan,
@@ -793,9 +762,7 @@ class MacroAssembler: public Assembler {
                       int stack_space = 0);
 
   // Leave the current exit frame.
-  void LeaveExitFrame(bool save_doubles,
-                      Register arg_count,
-                      bool do_return = false);
+  void LeaveExitFrame(bool save_doubles, Register arg_count);
 
   // Get the actual activation frame alignment for target environment.
   static int ActivationFrameAlignment();
@@ -805,22 +772,10 @@ class MacroAssembler: public Assembler {
 
   void LoadContext(Register dst, int context_chain_length);
 
-  // Conditionally load the cached Array transitioned map of type
-  // transitioned_kind from the global context if the map in register
-  // map_in_out is the cached Array map in the global context of
-  // expected_kind.
-  void LoadTransitionedArrayMapConditional(
-      ElementsKind expected_kind,
-      ElementsKind transitioned_kind,
-      Register map_in_out,
-      Register scratch,
-      Label* no_map_match);
-
-  // Load the initial map for new Arrays from a JSFunction.
-  void LoadInitialArrayMap(Register function_in,
-                           Register scratch,
-                           Register map_out,
-                           bool can_have_holes);
+  // Load the initial map for new Arrays of a given type.
+  void LoadGlobalInitialConstructedArrayMap(Register function_in,
+                                            Register scratch,
+                                            Register map_out);
 
   void LoadGlobalFunction(int index, Register function);
 
@@ -899,18 +854,20 @@ class MacroAssembler: public Assembler {
   // Exception handling.
 
   // Push a new try handler and link into try handler chain.
-  void PushTryHandler(StackHandler::Kind kind, int handler_index);
+  void PushTryHandler(CodeLocation try_location,
+                      HandlerType type,
+                      int handler_index);
 
   // Unlink the stack handler on top of the stack from the try handler chain.
   // Must preserve the result register.
   void PopTryHandler();
 
-  // Passes thrown value to the handler of top of the try handler chain.
+  // Passes thrown value (in v0) to the handler of top of the try handler chain.
   void Throw(Register value);
 
   // Propagates an uncatchable exception to the top of the current JS stack's
   // handler chain.
-  void ThrowUncatchable(Register value);
+  void ThrowUncatchable(UncatchableExceptionType type, Register value);
 
   // Copies a fixed number of fields of heap objects from src to dst.
   void CopyFields(Register dst, Register src, RegList temps, int field_count);
@@ -962,14 +919,13 @@ class MacroAssembler: public Assembler {
 
   // Check if a map for a JSObject indicates that the object has fast smi only
   // elements.  Jump to the specified label if it does not.
-  void CheckFastSmiElements(Register map,
-                            Register scratch,
-                            Label* fail);
+  void CheckFastSmiOnlyElements(Register map,
+                                Register scratch,
+                                Label* fail);
 
   // Check to see if maybe_number can be stored as a double in
   // FastDoubleElements. If it can, store it at the index specified by key in
-  // the FastDoubleElements array elements. Otherwise jump to fail, in which
-  // case scratch2, scratch3 and scratch4 are unmodified.
+  // the FastDoubleElements array elements, otherwise jump to fail.
   void StoreNumberToDoubleElements(Register value_reg,
                                    Register key_reg,
                                    Register receiver_reg,
@@ -986,15 +942,6 @@ class MacroAssembler: public Assembler {
   // compares are required, the compare sequences branches to early_success.
   void CompareMapAndBranch(Register obj,
                            Register scratch,
-                           Handle<Map> map,
-                           Label* early_success,
-                           Condition cond,
-                           Label* branch_to,
-                           CompareMapMode mode = REQUIRE_EXACT_MAP);
-
-  // As above, but the map of the object is already loaded into the register
-  // which is preserved by the code generated.
-  void CompareMapAndBranch(Register obj_map,
                            Handle<Map> map,
                            Label* early_success,
                            Condition cond,
@@ -1116,22 +1063,9 @@ class MacroAssembler: public Assembler {
   // -------------------------------------------------------------------------
   // Runtime calls.
 
-  // See comments at the beginning of CEntryStub::Generate.
-  inline void PrepareCEntryArgs(int num_args) {
-    li(s0, num_args);
-    li(s1, (num_args - 1) * kPointerSize);
-  }
-
-  inline void PrepareCEntryFunction(const ExternalReference& ref) {
-    li(s2, Operand(ref));
-  }
-
   // Call a code stub.
-  void CallStub(CodeStub* stub,
-                Condition cond = cc_always,
-                Register r1 = zero_reg,
-                const Operand& r2 = Operand(zero_reg),
-                BranchDelaySlot bd = PROTECT);
+  void CallStub(CodeStub* stub, Condition cond = cc_always,
+                Register r1 = zero_reg, const Operand& r2 = Operand(zero_reg));
 
   // Tail call a code stub (jump).
   void TailCallStub(CodeStub* stub);
@@ -1147,8 +1081,7 @@ class MacroAssembler: public Assembler {
 
   // Convenience function: call an external reference.
   void CallExternalReference(const ExternalReference& ext,
-                             int num_arguments,
-                             BranchDelaySlot bd = PROTECT);
+                             int num_arguments);
 
   // Tail call of a runtime routine (jump).
   // Like JumpToExternalReference, but also takes care of passing the number
@@ -1214,8 +1147,7 @@ class MacroAssembler: public Assembler {
   void CallApiFunctionAndReturn(ExternalReference function, int stack_space);
 
   // Jump to the builtin routine.
-  void JumpToExternalReference(const ExternalReference& builtin,
-                               BranchDelaySlot bd = PROTECT);
+  void JumpToExternalReference(const ExternalReference& builtin);
 
   // Invoke specified builtin JavaScript function. Adds an entry to
   // the unresolved list if the name does not resolve.
@@ -1411,10 +1343,6 @@ class MacroAssembler: public Assembler {
   void GetRelocatedValue(Register li_location,
                          Register value,
                          Register scratch);
-
-  // Expects object in a0 and returns map with validated enum cache
-  // in a0.  Assumes that any other register can be used as a scratch.
-  void CheckEnumCache(Register null_value, Label* call_runtime);
 
  private:
   void CallCFunctionHelper(Register function,

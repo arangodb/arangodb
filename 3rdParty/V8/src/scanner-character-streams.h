@@ -36,10 +36,10 @@ namespace internal {
 // A buffered character stream based on a random access character
 // source (ReadBlock can be called with pos_ pointing to any position,
 // even positions before the current).
-class BufferedUtf16CharacterStream: public Utf16CharacterStream {
+class BufferedUC16CharacterStream: public UC16CharacterStream {
  public:
-  BufferedUtf16CharacterStream();
-  virtual ~BufferedUtf16CharacterStream();
+  BufferedUC16CharacterStream();
+  virtual ~BufferedUC16CharacterStream();
 
   virtual void PushBack(uc32 character);
 
@@ -60,12 +60,12 @@ class BufferedUtf16CharacterStream: public Utf16CharacterStream {
 
 
 // Generic string stream.
-class GenericStringUtf16CharacterStream: public BufferedUtf16CharacterStream {
+class GenericStringUC16CharacterStream: public BufferedUC16CharacterStream {
  public:
-  GenericStringUtf16CharacterStream(Handle<String> data,
-                                    unsigned start_position,
-                                    unsigned end_position);
-  virtual ~GenericStringUtf16CharacterStream();
+  GenericStringUC16CharacterStream(Handle<String> data,
+                                   unsigned start_position,
+                                   unsigned end_position);
+  virtual ~GenericStringUC16CharacterStream();
 
  protected:
   virtual unsigned BufferSeekForward(unsigned delta);
@@ -77,11 +77,11 @@ class GenericStringUtf16CharacterStream: public BufferedUtf16CharacterStream {
 };
 
 
-// Utf16 stream based on a literal UTF-8 string.
-class Utf8ToUtf16CharacterStream: public BufferedUtf16CharacterStream {
+// UC16 stream based on a literal UTF-8 string.
+class Utf8ToUC16CharacterStream: public BufferedUC16CharacterStream {
  public:
-  Utf8ToUtf16CharacterStream(const byte* data, unsigned length);
-  virtual ~Utf8ToUtf16CharacterStream();
+  Utf8ToUC16CharacterStream(const byte* data, unsigned length);
+  virtual ~Utf8ToUC16CharacterStream();
 
  protected:
   virtual unsigned BufferSeekForward(unsigned delta);
@@ -98,12 +98,12 @@ class Utf8ToUtf16CharacterStream: public BufferedUtf16CharacterStream {
 
 
 // UTF16 buffer to read characters from an external string.
-class ExternalTwoByteStringUtf16CharacterStream: public Utf16CharacterStream {
+class ExternalTwoByteStringUC16CharacterStream: public UC16CharacterStream {
  public:
-  ExternalTwoByteStringUtf16CharacterStream(Handle<ExternalTwoByteString> data,
-                                            int start_position,
-                                            int end_position);
-  virtual ~ExternalTwoByteStringUtf16CharacterStream();
+  ExternalTwoByteStringUC16CharacterStream(Handle<ExternalTwoByteString> data,
+                                           int start_position,
+                                           int end_position);
+  virtual ~ExternalTwoByteStringUC16CharacterStream();
 
   virtual void PushBack(uc32 character) {
     ASSERT(buffer_cursor_ > raw_data_);

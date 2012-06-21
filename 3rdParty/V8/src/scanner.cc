@@ -41,11 +41,10 @@ namespace internal {
 Scanner::Scanner(UnicodeCache* unicode_cache)
     : unicode_cache_(unicode_cache),
       octal_pos_(Location::invalid()),
-      harmony_scoping_(false),
-      harmony_modules_(false) { }
+      harmony_scoping_(false) { }
 
 
-void Scanner::Initialize(Utf16CharacterStream* source) {
+void Scanner::Initialize(UC16CharacterStream* source) {
   source_ = source;
   // Need to capture identifiers in order to recognize "get" and "set"
   // in object literals.
@@ -611,7 +610,7 @@ void Scanner::SeekForward(int pos) {
 }
 
 
-bool Scanner::ScanEscape() {
+void Scanner::ScanEscape() {
   uc32 c = c0_;
   Advance();
 
@@ -621,7 +620,7 @@ bool Scanner::ScanEscape() {
     if (IsCarriageReturn(c) && IsLineFeed(c0_)) Advance();
     // Allow LF+CR newlines in multiline string literals.
     if (IsLineFeed(c) && IsCarriageReturn(c0_)) Advance();
-    return true;
+    return;
   }
 
   switch (c) {
@@ -635,13 +634,13 @@ bool Scanner::ScanEscape() {
     case 't' : c = '\t'; break;
     case 'u' : {
       c = ScanHexNumber(4);
-      if (c < 0) return false;
+      if (c < 0) c = 'u';
       break;
     }
     case 'v' : c = '\v'; break;
     case 'x' : {
       c = ScanHexNumber(2);
-      if (c < 0) return false;
+      if (c < 0) c = 'x';
       break;
     }
     case '0' :  // fall through
@@ -654,11 +653,10 @@ bool Scanner::ScanEscape() {
     case '7' : c = ScanOctalEscape(c, 2); break;
   }
 
-  // According to ECMA-262, section 7.8.4, characters not covered by the
-  // above cases should be illegal, but they are commonly handled as
-  // non-escaped characters by JS VMs.
+  // According to ECMA-262, 3rd, 7.8.4 (p 18ff) these
+  // should be illegal, but they are commonly handled
+  // as non-escaped characters by JS VMs.
   AddLiteralChar(c);
-  return true;
 }
 
 
@@ -697,7 +695,8 @@ Token::Value Scanner::ScanString() {
     uc32 c = c0_;
     Advance();
     if (c == '\\') {
-      if (c0_ < 0 || !ScanEscape()) return Token::ILLEGAL;
+      if (c0_ < 0) return Token::ILLEGAL;
+      ScanEscape();
     } else {
       AddLiteralChar(c);
     }
@@ -831,8 +830,7 @@ uc32 Scanner::ScanIdentifierUnicodeEscape() {
   KEYWORD_GROUP('e')                                                \
   KEYWORD("else", Token::ELSE)                                      \
   KEYWORD("enum", Token::FUTURE_RESERVED_WORD)                      \
-  KEYWORD("export", harmony_modules                                 \
-                    ? Token::EXPORT : Token::FUTURE_RESERVED_WORD)  \
+  KEYWORD("export", Token::FUTURE_RESERVED_WORD)                    \
   KEYWORD("extends", Token::FUTURE_RESERVED_WORD)                   \
   KEYWORD_GROUP('f')                                                \
   KEYWORD("false", Token::FALSE_LITERAL)                            \
@@ -842,8 +840,7 @@ uc32 Scanner::ScanIdentifierUnicodeEscape() {
   KEYWORD_GROUP('i')                                                \
   KEYWORD("if", Token::IF)                                          \
   KEYWORD("implements", Token::FUTURE_STRICT_RESERVED_WORD)         \
-  KEYWORD("import", harmony_modules                                 \
-                    ? Token::IMPORT : Token::FUTURE_RESERVED_WORD)  \
+  KEYWORD("import", Token::FUTURE_RESERVED_WORD)                    \
   KEYWORD("in", Token::IN)                                          \
   KEYWORD("instanceof", Token::INSTANCEOF)                          \
   KEYWORD("interface", Token::FUTURE_STRICT_RESERVED_WORD)          \
@@ -882,8 +879,7 @@ uc32 Scanner::ScanIdentifierUnicodeEscape() {
 
 static Token::Value KeywordOrIdentifierToken(const char* input,
                                              int input_length,
-                                             bool harmony_scoping,
-                                             bool harmony_modules) {
+                                             bool harmony_scoping) {
   ASSERT(input_length >= 1);
   const int kMinLength = 2;
   const int kMaxLength = 10;
@@ -959,8 +955,7 @@ Token::Value Scanner::ScanIdentifierOrKeyword() {
     Vector<const char> chars = next_.literal_chars->ascii_literal();
     return KeywordOrIdentifierToken(chars.start(),
                                     chars.length(),
-                                    harmony_scoping_,
-                                    harmony_modules_);
+                                    harmony_scoping_);
   }
 
   return Token::IDENTIFIER;

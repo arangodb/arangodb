@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -200,14 +200,12 @@ void fail(v8::PreParserData* data, const char* message, ...) {
   vfprintf(stderr, message, args);
   va_end(args);
   fflush(stderr);
-  if (data != NULL) {
-    // Print preparser data to stdout.
-    uint32_t size = static_cast<uint32_t>(data->size());
-    fprintf(stderr, "LOG: data size: %u\n", size);
-    if (!WriteBuffer(stdout, data->data(), size)) {
-      perror("ERROR: Writing data");
-      fflush(stderr);
-    }
+  // Print preparser data to stdout.
+  uint32_t size = data->size();
+  fprintf(stderr, "LOG: data size: %u\n", size);
+  if (!WriteBuffer(stdout, data->data(), size)) {
+    perror("ERROR: Writing data");
+    fflush(stderr);
   }
   exit(EXIT_FAILURE);
 }
@@ -232,7 +230,7 @@ struct ExceptionExpectation {
 
 void CheckException(v8::PreParserData* data,
                     ExceptionExpectation* expects) {
-  PreparseDataInterpreter reader(data->data(), static_cast<int>(data->size()));
+  PreparseDataInterpreter reader(data->data(), data->size());
   if (expects->throws) {
     if (!reader.throws()) {
       if (expects->type == NULL) {

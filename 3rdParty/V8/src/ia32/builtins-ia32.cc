@@ -324,11 +324,6 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
                         NullCallWrapper(), CALL_AS_METHOD);
     }
 
-    // Store offset of return address for deoptimizer.
-    if (!is_api_function && !count_constructions) {
-      masm->isolate()->heap()->SetConstructStubDeoptPCOffset(masm->pc_offset());
-    }
-
     // Restore context from the frame.
     __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
 
@@ -831,7 +826,7 @@ void Builtins::Generate_FunctionApply(MacroAssembler* masm) {
 
     // Copy all arguments from the array to the stack.
     Label entry, loop;
-    __ mov(ecx, Operand(ebp, kIndexOffset));
+    __ mov(eax, Operand(ebp, kIndexOffset));
     __ jmp(&entry);
     __ bind(&loop);
     __ mov(edx, Operand(ebp, kArgumentsOffset));  // load arguments
@@ -848,17 +843,16 @@ void Builtins::Generate_FunctionApply(MacroAssembler* masm) {
     __ push(eax);
 
     // Update the index on the stack and in register eax.
-    __ mov(ecx, Operand(ebp, kIndexOffset));
-    __ add(ecx, Immediate(1 << kSmiTagSize));
-    __ mov(Operand(ebp, kIndexOffset), ecx);
+    __ mov(eax, Operand(ebp, kIndexOffset));
+    __ add(eax, Immediate(1 << kSmiTagSize));
+    __ mov(Operand(ebp, kIndexOffset), eax);
 
     __ bind(&entry);
-    __ cmp(ecx, Operand(ebp, kLimitOffset));
+    __ cmp(eax, Operand(ebp, kLimitOffset));
     __ j(not_equal, &loop);
 
     // Invoke the function.
     Label call_proxy;
-    __ mov(eax, ecx);
     ParameterCount actual(eax);
     __ SmiUntag(eax);
     __ mov(edi, Operand(ebp, kFunctionOffset));
@@ -900,7 +894,7 @@ static void AllocateEmptyJSArray(MacroAssembler* masm,
   const int initial_capacity = JSArray::kPreallocatedArrayElements;
   STATIC_ASSERT(initial_capacity >= 0);
 
-  __ LoadInitialArrayMap(array_function, scratch2, scratch1, false);
+  __ LoadInitialArrayMap(array_function, scratch2, scratch1);
 
   // Allocate the JSArray object together with space for a fixed array with the
   // requested elements.
@@ -1003,8 +997,7 @@ static void AllocateJSArray(MacroAssembler* masm,
   ASSERT(!fill_with_hole || array_size.is(ecx));  // rep stos count
   ASSERT(!fill_with_hole || !result.is(eax));  // result is never eax
 
-  __ LoadInitialArrayMap(array_function, scratch,
-                         elements_array, fill_with_hole);
+  __ LoadInitialArrayMap(array_function, scratch, elements_array);
 
   // Allocate the JSArray object together with space for a FixedArray with the
   // requested elements.
@@ -1095,7 +1088,7 @@ static void ArrayNativeCode(MacroAssembler* masm,
                             bool construct_call,
                             Label* call_generic_code) {
   Label argc_one_or_more, argc_two_or_more, prepare_generic_code_call,
-      empty_array, not_empty_array, finish, cant_transition_map, not_double;
+        empty_array, not_empty_array;
 
   // Push the constructor and argc. No need to tag argc as a smi, as there will
   // be no garbage collection with this on the stack.
@@ -1254,7 +1247,6 @@ static void ArrayNativeCode(MacroAssembler* masm,
   // esp[8]: constructor (only if construct_call)
   // esp[12]: return address
   // esp[16]: last argument
-  __ bind(&finish);
   __ mov(ecx, Operand(esp, last_arg_offset - kPointerSize));
   __ pop(eax);
   __ pop(ebx);
@@ -1263,43 +1255,9 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ jmp(ecx);
 
   __ bind(&has_non_smi_element);
-  // Double values are handled by the runtime.
-  __ CheckMap(eax,
-              masm->isolate()->factory()->heap_number_map(),
-              &not_double,
-              DONT_DO_SMI_CHECK);
-  __ bind(&cant_transition_map);
   // Throw away the array that's only been partially constructed.
   __ pop(eax);
   __ UndoAllocationInNewSpace(eax);
-  __ jmp(&prepare_generic_code_call);
-
-  __ bind(&not_double);
-  // Transition FAST_SMI_ELEMENTS to FAST_ELEMENTS.
-  __ mov(ebx, Operand(esp, 0));
-  __ mov(edi, FieldOperand(ebx, HeapObject::kMapOffset));
-  __ LoadTransitionedArrayMapConditional(
-      FAST_SMI_ELEMENTS,
-      FAST_ELEMENTS,
-      edi,
-      eax,
-      &cant_transition_map);
-  __ mov(FieldOperand(ebx, HeapObject::kMapOffset), edi);
-  __ RecordWriteField(ebx, HeapObject::kMapOffset, edi, eax,
-                      kDontSaveFPRegs, OMIT_REMEMBERED_SET, OMIT_SMI_CHECK);
-
-  // Prepare to re-enter the loop
-  __ lea(edi, Operand(esp, last_arg_offset));
-
-  // Finish the array initialization loop.
-  Label loop2;
-  __ bind(&loop2);
-  __ mov(eax, Operand(edi, ecx, times_pointer_size, 0));
-  __ mov(Operand(edx, 0), eax);
-  __ add(edx, Immediate(kPointerSize));
-  __ dec(ecx);
-  __ j(greater_equal, &loop2);
-  __ jmp(&finish);
 
   // Restore argc and constructor before running the generic code.
   __ bind(&prepare_generic_code_call);
@@ -1646,9 +1604,7 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
   __ mov(edi, Operand(ebp, JavaScriptFrameConstants::kFunctionOffset));
   __ call(edx);
 
-  // Store offset of return address for deoptimizer.
   masm->isolate()->heap()->SetArgumentsAdaptorDeoptPCOffset(masm->pc_offset());
-
   // Leave frame and return.
   LeaveArgumentsAdaptorFrame(masm);
   __ ret(0);
@@ -1703,9 +1659,8 @@ void Builtins::Generate_OnStackReplacement(MacroAssembler* masm) {
   __ j(not_equal, &skip, Label::kNear);
   __ ret(0);
 
-  // Insert a stack guard check so that if we decide not to perform
-  // on-stack replacement right away, the function calling this stub can
-  // still be interrupted.
+  // If we decide not to perform on-stack replacement we perform a
+  // stack guard check to enable interrupts.
   __ bind(&stack_check);
   Label ok;
   ExternalReference stack_limit =

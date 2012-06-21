@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2006-2008 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -35,10 +35,17 @@ namespace v8 {
 namespace internal {
 
 
-#ifndef V8_INTERPRETED_REGEXP
+#ifdef V8_INTERPRETED_REGEXP
+class RegExpMacroAssemblerARM: public RegExpMacroAssembler {
+ public:
+  RegExpMacroAssemblerARM();
+  virtual ~RegExpMacroAssemblerARM();
+};
+
+#else  // V8_INTERPRETED_REGEXP
 class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
  public:
-  RegExpMacroAssemblerARM(Mode mode, int registers_to_save, Zone* zone);
+  RegExpMacroAssemblerARM(Mode mode, int registers_to_save);
   virtual ~RegExpMacroAssemblerARM();
   virtual int stack_limit_slack();
   virtual void AdvanceCurrentPosition(int by);
@@ -63,6 +70,7 @@ class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
   virtual void CheckNotBackReference(int start_reg, Label* on_no_match);
   virtual void CheckNotBackReferenceIgnoreCase(int start_reg,
                                                Label* on_no_match);
+  virtual void CheckNotRegistersEqual(int reg1, int reg2, Label* on_not_equal);
   virtual void CheckNotCharacter(unsigned c, Label* on_not_equal);
   virtual void CheckNotCharacterAfterAnd(unsigned c,
                                          unsigned mask,
@@ -71,14 +79,6 @@ class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
                                               uc16 minus,
                                               uc16 mask,
                                               Label* on_not_equal);
-  virtual void CheckCharacterInRange(uc16 from,
-                                     uc16 to,
-                                     Label* on_in_range);
-  virtual void CheckCharacterNotInRange(uc16 from,
-                                        uc16 to,
-                                        Label* on_not_in_range);
-  virtual void CheckBitInTable(Handle<ByteArray> table, Label* on_bit_set);
-
   // Checks whether the given offset from the current position is before
   // the end of the string.
   virtual void CheckPosition(int cp_offset, Label* on_outside_input);
@@ -105,7 +105,7 @@ class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
   virtual void ReadStackPointerFromRegister(int reg);
   virtual void SetCurrentPositionFromEnd(int by);
   virtual void SetRegister(int register_index, int to);
-  virtual bool Succeed();
+  virtual void Succeed();
   virtual void WriteCurrentPositionToRegister(int reg, int cp_offset);
   virtual void ClearRegisters(int reg_from, int reg_to);
   virtual void WriteStackPointerToRegister(int reg);
@@ -129,8 +129,7 @@ class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
   static const int kSecondaryReturnAddress = kReturnAddress + kPointerSize;
   // Stack parameters placed by caller.
   static const int kRegisterOutput = kSecondaryReturnAddress + kPointerSize;
-  static const int kNumOutputRegisters = kRegisterOutput + kPointerSize;
-  static const int kStackHighEnd = kNumOutputRegisters + kPointerSize;
+  static const int kStackHighEnd = kRegisterOutput + kPointerSize;
   static const int kDirectCall = kStackHighEnd + kPointerSize;
   static const int kIsolate = kDirectCall + kPointerSize;
 
@@ -142,10 +141,10 @@ class RegExpMacroAssemblerARM: public NativeRegExpMacroAssembler {
   static const int kInputString = kStartIndex - kPointerSize;
   // When adding local variables remember to push space for them in
   // the frame in GetCode.
-  static const int kSuccessfulCaptures = kInputString - kPointerSize;
-  static const int kInputStartMinusOne = kSuccessfulCaptures - kPointerSize;
+  static const int kInputStartMinusOne = kInputString - kPointerSize;
+  static const int kAtStart = kInputStartMinusOne - kPointerSize;
   // First register address. Following registers are below it on the stack.
-  static const int kRegisterZero = kInputStartMinusOne - kPointerSize;
+  static const int kRegisterZero = kAtStart - kPointerSize;
 
   // Initial size of code buffer.
   static const size_t kRegExpCodeSize = 1024;

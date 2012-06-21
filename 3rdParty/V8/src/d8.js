@@ -25,8 +25,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"use strict";
-
 String.prototype.startsWith = function (str) {
   if (str.length > this.length) {
     return false;
@@ -78,7 +76,7 @@ function GetCompletions(global, last, full) {
 
 
 // Global object holding debugger related constants and state.
-var Debug = {};
+const Debug = {};
 
 
 // Debug events which can occour in the V8 JavaScript engine. These originate
@@ -113,7 +111,7 @@ Debug.ScopeType = { Global: 0,
 
 
 // Current debug state.
-var kNoFrame = -1;
+const kNoFrame = -1;
 Debug.State = {
   currentFrame: kNoFrame,
   displaySourceStartLine: -1,
@@ -122,15 +120,13 @@ Debug.State = {
 };
 var trace_compile = false;  // Tracing all compile events?
 var trace_debug_json = false; // Tracing all debug json packets?
-var last_cmd = '';
+var last_cmd_line = '';
 //var lol_is_enabled;  // Set to true in d8.cc if LIVE_OBJECT_LIST is defined.
 var lol_next_dump_index = 0;
-var kDefaultLolLinesToPrintAtATime = 10;
-var kMaxLolLinesToPrintAtATime = 1000;
+const kDefaultLolLinesToPrintAtATime = 10;
+const kMaxLolLinesToPrintAtATime = 1000;
 var repeat_cmd_line = '';
 var is_running = true;
-// Global variable used to store whether a handle was requested.
-var lookup_handle = null;
 
 // Copied from debug-delay.js.  This is needed below:
 function ScriptTypeFlag(type) {
@@ -157,7 +153,7 @@ function DebugMessageDetails(message) {
 }
 
 function DebugEventDetails(response) {
-  var details = {text:'', running:false};
+  details = {text:'', running:false};
 
   // Get the running state.
   details.running = response.running();
@@ -590,6 +586,7 @@ DebugRequest.prototype.createLOLRequest = function(command,
 
 // Create a JSON request for the evaluation command.
 DebugRequest.prototype.makeEvaluateJSONRequest_ = function(expression) {
+  // Global varaible used to store whether a handle was requested.
   lookup_handle = null;
 
   if (lol_is_enabled) {
@@ -1949,7 +1946,7 @@ function roundNumber(num, length) {
 
 // Convert a JSON response to text for display in a text based debugger.
 function DebugResponseDetails(response) {
-  var details = { text: '', running: false };
+  details = { text: '', running: false };
 
   try {
     if (!response.success()) {
@@ -2174,7 +2171,7 @@ function DebugResponseDetails(response) {
           }
 
           var current_line = from_line + num;
-          var spacer = maxdigits - (1 + Math.floor(log10(current_line)));
+          spacer = maxdigits - (1 + Math.floor(log10(current_line)));
           if (current_line == Debug.State.currentSourceLine + 1) {
             for (var i = 0; i < maxdigits; i++) {
               result += '>';
@@ -2632,7 +2629,7 @@ function NumberToJSON_(value) {
 
 // Mapping of some control characters to avoid the \uXXXX syntax for most
 // commonly used control cahracters.
-var ctrlCharMap_ = {
+const ctrlCharMap_ = {
   '\b': '\\b',
   '\t': '\\t',
   '\n': '\\n',
@@ -2644,12 +2641,12 @@ var ctrlCharMap_ = {
 
 
 // Regular expression testing for ", \ and control characters (0x00 - 0x1F).
-var ctrlCharTest_ = new RegExp('["\\\\\x00-\x1F]');
+const ctrlCharTest_ = new RegExp('["\\\\\x00-\x1F]');
 
 
 // Regular expression matching ", \ and control characters (0x00 - 0x1F)
 // globally.
-var ctrlCharMatch_ = new RegExp('["\\\\\x00-\x1F]', 'g');
+const ctrlCharMatch_ = new RegExp('["\\\\\x00-\x1F]', 'g');
 
 
 /**
@@ -2691,12 +2688,12 @@ function StringToJSON_(value) {
  * @return {string} JSON formatted Date value
  */
 function DateToISO8601_(value) {
-  var f = function(n) {
+  function f(n) {
     return n < 10 ? '0' + n : n;
-  };
-  var g = function(n) {
+  }
+  function g(n) {
     return n < 10 ? '00' + n : n < 100 ? '0' + n : n;
-  };
+  }
   return builtins.GetUTCFullYearFrom(value)         + '-' +
           f(builtins.GetUTCMonthFrom(value) + 1)    + '-' +
           f(builtins.GetUTCDateFrom(value))         + 'T' +

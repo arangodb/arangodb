@@ -1,4 +1,4 @@
-// Copyright 2006-2012 the V8 project authors. All rights reserved.
+// Copyright 2006-2008 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -144,32 +144,32 @@ function inherits(ctor, superCtor) {
 
 
 // Type names of the different mirrors.
-var UNDEFINED_TYPE = 'undefined';
-var NULL_TYPE = 'null';
-var BOOLEAN_TYPE = 'boolean';
-var NUMBER_TYPE = 'number';
-var STRING_TYPE = 'string';
-var OBJECT_TYPE = 'object';
-var FUNCTION_TYPE = 'function';
-var REGEXP_TYPE = 'regexp';
-var ERROR_TYPE = 'error';
-var PROPERTY_TYPE = 'property';
-var FRAME_TYPE = 'frame';
-var SCRIPT_TYPE = 'script';
-var CONTEXT_TYPE = 'context';
-var SCOPE_TYPE = 'scope';
+const UNDEFINED_TYPE = 'undefined';
+const NULL_TYPE = 'null';
+const BOOLEAN_TYPE = 'boolean';
+const NUMBER_TYPE = 'number';
+const STRING_TYPE = 'string';
+const OBJECT_TYPE = 'object';
+const FUNCTION_TYPE = 'function';
+const REGEXP_TYPE = 'regexp';
+const ERROR_TYPE = 'error';
+const PROPERTY_TYPE = 'property';
+const FRAME_TYPE = 'frame';
+const SCRIPT_TYPE = 'script';
+const CONTEXT_TYPE = 'context';
+const SCOPE_TYPE = 'scope';
 
 // Maximum length when sending strings through the JSON protocol.
-var kMaxProtocolStringLength = 80;
+const kMaxProtocolStringLength = 80;
 
 // Different kind of properties.
-var PropertyKind = {};
+PropertyKind = {};
 PropertyKind.Named   = 1;
 PropertyKind.Indexed = 2;
 
 
 // A copy of the PropertyType enum from global.h
-var PropertyType = {};
+PropertyType = {};
 PropertyType.Normal                  = 0;
 PropertyType.Field                   = 1;
 PropertyType.ConstantFunction        = 2;
@@ -183,7 +183,7 @@ PropertyType.NullDescriptor          = 9;
 
 
 // Different attributes for a property.
-var PropertyAttribute = {};
+PropertyAttribute = {};
 PropertyAttribute.None       = NONE;
 PropertyAttribute.ReadOnly   = READ_ONLY;
 PropertyAttribute.DontEnum   = DONT_ENUM;
@@ -191,12 +191,12 @@ PropertyAttribute.DontDelete = DONT_DELETE;
 
 
 // A copy of the scope types from runtime.cc.
-var ScopeType = { Global: 0,
-                  Local: 1,
-                  With: 2,
-                  Closure: 3,
-                  Catch: 4,
-                  Block: 5 };
+ScopeType = { Global: 0,
+              Local: 1,
+              With: 2,
+              Closure: 3,
+              Catch: 4,
+              Block: 5 };
 
 
 // Mirror hierarchy:
@@ -596,23 +596,6 @@ ObjectMirror.prototype.protoObject = function() {
 };
 
 
-/**
- * Return the primitive value if this is object of Boolean, Number or String
- * type (but not Date). Otherwise return undefined.
- */
-ObjectMirror.prototype.primitiveValue = function() {
-  if (!IS_STRING_WRAPPER(this.value_) && !IS_NUMBER_WRAPPER(this.value_) &&
-      !IS_BOOLEAN_WRAPPER(this.value_)) {
-    return void 0;
-  }
-  var primitiveValue = %_ValueOf(this.value_);
-  if (IS_UNDEFINED(primitiveValue)) {
-    return void 0;
-  }
-  return MakeMirror(primitiveValue);
-};
-
-
 ObjectMirror.prototype.hasNamedInterceptor = function() {
   // Get information on interceptors for this object.
   var x = %GetInterceptorInfo(this.value_);
@@ -909,22 +892,6 @@ FunctionMirror.prototype.constructedBy = function(opt_max_instances) {
     return result;
   } else {
     return [];
-  }
-};
-
-
-FunctionMirror.prototype.scopeCount = function() {
-  if (this.resolved()) {
-    return %GetFunctionScopeCount(this.value());
-  } else {
-    return 0;
-  }
-};
-
-
-FunctionMirror.prototype.scope = function(index) {
-  if (this.resolved()) {
-    return new ScopeMirror(void 0, this, index);
   }
 };
 
@@ -1270,24 +1237,24 @@ PropertyMirror.prototype.isNative = function() {
 };
 
 
-var kFrameDetailsFrameIdIndex = 0;
-var kFrameDetailsReceiverIndex = 1;
-var kFrameDetailsFunctionIndex = 2;
-var kFrameDetailsArgumentCountIndex = 3;
-var kFrameDetailsLocalCountIndex = 4;
-var kFrameDetailsSourcePositionIndex = 5;
-var kFrameDetailsConstructCallIndex = 6;
-var kFrameDetailsAtReturnIndex = 7;
-var kFrameDetailsFlagsIndex = 8;
-var kFrameDetailsFirstDynamicIndex = 9;
+const kFrameDetailsFrameIdIndex = 0;
+const kFrameDetailsReceiverIndex = 1;
+const kFrameDetailsFunctionIndex = 2;
+const kFrameDetailsArgumentCountIndex = 3;
+const kFrameDetailsLocalCountIndex = 4;
+const kFrameDetailsSourcePositionIndex = 5;
+const kFrameDetailsConstructCallIndex = 6;
+const kFrameDetailsAtReturnIndex = 7;
+const kFrameDetailsFlagsIndex = 8;
+const kFrameDetailsFirstDynamicIndex = 9;
 
-var kFrameDetailsNameIndex = 0;
-var kFrameDetailsValueIndex = 1;
-var kFrameDetailsNameValueSize = 2;
+const kFrameDetailsNameIndex = 0;
+const kFrameDetailsValueIndex = 1;
+const kFrameDetailsNameValueSize = 2;
 
-var kFrameDetailsFlagDebuggerFrameMask = 1 << 0;
-var kFrameDetailsFlagOptimizedFrameMask = 1 << 1;
-var kFrameDetailsFlagInlinedFrameIndexMask = 7 << 2;
+const kFrameDetailsFlagDebuggerFrameMask = 1 << 0;
+const kFrameDetailsFlagOptimizedFrameMask = 1 << 1;
+const kFrameDetailsFlagInlinedFrameIndexMask = 7 << 2;
 
 /**
  * Wrapper for the frame details information retreived from the VM. The frame
@@ -1605,7 +1572,7 @@ FrameMirror.prototype.scopeCount = function() {
 
 
 FrameMirror.prototype.scope = function(index) {
-  return new ScopeMirror(this, void 0, index);
+  return new ScopeMirror(this, index);
 };
 
 
@@ -1750,15 +1717,6 @@ FrameMirror.prototype.localsText = function() {
 };
 
 
-FrameMirror.prototype.restart = function() {
-  var result = %LiveEditRestartFrame(this.break_id_, this.index_);
-  if (IS_UNDEFINED(result)) {
-    result = "Failed to find requested frame";
-  }
-  return result;
-};
-
-
 FrameMirror.prototype.toText = function(opt_locals) {
   var result = '';
   result += '#' + (this.index() <= 9 ? '0' : '') + this.index();
@@ -1774,57 +1732,42 @@ FrameMirror.prototype.toText = function(opt_locals) {
 };
 
 
-var kScopeDetailsTypeIndex = 0;
-var kScopeDetailsObjectIndex = 1;
+const kScopeDetailsTypeIndex = 0;
+const kScopeDetailsObjectIndex = 1;
 
-function ScopeDetails(frame, fun, index) {
-  if (frame) {
-    this.break_id_ = frame.break_id_;
-    this.details_ = %GetScopeDetails(frame.break_id_,
-                                     frame.details_.frameId(),
-                                     frame.details_.inlinedFrameIndex(),
-                                     index);
-  } else {
-    this.details_ = %GetFunctionScopeDetails(fun.value(), index);
-    this.break_id_ = undefined;
-  }
+function ScopeDetails(frame, index) {
+  this.break_id_ = frame.break_id_;
+  this.details_ = %GetScopeDetails(frame.break_id_,
+                                   frame.details_.frameId(),
+                                   frame.details_.inlinedFrameIndex(),
+                                   index);
 }
 
 
 ScopeDetails.prototype.type = function() {
-  if (!IS_UNDEFINED(this.break_id_)) {
-    %CheckExecutionState(this.break_id_);
-  }
+  %CheckExecutionState(this.break_id_);
   return this.details_[kScopeDetailsTypeIndex];
 };
 
 
 ScopeDetails.prototype.object = function() {
-  if (!IS_UNDEFINED(this.break_id_)) {
-    %CheckExecutionState(this.break_id_);
-  }
+  %CheckExecutionState(this.break_id_);
   return this.details_[kScopeDetailsObjectIndex];
 };
 
 
 /**
- * Mirror object for scope of frame or function. Either frame or function must
- * be specified.
+ * Mirror object for scope.
  * @param {FrameMirror} frame The frame this scope is a part of
- * @param {FunctionMirror} function The function this scope is a part of
  * @param {number} index The scope index in the frame
  * @constructor
  * @extends Mirror
  */
-function ScopeMirror(frame, function, index) {
+function ScopeMirror(frame, index) {
   %_CallFunction(this, SCOPE_TYPE, Mirror);
-  if (frame) {
-    this.frame_index_ = frame.index_;
-  } else {
-    this.frame_index_ = undefined;
-  }
+  this.frame_index_ = frame.index_;
   this.scope_index_ = index;
-  this.details_ = new ScopeDetails(frame, function, index);
+  this.details_ = new ScopeDetails(frame, index);
 }
 inherits(ScopeMirror, Mirror);
 
@@ -1886,11 +1829,6 @@ ScriptMirror.prototype.id = function() {
 
 ScriptMirror.prototype.source = function() {
   return this.script_.source;
-};
-
-
-ScriptMirror.prototype.setSource = function(source) {
-  %DebugSetScriptSource(this.script_, source);
 };
 
 
@@ -2291,11 +2229,6 @@ JSONProtocolSerializer.prototype.serializeObject_ = function(mirror, content,
   content.protoObject = this.serializeReference(mirror.protoObject());
   content.prototypeObject = this.serializeReference(mirror.prototypeObject());
 
-  var primitiveValue = mirror.primitiveValue();
-  if (!IS_UNDEFINED(primitiveValue)) {
-    content.primitiveValue = this.serializeReference(primitiveValue);
-  }
-
   // Add flags to indicate whether there are interceptors.
   if (mirror.hasNamedInterceptor()) {
     content.namedInterceptor = true;
@@ -2320,15 +2253,6 @@ JSONProtocolSerializer.prototype.serializeObject_ = function(mirror, content,
       content.scriptId = mirror.script().id();
 
       serializeLocationFields(mirror.sourceLocation(), content);
-    }
-
-    content.scopes = [];
-    for (var i = 0; i < mirror.scopeCount(); i++) {
-      var scope = mirror.scope(i);
-      content.scopes.push({
-        type: scope.scopeType(),
-        index: i
-      });
     }
   }
 

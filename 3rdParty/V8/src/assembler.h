@@ -62,13 +62,24 @@ class AssemblerBase: public Malloced {
   Isolate* isolate() const { return isolate_; }
   int jit_cookie() { return jit_cookie_; }
 
-  // Overwrite a host NaN with a quiet target NaN.  Used by mksnapshot for
-  // cross-snapshotting.
-  static void QuietNaN(HeapObject* nan) { }
-
  private:
   Isolate* isolate_;
   int jit_cookie_;
+};
+
+// -----------------------------------------------------------------------------
+// Common double constants.
+
+class DoubleConstant: public AllStatic {
+ public:
+  static const double min_int;
+  static const double one_half;
+  static const double minus_zero;
+  static const double zero;
+  static const double uint8_max_value;
+  static const double negative_infinity;
+  static const double canonical_non_hole_nan;
+  static const double the_hole_nan;
 };
 
 
@@ -204,19 +215,14 @@ class RelocInfo BASE_EMBEDDED {
     EXTERNAL_REFERENCE,  // The address of an external C++ function.
     INTERNAL_REFERENCE,  // An address inside the same function.
 
-    // Marks a constant pool. Only used on ARM.
-    // It uses a custom noncompact encoding.
-    CONST_POOL,
-
     // add more as needed
     // Pseudo-types
-    NUMBER_OF_MODES,  // There are at most 15 modes with noncompact encoding.
+    NUMBER_OF_MODES,  // There are at most 14 modes with noncompact encoding.
     NONE,  // never recorded
     LAST_CODE_ENUM = DEBUG_BREAK,
     LAST_GCED_ENUM = GLOBAL_PROPERTY_CELL,
     // Modes <= LAST_COMPACT_ENUM are guaranteed to have compact encoding.
-    LAST_COMPACT_ENUM = CODE_TARGET_WITH_ID,
-    LAST_STANDARD_NONCOMPACT_ENUM = INTERNAL_REFERENCE
+    LAST_COMPACT_ENUM = CODE_TARGET_WITH_ID
   };
 
 
@@ -244,9 +250,6 @@ class RelocInfo BASE_EMBEDDED {
   }
   static inline bool IsComment(Mode mode) {
     return mode == COMMENT;
-  }
-  static inline bool IsConstPool(Mode mode) {
-    return mode == CONST_POOL;
   }
   static inline bool IsPosition(Mode mode) {
     return mode == POSITION || mode == STATEMENT_POSITION;
@@ -424,7 +427,6 @@ class RelocInfoWriter BASE_EMBEDDED {
   inline void WriteTaggedPC(uint32_t pc_delta, int tag);
   inline void WriteExtraTaggedPC(uint32_t pc_delta, int extra_tag);
   inline void WriteExtraTaggedIntData(int data_delta, int top_tag);
-  inline void WriteExtraTaggedConstPoolData(int data);
   inline void WriteExtraTaggedData(intptr_t data_delta, int top_tag);
   inline void WriteTaggedData(intptr_t data_delta, int tag);
   inline void WriteExtraTag(int extra_tag, int top_tag);
@@ -475,7 +477,6 @@ class RelocIterator: public Malloced {
   void ReadTaggedPC();
   void AdvanceReadPC();
   void AdvanceReadId();
-  void AdvanceReadConstPoolData();
   void AdvanceReadPosition();
   void AdvanceReadData();
   void AdvanceReadVariableLengthPCJump();
@@ -549,8 +550,6 @@ class ExternalReference BASE_EMBEDDED {
     DIRECT_GETTER_CALL
   };
 
-  static void SetUp();
-
   typedef void* ExternalReferenceRedirector(void* original, Type type);
 
   ExternalReference(Builtins::CFunctionId id, Isolate* isolate);
@@ -595,9 +594,6 @@ class ExternalReference BASE_EMBEDDED {
   static ExternalReference random_uint32_function(Isolate* isolate);
   static ExternalReference transcendental_cache_array_address(Isolate* isolate);
   static ExternalReference delete_handle_scope_extensions(Isolate* isolate);
-
-  static ExternalReference get_date_field_function(Isolate* isolate);
-  static ExternalReference date_cache_stamp(Isolate* isolate);
 
   // Deoptimization support.
   static ExternalReference new_deoptimizer_function(Isolate* isolate);
@@ -650,9 +646,6 @@ class ExternalReference BASE_EMBEDDED {
   static ExternalReference handle_scope_level_address();
 
   static ExternalReference scheduled_exception_address(Isolate* isolate);
-  static ExternalReference address_of_pending_message_obj(Isolate* isolate);
-  static ExternalReference address_of_has_pending_message(Isolate* isolate);
-  static ExternalReference address_of_pending_message_script(Isolate* isolate);
 
   // Static variables containing common double constants.
   static ExternalReference address_of_min_int();
@@ -668,8 +661,6 @@ class ExternalReference BASE_EMBEDDED {
   static ExternalReference math_cos_double_function(Isolate* isolate);
   static ExternalReference math_tan_double_function(Isolate* isolate);
   static ExternalReference math_log_double_function(Isolate* isolate);
-
-  static ExternalReference page_flags(Page* page);
 
   Address address() const {return reinterpret_cast<Address>(address_);}
 

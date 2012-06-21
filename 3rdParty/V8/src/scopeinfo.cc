@@ -38,10 +38,10 @@ namespace v8 {
 namespace internal {
 
 
-Handle<ScopeInfo> ScopeInfo::Create(Scope* scope, Zone* zone) {
+Handle<ScopeInfo> ScopeInfo::Create(Scope* scope) {
   // Collect stack and context locals.
-  ZoneList<Variable*> stack_locals(scope->StackLocalCount(), zone);
-  ZoneList<Variable*> context_locals(scope->ContextLocalCount(), zone);
+  ZoneList<Variable*> stack_locals(scope->StackLocalCount());
+  ZoneList<Variable*> context_locals(scope->ContextLocalCount());
   scope->CollectStackAndContextLocals(&stack_locals, &context_locals);
   const int stack_local_count = stack_locals.length();
   const int context_local_count = context_locals.length();
@@ -53,7 +53,7 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope, Zone* zone) {
   FunctionVariableInfo function_name_info;
   VariableMode function_variable_mode;
   if (scope->is_function_scope() && scope->function() != NULL) {
-    Variable* var = scope->function()->proxy()->var();
+    Variable* var = scope->function()->var();
     if (!var->is_used()) {
       function_name_info = UNUSED;
     } else if (var->IsContextSlot()) {
@@ -129,8 +129,8 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope, Zone* zone) {
   // If present, add the function variable name and its index.
   ASSERT(index == scope_info->FunctionNameEntryIndex());
   if (has_function_name) {
-    int var_index = scope->function()->proxy()->var()->index();
-    scope_info->set(index++, *scope->function()->proxy()->name());
+    int var_index = scope->function()->var()->index();
+    scope_info->set(index++, *scope->function()->name());
     scope_info->set(index++, Smi::FromInt(var_index));
     ASSERT(function_name_info != STACK ||
            (var_index == scope_info->StackLocalCount() &&
@@ -142,9 +142,7 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope, Zone* zone) {
   ASSERT(index == scope_info->length());
   ASSERT(scope->num_parameters() == scope_info->ParameterCount());
   ASSERT(scope->num_stack_slots() == scope_info->StackSlotCount());
-  ASSERT(scope->num_heap_slots() == scope_info->ContextLength() ||
-         (scope->num_heap_slots() == kVariablePartIndex &&
-          scope_info->ContextLength() == 0));
+  ASSERT(scope->num_heap_slots() == scope_info->ContextLength());
   return scope_info;
 }
 

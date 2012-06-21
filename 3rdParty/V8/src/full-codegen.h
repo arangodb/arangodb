@@ -77,30 +77,28 @@ class FullCodeGenerator: public AstVisitor {
     TOS_REG
   };
 
-  FullCodeGenerator(MacroAssembler* masm, CompilationInfo* info)
+  explicit FullCodeGenerator(MacroAssembler* masm)
       : masm_(masm),
-        info_(info),
-        scope_(info->scope()),
+        info_(NULL),
+        scope_(NULL),
         nesting_stack_(NULL),
         loop_depth_(0),
-        globals_(NULL),
         context_(NULL),
-        bailout_entries_(info->HasDeoptimizationSupport()
-                         ? info->function()->ast_node_count() : 0,
-                         info->zone()),
-        stack_checks_(2, info->zone()),  // There's always at least one.
-        type_feedback_cells_(info->HasDeoptimizationSupport()
-                             ? info->function()->ast_node_count() : 0,
-                             info->zone()),
-        ic_total_count_(0),
-        zone_(info->zone()) { }
+        bailout_entries_(0),
+        stack_checks_(2),  // There's always at least one.
+        type_feedback_cells_(0) {
+  }
 
   static bool MakeCode(CompilationInfo* info);
 
-  // Encode state and pc-offset as a BitField<type, start, size>.
-  // Only use 30 bits because we encode the result as a smi.
-  class StateField : public BitField<State, 0, 1> { };
-  class PcField    : public BitField<unsigned, 1, 30-1> { };
+  void Generate(CompilationInfo* info);
+  void PopulateDeoptimizationData(Handle<Code> code);
+  void PopulateTypeFeedbackCells(Handle<Code> code);
+
+  Handle<FixedArray> handler_table() { return handler_table_; }
+
+  class StateField : public BitField<State, 0, 8> { };
+  class PcField    : public BitField<unsigned, 8, 32-8> { };
 
   static const char* State2String(State state) {
     switch (state) {
@@ -110,8 +108,6 @@ class FullCodeGenerator: public AstVisitor {
     UNREACHABLE();
     return NULL;
   }
-
-  Zone* zone() const { return zone_; }
 
  private:
   class Breakable;
@@ -207,7 +203,7 @@ class FullCodeGenerator: public AstVisitor {
     virtual ~NestedBlock() {}
 
     virtual NestedStatement* Exit(int* stack_depth, int* context_length) {
-      if (statement()->AsBlock()->scope() != NULL) {
+      if (statement()->AsBlock()->block_scope() != NULL) {
         ++(*context_length);
       }
       return previous_;
@@ -241,7 +237,7 @@ class FullCodeGenerator: public AstVisitor {
   // The finally block of a try/finally statement.
   class Finally : public NestedStatement {
    public:
-    static const int kElementCount = 5;
+    static const int kElementCount = 2;
 
     explicit Finally(FullCodeGenerator* codegen) : NestedStatement(codegen) { }
     virtual ~Finally() {}
@@ -418,24 +414,21 @@ class FullCodeGenerator: public AstVisitor {
                                     Label* if_true,
                                     Label* if_false);
 
-  // If enabled, emit debug code for checking that the current context is
-  // neither a with nor a catch context.
-  void EmitDebugCheckDeclarationContext(Variable* variable);
+  // Platform-specific code for a variable, constant, or function
+  // declaration.  Functions have an initial value.
+  void EmitDeclaration(VariableProxy* proxy,
+                       VariableMode mode,
+                       FunctionLiteral* function,
+                       int* global_count);
 
   // Platform-specific code for checking the stack limit at the back edge of
   // a loop.
-  // This is meant to be called at loop back edges, |back_edge_target| is
-  // the jump target of the back edge and is used to approximate the amount
-  // of code inside the loop.
-  void EmitStackCheck(IterationStatement* stmt, Label* back_edge_target);
+  void EmitStackCheck(IterationStatement* stmt);
   // Record the OSR AST id corresponding to a stack check in the code.
   void RecordStackCheck(unsigned osr_ast_id);
   // Emit a table of stack check ids and pcs into the code stream.  Return
   // the offset of the start of the table.
   unsigned EmitStackCheckTable();
-
-  void EmitProfilingCounterDecrement(int delta);
-  void EmitProfilingCounterReset();
 
   // Platform-specific return sequence
   void EmitReturnSequence();
@@ -466,8 +459,6 @@ class FullCodeGenerator: public AstVisitor {
                                  Label* slow,
                                  Label* done);
   void EmitVariableLoad(VariableProxy* proxy);
-
-  void EmitAccessor(Expression* expression);
 
   // Expects the arguments and the function already pushed.
   void EmitResolvePossiblyDirectEval(int arg_count);
@@ -502,7 +493,7 @@ class FullCodeGenerator: public AstVisitor {
 
   // Assign to the given expression as if via '='. The right-hand-side value
   // is expected in the accumulator.
-  void EmitAssignment(Expression* expr);
+  void EmitAssignment(Expression* expr, int bailout_ast_id);
 
   // Complete a variable assignment.  The right-hand-side value is expected
   // in the accumulator.
@@ -517,10 +508,6 @@ class FullCodeGenerator: public AstVisitor {
   // expected on top of the stack and the right-hand-side value in the
   // accumulator.
   void EmitKeyedPropertyAssignment(Assignment* expr);
-
-  void CallIC(Handle<Code> code,
-              RelocInfo::Mode rmode = RelocInfo::CODE_TARGET,
-              unsigned ast_id = kNoASTId);
 
   void SetFunctionPosition(FunctionLiteral* fun);
   void SetReturnPosition(FunctionLiteral* fun);
@@ -550,8 +537,12 @@ class FullCodeGenerator: public AstVisitor {
   Handle<Script> script() { return info_->script(); }
   bool is_eval() { return info_->is_eval(); }
   bool is_native() { return info_->is_native(); }
-  bool is_classic_mode() { return language_mode() == CLASSIC_MODE; }
-  LanguageMode language_mode() { return function()->language_mode(); }
+  bool is_classic_mode() {
+    return language_mode() == CLASSIC_MODE;
+  }
+  LanguageMode language_mode() {
+    return function()->language_mode();
+  }
   FunctionLiteral* function() { return info_->function(); }
   Scope* scope() { return scope_; }
 
@@ -582,13 +573,6 @@ class FullCodeGenerator: public AstVisitor {
   void VisitArithmeticExpression(BinaryOperation* expr);
 
   void VisitForTypeofValue(Expression* expr);
-
-  void Generate();
-  void PopulateDeoptimizationData(Handle<Code> code);
-  void PopulateTypeFeedbackInfo(Handle<Code> code);
-  void PopulateTypeFeedbackCells(Handle<Code> code);
-
-  Handle<FixedArray> handler_table() { return handler_table_; }
 
   struct BailoutEntry {
     unsigned id;
@@ -783,41 +767,15 @@ class FullCodeGenerator: public AstVisitor {
   Label return_label_;
   NestedStatement* nesting_stack_;
   int loop_depth_;
-  ZoneList<Handle<Object> >* globals_;
   const ExpressionContext* context_;
   ZoneList<BailoutEntry> bailout_entries_;
   ZoneList<BailoutEntry> stack_checks_;
   ZoneList<TypeFeedbackCellEntry> type_feedback_cells_;
-  int ic_total_count_;
   Handle<FixedArray> handler_table_;
-  Handle<JSGlobalPropertyCell> profiling_counter_;
-  Zone* zone_;
 
   friend class NestedStatement;
 
   DISALLOW_COPY_AND_ASSIGN(FullCodeGenerator);
-};
-
-
-// A map from property names to getter/setter pairs allocated in the zone.
-class AccessorTable: public TemplateHashMap<Literal,
-                                            ObjectLiteral::Accessors,
-                                            ZoneAllocationPolicy> {
- public:
-  explicit AccessorTable(Zone* zone) :
-      TemplateHashMap<Literal, ObjectLiteral::Accessors,
-                      ZoneAllocationPolicy>(Literal::Match,
-                                            ZoneAllocationPolicy(zone)),
-      zone_(zone) { }
-
-  Iterator lookup(Literal* literal) {
-    Iterator it = find(literal, true, ZoneAllocationPolicy(zone_));
-    if (it->second == NULL) it->second = new(zone_) ObjectLiteral::Accessors();
-    return it;
-  }
-
- private:
-  Zone* zone_;
 };
 
 

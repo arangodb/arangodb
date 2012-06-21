@@ -29,7 +29,6 @@
 #define V8_TYPE_INFO_H_
 
 #include "allocation.h"
-#include "ast.h"
 #include "globals.h"
 #include "zone-inl.h"
 
@@ -229,26 +228,20 @@ class Expression;
 class Property;
 class SmallMapList;
 class UnaryOperation;
-class ForInStatement;
 
 
 class TypeFeedbackOracle BASE_EMBEDDED {
  public:
   TypeFeedbackOracle(Handle<Code> code,
                      Handle<Context> global_context,
-                     Isolate* isolate,
-                     Zone* zone);
+                     Isolate* isolate);
 
   bool LoadIsMonomorphicNormal(Property* expr);
-  bool LoadIsUninitialized(Property* expr);
   bool LoadIsMegamorphicWithTypeInfo(Property* expr);
   bool StoreIsMonomorphicNormal(Expression* expr);
   bool StoreIsMegamorphicWithTypeInfo(Expression* expr);
   bool CallIsMonomorphic(Call* expr);
   bool CallNewIsMonomorphic(CallNew* expr);
-  bool ObjectLiteralStoreIsMonomorphic(ObjectLiteral::Property* prop);
-
-  bool IsForInFastCase(ForInStatement* expr);
 
   Handle<Map> LoadMonomorphicReceiverType(Property* expr);
   Handle<Map> StoreMonomorphicReceiverType(Expression* expr);
@@ -274,9 +267,6 @@ class TypeFeedbackOracle BASE_EMBEDDED {
   Handle<JSObject> GetPrototypeForPrimitiveCheck(CheckType check);
 
   Handle<JSFunction> GetCallTarget(Call* expr);
-  Handle<JSFunction> GetCallNewTarget(CallNew* expr);
-
-  Handle<Map> GetObjectLiteralStoreMap(ObjectLiteral::Property* prop);
 
   bool LoadIsBuiltin(Property* expr, Builtins::Name id);
 
@@ -293,8 +283,6 @@ class TypeFeedbackOracle BASE_EMBEDDED {
   Handle<Map> GetCompareMap(CompareOperation* expr);
   TypeInfo SwitchType(CaseClause* clause);
   TypeInfo IncrementType(CountOperation* expr);
-
-  Zone* zone() const { return zone_; }
 
  private:
   void CollectReceiverTypes(unsigned ast_id,
@@ -320,7 +308,6 @@ class TypeFeedbackOracle BASE_EMBEDDED {
   Handle<Context> global_context_;
   Isolate* isolate_;
   Handle<UnseededNumberDictionary> dictionary_;
-  Zone* zone_;
 
   DISALLOW_COPY_AND_ASSIGN(TypeFeedbackOracle);
 };

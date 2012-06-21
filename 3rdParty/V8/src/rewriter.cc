@@ -38,12 +38,12 @@ namespace internal {
 
 class Processor: public AstVisitor {
  public:
-  Processor(Variable* result, Zone* zone)
+  explicit Processor(Variable* result)
       : result_(result),
         result_assigned_(false),
         is_set_(false),
         in_try_(false),
-        factory_(isolate(), zone) { }
+        factory_(isolate()) { }
 
   virtual ~Processor() { }
 
@@ -111,7 +111,7 @@ void Processor::VisitBlock(Block* node) {
 
 void Processor::VisitExpressionStatement(ExpressionStatement* node) {
   // Rewrite : <x>; -> .result = <x>;
-  if (!is_set_ && !node->expression()->IsThrow()) {
+  if (!is_set_) {
     node->set_expression(SetResult(node->expression()));
     if (!in_try_) is_set_ = true;
   }
@@ -209,15 +209,7 @@ void Processor::VisitWithStatement(WithStatement* node) {
 
 
 // Do nothing:
-void Processor::VisitVariableDeclaration(VariableDeclaration* node) {}
-void Processor::VisitFunctionDeclaration(FunctionDeclaration* node) {}
-void Processor::VisitModuleDeclaration(ModuleDeclaration* node) {}
-void Processor::VisitImportDeclaration(ImportDeclaration* node) {}
-void Processor::VisitExportDeclaration(ExportDeclaration* node) {}
-void Processor::VisitModuleLiteral(ModuleLiteral* node) {}
-void Processor::VisitModuleVariable(ModuleVariable* node) {}
-void Processor::VisitModulePath(ModulePath* node) {}
-void Processor::VisitModuleUrl(ModuleUrl* node) {}
+void Processor::VisitDeclaration(Declaration* node) {}
 void Processor::VisitEmptyStatement(EmptyStatement* node) {}
 void Processor::VisitReturnStatement(ReturnStatement* node) {}
 void Processor::VisitDebuggerStatement(DebuggerStatement* node) {}
@@ -243,7 +235,7 @@ bool Rewriter::Rewrite(CompilationInfo* info) {
   if (!body->is_empty()) {
     Variable* result = scope->NewTemporary(
         info->isolate()->factory()->result_symbol());
-    Processor processor(result, info->zone());
+    Processor processor(result);
     processor.Process(body);
     if (processor.HasStackOverflow()) return false;
 
@@ -262,7 +254,7 @@ bool Rewriter::Rewrite(CompilationInfo* info) {
       Statement* result_statement =
           processor.factory()->NewReturnStatement(result_proxy);
       result_statement->set_statement_pos(position);
-      body->Add(result_statement, info->zone());
+      body->Add(result_statement);
     }
   }
 
