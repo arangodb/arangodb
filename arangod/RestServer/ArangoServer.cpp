@@ -112,18 +112,6 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 startup loader
-////////////////////////////////////////////////////////////////////////////////
-
-static JSLoader StartupLoaderJS;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action loader
-////////////////////////////////////////////////////////////////////////////////
-
-static JSLoader ActionLoaderJS;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allowed client actions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,10 +305,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _workingDirectory = _binaryPath + "/../tmp";
     _databasePath = _binaryPath + "/../var/arango";
 
-    _actionPathJS = _binaryPath + "/../share/arango/js/actions/system";
-    _startupModulesJS = _binaryPath + "/../share/arango/js/server/modules"
-                + ";" + _binaryPath + "/../share/arango/js/common/modules";
-
 #ifdef TRI_ENABLE_MRUBY
     _actionPathMR = _binaryPath + "/../share/arango/mr/actions/system";
     _startupModulesMR = _binaryPath + "/../share/arango/mr/server/modules"
@@ -350,9 +334,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _workingDirectory = "/var/tmp";
 
 #ifdef _PKGDATADIR_
-    _actionPathJS = string(_PKGDATADIR_) + "/js/actions/system";
-    _startupModulesJS = string(_PKGDATADIR_) + "/js/server/modules"
-                + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 
 #ifdef TRI_ENABLE_MRUBY
     _actionPathMR = string(_PKGDATADIR_) + "/mr/actions/system";
@@ -915,17 +896,7 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::executeShell (shell_operation_mode_e mode) {
-#if 0
-  v8::Isolate* isolate;
-  v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "common/bootstrap/modules.js",
-                          "common/bootstrap/print.js",
-                          "common/bootstrap/errors.js",
-                          "server/ahuacatl.js",
-                          "server/server.js"
-  };
-  size_t i;
 
   // only simple logging
   TRI_ShutdownLogging();
@@ -935,181 +906,167 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
   // open the database
   openDatabase();
 
-  // enter a new isolate
-  isolate = v8::Isolate::New();
-  isolate->Enter();
+  // set-up V8 context
+  _applicationV8->setVocbase(_vocbase);
+  _applicationV8->setConcurrency(1);
+  _applicationV8->disableActions();
 
-  // global scope
-  v8::HandleScope globalScope;
+  ok = _applicationV8->prepare();
 
-  // create the context
-  context = v8::Context::New(0);
-
-  if (context.IsEmpty()) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-    TRI_FlushLogging();
-    return EXIT_FAILURE;
+  if (! ok) {
+    LOGGER_FATAL << "cannot initialize V8 enigne";
+    exit(EXIT_FAILURE);
   }
 
-  context->Enter();
+  _applicationV8->start();
 
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
+  // enter V8 context
+  ApplicationV8::V8Context* context = _applicationV8->enterContext();
 
-  TRI_v8_global_t* v8g = TRI_InitV8VocBridge(context, _vocbase);
-  TRI_InitV8Queries(context);
-  TRI_InitV8Conversions(context);
-  TRI_InitV8Utils(context, _startupModulesJS);
-  TRI_InitV8Shell(context);
+  // .............................................................................
+  // execute everything with a global scope
+  // .............................................................................
 
-  // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    ok = StartupLoaderJS.loadScript(context, files[i]);
+  {
+    v8::HandleScope globalScope;
 
-    if (ok) {
-      LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
-    }
-    else {
-      LOGGER_FATAL << "cannot load JavaScript file '" << files[i] << "'";
-      TRI_FlushLogging();
-      return EXIT_FAILURE;
-    }
-  }
+    // run the shell
+    printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
 
-  // run the shell
-  printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    v8::Local<v8::String> name(v8::String::New("(arango)"));
+    v8::Context::Scope contextScope(context->_context);
 
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
-  v8::Context::Scope contextScope(context);
+    ok = true;
 
-  ok = true;
+    switch (mode) {
 
-  switch (mode) {
+      // .............................................................................
+      // run all unit tests
+      // .............................................................................
 
-    // .............................................................................
-    // run all unit tests
-    // .............................................................................
-
-    case MODE_UNITTESTS: {
-      v8::HandleScope scope;
-      v8::TryCatch tryCatch;
-
-      // set-up unit tests array
-      v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-      for (size_t i = 0;  i < _unitTests.size();  ++i) {
-        sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
-      }
-
-      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-      // run tests
-      char const* input = "require(\"jsunity\").runCommandLineTests();";
-      TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-      
-      if (tryCatch.HasCaught()) {
-        cout << TRI_StringifyV8Exception(&tryCatch);
-        ok = false;
-      }
-      else {
-        ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-      }
-
-      break;
-    }
-
-    // .............................................................................
-    // run jslint
-    // .............................................................................
-
-    case MODE_JSLINT: {
-      v8::HandleScope scope;
-      v8::TryCatch tryCatch;
-      
-      // set-up tests files array
-      v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-      for (size_t i = 0;  i < _jslint.size();  ++i) {
-        sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
-      }
-      
-      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-      context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-      char const* input = "require(\"jslint\").runCommandLineTests({ });";
-      TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-
-      if (tryCatch.HasCaught()) {
-        cout << TRI_StringifyV8Exception(&tryCatch);
-        ok = false;
-      }
-      else {
-        ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-      }
-
-      break;
-    }
-
-    // .............................................................................
-    // run console
-    // .............................................................................
-
-    case MODE_CONSOLE: {
-      // run a shell
-      V8LineEditor* console = new V8LineEditor(context, ".arango");
-
-      console->open(true);
-
-      while (true) {
-        while(! v8::V8::IdleNotification()) {
-        }
-
-        char* input = console->prompt("arangod> ");
- 
-        if (input == 0) {
-          printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
-          break;
-        }
-
-        if (*input == '\0') {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, input);
-          continue;
-        }
-
-        console->addHistory(input);
-
+      case MODE_UNITTESTS: {
         v8::HandleScope scope;
         v8::TryCatch tryCatch;
 
-        TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      
+        // set-up unit tests array
+        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+        for (size_t i = 0;  i < _unitTests.size();  ++i) {
+          sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
+        }
+
+        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+        // run tests
+        char const* input = "require(\"jsunity\").runCommandLineTests();";
+        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
+
         if (tryCatch.HasCaught()) {
           cout << TRI_StringifyV8Exception(&tryCatch);
+          ok = false;
         }
+        else {
+          ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+        }
+
+        break;
       }
 
-      console->close();
+      // .............................................................................
+      // run jslint
+      // .............................................................................
 
-      delete console;
+      case MODE_JSLINT: {
+        v8::HandleScope scope;
+        v8::TryCatch tryCatch;
 
-      break;
+        // set-up tests files array
+        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+        for (size_t i = 0;  i < _jslint.size();  ++i) {
+          sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
+        }
+
+        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+        char const* input = "require(\"jslint\").runCommandLineTests({ });";
+        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
+
+        if (tryCatch.HasCaught()) {
+          cout << TRI_StringifyV8Exception(&tryCatch);
+          ok = false;
+        }
+        else {
+          ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+        }
+
+        break;
+      }
+
+      // .............................................................................
+      // run console
+      // .............................................................................
+
+      case MODE_CONSOLE: {
+        // run a shell
+        V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
+
+        console->open(true);
+
+        while (true) {
+          while(! v8::V8::IdleNotification()) {
+          }
+
+          char* input = console->prompt("arangod> ");
+
+          if (input == 0) {
+            printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+            break;
+          }
+
+          if (*input == '\0') {
+            TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+            continue;
+          }
+
+          console->addHistory(input);
+
+          v8::HandleScope scope;
+          v8::TryCatch tryCatch;
+
+          TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+
+          if (tryCatch.HasCaught()) {
+            cout << TRI_StringifyV8Exception(&tryCatch);
+          }
+        }
+
+        console->close();
+
+        delete console;
+
+        break;
+      }
     }
   }
-                      
-  // and return from the context and isolate
-  context->Exit();
-  isolate->Exit();
 
-  if (v8g) {
-    delete v8g;
-  }
+  // ............................................................................. 
+  // and return from the context and isolate
+  // ............................................................................. 
+
+  _applicationV8->exitContext(context);
+
+  _applicationV8->beginShutdown();
+  _applicationV8->shutdown();
 
   // close the database
   closeDatabase();
   Random::shutdown();
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

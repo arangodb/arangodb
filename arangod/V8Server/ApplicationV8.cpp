@@ -299,6 +299,14 @@ void ApplicationV8::collectGarbage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disables actions
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::disableActions () {
+  _actionPath.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -355,9 +363,6 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
 
     _actionLoader.setDirectory(_actionPath);
-  }
-  else {
-    LOGGER_INFO << "actions are disabled, empty system action path";
   }
 
   // setup instances
@@ -472,7 +477,11 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
 
   TRI_InitV8VocBridge(context->_context, _vocbase);
   TRI_InitV8Queries(context->_context);
-  TRI_InitV8Actions(context->_context, this);
+
+  if (! _actionPath.empty()) {
+    TRI_InitV8Actions(context->_context, this);
+  }
+
   TRI_InitV8Conversions(context->_context);
   TRI_InitV8Utils(context->_context, _startupModules);
   TRI_InitV8Shell(context->_context);
@@ -493,10 +502,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   }
 
   // load all actions
-  if (_actionPath.empty()) {
-    LOGGER_WARNING << "no action path has been defined";
-  }
-  else {
+  if (! _actionPath.empty()) {
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {
