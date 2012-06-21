@@ -634,7 +634,6 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
-	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/V8Server/ApplicationV8.cpp \
@@ -694,7 +693,6 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT) \
-	arangod/RestServer/bin_arangod-JavascriptDispatcherThread.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplistIndex.$(OBJEXT) \
@@ -1417,7 +1415,6 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
-	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/V8Server/ApplicationV8.cpp \
@@ -2530,9 +2527,6 @@ arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT):  \
 arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/bin_arangod-JavascriptDispatcherThread.$(OBJEXT):  \
-	arangod/RestServer/$(am__dirstamp) \
-	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/bin_arangod-arango.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -2761,7 +2755,6 @@ mostlyclean-compile:
 	-rm -f arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT)
-	-rm -f arangod/RestServer/bin_arangod-JavascriptDispatcherThread.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-arango.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT)
@@ -3019,7 +3012,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
@@ -4210,22 +4202,6 @@ arangod/RestServer/bin_arangod-ArangoServer.obj: arangod/RestServer/ArangoServer
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/ArangoServer.cpp' object='arangod/RestServer/bin_arangod-ArangoServer.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-ArangoServer.obj `if test -f 'arangod/RestServer/ArangoServer.cpp'; then $(CYGPATH_W) 'arangod/RestServer/ArangoServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/ArangoServer.cpp'; fi`
-
-arangod/RestServer/bin_arangod-JavascriptDispatcherThread.o: arangod/RestServer/JavascriptDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-JavascriptDispatcherThread.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Tpo -c -o arangod/RestServer/bin_arangod-JavascriptDispatcherThread.o `test -f 'arangod/RestServer/JavascriptDispatcherThread.cpp' || echo '$(srcdir)/'`arangod/RestServer/JavascriptDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/JavascriptDispatcherThread.cpp' object='arangod/RestServer/bin_arangod-JavascriptDispatcherThread.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-JavascriptDispatcherThread.o `test -f 'arangod/RestServer/JavascriptDispatcherThread.cpp' || echo '$(srcdir)/'`arangod/RestServer/JavascriptDispatcherThread.cpp
-
-arangod/RestServer/bin_arangod-JavascriptDispatcherThread.obj: arangod/RestServer/JavascriptDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-JavascriptDispatcherThread.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Tpo -c -o arangod/RestServer/bin_arangod-JavascriptDispatcherThread.obj `if test -f 'arangod/RestServer/JavascriptDispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/RestServer/JavascriptDispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/JavascriptDispatcherThread.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-JavascriptDispatcherThread.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/JavascriptDispatcherThread.cpp' object='arangod/RestServer/bin_arangod-JavascriptDispatcherThread.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-JavascriptDispatcherThread.obj `if test -f 'arangod/RestServer/JavascriptDispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/RestServer/JavascriptDispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/JavascriptDispatcherThread.cpp'; fi`
 
 arangod/RestServer/bin_arangod-arango.o: arangod/RestServer/arango.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arango.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo -c -o arangod/RestServer/bin_arangod-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp

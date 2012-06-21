@@ -61,7 +61,6 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
-	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \

@@ -96,9 +96,11 @@ JavascriptDispatcherThread::JavascriptDispatcherThread (rest::DispatcherQueue* q
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 void* JavascriptDispatcherThread::context () {
   return (void*) _isolate; // the isolate is the execution context
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -117,13 +119,16 @@ void* JavascriptDispatcherThread::context () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 void JavascriptDispatcherThread::reportStatus () {
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 void JavascriptDispatcherThread::tick (bool idle) {
   _gc += (idle ? 10 : 1);
 
@@ -136,6 +141,7 @@ void JavascriptDispatcherThread::tick (bool idle) {
     _gc = 0;
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -154,6 +160,7 @@ void JavascriptDispatcherThread::tick (bool idle) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 void JavascriptDispatcherThread::run () {
   initialise();
 
@@ -178,6 +185,7 @@ void JavascriptDispatcherThread::run () {
   _isolate->Exit();
   _isolate->Dispose();
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -197,67 +205,6 @@ void JavascriptDispatcherThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void JavascriptDispatcherThread::initialise () {
-  bool ok;
-  char const* files[] = { "common/bootstrap/modules.js",
-                          "common/bootstrap/print.js",
-                          "common/bootstrap/errors.js",
-                          "server/ahuacatl.js",
-                          "server/server.js"
-  };
-  size_t i;
-
-  // enter a new isolate
-  _isolate = v8::Isolate::New();
-  _isolate->Enter();
-
-  // create the context
-  _context = v8::Context::New();
-
-  if (_context.IsEmpty()) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-    _isolate->Exit();
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-
-  _context->Enter();
-
-  TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Queries(_context);
-  TRI_InitV8Actions(_context, _actionQueue, _allowedContexts);
-  TRI_InitV8Conversions(_context);
-  TRI_InitV8Utils(_context, _startupModules);
-  TRI_InitV8Shell(_context);
-
-  // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    ok = _startupLoader->loadScript(_context, files[i]);
-
-    if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[i] << "'";
-      _context->Exit();
-      _isolate->Exit();
-
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // load all actions
-  if (_actionLoader == 0) {
-    LOGGER_WARNING << "no action loader has been defined";
-  }
-  else {
-    ok = _actionLoader->executeAllScripts(_context);
-
-    if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript actions from directory '" << _actionLoader->getDirectory() << "'";
-    }
-  }
-
-  // and return from the context
-  _context->Exit();
-  _isolate->Exit();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

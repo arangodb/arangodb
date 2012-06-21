@@ -37,21 +37,42 @@
 #include "Rest/HttpResponse.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           void* context,
+                                           v8::Isolate* isolate,
                                            TRI_action_t const* action,
                                            v8::Handle<v8::Function> callback,
                                            HttpRequest* request);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Actions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global V8 factory
+////////////////////////////////////////////////////////////////////////////////
+
+ApplicationV8* GlobalV8Factory = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -77,7 +98,8 @@ class v8_action_t : public TRI_action_t {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    v8_action_t ()  {
+    v8_action_t (set<string> const& contexts)
+      : TRI_action_t(contexts) {
       _type = "JAVASCRIPT";
     }
 
@@ -88,10 +110,10 @@ class v8_action_t : public TRI_action_t {
     ~v8_action_t () {
       WRITE_LOCKER(_callbacksLock);
 
-      for (map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.begin();
+      for (map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.begin();
            i != _callbacks.end();
            ++i) {
-        (i->second).Dispose();
+        i->second.Dispose();
       }
     }
 
@@ -99,40 +121,42 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    void createCallback (void* context, void* callback) {
+    void createCallback (v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
       WRITE_LOCKER(_callbacksLock);
 
-      map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context);
+      map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(isolate);
 
       if (i != _callbacks.end()) {
-        (i->second).Dispose();
+        i->second.Dispose();
       }
 
-      v8::Handle<v8::Function>* cb = (v8::Handle<v8::Function>*) callback;
-      _callbacks[context] = v8::Persistent<v8::Function>::New(*cb);
+      _callbacks[isolate] = v8::Persistent<v8::Function>::New(callback);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, void* context, HttpRequest* request) {
-      v8::Handle<v8::Function> callback;
+    HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+      ApplicationV8::V8Context* context = GlobalV8Factory->enterContext();
 
-      {
-        READ_LOCKER(_callbacksLock);
+      READ_LOCKER(_callbacksLock);
 
-        map< void*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context);
+      map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
 
-        if (i == _callbacks.end()) {
-          LOGGER_WARNING << "no callback function for JavaScript action '" << _url.c_str() << "'";
-          return new HttpResponse(HttpResponse::NOT_FOUND);
-        }
+      if (i == _callbacks.end()) {
+        LOGGER_WARNING << "no callback function for JavaScript action '" << _url.c_str() << "'";
 
-        callback = i->second;
+        GlobalV8Factory->exitContext(context);
+
+        return new HttpResponse(HttpResponse::NOT_FOUND);
       }
 
-      return ExecuteActionVocbase(vocbase, context, this, callback, request);
+      HttpResponse* response = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
+
+      GlobalV8Factory->exitContext(context);
+
+      return response;
     }
 
   private:
@@ -141,7 +165,7 @@ class v8_action_t : public TRI_action_t {
 /// @brief callback dictionary
 ////////////////////////////////////////////////////////////////////////////////
 
-    map< void*, v8::Persistent<v8::Function> > _callbacks;
+    map< v8::Isolate*, v8::Persistent<v8::Function> > _callbacks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for the callback dictionary
@@ -257,7 +281,7 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           void* context,
+                                           v8::Isolate* isolate,
                                            TRI_action_t const* action,
                                            v8::Handle<v8::Function> callback,
                                            HttpRequest* request) {
@@ -266,7 +290,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  v8g = (TRI_v8_global_t*) ((v8::Isolate*) context)->GetData();
+  v8g = (TRI_v8_global_t*) isolate->GetData();
 
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New();
@@ -481,7 +505,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
 ///
-/// @FUN{defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
+/// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
@@ -493,8 +517,8 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   isolate = v8::Isolate::GetCurrent();
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (argv.Length() != 3) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>)")));
+  if (argv.Length() != 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>, <contexts>)")));
   }
 
   // extract the action name
@@ -523,8 +547,25 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
     options = v8::Object::New();
   }
 
+  // extract the contexts
+  set<string> contexts;
+
+  if (! argv[3]->IsArray()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<contexts> must be a list of contexts")));
+  }
+
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[3]);
+
+  uint32_t n = array->Length();
+
+  for (uint32_t j = 0; j < n; ++j) {
+    v8::Handle<v8::Value> item = array->Get(j);
+    
+    contexts.insert(TRI_ObjectToString(item));
+  }
+
   // create an action with the given options
-  v8_action_t* action = new v8_action_t;
+  v8_action_t* action = new v8_action_t(contexts);
   ParseActionOptions(v8g, action, options);
 
   // store an action with the given name
@@ -532,7 +573,17 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   // and define the callback
   if (result != 0) {
-    result->createCallback((void*) isolate, (void*) &callback);
+    action = dynamic_cast<v8_action_t*>(result);
+
+    if (action != 0) {
+      action->createCallback(isolate, callback);
+    }
+    else {
+      LOGGER_ERROR << "cannot create callback for V8 action";
+    }
+  }
+  else {
+    LOGGER_ERROR << "cannot define V8 action";
   }
 
   return scope.Close(v8::Undefined());
@@ -555,9 +606,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        string const& actionQueue,
-                        set<string> const& allowedContexts) {
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -569,24 +618,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
     isolate->SetData(v8g);
   }
 
-  // .............................................................................
-  // create the global constants
-  // .............................................................................
-
-  context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
-                         v8::String::New(actionQueue.c_str()),
-                         v8::ReadOnly);
-
-  v8::Handle<v8::Array> contexts = v8::Array::New();
-  size_t pos = 0;
-
-  for (set<string>::iterator i = allowedContexts.begin();  i != allowedContexts.end();  ++i, ++pos) {
-    contexts->Set(pos, v8::String::New((*i).c_str()));
-  }
-
-  context->Global()->Set(v8::String::New("SYS_ACTION_CONTEXTS"),
-                         contexts,
-                         v8::ReadOnly);
+  GlobalV8Factory = applicationV8;
 
   // .............................................................................
   // create the global functions

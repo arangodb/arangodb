@@ -108,6 +108,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _features(),
     _exitOnParentDeath(false),
     _watchParent(0),
+    _stopping(0),
     _title(title),
     _version(version),
     _configFile(),
@@ -418,6 +419,8 @@ void ApplicationServer::prepare () {
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
 
+    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+
     bool ok = feature->prepare();
 
     if (! ok) {
@@ -425,7 +428,7 @@ void ApplicationServer::prepare () {
       exit(EXIT_FAILURE);      
     }
 
-    LOGGER_DEBUG << "prepared server feature '" << feature->getName() << "'";
+    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
   }
 }
 
@@ -461,12 +464,14 @@ void ApplicationServer::start () {
       usleep(1000);
     }
 
-    LOGGER_DEBUG << "started server feature '" << feature->getName() << "'";
+    LOGGER_TRACE << "started server feature '" << feature->getName() << "'";
   }
 
   // now open all features
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "opening server feature '" << feature->getName() << "'";
 
     bool ok = feature->open();
 
@@ -475,7 +480,7 @@ void ApplicationServer::start () {
       exit(EXIT_FAILURE);      
     }
 
-    LOGGER_DEBUG << "opened server feature '" << feature->getName() << "'";
+    LOGGER_TRACE << "opened server feature '" << feature->getName() << "'";
   }
 }
 
@@ -498,7 +503,7 @@ void ApplicationServer::wait () {
   }
 
   // wait until all startable features have stopped
-  while (running) {
+  while (running && _stopping == 0) {
 
     // check the parent and wait for a second
     if (startable.empty()) {
@@ -539,11 +544,21 @@ void ApplicationServer::wait () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::beginShutdown () {
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  if (_stopping != 0) {
+    return;
+  }
+
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
 
+    LOGGER_DEBUG << "beginning shutdown sequence of server feature '" << feature->getName() << "'";
+
     feature->beginShutdown();
+
+    LOGGER_TRACE << "shutdown sequence initiated for server feature '" << feature->getName() << "'";
   }
+
+  _stopping = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,7 +571,11 @@ void ApplicationServer::shutdown () {
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
+    LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
+
     feature->shutdown();
+
+    LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
 }
 
