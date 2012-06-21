@@ -15,8 +15,14 @@ sgrp=arango
 package_type=""
 product_name="arangodb"
 project_name="arangodb"
+runlevels="runlevel(035)"
+
+
+# name of the epm configuration file
 LIST="Installation/${project_name}.list"
+# name of a created epm  include file
 SUBLIST="Installation/${project_name}.sublist"
+
 START_SCRIPT="";
 
 arangodb_version=`cat VERSION | awk -F"." '{print $1 "." $2}'`
@@ -29,9 +35,9 @@ osvers=`uname -r | awk -F"." '{print $1 "." $2}'`
 prefix=/usr
 exec_prefix=${prefix}
 bindir=${exec_prefix}/sbin
-datadir=${prefix}/share
+data_dir=${prefix}/var
+static_dir=${prefix}/share
 vers_dir=arango-${arangodb_version}
-runlevels="runlevel(035)"
 docdir=${prefix}/share/doc/voc/${vers_dir}
 
 
@@ -144,20 +150,20 @@ export EPM_RPM_OPTION
 test -f ${SUBLIST} && rm -f ${SUBLIST}
 touch ${SUBLIST}
 
-share_base=/usr/share/voc/arangodb-${arangodb_version}
+share_base=${static_dir}/arango
 sfolder_name=$(pwd)
 
 echo 
 echo "########################################################"
 echo "Call mkepmlist to create a sublist"
 
-  for dir in modules modules/jsunity system; do
-    echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/js ${sfolder_name}/js/${dir}/*.js >> ${SUBLIST}"
-    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/js ${sfolder_name}/js/${dir}/*.js > ${SUBLIST}
+  for dir in js/server/modules js/common/modules js/actions/system js/client js/common/bootstrap; do
+      echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
+      mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
 
 echo "Call mkepmlist to create a sublist"
-  for dir in . css css/images images script; do
+  for dir in . css css/images media media/icons media/images js js/modules; do
     for typ in css html js png gif ico;  do
       FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
 
@@ -189,7 +195,8 @@ echo "   export sgrp=$sgrp"
 echo "   export prefix=$prefix"
 echo "   export exec_prefix=$exec_prefix"
 echo "   export bindir=$bindir"
-echo "   export datadir=$datadir"
+echo "   export data_dir=$data_dir"
+echo "   export static_dir=$static_dir"
 echo "   export vers_dir=$vers_dir"
 echo "   export START_SCRIPT=$START_SCRIPT"
 echo "   export runlevels=$runlevels"
@@ -207,7 +214,8 @@ export sgrp
 export prefix
 export exec_prefix
 export bindir
-export datadir
+export data_dir
+export static_dir
 export vers_dir
 export START_SCRIPT
 export runlevels
