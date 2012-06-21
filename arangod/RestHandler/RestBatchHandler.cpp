@@ -31,7 +31,7 @@
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/vocbase.h"
-#include "ProtocolBuffers/arangodb.pb.h"
+//#include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace std;
 using namespace triagens::basics;
