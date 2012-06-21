@@ -103,12 +103,13 @@ case $TRI_OS_LONG in
   Darwin*)
     echo "Using configuration for DARWIN"
     ostype="macosx"
-    osvers=${RELEASE}
+    osvers=`echo ${RELEASE} | awk -F"." '{print $1 "." $2}'`
+    TRI_RELEASE=$osvers
     rusr=root
     rgrp=wheel
     susr=root
     sgrp=wheel
-    package_type="dmg"
+    package_type="osx"
 
     # export "macosx" for the epm configuration file
     export macosx="true"
@@ -241,6 +242,10 @@ echo
 
 # Delete old package in hudson's home folder.
 rm -f ${hudson_base}/${package_name} > /dev/null
+
+if [ ${package_type} == "osx" ] ; then
+  package_type="dmg"
+fi
 
 echo 
 echo "########################################################"
