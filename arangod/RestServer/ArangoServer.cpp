@@ -358,7 +358,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-    _vocbase(0) {
+    _vocbase(0),
+    _v8g(0) {
   char* p;
 
   p = TRI_LocateBinaryPath(argv[0]);
@@ -1021,7 +1022,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModulesJS << "'";
 
-  TRI_v8_global_t* v8g = TRI_InitV8VocBridge(context, _vocbase);
+  _v8g = TRI_InitV8VocBridge(context, _vocbase);
   TRI_InitV8Queries(context);
   TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, _startupModulesJS);
@@ -1165,10 +1166,6 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
   // and return from the context and isolate
   context->Exit();
   isolate->Exit();
-
-  if (v8g) {
-    delete v8g;
-  } 
 
   // close the database
   closeDatabase();
@@ -1393,8 +1390,12 @@ void ArangoServer::closeDatabase () {
   ApplicationUserManager::unloadRoles();
 
   TRI_DestroyVocBase(_vocbase);
-
   _vocbase = 0;
+
+  if (_v8g) {
+    delete _v8g;
+  } 
+
   LOGGER_INFO << "ArangoDB has been shut down";
 }
 
