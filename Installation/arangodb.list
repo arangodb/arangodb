@@ -27,8 +27,11 @@ d 0755 ${susr} ${sgrp} /etc/arangodb -
 d 0755 ${susr} ${sgrp} /etc/arangodb/${vers_dir} -
 f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
 
-f 0755 ${susr} ${sgrp} ${bindir}/arangod-${arangodb_version} ${project_dir}/arangod
-l 000 ${rusr} ${rgrp} ${bindir}/arangod ${bindir}/arangod-${arangodb_version}
+f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/arangod
+l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
+
+f 0755 ${susr} ${sgrp} ${bindir}/arangoimp ${project_dir}/arangoimp
+f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/arangosh
 
 # database directory
 d 0755 ${rusr} ${rgrp} ${data_dir} -
@@ -38,9 +41,6 @@ d 0755 ${susr} ${sgrp} ${data_dir}/arango -
 d 0755 ${susr} ${sgrp} ${static_dir} -
 d 0755 ${susr} ${sgrp} ${static_dir}/js -
 d 0755 ${susr} ${sgrp} ${static_dir}/html -
-
-# ????
-# d 0755 ${susr} ${sgrp} /var/lib/arango -
 
 # PID file directory
 d 0755 ${susr} ${sgrp} /var/run/arangod -
@@ -62,7 +62,7 @@ EOF
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
 f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template ${project_dir}/Installation/org.arangodb.plist
 %postinstall <<EOF
-sed -e 's%@BINARY@%${bindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
+sed -e 's%@BINARY@%${sbindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl load /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl start de.triagens.arango
@@ -95,4 +95,4 @@ EOF
 
 %system linux
 i 0755 ${rusr} ${rgrp} arango ${project_dir}/Installation/${START_SCRIPT} ${runlevels}
-l 000 ${rusr} ${rgrp} ${bindir}/rcarango /etc/init.d/arango 
+l 000 ${rusr} ${rgrp} ${sbindir}/rcarango /etc/init.d/arango 

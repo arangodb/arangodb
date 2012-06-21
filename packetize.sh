@@ -34,7 +34,8 @@ osvers=`uname -r | awk -F"." '{print $1 "." $2}'`
 ## directories for epm
 prefix=/usr
 exec_prefix=${prefix}
-bindir=${exec_prefix}/sbin
+sbindir=${exec_prefix}/sbin
+bindir=${exec_prefix}/bin
 data_dir=${prefix}/var
 static_dir=${prefix}/share
 vers_dir=arango-${arangodb_version}
@@ -194,6 +195,7 @@ echo "   export susr=$susr"
 echo "   export sgrp=$sgrp"
 echo "   export prefix=$prefix"
 echo "   export exec_prefix=$exec_prefix"
+echo "   export sbindir=$sbindir"
 echo "   export bindir=$bindir"
 echo "   export data_dir=$data_dir"
 echo "   export static_dir=$static_dir"
@@ -213,6 +215,7 @@ export susr
 export sgrp
 export prefix
 export exec_prefix
+export sbindir
 export bindir
 export data_dir
 export static_dir
