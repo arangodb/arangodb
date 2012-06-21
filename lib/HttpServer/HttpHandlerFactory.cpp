@@ -227,6 +227,8 @@ namespace triagens {
     void HttpHandlerFactory::destroyHandler (HttpHandler* handler) {
       vector<MaintenanceCallback*> callbacks;
 
+      assert(handler);
+
       {
         MUTEX_LOCKER(_activeHandlersLock);
         _numberActiveHandlers--;
@@ -235,7 +237,7 @@ namespace triagens {
           _maintenanceCallbacks.swap(callbacks);
         }
 
-        delete handler;
+        handler->beginShutdown();
       }
 
       for (vector<MaintenanceCallback*>::iterator i = callbacks.begin();  i != callbacks.end();  ++i) {

@@ -157,6 +157,8 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void destroyHandler (typename HF::GeneralHandler* handler) {
+          assert(handler);
+
           if (_handlerFactory == 0) {
             delete handler;
           }
@@ -274,7 +276,7 @@ namespace triagens {
         /// @brief handles a request
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleRequest (CT * task, typename HF::GeneralHandler * handler) {
+        virtual bool handleRequest (CT * task, typename HF::GeneralHandler*& handler) {
 
           // execute handle and requeue
           bool done = false;
@@ -284,7 +286,10 @@ namespace triagens {
 
             if (status != Handler::HANDLER_REQUEUE) {
               done = true;
+              assert(handler);
+              task->setHandler(0);
               destroyHandler(handler);
+              handler = 0;
             }
             else {
               continue;

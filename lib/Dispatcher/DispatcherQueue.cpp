@@ -90,7 +90,7 @@ namespace triagens {
 
       LOGGER_DEBUG << "beginning shutdown sequence of dispatcher queue '" << _name <<"'"; 
 
-      // broadcast the we want to stop
+      // broadcast that we want to stop
       size_t const MAX_TRIES = 10;
 
       stopping = 1;

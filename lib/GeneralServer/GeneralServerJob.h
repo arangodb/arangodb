@@ -29,13 +29,15 @@
 #ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_JOB_H
 #define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
-#include "Dispatcher/Job.h"
+#include <Basics/Common.h>
 
+#include <Logger/Logger.h>
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
 #include <Basics/Mutex.h>
 #include <Rest/Handler.h>
 
+#include "Dispatcher/Job.h"
 #include "Scheduler/AsyncTask.h"
 
 namespace triagens {
@@ -76,8 +78,10 @@ namespace triagens {
         /// @brief destructs a server job
         ////////////////////////////////////////////////////////////////////////////////
 
-        ~GeneralServerJob ()  {
-          _server->destroyHandler(_handler);
+        ~GeneralServerJob () {
+          if (_handler) {
+            delete _handler;
+          }
         }
 
       public:
@@ -86,7 +90,7 @@ namespace triagens {
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type ()  {
+        JobType type () {
           return _handler->type();
         }
 
@@ -113,6 +117,10 @@ namespace triagens {
         status_e work () {
           LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
 
+          if (_shutdown != 0) { 
+            return Job::JOB_DONE;
+          }
+
           Handler::status_e status = _handler->execute();
 
           LOGGER_TRACE << "finished job " << static_cast<Job*>(this) << " with status " << status;
@@ -135,6 +143,8 @@ namespace triagens {
             delete this;
           }
           else {
+            assert(_task);
+
             _done = 1;
             _task->signal();
           }
@@ -147,25 +157,24 @@ namespace triagens {
         void handleError (basics::TriagensError const& ex) {
           _handler->handleError(ex);
         }
-
-      public:
-
+        
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief shut downs the execution and deletes everything
+        /// @brief shuts down the execution and deletes everything
         ////////////////////////////////////////////////////////////////////////////////
 
-        void beginShutdown () {
-          LOGGER_TRACE << "beginning shutdown, job (" << ((void*) this) << ") is " << (_done ? "done" : "still running");
-
+        bool beginShutdown () {
+          LOGGER_TRACE << "shutdown, job (" << ((void*) this) << ") is " << (_done ? "done" : "still running");
+  
           if (_done != 0) {
             delete this;
+            return true;
           }
           else {
             _shutdown = 1;
           }
-        }
 
-      public:
+          return false;
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief general server
