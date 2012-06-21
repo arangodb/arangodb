@@ -198,6 +198,9 @@ namespace internal {
   SC(constructed_objects_stub, V8.ConstructedObjectsStub)             \
   SC(negative_lookups, V8.NegativeLookups)                            \
   SC(negative_lookups_miss, V8.NegativeLookupsMiss)                   \
+  SC(megamorphic_stub_cache_probes, V8.MegamorphicStubCacheProbes)    \
+  SC(megamorphic_stub_cache_misses, V8.MegamorphicStubCacheMisses)    \
+  SC(megamorphic_stub_cache_updates, V8.MegamorphicStubCacheUpdates)  \
   SC(array_function_runtime, V8.ArrayFunctionRuntime)                 \
   SC(array_function_native, V8.ArrayFunctionNative)                   \
   SC(for_in, V8.ForIn)                                                \
@@ -207,6 +210,9 @@ namespace internal {
   SC(compute_entry_frame, V8.ComputeEntryFrame)                       \
   SC(generic_binary_stub_calls, V8.GenericBinaryStubCalls)            \
   SC(generic_binary_stub_calls_regs, V8.GenericBinaryStubCallsRegs)   \
+  SC(fast_new_closure_total, V8.FastNewClosureTotal)                  \
+  SC(fast_new_closure_try_optimized, V8.FastNewClosureTryOptimized)   \
+  SC(fast_new_closure_install_optimized, V8.FastNewClosureInstallOptimized) \
   SC(string_add_runtime, V8.StringAddRuntime)                         \
   SC(string_add_native, V8.StringAddNative)                           \
   SC(string_add_runtime_ext_to_ascii, V8.StringAddRuntimeExtToAscii)  \
@@ -237,10 +243,6 @@ namespace internal {
   SC(transcendental_cache_miss, V8.TranscendentalCacheMiss)           \
   SC(stack_interrupts, V8.StackInterrupts)                            \
   SC(runtime_profiler_ticks, V8.RuntimeProfilerTicks)                 \
-  SC(other_ticks, V8.OtherTicks)                                      \
-  SC(js_opt_ticks, V8.JsOptTicks)                                     \
-  SC(js_non_opt_ticks, V8.JsNonoptTicks)                              \
-  SC(js_other_ticks, V8.JsOtherTicks)                                 \
   SC(smi_checks_removed, V8.SmiChecksRemoved)                         \
   SC(map_checks_removed, V8.MapChecksRemoved)                         \
   SC(quote_json_char_count, V8.QuoteJsonCharacterCount)               \

@@ -114,7 +114,7 @@ static void AllocateEmptyJSArray(MacroAssembler* masm,
                                  Label* gc_required) {
   const int initial_capacity = JSArray::kPreallocatedArrayElements;
   STATIC_ASSERT(initial_capacity >= 0);
-  __ LoadInitialArrayMap(array_function, scratch2, scratch1);
+  __ LoadInitialArrayMap(array_function, scratch2, scratch1, false);
 
   // Allocate the JSArray object together with space for a fixed array with the
   // requested elements.
@@ -208,7 +208,8 @@ static void AllocateJSArray(MacroAssembler* masm,
                             bool fill_with_hole,
                             Label* gc_required) {
   // Load the initial map from the array function.
-  __ LoadInitialArrayMap(array_function, scratch2, elements_array_storage);
+  __ LoadInitialArrayMap(array_function, scratch2,
+                         elements_array_storage, fill_with_hole);
 
   if (FLAG_debug_code) {  // Assert that array size is not zero.
     __ tst(array_size, array_size);
@@ -313,7 +314,7 @@ static void ArrayNativeCode(MacroAssembler* masm,
                             Label* call_generic_code) {
   Counters* counters = masm->isolate()->counters();
   Label argc_one_or_more, argc_two_or_more, not_empty_array, empty_array,
-      has_non_smi_element;
+      has_non_smi_element, finish, cant_transition_map, not_double;
 
   // Check for array construction with zero arguments or one.
   __ cmp(r0, Operand(0, RelocInfo::NONE));
@@ -418,6 +419,8 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ bind(&entry);
   __ cmp(r4, r5);
   __ b(lt, &loop);
+
+  __ bind(&finish);
   __ mov(sp, r7);
 
   // Remove caller arguments and receiver from the stack, setup return value and
@@ -430,8 +433,39 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ Jump(lr);
 
   __ bind(&has_non_smi_element);
+  // Double values are handled by the runtime.
+  __ CheckMap(
+      r2, r9, Heap::kHeapNumberMapRootIndex, &not_double, DONT_DO_SMI_CHECK);
+  __ bind(&cant_transition_map);
   __ UndoAllocationInNewSpace(r3, r4);
   __ b(call_generic_code);
+
+  __ bind(&not_double);
+  // Transition FAST_SMI_ELEMENTS to FAST_ELEMENTS.
+  // r3: JSArray
+  __ ldr(r2, FieldMemOperand(r3, HeapObject::kMapOffset));
+  __ LoadTransitionedArrayMapConditional(FAST_SMI_ELEMENTS,
+                                         FAST_ELEMENTS,
+                                         r2,
+                                         r9,
+                                         &cant_transition_map);
+  __ str(r2, FieldMemOperand(r3, HeapObject::kMapOffset));
+  __ RecordWriteField(r3,
+                      HeapObject::kMapOffset,
+                      r2,
+                      r9,
+                      kLRHasNotBeenSaved,
+                      kDontSaveFPRegs,
+                      EMIT_REMEMBERED_SET,
+                      OMIT_SMI_CHECK);
+  Label loop2;
+  __ sub(r7, r7, Operand(kPointerSize));
+  __ bind(&loop2);
+  __ ldr(r2, MemOperand(r7, kPointerSize, PostIndex));
+  __ str(r2, MemOperand(r5, -kPointerSize, PreIndex));
+  __ cmp(r4, r5);
+  __ b(lt, &loop2);
+  __ b(&finish);
 }
 
 
@@ -895,23 +929,15 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
     // r4: JSObject
     __ bind(&allocated);
     __ push(r4);
+    __ push(r4);
 
-    // Push the function and the allocated receiver from the stack.
-    // sp[0]: receiver (newly allocated object)
-    // sp[1]: constructor function
-    // sp[2]: number of arguments (smi-tagged)
-    __ ldr(r1, MemOperand(sp, kPointerSize));
-    __ push(r1);  // Constructor function.
-    __ push(r4);  // Receiver.
-
-    // Reload the number of arguments from the stack.
-    // r1: constructor function
+    // Reload the number of arguments and the constructor from the stack.
     // sp[0]: receiver
-    // sp[1]: constructor function
-    // sp[2]: receiver
-    // sp[3]: constructor function
-    // sp[4]: number of arguments (smi-tagged)
-    __ ldr(r3, MemOperand(sp, 4 * kPointerSize));
+    // sp[1]: receiver
+    // sp[2]: constructor function
+    // sp[3]: number of arguments (smi-tagged)
+    __ ldr(r1, MemOperand(sp, 2 * kPointerSize));
+    __ ldr(r3, MemOperand(sp, 3 * kPointerSize));
 
     // Set up pointer to last argument.
     __ add(r2, fp, Operand(StandardFrameConstants::kCallerSPOffset));
@@ -921,14 +947,13 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
 
     // Copy arguments and receiver to the expression stack.
     // r0: number of arguments
-    // r2: address of last argument (caller sp)
     // r1: constructor function
+    // r2: address of last argument (caller sp)
     // r3: number of arguments (smi-tagged)
     // sp[0]: receiver
-    // sp[1]: constructor function
-    // sp[2]: receiver
-    // sp[3]: constructor function
-    // sp[4]: number of arguments (smi-tagged)
+    // sp[1]: receiver
+    // sp[2]: constructor function
+    // sp[3]: number of arguments (smi-tagged)
     Label loop, entry;
     __ b(&entry);
     __ bind(&loop);
@@ -954,12 +979,10 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
                         NullCallWrapper(), CALL_AS_METHOD);
     }
 
-    // Pop the function from the stack.
-    // sp[0]: constructor function
-    // sp[2]: receiver
-    // sp[3]: constructor function
-    // sp[4]: number of arguments (smi-tagged)
-    __ pop();
+    // Store offset of return address for deoptimizer.
+    if (!is_api_function && !count_constructions) {
+      masm->isolate()->heap()->SetConstructStubDeoptPCOffset(masm->pc_offset());
+    }
 
     // Restore context from the frame.
     // r0: result
@@ -1723,7 +1746,9 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
   __ bind(&invoke);
   __ Call(r3);
 
+  // Store offset of return address for deoptimizer.
   masm->isolate()->heap()->SetArgumentsAdaptorDeoptPCOffset(masm->pc_offset());
+
   // Exit frame and return.
   LeaveArgumentsAdaptorFrame(masm);
   __ Jump(lr);

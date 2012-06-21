@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -116,6 +116,8 @@ void BreakLocationIterator::ClearDebugBreakAtSlot() {
                      Assembler::kDebugBreakSlotInstructions);
 }
 
+const bool Debug::FramePaddingLayout::kIsSupported = false;
+
 
 #define __ ACCESS_MASM(masm)
 
@@ -152,8 +154,8 @@ static void Generate_DebugBreakCallHelper(MacroAssembler* masm,
 #ifdef DEBUG
     __ RecordComment("// Calling from debug break to runtime - come in - over");
 #endif
-    __ mov(a0, zero_reg);  // No arguments.
-    __ li(a1, Operand(ExternalReference::debug_break(masm->isolate())));
+    __ PrepareCEntryArgs(0);  // No arguments.
+    __ PrepareCEntryFunction(ExternalReference::debug_break(masm->isolate()));
 
     CEntryStub ceb(1);
     __ CallStub(&ceb);

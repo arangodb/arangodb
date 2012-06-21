@@ -49,11 +49,8 @@ class Descriptor BASE_EMBEDDED {
 
   MUST_USE_RESULT MaybeObject* KeyToSymbol() {
     if (!StringShape(key_).IsSymbol()) {
-      Object* result;
-      { MaybeObject* maybe_result = HEAP->LookupSymbol(key_);
-        if (!maybe_result->ToObject(&result)) return maybe_result;
-      }
-      key_ = String::cast(result);
+      MaybeObject* maybe_result = HEAP->LookupSymbol(key_);
+      if (!maybe_result->To(&key_)) return maybe_result;
     }
     return key_;
   }
@@ -114,14 +111,6 @@ class MapTransitionDescriptor: public Descriptor {
       : Descriptor(key, map, attributes, MAP_TRANSITION) { }
 };
 
-class ElementsTransitionDescriptor: public Descriptor {
- public:
-  ElementsTransitionDescriptor(String* key,
-                               Object* map_or_array)
-      : Descriptor(key, map_or_array, PropertyDetails(NONE,
-                                                      ELEMENTS_TRANSITION)) { }
-};
-
 // Marks a field name in a map so that adding the field is guaranteed
 // to create a FIELD descriptor in the new map.  Used after adding
 // a constant function the first time, creating a CONSTANT_FUNCTION
@@ -164,6 +153,34 @@ class CallbacksDescriptor:  public Descriptor {
 };
 
 
+template <class T>
+bool IsPropertyDescriptor(T* desc) {
+  switch (desc->type()) {
+    case NORMAL:
+    case FIELD:
+    case CONSTANT_FUNCTION:
+    case HANDLER:
+    case INTERCEPTOR:
+      return true;
+    case CALLBACKS: {
+      Object* callback_object = desc->GetCallbackObject();
+      // Non-JavaScript (i.e. native) accessors are always a property, otherwise
+      // either the getter or the setter must be an accessor. Put another way:
+      // If we only see map transitions and holes in a pair, this is not a
+      // property.
+      return (!callback_object->IsAccessorPair() ||
+              AccessorPair::cast(callback_object)->ContainsAccessor());
+    }
+    case MAP_TRANSITION:
+    case CONSTANT_TRANSITION:
+    case NULL_DESCRIPTOR:
+      return false;
+  }
+  UNREACHABLE();  // keep the compiler happy
+  return false;
+}
+
+
 class LookupResult BASE_EMBEDDED {
  public:
   explicit LookupResult(Isolate* isolate)
@@ -172,7 +189,7 @@ class LookupResult BASE_EMBEDDED {
         lookup_type_(NOT_FOUND),
         holder_(NULL),
         cacheable_(true),
-        details_(NONE, NORMAL) {
+        details_(NONE, NONEXISTENT) {
     isolate->SetTopLookupResult(this);
   }
 
@@ -185,13 +202,6 @@ class LookupResult BASE_EMBEDDED {
     lookup_type_ = DESCRIPTOR_TYPE;
     holder_ = holder;
     details_ = details;
-    number_ = number;
-  }
-
-  void DescriptorResult(JSObject* holder, Smi* details, int number) {
-    lookup_type_ = DESCRIPTOR_TYPE;
-    holder_ = holder;
-    details_ = PropertyDetails(details);
     number_ = number;
   }
 
@@ -227,6 +237,7 @@ class LookupResult BASE_EMBEDDED {
 
   void NotFound() {
     lookup_type_ = NOT_FOUND;
+    details_ = PropertyDetails(NONE, NONEXISTENT);
     holder_ = NULL;
   }
 
@@ -254,17 +265,51 @@ class LookupResult BASE_EMBEDDED {
     return details_;
   }
 
-  bool IsReadOnly() { return details_.IsReadOnly(); }
+  bool IsFastPropertyType() {
+    ASSERT(IsFound());
+    return type() != NORMAL;
+  }
+
+  bool IsReadOnly() {
+    ASSERT(IsFound());
+    return details_.IsReadOnly();
+  }
+
+  bool IsCallbacks() {
+    ASSERT(!(details_.type() == CALLBACKS && !IsFound()));
+    return details_.type() == CALLBACKS;
+  }
+
+  bool IsField() {
+    ASSERT(!(details_.type() == FIELD && !IsFound()));
+    return details_.type() == FIELD;
+  }
+
+  bool IsNormal() {
+    ASSERT(!(details_.type() == NORMAL && !IsFound()));
+    return details_.type() == NORMAL;
+  }
+
+  bool IsConstantFunction() {
+    ASSERT(!(details_.type() == CONSTANT_FUNCTION && !IsFound()));
+    return details_.type() == CONSTANT_FUNCTION;
+  }
+
+  bool IsMapTransition() {
+    ASSERT(!(details_.type() == MAP_TRANSITION && !IsFound()));
+    return details_.type() == MAP_TRANSITION;
+  }
+
   bool IsDontDelete() { return details_.IsDontDelete(); }
   bool IsDontEnum() { return details_.IsDontEnum(); }
   bool IsDeleted() { return details_.IsDeleted(); }
   bool IsFound() { return lookup_type_ != NOT_FOUND; }
   bool IsHandler() { return lookup_type_ == HANDLER_TYPE; }
+  bool IsInterceptor() { return lookup_type_ == INTERCEPTOR_TYPE; }
 
-  // Is the result is a property excluding transitions and the null
-  // descriptor?
+  // Is the result is a property excluding transitions and the null descriptor?
   bool IsProperty() {
-    return IsFound() && IsRealProperty(GetPropertyDetails().type());
+    return IsFound() && IsPropertyDescriptor(this);
   }
 
   bool IsCacheable() { return cacheable_; }
@@ -289,11 +334,9 @@ class LookupResult BASE_EMBEDDED {
     }
   }
 
-
   Map* GetTransitionMap() {
     ASSERT(lookup_type_ == DESCRIPTOR_TYPE);
     ASSERT(type() == MAP_TRANSITION ||
-           type() == ELEMENTS_TRANSITION ||
            type() == CONSTANT_TRANSITION);
     return Map::cast(GetValue());
   }
@@ -306,13 +349,13 @@ class LookupResult BASE_EMBEDDED {
 
   int GetFieldIndex() {
     ASSERT(lookup_type_ == DESCRIPTOR_TYPE);
-    ASSERT(type() == FIELD);
+    ASSERT(IsField());
     return Descriptor::IndexFromValue(GetValue());
   }
 
   int GetLocalFieldIndexFromMap(Map* map) {
     ASSERT(lookup_type_ == DESCRIPTOR_TYPE);
-    ASSERT(type() == FIELD);
+    ASSERT(IsField());
     return Descriptor::IndexFromValue(
         map->instance_descriptors()->GetValue(number_)) -
         map->inobject_properties();

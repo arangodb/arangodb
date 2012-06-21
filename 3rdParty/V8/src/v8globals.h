@@ -48,6 +48,10 @@ const intptr_t kObjectAlignmentMask = kObjectAlignment - 1;
 const intptr_t kPointerAlignment = (1 << kPointerSizeLog2);
 const intptr_t kPointerAlignmentMask = kPointerAlignment - 1;
 
+// Desired alignment for double values.
+const intptr_t kDoubleAlignment = 8;
+const intptr_t kDoubleAlignmentMask = kDoubleAlignment - 1;
+
 // Desired alignment for maps.
 #if V8_HOST_ARCH_64_BIT
 const intptr_t kMapAlignmentBits = kObjectAlignmentBits;
@@ -461,6 +465,7 @@ enum CallKind {
 enum ScopeType {
   EVAL_SCOPE,      // The top-level scope for an eval source.
   FUNCTION_SCOPE,  // The top-level scope for a function.
+  MODULE_SCOPE,    // The scope introduced by a module literal
   GLOBAL_SCOPE,    // The top-level scope for a program or a top-level eval.
   CATCH_SCOPE,     // The scope introduced by catch.
   BLOCK_SCOPE,     // The scope introduced by a new block.

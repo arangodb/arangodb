@@ -25,7 +25,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Flags: --expose-debug-as debug --allow-natives-syntax
+// Flags: --expose-debug-as debug --expose-gc --allow-natives-syntax --inline-construct
 // Get the Debug object exposed from the debug context global object.
 Debug = debug.Debug
 
@@ -130,22 +130,17 @@ function listener(event, exec_state, event_data, data) {
         }
 
         // Check for construct call.
-        assertEquals(testingConstructCall && i == 4, frame.isConstructCall());
+        if (i == 4) {
+          assertEquals(testingConstructCall, frame.isConstructCall());
+        } else if (i == 2) {
+          assertTrue(frame.isConstructCall());
+        } else {
+          assertFalse(frame.isConstructCall());
+        }
 
-        // When function f is optimized (1 means YES, see runtime.cc) we
-        // expect an optimized frame for f with g1, g2 and g3 inlined.
-        if (%GetOptimizationStatus(f) == 1) {
-          if (i == 1 || i == 2 || i == 3) {
-            assertTrue(frame.isOptimizedFrame());
-            assertTrue(frame.isInlinedFrame());
-            assertEquals(4 - i, frame.inlinedFrameIndex());
-          } else if (i == 4) {
-            assertTrue(frame.isOptimizedFrame());
-            assertFalse(frame.isInlinedFrame());
-          } else {
-            assertFalse(frame.isOptimizedFrame());
-            assertFalse(frame.isInlinedFrame());
-          }
+        if (i > 4) {
+          assertFalse(frame.isOptimizedFrame());
+          assertFalse(frame.isInlinedFrame());
         }
       }
 
@@ -185,7 +180,7 @@ function g2(i) {
 function g1(i, x3, y3, z3) {
   var a3 = expected[i].locals.a3;
   var b3 = expected[i].locals.b3;
-  g2(i - 1, a3, b3);
+  new g2(i - 1, a3, b3);
 }
 
 function f(i, x4, y4) {
@@ -201,8 +196,11 @@ testingConstructCall = true;
 new f(expected.length - 1, 11, 12);
 new f(expected.length - 1, 11, 12, 0);
 
-// Make sure that the debug event listener vas invoked.
+// Make sure that the debug event listener was invoked.
 assertFalse(exception, "exception in listener " + exception)
 assertTrue(listenerComplete);
+
+// Throw away type information for next run.
+gc();
 
 Debug.setListener(null);
