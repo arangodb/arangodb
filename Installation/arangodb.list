@@ -23,25 +23,30 @@ $release=${arangodb_release}
 ## File List
 ################################################################################
 
-d 0755 ${susr} ${sgrp} /etc/voc -
-d 0755 ${susr} ${sgrp} /etc/voc/${vers_dir} -
-f 0644 ${susr} ${sgrp} /etc/voc/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
+d 0755 ${susr} ${sgrp} /etc/arangodb -
+d 0755 ${susr} ${sgrp} /etc/arangodb/${vers_dir} -
+f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
 
 f 0755 ${susr} ${sgrp} ${bindir}/arangod-${arangodb_version} ${project_dir}/arangod
+l 000 ${rusr} ${rgrp} ${bindir}/arangod ${bindir}/arangod-${arangodb_version}
 
-d 0755 ${rusr} ${rgrp} ${datadir}/voc -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir} -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js/modules -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/js/system -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/html -
-d 0755 ${susr} ${sgrp} ${datadir}/voc/${vers_dir}/html/admin -
+# database directory
+d 0755 ${rusr} ${rgrp} ${data_dir} -
+d 0755 ${susr} ${sgrp} ${data_dir}/arango -
 
-d 0755 ${susr} ${sgrp} /var/lib/arango -
-d 0755 ${rusr} ${rgrp} /var/run/voc -
-d 0755 ${susr} ${sgrp} /var/run/voc/${vers_dir}/ -
-d 0755 ${rusr} ${rgrp} /var/log/voc -
-d 0755 ${susr} ${sgrp} /var/log/voc/${vers_dir}/ -
+# static files
+d 0755 ${susr} ${sgrp} ${static_dir} -
+d 0755 ${susr} ${sgrp} ${static_dir}/js -
+d 0755 ${susr} ${sgrp} ${static_dir}/html -
+
+# ????
+# d 0755 ${susr} ${sgrp} /var/lib/arango -
+
+# PID file directory
+d 0755 ${susr} ${sgrp} /var/run/arangod -
+
+# logfile directory
+d 0755 ${rusr} ${rgrp} /var/log/arangodb -
 
 %include ${project_dir}/Installation/arangodb.sublist
 
@@ -50,14 +55,14 @@ d 0755 ${susr} ${sgrp} /var/log/voc/${vers_dir}/ -
 ################################################################################
 
 %postinstall <<EOF
-sed -e 's%@LOGDIR@%/var/log/voc/${vers_dir}%g' -e 's%@DATADIR@%${datadir}/voc/${vers_dir}%' -e 's%@DATABASE@%/var/lib/arango%g' /etc/voc/${vers_dir}/arango.conf.template > /etc/voc/${vers_dir}/arango.conf
+sed -e 's%@LOGDIR@%/var/log/arangodb%g' -e 's%@DATABASE@%${data_dir}/arango%g' -e 's%@STATICFILES@%${static_dir}/arango%g' /etc/arangodb/${vers_dir}/arango.conf.template > /etc/arango.conf
 EOF
 
 %ifdef macosx
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
-f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template ${project_dir}/Installation/MacOSX/MacPorts/org.arangodb.plist
+f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template ${project_dir}/Installation/org.arangodb.plist
 %postinstall <<EOF
-sed -e 's%@BINARY@%${bindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc/voc/${vers_dir}/%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
+sed -e 's%@BINARY@%${bindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl load /Library/LaunchDaemons/de.triagens.arango.plist
 launchctl start de.triagens.arango
@@ -71,7 +76,7 @@ EOF
 %else
 %preinstall <<EOF
 getent group arango >/dev/null || groupadd -r arango 
-getent passwd arango >/dev/null || useradd -r -g arango -d /usr/share/arango -s /bin/false -c "ArangoDB Application User" arango 
+getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir} -s /bin/false -c "ArangoDB Application User" arango 
 EOF
 %endif
 
@@ -90,4 +95,4 @@ EOF
 
 %system linux
 i 0755 ${rusr} ${rgrp} arango ${project_dir}/Installation/${START_SCRIPT} ${runlevels}
-# l 000 ${rusr} ${rgrp} ${bindir}/rcarango /etc/init.d/arango 
+l 000 ${rusr} ${rgrp} ${bindir}/rcarango /etc/init.d/arango 
