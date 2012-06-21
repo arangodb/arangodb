@@ -247,6 +247,7 @@ void DispatcherThread::run () {
 #ifdef TRI_HAVE_POSIX_THREADS
         if (queue->stopping != 0) {
           LOGGER_WARNING << "caught cancellation exception during cleanup";
+          queue->accessQueue.unlock();
           throw;
         }
 #endif

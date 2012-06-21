@@ -162,17 +162,18 @@ void JavascriptDispatcherThread::run () {
 
   DispatcherThread::run();
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
+  
   _context->Exit();
   _context.Dispose();
+ 
+  // gc
 
   while (!v8::V8::IdleNotification()) {
   }
  
   _isolate->Exit();
   _isolate->Dispose();
-  
-  // free memory for this thread
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
 
   if (v8g) {
     delete v8g;

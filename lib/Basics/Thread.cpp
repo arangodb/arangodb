@@ -126,7 +126,7 @@ Thread::Thread (const string& name)
 
 Thread::~Thread () {
   if (_running != 0) {
-    LOGGER_WARNING << "forcefully shuting down thread '" << _name << "'";
+    LOGGER_WARNING << "forcefully shutting down thread '" << _name << "'";
     TRI_StopThread(&_thread);
   }
 

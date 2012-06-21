@@ -39,6 +39,7 @@
 
 #include "build.h"
 
+#include "Actions/actions.h"
 #include "Actions/RestActionHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/FileUtils.h"
@@ -59,6 +60,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestBatchHandler.h"
 #include "RestServer/ArangoHttpServer.h"
 #include "RestServer/JavascriptDispatcherThread.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -279,6 +281,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add import handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+  
+  // add batch handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
 }
 
@@ -951,6 +958,7 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // and cleanup
   // .............................................................................
+  
 
   closeDatabase();
   return 0;
@@ -1160,7 +1168,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
 
   if (v8g) {
     delete v8g;
-  }
+  } 
 
   // close the database
   closeDatabase();
@@ -1385,6 +1393,7 @@ void ArangoServer::closeDatabase () {
   ApplicationUserManager::unloadRoles();
 
   TRI_DestroyVocBase(_vocbase);
+
   _vocbase = 0;
   LOGGER_INFO << "ArangoDB has been shut down";
 }

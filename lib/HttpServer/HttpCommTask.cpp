@@ -50,7 +50,7 @@ namespace triagens {
 
     HttpCommTask::HttpCommTask (HttpServerImpl* server, socket_t fd, ConnectionInfo const& info)
       : Task("HttpCommTask"),
-        GeneralCommTask<HttpServerImpl, HttpHandlerFactory>(server, fd, info) {
+        GeneralCommTask<HttpServerImpl, HttpHandlerFactory>(server, fd, info), _handler(0) {
       incCounter<GeneralServerStatistics::httpAccessor>();
     }
 
@@ -58,6 +58,7 @@ namespace triagens {
 
     HttpCommTask::~HttpCommTask () {
       decCounter<GeneralServerStatistics::httpAccessor>();
+      destroyHandler();      
     }
 
     // -----------------------------------------------------------------------------
@@ -73,8 +74,10 @@ namespace triagens {
 
       if (! readRequestBody) {
         const char * ptr = readBuffer->c_str() + readPosition;
+        // TODO FIXME: HTTP request might be shorter than 4 bytes if malformed
         const char * end = readBuffer->end() - 3;
 
+        // TODO FIXME: HTTP request might not contain \r\n\r\n at all if malformed
         for (;  ptr < end;  ptr++) {
           if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
             break;
@@ -209,10 +212,10 @@ namespace triagens {
         bodyPosition = 0;
         bodyLength = 0;
 
-        HttpHandler* handler = server->createHandler(request);
+         _handler = server->createHandler(request);
         bool ok = false;
 
-        if (handler == 0) {
+        if (_handler == 0) {
           LOGGER_TRACE << "no handler is known, giving up";
           delete request;
           request = 0;
@@ -221,8 +224,11 @@ namespace triagens {
           handleResponse(&response);
         }
         else {
+          // let the handler know the comm task
+          _handler->setTask(this);
+
           request = 0;
-          ok = server->handleRequest(this, handler);
+          ok = server->handleRequest(this, _handler);
 
           if (! ok) {
             HttpResponse response(HttpResponse::SERVER_ERROR);
@@ -235,7 +241,6 @@ namespace triagens {
 
       return true;
     }
-
 
 
     void HttpCommTask::addResponse (HttpResponse* response) {
@@ -256,5 +261,18 @@ namespace triagens {
       // start output
       fillWriteBuffer();
     }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief destroy the handler if any present
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    void HttpCommTask::destroyHandler () {
+      if (_handler) {
+        _handler->setTask(0);
+        server->destroyHandler(_handler);
+        _handler = 0;
+      }
+    }
+
   }
 }
