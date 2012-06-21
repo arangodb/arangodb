@@ -60,17 +60,17 @@ EOF
 
 %ifdef macosx
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
-f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/de.triagens.arango.plist.template ${project_dir}/Installation/org.arangodb.plist
+f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${project_dir}/Installation/org.arangodb.plist
 %postinstall <<EOF
-sed -e 's%@BINARY@%${sbindir}/arango-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/de.triagens.arango.plist.template > /Library/LaunchDaemons/de.triagens.arango.plist
-launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
-launchctl load /Library/LaunchDaemons/de.triagens.arango.plist
-launchctl start de.triagens.arango
+sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
+launchctl unload /Library/LaunchDaemons/org.arangodb.plist
+launchctl load /Library/LaunchDaemons/org.arangodb.plist
+# we do not need this: launchctl start de.triagens.arango
 EOF
 
 %preremove <<EOF
 launchctl stop de.triagens.arango
-launchctl unload /Library/LaunchDaemons/de.triagens.arango.plist
+launchctl unload /Library/LaunchDaemons/org.arangodb.plist
 EOF
 
 %else
