@@ -1187,6 +1187,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // destroy lock
   TRI_DestroyReadWriteLock(&vocbase->_lock);
+
+  // free the filename path
+  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

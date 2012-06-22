@@ -1102,7 +1102,9 @@ void ArangoServer::closeDatabase () {
   ApplicationUserManager::unloadUsers();
   ApplicationUserManager::unloadRoles();
 
+  TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
 
   LOGGER_INFO << "ArangoDB has been shut down";

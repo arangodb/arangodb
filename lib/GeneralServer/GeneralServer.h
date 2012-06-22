@@ -231,8 +231,7 @@ namespace triagens {
           
           // Try all returned addresses
           for (aip = result; aip != NULL; aip = aip->ai_next) {
-            
-            ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), aip, reuseAddress);
+            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, reuseAddress);
 
             if (! task->isBound()) {
               deleteTask(task);

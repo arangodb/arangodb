@@ -295,7 +295,7 @@ typedef uint32_t TRI_col_type_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char const* _path;
+  char* _path;
   char* _lockFile;
 
   bool _removeOnDrop; // wipe collection from disk after dropping
