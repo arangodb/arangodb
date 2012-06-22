@@ -94,9 +94,8 @@ bin_arangod_LDADD += \
 	@MRUBY_LIBS@
 
 bin_arangod_SOURCES += \
-	arangod/MRServer/mr-actions.cpp \
-	arangod/RestServer/RubyDispatcherThread.cpp
-
+	arangod/MRServer/ApplicationMR.cpp \
+	arangod/MRServer/mr-actions.cpp
 endif
 
 
