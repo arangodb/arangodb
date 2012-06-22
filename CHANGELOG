@@ -19,6 +19,10 @@
 ** --action.system-directory => --javascript.action-directory
 ** --javascript.action-threads => removed (is now the same pool as --server.threads)
 
+* various bug-fixes
+
+* support for import
+
 
 1.0.alpha1 (2012-05-28)
 -----------------------
