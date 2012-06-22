@@ -529,7 +529,7 @@ void ApplicationServer::wait () {
         }
 
         if (! checkParent()) {
-	  running = false;
+          running = false;
           break;
         }
       }
@@ -550,7 +550,7 @@ void ApplicationServer::beginShutdown () {
     return;
   }
 
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
     LOGGER_DEBUG << "beginning shutdown sequence of server feature '" << feature->getName() << "'";
@@ -570,7 +570,7 @@ void ApplicationServer::beginShutdown () {
 void ApplicationServer::shutdown () {
   beginShutdown();
 
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
 
     LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
