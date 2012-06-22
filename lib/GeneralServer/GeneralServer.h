@@ -149,7 +149,15 @@ namespace triagens {
             return ((S*) this)->createMaintenanceHandler();
           }
 
-          return _handlerFactory == 0 ? 0 : _handlerFactory->createHandler(request);
+          if (_handlerFactory == 0) {
+            return 0;
+          }
+
+          typename HF::GeneralHandler* handler = _handlerFactory->createHandler(request);
+
+          handler->setHandlerFactory(_handlerFactory);
+
+          return handler;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -159,12 +167,7 @@ namespace triagens {
         void destroyHandler (typename HF::GeneralHandler* handler) {
           assert(handler);
 
-          if (_handlerFactory == 0) {
-            delete handler;
-          }
-          else {
-            _handlerFactory->destroyHandler(handler);
-          }
+          handler->beginShutdown();
         }
 
         ////////////////////////////////////////////////////////////////////////////////

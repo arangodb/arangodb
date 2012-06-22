@@ -41,7 +41,11 @@ namespace triagens {
 
 
     HttpHandler::HttpHandler (HttpRequest* request)
-      : request(request), response(0), _task(0), _job(0) {
+      : _handlerFactory(0),
+        request(request),
+        response(0),
+        _task(0), 
+        _job(0) {
     }
 
 
@@ -58,6 +62,10 @@ namespace triagens {
       if (_task != 0) {
         _task->setHandler(0);
       }
+
+      if (_handlerFactory != 0) {
+        _handlerFactory->unregisterHandler(this);
+      }
     }
 
     // -----------------------------------------------------------------------------
@@ -67,6 +75,14 @@ namespace triagens {
     HttpResponse* HttpHandler::getResponse () {
       return response;
     }
+
+
+
+    void HttpHandler::setHandlerFactory (HttpHandlerFactory* handlerFactory) {
+      _handlerFactory = handlerFactory;
+    }
+
+
 
     bool HttpHandler::handleAsync () {
       if (_job == 0) {
