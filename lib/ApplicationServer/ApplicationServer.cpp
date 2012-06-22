@@ -437,6 +437,7 @@ void ApplicationServer::wait () {
     // check the parent and wait for a second
     if (_features.empty()) {
       if (! checkParent()) {
+        running = false;
         break;
       }
 
@@ -455,6 +456,7 @@ void ApplicationServer::wait () {
         }
 
         if (! checkParent()) {
+	  running = false;
           break;
         }
       }
