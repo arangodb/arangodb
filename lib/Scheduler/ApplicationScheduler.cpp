@@ -403,6 +403,8 @@ void ApplicationScheduler::shutdown () {
       sleep(1);
     }
 
+    _scheduler->shutdown();
+
     // delete the scheduler
     delete _scheduler;
     _scheduler = 0;
