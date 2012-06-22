@@ -17,8 +17,8 @@ export MAKEJ=2
 export LDD_INFO="no"
 
 HAS_ICECC=$(ps aux | grep -v "grep" | grep iceccd)
-if [ "x$HAS_ICECC" != "" ] ; then
-  export PATH=/usr/lib/icecc/bin/:$PATH
+if [ "x$HAS_ICECC" != "x" ] ; then
+  export PATH=/usr/lib/icecc/bin/:/opt/icecream/bin/:$PATH
   export MAKEJ=14
   echo "########################################################"
   echo "Using ICECC"
