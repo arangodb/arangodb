@@ -1,0 +1,98 @@
+################################################################################
+## epm configuration file
+## Documentation: http://www.epmhome.org
+################################################################################
+
+$version=${arangodb_version}
+$release=${arangodb_release}
+
+################################################################################
+## ArangoDB
+################################################################################
+
+%product ArangoDB
+%copyright 2012 by triAGENS GmbH
+%vendor triAGENS GmbH
+%license COPYING
+%readme README
+%description ArangoDB Software
+%version ${version}
+%release ${release}
+
+################################################################################
+## File List
+################################################################################
+
+d 0755 ${susr} ${sgrp} /etc/arangodb -
+d 0755 ${susr} ${sgrp} /etc/arangodb/${vers_dir} -
+f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
+
+f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/arangod
+l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
+
+f 0755 ${susr} ${sgrp} ${bindir}/arangoimp ${project_dir}/arangoimp
+f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/arangosh
+
+# database directory
+d 0755 ${rusr} ${rgrp} ${data_dir} -
+d 0755 ${susr} ${sgrp} ${data_dir}/arango -
+
+# static files
+d 0755 ${susr} ${sgrp} ${static_dir} -
+d 0755 ${susr} ${sgrp} ${static_dir}/js -
+d 0755 ${susr} ${sgrp} ${static_dir}/html -
+
+# PID file directory
+d 0755 ${susr} ${sgrp} /var/run/arangod -
+
+# logfile directory
+d 0755 ${rusr} ${rgrp} /var/log/arangod -
+
+%include ${project_dir}/Installation/arangodb.sublist
+
+################################################################################
+## Pre/Post Install
+################################################################################
+
+%postinstall <<EOF
+sed -e 's%@LOGDIR@%/var/log/arangod%g' -e 's%@DATABASE@%${data_dir}/arango%g' -e 's%@STATICFILES@%${static_dir}/arango%g' /etc/arangodb/${vers_dir}/arango.conf.template > /etc/arango.conf
+EOF
+
+%ifdef macosx
+d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
+f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${project_dir}/Installation/org.arangodb.plist
+%postinstall <<EOF
+sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
+launchctl unload /Library/LaunchDaemons/org.arangodb.plist
+launchctl load /Library/LaunchDaemons/org.arangodb.plist
+# we do not need this: launchctl start de.triagens.arango
+EOF
+
+%preremove <<EOF
+launchctl stop de.triagens.arango
+launchctl unload /Library/LaunchDaemons/org.arangodb.plist
+EOF
+
+%else
+%preinstall <<EOF
+getent group arango >/dev/null || groupadd -r arango 
+getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir} -s /bin/false -c "ArangoDB Application User" arango 
+EOF
+%endif
+
+%ifdef insserv
+%postinstall <<EOF
+test -x /sbin/insserv && /sbin/insserv /etc/init.d/arango 2&>1 > /dev/null
+exit 0
+EOF
+
+%preremove <<EOF
+/etc/init.d/arango stop 2&>1 > /dev/null
+test -x /sbin/insserv && /sbin/insserv -r /etc/init.d/arango 2&>1 > /dev/null
+exit 0
+EOF
+%endif
+
+%system linux
+i 0755 ${rusr} ${rgrp} arango ${project_dir}/Installation/${START_SCRIPT} ${runlevels}
+l 000 ${rusr} ${rgrp} ${sbindir}/rcarango /etc/init.d/arango 
