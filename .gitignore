@@ -85,6 +85,7 @@ stamp-h*
 .svn
 *.swp
 tags
+TAGS
 UnitTests/basics_suite
 UnitTests/geo_suite
 UnitTests/HttpInterface/logs
