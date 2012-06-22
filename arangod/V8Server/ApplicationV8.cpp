@@ -420,6 +420,8 @@ void ApplicationV8::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::shutdown () {
+  _contextCondition.broadcast();
+  usleep(1000);
   _gcThread->stop();
 
   for (size_t i = 0;  i < _nrInstances;  ++i) {
@@ -537,6 +539,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
   V8Context* context = _contexts[i];
 
+  context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
 
@@ -553,6 +556,8 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   context->_context.Dispose();
 
   context->_isolate->Exit();
+  delete context->_locker;
+
   context->_isolate->Dispose();
 
   LOGGER_TRACE << "closed V8 context #" << i;
