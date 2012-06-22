@@ -33,6 +33,8 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
+#include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
