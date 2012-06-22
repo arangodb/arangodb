@@ -36,7 +36,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12"
-    OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -121,7 +121,7 @@ echo
 echo
 echo "########################################################"
 echo "compile:"
-echo "    make $TARGETS"
+echo "    make -j $MAKEJ"
 echo "########################################################"
 echo
 
