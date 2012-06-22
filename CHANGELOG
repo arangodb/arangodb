@@ -9,6 +9,8 @@
 
 * added new MRuby version (2012-06-02)
 
+* added --log.filter
+
 * cleanup of command line options:
 ** --startup.directory => --javascript.startup-directory
 ** --quite => --quiet
