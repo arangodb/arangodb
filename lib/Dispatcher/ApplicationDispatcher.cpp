@@ -29,6 +29,7 @@
 
 #include "Dispatcher/Dispatcher.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
 
 using namespace std;
@@ -321,7 +322,7 @@ void ApplicationDispatcher::buildDispatcherReporter () {
   if (0.0 < _reportIntervall) {
     _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportIntervall);
 
-    _applicationScheduler->registerTask(_dispatcherReporterTask);
+    _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
   }
 }
 

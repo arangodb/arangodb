@@ -166,15 +166,6 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler () {
-
-  // cleanup tasks and scheduler
-  if (_scheduler != 0) {
-    for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {
-      _scheduler->destroyTask(*i);
-    }
-
-    delete _scheduler;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +207,7 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
     exit(EXIT_FAILURE);
   }
 
-  registerTask(task);
+  _scheduler->registerTask(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,20 +216,6 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
 
 bool ApplicationScheduler::addressReuseAllowed () {
   return _reuseAddress;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a new task
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::registerTask (Task* task) {
-  if (_scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create tasks";
-    exit(EXIT_FAILURE);
-  }
-
-  _scheduler->registerTask(task);
-  _tasks.push_back(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,6 +402,10 @@ void ApplicationScheduler::shutdown () {
       LOGGER_TRACE << "waiting for scheduler to stop";
       sleep(1);
     }
+
+    // delete the scheduler
+    delete _scheduler;
+    _scheduler = 0;
   }
 }
 
@@ -465,7 +446,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
   }
 
   if (0.0 < _reportIntervall) {
-    registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
+    _scheduler->registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
   }
 }
 
@@ -479,8 +460,8 @@ void ApplicationScheduler::buildControlCHandler () {
     exit(EXIT_FAILURE);
   }
 
-  registerTask(new ControlCTask(_applicationServer));
-  registerTask(new HangupTask());
+  _scheduler->registerTask(new ControlCTask(_applicationServer));
+  _scheduler->registerTask(new HangupTask());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

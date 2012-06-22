@@ -423,10 +423,14 @@ void ApplicationV8::shutdown () {
   _contextCondition.broadcast();
   usleep(1000);
   _gcThread->stop();
+  _gcThread->join();
+  delete _gcThread;
 
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownV8Instance(i);
   }
+
+  delete[] _contexts;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,6 +563,8 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   delete context->_locker;
 
   context->_isolate->Dispose();
+
+  delete context;
 
   LOGGER_TRACE << "closed V8 context #" << i;
 }
