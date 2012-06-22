@@ -27,6 +27,7 @@
 
 var actions = require("actions");
 var internal = require("internal");
+var console = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
@@ -57,6 +58,21 @@ actions.defineHttp({
   context : "admin",
   prefix : false,
   callback : GET_time
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns V8 version
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_v8_version (req, res) {
+  actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
+}
+
+actions.defineHttp({
+  url : "_admin/v8-version",
+  context : "admin",
+  prefix : false,
+  callback : GET_v8_version
 });
 
 ////////////////////////////////////////////////////////////////////////////////

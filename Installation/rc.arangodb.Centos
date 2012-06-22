@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+# arangod        Startup script for the ArangoDB Server
+#
+# chkconfig: - 85 15
+# description: ArangoDB Server
+# processname: arangod
+# config: /etc/arango.conf
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Path to the server binary
+ARANGO_BIN=/usr/sbin/arangod
+test -x $ARANGO_BIN || exit 5
+
+ARANGO_SYSCONFIG=/etc/arango.conf
+test -r $ARANGO_SYSCONFIG || exit 6
+
+pidfile=/var/run/arangod/pid
+
+RETVAL=0
+
+
+
+start() {
+  echo -n $"Starting $ARANGO_BIN: "
+  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arango
+
+  RETVAL=$?
+  echo
+
+  return $RETVAL
+}
+
+
+
+stop() {
+  echo -n $"Stopping $ARANGO_BIN: "
+  killproc -p "${pidfile}" -d 10 $ARANGO_BIN
+
+  RETVAL=$?
+  echo
+}
+
+
+
+# See how we were called.
+case "$1" in
+  start)
+    start
+    ;;
+
+  stop)
+    stop
+    ;;
+
+  status)
+    status -p ${pidfile} $ARANGO_BIN
+    RETVAL=$?
+    ;;
+
+  restart)
+    stop
+    start
+    ;;
+
+  *)
+    echo $"Usage: $ARANGO_BIN {start|stop|restart|status|help}"
+    exit 1
+esac
+
+exit $RETVAL

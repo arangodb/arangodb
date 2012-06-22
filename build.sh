@@ -16,6 +16,16 @@ export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
 
+HAS_ICECC=$(ps aux | grep -v "grep" | grep iceccd)
+if [ "x$HAS_ICECC" != "x" ] ; then
+  export PATH=/usr/lib/icecc/bin/:/opt/icecream/bin/:$PATH
+  export MAKEJ=14
+  echo "########################################################"
+  echo "Using ICECC"
+  echo "   PATH=$PATH"
+  echo "########################################################"
+fi
+
 echo
 echo "########################################################"
 echo "Building on $TRI_OS_LONG"
@@ -23,6 +33,13 @@ echo "########################################################"
 echo
 
 case $TRI_OS_LONG in
+
+  Linux-openSUSE-12*)
+    echo "Using configuration for openSuSE 12"
+    OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test --enable-mruby"
+    LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
+    ;;
 
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"

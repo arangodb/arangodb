@@ -1,0 +1,99 @@
+#! /usr/bin/perl
+#   
+#   mkman - Generates man pages from C source and header files.
+#
+#   Syntax: 'mkman classname', in doc subdirectory.
+#
+#   Copyright (c) 1996-2011 iMatix Corporation
+#
+#   This is free software; you can redistribute it and/or modify it under the
+#   terms of the GNU General Public License as published by the Free Software
+#   Foundation; either version 3 of the License, or (at your option) any later
+#   version.
+#
+#   This software is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABIL-
+#   ITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+#   License for more details.
+#
+#   You should have received a copy of the GNU General Public License along
+#   with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+use File::Basename;
+
+$class = $ARGV [0];
+$class = $1 if $class =~ /(\w+)\.\w+/;
+
+#   Look for class title in 2nd line of source
+#   If there's no class file, leave hand-written man page alone
+exit unless open (SOURCE, "../src/$class.c");
+$_ = <SOURCE>;
+$_ = <SOURCE>;
+$title = "no title found";
+$title = $1 if (/    \w+ - (.*)/);
+close (SOURCE);
+
+#   Open output file
+die "Can't create $class.txt: $!"
+    unless open (OUTPUT, ">$class.txt");
+
+printf "Generating $class.txt...\n";
+$underline = "=" x (length ($class) + 3);
+
+$template = <<"END";
+$class(7)
+$underline
+
+NAME
+----
+$class - $title
+
+SYNOPSIS
+--------
+----
+pull ../include/$class.h\@interface
+----
+
+DESCRIPTION
+-----------
+
+pull ../src/$class.c\@header,left
+
+pull ../src/$class.c\@discuss,left
+
+EXAMPLE
+-------
+.From $class\_test method
+----
+pull ../src/$class.c\@selftest
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]
+END
+
+#   Now process template
+for (split /^/, $template) {
+    if (/^pull (.*)(@[a-zA-Z0-9]+)(,(.*)\s*)?/) {
+        $source = $1;
+        $tag = $2;
+        $opts = $4;
+        die "Can't read $source: $!"
+            unless open (SOURCE, $source);
+        while (<SOURCE>) {
+            if (/$tag/) {
+                while (<SOURCE>) {
+                    last if /@[a-zA-Z0-9]+/;
+                    $_ = "    $_" if ($opts eq "code");
+                    s/^    // if ($opts eq "left");
+                    print OUTPUT $_;
+                }
+            }
+        }
+        close (SOURCE);
+    }
+    else {
+        print OUTPUT $_;
+    }
+}

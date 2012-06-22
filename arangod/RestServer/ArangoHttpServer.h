@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H
 #define TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H 1
 
-#include "HttpServer/HttpServerImpl.h"
+#include "HttpServer/HttpServer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class ArangoHttpServer
@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief specialized http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ArangoHttpServer : public rest::HttpServerImpl {
+    class ArangoHttpServer : public rest::HttpServer {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
