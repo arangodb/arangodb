@@ -62,7 +62,6 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestServer/ArangoHttpServer.h"
-#include "RestServer/JavascriptDispatcherThread.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
