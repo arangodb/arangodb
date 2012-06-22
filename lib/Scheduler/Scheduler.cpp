@@ -210,6 +210,22 @@ bool Scheduler::isShutdownInProgress () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::shutdown () {
+  for (set<Task*>::iterator i = taskRegistered.begin();
+       i != taskRegistered.end();
+       ++i) {
+    deleteTask(*i);
+  }
+
+  taskRegistered.clear();
+  task2thread.clear();
+  current.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -263,6 +279,8 @@ void Scheduler::unregisterTask (Task* task) {
         taskRegistered.erase(task);
         --current[task->getName()];
       }
+
+      task2thread.erase(i);
     }
   }
 
