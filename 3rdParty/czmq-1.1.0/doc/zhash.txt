@@ -1,0 +1,170 @@
+zhash(7)
+========
+
+NAME
+----
+zhash - generic type-free hash container
+
+SYNOPSIS
+--------
+----
+//  Callback function for zhash_foreach method
+typedef int (zhash_foreach_fn) (char *key, void *item, void *argument);
+//  Callback function for zhash_freefn method
+typedef void (zhash_free_fn) (void *data);
+
+//  Create a new, empty hash container
+zhash_t *
+    zhash_new (void);
+
+//  Destroy a hash container and all items in it
+void
+    zhash_destroy (zhash_t **self_p);
+
+//  Insert item into hash table with specified key and item.
+//  If key is already present returns -1 and leaves existing item unchanged
+//  Returns 0 on success.
+int
+    zhash_insert (zhash_t *self, char *key, void *item);
+
+//  Update item into hash table with specified key and item.
+//  If key is already present, destroys old item and inserts new one.
+//  Use free_fn method to ensure deallocator is properly called on item.
+void
+    zhash_update (zhash_t *self, char *key, void *item);
+
+//  Remove an item specified by key from the hash table. If there was no such
+//  item, this function does nothing.
+void
+    zhash_delete (zhash_t *self, char *key);
+
+//  Return the item at the specified key, or null
+void *
+    zhash_lookup (zhash_t *self, char *key);
+
+//  Reindexes an item from an old key to a new key. If there was no such
+//  item, does nothing. Returns 0 if successful, else -1.
+int
+    zhash_rename (zhash_t *self, char *old_key, char *new_key);
+
+//  Set a free function for the specified hash table item. When the item is
+//  destroyed, the free function, if any, is called on that item.
+//  Use this when hash items are dynamically allocated, to ensure that
+//  you don't have memory leaks. You can pass 'free' or NULL as a free_fn.
+//  Returns the item, or NULL if there is no such item.
+void *
+    zhash_freefn (zhash_t *self, char *key, zhash_free_fn *free_fn);
+
+//  Return the number of keys/items in the hash table
+size_t
+    zhash_size (zhash_t *self);
+
+//  Apply function to each item in the hash table. Items are iterated in no
+//  defined order.  Stops if callback function returns non-zero and returns
+//  final return code from callback function (zero = success).
+int
+    zhash_foreach (zhash_t *self, zhash_foreach_fn *callback, void *argument);
+
+//  Self test of this class
+void
+    zhash_test (int verbose);
+----
+
+DESCRIPTION
+-----------
+
+Expandable hash table container
+
+Note that it's relatively slow (~50k insertions/deletes per second), so
+don't do inserts/updates on the critical path for message I/O.  It can
+do ~2.5M lookups per second for 16-char keys.  Timed on a 1.6GHz CPU.
+
+EXAMPLE
+-------
+.From zhash_test method
+----
+    zhash_t *hash = zhash_new ();
+    assert (hash);
+    assert (zhash_size (hash) == 0);
+
+    //  Insert some items
+    int rc;
+    rc = zhash_insert (hash, "DEADBEEF", (void *) 0xDEADBEEF);
+    assert (rc == 0);
+    rc = zhash_insert (hash, "ABADCAFE", (void *) 0xABADCAFE);
+    assert (rc == 0);
+    rc = zhash_insert (hash, "C0DEDBAD", (void *) 0xC0DEDBAD);
+    assert (rc == 0);
+    rc = zhash_insert (hash, "DEADF00D", (void *) 0xDEADF00D);
+    assert (rc == 0);
+    assert (zhash_size (hash) == 4);
+
+    //  Look for existing items
+    void *item;
+    item = zhash_lookup (hash, "DEADBEEF");
+    assert (item == (void *) 0xDEADBEEF);
+    item = zhash_lookup (hash, "ABADCAFE");
+    assert (item == (void *) 0xABADCAFE);
+    item = zhash_lookup (hash, "C0DEDBAD");
+    assert (item == (void *) 0xC0DEDBAD);
+    item = zhash_lookup (hash, "DEADF00D");
+    assert (item == (void *) 0xDEADF00D);
+
+    //  Look for non-existent items
+    item = zhash_lookup (hash, "0xF0000000");
+    assert (item == NULL);
+
+    //  Try to insert duplicate items
+    rc = zhash_insert (hash, "DEADBEEF", (void *) 0xF0000000);
+    assert (rc == -1);
+    item = zhash_lookup (hash, "DEADBEEF");
+    assert (item == (void *) 0xDEADBEEF);
+
+    //  Rename an item
+    rc = zhash_rename (hash, "DEADBEEF", "LIVEBEEF");
+    assert (rc == 0);
+    rc = zhash_rename (hash, "WHATBEEF", "LIVEBEEF");
+    assert (rc == -1);
+
+    //  Delete a item
+    zhash_delete (hash, "LIVEBEEF");
+    item = zhash_lookup (hash, "LIVEBEEF");
+    assert (item == NULL);
+    assert (zhash_size (hash) == 3);
+
+    //  Check that the queue is robust against random usage
+    struct {
+        char name [100];
+        Bool exists;
+    } testset [200];
+    memset (testset, 0, sizeof (testset));
+    int testmax = 200, testnbr, iteration;
+
+    srandom ((unsigned) time (NULL));
+    for (iteration = 0; iteration < 25000; iteration++) {
+        testnbr = randof (testmax);
+        if (testset [testnbr].exists) {
+            item = zhash_lookup (hash, testset [testnbr].name);
+            assert (item);
+            zhash_delete (hash, testset [testnbr].name);
+            testset [testnbr].exists = FALSE;
+        }
+        else {
+            sprintf (testset [testnbr].name, "%x-%x", rand (), rand ());
+            if (zhash_insert (hash, testset [testnbr].name, "") == 0)
+                testset [testnbr].exists = TRUE;
+        }
+    }
+    //  Test 10K lookups
+    for (iteration = 0; iteration < 10000; iteration++)
+        item = zhash_lookup (hash, "DEADBEEFABADCAFE");
+
+    //  Destructor should be safe to call twice
+    zhash_destroy (&hash);
+    zhash_destroy (&hash);
+    assert (hash == NULL);
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]

@@ -8,4 +8,4 @@ class VersionHandler < Arango::AbstractServlet
 
 end
 
-Arango::HttpServer.mount "/_ruby/version", VersionHandler
+Arango::HttpServer.mount "/_admin/ruby-version", VersionHandler

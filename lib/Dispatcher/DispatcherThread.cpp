@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,18 +23,21 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherThread.h"
 
-#include <Basics/Exceptions.h>
-#include <Logger/Logger.h>
-#include <Basics/StringUtils.h>
-
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
+#include "Logger/Logger.h"
+
+#ifdef TRI_ENABLE_ZEROMQ
+#include "ZeroMQ/ApplicationZeroMQ.h"
+#endif
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -58,36 +61,9 @@ using namespace triagens::rest;
 
 DispatcherThread::DispatcherThread (DispatcherQueue* queue)
   : Thread("dispatcher"),
-    queue(queue),
-    jobType(Job::READ_JOB) {
+    _queue(queue),
+    _jobType(Job::READ_JOB) {
   allowAsynchronousCancelation();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called to report the status of the thread
-////////////////////////////////////////////////////////////////////////////////
-
-void DispatcherThread::reportStatus () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called in regular intervalls
-////////////////////////////////////////////////////////////////////////////////
-
-void DispatcherThread::tick (bool) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,50 +80,75 @@ void DispatcherThread::tick (bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
-  queue->accessQueue.lock();
+#ifdef TRI_ENABLE_ZEROMQ
+  void* zContext = _queue->_dispatcher->zeroMQContext();
+  void* zBridge = 0;
 
-  queue->nrStarted--;
-  queue->nrRunning++;
+  if (zContext != 0) {
+    zBridge = zmq_socket(zContext, ZMQ_DEALER);
 
-  queue->startedThreads.insert(this);
+    if (zBridge == 0) {
+      LOGGER_FATAL << "cannot create Disptacher/ZeroMQ bridge: " << zmq_strerror(errno);
+      zmq_term(zContext);
+      exit(EXIT_FAILURE);
+    }
+
+    int zRes = zmq_bind(zBridge, ApplicationZeroMQ::ZEROMQ_INTERNAL_BRIDGE.c_str());
+
+    if (zRes != 0) {
+      LOGGER_FATAL << "cannot bind Disptacher/ZeroMQ bridge: " << zmq_strerror(errno);
+      zmq_close(zBridge);
+      zmq_term(zContext);
+      exit(EXIT_FAILURE);
+    }
+  }
+#endif
+
+  _queue->_accessQueue.lock();
+
+  _queue->_nrStarted--;
+  _queue->_nrRunning++;
+  _queue->_nrUp++;
+
+  _queue->_startedThreads.insert(this);
 
   // iterate until we are shutting down.
-  while (jobType != Job::SPECIAL_JOB && queue->stopping == 0) {
+  while (_jobType != Job::SPECIAL_JOB && _queue->_stopping == 0) {
 
     // delete old jobs
-    for (list<DispatcherThread*>::iterator i = queue->stoppedThreads.begin();  i != queue->stoppedThreads.end();  ++i) {
+    for (list<DispatcherThread*>::iterator i = _queue->_stoppedThreads.begin();  i != _queue->_stoppedThreads.end();  ++i) {
       delete *i;
     }
 
-    queue->stoppedThreads.clear();
-    queue->nrStopped = 0;
+    _queue->_stoppedThreads.clear();
+    _queue->_nrStopped = 0;
 
     // a job is waiting to execute
-    if (  ! queue->readyJobs.empty()
-         && queue->monopolizer == 0
-         && ! (queue->readyJobs.front()->type() == Job::WRITE_JOB && 1 < queue->nrRunning)) {
+    if (  ! _queue->_readyJobs.empty()
+         && _queue->_monopolizer == 0
+         && ! (_queue->_readyJobs.front()->type() == Job::WRITE_JOB && 1 < _queue->_nrRunning)) {
 
       // try next job
-      Job* job = queue->readyJobs.front();
-      queue->readyJobs.pop_front();
+      Job* job = _queue->_readyJobs.front();
+      _queue->_readyJobs.pop_front();
 
       // handle job type
-      jobType = job->type();
+      _jobType = job->type();
 
       // start a new thread for special jobs
-      if (jobType == Job::SPECIAL_JOB) {
-        queue->nrRunning--;
-        queue->nrSpecial++;
-        queue->startQueueThread();
+      if (_jobType == Job::SPECIAL_JOB) {
+        _queue->_nrRunning--;
+        _queue->_nrSpecial++;
+        _queue->startQueueThread();
       }
 
       // monopolize queue
-      else if (jobType == Job::WRITE_JOB) {
-        queue->monopolizer = this;
+      else if (_jobType == Job::WRITE_JOB) {
+        _queue->_monopolizer = this;
       }
 
       // now release the queue lock (initialise is inside the lock, work outside)
-      queue->accessQueue.unlock();
+      _queue->_accessQueue.unlock();
 
       // do the work (this might change the job type)
       Job::status_e status = Job::JOB_FAILED;
@@ -196,7 +197,7 @@ void DispatcherThread::run () {
       }
       catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-        if (queue->stopping != 0) {
+        if (_queue->_stopping != 0) {
           LOGGER_WARNING << "caught cancellation exception during work";
           throw;
         }
@@ -224,20 +225,25 @@ void DispatcherThread::run () {
       tick(false);
 
       // require the lock
-      queue->accessQueue.lock();
-      
+      _queue->_accessQueue.lock();
+
       // cleanup
-      queue->monopolizer = 0;
+      _queue->_monopolizer = 0;
 
       // finish jobs
       try {
         job->setDispatcherThread(0);
-        
+
         if (status == Job::JOB_DONE) {
           job->cleanup();
         }
+#ifdef TRI_ENABLE_ZEROMQ
+        else if (status == Job::JOB_DONE_ZEROMQ) {
+          job->finish(zBridge);
+        }
+#endif
         else if (status == Job::JOB_REQUEUE) {
-          queue->dispatcher->addJob(job);
+          _queue->_dispatcher->addJob(job);
         }
         else if (status == Job::JOB_FAILED) {
           job->cleanup();
@@ -245,51 +251,59 @@ void DispatcherThread::run () {
       }
       catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-        if (queue->stopping != 0) {
+        if (_queue->_stopping != 0) {
           LOGGER_WARNING << "caught cancellation exception during cleanup";
-          queue->accessQueue.unlock();
+          _queue->_accessQueue.unlock();
           throw;
         }
 #endif
-        
+
         LOGGER_WARNING << "caught error while cleaning up!";
       }
 
-      if (0 < queue->nrWaiting && ! queue->readyJobs.empty()) {
-        queue->accessQueue.broadcast();
+      if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {
+        _queue->_accessQueue.broadcast();
       }
     }
     else {
 
       // cleanup without holding a lock
-      queue->accessQueue.unlock();
+      _queue->_accessQueue.unlock();
       tick(true);
-      queue->accessQueue.lock();
+      _queue->_accessQueue.lock();
 
       // wait, if there are no jobs
-      if (queue->readyJobs.empty()) {
-        queue->nrRunning--;
-        queue->nrWaiting++;
+      if (_queue->_readyJobs.empty()) {
+        _queue->_nrRunning--;
+        _queue->_nrWaiting++;
 
-        queue->accessQueue.wait();
+        _queue->_accessQueue.wait();
 
-        queue->nrWaiting--;
-        queue->nrRunning++;
+        _queue->_nrWaiting--;
+        _queue->_nrRunning++;
       }
     }
   }
 
-  queue->stoppedThreads.push_back(this);
-  queue->startedThreads.erase(this);
+  _queue->_stoppedThreads.push_back(this);
+  _queue->_startedThreads.erase(this);
 
-  queue->nrRunning--;
-  queue->nrStopped++;
+  _queue->_nrRunning--;
+  _queue->_nrStopped++;
 
-  if (jobType == Job::SPECIAL_JOB) {
-    queue->nrSpecial--;
+  if (_jobType == Job::SPECIAL_JOB) {
+    _queue->_nrSpecial--;
   }
 
-  queue->accessQueue.unlock();
+  _queue->_nrUp--;
+
+  _queue->_accessQueue.unlock();
+
+#ifdef TRI_ENABLE_ZEROMQ
+  if (zBridge != 0) {
+    zmq_close(zBridge);
+  }
+#endif
 
   LOGGER_TRACE << "dispatcher thread has finished";
 }
@@ -298,7 +312,38 @@ void DispatcherThread::run () {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Dispatcher
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called to report the status of the thread
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherThread::reportStatus () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called in regular intervalls
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherThread::tick (bool) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

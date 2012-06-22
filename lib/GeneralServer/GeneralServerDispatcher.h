@@ -86,7 +86,7 @@ namespace triagens {
 
         bool handleRequest (CT * task, typename HF::GeneralHandler *& handler) {
 
-          // execute handle and requeue
+          // execute handler and (possibly) requeue
           bool done = false;
           
           assert(handler);
@@ -112,7 +112,7 @@ namespace triagens {
               GeneralAsyncCommTask<S, HF, CT>* atask = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
 
               if (atask == 0) {
-                LOGGER_WARNING << "task is indirect, but not asynchronous";
+                LOGGER_WARNING << "task is indirect, but not asynchronous - this cannot work!";
                 this->destroyHandler(handler);
                 handler = 0;
 

@@ -9,13 +9,15 @@
 
 * added new MRuby version (2012-06-02)
 
+* added --log.filter
+
 * cleanup of command line options:
 ** --startup.directory => --javascript.startup-directory
 ** --quite => --quiet
 ** --gc.interval => --javascript.gc-interval
 ** --startup.modules-path => --javascript.modules-path
 ** --action.system-directory => --javascript.action-directory
-** --javascript.action-threads
+** --javascript.action-threads => removed (is now the same pool as --server.threads)
 
 
 1.0.alpha1 (2012-05-28)

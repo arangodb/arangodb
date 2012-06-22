@@ -1,0 +1,98 @@
+zctx(7)
+=======
+
+NAME
+----
+zctx - working with 0MQ contexts
+
+SYNOPSIS
+--------
+----
+//  Create new context, returns context object, replaces zmq_init
+zctx_t *
+    zctx_new (void);
+
+//  Destroy context and all sockets in it, replaces zmq_term
+void
+    zctx_destroy (zctx_t **self_p);
+
+//  Raise default I/O threads from 1, for crazy heavy applications
+void
+    zctx_set_iothreads (zctx_t *self, int iothreads);
+
+//  Set msecs to flush sockets when closing them
+void
+    zctx_set_linger (zctx_t *self, int linger);
+
+//  Self test of this class
+int
+    zctx_test (Bool verbose);
+
+//  Global signal indicator, TRUE when user presses Ctrl-C or the process
+//  gets a SIGTERM signal.
+extern int zctx_interrupted;
+----
+
+DESCRIPTION
+-----------
+
+The zctx class wraps 0MQ contexts. It manages open sockets in the context
+and automatically closes these before terminating the context. It provides
+a simple way to set the linger timeout on sockets, and configure contexts
+for number of I/O threads. Sets-up signal (interrrupt) handling for the
+process.
+
+The zctx class has these main features:
+
+* Tracks all open sockets and automatically closes them before calling
+zmq_term(). This avoids an infinite wait on open sockets.
+
+* Automatically configures sockets with a ZMQ_LINGER timeout you can
+define, and which defaults to zero. The default behavior of zctx is
+therefore like 0MQ/2.0, immediate termination with loss of any pending
+messages. You can set any linger timeout you like by calling the
+zctx_set_linger() method.
+
+* Moves the iothreads configuration to a separate method, so that default
+usage is 1 I/O thread. Lets you configure this value.
+
+* Sets up signal (SIGINT and SIGTERM) handling so that blocking calls
+such as zmq_recv() and zmq_poll() will return when the user presses
+Ctrl-C.
+
+
+
+EXAMPLE
+-------
+.From zctx_test method
+----
+    //  Create and destroy a context without using it
+    zctx_t *ctx = zctx_new ();
+    assert (ctx);
+    zctx_destroy (&ctx);
+    assert (ctx == NULL);
+
+    //  Create a context with many busy sockets, destroy it
+    ctx = zctx_new ();
+    zctx_set_iothreads (ctx, 1);
+    zctx_set_linger (ctx, 5);       //  5 msecs
+    void *s1 = zctx__socket_new (ctx, ZMQ_PAIR);
+    void *s2 = zctx__socket_new (ctx, ZMQ_XREQ);
+    void *s3 = zctx__socket_new (ctx, ZMQ_REQ);
+    void *s4 = zctx__socket_new (ctx, ZMQ_REP);
+    void *s5 = zctx__socket_new (ctx, ZMQ_PUB);
+    void *s6 = zctx__socket_new (ctx, ZMQ_SUB);
+    zsocket_connect (s1, "tcp://127.0.0.1:5555");
+    zsocket_connect (s2, "tcp://127.0.0.1:5555");
+    zsocket_connect (s3, "tcp://127.0.0.1:5555");
+    zsocket_connect (s4, "tcp://127.0.0.1:5555");
+    zsocket_connect (s5, "tcp://127.0.0.1:5555");
+    zsocket_connect (s6, "tcp://127.0.0.1:5555");
+
+    //  Everything should be cleanly closed now
+    zctx_destroy (&ctx);
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]
