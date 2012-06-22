@@ -2,9 +2,9 @@
 
 We recently started a new open source project - a nosql database
 called AvocadoDB which became ArangoDB in May 2012.  ArangoDB is
-currently pre-alpha. We want to have a version 1 ready by end of May
-2012, a multi server version is planned for the third quarter of
-2012. For details see the roadmap.
+currently available as an alpha version. 
+We want to have a stable version 1 ready soon. A multi server version is planned 
+for the third quarter of 2012. For details see the roadmap.
 
 Key features include:
 
@@ -16,6 +16,7 @@ Key features include:
 * Free index choice: use the correct index for your problem, be it a skip list or a n-gram search
 * Configurable durability: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of modern storage hardware, like SSD and large caches
+* Powerful query language (AQL) to retrieve data 
 * It is open source (Apache Licence 2.0)
 
 For more in-depth information
@@ -48,7 +49,7 @@ The ArangoDB shell will be install as
 Start the server:
 
     > mkdir /tmp/vocbase
-    > ./arangod /tmp/vocbase
+    > bin/arangod /tmp/vocbase
     2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 0.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO HTTP client port: 127.0.0.1:8529
     2012-03-30T12:54:19Z [11794] INFO HTTP admin port: 127.0.0.1:8530
@@ -56,7 +57,7 @@ Start the server:
 
 Start the shell in another windows:
 
-    > ./arangosh
+    > bin/arangosh
                                            _     
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
