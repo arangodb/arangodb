@@ -325,6 +325,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     // use existing document id & revision id
     marker->_did = did;
     marker->_rid = marker->base._tick = rid;
+    TRI_UpdateTickVocBase(did);
     TRI_UpdateTickVocBase(rid);
   }
   else {
