@@ -7,6 +7,8 @@
 
 * fixed issue #103: Should we cleanup the directory structure
 
+* fixed issue #112: do not accept document with duplicate attribute names
+
 * added new MRuby version (2012-06-02)
 
 * added --log.filter
