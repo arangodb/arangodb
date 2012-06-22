@@ -65,10 +65,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global V8 factory
+/// @brief global V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8* GlobalV8Factory = 0;
+ApplicationV8* GlobalV8Dealer = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -138,7 +138,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Factory->enterContext();
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext();
 
       READ_LOCKER(_callbacksLock);
 
@@ -147,14 +147,14 @@ class v8_action_t : public TRI_action_t {
       if (i == _callbacks.end()) {
         LOGGER_WARNING << "no callback function for JavaScript action '" << _url.c_str() << "'";
 
-        GlobalV8Factory->exitContext(context);
+        GlobalV8Dealer->exitContext(context);
 
         return new HttpResponse(HttpResponse::NOT_FOUND);
       }
 
       HttpResponse* response = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
 
-      GlobalV8Factory->exitContext(context);
+      GlobalV8Dealer->exitContext(context);
 
       return response;
     }
@@ -618,7 +618,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
     isolate->SetData(v8g);
   }
 
-  GlobalV8Factory = applicationV8;
+  GlobalV8Dealer = applicationV8;
 
   // .............................................................................
   // create the global functions

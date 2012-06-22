@@ -39,47 +39,40 @@
 
 #include "build.h"
 
-#include "Actions/actions.h"
 #include "Actions/RestActionHandler.h"
+#include "Actions/actions.h"
+#include "Admin/ApplicationAdminServer.h"
 #include "Admin/RestHandlerCreator.h"
-#include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/Random.h"
-#include "Basics/safe_cast.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
-#include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
+#include "HttpServer/ApplicationHttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
+#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestHandler/RestBatchHandler.h"
 #include "RestServer/ArangoHttpServer.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
-#include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
-#include "V8Server/v8-actions.h"
-#include "V8Server/v8-query.h"
-#include "V8Server/v8-vocbase.h"
 
 #ifdef TRI_ENABLE_MRUBY
+#include "MRServer/ApplicationMR.h"
 #include "MRServer/mr-actions.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
-#include "RestServer/RubyDispatcherThread.h"
 #endif
 
 #ifdef TRI_ENABLE_ZEROMQ
@@ -104,55 +97,6 @@ using namespace triagens::arango;
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allowed client actions
-////////////////////////////////////////////////////////////////////////////////
-
-static set<string> AllowedClientActions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allowed admin actions
-////////////////////////////////////////////////////////////////////////////////
-
-static set<string> AllowedAdminActions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Ruby module path
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-static string StartupModulesMR;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Ruby startup loader
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-static MRLoader StartupLoaderMR;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Ruby action loader
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-static MRLoader ActionLoaderMR;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -160,42 +104,6 @@ static MRLoader ActionLoaderMR;
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript action dispatcher thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-
-static DispatcherThread* ClientActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
-  return new RubyDispatcherThread(queue,
-                                  Vocbase,
-                                  "CLIENT-RUBY",
-                                  AllowedClientActions,
-                                  StartupModulesMR,
-                                  &StartupLoaderMR,
-                                  &ActionLoaderMR);
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript system action dispatcher thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-
-static DispatcherThread* SystemActionDispatcherThreadCreatorMR (DispatcherQueue* queue) {
-  return new RubyDispatcherThread(queue,
-                                  Vocbase,
-                                  "SYSTEM-RUBY",
-                                  AllowedAdminActions,
-                                  StartupModulesMR,
-                                  &StartupLoaderMR,
-                                  &ActionLoaderMR);
-}
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" handlers
@@ -283,13 +191,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpPort("127.0.0.1:8529"),
     _adminPort(),
     _dispatcherThreads(8),
-    _actionThreadsJS(8),
-#ifdef TRI_ENABLE_MRUBY
-    _startupPathMR(),
-    _startupModulesMR("mr/modules"),
-    _actionPathMR(),
-    _actionThreadsMR(8),
-#endif
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
@@ -302,58 +203,15 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
     _workingDirectory = _binaryPath + "/../tmp";
     _databasePath = _binaryPath + "/../var/arango";
-
-#ifdef TRI_ENABLE_MRUBY
-    _actionPathMR = _binaryPath + "/../share/arango/mr/actions/system";
-    _startupModulesMR = _binaryPath + "/../share/arango/mr/server/modules"
-                + ";" + _binaryPath + "/../share/arango/mr/common/modules";
 #endif
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_ENABLE_MRUBY
-    _actionPathMR = _binaryPath + "/../mr/actions/system";
-    _startupModulesMR = _binaryPath + "/../mr/server/modules"
-                + ";" + _binaryPath + "/../mr/common/modules";
-#endif
-
-#else
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
 
     _workingDirectory = "/var/tmp";
 
-#ifdef _PKGDATADIR_
-
-#ifdef TRI_ENABLE_MRUBY
-    _actionPathMR = string(_PKGDATADIR_) + "/mr/actions/system";
-    _startupModulesMR = string(_PKGDATADIR_) + "/mr/server/modules"
-                + ";" + string(_PKGDATADIR_) + "/mr/common/modules";
-#endif
-
-#endif
-
 #ifdef _DATABASEDIR_
     _databasePath = _DATABASEDIR_;
-#endif
-
-#endif
 #endif
 }
 
@@ -395,6 +253,17 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationV8 = new ApplicationV8(_binaryPath);
   _applicationServer->addFeature(_applicationV8);
+
+  // .............................................................................
+  // MRuby engine
+  // .............................................................................
+
+#ifdef TRI_ENABLE_MRUBY
+
+  _applicationMR = new ApplicationMR(_binaryPath);
+  _applicationServer->addFeature(_applicationMR);
+
+#endif
 
   // .............................................................................
   // ZeroMQ
@@ -503,12 +372,15 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-#ifdef TRI_ENABLE_MRUBY
-    ("ruby-console", "do not start as server, start a Ruby emergency console instead")
-#endif
     ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
     ("jslint", &_jslint, "do not start as server, run js lint instead")
   ;
+
+#ifdef TRI_ENABLE_MRUBY
+  additional[ApplicationServer::OPTIONS_CMDLINE]
+    ("ruby-console", "do not start as server, start a Ruby emergency console instead")
+  ;
+#endif
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
@@ -549,32 +421,6 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   // .............................................................................
-  // JavaScript options
-  // .............................................................................
-
-  additional["THREAD Options:help-admin"]
-    ("javascript.action-threads", &_actionThreadsJS, "number of threads for JavaScript actions")
-  ;
-
-  // .............................................................................
-  // MRuby options
-  // .............................................................................
-
-#ifdef TRI_ENABLE_MRUBY
-
-  additional["DIRECTORY Options:help-admin"]
-    ("ruby.action-directory", &_actionPathMR, "path to the MRuby action directory")
-    ("ruby.modules-path", &_startupModulesMR, "one or more directories separated by (semi-) colons")
-    ("ruby.startup-directory", &_startupPathMR, "path to the directory containing alternate MRuby startup scripts")
-  ;
-
-  additional["THREAD Options:help-admin"]
-    ("ruby.action-threads", &_actionThreadsMR, "number of threads for MRuby actions")
-  ;
-
-#endif
-
-  // .............................................................................
   // database options
   // .............................................................................
 
@@ -607,28 +453,6 @@ void ArangoServer::buildApplicationServer () {
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
-
-#ifdef TRI_ENABLE_MRUBY
-
-  if (_startupPathMR.empty()) {
-    LOGGER_INFO << "using built-in MRuby startup files";
-    StartupLoaderMR.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
-    StartupLoaderMR.defineScript("server/server.rb", MR_server_server);
-  }
-  else {
-    LOGGER_INFO << "using MRuby startup files at '" << _startupPathMR << "'";
-    StartupLoaderMR.setDirectory(_startupPathMR);
-  }
-
-  if (! _actionPathMR.empty()) {
-    ActionLoaderMR.setDirectory(_actionPathMR);
-    LOGGER_INFO << "using MRuby action files at '" << _actionPathJS << "'";
-  }
-  else {
-    LOGGER_INFO << "actions are disabled, empty system action path";
-  }
-
-#endif
 
   // .............................................................................
   // in shell mode ignore the rest
@@ -720,6 +544,11 @@ int ArangoServer::startupServer () {
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(actionConcurrency);
 
+#if TRI_ENABLE_MRUBY
+  _applicationMR->setVocbase(_vocbase);
+  _applicationMR->setConcurrency(actionConcurrency);
+#endif
+
   _applicationServer->prepare();
 
   // .............................................................................
@@ -730,20 +559,10 @@ int ArangoServer::startupServer () {
 
   Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
 
-#if TRI_ENABLE_MRUBY
-  if (0 < _actionThreadsMR) {
-    dispatcher->addQueue("CLIENT-RUBY", ClientActionDispatcherThreadCreatorMR, _actionThreadsMR);
-  }
-#endif
-
   // use a separate queue for administrator requests
   if (! shareAdminPort) {
     if (useAdminPort) {
       dispatcher->addQueue("SYSTEM", 2);
-
-#if TRI_ENABLE_MRUBY
-      dispatcher->addQueue("SYSTEM-RUBY", SystemActionDispatcherThreadCreatorMR, 2);
-#endif
     }
   }
 
@@ -822,7 +641,7 @@ int ArangoServer::startupServer () {
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t zeromqOptions;
   zeromqOptions._vocbase = _vocbase;
-  zeromqOptions._queue = "CLIENT-";
+  zeromqOptions._queue = "CLIENT";
 
   // only construct factory if ZeroMQ is active
   if (_applicationZeroMQ->isActive()) {
@@ -877,7 +696,6 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // and cleanup
   // .............................................................................
-  
 
   _applicationServer->shutdown();
   closeDatabase();
@@ -1162,11 +980,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 
 
 int ArangoServer::executeRubyConsole () {
-  struct mrb_parser_state* p;
-  size_t i;
-  char const* files[] = { "common/bootstrap/error.rb",
-                          "server/server.rb"
-  };
+  bool ok;
 
   // only simple logging
   TRI_ShutdownLogging();
@@ -1176,30 +990,27 @@ int ArangoServer::executeRubyConsole () {
   // open the database
   openDatabase();
 
-  // create a new ruby shell
-  MR_state_t* mrs = MR_OpenShell();
+  // set-up MRuby context
+  _applicationMR->setVocbase(_vocbase);
+  _applicationMR->setConcurrency(1);
+  _applicationMR->disableActions();
 
-  TRI_InitMRUtils(mrs);
-  TRI_InitMRActions(mrs);
+  ok = _applicationMR->prepare();
 
-  // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = StartupLoaderMR.loadScript(&mrs->_mrb, files[i]);
-
-    if (ok) {
-      LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
-    }
-    else {
-      LOGGER_FATAL << "cannot load ruby file '" << files[i] << "'";
-      TRI_FlushLogging();
-      return EXIT_FAILURE;
-    }
+  if (! ok) {
+    LOGGER_FATAL << "cannot initialize MRuby enigne";
+    exit(EXIT_FAILURE);
   }
+
+  _applicationMR->start();
+
+  // enter MR context
+  ApplicationMR::MRContext* context = _applicationMR->enterContext();
 
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(context->_mrs, ".arango-mrb");
 
   console->open(false);
 
@@ -1218,7 +1029,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    p = mrb_parse_string(&mrs->_mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(&context->_mrs->_mrb, input);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1226,24 +1037,24 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(&mrs->_mrb, p->tree);
+    int n = mrb_generate_code(&context->_mrs->_mrb, p->tree);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(&mrs->_mrb,
-                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
-                               mrb_top_self(&mrs->_mrb));
+    mrb_value result = mrb_run(&context->_mrs->_mrb,
+                               mrb_proc_new(&context->_mrs->_mrb, context->_mrs->_mrb.irep[n]),
+                               mrb_top_self(&context->_mrs->_mrb));
 
-    if (mrs->_mrb.exc) {
+    if (context->_mrs->_mrb.exc) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
-      mrs->_mrb.exc = 0;
+      mrb_p(&context->_mrs->_mrb, mrb_obj_value(context->_mrs->_mrb.exc));
+      context->_mrs->_mrb.exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(&mrs->_mrb, result);
+      mrb_p(&context->_mrs->_mrb, result);
     }
   }
 

@@ -251,8 +251,8 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
 @ENABLE_MRUBY_TRUE@am__append_10 = \
-@ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp \
-@ENABLE_MRUBY_TRUE@	arangod/RestServer/RubyDispatcherThread.cpp
+@ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
+@ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
 @ENABLE_ZEROMQ_TRUE@am__append_11 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LIBS@
@@ -648,10 +648,10 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c arangod/MRServer/mr-actions.cpp \
-	arangod/RestServer/RubyDispatcherThread.cpp
-@ENABLE_MRUBY_TRUE@am__objects_2 = arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT) \
-@ENABLE_MRUBY_TRUE@	arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
+	arangod/VocBase/vocbase.c arangod/MRServer/ApplicationMR.cpp \
+	arangod/MRServer/mr-actions.cpp
+@ENABLE_MRUBY_TRUE@am__objects_2 = arangod/MRServer/bin_arangod-ApplicationMR.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 am_bin_arangod_OBJECTS =  \
 	arangod/Actions/bin_arangod-actions.$(OBJEXT) \
 	arangod/Actions/bin_arangod-ActionDispatcherThread.$(OBJEXT) \
@@ -2623,12 +2623,12 @@ arangod/MRServer/$(am__dirstamp):
 arangod/MRServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/MRServer/$(DEPDIR)
 	@: > arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
+arangod/MRServer/bin_arangod-ApplicationMR.$(OBJEXT):  \
+	arangod/MRServer/$(am__dirstamp) \
+	arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
 arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT):  \
 	arangod/MRServer/$(am__dirstamp) \
 	arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT):  \
-	arangod/RestServer/$(am__dirstamp) \
-	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 bin/$(am__dirstamp):
 	@$(MKDIR_P) bin
 	@: > bin/$(am__dirstamp)
@@ -2752,6 +2752,7 @@ mostlyclean-compile:
 	-rm -f arangod/HashIndex/bin_arangod-hashindex.$(OBJEXT)
 	-rm -f arangod/IndexIterators/bin_arangod-index-iterator.$(OBJEXT)
 	-rm -f arangod/IndexOperators/bin_arangod-index-operator.$(OBJEXT)
+	-rm -f arangod/MRServer/bin_arangod-ApplicationMR.$(OBJEXT)
 	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
@@ -2762,7 +2763,6 @@ mostlyclean-compile:
 	-rm -f arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT)
-	-rm -f arangod/RestServer/bin_arangod-RubyDispatcherThread.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-arango.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplistIndex.$(OBJEXT)
@@ -3010,6 +3010,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/IndexIterators/$(DEPDIR)/bin_arangod-index-iterator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/IndexOperators/$(DEPDIR)/bin_arangod-index-operator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
@@ -3020,7 +3021,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplistIndex.Po@am__quote@
@@ -4323,6 +4323,22 @@ arangod/V8Server/bin_arangod-v8-vocbase.obj: arangod/V8Server/v8-vocbase.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/bin_arangod-v8-vocbase.obj `if test -f 'arangod/V8Server/v8-vocbase.cpp'; then $(CYGPATH_W) 'arangod/V8Server/v8-vocbase.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/v8-vocbase.cpp'; fi`
 
+arangod/MRServer/bin_arangod-ApplicationMR.o: arangod/MRServer/ApplicationMR.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/MRServer/bin_arangod-ApplicationMR.o -MD -MP -MF arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Tpo -c -o arangod/MRServer/bin_arangod-ApplicationMR.o `test -f 'arangod/MRServer/ApplicationMR.cpp' || echo '$(srcdir)/'`arangod/MRServer/ApplicationMR.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Tpo arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/ApplicationMR.cpp' object='arangod/MRServer/bin_arangod-ApplicationMR.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-ApplicationMR.o `test -f 'arangod/MRServer/ApplicationMR.cpp' || echo '$(srcdir)/'`arangod/MRServer/ApplicationMR.cpp
+
+arangod/MRServer/bin_arangod-ApplicationMR.obj: arangod/MRServer/ApplicationMR.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/MRServer/bin_arangod-ApplicationMR.obj -MD -MP -MF arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Tpo -c -o arangod/MRServer/bin_arangod-ApplicationMR.obj `if test -f 'arangod/MRServer/ApplicationMR.cpp'; then $(CYGPATH_W) 'arangod/MRServer/ApplicationMR.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/ApplicationMR.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Tpo arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/ApplicationMR.cpp' object='arangod/MRServer/bin_arangod-ApplicationMR.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-ApplicationMR.obj `if test -f 'arangod/MRServer/ApplicationMR.cpp'; then $(CYGPATH_W) 'arangod/MRServer/ApplicationMR.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/ApplicationMR.cpp'; fi`
+
 arangod/MRServer/bin_arangod-mr-actions.o: arangod/MRServer/mr-actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/MRServer/bin_arangod-mr-actions.o -MD -MP -MF arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo -c -o arangod/MRServer/bin_arangod-mr-actions.o `test -f 'arangod/MRServer/mr-actions.cpp' || echo '$(srcdir)/'`arangod/MRServer/mr-actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Tpo arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po
@@ -4338,22 +4354,6 @@ arangod/MRServer/bin_arangod-mr-actions.obj: arangod/MRServer/mr-actions.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/mr-actions.cpp' object='arangod/MRServer/bin_arangod-mr-actions.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-mr-actions.obj `if test -f 'arangod/MRServer/mr-actions.cpp'; then $(CYGPATH_W) 'arangod/MRServer/mr-actions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/mr-actions.cpp'; fi`
-
-arangod/RestServer/bin_arangod-RubyDispatcherThread.o: arangod/RestServer/RubyDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-RubyDispatcherThread.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo -c -o arangod/RestServer/bin_arangod-RubyDispatcherThread.o `test -f 'arangod/RestServer/RubyDispatcherThread.cpp' || echo '$(srcdir)/'`arangod/RestServer/RubyDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/RubyDispatcherThread.cpp' object='arangod/RestServer/bin_arangod-RubyDispatcherThread.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-RubyDispatcherThread.o `test -f 'arangod/RestServer/RubyDispatcherThread.cpp' || echo '$(srcdir)/'`arangod/RestServer/RubyDispatcherThread.cpp
-
-arangod/RestServer/bin_arangod-RubyDispatcherThread.obj: arangod/RestServer/RubyDispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-RubyDispatcherThread.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo -c -o arangod/RestServer/bin_arangod-RubyDispatcherThread.obj `if test -f 'arangod/RestServer/RubyDispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/RestServer/RubyDispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/RubyDispatcherThread.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-RubyDispatcherThread.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/RubyDispatcherThread.cpp' object='arangod/RestServer/bin_arangod-RubyDispatcherThread.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-RubyDispatcherThread.obj `if test -f 'arangod/RestServer/RubyDispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/RestServer/RubyDispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/RubyDispatcherThread.cpp'; fi`
 
 arangosh/V8Client/bin_arangoimp-ImportHelper.o: arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoimp_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangoimp-ImportHelper.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Tpo -c -o arangosh/V8Client/bin_arangoimp-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp

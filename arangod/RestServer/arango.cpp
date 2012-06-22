@@ -31,7 +31,6 @@
 #include "ResultGenerator/Initialise.h"
 
 using namespace triagens;
-using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
