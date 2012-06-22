@@ -5,7 +5,7 @@
 
 int main (int argc, char* argv[])
 {
-  void *context = zmq_init (16);
+  void *context = zmq_init (1);
   char const* connection = "tcp://*:5555";
   void *responder;
 

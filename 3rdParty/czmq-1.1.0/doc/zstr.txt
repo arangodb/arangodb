@@ -1,0 +1,79 @@
+zstr(7)
+=======
+
+NAME
+----
+zstr - sending and receiving strings
+
+SYNOPSIS
+--------
+----
+//  Receive a string off a socket, caller must free it
+char *
+    zstr_recv (void *socket);
+
+//  Receive a string off a socket if socket had input waiting
+char *
+    zstr_recv_nowait (void *socket);
+
+//  Send a string to a socket in 0MQ string format
+int
+    zstr_send (void *socket, const char *string);
+
+//  Send a string to a socket in 0MQ string format, with MORE flag
+int
+    zstr_sendm (void *socket, const char *string);
+
+//  Send a formatted string to a socket
+int
+    zstr_sendf (void *socket, const char *format, ...);
+
+//  Self test of this class
+int
+    zstr_test (Bool verbose);
+----
+
+DESCRIPTION
+-----------
+
+The zstr class provides utility functions for sending and receiving C
+strings across 0MQ sockets. It sends strings without a terminating null,
+and appends a null byte on received strings. This class is for simple
+message sending.
+
+
+EXAMPLE
+-------
+.From zstr_test method
+----
+    zctx_t *ctx = zctx_new ();
+
+    void *output = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_bind (output, "inproc://zstr.test");
+    void *input = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_connect (input, "inproc://zstr.test");
+
+    //  Send ten strings and then END
+    int string_nbr;
+    for (string_nbr = 0; string_nbr < 10; string_nbr++)
+        zstr_sendf (output, "this is string %d", string_nbr);
+    zstr_send (output, "END");
+
+    //  Read and count until we receive END
+    string_nbr = 0;
+    for (string_nbr = 0;; string_nbr++) {
+        char *string = zstr_recv (input);
+        if (streq (string, "END")) {
+            free (string);
+            break;
+        }
+        free (string);
+    }
+    assert (string_nbr == 10);
+
+    zctx_destroy (&ctx);
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]

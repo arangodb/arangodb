@@ -146,7 +146,7 @@ namespace triagens {
 
       private:
         string const name;
-        sig_atomic_t active;
+        volatile sig_atomic_t active;
     };
   }
 }

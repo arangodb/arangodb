@@ -55,7 +55,7 @@ namespace {
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
-        : Task("Control-C"), SignalTask(), _server(server) {
+        : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
         addSignal(SIGQUIT);
@@ -63,13 +63,27 @@ namespace {
 
     public:
       bool handleSignal () {
-        LOGGER_INFO << "control-c received, shutting down";
-        _server->beginShutdown();
+        if (_seen == 0) {
+          LOGGER_INFO << "control-c received, beginning shut down sequence";
+          _server->beginShutdown();
+        }
+        else if (_seen == 1) {
+          LOGGER_INFO << "control-c received, shutting down";
+          _server->shutdown();
+        }
+        else {
+          LOGGER_INFO << "control-c received, terminating";
+          exit(EXIT_FAILURE);
+        }
+
+        ++_seen;
+
         return true;
       }
 
     private:
       ApplicationServer* _server;
+      uint32_t _seen;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +149,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer)
-  : _applicationServer(applicationServer),
+  : ApplicationFeature("scheduler"),
+    _applicationServer(applicationServer),
     _scheduler(0),
     _tasks(),
     _reportIntervall(60.0),
@@ -189,43 +204,6 @@ void ApplicationScheduler::allowMultiScheduler (bool value) {
 
 Scheduler* ApplicationScheduler::scheduler () const {
   return _scheduler;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::buildScheduler () {
-  if (_scheduler != 0) {
-    LOGGER_FATAL << "a scheduler has already been created";
-    exit(EXIT_FAILURE);
-  }
-
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the scheduler reporter
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::buildSchedulerReporter () {
-  if (0.0 < _reportIntervall) {
-    registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quits on control-c signal
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::buildControlCHandler () {
-  if (_scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
-    exit(EXIT_FAILURE);
-  }
-
-  registerTask(new ControlCTask(_applicationServer));
-  registerTask(new HangupTask());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,17 +332,63 @@ bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::start () {
-  if (_scheduler != 0) {
-    bool ok = _scheduler->start(0);
+bool ApplicationScheduler::prepare () {
+  buildScheduler();
+  buildSchedulerReporter();
+  buildControlCHandler();
 
-    if (! ok) {
-      LOGGER_FATAL << "the scheduler cannot be started";
-      return false;
-    }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationScheduler::isStartable () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationScheduler::start () {
+  bool ok = _scheduler->start(0);
+
+  if (! ok) {
+    LOGGER_FATAL << "the scheduler cannot be started";
+
+    delete _scheduler;
+    _scheduler = 0;
+
+    return false;
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationScheduler::isStarted () {
+  if (_scheduler != 0) {
+    return _scheduler->isStarted();
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationScheduler::open () {
+  if (_scheduler != 0) {
+    return _scheduler->open();
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -416,6 +440,48 @@ void ApplicationScheduler::shutdown () {
 /// @addtogroup Scheduler
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::buildScheduler () {
+  if (_scheduler != 0) {
+    LOGGER_FATAL << "a scheduler has already been created";
+    exit(EXIT_FAILURE);
+  }
+
+  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the scheduler reporter
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::buildSchedulerReporter () {
+  if (_scheduler == 0) {
+    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
+    exit(EXIT_FAILURE);
+  }
+
+  if (0.0 < _reportIntervall) {
+    registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quits on control-c signal
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::buildControlCHandler () {
+  if (_scheduler == 0) {
+    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
+    exit(EXIT_FAILURE);
+  }
+
+  registerTask(new ControlCTask(_applicationServer));
+  registerTask(new HangupTask());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the file descriptor limits

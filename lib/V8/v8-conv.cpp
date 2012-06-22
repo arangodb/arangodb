@@ -1375,6 +1375,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
 
     if (listJson != 0) {
       uint32_t n = arrayParameter->Length();
+
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_JsonObject(item);

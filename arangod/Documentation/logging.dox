@@ -1,0 +1,85 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineLoggingTOC
+///
+/// <ul>
+///  <li>@ref CommandLineLoggingGeneral
+///   <ul>
+///    <li>@ref CommandLineLoggingLogFile "log.file"</li>
+///    <li>@ref CommandLineLoggingLogSeverity "log.severity"</li>
+///    <li>@ref CommandLineLoggingLogSyslog "log.syslog"</li>
+///   </ul>
+///  </li>
+///  <li>@ref CommandLineLoggingHuman
+///   <ul>
+///    <li>@ref CommandLineLoggingLogLevel "log.level"</li>
+///    <li>@ref CommandLineLoggingLogLineNumber "log.line-number"</li>
+///    <li>@ref CommandLineLoggingLogPrefix "log.prefix"</li>
+///    <li>@ref CommandLineLoggingLogThread "log.thread"</li>
+///   </ul>
+///  </li>
+///  <li>@ref CommandLineLoggingMachine
+///   <ul>
+///    <li>@ref CommandLineLoggingLogApplication "log.application"</li>
+///    <li>@ref CommandLineLoggingLogFacility "log.facility"</li>
+///    <li>@ref CommandLineLoggingLogFormat "log.format"</li>
+///    <li>@ref CommandLineLoggingLogHostName "log.hostname"</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineLogging Command-Line Options for Logging
+///
+/// There are two different kinds of logs. Human-readable logs and
+/// machine-readable logs. The human-readable logs are used to provide an
+/// administration with information about the server. The machine-readable logs
+/// are used to provide statistics about executed requests and timings about
+/// computation steps.
+///
+/// @section CommandLineLoggingGeneral General Logging Options
+//////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineLoggingLogFile
+/// @copydetails triagens::rest::ApplicationServerImpl::logFile
+///
+/// @anchor CommandLineLoggingLogSeverity
+/// @copydetails triagens::rest::ApplicationServerImpl::logSeverity
+///
+/// @anchor CommandLineLoggingLogSyslog
+/// @copydetails triagens::rest::ApplicationServerImpl::logSyslog
+///
+/// @section CommandLineLoggingHuman Human Readable Logging
+///////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineLoggingLogLevel
+/// @copydetails triagens::rest::ApplicationServerImpl::logLevel
+///
+/// @anchor CommandLineLoggingLogLineNumber
+/// @copydetails triagens::rest::ApplicationServerImpl::logLineNumber
+///
+/// @anchor CommandLineLoggingLogPrefix
+/// @copydetails triagens::rest::ApplicationServerImpl::logPrefix
+///
+/// @anchor CommandLineLoggingLogThread
+/// @copydetails triagens::rest::ApplicationServerImpl::logThreadId
+///
+/// @anchor CommandLineLoggingLogFilter
+/// @copydetails triagens::rest::ApplicationServerImpl::logFilter
+///
+/// @section CommandLineLoggingMachine Maschine Readable Logging
+////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineLoggingLogApplication
+/// @copydetails triagens::rest::ApplicationServerImpl::logApplicationName
+///
+/// @anchor CommandLineLoggingLogFacility
+/// @copydetails triagens::rest::ApplicationServerImpl::logFacility
+///
+/// @anchor CommandLineLoggingLogFormat
+/// @copydetails triagens::rest::ApplicationServerImpl::logFormat
+///
+/// @anchor CommandLineLoggingLogHostName
+/// @copydetails triagens::rest::ApplicationServerImpl::logHostName
+////////////////////////////////////////////////////////////////////////////////
+

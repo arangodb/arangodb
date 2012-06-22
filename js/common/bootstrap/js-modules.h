@@ -97,7 +97,7 @@ static string JS_common_bootstrap_modules =
   "    f = SYS_EXECUTE(content, undefined, path);\n"
   "  }\n"
   "  catch (err) {\n"
-  "    CONSOLE_ERROR(\"in file %s: %o\", path, err.stack);\n"
+  "    require(\"console\").error(\"in file %s: %o\", path, err.stack);\n"
   "    throw err;\n"
   "  }\n"
   "\n"

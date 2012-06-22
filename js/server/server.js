@@ -58,7 +58,6 @@
   internal.edges = edges;
   internal.ArangoCollection = ArangoCollection;
   internal.ArangoEdgesCollection = ArangoEdgesCollection;
-  internal.allowedActionContexts = {}
 
   if (typeof SYS_DEFINE_ACTION === "undefined") {
     internal.defineAction = function() {
@@ -66,12 +65,6 @@
     };
   }
   else {
-    var i;
-
-    for (i = 0;  i < SYS_ACTION_CONTEXTS.length;  ++i) {
-      internal.allowedActionContexts[SYS_ACTION_CONTEXTS[i]] = true;
-    }
-
     internal.defineAction = SYS_DEFINE_ACTION;
   }
 
