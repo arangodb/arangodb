@@ -195,9 +195,6 @@ void Thread::stop () {
     LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
     TRI_StopThread(&_thread);
   }
-  else {
-    LOGGER_DEBUG << "trying to cancel (aka stop) an already stopped thread " << _name;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

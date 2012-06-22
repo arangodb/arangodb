@@ -108,6 +108,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _features(),
     _exitOnParentDeath(false),
     _watchParent(0),
+    _stopping(0),
     _title(title),
     _version(version),
     _configFile(),
@@ -212,6 +213,8 @@ void ApplicationServer::setupLogging () {
 
   bool threaded = TRI_ShutdownLogging();
 
+  TRI_InitialiseLogging(threaded);
+
   Logger::setApplicationName(_logApplicationName);
   Logger::setHostName(_logHostName);
   Logger::setFacility(_logFacility);
@@ -234,7 +237,9 @@ void ApplicationServer::setupLogging () {
   TRI_SetPrefixLogging(_logPrefix);
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  TRI_InitialiseLogging(threaded);
+  for (vector<string>::iterator i = _logFilter.begin();  i != _logFilter.end();  ++i) {
+    TRI_SetFileToLog(i->c_str());
+  }
 
   TRI_CreateLogAppenderFile(_logFile);
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
@@ -405,7 +410,30 @@ bool ApplicationServer::parse (int argc,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the scheduler
+/// @brief prepares the server
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::prepare () {
+
+  // prepare all features
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+
+    bool ok = feature->prepare();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the server
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::start () {
@@ -415,13 +443,44 @@ void ApplicationServer::start () {
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
 
+  // start all startable features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-    bool ok = (*i)->start();
+    ApplicationFeature* feature = *i;
+
+    if (! feature->isStartable()) {
+      continue;
+    }
+
+    bool ok = feature->start();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to start server";
+      LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
       exit(EXIT_FAILURE);      
     }
+
+    LOGGER_INFO << "starting server feature '" << feature->getName() << "'";
+
+    while (! feature->isStarted()) {
+      usleep(1000);
+    }
+
+    LOGGER_TRACE << "started server feature '" << feature->getName() << "'";
+  }
+
+  // now open all features
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "opening server feature '" << feature->getName() << "'";
+
+    bool ok = feature->open();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "opened server feature '" << feature->getName() << "'";
   }
 }
 
@@ -432,10 +491,22 @@ void ApplicationServer::start () {
 void ApplicationServer::wait () {
   bool running = true;
 
-  while (running) {
+  // get all startable features
+  vector<ApplicationFeature*> startable;
+
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    if (feature->isStartable()) {
+      startable.push_back(feature);
+    }
+  }
+
+  // wait until all startable features have stopped
+  while (running && _stopping == 0) {
 
     // check the parent and wait for a second
-    if (_features.empty()) {
+    if (startable.empty()) {
       if (! checkParent()) {
         running = false;
         break;
@@ -448,8 +519,10 @@ void ApplicationServer::wait () {
     else {
       running = false;
 
-      for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-        bool r = (*i)->isRunning();
+      for (vector<ApplicationFeature*>::iterator i = startable.begin();  i != startable.end();  ++i) {
+        ApplicationFeature* feature = *i;
+
+        bool r = feature->isRunning();
 
         if (r) {
           running = r;
@@ -473,9 +546,21 @@ void ApplicationServer::wait () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::beginShutdown () {
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
-    (*i)->beginShutdown();
+  if (_stopping != 0) {
+    return;
   }
+
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "beginning shutdown sequence of server feature '" << feature->getName() << "'";
+
+    feature->beginShutdown();
+
+    LOGGER_TRACE << "shutdown sequence initiated for server feature '" << feature->getName() << "'";
+  }
+
+  _stopping = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +571,13 @@ void ApplicationServer::shutdown () {
   beginShutdown();
 
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
-    (*i)->shutdown();
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
+
+    feature->shutdown();
+
+    LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
 }
 
@@ -537,20 +628,21 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // .............................................................................
 
   options[OPTIONS_LOGGER]
-    ("log.level,l", &_logLevel, "log level for severity 'human'")
     ("log.file", &_logFile, "log to file")
+    ("log.level,l", &_logLevel, "log level for severity 'human'")
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
-    ("log.thread", "log the thread identifier for severity 'human'")
-    ("log.severity", &_logSeverity, "log severities")
-    ("log.format", &_logFormat, "log format")
     ("log.application", &_logApplicationName, "application name")
     ("log.facility", &_logFacility, "facility name")
+    ("log.filter", &_logFilter, "filter for debug and trace")
+    ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")
-    ("log.prefix", &_logPrefix, "prefix log")
-    ("log.syslog", &_logSyslog, "use syslog facility")
     ("log.line-number", "always log file and line number")
+    ("log.prefix", &_logPrefix, "prefix log")
+    ("log.severity", &_logSeverity, "log severities")
+    ("log.syslog", &_logSyslog, "use syslog facility")
+    ("log.thread", "log the thread identifier for severity 'human'")
   ;
 
   options[OPTIONS_HIDDEN]

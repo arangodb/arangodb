@@ -78,7 +78,7 @@ void* ThreadStarter (void* data) {
       batch = messages.add_messages();
 
       batch->set_type(PB_BLOB_REQUEST);
-      blob = batch->mutable_request();
+      blob = batch->mutable_blobrequest();
 
       map<string, string>::iterator it;
 
@@ -97,7 +97,6 @@ void* ThreadStarter (void* data) {
       blob->set_requesttype(PB_REQUEST_TYPE_GET);
       blob->set_url(path);
       blob->set_contenttype(PB_NO_CONTENT);
-      blob->set_contentlength(0);
       blob->set_content("");
     }
    
