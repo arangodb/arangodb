@@ -134,11 +134,11 @@ for result in $RESULTS;  do
   echo "########################################################"
   echo
 
-  ident $result
+  ident "bin/$result"
 
   if test "x$LDD_INFO" = "xyes";  then
     echo
-    ldd $result
+    ldd "bin/$result"
     echo
   fi
 done
