@@ -75,13 +75,13 @@
 //////////////////////////////////////////////////////
 ///
 /// @anchor CommandLineHelp
-/// @copydetails triagens::rest::ApplicationServerImpl::options
+/// @copydetails triagens::rest::ApplicationServer::_options
 ///
 /// @anchor CommandLineVersion
-/// @copydetails triagens::rest::ApplicationServerImpl::version
+/// @copydetails triagens::rest::ApplicationServer::_version
 ///
 /// @anchor CommandLineConfiguration
-/// @copydetails triagens::rest::ApplicationServerImpl::initFile
+/// @copydetails triagens::rest::ApplicationServer::_configFile
 ///
 /// @anchor CommandLineDaemon
 /// @CMDOPT{--daemon}
@@ -101,10 +101,10 @@
 /// this flag requires that the pid-file parameter will set.
 ///
 /// @anchor CommandLineUid
-/// @copydetails triagens::rest::ApplicationServerImpl::uid
+/// @copydetails triagens::rest::ApplicationServer::_uid
 ///
 /// @anchor CommandLineGid
-/// @copydetails triagens::rest::ApplicationServerImpl::gid
+/// @copydetails triagens::rest::ApplicationServer::_gid
 ///
 /// @anchor CommandLinePidFile
 /// @copydetails triagens::rest::AnyServer::_pidFile
@@ -143,7 +143,9 @@
 /// @copydetails CommandLineRandom
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++

@@ -179,8 +179,8 @@
 /// version available for use in configuration files, see @ref
 /// CommandLineArango "here".
 ///
-/// @copydetails triagens::rest::ApplicationServerImpl::options
-///////////////////////////////////////////////////////////////
+/// @copydetails triagens::rest::ApplicationServer::_options
+////////////////////////////////////////////////////////////
 ///
 /// @CMDOPT{--log @CA{level}}
 /////////////////////////////

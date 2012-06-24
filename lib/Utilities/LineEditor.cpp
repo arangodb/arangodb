@@ -51,8 +51,9 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (string const& history)
-  : _current(), _historyFilename(history) {
+LineEditor::LineEditor (std::string const& history)
+  : _current(),
+    _historyFilename(history) {
   rl_initialize();
 }
 
