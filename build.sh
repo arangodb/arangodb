@@ -10,16 +10,34 @@ echo
 OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
+USE_ICECC="no"
 
 export CPPFLAGS=""
 export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
 
+while [ 0 -lt "$#" ];  do
+  opt="$1"
+  shift
+
+  case "$opt" in
+    --enable-icecc)
+      USE_ICECC="yes"
+      ;;
+    *)
+      echo "$0: unknown option '$opt'"
+      exit 1
+      ;;
+  esac
+done
+
 HAS_ICECC=$(ps aux | grep -v "grep" | grep iceccd)
-if [ "x$HAS_ICECC" != "x" ] ; then
+
+if [ "x$HAS_ICECC" != "x" -a "x$USE_ICECC" == "xyes" ] ; then
   export PATH=/usr/lib/icecc/bin/:/opt/icecream/bin/:$PATH
   export MAKEJ=14
+
   echo "########################################################"
   echo "Using ICECC"
   echo "   PATH=$PATH"
@@ -134,11 +152,11 @@ for result in $RESULTS;  do
   echo "########################################################"
   echo
 
-  ident $result
+  ident "bin/$result"
 
   if test "x$LDD_INFO" = "xyes";  then
     echo
-    ldd $result
+    ldd "bin/$result"
     echo
   fi
 done
