@@ -181,7 +181,7 @@ HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandle
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup ApplicationServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

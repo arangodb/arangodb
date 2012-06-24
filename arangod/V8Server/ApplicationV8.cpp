@@ -154,9 +154,10 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
 #else
 
 #ifdef _PKGDATADIR_
+
     _actionPath = string(_PKGDATADIR_) + "/js/actions/system";
     _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
-                + ";" + string(_PKGDATADIR_) + "/js/common/modules";
+              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 
 #endif
 
@@ -315,7 +316,7 @@ void ApplicationV8::disableActions () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup ApplicationServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

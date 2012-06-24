@@ -100,13 +100,13 @@ namespace triagens {
           /// @brief adds an array attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantArray*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantArray*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a boolean attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantBoolean*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantBoolean*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a boolean attribute field
@@ -118,7 +118,7 @@ namespace triagens {
           /// @brief adds a double attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantDouble*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantDouble*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a double attribute field
@@ -130,7 +130,7 @@ namespace triagens {
           /// @brief adds an integer attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantInt64*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantInt64*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an integer attribute field
@@ -142,13 +142,13 @@ namespace triagens {
           /// @brief adds an null attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantNull*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantNull*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a string attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantString*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantString*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a string attribute field
@@ -160,7 +160,7 @@ namespace triagens {
           /// @brief adds a string vector attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, vector<basics::VariantString*>&);
+          ObjectDescription& attribute (string const& name, vector<triagens::basics::VariantString*>&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds a string vector attribute field
@@ -172,7 +172,7 @@ namespace triagens {
           /// @brief adds a vector attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& attribute (string const& name, basics::VariantVector*&);
+          ObjectDescription& attribute (string const& name, triagens::basics::VariantVector*&);
 
         public:
 
@@ -200,13 +200,13 @@ namespace triagens {
           /// @brief adds an optional array attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantArray*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantArray*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional boolean attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantBoolean*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantBoolean*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional boolean attribute field
@@ -218,7 +218,7 @@ namespace triagens {
           /// @brief adds an optional double attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantDouble*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantDouble*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional double attribute field
@@ -230,7 +230,7 @@ namespace triagens {
           /// @brief adds an optional integer attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantInt64*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantInt64*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional integer attribute field
@@ -242,13 +242,13 @@ namespace triagens {
           /// @brief adds an optional null attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantNull*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantNull*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional string attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantString*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantString*&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional string attribute field
@@ -260,7 +260,7 @@ namespace triagens {
           /// @brief adds an optional string vector attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, vector<basics::VariantString*>&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, vector<triagens::basics::VariantString*>&, bool* hasAttribute);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an optional string vector attribute field
@@ -272,7 +272,7 @@ namespace triagens {
           /// @brief adds an optional vector attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& optional (string const& name, basics::VariantVector*&, bool* hasAttribute);
+          ObjectDescription& optional (string const& name, triagens::basics::VariantVector*&, bool* hasAttribute);
 
         public:
 
@@ -280,43 +280,43 @@ namespace triagens {
           /// @brief adds an alternative array attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantArray*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantArray*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative boolean attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantBoolean*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantBoolean*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative double attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantDouble*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantDouble*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative integer attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantInt64*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantInt64*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative null attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantNull*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantNull*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative string attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantString*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantString*&);
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief adds an alternative vector attribute field
           ////////////////////////////////////////////////////////////////////////////////
 
-          ObjectDescription& alternative (string const& name, basics::VariantVector*&);
+          ObjectDescription& alternative (string const& name, triagens::basics::VariantVector*&);
 
         private:
           ObjectDescriptionImpl* impl;
@@ -327,28 +327,28 @@ namespace triagens {
       /// @brief a json parser
       ////////////////////////////////////////////////////////////////////////////////
 
-      basics::VariantObject* json (string const& input);
+      triagens::basics::VariantObject* json (string const& input);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @ingroup Utilities
       /// @brief a json parser
       ////////////////////////////////////////////////////////////////////////////////
 
-      basics::VariantObject* json (HttpRequest*);
+      triagens::basics::VariantObject* json (HttpRequest*);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @ingroup Utilities
       /// @brief a json parser for an array
       ////////////////////////////////////////////////////////////////////////////////
 
-      basics::VariantArray* jsonArray (string const& input);
+      triagens::basics::VariantArray* jsonArray (string const& input);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @ingroup Utilities
       /// @brief a json parser for an array
       ////////////////////////////////////////////////////////////////////////////////
 
-      basics::VariantArray* jsonArray (HttpRequest*);
+      triagens::basics::VariantArray* jsonArray (HttpRequest*);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @ingroup Utilities
