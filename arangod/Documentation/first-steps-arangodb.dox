@@ -31,6 +31,7 @@
 /// <ul>
 ///  <li>@ref FirstStepsArangoDB
 ///   <ul>
+///    <li>@ref FirstStepsArangoDBServerStart</li>
 ///    <li>@ref FirstStepsArangoDBFirstSteps</li>
 ///   </ul>
 ///  </li>
@@ -42,8 +43,8 @@
 ///
 /// @EMBEDTOC{FirstStepsArangoDBTOC}
 ///
-/// @section FirstStepsArangoDBFirstSteps First Steps using arangosh
-////////////////////////////////////////////////////////////////////
+/// @section FirstStepsArangoDBServerStart Starting the ArangoDB server
+///////////////////////////////////////////////////////////////////////
 ///
 /// Create an empty directory, which will hold the database:
 ///
@@ -58,6 +59,9 @@
 /// identifier in the file @LIT{/tmp/arangod.pid} and write the output
 /// to @LIT{/tmp/arangod.log}. The database files will live in
 /// @LIT{/tmp/vocbase}.
+///
+/// @section FirstStepsArangoDBFirstSteps First Steps using arangosh
+////////////////////////////////////////////////////////////////////
 ///
 /// Start the ArangoDB JavaScript shell.
 ///

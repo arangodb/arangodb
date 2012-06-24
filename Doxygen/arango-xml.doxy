@@ -628,20 +628,8 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 	./Doxygen/js \
-	./arangod/Ahuacatl \
-	./arangod/RestHandler \
-	./arangod/RestServer \
-	./arangod/V8Server \
-	./arangod/VocBase \
-	./lib/Admin \
-	./lib/ApplicationServer \
-	./lib/Basics \
-	./lib/BasicsC \
-	./lib/Logger \
-	./lib/Rest \
-	./lib/ShapedJson \
-	./lib/UserManager \
-	./lib/V8 
+	./arangod \
+	./lib
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -672,9 +660,14 @@ RECURSIVE              = YES
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = \
-	./lib/V8/v8-json.h \
+	./arangod/Ahuacatl/ahuacatl-tokens.c \
+	./lib/JsonParser/json-parser.c \
+	./lib/JsonParserX/JsonParserX.cpp \
+	./lib/JsonParserX/JsonParserX.h \
+	./lib/JsonParserX/JsonScannerX.cpp \
+	./lib/JsonParserX/JsonScannerX.h \
 	./lib/V8/v8-json.cpp \
-	./arangod/Ahuacatl/ahuacatl-tokens.c
+	./lib/V8/v8-json.h
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded

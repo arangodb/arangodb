@@ -52,14 +52,46 @@
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
 ///     </ul>
 ///    </li>
-///    <li>@ref CommandLineLoggingInc
-///     @copydetails CommandLineLoggingTOC
+///    <li>@ref CommandLineLogging
+///     <ul>
+///      <li>@ref CommandLineLoggingGeneral
+///       <ul>
+///        <li>@ref CommandLineLoggingLogFile "log.file"</li>
+///        <li>@ref CommandLineLoggingLogSeverity "log.severity"</li>
+///        <li>@ref CommandLineLoggingLogSyslog "log.syslog"</li>
+///       </ul>
+///      </li>
+///      <li>@ref CommandLineLoggingHuman
+///       <ul>
+///        <li>@ref CommandLineLoggingLogLevel "log.level"</li>
+///        <li>@ref CommandLineLoggingLogLineNumber "log.line-number"</li>
+///        <li>@ref CommandLineLoggingLogPrefix "log.prefix"</li>
+///        <li>@ref CommandLineLoggingLogThread "log.thread"</li>
+///        <li>@ref CommandLineLoggingLogFilter "log.filter"</li>
+///       </ul>
+///      </li>
+///      <li>@ref CommandLineLoggingMachine
+///       <ul>
+///        <li>@ref CommandLineLoggingLogApplication "log.application"</li>
+///        <li>@ref CommandLineLoggingLogFacility "log.facility"</li>
+///        <li>@ref CommandLineLoggingLogFormat "log.format"</li>
+///        <li>@ref CommandLineLoggingLogHostName "log.hostname"</li>
+///       </ul>
+///      </li>
+///     </ul>
 ///    </li>
-///    <li>@ref CommandLineSchedulerInc
-///     @copydetails CommandLineSchedulerTOC
+///    <li>@ref CommandLineScheduler
+///     <ul>
+///      <li>@ref CommandLineSchedulerThreads "scheduler.threads"</li>
+///      <li>@ref CommandLineSchedulerBackend "scheduler.backend"</li>
+///      <li>@ref CommandLineSchedulerShowIoBackends "show-io-backends"</li>
+///     </ul>
 ///    </li>
-///    <li>@ref CommandLineRandomInc
-///     @copydetails CommandLineRandomTOC
+///    <li>@ref CommandLineRandom
+///     <ul>
+///      <li>@ref CommandLineRandomGenerator "random.generator"</li>
+///      <li>@ref CommandLineRandomGenerator "random.no-seed"</li>
+///     </ul>
 ///    </li>
 ///   </ul>
 ///  </li>
@@ -127,20 +159,82 @@
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop
 ///
-/// @section CommandLineSchedulerInc Command-Line Options for Communication
-///////////////////////////////////////////////////////////////////////////
+/// @section CommandLineScheduler Command-Line Options for Communication
+////////////////////////////////////////////////////////////////////////
 ///
-/// @copydetails CommandLineScheduler
+/// @anchor CommandLineSchedulerThreads
+/// @copydetails triagens::rest::ApplicationScheduler::_nrSchedulerThreads
 ///
-/// @section CommandLineLoggingInc Command-Line Options for Logging
-///////////////////////////////////////////////////////////////////
+/// @anchor CommandLineSchedulerBackend
+/// @copydetails triagens::rest::ApplicationScheduler::_backend
 ///
-/// @copydetails CommandLineLogging
+/// @anchor CommandLineSchedulerShowIoBackends
+/// @CMDOPT{--show-io-backends}
 ///
-/// @section CommandLineRandomInc Command-Line Options for Random Numbers
-/////////////////////////////////////////////////////////////////////////
+/// If this option is specified, then the server will list available backends
+/// and exit. This option is useful only when used in conjunction with the
+/// option scheduler.backend. An integer is returned (which is platform
+/// dependent) which indicates available backends on your platform. See libev
+/// for further details and for the meaning of the integer returned. This
+/// describes the allowed integers for @CODE{scheduler.backend}, see
+/// @ref CommandLineScheduler "here" for details.
 ///
-/// @copydetails CommandLineRandom
+/// @section CommandLineLogging Command-Line Options for Logging
+////////////////////////////////////////////////////////////////
+///
+/// There are two different kinds of logs. Human-readable logs and
+/// machine-readable logs. The human-readable logs are used to provide an
+/// administration with information about the server. The machine-readable logs
+/// are used to provide statistics about executed requests and timings about
+/// computation steps.
+///
+/// @subsection CommandLineLoggingGeneral General Logging Options
+///
+/// @anchor CommandLineLoggingLogFile
+/// @copydetails triagens::rest::ApplicationServer::_logFile
+///
+/// @anchor CommandLineLoggingLogSeverity
+/// @copydetails triagens::rest::ApplicationServer::_logSeverity
+///
+/// @anchor CommandLineLoggingLogSyslog
+/// @copydetails triagens::rest::ApplicationServer::_logSyslog
+///
+/// @subsection CommandLineLoggingHuman Human Readable Logging
+///
+/// @anchor CommandLineLoggingLogLevel
+/// @copydetails triagens::rest::ApplicationServer::_logLevel
+///
+/// @anchor CommandLineLoggingLogLineNumber
+/// @copydetails triagens::rest::ApplicationServer::_logLineNumber
+///
+/// @anchor CommandLineLoggingLogPrefix
+/// @copydetails triagens::rest::ApplicationServer::_logPrefix
+///
+/// @anchor CommandLineLoggingLogThread
+/// @copydetails triagens::rest::ApplicationServer::_logThreadId
+///
+/// @anchor CommandLineLoggingLogFilter
+/// @copydetails triagens::rest::ApplicationServer::_logFilter
+///
+/// @subsection CommandLineLoggingMachine Maschine Readable Logging
+///
+/// @anchor CommandLineLoggingLogApplication
+/// @copydetails triagens::rest::ApplicationServer::_logApplicationName
+///
+/// @anchor CommandLineLoggingLogFacility
+/// @copydetails triagens::rest::ApplicationServer::_logFacility
+///
+/// @anchor CommandLineLoggingLogFormat
+/// @copydetails triagens::rest::ApplicationServer::_logFormat
+///
+/// @anchor CommandLineLoggingLogHostName
+/// @copydetails triagens::rest::ApplicationServer::_logHostName
+///
+/// @section CommandLineRandom Command-Line Options for Random Numbers
+//////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineRandomGenerator
+/// @copydetails triagens::rest::ApplicationServer::_randomGenerator
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
