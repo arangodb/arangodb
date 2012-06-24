@@ -201,7 +201,7 @@ namespace triagens {
 /// @brief parses the arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool parse (int argc, char* argv[], map<string, basics::ProgramOptionsDescription>);
+        bool parse (int argc, char* argv[], map<string, triagens::basics::ProgramOptionsDescription>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the server

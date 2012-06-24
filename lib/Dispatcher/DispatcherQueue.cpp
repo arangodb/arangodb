@@ -48,7 +48,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
-                                  string const& name,
+                                  std::string const& name,
                                   Dispatcher::newDispatcherThread_fptr creator,
                                   size_t nrThreads)
   : _name(name),
