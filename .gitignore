@@ -155,3 +155,5 @@ VC++
 3rdParty/czmq-1.1.0/src/czmq_selftest
 3rdParty/czmq-1.1.0/src/libczmq.pc
 3rdParty/czmq-1.1.0/src/platform.h
+.protobuf-build-64
+3rdParty/protobuf-2.4.1/BUILD/
