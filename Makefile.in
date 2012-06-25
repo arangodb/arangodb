@@ -131,7 +131,7 @@
 ################################################################################
 
 ################################################################################
-### @brief built sources
+### @brief Protobuf
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -140,7 +140,7 @@
 ################################################################################
 
 ################################################################################
-### @brief Protobuf
+### @brief built sources
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -1010,8 +1010,8 @@ ACLOCAL_AMFLAGS = -I m4
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) $(am__append_13) $(am__append_14) \
 	Doxygen/.setup-directories .setup-js-directories \
-	$(am__append_16) $(am__append_18) $(PROTOBUF_FILES) \
-	@PROTOBUF_LIBS@ $(am__append_20) $(am__append_21) \
+	$(am__append_16) $(am__append_18) @PROTOBUF_LIBS@ \
+	$(PROTOBUF_FILES) $(am__append_20) $(am__append_21) \
 	$(am__append_22)
 
 ################################################################################
@@ -1615,7 +1615,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5399,17 +5399,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 ################################################################################
 
-################################################################################
-### @brief protocol buffers
-################################################################################
-
-%.pb.cpp: %.proto
-	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
-	mv $(addsuffix .cc,$(basename $@)) $@
-
-################################################################################
-################################################################################
-
 @PROTOBUF_LIBS@: .protobuf-build-@TRI_BITS@
 
 .protobuf-build-@TRI_BITS@:
@@ -5434,6 +5423,17 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 	@echo "BUILD Protocol Buffers FINISHED"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
+
+################################################################################
+################################################################################
+
+################################################################################
+### @brief protocol buffers
+################################################################################
+
+%.pb.cpp: %.proto
+	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
+	mv $(addsuffix .cc,$(basename $@)) $@
 
 ################################################################################
 ################################################################################

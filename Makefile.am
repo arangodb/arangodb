@@ -302,8 +302,8 @@ endif
 ### @brief protocol buffers
 ################################################################################
 
-include m4/Makefile.protobuf
 include m4/Makefile.all-in-one-protobuf
+include m4/Makefile.protobuf
 
 ################################################################################
 ## --SECTION--                                                EXTERNAL LIBRARIES
