@@ -111,7 +111,7 @@ void TRI_InitLinkedArray (TRI_linked_array_t*, TRI_memory_zone_t*);
 /// @brief destroys a linked list, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyLinkedList (TRI_linked_list_t*);
+void TRI_DestroyLinkedList (TRI_linked_list_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a linked list and frees the pointer
