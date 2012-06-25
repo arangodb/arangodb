@@ -1192,9 +1192,6 @@ DOXYGEN = \
 WIKI = \
 	ArangoErrors \
 	CommandLine \
-	CommandLineLogging \
-	CommandLineRandom \
-	CommandLineScheduler \
 	Compiling \
 	DbaManual \
 	DbaManualBasics \

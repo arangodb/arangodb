@@ -126,8 +126,16 @@ void TRI_InitLinkedArray (TRI_linked_array_t* array, TRI_memory_zone_t* zone) {
 /// @brief destroys a linked list, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyLinkedList (TRI_linked_list_t* list) {
-  // nothing to destroy
+void TRI_DestroyLinkedList (TRI_linked_list_t* list, TRI_memory_zone_t* zone) {
+  TRI_linked_list_entry_t* current = list->_begin;
+  
+  // free all remaining entries in the list
+  while (current != NULL) {
+    TRI_linked_list_entry_t* next = current->_next;
+
+    TRI_Free(zone, current);
+    current = next;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +143,7 @@ void TRI_DestroyLinkedList (TRI_linked_list_t* list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeLinkedList (TRI_memory_zone_t* zone, TRI_linked_list_t* list) {
-  TRI_DestroyLinkedList(list);
+  TRI_DestroyLinkedList(list, zone);
   TRI_Free(zone, list);
 }
 
@@ -144,7 +152,7 @@ void TRI_FreeLinkedList (TRI_memory_zone_t* zone, TRI_linked_list_t* list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyLinkedArray (TRI_linked_array_t* array) {
-  TRI_DestroyLinkedList(&array->_list);
+  TRI_DestroyLinkedList(&array->_list, array->_memoryZone);
   TRI_DestroyAssociativePointer(&array->_array);
 }
 
@@ -153,7 +161,7 @@ void TRI_DestroyLinkedArray (TRI_linked_array_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeLinkedArray (TRI_memory_zone_t* zone, TRI_linked_array_t* array) {
-  TRI_DestroyLinkedList(&array->_list);
+  TRI_DestroyLinkedList(&array->_list, zone);
   TRI_Free(zone, array);
 }
 
@@ -262,9 +270,8 @@ void TRI_RemoveLinkedArray (TRI_linked_array_t* array, void const* data) {
 
   if (found != NULL) {
     TRI_RemoveLinkedList(&array->_list, found);
+    TRI_Free(array->_memoryZone, found);
   }
-
-  TRI_Free(array->_memoryZone, found);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,6 +309,7 @@ void const* TRI_PopFrontLinkedArray (TRI_linked_array_t* array) {
 
   TRI_RemoveElementAssociativePointer(&array->_array, found);
   TRI_RemoveLinkedList(&array->_list, found);
+  TRI_Free(array->_memoryZone, found);
 
   return data;
 }
