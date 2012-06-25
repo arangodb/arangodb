@@ -65,6 +65,8 @@ lib_libarango_a_SOURCES = \
 	lib/Logger/LoggerStream.cpp \
 	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
+	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/HttpRequest.cpp \
@@ -103,8 +105,6 @@ lib_libarango_a_SOURCES = \
 if ENABLE_ZEROMQ
 
 lib_libarango_a_SOURCES += \
-	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 	lib/ZeroMQ/ZeroMQThread.cpp \

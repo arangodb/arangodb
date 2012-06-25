@@ -1,0 +1,46 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                           LIBRARY
+################################################################################
+
+################################################################################
+### @brief Protobuf
+################################################################################
+
+BUILT_SOURCES += @PROTOBUF_LIBS@
+PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
+
+@PROTOBUF_LIBS@: .protobuf-build-@TRI_BITS@
+
+.protobuf-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING Protocol Buffers"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/protobuf-2.4.1 \
+		&& ./configure \
+			--disable-dependency-tracking \
+			--disable-shared \
+			--prefix=$(PROTOBUFDIR) \
+			--libdir=$(PROTOBUFDIR)/lib@TRI_BITS@
+	cd @top_srcdir@/3rdParty/protobuf-2.4.1 && $(MAKE) install
+
+	touch .protobuf-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD Protocol Buffers FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:
