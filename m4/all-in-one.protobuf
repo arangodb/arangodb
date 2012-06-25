@@ -24,7 +24,7 @@ dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-BASIC_INFO="$BASIC_INFO|PROTOBUF: enabled"
+BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-PROTOBUF: enabled"
 
 LIB_INFO="$LIB_INFO|PROTOBUF VERSION: ${TRI_PROTOBUF_VERSION}"
 
