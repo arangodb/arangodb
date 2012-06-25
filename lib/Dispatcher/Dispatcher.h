@@ -287,9 +287,6 @@ namespace triagens {
 #ifdef TRI_ENABLE_ZEROMQ
         void* _zeroMQContext;
 #endif
-
-
-
     };
   }
 }
