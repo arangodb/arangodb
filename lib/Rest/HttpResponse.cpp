@@ -29,10 +29,7 @@
 #include "HttpResponse.h"
 
 #include "Basics/StringUtils.h"
-
-#ifdef TRI_ENABLE_ZEROMQ
 #include "ProtocolBuffers/arangodb.pb.h"
-#endif
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -540,8 +537,6 @@ void HttpResponse::writeHeader (StringBuffer* output) {
 /// @brief writes the message to a protocol buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZEROMQ
-
 void HttpResponse::write (PB_ArangoBatchMessage* message) {
   message->set_type(PB_BLOB_RESPONSE);
   PB_ArangoBlobResponse* blob = message->mutable_blobresponse();
@@ -610,8 +605,6 @@ void HttpResponse::write (PB_ArangoBatchMessage* message) {
     blob->set_content(content);
   }
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of the body

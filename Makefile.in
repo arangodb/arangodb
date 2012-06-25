@@ -131,6 +131,15 @@
 ################################################################################
 
 ################################################################################
+### @brief Protobuf
+################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+################################################################################
 ### @brief built sources
 ################################################################################
 
@@ -227,6 +236,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/arangosh/Makefile.files $(srcdir)/lib/Makefile.files \
 	$(srcdir)/m4/Makefile.all-in-one-libev \
 	$(srcdir)/m4/Makefile.all-in-one-mruby \
+	$(srcdir)/m4/Makefile.all-in-one-protobuf \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(srcdir)/m4/Makefile.all-in-one-zeromq \
 	$(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.doxygen \
@@ -238,8 +248,6 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
 @ENABLE_ZEROMQ_TRUE@am__append_8 = \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
@@ -281,15 +289,9 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 ### @brief CLEANUP
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_19 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_20 = $(PROTOBUF_FILES)
-
-################################################################################
-### @brief cleanup
-################################################################################
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@am__append_21 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_22 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_23 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_24 = @ZEROMQ_LIBS@
+@ENABLE_ALL_IN_ONE_TRUE@am__append_20 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_21 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_22 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -313,6 +315,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/all-in-one.libev \
 	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/all-in-one.v8 \
 	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/all-in-one.protobuf \
 	$(top_srcdir)/m4/all-in-one.zeromq \
 	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/external.boost \
@@ -368,7 +371,9 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
-	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
+	lib/ProgramOptions/program-options.c \
+	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
@@ -385,15 +390,12 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
 	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp \
-	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp \
-	lib/ZeroMQ/ApplicationZeroMQ.cpp lib/ZeroMQ/ZeroMQBatchJob.cpp \
-	lib/ZeroMQ/ZeroMQThread.cpp lib/ZeroMQ/ZeroMQQueueThread.cpp \
+	lib/Variant/VariantVector.cpp lib/ZeroMQ/ApplicationZeroMQ.cpp \
+	lib/ZeroMQ/ZeroMQBatchJob.cpp lib/ZeroMQ/ZeroMQThread.cpp \
+	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_ZEROMQ_TRUE@am__objects_1 = lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
-@ENABLE_ZEROMQ_TRUE@	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
+@ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.$(OBJEXT) \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.$(OBJEXT) \
@@ -443,6 +445,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Logger/LoggerStream.$(OBJEXT) \
 	lib/Logger/LoggerTiming.$(OBJEXT) \
 	lib/ProgramOptions/program-options.$(OBJEXT) \
+	lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
+	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
 	lib/Rest/AddressPort.$(OBJEXT) lib/Rest/AnyServer.$(OBJEXT) \
 	lib/Rest/HttpRequest.$(OBJEXT) \
 	lib/Rest/HttpRequestPlain.$(OBJEXT) \
@@ -893,7 +897,7 @@ LIBOBJS = @LIBOBJS@
 ### @brief libraries
 ################################################################################
 LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ @READLINE_LIBS@ $(am__append_4)
+	@OPENSSL_LIBS@ @PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_4)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -920,6 +924,9 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PROTOBUF_CPPFLAGS = @PROTOBUF_CPPFLAGS@
+PROTOBUF_LDFLAGS = @PROTOBUF_LDFLAGS@
+PROTOBUF_LIBS = @PROTOBUF_LIBS@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
@@ -1003,11 +1010,16 @@ ACLOCAL_AMFLAGS = -I m4
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) $(am__append_13) $(am__append_14) \
 	Doxygen/.setup-directories .setup-js-directories \
-	$(am__append_16) $(am__append_18) $(am__append_20) \
-	$(am__append_22) $(am__append_23) $(am__append_24)
+	$(am__append_16) $(am__append_18) @PROTOBUF_LIBS@ \
+	$(PROTOBUF_FILES) $(am__append_20) $(am__append_21) \
+	$(am__append_22)
 
 ################################################################################
 ### @brief files to cleanup
+################################################################################
+
+################################################################################
+### @brief cleanup
 ################################################################################
 
 ################################################################################
@@ -1021,7 +1033,7 @@ CLEANUP = $(am__append_15) $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
 	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
 	.setup-js-directories $(am__append_17) $(am__append_19) \
-	$(am__append_21)
+	$(PROTOBUF_FILES)
 
 ################################################################################
 ### @brief flex files
@@ -1087,15 +1099,15 @@ AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
 	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
 	-I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1) \
-	$(am__append_3)
+	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
+	$(am__append_1) $(am__append_3)
 
 ################################################################################
 ### @brief linker flags
 ################################################################################
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 	@NCURSES_LDFLAGS@ @OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ \
-	@V8_LDFLAGS@ $(am__append_2)
+	@PROTOBUF_LDFLAGS@ @V8_LDFLAGS@ $(am__append_2)
 
 ################################################################################
 ################################################################################
@@ -1261,7 +1273,9 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
-	lib/ProgramOptions/program-options.c lib/Rest/AddressPort.cpp \
+	lib/ProgramOptions/program-options.c \
+	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
@@ -1586,6 +1600,7 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 ################################################################################
 SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_CFLAGS_X = -O2 -g
@@ -1600,7 +1615,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1819,6 +1834,18 @@ lib/ProgramOptions/$(DEPDIR)/$(am__dirstamp):
 lib/ProgramOptions/program-options.$(OBJEXT):  \
 	lib/ProgramOptions/$(am__dirstamp) \
 	lib/ProgramOptions/$(DEPDIR)/$(am__dirstamp)
+lib/ProtocolBuffers/$(am__dirstamp):
+	@$(MKDIR_P) lib/ProtocolBuffers
+	@: > lib/ProtocolBuffers/$(am__dirstamp)
+lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib/ProtocolBuffers/$(DEPDIR)
+	@: > lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
+lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT):  \
+	lib/ProtocolBuffers/$(am__dirstamp) \
+	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
+lib/ProtocolBuffers/arangodb.pb.$(OBJEXT):  \
+	lib/ProtocolBuffers/$(am__dirstamp) \
+	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/$(am__dirstamp):
 	@$(MKDIR_P) lib/Rest
 	@: > lib/Rest/$(am__dirstamp)
@@ -1912,18 +1939,6 @@ lib/Variant/VariantUInt8.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
 lib/Variant/VariantVector.$(OBJEXT): lib/Variant/$(am__dirstamp) \
 	lib/Variant/$(DEPDIR)/$(am__dirstamp)
-lib/ProtocolBuffers/$(am__dirstamp):
-	@$(MKDIR_P) lib/ProtocolBuffers
-	@: > lib/ProtocolBuffers/$(am__dirstamp)
-lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/ProtocolBuffers/$(DEPDIR)
-	@: > lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
-lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT):  \
-	lib/ProtocolBuffers/$(am__dirstamp) \
-	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
-lib/ProtocolBuffers/arangodb.pb.$(OBJEXT):  \
-	lib/ProtocolBuffers/$(am__dirstamp) \
-	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
 lib/ZeroMQ/$(am__dirstamp):
 	@$(MKDIR_P) lib/ZeroMQ
 	@: > lib/ZeroMQ/$(am__dirstamp)
@@ -5384,13 +5399,41 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 ################################################################################
 
+@PROTOBUF_LIBS@: .protobuf-build-@TRI_BITS@
+
+.protobuf-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING Protocol Buffers"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/protobuf-2.4.1 \
+		&& ./configure \
+			--disable-dependency-tracking \
+			--disable-shared \
+			--prefix=$(PROTOBUFDIR) \
+			--libdir=$(PROTOBUFDIR)/lib@TRI_BITS@
+	cd @top_srcdir@/3rdParty/protobuf-2.4.1 && $(MAKE) install
+
+	touch .protobuf-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD Protocol Buffers FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+################################################################################
+
 ################################################################################
 ### @brief protocol buffers
 ################################################################################
 
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@%.pb.cpp: %.proto
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
-@ENABLE_PROTOBUF_DEPENDENCY_TRUE@	mv $(addsuffix .cc,$(basename $@)) $@
+%.pb.cpp: %.proto
+	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
+	mv $(addsuffix .cc,$(basename $@)) $@
 
 ################################################################################
 ################################################################################

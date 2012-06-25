@@ -614,6 +614,9 @@ ZEROMQ_LDFLAGS
 ZEROMQ_CPPFLAGS
 ENABLE_ZEROMQ_FALSE
 ENABLE_ZEROMQ_TRUE
+PROTOBUF_LIBS
+PROTOBUF_LDFLAGS
+PROTOBUF_CPPFLAGS
 MRUBY_LIBS
 MRUBY_LDFLAGS
 MRUBY_CPPFLAGS
@@ -757,8 +760,6 @@ ENABLE_3RD_PARTY_BOOST_FALSE
 ENABLE_3RD_PARTY_BOOST_TRUE
 ENABLE_ALL_IN_ONE_FALSE
 ENABLE_ALL_IN_ONE_TRUE
-ENABLE_PROTOBUF_DEPENDENCY_FALSE
-ENABLE_PROTOBUF_DEPENDENCY_TRUE
 ENABLE_ERRORS_DEPENDENCY_FALSE
 ENABLE_ERRORS_DEPENDENCY_TRUE
 ENABLE_FLEX_FALSE
@@ -809,7 +810,6 @@ enable_option_checking
 enable_bison
 enable_flex
 enable_errors_dependency
-enable_protobuf_dependency
 enable_all_in_one
 enable_3rd_party_boost
 with_boost_test
@@ -1490,8 +1490,6 @@ Optional Features:
   --enable-flex           enable FLEX
   --enable-errors-dependency
                           generate dependencies for error files
-  --enable-protobuf-dependency
-                          generate dependencies for protocol buffers
   --enable-all-in-one     use supplied V8 and LIBEV from 3rdParty directory
   --enable-3rd-party-boost
                           use supplied BOOST from 3rdParty directory
@@ -2535,25 +2533,6 @@ fi
 else
   ENABLE_ERRORS_DEPENDENCY_TRUE='#'
   ENABLE_ERRORS_DEPENDENCY_FALSE=
-fi
-
-
-
-# Check whether --enable-protobuf-dependency was given.
-if test "${enable_protobuf_dependency+set}" = set; then :
-  enableval=$enable_protobuf_dependency; tr_PROTOBUF_DEPENDENCY="${enableval:-yes}"
-else
-  tr_PROTOBUF_DEPENDENCY=no
-
-fi
-
-
- if test "x$tr_PROTOBUF_DEPENDENCY" = xyes; then
-  ENABLE_PROTOBUF_DEPENDENCY_TRUE=
-  ENABLE_PROTOBUF_DEPENDENCY_FALSE='#'
-else
-  ENABLE_PROTOBUF_DEPENDENCY_TRUE='#'
-  ENABLE_PROTOBUF_DEPENDENCY_FALSE=
 fi
 
 
@@ -9135,6 +9114,34 @@ fi
 
 
 
+PROTOBUF_CPPFLAGS="-I${srcdir}/3rdParty/protobuf-2.4.1/src"
+PROTOBUF_LDFLAGS=""
+PROTOBUF_LIBS="${srcdir}/3rdParty/protobuf-2.4.1/src/.libs/libprotobuf.a"
+
+TRI_PROTOBUF_VERSION="2.4.1"
+
+
+
+
+
+
+PROTOBUF_CPPFLAGS="${PROTOBUF_CPPFLAGS} -DTRI_PROTOBUF_VERSION='\"${TRI_PROTOBUF_VERSION}\"'"
+
+
+BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-PROTOBUF: enabled"
+
+LIB_INFO="$LIB_INFO|PROTOBUF VERSION: ${TRI_PROTOBUF_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|PROTOBUF_CPPFLAGS: ${PROTOBUF_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|PROTOBUF_LDFLAGS:  ${PROTOBUF_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|PROTOBUF_LIBS:     ${PROTOBUF_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+
+
+
+
+
 # Check whether --enable-zeromq was given.
 if test "${enable_zeromq+set}" = set; then :
   enableval=$enable_zeromq; tr_ZEROMQ="${enableval:-yes}"
@@ -9688,10 +9695,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ERRORS_DEPENDENCY_TRUE}" && test -z "${ENABLE_ERRORS_DEPENDENCY_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ERRORS_DEPENDENCY\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${ENABLE_PROTOBUF_DEPENDENCY_TRUE}" && test -z "${ENABLE_PROTOBUF_DEPENDENCY_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_PROTOBUF_DEPENDENCY\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ALL_IN_ONE_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_FALSE}"; then
