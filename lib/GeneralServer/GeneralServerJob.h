@@ -53,6 +53,10 @@ namespace triagens {
     class GeneralServerJob : public Job {
       GeneralServerJob (GeneralServerJob const&);
       GeneralServerJob& operator= (GeneralServerJob const&);
+ 
+      private:
+
+        typedef HttpHandler* observerType; // TODO: change type of observer
 
       public:
 
@@ -87,6 +91,15 @@ namespace triagens {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
+        /// @brief attach an observer
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void attachObserver (observerType observer) { 
+          _observers.push_back(observer);
+        }
+
+
+        ////////////////////////////////////////////////////////////////////////////////
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,6 +129,7 @@ namespace triagens {
 
         status_e work () {
           LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
+          notifyObservers(Job::JOB_WORK);
 
           if (_shutdown != 0) { 
             return Job::JOB_DONE;
@@ -139,6 +153,8 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void cleanup () {
+          notifyObservers(Job::JOB_CLEANUP);
+
           if (_shutdown != 0) {
             delete this;
           }
@@ -156,6 +172,7 @@ namespace triagens {
 
         void finish (void*) {
           LOGGER_ERROR << "finished called for GeneralServerJob";
+          notifyObservers(Job::JOB_FINISH);
           cleanup();
         }
 
@@ -173,6 +190,7 @@ namespace triagens {
 
         bool beginShutdown () {
           LOGGER_TRACE << "shutdown, job (" << ((void*) this) << ") is " << (_done ? "done" : "still running");
+          notifyObservers(Job::JOB_SHUTDOWN);
   
           if (_done != 0) {
             delete this;
@@ -183,6 +201,14 @@ namespace triagens {
           }
 
           return false;
+        }
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief set the job to done from the outside
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setDone () {
+          _done = 1;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +244,7 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-       /// @brief handler
+        /// @brief handler
         ////////////////////////////////////////////////////////////////////////////////
 
         H* getHandler () const {
@@ -226,6 +252,18 @@ namespace triagens {
         }
 
       protected:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief notify attached observers
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void notifyObservers (const Job::notification_e type) {
+          vector<observerType>::iterator i;
+
+          for (i = _observers.begin(); i != _observers.end(); ++i) {
+            (*i)->notify(this, type);
+          }
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief general server
@@ -256,8 +294,13 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         H* _handler;
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief attached observers
+        ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+        vector<observerType> _observers;
+
         volatile sig_atomic_t _shutdown;
         volatile sig_atomic_t _done;
     };
