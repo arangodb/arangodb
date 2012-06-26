@@ -216,6 +216,67 @@ describe ArangoDB do
 
 	ArangoDB.size_collection(@cid).should eq(0)
       end
+      
+      it "creating a document with an existing id" do
+        @did = 6657665
+        @rid = 6657666
+
+	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+
+	cmd = "/_api/document?collection=#{@cid}&useId=true"
+	body = "{ \"some stuff\" : \"goes here\", \"_id\" : #{@did}, \"_rev\": #{@rid} }"
+	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+
+	etag = doc.headers['etag']
+	etag.should be_kind_of(String)
+        etag.should eq("\"#{@rid}\"")
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	rev = doc.parsed_response['_rev']
+	rev.should be_kind_of(Integer)
+        rev.should eq(@rid)
+
+	did = doc.parsed_response['_id']
+	did.should be_kind_of(String)
+	did.should eq("#{@cid}/#{@did}")
+	
+	match = /([0-9]*)\/([0-9]*)/.match(did)
+
+	match[1].should eq("#{@cid}")
+
+	etag.should eq("\"#{rev}\"")
+	location.should eq("/_api/document/#{did}")
+
+	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+      end
+      
+      it "creating a document with a duplicate existing id" do
+        @did = 6657665
+        @rid = 6657666
+
+	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+
+	cmd = "/_api/document?collection=#{@cid}&useId=true"
+	body = "{ \"some stuff\" : \"goes here\", \"_id\" : #{@did}, \"_rev\": #{@rid} }"
+	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+
+	doc.code.should eq(201)
+
+        # send again
+	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+	doc.code.should eq(409) # conflict
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(409)
+	doc.parsed_response['errorNum'].should eq(1210)
+
+	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+      end
     end
 
 ################################################################################

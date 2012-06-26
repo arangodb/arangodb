@@ -149,7 +149,15 @@ namespace triagens {
             return ((S*) this)->createMaintenanceHandler();
           }
 
-          return _handlerFactory == 0 ? 0 : _handlerFactory->createHandler(request);
+          if (_handlerFactory == 0) {
+            return 0;
+          }
+
+          typename HF::GeneralHandler* handler = _handlerFactory->createHandler(request);
+
+          handler->setHandlerFactory(_handlerFactory);
+
+          return handler;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -157,12 +165,9 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void destroyHandler (typename HF::GeneralHandler* handler) {
-          if (_handlerFactory == 0) {
-            delete handler;
-          }
-          else {
-            _handlerFactory->destroyHandler(handler);
-          }
+          assert(handler);
+
+          handler->beginShutdown();
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -229,8 +234,7 @@ namespace triagens {
           
           // Try all returned addresses
           for (aip = result; aip != NULL; aip = aip->ai_next) {
-            
-            ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), aip, reuseAddress);
+            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, reuseAddress);
 
             if (! task->isBound()) {
               deleteTask(task);
@@ -274,7 +278,7 @@ namespace triagens {
         /// @brief handles a request
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleRequest (CT * task, typename HF::GeneralHandler * handler) {
+        virtual bool handleRequest (CT * task, typename HF::GeneralHandler*& handler) {
 
           // execute handle and requeue
           bool done = false;
@@ -284,7 +288,10 @@ namespace triagens {
 
             if (status != Handler::HANDLER_REQUEUE) {
               done = true;
+              assert(handler);
+              task->setHandler(0);
               destroyHandler(handler);
+              handler = 0;
             }
             else {
               continue;

@@ -30,58 +30,85 @@ void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
 void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
 void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
 
-class ArangoMessage;
-class ArangoKeyValue;
-class ArangoBlobMessage;
+class PB_ArangoKeyValue;
+class PB_ArangoMessage;
+class PB_ArangoBatchMessage;
+class PB_ArangoBlobRequest;
+class PB_ArangoBlobResponse;
+class PB_ArangoErrorResponse;
 
-enum ArangoMessageType {
-  BLOB_MSG = 1
+enum PB_ArangoMessageType {
+  PB_BLOB_REQUEST = 0,
+  PB_BLOB_RESPONSE = 1,
+  PB_ERROR_RESPONSE = 2
 };
-bool ArangoMessageType_IsValid(int value);
-const ArangoMessageType ArangoMessageType_MIN = BLOB_MSG;
-const ArangoMessageType ArangoMessageType_MAX = BLOB_MSG;
-const int ArangoMessageType_ARRAYSIZE = ArangoMessageType_MAX + 1;
+bool PB_ArangoMessageType_IsValid(int value);
+const PB_ArangoMessageType PB_ArangoMessageType_MIN = PB_BLOB_REQUEST;
+const PB_ArangoMessageType PB_ArangoMessageType_MAX = PB_ERROR_RESPONSE;
+const int PB_ArangoMessageType_ARRAYSIZE = PB_ArangoMessageType_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* ArangoMessageType_descriptor();
-inline const ::std::string& ArangoMessageType_Name(ArangoMessageType value) {
+const ::google::protobuf::EnumDescriptor* PB_ArangoMessageType_descriptor();
+inline const ::std::string& PB_ArangoMessageType_Name(PB_ArangoMessageType value) {
   return ::google::protobuf::internal::NameOfEnum(
-    ArangoMessageType_descriptor(), value);
+    PB_ArangoMessageType_descriptor(), value);
 }
-inline bool ArangoMessageType_Parse(
-    const ::std::string& name, ArangoMessageType* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<ArangoMessageType>(
-    ArangoMessageType_descriptor(), name, value);
+inline bool PB_ArangoMessageType_Parse(
+    const ::std::string& name, PB_ArangoMessageType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoMessageType>(
+    PB_ArangoMessageType_descriptor(), name, value);
 }
-enum ArangoMessageContentType {
-  NO_CONTENT = 0,
-  TEXT_CONTENT = 1,
-  JSON_CONTENT = 2
+enum PB_ArangoMessageContentType {
+  PB_NO_CONTENT = 0,
+  PB_TEXT_CONTENT = 1,
+  PB_JSON_CONTENT = 2
 };
-bool ArangoMessageContentType_IsValid(int value);
-const ArangoMessageContentType ArangoMessageContentType_MIN = NO_CONTENT;
-const ArangoMessageContentType ArangoMessageContentType_MAX = JSON_CONTENT;
-const int ArangoMessageContentType_ARRAYSIZE = ArangoMessageContentType_MAX + 1;
+bool PB_ArangoMessageContentType_IsValid(int value);
+const PB_ArangoMessageContentType PB_ArangoMessageContentType_MIN = PB_NO_CONTENT;
+const PB_ArangoMessageContentType PB_ArangoMessageContentType_MAX = PB_JSON_CONTENT;
+const int PB_ArangoMessageContentType_ARRAYSIZE = PB_ArangoMessageContentType_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* ArangoMessageContentType_descriptor();
-inline const ::std::string& ArangoMessageContentType_Name(ArangoMessageContentType value) {
+const ::google::protobuf::EnumDescriptor* PB_ArangoMessageContentType_descriptor();
+inline const ::std::string& PB_ArangoMessageContentType_Name(PB_ArangoMessageContentType value) {
   return ::google::protobuf::internal::NameOfEnum(
-    ArangoMessageContentType_descriptor(), value);
+    PB_ArangoMessageContentType_descriptor(), value);
 }
-inline bool ArangoMessageContentType_Parse(
-    const ::std::string& name, ArangoMessageContentType* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<ArangoMessageContentType>(
-    ArangoMessageContentType_descriptor(), name, value);
+inline bool PB_ArangoMessageContentType_Parse(
+    const ::std::string& name, PB_ArangoMessageContentType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoMessageContentType>(
+    PB_ArangoMessageContentType_descriptor(), name, value);
+}
+enum PB_ArangoRequestType {
+  PB_REQUEST_TYPE_DELETE = 0,
+  PB_REQUEST_TYPE_GET = 1,
+  PB_REQUEST_TYPE_HEAD = 2,
+  PB_REQUEST_TYPE_POST = 3,
+  PB_REQUEST_TYPE_PUT = 4
+};
+bool PB_ArangoRequestType_IsValid(int value);
+const PB_ArangoRequestType PB_ArangoRequestType_MIN = PB_REQUEST_TYPE_DELETE;
+const PB_ArangoRequestType PB_ArangoRequestType_MAX = PB_REQUEST_TYPE_PUT;
+const int PB_ArangoRequestType_ARRAYSIZE = PB_ArangoRequestType_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* PB_ArangoRequestType_descriptor();
+inline const ::std::string& PB_ArangoRequestType_Name(PB_ArangoRequestType value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    PB_ArangoRequestType_descriptor(), value);
+}
+inline bool PB_ArangoRequestType_Parse(
+    const ::std::string& name, PB_ArangoRequestType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoRequestType>(
+    PB_ArangoRequestType_descriptor(), name, value);
 }
 // ===================================================================
 
-class ArangoMessage : public ::google::protobuf::Message {
+class PB_ArangoKeyValue : public ::google::protobuf::Message {
  public:
-  ArangoMessage();
-  virtual ~ArangoMessage();
+  PB_ArangoKeyValue();
+  virtual ~PB_ArangoKeyValue();
   
-  ArangoMessage(const ArangoMessage& from);
+  PB_ArangoKeyValue(const PB_ArangoKeyValue& from);
   
-  inline ArangoMessage& operator=(const ArangoMessage& from) {
+  inline PB_ArangoKeyValue& operator=(const PB_ArangoKeyValue& from) {
     CopyFrom(from);
     return *this;
   }
@@ -95,110 +122,17 @@ class ArangoMessage : public ::google::protobuf::Message {
   }
   
   static const ::google::protobuf::Descriptor* descriptor();
-  static const ArangoMessage& default_instance();
+  static const PB_ArangoKeyValue& default_instance();
   
-  void Swap(ArangoMessage* other);
-  
-  // implements Message ----------------------------------------------
-  
-  ArangoMessage* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ArangoMessage& from);
-  void MergeFrom(const ArangoMessage& from);
-  void Clear();
-  bool IsInitialized() const;
-  
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-  
-  ::google::protobuf::Metadata GetMetadata() const;
-  
-  // nested types ----------------------------------------------------
-  
-  // accessors -------------------------------------------------------
-  
-  // required .ArangoMessageType type = 1;
-  inline bool has_type() const;
-  inline void clear_type();
-  static const int kTypeFieldNumber = 1;
-  inline ArangoMessageType type() const;
-  inline void set_type(ArangoMessageType value);
-  
-  // optional .ArangoBlobMessage blob = 2;
-  inline bool has_blob() const;
-  inline void clear_blob();
-  static const int kBlobFieldNumber = 2;
-  inline const ::ArangoBlobMessage& blob() const;
-  inline ::ArangoBlobMessage* mutable_blob();
-  inline ::ArangoBlobMessage* release_blob();
-  
-  // @@protoc_insertion_point(class_scope:ArangoMessage)
- private:
-  inline void set_has_type();
-  inline void clear_has_type();
-  inline void set_has_blob();
-  inline void clear_has_blob();
-  
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-  
-  ::ArangoBlobMessage* blob_;
-  int type_;
-  
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
-  
-  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
-  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
-  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
-  
-  void InitAsDefaultInstance();
-  static ArangoMessage* default_instance_;
-};
-// -------------------------------------------------------------------
-
-class ArangoKeyValue : public ::google::protobuf::Message {
- public:
-  ArangoKeyValue();
-  virtual ~ArangoKeyValue();
-  
-  ArangoKeyValue(const ArangoKeyValue& from);
-  
-  inline ArangoKeyValue& operator=(const ArangoKeyValue& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-  
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-  
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const ArangoKeyValue& default_instance();
-  
-  void Swap(ArangoKeyValue* other);
+  void Swap(PB_ArangoKeyValue* other);
   
   // implements Message ----------------------------------------------
   
-  ArangoKeyValue* New() const;
+  PB_ArangoKeyValue* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ArangoKeyValue& from);
-  void MergeFrom(const ArangoKeyValue& from);
+  void CopyFrom(const PB_ArangoKeyValue& from);
+  void MergeFrom(const PB_ArangoKeyValue& from);
   void Clear();
   bool IsInitialized() const;
   
@@ -243,7 +177,7 @@ class ArangoKeyValue : public ::google::protobuf::Message {
   inline ::std::string* mutable_value();
   inline ::std::string* release_value();
   
-  // @@protoc_insertion_point(class_scope:ArangoKeyValue)
+  // @@protoc_insertion_point(class_scope:PB_ArangoKeyValue)
  private:
   inline void set_has_key();
   inline void clear_has_key();
@@ -263,18 +197,18 @@ class ArangoKeyValue : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
   
   void InitAsDefaultInstance();
-  static ArangoKeyValue* default_instance_;
+  static PB_ArangoKeyValue* default_instance_;
 };
 // -------------------------------------------------------------------
 
-class ArangoBlobMessage : public ::google::protobuf::Message {
+class PB_ArangoMessage : public ::google::protobuf::Message {
  public:
-  ArangoBlobMessage();
-  virtual ~ArangoBlobMessage();
+  PB_ArangoMessage();
+  virtual ~PB_ArangoMessage();
   
-  ArangoBlobMessage(const ArangoBlobMessage& from);
+  PB_ArangoMessage(const PB_ArangoMessage& from);
   
-  inline ArangoBlobMessage& operator=(const ArangoBlobMessage& from) {
+  inline PB_ArangoMessage& operator=(const PB_ArangoMessage& from) {
     CopyFrom(from);
     return *this;
   }
@@ -288,17 +222,17 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   }
   
   static const ::google::protobuf::Descriptor* descriptor();
-  static const ArangoBlobMessage& default_instance();
+  static const PB_ArangoMessage& default_instance();
   
-  void Swap(ArangoBlobMessage* other);
+  void Swap(PB_ArangoMessage* other);
   
   // implements Message ----------------------------------------------
   
-  ArangoBlobMessage* New() const;
+  PB_ArangoMessage* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ArangoBlobMessage& from);
-  void MergeFrom(const ArangoBlobMessage& from);
+  void CopyFrom(const PB_ArangoMessage& from);
+  void MergeFrom(const PB_ArangoMessage& from);
   void Clear();
   bool IsInitialized() const;
   
@@ -321,10 +255,217 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   
   // accessors -------------------------------------------------------
   
-  // required string url = 1;
+  // repeated .PB_ArangoBatchMessage messages = 1;
+  inline int messages_size() const;
+  inline void clear_messages();
+  static const int kMessagesFieldNumber = 1;
+  inline const ::PB_ArangoBatchMessage& messages(int index) const;
+  inline ::PB_ArangoBatchMessage* mutable_messages(int index);
+  inline ::PB_ArangoBatchMessage* add_messages();
+  inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoBatchMessage >&
+      messages() const;
+  inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoBatchMessage >*
+      mutable_messages();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoMessage)
+ private:
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::google::protobuf::RepeatedPtrField< ::PB_ArangoBatchMessage > messages_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoMessage* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoBatchMessage : public ::google::protobuf::Message {
+ public:
+  PB_ArangoBatchMessage();
+  virtual ~PB_ArangoBatchMessage();
+  
+  PB_ArangoBatchMessage(const PB_ArangoBatchMessage& from);
+  
+  inline PB_ArangoBatchMessage& operator=(const PB_ArangoBatchMessage& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoBatchMessage& default_instance();
+  
+  void Swap(PB_ArangoBatchMessage* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoBatchMessage* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoBatchMessage& from);
+  void MergeFrom(const PB_ArangoBatchMessage& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required .PB_ArangoMessageType type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline PB_ArangoMessageType type() const;
+  inline void set_type(PB_ArangoMessageType value);
+  
+  // optional .PB_ArangoBlobRequest blobRequest = 2;
+  inline bool has_blobrequest() const;
+  inline void clear_blobrequest();
+  static const int kBlobRequestFieldNumber = 2;
+  inline const ::PB_ArangoBlobRequest& blobrequest() const;
+  inline ::PB_ArangoBlobRequest* mutable_blobrequest();
+  inline ::PB_ArangoBlobRequest* release_blobrequest();
+  
+  // optional .PB_ArangoBlobResponse blobResponse = 3;
+  inline bool has_blobresponse() const;
+  inline void clear_blobresponse();
+  static const int kBlobResponseFieldNumber = 3;
+  inline const ::PB_ArangoBlobResponse& blobresponse() const;
+  inline ::PB_ArangoBlobResponse* mutable_blobresponse();
+  inline ::PB_ArangoBlobResponse* release_blobresponse();
+  
+  // optional .PB_ArangoErrorResponse errorResponse = 4;
+  inline bool has_errorresponse() const;
+  inline void clear_errorresponse();
+  static const int kErrorResponseFieldNumber = 4;
+  inline const ::PB_ArangoErrorResponse& errorresponse() const;
+  inline ::PB_ArangoErrorResponse* mutable_errorresponse();
+  inline ::PB_ArangoErrorResponse* release_errorresponse();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoBatchMessage)
+ private:
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_blobrequest();
+  inline void clear_has_blobrequest();
+  inline void set_has_blobresponse();
+  inline void clear_has_blobresponse();
+  inline void set_has_errorresponse();
+  inline void clear_has_errorresponse();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::PB_ArangoBlobRequest* blobrequest_;
+  ::PB_ArangoBlobResponse* blobresponse_;
+  ::PB_ArangoErrorResponse* errorresponse_;
+  int type_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoBatchMessage* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoBlobRequest : public ::google::protobuf::Message {
+ public:
+  PB_ArangoBlobRequest();
+  virtual ~PB_ArangoBlobRequest();
+  
+  PB_ArangoBlobRequest(const PB_ArangoBlobRequest& from);
+  
+  inline PB_ArangoBlobRequest& operator=(const PB_ArangoBlobRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoBlobRequest& default_instance();
+  
+  void Swap(PB_ArangoBlobRequest* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoBlobRequest* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoBlobRequest& from);
+  void MergeFrom(const PB_ArangoBlobRequest& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required .PB_ArangoRequestType requestType = 1;
+  inline bool has_requesttype() const;
+  inline void clear_requesttype();
+  static const int kRequestTypeFieldNumber = 1;
+  inline PB_ArangoRequestType requesttype() const;
+  inline void set_requesttype(PB_ArangoRequestType value);
+  
+  // required string url = 2;
   inline bool has_url() const;
   inline void clear_url();
-  static const int kUrlFieldNumber = 1;
+  static const int kUrlFieldNumber = 2;
   inline const ::std::string& url() const;
   inline void set_url(const ::std::string& value);
   inline void set_url(const char* value);
@@ -332,41 +473,41 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   inline ::std::string* mutable_url();
   inline ::std::string* release_url();
   
-  // repeated .ArangoKeyValue parameters = 2;
-  inline int parameters_size() const;
-  inline void clear_parameters();
-  static const int kParametersFieldNumber = 2;
-  inline const ::ArangoKeyValue& parameters(int index) const;
-  inline ::ArangoKeyValue* mutable_parameters(int index);
-  inline ::ArangoKeyValue* add_parameters();
-  inline const ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >&
-      parameters() const;
-  inline ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >*
-      mutable_parameters();
+  // repeated .PB_ArangoKeyValue values = 3;
+  inline int values_size() const;
+  inline void clear_values();
+  static const int kValuesFieldNumber = 3;
+  inline const ::PB_ArangoKeyValue& values(int index) const;
+  inline ::PB_ArangoKeyValue* mutable_values(int index);
+  inline ::PB_ArangoKeyValue* add_values();
+  inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
+      values() const;
+  inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
+      mutable_values();
   
-  // repeated .ArangoKeyValue headers = 3;
+  // repeated .PB_ArangoKeyValue headers = 4;
   inline int headers_size() const;
   inline void clear_headers();
-  static const int kHeadersFieldNumber = 3;
-  inline const ::ArangoKeyValue& headers(int index) const;
-  inline ::ArangoKeyValue* mutable_headers(int index);
-  inline ::ArangoKeyValue* add_headers();
-  inline const ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >&
+  static const int kHeadersFieldNumber = 4;
+  inline const ::PB_ArangoKeyValue& headers(int index) const;
+  inline ::PB_ArangoKeyValue* mutable_headers(int index);
+  inline ::PB_ArangoKeyValue* add_headers();
+  inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
       headers() const;
-  inline ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >*
+  inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
       mutable_headers();
   
-  // required .ArangoMessageContentType contentType = 4;
+  // required .PB_ArangoMessageContentType contentType = 5;
   inline bool has_contenttype() const;
   inline void clear_contenttype();
-  static const int kContentTypeFieldNumber = 4;
-  inline ArangoMessageContentType contenttype() const;
-  inline void set_contenttype(ArangoMessageContentType value);
+  static const int kContentTypeFieldNumber = 5;
+  inline PB_ArangoMessageContentType contenttype() const;
+  inline void set_contenttype(PB_ArangoMessageContentType value);
   
-  // optional string content = 5;
+  // optional string content = 7;
   inline bool has_content() const;
   inline void clear_content();
-  static const int kContentFieldNumber = 5;
+  static const int kContentFieldNumber = 7;
   inline const ::std::string& content() const;
   inline void set_content(const ::std::string& value);
   inline void set_content(const char* value);
@@ -374,8 +515,10 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   inline ::std::string* mutable_content();
   inline ::std::string* release_content();
   
-  // @@protoc_insertion_point(class_scope:ArangoBlobMessage)
+  // @@protoc_insertion_point(class_scope:PB_ArangoBlobRequest)
  private:
+  inline void set_has_requesttype();
+  inline void clear_has_requesttype();
   inline void set_has_url();
   inline void clear_has_url();
   inline void set_has_contenttype();
@@ -386,10 +529,140 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
   ::std::string* url_;
-  ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue > parameters_;
-  ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue > headers_;
-  ::std::string* content_;
+  ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > values_;
+  int requesttype_;
   int contenttype_;
+  ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > headers_;
+  ::std::string* content_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoBlobRequest* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoBlobResponse : public ::google::protobuf::Message {
+ public:
+  PB_ArangoBlobResponse();
+  virtual ~PB_ArangoBlobResponse();
+  
+  PB_ArangoBlobResponse(const PB_ArangoBlobResponse& from);
+  
+  inline PB_ArangoBlobResponse& operator=(const PB_ArangoBlobResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoBlobResponse& default_instance();
+  
+  void Swap(PB_ArangoBlobResponse* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoBlobResponse* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoBlobResponse& from);
+  void MergeFrom(const PB_ArangoBlobResponse& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required int32 status = 1;
+  inline bool has_status() const;
+  inline void clear_status();
+  static const int kStatusFieldNumber = 1;
+  inline ::google::protobuf::int32 status() const;
+  inline void set_status(::google::protobuf::int32 value);
+  
+  // repeated .PB_ArangoKeyValue headers = 2;
+  inline int headers_size() const;
+  inline void clear_headers();
+  static const int kHeadersFieldNumber = 2;
+  inline const ::PB_ArangoKeyValue& headers(int index) const;
+  inline ::PB_ArangoKeyValue* mutable_headers(int index);
+  inline ::PB_ArangoKeyValue* add_headers();
+  inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
+      headers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
+      mutable_headers();
+  
+  // required .PB_ArangoMessageContentType contentType = 3;
+  inline bool has_contenttype() const;
+  inline void clear_contenttype();
+  static const int kContentTypeFieldNumber = 3;
+  inline PB_ArangoMessageContentType contenttype() const;
+  inline void set_contenttype(PB_ArangoMessageContentType value);
+  
+  // required int32 contentLength = 6;
+  inline bool has_contentlength() const;
+  inline void clear_contentlength();
+  static const int kContentLengthFieldNumber = 6;
+  inline ::google::protobuf::int32 contentlength() const;
+  inline void set_contentlength(::google::protobuf::int32 value);
+  
+  // optional string content = 4;
+  inline bool has_content() const;
+  inline void clear_content();
+  static const int kContentFieldNumber = 4;
+  inline const ::std::string& content() const;
+  inline void set_content(const ::std::string& value);
+  inline void set_content(const char* value);
+  inline void set_content(const char* value, size_t size);
+  inline ::std::string* mutable_content();
+  inline ::std::string* release_content();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoBlobResponse)
+ private:
+  inline void set_has_status();
+  inline void clear_has_status();
+  inline void set_has_contenttype();
+  inline void clear_has_contenttype();
+  inline void set_has_contentlength();
+  inline void clear_has_contentlength();
+  inline void set_has_content();
+  inline void clear_has_content();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > headers_;
+  ::google::protobuf::int32 status_;
+  int contenttype_;
+  ::std::string* content_;
+  ::google::protobuf::int32 contentlength_;
   
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
@@ -399,119 +672,149 @@ class ArangoBlobMessage : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
   
   void InitAsDefaultInstance();
-  static ArangoBlobMessage* default_instance_;
+  static PB_ArangoBlobResponse* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoErrorResponse : public ::google::protobuf::Message {
+ public:
+  PB_ArangoErrorResponse();
+  virtual ~PB_ArangoErrorResponse();
+  
+  PB_ArangoErrorResponse(const PB_ArangoErrorResponse& from);
+  
+  inline PB_ArangoErrorResponse& operator=(const PB_ArangoErrorResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoErrorResponse& default_instance();
+  
+  void Swap(PB_ArangoErrorResponse* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoErrorResponse* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoErrorResponse& from);
+  void MergeFrom(const PB_ArangoErrorResponse& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required string message = 1;
+  inline bool has_message() const;
+  inline void clear_message();
+  static const int kMessageFieldNumber = 1;
+  inline const ::std::string& message() const;
+  inline void set_message(const ::std::string& value);
+  inline void set_message(const char* value);
+  inline void set_message(const char* value, size_t size);
+  inline ::std::string* mutable_message();
+  inline ::std::string* release_message();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoErrorResponse)
+ private:
+  inline void set_has_message();
+  inline void clear_has_message();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::std::string* message_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoErrorResponse* default_instance_;
 };
 // ===================================================================
 
 
 // ===================================================================
 
-// ArangoMessage
-
-// required .ArangoMessageType type = 1;
-inline bool ArangoMessage::has_type() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void ArangoMessage::set_has_type() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void ArangoMessage::clear_has_type() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void ArangoMessage::clear_type() {
-  type_ = 1;
-  clear_has_type();
-}
-inline ArangoMessageType ArangoMessage::type() const {
-  return static_cast< ArangoMessageType >(type_);
-}
-inline void ArangoMessage::set_type(ArangoMessageType value) {
-  GOOGLE_DCHECK(ArangoMessageType_IsValid(value));
-  set_has_type();
-  type_ = value;
-}
-
-// optional .ArangoBlobMessage blob = 2;
-inline bool ArangoMessage::has_blob() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void ArangoMessage::set_has_blob() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void ArangoMessage::clear_has_blob() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void ArangoMessage::clear_blob() {
-  if (blob_ != NULL) blob_->::ArangoBlobMessage::Clear();
-  clear_has_blob();
-}
-inline const ::ArangoBlobMessage& ArangoMessage::blob() const {
-  return blob_ != NULL ? *blob_ : *default_instance_->blob_;
-}
-inline ::ArangoBlobMessage* ArangoMessage::mutable_blob() {
-  set_has_blob();
-  if (blob_ == NULL) blob_ = new ::ArangoBlobMessage;
-  return blob_;
-}
-inline ::ArangoBlobMessage* ArangoMessage::release_blob() {
-  clear_has_blob();
-  ::ArangoBlobMessage* temp = blob_;
-  blob_ = NULL;
-  return temp;
-}
-
-// -------------------------------------------------------------------
-
-// ArangoKeyValue
+// PB_ArangoKeyValue
 
 // required string key = 1;
-inline bool ArangoKeyValue::has_key() const {
+inline bool PB_ArangoKeyValue::has_key() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void ArangoKeyValue::set_has_key() {
+inline void PB_ArangoKeyValue::set_has_key() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void ArangoKeyValue::clear_has_key() {
+inline void PB_ArangoKeyValue::clear_has_key() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void ArangoKeyValue::clear_key() {
+inline void PB_ArangoKeyValue::clear_key() {
   if (key_ != &::google::protobuf::internal::kEmptyString) {
     key_->clear();
   }
   clear_has_key();
 }
-inline const ::std::string& ArangoKeyValue::key() const {
+inline const ::std::string& PB_ArangoKeyValue::key() const {
   return *key_;
 }
-inline void ArangoKeyValue::set_key(const ::std::string& value) {
+inline void PB_ArangoKeyValue::set_key(const ::std::string& value) {
   set_has_key();
   if (key_ == &::google::protobuf::internal::kEmptyString) {
     key_ = new ::std::string;
   }
   key_->assign(value);
 }
-inline void ArangoKeyValue::set_key(const char* value) {
+inline void PB_ArangoKeyValue::set_key(const char* value) {
   set_has_key();
   if (key_ == &::google::protobuf::internal::kEmptyString) {
     key_ = new ::std::string;
   }
   key_->assign(value);
 }
-inline void ArangoKeyValue::set_key(const char* value, size_t size) {
+inline void PB_ArangoKeyValue::set_key(const char* value, size_t size) {
   set_has_key();
   if (key_ == &::google::protobuf::internal::kEmptyString) {
     key_ = new ::std::string;
   }
   key_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ArangoKeyValue::mutable_key() {
+inline ::std::string* PB_ArangoKeyValue::mutable_key() {
   set_has_key();
   if (key_ == &::google::protobuf::internal::kEmptyString) {
     key_ = new ::std::string;
   }
   return key_;
 }
-inline ::std::string* ArangoKeyValue::release_key() {
+inline ::std::string* PB_ArangoKeyValue::release_key() {
   clear_has_key();
   if (key_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -523,53 +826,53 @@ inline ::std::string* ArangoKeyValue::release_key() {
 }
 
 // required string value = 2;
-inline bool ArangoKeyValue::has_value() const {
+inline bool PB_ArangoKeyValue::has_value() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void ArangoKeyValue::set_has_value() {
+inline void PB_ArangoKeyValue::set_has_value() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void ArangoKeyValue::clear_has_value() {
+inline void PB_ArangoKeyValue::clear_has_value() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void ArangoKeyValue::clear_value() {
+inline void PB_ArangoKeyValue::clear_value() {
   if (value_ != &::google::protobuf::internal::kEmptyString) {
     value_->clear();
   }
   clear_has_value();
 }
-inline const ::std::string& ArangoKeyValue::value() const {
+inline const ::std::string& PB_ArangoKeyValue::value() const {
   return *value_;
 }
-inline void ArangoKeyValue::set_value(const ::std::string& value) {
+inline void PB_ArangoKeyValue::set_value(const ::std::string& value) {
   set_has_value();
   if (value_ == &::google::protobuf::internal::kEmptyString) {
     value_ = new ::std::string;
   }
   value_->assign(value);
 }
-inline void ArangoKeyValue::set_value(const char* value) {
+inline void PB_ArangoKeyValue::set_value(const char* value) {
   set_has_value();
   if (value_ == &::google::protobuf::internal::kEmptyString) {
     value_ = new ::std::string;
   }
   value_->assign(value);
 }
-inline void ArangoKeyValue::set_value(const char* value, size_t size) {
+inline void PB_ArangoKeyValue::set_value(const char* value, size_t size) {
   set_has_value();
   if (value_ == &::google::protobuf::internal::kEmptyString) {
     value_ = new ::std::string;
   }
   value_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ArangoKeyValue::mutable_value() {
+inline ::std::string* PB_ArangoKeyValue::mutable_value() {
   set_has_value();
   if (value_ == &::google::protobuf::internal::kEmptyString) {
     value_ = new ::std::string;
   }
   return value_;
 }
-inline ::std::string* ArangoKeyValue::release_value() {
+inline ::std::string* PB_ArangoKeyValue::release_value() {
   clear_has_value();
   if (value_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -582,56 +885,222 @@ inline ::std::string* ArangoKeyValue::release_value() {
 
 // -------------------------------------------------------------------
 
-// ArangoBlobMessage
+// PB_ArangoMessage
 
-// required string url = 1;
-inline bool ArangoBlobMessage::has_url() const {
+// repeated .PB_ArangoBatchMessage messages = 1;
+inline int PB_ArangoMessage::messages_size() const {
+  return messages_.size();
+}
+inline void PB_ArangoMessage::clear_messages() {
+  messages_.Clear();
+}
+inline const ::PB_ArangoBatchMessage& PB_ArangoMessage::messages(int index) const {
+  return messages_.Get(index);
+}
+inline ::PB_ArangoBatchMessage* PB_ArangoMessage::mutable_messages(int index) {
+  return messages_.Mutable(index);
+}
+inline ::PB_ArangoBatchMessage* PB_ArangoMessage::add_messages() {
+  return messages_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoBatchMessage >&
+PB_ArangoMessage::messages() const {
+  return messages_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoBatchMessage >*
+PB_ArangoMessage::mutable_messages() {
+  return &messages_;
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoBatchMessage
+
+// required .PB_ArangoMessageType type = 1;
+inline bool PB_ArangoBatchMessage::has_type() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void ArangoBlobMessage::set_has_url() {
+inline void PB_ArangoBatchMessage::set_has_type() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void ArangoBlobMessage::clear_has_url() {
+inline void PB_ArangoBatchMessage::clear_has_type() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void ArangoBlobMessage::clear_url() {
+inline void PB_ArangoBatchMessage::clear_type() {
+  type_ = 0;
+  clear_has_type();
+}
+inline PB_ArangoMessageType PB_ArangoBatchMessage::type() const {
+  return static_cast< PB_ArangoMessageType >(type_);
+}
+inline void PB_ArangoBatchMessage::set_type(PB_ArangoMessageType value) {
+  GOOGLE_DCHECK(PB_ArangoMessageType_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional .PB_ArangoBlobRequest blobRequest = 2;
+inline bool PB_ArangoBatchMessage::has_blobrequest() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void PB_ArangoBatchMessage::set_has_blobrequest() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void PB_ArangoBatchMessage::clear_has_blobrequest() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void PB_ArangoBatchMessage::clear_blobrequest() {
+  if (blobrequest_ != NULL) blobrequest_->::PB_ArangoBlobRequest::Clear();
+  clear_has_blobrequest();
+}
+inline const ::PB_ArangoBlobRequest& PB_ArangoBatchMessage::blobrequest() const {
+  return blobrequest_ != NULL ? *blobrequest_ : *default_instance_->blobrequest_;
+}
+inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::mutable_blobrequest() {
+  set_has_blobrequest();
+  if (blobrequest_ == NULL) blobrequest_ = new ::PB_ArangoBlobRequest;
+  return blobrequest_;
+}
+inline ::PB_ArangoBlobRequest* PB_ArangoBatchMessage::release_blobrequest() {
+  clear_has_blobrequest();
+  ::PB_ArangoBlobRequest* temp = blobrequest_;
+  blobrequest_ = NULL;
+  return temp;
+}
+
+// optional .PB_ArangoBlobResponse blobResponse = 3;
+inline bool PB_ArangoBatchMessage::has_blobresponse() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void PB_ArangoBatchMessage::set_has_blobresponse() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void PB_ArangoBatchMessage::clear_has_blobresponse() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void PB_ArangoBatchMessage::clear_blobresponse() {
+  if (blobresponse_ != NULL) blobresponse_->::PB_ArangoBlobResponse::Clear();
+  clear_has_blobresponse();
+}
+inline const ::PB_ArangoBlobResponse& PB_ArangoBatchMessage::blobresponse() const {
+  return blobresponse_ != NULL ? *blobresponse_ : *default_instance_->blobresponse_;
+}
+inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::mutable_blobresponse() {
+  set_has_blobresponse();
+  if (blobresponse_ == NULL) blobresponse_ = new ::PB_ArangoBlobResponse;
+  return blobresponse_;
+}
+inline ::PB_ArangoBlobResponse* PB_ArangoBatchMessage::release_blobresponse() {
+  clear_has_blobresponse();
+  ::PB_ArangoBlobResponse* temp = blobresponse_;
+  blobresponse_ = NULL;
+  return temp;
+}
+
+// optional .PB_ArangoErrorResponse errorResponse = 4;
+inline bool PB_ArangoBatchMessage::has_errorresponse() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void PB_ArangoBatchMessage::set_has_errorresponse() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void PB_ArangoBatchMessage::clear_has_errorresponse() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void PB_ArangoBatchMessage::clear_errorresponse() {
+  if (errorresponse_ != NULL) errorresponse_->::PB_ArangoErrorResponse::Clear();
+  clear_has_errorresponse();
+}
+inline const ::PB_ArangoErrorResponse& PB_ArangoBatchMessage::errorresponse() const {
+  return errorresponse_ != NULL ? *errorresponse_ : *default_instance_->errorresponse_;
+}
+inline ::PB_ArangoErrorResponse* PB_ArangoBatchMessage::mutable_errorresponse() {
+  set_has_errorresponse();
+  if (errorresponse_ == NULL) errorresponse_ = new ::PB_ArangoErrorResponse;
+  return errorresponse_;
+}
+inline ::PB_ArangoErrorResponse* PB_ArangoBatchMessage::release_errorresponse() {
+  clear_has_errorresponse();
+  ::PB_ArangoErrorResponse* temp = errorresponse_;
+  errorresponse_ = NULL;
+  return temp;
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoBlobRequest
+
+// required .PB_ArangoRequestType requestType = 1;
+inline bool PB_ArangoBlobRequest::has_requesttype() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoBlobRequest::set_has_requesttype() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoBlobRequest::clear_has_requesttype() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoBlobRequest::clear_requesttype() {
+  requesttype_ = 0;
+  clear_has_requesttype();
+}
+inline PB_ArangoRequestType PB_ArangoBlobRequest::requesttype() const {
+  return static_cast< PB_ArangoRequestType >(requesttype_);
+}
+inline void PB_ArangoBlobRequest::set_requesttype(PB_ArangoRequestType value) {
+  GOOGLE_DCHECK(PB_ArangoRequestType_IsValid(value));
+  set_has_requesttype();
+  requesttype_ = value;
+}
+
+// required string url = 2;
+inline bool PB_ArangoBlobRequest::has_url() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void PB_ArangoBlobRequest::set_has_url() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void PB_ArangoBlobRequest::clear_has_url() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void PB_ArangoBlobRequest::clear_url() {
   if (url_ != &::google::protobuf::internal::kEmptyString) {
     url_->clear();
   }
   clear_has_url();
 }
-inline const ::std::string& ArangoBlobMessage::url() const {
+inline const ::std::string& PB_ArangoBlobRequest::url() const {
   return *url_;
 }
-inline void ArangoBlobMessage::set_url(const ::std::string& value) {
+inline void PB_ArangoBlobRequest::set_url(const ::std::string& value) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::kEmptyString) {
     url_ = new ::std::string;
   }
   url_->assign(value);
 }
-inline void ArangoBlobMessage::set_url(const char* value) {
+inline void PB_ArangoBlobRequest::set_url(const char* value) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::kEmptyString) {
     url_ = new ::std::string;
   }
   url_->assign(value);
 }
-inline void ArangoBlobMessage::set_url(const char* value, size_t size) {
+inline void PB_ArangoBlobRequest::set_url(const char* value, size_t size) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::kEmptyString) {
     url_ = new ::std::string;
   }
   url_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ArangoBlobMessage::mutable_url() {
+inline ::std::string* PB_ArangoBlobRequest::mutable_url() {
   set_has_url();
   if (url_ == &::google::protobuf::internal::kEmptyString) {
     url_ = new ::std::string;
   }
   return url_;
 }
-inline ::std::string* ArangoBlobMessage::release_url() {
+inline ::std::string* PB_ArangoBlobRequest::release_url() {
   clear_has_url();
   if (url_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -642,133 +1111,349 @@ inline ::std::string* ArangoBlobMessage::release_url() {
   }
 }
 
-// repeated .ArangoKeyValue parameters = 2;
-inline int ArangoBlobMessage::parameters_size() const {
-  return parameters_.size();
+// repeated .PB_ArangoKeyValue values = 3;
+inline int PB_ArangoBlobRequest::values_size() const {
+  return values_.size();
 }
-inline void ArangoBlobMessage::clear_parameters() {
-  parameters_.Clear();
+inline void PB_ArangoBlobRequest::clear_values() {
+  values_.Clear();
 }
-inline const ::ArangoKeyValue& ArangoBlobMessage::parameters(int index) const {
-  return parameters_.Get(index);
+inline const ::PB_ArangoKeyValue& PB_ArangoBlobRequest::values(int index) const {
+  return values_.Get(index);
 }
-inline ::ArangoKeyValue* ArangoBlobMessage::mutable_parameters(int index) {
-  return parameters_.Mutable(index);
+inline ::PB_ArangoKeyValue* PB_ArangoBlobRequest::mutable_values(int index) {
+  return values_.Mutable(index);
 }
-inline ::ArangoKeyValue* ArangoBlobMessage::add_parameters() {
-  return parameters_.Add();
+inline ::PB_ArangoKeyValue* PB_ArangoBlobRequest::add_values() {
+  return values_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >&
-ArangoBlobMessage::parameters() const {
-  return parameters_;
+inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
+PB_ArangoBlobRequest::values() const {
+  return values_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >*
-ArangoBlobMessage::mutable_parameters() {
-  return &parameters_;
+inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
+PB_ArangoBlobRequest::mutable_values() {
+  return &values_;
 }
 
-// repeated .ArangoKeyValue headers = 3;
-inline int ArangoBlobMessage::headers_size() const {
+// repeated .PB_ArangoKeyValue headers = 4;
+inline int PB_ArangoBlobRequest::headers_size() const {
   return headers_.size();
 }
-inline void ArangoBlobMessage::clear_headers() {
+inline void PB_ArangoBlobRequest::clear_headers() {
   headers_.Clear();
 }
-inline const ::ArangoKeyValue& ArangoBlobMessage::headers(int index) const {
+inline const ::PB_ArangoKeyValue& PB_ArangoBlobRequest::headers(int index) const {
   return headers_.Get(index);
 }
-inline ::ArangoKeyValue* ArangoBlobMessage::mutable_headers(int index) {
+inline ::PB_ArangoKeyValue* PB_ArangoBlobRequest::mutable_headers(int index) {
   return headers_.Mutable(index);
 }
-inline ::ArangoKeyValue* ArangoBlobMessage::add_headers() {
+inline ::PB_ArangoKeyValue* PB_ArangoBlobRequest::add_headers() {
   return headers_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >&
-ArangoBlobMessage::headers() const {
+inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
+PB_ArangoBlobRequest::headers() const {
   return headers_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::ArangoKeyValue >*
-ArangoBlobMessage::mutable_headers() {
+inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
+PB_ArangoBlobRequest::mutable_headers() {
   return &headers_;
 }
 
-// required .ArangoMessageContentType contentType = 4;
-inline bool ArangoBlobMessage::has_contenttype() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+// required .PB_ArangoMessageContentType contentType = 5;
+inline bool PB_ArangoBlobRequest::has_contenttype() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void ArangoBlobMessage::set_has_contenttype() {
-  _has_bits_[0] |= 0x00000008u;
+inline void PB_ArangoBlobRequest::set_has_contenttype() {
+  _has_bits_[0] |= 0x00000010u;
 }
-inline void ArangoBlobMessage::clear_has_contenttype() {
-  _has_bits_[0] &= ~0x00000008u;
+inline void PB_ArangoBlobRequest::clear_has_contenttype() {
+  _has_bits_[0] &= ~0x00000010u;
 }
-inline void ArangoBlobMessage::clear_contenttype() {
+inline void PB_ArangoBlobRequest::clear_contenttype() {
   contenttype_ = 0;
   clear_has_contenttype();
 }
-inline ArangoMessageContentType ArangoBlobMessage::contenttype() const {
-  return static_cast< ArangoMessageContentType >(contenttype_);
+inline PB_ArangoMessageContentType PB_ArangoBlobRequest::contenttype() const {
+  return static_cast< PB_ArangoMessageContentType >(contenttype_);
 }
-inline void ArangoBlobMessage::set_contenttype(ArangoMessageContentType value) {
-  GOOGLE_DCHECK(ArangoMessageContentType_IsValid(value));
+inline void PB_ArangoBlobRequest::set_contenttype(PB_ArangoMessageContentType value) {
+  GOOGLE_DCHECK(PB_ArangoMessageContentType_IsValid(value));
   set_has_contenttype();
   contenttype_ = value;
 }
 
-// optional string content = 5;
-inline bool ArangoBlobMessage::has_content() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+// optional string content = 7;
+inline bool PB_ArangoBlobRequest::has_content() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void ArangoBlobMessage::set_has_content() {
-  _has_bits_[0] |= 0x00000010u;
+inline void PB_ArangoBlobRequest::set_has_content() {
+  _has_bits_[0] |= 0x00000020u;
 }
-inline void ArangoBlobMessage::clear_has_content() {
-  _has_bits_[0] &= ~0x00000010u;
+inline void PB_ArangoBlobRequest::clear_has_content() {
+  _has_bits_[0] &= ~0x00000020u;
 }
-inline void ArangoBlobMessage::clear_content() {
+inline void PB_ArangoBlobRequest::clear_content() {
   if (content_ != &::google::protobuf::internal::kEmptyString) {
     content_->clear();
   }
   clear_has_content();
 }
-inline const ::std::string& ArangoBlobMessage::content() const {
+inline const ::std::string& PB_ArangoBlobRequest::content() const {
   return *content_;
 }
-inline void ArangoBlobMessage::set_content(const ::std::string& value) {
+inline void PB_ArangoBlobRequest::set_content(const ::std::string& value) {
   set_has_content();
   if (content_ == &::google::protobuf::internal::kEmptyString) {
     content_ = new ::std::string;
   }
   content_->assign(value);
 }
-inline void ArangoBlobMessage::set_content(const char* value) {
+inline void PB_ArangoBlobRequest::set_content(const char* value) {
   set_has_content();
   if (content_ == &::google::protobuf::internal::kEmptyString) {
     content_ = new ::std::string;
   }
   content_->assign(value);
 }
-inline void ArangoBlobMessage::set_content(const char* value, size_t size) {
+inline void PB_ArangoBlobRequest::set_content(const char* value, size_t size) {
   set_has_content();
   if (content_ == &::google::protobuf::internal::kEmptyString) {
     content_ = new ::std::string;
   }
   content_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ArangoBlobMessage::mutable_content() {
+inline ::std::string* PB_ArangoBlobRequest::mutable_content() {
   set_has_content();
   if (content_ == &::google::protobuf::internal::kEmptyString) {
     content_ = new ::std::string;
   }
   return content_;
 }
-inline ::std::string* ArangoBlobMessage::release_content() {
+inline ::std::string* PB_ArangoBlobRequest::release_content() {
   clear_has_content();
   if (content_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
     ::std::string* temp = content_;
     content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoBlobResponse
+
+// required int32 status = 1;
+inline bool PB_ArangoBlobResponse::has_status() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoBlobResponse::set_has_status() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoBlobResponse::clear_has_status() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoBlobResponse::clear_status() {
+  status_ = 0;
+  clear_has_status();
+}
+inline ::google::protobuf::int32 PB_ArangoBlobResponse::status() const {
+  return status_;
+}
+inline void PB_ArangoBlobResponse::set_status(::google::protobuf::int32 value) {
+  set_has_status();
+  status_ = value;
+}
+
+// repeated .PB_ArangoKeyValue headers = 2;
+inline int PB_ArangoBlobResponse::headers_size() const {
+  return headers_.size();
+}
+inline void PB_ArangoBlobResponse::clear_headers() {
+  headers_.Clear();
+}
+inline const ::PB_ArangoKeyValue& PB_ArangoBlobResponse::headers(int index) const {
+  return headers_.Get(index);
+}
+inline ::PB_ArangoKeyValue* PB_ArangoBlobResponse::mutable_headers(int index) {
+  return headers_.Mutable(index);
+}
+inline ::PB_ArangoKeyValue* PB_ArangoBlobResponse::add_headers() {
+  return headers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >&
+PB_ArangoBlobResponse::headers() const {
+  return headers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue >*
+PB_ArangoBlobResponse::mutable_headers() {
+  return &headers_;
+}
+
+// required .PB_ArangoMessageContentType contentType = 3;
+inline bool PB_ArangoBlobResponse::has_contenttype() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void PB_ArangoBlobResponse::set_has_contenttype() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void PB_ArangoBlobResponse::clear_has_contenttype() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void PB_ArangoBlobResponse::clear_contenttype() {
+  contenttype_ = 0;
+  clear_has_contenttype();
+}
+inline PB_ArangoMessageContentType PB_ArangoBlobResponse::contenttype() const {
+  return static_cast< PB_ArangoMessageContentType >(contenttype_);
+}
+inline void PB_ArangoBlobResponse::set_contenttype(PB_ArangoMessageContentType value) {
+  GOOGLE_DCHECK(PB_ArangoMessageContentType_IsValid(value));
+  set_has_contenttype();
+  contenttype_ = value;
+}
+
+// required int32 contentLength = 6;
+inline bool PB_ArangoBlobResponse::has_contentlength() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void PB_ArangoBlobResponse::set_has_contentlength() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void PB_ArangoBlobResponse::clear_has_contentlength() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void PB_ArangoBlobResponse::clear_contentlength() {
+  contentlength_ = 0;
+  clear_has_contentlength();
+}
+inline ::google::protobuf::int32 PB_ArangoBlobResponse::contentlength() const {
+  return contentlength_;
+}
+inline void PB_ArangoBlobResponse::set_contentlength(::google::protobuf::int32 value) {
+  set_has_contentlength();
+  contentlength_ = value;
+}
+
+// optional string content = 4;
+inline bool PB_ArangoBlobResponse::has_content() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void PB_ArangoBlobResponse::set_has_content() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void PB_ArangoBlobResponse::clear_has_content() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void PB_ArangoBlobResponse::clear_content() {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    content_->clear();
+  }
+  clear_has_content();
+}
+inline const ::std::string& PB_ArangoBlobResponse::content() const {
+  return *content_;
+}
+inline void PB_ArangoBlobResponse::set_content(const ::std::string& value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void PB_ArangoBlobResponse::set_content(const char* value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void PB_ArangoBlobResponse::set_content(const char* value, size_t size) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* PB_ArangoBlobResponse::mutable_content() {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  return content_;
+}
+inline ::std::string* PB_ArangoBlobResponse::release_content() {
+  clear_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = content_;
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoErrorResponse
+
+// required string message = 1;
+inline bool PB_ArangoErrorResponse::has_message() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoErrorResponse::set_has_message() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoErrorResponse::clear_has_message() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoErrorResponse::clear_message() {
+  if (message_ != &::google::protobuf::internal::kEmptyString) {
+    message_->clear();
+  }
+  clear_has_message();
+}
+inline const ::std::string& PB_ArangoErrorResponse::message() const {
+  return *message_;
+}
+inline void PB_ArangoErrorResponse::set_message(const ::std::string& value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+}
+inline void PB_ArangoErrorResponse::set_message(const char* value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+}
+inline void PB_ArangoErrorResponse::set_message(const char* value, size_t size) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  message_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* PB_ArangoErrorResponse::mutable_message() {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    message_ = new ::std::string;
+  }
+  return message_;
+}
+inline ::std::string* PB_ArangoErrorResponse::release_message() {
+  clear_has_message();
+  if (message_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = message_;
+    message_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
@@ -781,12 +1466,16 @@ namespace google {
 namespace protobuf {
 
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ArangoMessageType>() {
-  return ArangoMessageType_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoMessageType>() {
+  return PB_ArangoMessageType_descriptor();
 }
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ArangoMessageContentType>() {
-  return ArangoMessageContentType_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoMessageContentType>() {
+  return PB_ArangoMessageContentType_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoRequestType>() {
+  return PB_ArangoRequestType_descriptor();
 }
 
 }  // namespace google

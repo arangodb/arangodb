@@ -41,7 +41,7 @@ namespace triagens {
     /// @brief abstract class for handlers
     ////////////////////////////////////////////////////////////////////////////////
 
-    class  Handler {
+    class Handler {
       private:
         Handler (Handler const&);
         Handler& operator= (Handler const&);
@@ -117,6 +117,13 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleError (basics::TriagensError const&) = 0;
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief handle the signal
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool handleAsync() = 0;
+        
     };
   }
 }

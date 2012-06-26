@@ -420,6 +420,74 @@ BOOST_AUTO_TEST_CASE (tst_intersect_lists_values2) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test duplicate keys
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_duplicate_keys) {
+  INIT_BUFFER
+  
+  TRI_json_t* json;
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "[\"a\",\"a\"]");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":1}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":1,\"b\":1}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":1,\"b\":1,\"A\":1}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":1,\"b\":1,\"a\":1}");
+  BOOST_CHECK_EQUAL(true, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":1,\"b\":1,\"c\":1,\"d\":{},\"c\":1}");
+  BOOST_CHECK_EQUAL(true, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{}}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":1}}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":1,\"b\":1},\"b\":1}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":1,\"b\":1,\"a\":3},\"b\":1}");
+  BOOST_CHECK_EQUAL(true, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":1,\"b\":1,\"a\":3}}");
+  BOOST_CHECK_EQUAL(true, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":{\"a\":{}}}}");
+  BOOST_CHECK_EQUAL(false, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{\"a\":{\"a\":{\"a\":{},\"a\":2}}}");
+  BOOST_CHECK_EQUAL(true, TRI_HasDuplicateKeyJson(json));
+  FREE_JSON
+
+  FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 

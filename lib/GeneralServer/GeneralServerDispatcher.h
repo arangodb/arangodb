@@ -34,6 +34,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralAsyncCommTask.h"
+#include "GeneralServer/GeneralServerJob.h"
 
 namespace triagens {
   namespace rest {
@@ -83,10 +84,12 @@ namespace triagens {
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequest (CT * task, typename HF::GeneralHandler * handler) {
+        bool handleRequest (CT * task, typename HF::GeneralHandler *& handler) {
 
-          // execute handle and requeue
+          // execute handler and (possibly) requeue
           bool done = false;
+          
+          assert(handler);
 
           while (! done) {
 
@@ -97,6 +100,7 @@ namespace triagens {
               if (status != Handler::HANDLER_REQUEUE) {
                 done = true;
                 this->destroyHandler(handler);
+                handler = 0;
               }
               else {
                 continue;
@@ -108,15 +112,19 @@ namespace triagens {
               GeneralAsyncCommTask<S, HF, CT>* atask = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
 
               if (atask == 0) {
-                LOGGER_WARNING << "task is indirect, but not asynchronous";
+                LOGGER_WARNING << "task is indirect, but not asynchronous - this cannot work!";
                 this->destroyHandler(handler);
+                handler = 0;
+
                 return false;
               }
               else {
                 GeneralServerJob<S, typename HF::GeneralHandler>* job
                   = new GeneralServerJob<S, typename HF::GeneralHandler>(dynamic_cast<S*>(this), this->_scheduler, _dispatcher, atask, handler);
 
-                atask->setJob(job);
+                assert(handler);
+                atask->setHandler(handler);
+                handler->setJob(job);
                 _dispatcher->addJob(job);
               }
 
@@ -128,6 +136,8 @@ namespace triagens {
               LOGGER_WARNING << "no dispatcher is known";
 
               this->destroyHandler(handler);
+              handler = 0;
+
               return false;
             }
           }

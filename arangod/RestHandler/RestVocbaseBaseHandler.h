@@ -33,6 +33,8 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
+#include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -112,6 +114,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static string DOCUMENT_IMPORT_PATH;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief batch path
+////////////////////////////////////////////////////////////////////////////////
+
+        static string BATCH_PATH;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

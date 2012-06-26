@@ -1,27 +1,112 @@
-enum ArangoMessageType {
-  BLOB_MSG = 1;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief message definition for protocol buffers
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      enumerations
+// -----------------------------------------------------------------------------
+
+enum PB_ArangoMessageType {
+  PB_BLOB_REQUEST = 0;
+  PB_BLOB_RESPONSE = 1;
+  PB_ERROR_RESPONSE = 2;
 }
 
-message ArangoMessage {
-  required ArangoMessageType type = 1;
-  optional ArangoBlobMessage blob = 2;  
+enum PB_ArangoMessageContentType {
+  PB_NO_CONTENT = 0;
+  PB_TEXT_CONTENT = 1;
+  PB_JSON_CONTENT = 2;
 }
 
-message ArangoKeyValue {
+enum PB_ArangoRequestType {
+  PB_REQUEST_TYPE_DELETE = 0;
+  PB_REQUEST_TYPE_GET = 1;
+  PB_REQUEST_TYPE_HEAD = 2;
+  PB_REQUEST_TYPE_POST = 3;
+  PB_REQUEST_TYPE_PUT = 4;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           general
+// -----------------------------------------------------------------------------
+
+message PB_ArangoKeyValue {
   required string key = 1;
   required string value = 2;
 }
 
-enum ArangoMessageContentType {
-  NO_CONTENT = 0;
-  TEXT_CONTENT = 1;
-  JSON_CONTENT = 2;
+message PB_ArangoMessage {
+  repeated PB_ArangoBatchMessage messages = 1;
 }
 
-message ArangoBlobMessage {
-  required string url = 1;
-  repeated ArangoKeyValue parameters = 2;
-  repeated ArangoKeyValue headers = 3;
-  required ArangoMessageContentType contentType = 4;
-  optional string content = 5;
+message PB_ArangoBatchMessage {
+  required PB_ArangoMessageType type = 1;
+  optional PB_ArangoBlobRequest blobRequest = 2;
+  optional PB_ArangoBlobResponse blobResponse = 3;
+  optional PB_ArangoErrorResponse errorResponse = 4;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      blob request
+// -----------------------------------------------------------------------------
+
+message PB_ArangoBlobRequest {
+  required PB_ArangoRequestType requestType = 1;
+  required string url = 2;
+  repeated PB_ArangoKeyValue values = 3;  // case of key is significant
+  repeated PB_ArangoKeyValue headers = 4; // key must be lowercase
+  required PB_ArangoMessageContentType contentType = 5;
+  optional string content = 7;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     blob response
+// -----------------------------------------------------------------------------
+
+message PB_ArangoBlobResponse {
+  required int32 status = 1;
+  repeated PB_ArangoKeyValue headers = 2; // key must be lowercase
+  required PB_ArangoMessageContentType contentType = 3;
+  required int32 contentLength = 6;
+  optional string content = 4;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    error response
+// -----------------------------------------------------------------------------
+
+message PB_ArangoErrorResponse {
+  required string message = 1;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

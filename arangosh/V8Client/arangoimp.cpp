@@ -104,6 +104,7 @@ static string FileName = "";
 static string CollectionName = "";
 static string TypeImport = "json";
 static bool CreateCollection = false;
+static bool UseIds = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -172,6 +173,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
+    ("use-ids", &UseIds, "re-use _id and _rev values found in document data")
     ("type", &TypeImport, "type of file (\"csv\" or \"json\")")
     ("quote", &QuoteChar, "quote character")
     ("separator", &SeparatorChar, "separator character")
@@ -267,6 +269,7 @@ int main (int argc, char* argv[]) {
     cout << "----------------------------------------" << endl;
     cout << "collection      : " << CollectionName << endl;
     cout << "create          : " << (CreateCollection ? "yes" : "no") << endl;
+    cout << "reusing ids     : " << (UseIds ? "yes" : "no") << endl;
     cout << "file            : " << FileName << endl;
     cout << "type            : " << TypeImport << endl;
     cout << "quote           : " << QuoteChar << endl;
@@ -279,6 +282,10 @@ int main (int argc, char* argv[]) {
 
     if (CreateCollection) {
       ih.setCreateCollection(true);
+    }
+    
+    if (UseIds) {
+      ih.setUseIds(true);
     }
   
     if (QuoteChar.length() == 1) {

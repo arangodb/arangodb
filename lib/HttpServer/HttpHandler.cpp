@@ -41,7 +41,11 @@ namespace triagens {
 
 
     HttpHandler::HttpHandler (HttpRequest* request)
-      : request(request), response(0) {
+      : _handlerFactory(0),
+        request(request),
+        response(0),
+        _task(0), 
+        _job(0) {
     }
 
 
@@ -54,6 +58,14 @@ namespace triagens {
       if (response != 0) {
         delete response;
       }
+
+      if (_task != 0) {
+        _task->setHandler(0);
+      }
+
+      if (_handlerFactory != 0) {
+        _handlerFactory->unregisterHandler(this);
+      }
     }
 
     // -----------------------------------------------------------------------------
@@ -62,6 +74,44 @@ namespace triagens {
 
     HttpResponse* HttpHandler::getResponse () {
       return response;
+    }
+
+
+
+    void HttpHandler::setHandlerFactory (HttpHandlerFactory* handlerFactory) {
+      _handlerFactory = handlerFactory;
+    }
+
+
+
+    bool HttpHandler::handleAsync () {
+      if (_job == 0) {
+        LOGGER_WARNING << "no job is known";
+      }
+      else {
+        HttpResponse* response = getResponse();
+
+        try {
+          if (response == 0) {
+            basics::InternalError err("no response received from handler");
+
+            handleError(err);
+            response = getResponse();
+          }
+
+          if (response != 0) {
+            _task->handleResponse(response);
+          }
+        }
+        catch (...) {
+          LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__;
+        }
+ 
+        // this might delete the handler (i.e. ourselves!)
+        return _job->beginShutdown();
+      }
+
+      return true;
     }
   }
 }

@@ -295,7 +295,7 @@ typedef uint32_t TRI_col_type_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char const* _path;
+  char* _path;
   char* _lockFile;
 
   bool _removeOnDrop; // wipe collection from disk after dropping
@@ -442,7 +442,9 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*,
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, struct TRI_col_parameter_s*);
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, 
+                                                struct TRI_col_parameter_s*,
+                                                TRI_voc_cid_t cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a (document) collection

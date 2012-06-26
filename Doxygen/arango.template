@@ -31,7 +31,7 @@ PROJECT_NAME           = "ArangoDB"
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 1.0.alpha1
+PROJECT_NUMBER         = 1.0.alpha2
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description for a project that appears at the top of each page and should give viewer a quick idea about the purpose of the project. Keep the description short.
 
@@ -212,7 +212,7 @@ ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
 ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly"
 ALIASES += TINYEXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly"
-ALIASES += VERSION="1.0.alpha1"
+ALIASES += VERSION="1.0.alpha2"
 ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
 ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
 ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
@@ -628,20 +628,8 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 	./Doxygen/js \
-	./arangod/Ahuacatl \
-	./arangod/RestHandler \
-	./arangod/RestServer \
-	./arangod/V8Server \
-	./arangod/VocBase \
-	./lib/Admin \
-	./lib/ApplicationServer \
-	./lib/Basics \
-	./lib/BasicsC \
-	./lib/Logger \
-	./lib/Rest \
-	./lib/ShapedJson \
-	./lib/UserManager \
-	./lib/V8 
+	./arangod \
+	./lib
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -672,9 +660,14 @@ RECURSIVE              = YES
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = \
-	./lib/V8/v8-json.h \
+	./arangod/Ahuacatl/ahuacatl-tokens.c \
+	./lib/JsonParser/json-parser.c \
+	./lib/JsonParserX/JsonParserX.cpp \
+	./lib/JsonParserX/JsonParserX.h \
+	./lib/JsonParserX/JsonScannerX.cpp \
+	./lib/JsonParserX/JsonScannerX.h \
 	./lib/V8/v8-json.cpp \
-	./arangod/Ahuacatl/ahuacatl-tokens.c
+	./lib/V8/v8-json.h
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded

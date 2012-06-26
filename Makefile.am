@@ -67,6 +67,7 @@ AM_CPPFLAGS = \
 	@NCURSES_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
 	@READLINE_CPPFLAGS@ \
+	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
 if ENABLE_ZEROMQ
@@ -85,6 +86,7 @@ AM_LDFLAGS = \
 	@NCURSES_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
+	@PROTOBUF_LDFLAGS@ \
 	@V8_LDFLAGS@
 
 if ENABLE_ZEROMQ
@@ -102,6 +104,7 @@ LIBS = \
 	@MATH_LIBS@ \
 	@NCURSES_LIBS@ \
 	@OPENSSL_LIBS@ \
+	@PROTOBUF_LIBS@ \
 	@READLINE_LIBS@
 
 ################################################################################
@@ -142,6 +145,20 @@ sbin_PROGRAMS = \
 bin_PROGRAMS = \
 	bin/arangosh \
 	bin/arangoimp
+
+################################################################################
+### @brief uninstalled programs
+################################################################################
+
+noinst_PROGRAMS =
+
+if ENABLE_ZEROMQ
+
+noinst_PROGRAMS += \
+	bin/zclient \
+	bin/zserver
+
+endif
 
 ################################################################################
 ### @brief ruby additions
@@ -214,6 +231,8 @@ endif
 ### @brief unit tests
 ################################################################################
 
+include PerfTests/Makefile.files
+
 include Makefile.unittests
 
 ################################################################################
@@ -283,9 +302,8 @@ endif
 ### @brief protocol buffers
 ################################################################################
 
-if ENABLE_PROTOBUF_DEPENDENCY
+include m4/Makefile.all-in-one-protobuf
 include m4/Makefile.protobuf
-endif
 
 ################################################################################
 ## --SECTION--                                                EXTERNAL LIBRARIES

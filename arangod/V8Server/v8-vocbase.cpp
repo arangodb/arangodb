@@ -770,8 +770,24 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
   }
 
+  TRI_voc_cid_t cid = 0;
+  
+  // extract collection id
+  if (3 <= argv.Length()) {
+    v8::Handle<v8::Value> val = argv[2];
+    if (!val->IsNull() && !val->IsUndefined()) {
+      // a pre-defined collection is passed when data is re-imported from a dump etc.
+      // this allows reproduction of data from different servers
+      cid = TRI_ObjectToUInt64(argv[2]);
+      if (cid <= 0) {
+        return scope.Close(v8::ThrowException(
+                           TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                 "<_id> value is invalid")));
+      }
+    }
+  }
 
-  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
+  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, cid);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection")));
@@ -3210,11 +3226,23 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   TRI_doc_collection_t* doc = collection->_collection;
 
-  if (argv.Length() != 1) {
+  if (argv.Length() != 1 && argv.Length() != 3) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: save(<data>)")));
+  }
+
+  // set document id and revision id
+  TRI_voc_did_t did = 0;
+  TRI_voc_rid_t rid = 0;
+
+  if (argv.Length() == 3) {
+    // use existing document and revision ids
+    // this functionality is used when importing documents from another server etc.
+    // the functionality is not advertised
+    did = TRI_ObjectToUInt64(argv[1]);
+    rid = TRI_ObjectToUInt64(argv[2]);
   }
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], doc->_shaper);
@@ -3233,7 +3261,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   collection->_collection->beginWrite(collection->_collection);
 
   // the lock is freed in create
-  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0, true);
+  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
 
   // .............................................................................
   // outside a write transaction
@@ -3354,11 +3382,23 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   TRI_doc_collection_t* doc = collection->_collection;
 
-  if (argv.Length() != 3) {
+  if (argv.Length() != 3 && argv.Length() != 5) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: save(<from>, <to>, <data>)")));
+  }
+  
+  // set document id and revision id
+  TRI_voc_did_t did = 0;
+  TRI_voc_rid_t rid = 0;
+
+  if (argv.Length() == 5) {
+    // use existing document and revision ids
+    // this functionality is used when importing documents from another server etc.
+    // the functionality is not advertised
+    did = TRI_ObjectToUInt64(argv[3]);
+    rid = TRI_ObjectToUInt64(argv[4]);
   }
 
   TRI_sim_edge_t edge;
@@ -3422,7 +3462,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   collection->_collection->beginWrite(collection->_collection);
 
-  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_EDGE, shaped, &edge, true);
+  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
 
   // .............................................................................
   // outside a write transaction

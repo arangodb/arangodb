@@ -324,6 +324,8 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief logs warnings
 ////////////////////////////////////////////////////////////////////////////////
 
+#undef LOG_WARNING
+
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOG_WARNING(...)                                                                                     \
@@ -343,6 +345,8 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief logs info messages
 ////////////////////////////////////////////////////////////////////////////////
 
+#undef LOG_INFO
+
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOG_INFO(...)                                                                                     \
@@ -361,6 +365,8 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug messages
 ////////////////////////////////////////////////////////////////////////////////
+
+#undef LOG_DEBUG
 
 #ifdef TRI_ENABLE_LOGGER
 
