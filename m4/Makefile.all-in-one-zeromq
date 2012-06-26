@@ -9,8 +9,9 @@
 ################################################################################
 
 BUILT_SOURCES += @ZEROMQ_LIBS@
+ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 
-@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@
+@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@ .czmq-build-@TRI_BITS@
 
 .zeromq-build-@TRI_BITS@:
 	@echo
@@ -19,7 +20,12 @@ BUILT_SOURCES += @ZEROMQ_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && ./configure --disable-shared --prefix=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD --libdir=@abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD/lib@TRI_BITS@
+	cd @top_srcdir@/3rdParty/zeromq-2.2.0 \
+		&& ./configure \
+			--disable-dependency-tracking \
+			--disable-shared \
+			--prefix=$(ZMQDIR) \
+			--libdir=$(ZMQDIR)/lib@TRI_BITS@
 	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && $(MAKE) install
 
 	touch .zeromq-build-@TRI_BITS@
@@ -27,6 +33,32 @@ BUILT_SOURCES += @ZEROMQ_LIBS@
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILD ZeroMQ FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+.czmq-build-@TRI_BITS@: .zeromq-build-@TRI_BITS@
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING CZMQ"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/czmq-1.1.0 \
+		&& ./configure \
+			--disable-dependency-tracking \
+			--disable-shared \
+			--prefix=$(ZMQDIR) \
+			--libdir=$(ZMQDIR)/lib@TRI_BITS@ \
+			CPPFLAGS=-I$(ZMQDIR)/include \
+			LDFLAGS=-L$(ZMQDIR)/lib@TRI_BITS@ \
+			LIBS="-luuid -lrt -lstdc++"
+	cd @top_srcdir@/3rdParty/czmq-1.1.0 && $(MAKE) install
+
+	touch .czmq-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD CZMQ FINISHED"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 

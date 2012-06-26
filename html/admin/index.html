@@ -166,7 +166,7 @@
          <input id="uploadFileSearch" type="file" name="filename" />
        </form>
  
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%" style="table-layout:fixed">
           <thead>
             <tr>
               <th></th>
@@ -210,6 +210,14 @@
             <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
             <a id="toggleEditedDocButtonText">Edit Source</a>
           </button>
+          <button class="minimal enabled" id="cancelEditedDocument">
+            <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
+            <a>Cancel</a>
+          </button>
+          <button class="minimal enabled" id="undoEditedDocument">
+            <img src="/_admin/html/media/icons/undo_icon16.png" width="16" height="16">
+            <a>Undo</a>
+          </button>
         <div id="documentEditTableView">
           <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%">
             <thead>
@@ -243,6 +251,10 @@
           <button class="minimal enabled" id="toggleNewDocButton">
             <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
             <a id="toggleNewDocButtonText">Edit Source</a>
+          </button>
+          <button class="minimal enabled" id="cancelNewDocument">
+            <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
+            <a>Cancel</a>
           </button>
           <div id="NewDocumentTableView">
             <table cellpadding="0" cellspacing="0" border="0" class="display" id="NewDocumentTableID" width="100%">
@@ -398,25 +410,27 @@
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
           <button class="minimal" id="refreshShell">Refresh</button>
-            <form action="#" id="formatshellJSONyesno">
+            <form action="#" id="formatshellJSONyesno" style="font-size:0.8em;">
               Format JSON? 
               <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
               <input type="radio" name="formatshellJSONyesno" value=false>no</input>
             </form>
-          <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank">ArangoDB Shell - click for more information</a>
+          <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
       </div>
 
       <div id="queryView" style="display: none">
+        <a style="color:#797979; font-size:0.9em;">Output:</a>
         <div id="queryOutput">
           <a style="padding-left:10px">Please enter your query in the box below</a>
         </div>
+        <a style="color:#797979; font-size:0.9em;">Input:</a>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>
-          <a id="aqlinfo" href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
+          <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
         <br></br>
         </form>   
-        <form action="#" id="formatJSONyesno">
+        <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
           Format JSON? 
           <input type="radio" name="formatJSONyesno" value=true checked>yes</input>
           <input type="radio" name="formatJSONyesno" value=false>no</input>

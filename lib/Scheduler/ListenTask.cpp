@@ -98,6 +98,10 @@ ListenTask::~ListenTask () {
   if (listenSocket != -1) {
     close(listenSocket);
   }
+
+  if (readWatcher != 0) {
+    scheduler->uninstallEvent(readWatcher);
+  }
 }
 
 // -----------------------------------------------------------------------------

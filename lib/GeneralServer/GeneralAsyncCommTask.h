@@ -34,7 +34,7 @@
 #include <Basics/Exceptions.h>
 
 #include "Scheduler/AsyncTask.h"
-#include "GeneralServer/GeneralServerJob.h"
+#include "Rest/Handler.h"
 
 namespace triagens {
   namespace rest {
@@ -57,17 +57,7 @@ namespace triagens {
         GeneralAsyncCommTask (S* server, socket_t fd, ConnectionInfo const& info)
           : Task("GeneralAsyncCommTask"),
             T(server, fd, info),
-            job(0) {
-        }
-
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief sets a job
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void setJob (GeneralServerJob<S, typename HF::GeneralHandler>* job) {
-          this->job = job;
+            _handler(0) {
         }
 
       protected:
@@ -77,10 +67,7 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         ~GeneralAsyncCommTask () {
-          if (job != 0) {
-            LOGGER_DEBUG << "job is still active, trying to shutdown";
-            job->beginShutdown();
-          }
+          // this has shut down the job before, should we now free the handler if any?
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -115,6 +102,19 @@ namespace triagens {
           return result;
         }
 
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief set the handler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setHandler (Handler* handler) {
+          assert(handler);
+
+          _handler = handler;
+        }
+
+        
       protected:
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -122,38 +122,13 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         bool handleAsync () {
-          if (job == 0) {
-            LOGGER_WARNING << "no job is known";
-          }
-          else {
-            typename HF::GeneralHandler * handler = job->getHandler();
-            typename HF::GeneralResponse * response = handler->getResponse();
+          assert(_handler);
 
-            try {
-              if (response == 0) {
-                basics::InternalError err("no response received from handler");
-
-                handler->handleError(err);
-                response = handler->getResponse();
-              }
-
-              if (response != 0) {
-                this->handleResponse(response);
-              }
-            }
-            catch (...) {
-              LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__;
-            }
-
-            delete job;
-            job = 0;
-          }
-
-          return true;
+          return _handler->handleAsync();
         }
 
       private:
-        GeneralServerJob<S, typename HF::GeneralHandler>* job;
+        Handler* _handler;
     };
   }
 }

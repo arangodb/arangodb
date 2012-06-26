@@ -27,10 +27,11 @@
 
 #include "actions.h"
 
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/delete_object.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
@@ -178,6 +179,18 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   }
 
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes all defined actions
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CleanupActions () {
+  for_each(Actions.begin(), Actions.end(), DeleteObjectValue());
+  Actions.clear();
+
+  for_each(PrefixActions.begin(), PrefixActions.end(), DeleteObjectValue());
+  PrefixActions.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

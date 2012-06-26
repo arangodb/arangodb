@@ -96,7 +96,7 @@ Module.prototype.require = function (path) {
     f = SYS_EXECUTE(content, undefined, path);
   }
   catch (err) {
-    CONSOLE_ERROR("in file %s: %o", path, err.stack);
+    require("console").error("in file %s: %o", path, err.stack);
     throw err;
   }
 

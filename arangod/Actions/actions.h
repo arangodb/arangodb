@@ -71,21 +71,21 @@ TRI_action_parameter_type_e;
 
 class TRI_action_t {
   public:
-    TRI_action_t () 
-      : _type(), _url(), _isPrefix(false), _urlParts(0), _parameters() {
+    TRI_action_t (std::set<std::string> const& context) 
+      : _type(), _url(), _isPrefix(false), _urlParts(0), _parameters(), _contexts(context) {
     }
 
     virtual ~TRI_action_t () {}
 
-    virtual void createCallback (void* context, void* callback) = 0;
-    virtual triagens::rest::HttpResponse* execute (struct TRI_vocbase_s*, void* context, triagens::rest::HttpRequest*) = 0;
+    virtual triagens::rest::HttpResponse* execute (struct TRI_vocbase_s*, triagens::rest::HttpRequest*) = 0;
 
-    std::string _type; // will be used to create the queue
+    std::string _type;
     std::string _url;
     bool _isPrefix;
 
     size_t _urlParts;
     std::map<std::string, TRI_action_parameter_type_e> _parameters;
+    std::set<std::string> _contexts;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +112,12 @@ TRI_action_t* TRI_DefineActionVocBase (std::string const& name, TRI_action_t* ac
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes all defined actions
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CleanupActions ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

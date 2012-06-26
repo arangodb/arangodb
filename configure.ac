@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [1.0.alpha1], [info@triagens.de], [arango], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [1.0.alpha2], [info@triagens.de], [arango], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -54,18 +54,6 @@ AC_ARG_ENABLE(errors-dependency,
 )
 
 AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
-
-dnl ----------------------------------------------------------------------------
-dnl PROTCOL BUFFERS
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(protobuf-dependency,
-  AS_HELP_STRING([--enable-protobuf-dependency], [generate dependencies for protocol buffers]),
-  [tr_PROTOBUF_DEPENDENCY="${enableval:-yes}"],
-  [tr_PROTOBUF_DEPENDENCY=no]
-)
-
-AM_CONDITIONAL(ENABLE_PROTOBUF_DEPENDENCY, test "x$tr_PROTOBUF_DEPENDENCY" = xyes)
 
 dnl ============================================================================
 dnl --SECTION--                                                        LIBRARIES
@@ -237,6 +225,12 @@ dnl MRUBY
 dnl ----------------------------------------------------------------------------
 
 m4_include([m4/all-in-one.mruby])
+
+dnl ----------------------------------------------------------------------------
+dnl PROTOBUF
+dnl ----------------------------------------------------------------------------
+
+m4_include([m4/all-in-one.protobuf])
 
 dnl ----------------------------------------------------------------------------
 dnl ZEROMQ

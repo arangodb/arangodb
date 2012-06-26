@@ -10,7 +10,7 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh 0.5.1. Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
 
 
 // documents global vars
@@ -95,7 +95,7 @@ $("#documents_last").live('click', function () {
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
-$('#logView ul').append('<button class="enabled" id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField"></input><button id="submitLogSearch">Search</button></form></div>');
+$('#logView ul').append('<button class="enabled" id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField" placeholder="Search..."></input><button id="submitLogSearch" style="visibility:hidden;"></button></form></div>');
 
 ///////////////////////////////////////////////////////////////////////////////
 /// initialize jquery tabs 
@@ -221,14 +221,14 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bSortable": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
+    "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth": "80px"}, 
-                 { "sClass":"read_only","bSortable": false, "sWidth": "150px"}, 
-                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"}, 
-                 {"bSortable": false}],
-    "oLanguage": {"sEmptyTable": "No documents"}
+    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth":"80px"}, 
+                 { "sClass":"read_only","bSortable": false, "sWidth": "200px"}, 
+                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
+                 { "bSortable": false, "sClass": "cuttedContent"}],
+    "oLanguage": { "sEmptyTable": "No documents"}
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -492,7 +492,7 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + JSON.stringify(v) + "</pre>"]);  
           });
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
@@ -990,6 +990,26 @@ var logTable = $('#logTableID').dataTable({
   });
 
 ///////////////////////////////////////////////////////////////////////////////
+/// cancel editing a doc  
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#cancelEditedDocument').live('click', function () {
+    var start = window.location.hash.indexOf('?'); 
+    var end = window.location.hash.indexOf('/'); 
+    var collectionID = window.location.hash.substring(start + 1, end); 
+    window.location.href = "#showCollection?" + collectionID; 
+    $('#nav1').removeClass('highlighted'); 
+  });
+
+///////////////////////////////////////////////////////////////////////////////
+/// undo live changes of an edited document  
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#undoEditedDocument').live('click', function () {
+    location.reload();  
+  });
+
+///////////////////////////////////////////////////////////////////////////////
 /// perform logout 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1118,6 +1138,18 @@ var logTable = $('#logTableID').dataTable({
       }
 
     }
+  });
+
+///////////////////////////////////////////////////////////////////////////////
+/// cancel new doc view 
+///////////////////////////////////////////////////////////////////////////////
+
+  $('#cancelNewDocument').live('click', function () {
+    var start = window.location.hash.indexOf('?'); 
+    var end = window.location.hash.indexOf('=');  
+    var collectionID = window.location.hash.substring(start + 1, end); 
+    window.location.href = "#showCollection?" + collectionID; 
+    $('#nav1').removeClass('highlighted'); 
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2003,8 +2035,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 90) {
-    return escaped(string.substr(0, 90)) + '...';
+  if (string.length > 70) {
+    return escaped(string.substr(0, 70)) + '...';
   }
   return escaped(string);
 }

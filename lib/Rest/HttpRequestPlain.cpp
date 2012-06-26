@@ -212,9 +212,12 @@ void HttpRequestPlain::write (TRI_string_buffer_t* buffer) const {
   }
 
   TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
-  TRI_AppendUInt64StringBuffer(buffer, _bodySize);
+  TRI_AppendUInt64StringBuffer(buffer, _contentLength);
   TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
-  TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
+
+  if (_body != 0 && 0 < _bodySize) {
+    TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +362,7 @@ size_t HttpRequestPlain::bodySize () const {
 
 int HttpRequestPlain::setBody (char const* newBody, size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
-  _bodySize = length;
+  _contentLength = _bodySize = length;
 
   _freeables.push_back(_body);
 

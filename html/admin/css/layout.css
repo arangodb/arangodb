@@ -1,3 +1,9 @@
+.cuttedContent, .prettify ul li {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 .read_only {
   min-width: 70px !important; 
 }
@@ -135,7 +141,7 @@ pre ul li span{
   vertical-align: middle;
 }
 
-#addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton {
+#cancelEditedDocument, #undoEditedDocument, #addDocumentButton, #saveEditedDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #saveNewDocButton, #addNewDocButton, #toggleNewDocButton, #saveNewCollection, #cancelNewCollection, #cancelNewDocument, #undoNewDocument {
   font-size: 0.8em; 
 }
 
@@ -353,6 +359,7 @@ form {
 }
 
 #formatshellJSONyesno {
+  font-weight:0.8em; 
   float:right; 
   padding-right:10px; 
   margin-top: -3px; 

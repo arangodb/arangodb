@@ -307,6 +307,8 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
                                       TRI_voc_size_t bodySize,
                                       TRI_df_marker_t** result,
                                       void const* additional,
+                                      TRI_voc_did_t did,
+                                      TRI_voc_rid_t rid,
                                       bool release) {
 
   TRI_datafile_t* journal;
@@ -323,8 +325,17 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
 
-  // generate a new tick
-  marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
+  if (did > 0 && rid > 0) {
+    // use existing document id & revision id
+    marker->_did = did;
+    marker->_rid = marker->base._tick = rid;
+    TRI_UpdateTickVocBase(did);
+    TRI_UpdateTickVocBase(rid);
+  }
+  else {
+    // generate a new tick
+    marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
+  }
 
   // find and select a journal
   total = markerSize + bodySize;
@@ -946,6 +957,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                                         TRI_df_marker_type_e type,
                                         TRI_shaped_json_t const* json,
                                         void const* data,
+                                        TRI_voc_did_t did,
+                                        TRI_voc_rid_t rid,
                                         bool release) {
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
@@ -968,6 +981,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                           json->_data.data, json->_data.length,
                           &result,
                           data,
+                          did,
+                          rid,
                           release);
   }
   else if (type == TRI_DOC_MARKER_EDGE) {
@@ -994,6 +1009,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                           json->_data.data, json->_data.length,
                           &result,
                           data,
+                          did,
+                          rid,
                           release);
   }
   else {
@@ -1724,7 +1741,14 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   memset(&info, 0, sizeof(info));
   info._version = TRI_COL_VERSION;
   info._type = parameter->_type;
-  info._cid = cid == 0 ? TRI_NewTickVocBase() : cid;
+
+  if (cid > 0) {
+    TRI_UpdateTickVocBase(cid);
+  }
+  else {
+    cid = TRI_NewTickVocBase();
+  }
+  info._cid = cid;
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._waitForSync = parameter->_waitForSync;
   info._maximalSize = parameter->_maximalSize;

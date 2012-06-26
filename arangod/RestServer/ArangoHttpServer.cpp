@@ -27,6 +27,8 @@
 
 #include "ArangoHttpServer.h"
 
+#include "HttpServer/HttpHandler.h"
+
 using namespace triagens::rest;
 using namespace triagens::arango;
 
@@ -48,7 +50,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoHttpServer::ArangoHttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
-  : HttpServerImpl(scheduler, dispatcher) {
+  : HttpServer(scheduler, dispatcher) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

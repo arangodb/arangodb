@@ -22,7 +22,7 @@ BUILT_SOURCES += $(PROTOBUF_FILES)
 ### @brief cleanup
 ################################################################################
 
-CLEANUP += $(FLEX_FILES) $(FLEXXX_FILES)
+CLEANUP += $(PROTOBUF_FILES)
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

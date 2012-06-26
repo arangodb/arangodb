@@ -1,0 +1,248 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user guide guide
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineTOC
+///
+/// <ul>
+///  <li>@ref CommandLine
+///   <ul>
+///    <li>@ref CommandLineGeneralOptions
+///     <ul>
+///      <li>@ref CommandLineHelp "help"</li>
+///      <li>@ref CommandLineVersion "version"</li>
+///      <li>@ref CommandLineConfiguration "configuration"</li>
+///      <li>@ref CommandLineDaemon "daemon"</li>
+///      <li>@ref CommandLineSupervisor "supervisor"</li>
+///      <li>@ref CommandLineUid "uid"</li>
+///      <li>@ref CommandLineGid "gid"</li>
+///      <li>@ref CommandLinePidFile "pid-file"</li>
+///     </ul>
+///    </li>
+///    <li>@ref CommandLineArango
+///     <ul>
+///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
+///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
+///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
+///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
+///     </ul>
+///    </li>
+///    <li>@ref CommandLineLogging
+///     <ul>
+///      <li>@ref CommandLineLoggingGeneral
+///       <ul>
+///        <li>@ref CommandLineLoggingLogFile "log.file"</li>
+///        <li>@ref CommandLineLoggingLogSeverity "log.severity"</li>
+///        <li>@ref CommandLineLoggingLogSyslog "log.syslog"</li>
+///       </ul>
+///      </li>
+///      <li>@ref CommandLineLoggingHuman
+///       <ul>
+///        <li>@ref CommandLineLoggingLogLevel "log.level"</li>
+///        <li>@ref CommandLineLoggingLogLineNumber "log.line-number"</li>
+///        <li>@ref CommandLineLoggingLogPrefix "log.prefix"</li>
+///        <li>@ref CommandLineLoggingLogThread "log.thread"</li>
+///        <li>@ref CommandLineLoggingLogFilter "log.filter"</li>
+///       </ul>
+///      </li>
+///      <li>@ref CommandLineLoggingMachine
+///       <ul>
+///        <li>@ref CommandLineLoggingLogApplication "log.application"</li>
+///        <li>@ref CommandLineLoggingLogFacility "log.facility"</li>
+///        <li>@ref CommandLineLoggingLogFormat "log.format"</li>
+///        <li>@ref CommandLineLoggingLogHostName "log.hostname"</li>
+///       </ul>
+///      </li>
+///     </ul>
+///    </li>
+///    <li>@ref CommandLineScheduler
+///     <ul>
+///      <li>@ref CommandLineSchedulerThreads "scheduler.threads"</li>
+///      <li>@ref CommandLineSchedulerBackend "scheduler.backend"</li>
+///      <li>@ref CommandLineSchedulerShowIoBackends "show-io-backends"</li>
+///     </ul>
+///    </li>
+///    <li>@ref CommandLineRandom
+///     <ul>
+///      <li>@ref CommandLineRandomGenerator "random.generator"</li>
+///      <li>@ref CommandLineRandomGenerator "random.no-seed"</li>
+///     </ul>
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLine Command-Line Options
+///
+/// @EMBEDTOC{CommandLineTOC}
+///
+/// @section CommandLineGeneralOptions General Options
+//////////////////////////////////////////////////////
+///
+/// @anchor CommandLineHelp
+/// @copydetails triagens::rest::ApplicationServer::_options
+///
+/// @anchor CommandLineVersion
+/// @copydetails triagens::rest::ApplicationServer::_version
+///
+/// @anchor CommandLineConfiguration
+/// @copydetails triagens::rest::ApplicationServer::_configFile
+///
+/// @anchor CommandLineDaemon
+/// @CMDOPT{--daemon}
+///
+/// Runs the server as a daemon (as a background process). This parameter can
+/// only be set if the pid (process id) file is specified. That is, unless a
+/// value to the parameter pid-file is given, then the server will report an
+/// error and exit.
+///
+/// @anchor CommandLineSupervisor
+/// @CMDOPT{--supervisor}
+///
+/// Executes the server in supervisor mode. In the event that the server
+/// unexpectedly terminates due to an internal error, the supervisor will
+/// automatically restart the server. Setting this flag automatically implies
+/// that the server will run as a daemon. Note that, as with the daemon flag,
+/// this flag requires that the pid-file parameter will set.
+///
+/// @anchor CommandLineUid
+/// @copydetails triagens::rest::ApplicationServer::_uid
+///
+/// @anchor CommandLineGid
+/// @copydetails triagens::rest::ApplicationServer::_gid
+///
+/// @anchor CommandLinePidFile
+/// @copydetails triagens::rest::AnyServer::_pidFile
+///
+/// @section CommandLineArango Command-Line Options for the ArangoDB
+////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineArangoHttpPort
+/// @copydetails triagens::arango::ArangoServer::_httpPort
+///
+/// @anchor CommandLineArangoAdminPort
+/// @copydetails triagens::arango::ArangoServer::_adminPort
+///
+/// @anchor CommandLineArangoDirectory
+/// @copydetails triagens::arango::ArangoServer::_databasePath
+///
+/// @anchor CommandLineArangoMaximalJournalSize
+/// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
+///
+/// @anchor CommandLineArangoRemoveOnDrop
+/// @copydetails triagens::arango::ArangoServer::_removeOnDrop
+///
+/// @section CommandLineScheduler Command-Line Options for Communication
+////////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineSchedulerThreads
+/// @copydetails triagens::rest::ApplicationScheduler::_nrSchedulerThreads
+///
+/// @anchor CommandLineSchedulerBackend
+/// @copydetails triagens::rest::ApplicationScheduler::_backend
+///
+/// @anchor CommandLineSchedulerShowIoBackends
+/// @CMDOPT{--show-io-backends}
+///
+/// If this option is specified, then the server will list available backends
+/// and exit. This option is useful only when used in conjunction with the
+/// option scheduler.backend. An integer is returned (which is platform
+/// dependent) which indicates available backends on your platform. See libev
+/// for further details and for the meaning of the integer returned. This
+/// describes the allowed integers for @CODE{scheduler.backend}, see
+/// @ref CommandLineScheduler "here" for details.
+///
+/// @section CommandLineLogging Command-Line Options for Logging
+////////////////////////////////////////////////////////////////
+///
+/// There are two different kinds of logs. Human-readable logs and
+/// machine-readable logs. The human-readable logs are used to provide an
+/// administration with information about the server. The machine-readable logs
+/// are used to provide statistics about executed requests and timings about
+/// computation steps.
+///
+/// @subsection CommandLineLoggingGeneral General Logging Options
+///
+/// @anchor CommandLineLoggingLogFile
+/// @copydetails triagens::rest::ApplicationServer::_logFile
+///
+/// @anchor CommandLineLoggingLogSeverity
+/// @copydetails triagens::rest::ApplicationServer::_logSeverity
+///
+/// @anchor CommandLineLoggingLogSyslog
+/// @copydetails triagens::rest::ApplicationServer::_logSyslog
+///
+/// @subsection CommandLineLoggingHuman Human Readable Logging
+///
+/// @anchor CommandLineLoggingLogLevel
+/// @copydetails triagens::rest::ApplicationServer::_logLevel
+///
+/// @anchor CommandLineLoggingLogLineNumber
+/// @copydetails triagens::rest::ApplicationServer::_logLineNumber
+///
+/// @anchor CommandLineLoggingLogPrefix
+/// @copydetails triagens::rest::ApplicationServer::_logPrefix
+///
+/// @anchor CommandLineLoggingLogThread
+/// @copydetails triagens::rest::ApplicationServer::_logThreadId
+///
+/// @anchor CommandLineLoggingLogFilter
+/// @copydetails triagens::rest::ApplicationServer::_logFilter
+///
+/// @subsection CommandLineLoggingMachine Maschine Readable Logging
+///
+/// @anchor CommandLineLoggingLogApplication
+/// @copydetails triagens::rest::ApplicationServer::_logApplicationName
+///
+/// @anchor CommandLineLoggingLogFacility
+/// @copydetails triagens::rest::ApplicationServer::_logFacility
+///
+/// @anchor CommandLineLoggingLogFormat
+/// @copydetails triagens::rest::ApplicationServer::_logFormat
+///
+/// @anchor CommandLineLoggingLogHostName
+/// @copydetails triagens::rest::ApplicationServer::_logHostName
+///
+/// @section CommandLineRandom Command-Line Options for Random Numbers
+//////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineRandomGenerator
+/// @copydetails triagens::rest::ApplicationServer::_randomGenerator
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

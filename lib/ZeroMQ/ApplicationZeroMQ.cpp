@@ -30,80 +30,40 @@
 #include <zmq.h>
 
 #include "Basics/Thread.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "ZeroMQ/ZeroMQQueueThread.h"
+#include "ZeroMQ/ZeroMQWorkerThread.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class ZeroMQThread
+// --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
-namespace {
-  class ZeroMQThread : public Thread {
-    public:
-      ZeroMQThread (void* context, string connection)
-        : Thread("zeromq"),
-          _stopping(0),
-          _context(context),
-          _connection(connection) {
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ZeroMQ
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    public:
-      void beginShutdown () {
-        _stopping = 1;
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the internal worker bridge
+////////////////////////////////////////////////////////////////////////////////
 
-    protected:
-      void run () {
-        void* responder = zmq_socket(_context, ZMQ_REP);
-        int res = zmq_bind(responder, _connection.c_str());
+string const ApplicationZeroMQ::ZEROMQ_INTERNAL_BRIDGE = "inproc://arango-zeromq";
 
-        if (res != 0) {
-          LOGGER_FATAL << "cannot initialize ZeroMQ responder: " << strerror(errno);
-          exit(EXIT_FAILURE);
-        }
-
-        while (_stopping == 0) {
-          zmq_msg_t request;
-          zmq_msg_init(&request);
-
-          // receive next message
-          zmq_recv(responder, &request, 0);
-          zmq_msg_close(&request);
-    
-          // do some work
-    
-          // send reply back to client
-          zmq_msg_t reply;
-          zmq_msg_init_size(&reply, 5);
-          memcpy(zmq_msg_data(&reply), "World", 5);
-
-          zmq_send(responder, &reply, 0);
-          zmq_msg_close(&reply);
-        }
-
-        zmq_close(responder);
-      }
-
-    private:
-      sig_atomic_t _stopping;
-      void* _context;
-      string _connection;
-  };
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ApplicationZeroMQ
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
+/// @addtogroup ZeroMQ
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,9 +72,13 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
-  : _applicationServer(applicationServer),
-    _zeroMQThread(0),
+  : ApplicationFeature("ZeroMQ"),
+    _applicationServer(applicationServer),
+    _dispatcher(0),
+    _handlerFactory(0),
+    _zeroMQThreads(0),
     _nrZeroMQThreads(1),
+    _zeroMQConcurrency(1),
     _context(0),
     _connection() {
 }
@@ -125,15 +89,56 @@ ApplicationZeroMQ::ApplicationZeroMQ (ApplicationServer* applicationServer)
 
 ApplicationZeroMQ::~ApplicationZeroMQ () {
   if (_context != 0) {
-    zmq_term(_context);
+    zctx_destroy(&_context);
   }
 
-  delete _zeroMQThread;
+  if (_zeroMQThreads != 0) {
+    shutdown();
+
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      delete _zeroMQThreads[i];
+    }
+
+    delete _zeroMQThreads;
+  }
+
+  if (_handlerFactory != 0) {
+    delete _handlerFactory;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ZeroMQ
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true, if feature is active
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationZeroMQ::isActive () {
+  return ! _connection.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines the handler factory
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationZeroMQ::setHttpHandlerFactory (HttpHandlerFactory* handlerFactory) {
+  if (_handlerFactory != 0) {
+    delete handlerFactory;
+  }
+
+  _handlerFactory = handlerFactory;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -144,7 +149,7 @@ ApplicationZeroMQ::~ApplicationZeroMQ () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
+/// @addtogroup ApplicationServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,6 +169,7 @@ void ApplicationZeroMQ::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options["THREAD Options:help-admin"]
     ("zeromq.threads", &_nrZeroMQThreads, "number of threads for ZeroMQ scheduler")
+    ("zeromq.concurrency", &_zeroMQConcurrency, "concurrency of the ZeroMQ context")
   ;
 }
 
@@ -180,11 +186,13 @@ bool ApplicationZeroMQ::parsePhase1 (basics::ProgramOptions& options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationZeroMQ::parsePhase2 (basics::ProgramOptions& options) {
-  if (! _connection.empty()) {
-    if (_nrZeroMQThreads < 0) {
-      LOGGER_FATAL << "ZeroMQ connection '" << _connection << "' request without negativ threads";
-      return false;
-    }
+  if (! isActive()) {
+    return true;
+  }
+
+  if (_nrZeroMQThreads < 0) {
+    LOGGER_FATAL << "ZeroMQ connection '" << _connection << "' with negative number of threads";
+    return false;
   }
 
   return true;
@@ -195,25 +203,61 @@ bool ApplicationZeroMQ::parsePhase2 (basics::ProgramOptions& options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationZeroMQ::start () {
-  if (! _connection.empty()) {
-    _context = zmq_init(_nrZeroMQThreads);
-
-    if (_context == 0) {
-      LOGGER_FATAL << "cannot create the ZeroMQ context: " << strerror(errno);
-      return false;
-    }
-
-    _zeroMQThread = new ZeroMQThread(_context, _connection);
-
-    _zeroMQThread->start(0);
-
-    while (! _zeroMQThread->isRunning()) {
-      usleep(1000);
-    }
-
-    LOGGER_INFO << "started ZeroMQ on '" << _connection << "'";
+  if (! isActive()) {
+    return true;
   }
 
+  _context = zctx_new();
+
+  if (_context == 0) {
+    LOGGER_FATAL << "cannot create the ZeroMQ context: " << strerror(errno);
+    return false;
+  }
+  
+  if (1 < _zeroMQConcurrency) {
+    zctx_set_iothreads(_context, _zeroMQConcurrency);
+  }
+  
+  // need one more thread for queue
+  ++_nrZeroMQThreads;
+
+  // setup a thread pool for workers
+  _zeroMQThreads = new ZeroMQThread*[_nrZeroMQThreads + 1];
+  
+  for (size_t i = 0;  i < _nrZeroMQThreads - 1;  ++i) {
+    _zeroMQThreads[1 + i] = new ZeroMQWorkerThread(_dispatcher,
+                                                   _handlerFactory,
+                                                   _context,
+                                                   ZEROMQ_INTERNAL_BRIDGE);
+  }
+  
+  // and queue
+  _zeroMQThreads[0] = new ZeroMQQueueThread(_context, _connection, ZEROMQ_INTERNAL_BRIDGE);
+  
+  // and start all threads
+  for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+    _zeroMQThreads[i]->start(0);
+    usleep(1000);
+  }
+  
+  bool starting = true;
+  
+  // wait until all threads are up and running
+  while (starting) {
+    starting = false;
+    
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      if (! _zeroMQThreads[i]->isRunning()) {
+        starting = true;
+      }
+      
+      if (starting) {
+        usleep(1000);
+      }
+    }
+  }
+  
+  LOGGER_INFO << "started ZeroMQ on '" << _connection << "' with " << (_nrZeroMQThreads-1) << " threads and concurrency " << _zeroMQConcurrency;
   return true;
 }
 
@@ -222,8 +266,12 @@ bool ApplicationZeroMQ::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationZeroMQ::isRunning () {
-  if (_zeroMQThread != 0) {
-    return _zeroMQThread->isRunning();
+  if (_zeroMQThreads != 0) {
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      if (_zeroMQThreads[i]->isRunning()) {
+        return true;
+      }
+    }
   }
 
   return false;
@@ -234,12 +282,14 @@ bool ApplicationZeroMQ::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationZeroMQ::beginShutdown () {
-  if (_zeroMQThread != 0) {
-    static_cast<ZeroMQThread*>(_zeroMQThread)->beginShutdown();
+  if (_zeroMQThreads != 0) {
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      _zeroMQThreads[i]->beginShutdown();
+    }
   }
 
   if (_context != 0) {
-    zmq_term(_context);
+    zctx_destroy(&_context);
     _context = 0;
   }
 }
@@ -249,16 +299,16 @@ void ApplicationZeroMQ::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationZeroMQ::shutdown () {
-  if (_zeroMQThread != 0) {
+  if (_zeroMQThreads != 0) {
     int count = 0;
 
-    while (++count < 6 && _zeroMQThread->isRunning()) {
+    while (++count < 6 && isRunning()) {
       LOGGER_TRACE << "waiting for scheduler to stop";
       sleep(1);
     }
 
-    if (_zeroMQThread->isRunning()) {
-      _zeroMQThread->stop();
+    for (size_t i = 0;  i < _nrZeroMQThreads;  ++i) {
+      _zeroMQThreads[i]->stop();
     }
   }
 }

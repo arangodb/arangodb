@@ -1,0 +1,66 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          arango
+# Required-Start:    
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: arango
+# Description:       arango database server 
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+[ -f /etc/default/rcS ] && . /etc/default/rcS
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+DAEMON=/usr/sbin/arangod
+DESC="session voc server"
+NAME="arangos"
+PIDDIR=/var/run/arangod
+PIDFILE=${PIDDIR}/pid
+CONF=/etc/arango.conf
+
+test -x $DAEMON || exit 0
+
+case "$1" in
+  start)
+    log_daemon_msg "Starting $DESC" "$NAME"
+
+    test -d $PIDDIR || mkdir $PIDDIR
+    chown arango $PIDDIR
+
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arango
+    log_end_msg $?
+    ;;
+
+  stop)
+    log_daemon_msg "Stopping $DESC" "$NAME"
+
+    start-stop-daemon --stop --quiet --oknodo --exec $DAEMON --startas $DAEMON
+    log_end_msg $?
+
+    test -f $PIDFILE && rm -f $PIDFILE
+    ;;
+
+  restart)
+    $0 stop
+    sleep 3
+    $0 start
+    ;;
+
+  force-reload)
+    $0 restart
+    ;;
+
+  status)
+    status_of_proc $DAEMON $NAME && exit 0 || exit $?
+    ;;
+
+  *)
+    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status}"
+    exit 1
+    ;;
+esac
+
+exit 0

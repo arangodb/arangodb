@@ -101,6 +101,12 @@ string RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
 
 string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief batch path
+////////////////////////////////////////////////////////////////////////////////
+
+string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -562,6 +568,14 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
     }
 
+    return 0;
+  }
+
+  if (TRI_HasDuplicateKeyJson(json)) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "cannot parse json object");
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return 0;
   }
 

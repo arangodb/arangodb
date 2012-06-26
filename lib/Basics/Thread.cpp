@@ -126,7 +126,7 @@ Thread::Thread (const string& name)
 
 Thread::~Thread () {
   if (_running != 0) {
-    LOGGER_WARNING << "forcefully shuting down thread '" << _name << "'";
+    LOGGER_WARNING << "forcefully shutting down thread '" << _name << "'";
     TRI_StopThread(&_thread);
   }
 
@@ -194,9 +194,6 @@ void Thread::stop () {
   if (_running != 0) {
     LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
     TRI_StopThread(&_thread);
-  }
-  else {
-    LOGGER_DEBUG << "trying to cancel (aka stop) stopped thread " << _name;
   }
 }
 
@@ -302,6 +299,10 @@ void Thread::runMe () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
