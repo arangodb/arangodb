@@ -685,7 +685,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         lhs->_value._singleRange._value = NULL;
         FreeAccessMembers(lhs);
 
-        lhs->_value._singleRange._type = TRI_AQL_ACCESS_EXACT;
+        lhs->_value._singleRange._type = TRI_AQL_RANGE_LOWER_INCLUDED;
         lhs->_value._singleRange._value = value;
 
         return lhs;
@@ -756,7 +756,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         lhs->_value._singleRange._value = NULL;
         FreeAccessMembers(lhs);
 
-        lhs->_value._singleRange._type = TRI_AQL_ACCESS_EXACT;
+        lhs->_value._singleRange._type = TRI_AQL_RANGE_UPPER_INCLUDED;
         lhs->_value._singleRange._value = value;
 
         return lhs;
