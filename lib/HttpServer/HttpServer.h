@@ -29,8 +29,6 @@
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_SERVER_H
 #define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
 
-#include "HttpServer/HttpServer.h"
-
 #include "GeneralServer/GeneralServerDispatcher.h"
 #include "HttpServer/HttpCommTask.h"
 
@@ -42,6 +40,7 @@ namespace triagens {
   namespace rest {
     class HttpHandlerFactory;
     class HttpListenTask;
+    class HttpCommTask;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class HttpServer

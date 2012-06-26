@@ -34,6 +34,7 @@
 #include "Scheduler/ListenTask.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "GeneralServer/GeneralCommTask.h"
+#include "HttpServer/HttpServer.h"
 
 namespace triagens {
   namespace rest {
