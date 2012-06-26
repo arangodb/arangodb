@@ -27,11 +27,10 @@
 
 #include "HttpHandler.h"
 
-#include <Logger/Logger.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/HttpResponse.h>
-#include <HttpServer/HttpServer.h>
-#include <GeneralServer/GeneralServerJob.h>
+#include "Logger/Logger.h"
+#include "HttpServer/HttpServer.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 namespace triagens {
   namespace rest {
