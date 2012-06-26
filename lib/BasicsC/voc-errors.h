@@ -292,13 +292,20 @@ extern "C" {
 /// - 3300: @CODE{skiplist index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a skiplist index
 ///   is caused by in the document not having one or more attributes which are
-///   required by the hash index.
+///   required by the skiplist index.
 /// - 3302: @CODE{skiplist index update warning - attribute missing in revised document}
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
-///   the hash index.
+///   the skiplist index.
 /// - 3311: @CODE{skiplist index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a skiplist index
+///   fails when document can not be located within that index.
+/// - 3400: @CODE{bitarray index insertion warning - attribute missing in document}
+///   Will be raised when an attempt to insert a document into a bitarray index
+///   is caused by in the document not having one or more attributes which are
+///   required by the bitarray index.
+/// - 3411: @CODE{bitarray index remove failure - item missing in index}
+///   Will be raised when an attempt to remove a document from a bitarray index
 ///   fails when document can not be located within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1564,7 +1571,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// Will be raised when an attempt to insert a document into a skiplist index
 /// is caused by in the document not having one or more attributes which are
-/// required by the hash index.
+/// required by the skiplist index.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING      (3300)
@@ -1575,8 +1582,8 @@ void TRI_InitialiseErrorMessages (void);
 /// skiplist index update warning - attribute missing in revised document
 ///
 /// Will be raised when an attempt to update a document results in the revised
-/// document not having one or more attributes which are required by the hash
-/// index.
+/// document not having one or more attributes which are required by the
+/// skiplist index.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING        (3302)
@@ -1591,6 +1598,29 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING             (3311)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING
+///
+/// bitarray index insertion warning - attribute missing in document
+///
+/// Will be raised when an attempt to insert a document into a bitarray index
+/// is caused by in the document not having one or more attributes which are
+/// required by the bitarray index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING      (3400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3411: WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING
+///
+/// bitarray index remove failure - item missing in index
+///
+/// Will be raised when an attempt to remove a document from a bitarray index
+/// fails when document can not be located within that index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING             (3411)
 
 
 ////////////////////////////////////////////////////////////////////////////////

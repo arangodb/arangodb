@@ -2259,6 +2259,247 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   return scope.Close(index);
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA(value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on all documents using attributes as paths to
+/// the fields. At least one attribute and one set of possible values must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
+
+  v8::HandleScope scope;
+  bool ok;
+  string errorString;
+  int errorCode;
+  TRI_index_t* bitarrayIndex = 0;
+  bool indexCreated;
+  v8::Handle<v8::Value> theIndex;
+  
+  // .............................................................................
+  // Check that we have a valid collection
+  // .............................................................................
+
+  v8::Handle<v8::Object> err;
+  const TRI_vocbase_col_t* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................
+
+  if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureBitarray(<path>, <list of values>, ...)")));
+  }
+
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the index.
+  // .............................................................................
+
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+  TRI_vector_pointer_t values;
+  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
+  ok = true;
+  
+  // .............................................................................
+  // Parameters into this ensureBitarray(...) method are passed pairs. That is,
+  // for every attribute next to it immediately on the right we have a list. For
+  // example: ensureBitarray("a",[0,1,2])
+  //          ensureBitarray("a",[0,1,2,["x","y"]],
+  //                         "b",["red","white",[1,2,3,[[12,13,14]]]])
+  // .............................................................................
+  
+  for (int j = 0;  j < argv.Length();  ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    // ...........................................................................
+    // Determine if we are expecting a string (attribute) or a list (set of values)
+    // ...........................................................................
+    
+    if ((j % 2) == 0) { // we are expecting a string
+    
+      if (! argument->IsString() ) {
+        errorString = "invalid parameter -- expected string parameter";
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+      v8::String::Utf8Value argumentString(argument);
+      char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+      TRI_PushBackVectorPointer(&attributes, cArgument);
+      
+    }
+
+    else { // we are expecting a value or set of values
+    
+      // .........................................................................
+      // Check that the javascript argument is in fact an array (list)
+      // .........................................................................
+      
+      if (! argument->IsArray() ) {
+        errorString = "invalid parameter -- expected an array (list)";
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+    
+
+      // .........................................................................
+      // Attempt to convert the V8 javascript function argument into a TRI_json_t
+      // .........................................................................
+      
+      TRI_json_t* value = TRI_JsonObject(argument);
+      
+      
+      // .........................................................................
+      // If the conversion from V8 value into a TRI_json_t fails, exit
+      // .........................................................................
+      
+      if (value == NULL) {
+        errorString = "invalid parameter -- expected an array (list)";
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+
+      // .........................................................................
+      // If the TRI_json_t is NOT a list, then exit with an error
+      // .........................................................................
+
+      if (value->_type != TRI_JSON_LIST) {
+        errorString = "invalid parameter -- expected an array (list)";
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+      TRI_PushBackVectorPointer(&values, value);
+                  
+    }
+    
+  }
+  
+  
+  if (ok) {
+    // ...........................................................................
+    // Check that we have as many attributes as values
+    // ...........................................................................
+    
+    if (attributes._length != values._length) {
+      errorString = "invalid parameter -- expected an array (list)";
+      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      ok = false;
+    }
+  }
+  
+  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  if (ok) {
+    bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
+    if (bitarrayIndex == 0) {
+      errorCode = TRI_errno();
+      errorString = "index could not be created from Simple Collection";
+      ok = false;
+    }
+  }  
+  
+  
+  // .............................................................................
+  // remove the memory allocated to the list of attributes and values used for the 
+  // specification of the index 
+  // .............................................................................
+
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* attribute = (char*)(TRI_AtVectorPointer(&attributes, j));
+    TRI_json_t* value = (TRI_json_t*)(TRI_AtVectorPointer(&values, j));
+    TRI_Free(TRI_CORE_MEM_ZONE, attribute);
+    TRI_FreeJson (TRI_UNKNOWN_MEM_ZONE, value);
+  }  
+
+  TRI_DestroyVectorPointer(&attributes);
+  TRI_DestroyVectorPointer(&values);
+
+  
+  if (ok && bitarrayIndex != 0) {  
+    // ...........................................................................
+    // Create a json represention of the index
+    // ...........................................................................
+
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
+
+    if (json == NULL) {
+      errorCode = TRI_errno();
+      errorString = "out of memory";
+      ok = false;
+    }  
+  
+    else {
+      theIndex = IndexRep(&collection->_collection->base, json);
+      if (theIndex->IsObject()) {
+        theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), indexCreated ? v8::True() : v8::False());
+      }
+    }
+      
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+
+  
+  TRI_ReleaseCollection(collection);
+
+  if (!ok || bitarrayIndex == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str())));
+  }
+
+  return scope.Close(theIndex);
+}
+
+static v8::Handle<v8::Value> JS_EnsureBitarrayVocbaseCol (v8::Arguments const& argv) {
+  return EnsureBitarray(argv, false);
+}
+
+static v8::Handle<v8::Value> JS_EnsureUndefBitarrayVocbaseCol (v8::Arguments const& argv) {
+  return EnsureBitarray(argv, true);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
@@ -4384,6 +4625,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
+  
+  v8::Handle<v8::String> EnsureBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureBitarray"));
+  v8::Handle<v8::String> EnsureUndefBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUndefBitarray"));
   v8::Handle<v8::String> EnsureCapConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureCapConstraint"));
   v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
@@ -4392,6 +4636,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
+  
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
@@ -4555,6 +4800,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  
+  rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
+  rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
@@ -4563,6 +4811,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -4600,6 +4849,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  
+  rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
+  rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
@@ -4608,6 +4860,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
