@@ -211,7 +211,7 @@ namespace triagens {
         bodyPosition = 0;
         bodyLength = 0;
 
-         _handler = server->createHandler(request);
+        _handler = server->createHandler(request);
         bool ok = false;
 
         if (_handler == 0) {

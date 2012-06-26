@@ -38,7 +38,6 @@
 
 namespace triagens {
   namespace rest {
-    class HttpHandlerFactory;
     class HttpServer;
 
     ////////////////////////////////////////////////////////////////////////////////
