@@ -4,7 +4,7 @@
          sloppy: true */
 /*global require,
     db,
-    assertEqual, assertTrue,
+    assertEqual, assertTrue, assertException,
     print,
     PRINT_OBJECT,
     AvocadoCollection, AvocadoEdgesCollection,
@@ -124,7 +124,69 @@ function measurementSuite() {
 
       assertEqual(graph.order(), 3);
       assertEqual(graph.size(), 2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the get total, in and out degree of a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistanceTo : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4);
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v1, v3);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v4, v1);
+
+      assertEqual(v1.distanceTo(v2), 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the distance between unconnected vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistanceToForUnconnectedVertices : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2);
+
+      assertEqual(v1.distanceTo(v2), Infinity);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to get the eccentricity and closeness of a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testEccentricityAndCloseness : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5);
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v1, v3);
+      graph.addEdge(v1, v4);
+      graph.addEdge(v4, v5);
+
+      assertEqual(v1.measurement("eccentricity"), 2);
+      assertEqual(v1.measurement("closeness"), 5);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to get an unknown measurement for a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnknownMeasurement : function () {
+      var v1 = graph.addVertex(1);
+
+      assertException(function () {
+        v1.measurement("unknown");
+      });
     }
+
   };
 }
 

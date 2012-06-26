@@ -694,6 +694,30 @@ Vertex.prototype.pathTo = function (target_vertex, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shortest path and return the number of edges to the target vertex
+///
+/// @FUN{@FA{vertex}.distanceTo(@FA{target_vertex}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.distanceTo = function (target_vertex, options) {
+  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {}),
+    current_vertex_id = target_vertex.getId(),
+    count = 0;
+
+  while (predecessors[current_vertex_id] !== undefined) {
+    current_vertex_id = predecessors[current_vertex_id][0];
+    count += 1;
+  }
+
+  if (current_vertex_id !== this.getId()) {
+    count = Infinity;
+  }
+
+  return count;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine all the pathes to this node from source id
 ///
 /// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id}, @FA{options})}
@@ -916,6 +940,38 @@ Vertex.prototype.inDegree = function () {
 
 Vertex.prototype.outDegree = function () {
   return this._graph._edges.outEdges(this._id).length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a measurement
+///
+/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+///
+/// Calculates the eccentricity or closeness of the vertex
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.measurement = function (measurement) {
+  var graph = this._graph,
+    vertices = graph._vertices.toArray(),
+    source = this;
+
+  return vertices.reduce(function (calculated, target) {
+    var distance = source.distanceTo(graph.getVertex(target._id));
+
+    switch (measurement) {
+    case "eccentricity":
+      calculated = Math.max(calculated, distance);
+      break;
+    case "closeness":
+      calculated += distance;
+      break;
+    default:
+      throw "Unknown Measurement '" + measurement + "'";
+    }
+
+    return calculated;
+  }, 0);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
