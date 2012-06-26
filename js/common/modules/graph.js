@@ -1494,6 +1494,47 @@ Graph.prototype.size = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a measurement
+///
+/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+///
+/// Calculates the eccentricity or closeness of the vertex
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.measurement = function (measurement) {
+  var graph = this,
+    vertices = graph._vertices.toArray(),
+    start_value;
+
+  switch (measurement) {
+  case "diameter":
+    start_value = 0;
+    break;
+  case "radius":
+    start_value = Infinity;
+    break;
+  default:
+    throw "Unknown Measurement '" + measurement + "'";
+  }
+
+  return vertices.reduce(function (calculated, vertex) {
+    vertex = graph.getVertex(vertex._id);
+
+    switch (measurement) {
+    case "diameter":
+      calculated = Math.max(calculated, vertex.measurement("eccentricity"));
+      break;
+    case "radius":
+      calculated = Math.min(calculated, vertex.measurement("eccentricity"));
+      break;
+    }
+
+    return calculated;
+  }, start_value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
