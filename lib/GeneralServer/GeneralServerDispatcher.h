@@ -32,9 +32,9 @@
 #include "GeneralServer/GeneralServer.h"
 
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/Job.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralAsyncCommTask.h"
-#include "GeneralServer/GeneralServerJob.h"
 
 namespace triagens {
   namespace rest {
@@ -119,12 +119,11 @@ namespace triagens {
                 return false;
               }
               else {
-                GeneralServerJob<S, typename HF::GeneralHandler>* job
-                  = new GeneralServerJob<S, typename HF::GeneralHandler>(dynamic_cast<S*>(this), this->_scheduler, _dispatcher, atask, handler);
+//                GeneralServerJob<S, typename HF::GeneralHandler>* job
+//                  = new GeneralServerJob<S, typename HF::GeneralHandler>(dynamic_cast<S*>(this), this->_scheduler, _dispatcher, atask, handler);
 
-                assert(handler);
                 atask->setHandler(handler);
-                handler->setJob(job);
+                Job* job = handler->createJob(this->_scheduler, _dispatcher, atask);
                 _dispatcher->addJob(job);
               }
 

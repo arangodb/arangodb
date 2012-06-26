@@ -107,7 +107,7 @@ namespace triagens {
           JOB_WORK,
           JOB_FINISH,
           JOB_CLEANUP,
-          JOB_SHTUDOWN
+          JOB_SHUTDOWN
         };
 
 ////////////////////////////////////////////////////////////////////////////////

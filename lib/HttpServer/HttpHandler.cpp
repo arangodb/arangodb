@@ -30,6 +30,8 @@
 #include <Logger/Logger.h>
 #include <Rest/HttpRequest.h>
 #include <Rest/HttpResponse.h>
+#include <HttpServer/HttpServer.h>
+#include <GeneralServer/GeneralServerJob.h>
 
 namespace triagens {
   namespace rest {
@@ -37,8 +39,6 @@ namespace triagens {
     // -----------------------------------------------------------------------------
     // constructs and destructors
     // -----------------------------------------------------------------------------
-
-
 
     HttpHandler::HttpHandler (HttpRequest* request)
       : _handlerFactory(0),
@@ -113,5 +113,34 @@ namespace triagens {
 
       return true;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief create a job
+    ////////////////////////////////////////////////////////////////////////////////
+
+    Job* HttpHandler::createJob () {
+      LOGGER_WARNING << "job creation requested for handler that is not intended to produce jobs";
+
+      return 0;
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief create a job
+    ////////////////////////////////////////////////////////////////////////////////
+
+    Job* HttpHandler::createJob (Scheduler* scheduler, Dispatcher* dispatcher, HttpCommTask* task) {
+      HttpServer* server = dynamic_cast<HttpServer*>(task->getServer());
+
+      GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask =
+        dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(task);
+
+      GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* job = 
+        new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(server, scheduler, dispatcher, atask, this);
+
+      setJob(job);
+
+      return job;
+    }
+
   }
 }
