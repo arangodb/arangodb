@@ -537,13 +537,6 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 
   ExtractSkipAndLimit(argv, 2, skip, limit);
 
-  if (limit < 0) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "<limit> cannot be negative")));
-  }
-
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
 
