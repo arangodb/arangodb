@@ -307,7 +307,7 @@ namespace triagens {
         /// @brief handles a connection close
         ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommunicationClosed (Task* task)  {
+        void handleCommunicationClosed (Task* task) {
           _scheduler->destroyTask(task);
         }
 
@@ -315,8 +315,16 @@ namespace triagens {
         /// @brief handles a connection failure
         ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommunicationFailure (Task* task)  {
+        void handleCommunicationFailure (Task* task) {
           _scheduler->destroyTask(task);
+        }
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief return the scheduler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        Scheduler* getScheduler () {
+          return _scheduler; 
         }
 
       protected:

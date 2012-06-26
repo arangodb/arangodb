@@ -59,7 +59,7 @@ namespace triagens {
 /// answer as http response.
 ////////////////////////////////////////////////////////////////////////////////
 
-    class  HttpResponse {
+    class HttpResponse {
       private:
         HttpResponse (HttpResponse const&);
         HttpResponse& operator= (HttpResponse const&);
