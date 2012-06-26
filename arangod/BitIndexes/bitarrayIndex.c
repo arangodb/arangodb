@@ -36,6 +36,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitarrayIndex.h"
+#include "BasicsC/string-buffer.h"
+#include "ShapedJson/json-shaper.h"
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 
 
 
@@ -75,9 +79,15 @@ static int  generateBitMask          (BitarrayIndex*, const BitarrayIndexElement
 ////////////////////////////////////////////////////////////////////////////////
 
 void BitarrayIndex_destroy(BitarrayIndex* baIndex) {
+  size_t j;
   if (baIndex == NULL) {
     return;
-  }   
+  } 
+  for (j = 0;  j < baIndex->_values._length;  ++j) {
+    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j)));
+  }
+  TRI_DestroyVector(&baIndex->_values);
+  
   TRI_FreeBitarray(baIndex->bitarray);
   baIndex->bitarray = NULL;
 }
@@ -114,12 +124,24 @@ void BitarrayIndex_free(BitarrayIndex* baIndex) {
 int BitarrayIndex_new(BitarrayIndex** baIndex, 
                       TRI_memory_zone_t* memoryZone, 
                       size_t cardinality,
-                      bool addOtherColumn,
-                      bool addUndefinedColumn,
+                      TRI_vector_t* values,
+                      bool supportUndef,
                       void* context) {
   int     result;
   size_t  numArrays;
-
+  int j;
+  
+  
+  // ...........................................................................  
+  // Sime simple checks
+  // ...........................................................................  
+  
+  if (baIndex == NULL) {
+    assert(false);
+    return TRI_ERROR_INTERNAL;
+  }  
+  
+  
   
   // ...........................................................................  
   // If the bit array index has arealdy been created, return internal error
@@ -148,21 +170,33 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
+
+  // ...........................................................................  
+  // Copy the values into this index
+  // ...........................................................................  
+ 
+   
+  TRI_InitVector(&((*baIndex)->_values), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));
+
+  for (j = 0;  j < values->_length;  ++j) {
+    TRI_json_t value;
+    TRI_CopyToJson(TRI_UNKNOWN_MEM_ZONE, &value, (TRI_json_t*)(TRI_AtVector(values,j)));
+    TRI_PushBackVector(&((*baIndex)->_values), &value);
+  }
+ 
+ 
+  // ...........................................................................  
+  // Store whether or not the index supports 'undefined' documents (that is
+  // documents with attributes which do not match those of the index
+  // ...........................................................................  
+  
+  (*baIndex)->_supportUndef = supportUndef;
   
   // ...........................................................................  
   // Determine the number of bit columns which will comprise the bit array index.
   // ...........................................................................  
   
   numArrays = cardinality;
-  
-  if (addOtherColumn) {
-    ++numArrays;
-  }
-
-  if (addUndefinedColumn) {
-    ++numArrays;
-  }    
-
   
   // ...........................................................................  
   // Create the bit arrays
@@ -187,6 +221,11 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
 int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   int result;
   TRI_bitarray_mask_t mask;
+
+  // ..........................................................................
+  // At the current time we have no way in which to store undefined documents
+  // need some sort of parameter passed here.
+  // ..........................................................................
   
   // ..........................................................................
   // generate bit mask
@@ -282,58 +321,12 @@ int BitarrayIndex_remove(BitarrayIndex* baIndex, BitarrayIndexElement* element) 
 /// @brief updates a bit array index  entry
 //////////////////////////////////////////////////////////////////////////////////
 
-bool BitarrayIndex_update(BitarrayIndex* baIndex, 
+int BitarrayIndex_update(BitarrayIndex* baIndex, 
                           const BitarrayIndexElement* oldElement, 
                           const BitarrayIndexElement* newElement) {
                           
-  int result;                          
-  TRI_bitarray_mask_t oldMask;
-  TRI_bitarray_mask_t newMask;
-                          
-  // ..........................................................................
-  // updates an entry in the bit arrays and master table
-  // essentially it replaces the bit mask with a new bit mask
-  // ..........................................................................
-
-
-  // ..........................................................................
-  // Check that something has not gone terribly wrong
-  // ..........................................................................
-  
-  if (oldElement->data != newElement->data) {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-    return false;
-  }
-
-  
-  // ..........................................................................
-  // generate bit masks
-  // ..........................................................................
-  
-  result = generateBitMask (baIndex, oldElement, &oldMask);
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(result);
-    return false;
-  }  
-
-  result = generateBitMask (baIndex, newElement, &newMask);
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(result);
-    return false;
-  }  
-
-  
-  // ..........................................................................
-  // replace the old mask with the new mask into the bit array
-  // ..........................................................................
-  
-  result = TRI_ReplaceBitMaskElementBitarray(baIndex->bitarray, &oldMask, &newMask, oldElement->data);  
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(result);
-    return false;
-  }  
-  
-  return true;
+  assert(false);                          
+  return TRI_ERROR_INTERNAL;
 }
 
 
@@ -404,9 +397,174 @@ void BitarrayIndex_findHelper(BitarrayIndex* baIndex,
 }
             
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Given the index structure and the list of shaped json values which came from
+// some document we generate a bit mask.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
+
+  if (left == NULL && right == NULL) {
+    return true;
+  }
+
+  if (left == NULL || right == NULL) {
+    return false;
+  }
+
+  if (left->_type != right->_type) {
+    return false;
+  }
+
+  switch (left->_type) {
+    case TRI_JSON_UNUSED: {
+      return true;
+    }
+    case TRI_JSON_NULL: {
+      return true;
+    }
+    case TRI_JSON_BOOLEAN: {
+      return (left->_value._boolean == right->_value._boolean);
+    }    
+    case TRI_JSON_NUMBER: {
+      return (left->_value._number == right->_value._number);
+    }    
+    case TRI_JSON_STRING: {
+      return (strcmp(left->_value._string.data, right->_value._string.data) == 0);
+    }    
+    case TRI_JSON_ARRAY: {
+    }    
+    case TRI_JSON_LIST: {
+      int j;
+      if (left->_value._objects._length != right->_value._objects._length) {
+        return false;
+      }
+      for (j = 0; j < left->_value._objects._length; ++j) {
+        TRI_json_t* subLeft;
+        TRI_json_t* subRight;
+        subLeft  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),j));
+        subRight = (TRI_json_t*)(TRI_AtVector(&(right->_value._objects),j));
+        if (isEqualJson(subLeft, subRight)) {
+          continue;
+        }
+        return false;
+      }
+    }    
+    default: {
+      assert(false);
+    }  
+  }        
+}
             
 int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
-  assert(0);
+
+  TRI_shaper_t* shaper;
+  int j;
+  int shiftLeft;
+  
+  // ...........................................................................
+  // some safety checks first
+  // ...........................................................................
+  
+  if (baIndex == NULL || element == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (element->collection == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+
+  // ...........................................................................
+  // We could be trying to store an 'undefined' document into the bitarray
+  // We determine this implicitly. If element->numFields b == 0, then we
+  // assume that the document did not have any matching attributes, yet since
+  // we are here we wish to store this fact.
+  // ...........................................................................
+  
+  if (!baIndex->_supportUndef && (element->numFields == 0 || element->fields == NULL)) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  
+  if (baIndex->_supportUndef && element->numFields == 0) {
+    mask->_mask       = 1;
+    mask->_ignoreMask = 0;
+    return TRI_ERROR_NO_ERROR;
+  }  
+
+  
+  // ...........................................................................
+  // attempt to convert the stored TRI_shaped_json_t into TRI_Json_t so that
+  // we can make a comparison between what values the bitarray index requires
+  // and what values the document has sent.
+  // ...........................................................................
+  
+  shaper      = ((TRI_doc_collection_t*)(element->collection))->_shaper;
+  mask->_mask = 0;
+  shiftLeft   = 0;
+  
+  for (j = 0; j < baIndex->_values._length; ++j) {
+    TRI_json_t* valueList;
+    TRI_json_t* value;
+    uint64_t    other;    
+    int         i;
+    uint64_t    tempMask;
+    
+    value      = TRI_JsonShapedJson(shaper, &(element->fields[j])); // from shaped json to simple json   
+    valueList  = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
+    other      = 0;
+    tempMask   = 0;
+    
+    for (i = 0; i < valueList->_value._objects._length; ++i) {
+      TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
+      // .......................................................................
+      // We need to take special care if the json object is a list
+      // .......................................................................
+      
+      if (listEntry->_type == TRI_JSON_LIST) {
+        // an empty list
+        if (listEntry->_value._objects._length == 0) {
+          other = (1 << i);
+        }
+        else {
+          int k;
+          for (k = 0; k < listEntry->_value._objects._length; k++) {
+            TRI_json_t* subListEntry;
+            subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
+            if (isEqualJson(value, subListEntry)) {
+              tempMask = tempMask | (1 << i);
+            }  
+          }          
+        }
+      }      
+      
+      else {
+        if (isEqualJson(value, listEntry)) {
+          tempMask = tempMask | (1 << i);
+        }  
+      }
+  
+  
+      // ..........................................................................
+      // remove the json entry created from the shaped json
+      // ..........................................................................
+    
+      TRI_DestroyJson(shaper->_memoryZone, value);
+      
+    }
+      
+    if (tempMask == 0) {
+      tempMask = other;
+    }
+    
+    
+    mask->_mask = mask->_mask | (tempMask << shiftLeft);
+    
+    shiftLeft += valueList->_value._objects._length;
+  }  
+  
   return TRI_ERROR_NO_ERROR;
 }
 

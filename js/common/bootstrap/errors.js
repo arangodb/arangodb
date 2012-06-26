@@ -139,6 +139,8 @@
     "WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 3300, "message" : "skiplist index insertion warning - attribute missing in document" }, 
     "WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING" : { "code" : 3302, "message" : "skiplist index update warning - attribute missing in revised document" }, 
     "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING" : { "code" : 3311, "message" : "skiplist index remove failure - item missing in index" }, 
+    "WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 3400, "message" : "bitarray index insertion warning - attribute missing in document" }, 
+    "WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING" : { "code" : 3411, "message" : "bitarray index remove failure - item missing in index" }, 
 };
 }());
 

@@ -93,6 +93,10 @@ static int CapConstraintFromJson (TRI_sim_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t);
 
+static int BitarrayIndexFromJson (TRI_sim_collection_t* sim,
+                                  TRI_json_t* definition,
+                                  TRI_idx_iid_t);
+
 static int GeoIndexFromJson (TRI_sim_collection_t* sim,
                              TRI_json_t* definition,
                              TRI_idx_iid_t iid);
@@ -1495,6 +1499,18 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return res == TRI_ERROR_NO_ERROR;
   }
+
+  
+  // ...........................................................................
+  // BITARRAY INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "bitarray")) {
+    res = BitarrayIndexFromJson(sim, json, iid);
+
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return res == TRI_ERROR_NO_ERROR;
+  }
   
   // ...........................................................................
   // GEO INDEX (list or attribute)
@@ -1990,6 +2006,91 @@ static TRI_json_t* ExtractFields (TRI_json_t* json, size_t* fieldCount, TRI_idx_
   return fld;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of attribute/value pairs
+///
+/// Attribute/value pairs are used in the construction of static bitarray 
+/// indexes. These pairs are stored in a json object from which they can be
+/// later extracted. Here is the extraction function given the index definition
+/// as a json object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount, TRI_idx_iid_t iid) {
+  TRI_json_t* keyValues;
+  size_t j;
+
+  keyValues = TRI_LookupArrayJson(jsonIndex, "fields");
+
+  if (keyValues == NULL || keyValues->_type != TRI_JSON_LIST) {
+    LOG_ERROR("ignoring index %lu, 'fields' must be a list", (unsigned long) iid);
+
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    return NULL;
+  }
+
+  
+  *fieldCount = keyValues->_value._objects._length;
+
+  
+  // ...........................................................................
+  // Some simple checks
+  // ...........................................................................
+  
+  for (j = 0;  j < *fieldCount;  ++j) {
+    TRI_json_t* keyValue;
+    TRI_json_t* key;
+    TRI_json_t* value;
+ 
+
+    // .........................................................................   
+    // Extract the jth key value pair
+    // .........................................................................   
+  
+    keyValue = TRI_AtVector(&keyValues->_value._objects, j);
+  
+  
+    // .........................................................................   
+    // The length of this key value pair must be two
+    // .........................................................................   
+    
+    if (keyValue == NULL  || keyValue->_value._objects._length != 2) {
+      LOG_ERROR("ignoring index %lu, 'fields' must be a list of key value pairs", (unsigned long) iid);
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+      return NULL;
+    }    
+
+    
+    // .........................................................................   
+    // Extract the key
+    // .........................................................................   
+  
+    key = TRI_AtVector(&keyValue->_value._objects, 0);
+    
+    if (key == NULL || key->_type != TRI_JSON_STRING) {
+      LOG_ERROR("ignoring index %lu, key in 'fields' pair must be an attribute (string)", (unsigned long) iid);
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+      return NULL;
+    }
+    
+    
+    // .........................................................................   
+    // Extract the value
+    // .........................................................................   
+
+    value = TRI_AtVector(&keyValue->_value._objects, 1);
+    
+    if (value == NULL || value->_type != TRI_JSON_LIST) {
+      LOG_ERROR("ignoring index %lu, value in 'fields' pair must be a list ([...])", (unsigned long) iid);
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+      return NULL;
+    }
+    
+  }
+
+  return keyValues;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new entry in the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
@@ -2312,8 +2413,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
 /// @brief initialises an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndex (TRI_sim_collection_t* collection,
-                      TRI_index_t* idx) {
+static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
@@ -2356,6 +2456,7 @@ static int FillIndex (TRI_sim_collection_t* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a path based, unique or non-unique index
 ////////////////////////////////////////////////////////////////////////////////
@@ -2365,37 +2466,93 @@ static TRI_index_t* LookupPathIndexSimCollection (TRI_sim_collection_t* collecti
                                                   TRI_idx_type_e type,
                                                   bool unique) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
+  TRI_vector_t* indexPaths;
   size_t j;
   size_t k;
 
+  // ...........................................................................
   // go through every index and see if we have a match 
+  // ...........................................................................
+  
   for (j = 0;  j < collection->_indexes._length;  ++j) {
-    TRI_index_t* idx            = collection->_indexes._buffer[j];
-    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-    bool found                  = true;
-        
-    // check that the type of the index is in fact a hash index 
+    TRI_index_t* idx = collection->_indexes._buffer[j];
+    bool found       = true;
+
+    // .........................................................................
+    // check if the type of the index matches 
+    // .........................................................................
+    
     if (idx->_type != type) {
       continue;
     }
-        
-    // check that the uniqueness is the same
+    
+
+    // .........................................................................
+    // check if uniqueness matches
+    // .........................................................................
+    
     if (idx->_unique != unique) {
       continue;
     }
+    
+    
+    // .........................................................................
+    // Now perform checks which are specific to the type of index
+    // .........................................................................
         
-    // check that the number of paths (fields) in the hash index matches that
+    switch (type) {
+    
+      case TRI_IDX_TYPE_BITARRAY_INDEX: {
+        TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
+        indexPaths = &(baIndex->_paths);
+        break;
+      }
+      
+      case TRI_IDX_TYPE_HASH_INDEX: {
+        TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+        indexPaths = &(hashIndex->_paths);
+        break;
+      }
+      
+      case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+        TRI_priorityqueue_index_t* pqIndex = (TRI_priorityqueue_index_t*) idx;
+        indexPaths = &(pqIndex->_paths);
+        break;
+      }
+      
+      case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+        TRI_skiplist_index_t* slIndex = (TRI_skiplist_index_t*) idx;
+        indexPaths = &(slIndex->_paths);
+        break;
+      }
+      
+      default: {
+        assert(false);
+        break;
+      }
+      
+    }
+    
+    
+    // .........................................................................
+    // check that the number of paths (fields) in the index matches that
     // of the number of attributes
-    if (paths->_length != hashIndex->_paths._length) {
+    // .........................................................................
+    
+    if (paths->_length != indexPaths->_length) {
       continue;
     }
+          
         
+    // .........................................................................
     // go through all the attributes and see if they match
+    // .........................................................................
+    
     for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, k)));
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
+      TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*)(TRI_AtVector(indexPaths, k)));
+      TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
 
-      if (field != shape) {
+      if (indexShape != givenShape) {
         found = false;
         break;          
       } 
@@ -2410,6 +2567,138 @@ static TRI_index_t* LookupPathIndexSimCollection (TRI_sim_collection_t* collecti
 
   return matchedIndex;  
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores a bitarray based index (template)
+////////////////////////////////////////////////////////////////////////////////
+
+static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
+                                       TRI_json_t* definition,
+                                       TRI_idx_iid_t iid,
+                                       TRI_index_t* (*creator)(TRI_sim_collection_t*,
+                                                               const TRI_vector_pointer_t*,
+                                                               const TRI_vector_pointer_t*,
+                                                               TRI_idx_iid_t,
+                                                               bool,
+                                                               bool*)) {
+  TRI_index_t* idx;
+  TRI_json_t* uniqueIndex;
+  TRI_json_t* supportUndefIndex;
+  TRI_json_t* keyValues;
+  TRI_vector_pointer_t attributes;
+  TRI_vector_pointer_t values;
+  bool unique;
+  bool supportUndef;
+  bool created;
+  size_t fieldCount;
+  size_t j;
+  
+
+  // ...........................................................................
+  // extract fields list (which is a list of key/value pairs for a bitarray index
+  // ...........................................................................
+  
+  keyValues = ExtractFieldValues(definition, &fieldCount, iid);
+  if (keyValues == NULL) {
+    return TRI_errno();
+  }
+
+  
+  // ...........................................................................
+  // For a bitarray index we require at least one attribute path and one set of
+  // possible values for that attribute (that is, we require at least one pair)
+  // ...........................................................................
+  
+  if (fieldCount < 1) {
+    LOG_ERROR("ignoring index %lu, need at least one attribute path and one list of values",(unsigned long) iid);
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  
+  // ...........................................................................
+  // A bitarray index is always (for now) non-unique. Irrespective of this fact
+  // attempt to extract the 'uniqueness value' from the json object representing
+  // the bitarray index.
+  // ...........................................................................
+  
+  unique = false;
+  uniqueIndex = TRI_LookupArrayJson(definition, "unique");
+  if (uniqueIndex == NULL || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
+    LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }  
+  unique = uniqueIndex->_value._boolean;
+   
+
+  // ...........................................................................
+  // A bitarray index can support documents where one or more attributes are 
+  // undefined. Determine if this is the case.
+  // ...........................................................................
+  
+  supportUndef = false;
+  supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
+  if (supportUndefIndex == NULL || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
+    LOG_ERROR("ignoring index %lu, could not determine if index supports undefined values", (unsigned long) iid);
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }  
+  supportUndef = supportUndefIndex->_value._boolean;
+   
+  // ...........................................................................
+  // Initialise the vectors in which we store the fields and their corresponding
+  // values
+  // ...........................................................................
+  
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
+
+  
+  // ...........................................................................
+  // find fields and values and store them in the vector pointers
+  // ...........................................................................
+  
+  for (j = 0;  j < fieldCount;  ++j) {
+    TRI_json_t* keyValue;
+    TRI_json_t* key;
+    TRI_json_t* value;
+    
+    keyValue = TRI_AtVector(&keyValues->_value._objects, j);
+    key      = TRI_AtVector(&keyValue->_value._objects, 0);
+    value    = TRI_AtVector(&keyValue->_value._objects, 1);
+
+    TRI_PushBackVectorPointer(&attributes, key->_value._string.data);
+    TRI_PushBackVectorPointer(&values, value);
+  }  
+
+  
+  // ...........................................................................
+  // attempt to create the index or retrieve an existing one
+  // ...........................................................................
+  
+  idx = creator(sim, &attributes, &values, iid, supportUndef, &created);
+
+
+  // ...........................................................................
+  // cleanup
+  // ...........................................................................
+  
+  TRI_DestroyVectorPointer(&attributes);
+  TRI_DestroyVectorPointer(&values);
+  
+
+  // ...........................................................................
+  // Check if the creation or lookup succeeded
+  // ...........................................................................
+  
+  if (idx == NULL) {
+    LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores a path based index (template)
@@ -2482,6 +2771,8 @@ static int PathBasedIndexFromJson (TRI_sim_collection_t* sim,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares pid and name
@@ -4089,6 +4380,254 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    BITARRAY INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a bitarray index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* collection,
+                                                      const TRI_vector_pointer_t* attributes,
+                                                      const TRI_vector_pointer_t* values,
+                                                      TRI_idx_iid_t iid,
+                                                      bool supportUndef,
+                                                      bool* created) {
+  TRI_index_t* idx;
+  TRI_vector_pointer_t fields;
+  TRI_vector_t paths;
+  int res;
+
+  res = TRI_PidNamesByAttributeNames(attributes, 
+                                     collection->base._shaper,
+                                     &paths,
+                                     &fields,
+                                     false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (created != NULL) {
+      *created = false;
+    }
+
+    return NULL;
+  }
+
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
+  
+  if (idx != NULL) {
+    TRI_DestroyVector(&paths);
+    TRI_DestroyVectorPointer(&fields);
+    LOG_TRACE("bitarray-index previously created");
+
+    if (created != NULL) {
+      *created = false;
+    }
+
+    return idx;
+  }
+
+
+  // ...........................................................................
+  // Create the bitarray index
+  // ...........................................................................
+  
+  idx = TRI_CreateBitarrayIndex(&collection->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef);
+
+  
+  // ...........................................................................
+  // release memory allocated to fields & paths vectors
+  // ...........................................................................
+  
+  TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
+
+
+  // ...........................................................................
+  // Perhaps the index was not created in the function TRI_CreateBitarrayIndex
+  // ...........................................................................
+  
+  if (idx == NULL) {
+    LOG_TRACE("bitarray index could not be created in TRI_CreateBitarrayIndex");
+    if (created != NULL) {
+      *created = false;
+    }
+    return idx;
+  }
+  
+  // ...........................................................................
+  // If an index id given, use it otherwise use the default (generate one)
+  // ...........................................................................
+  
+  if (iid) {
+    idx->_iid = iid;
+  }
+  
+
+  // ...........................................................................
+  // initialises the index with all existing documents
+  // ...........................................................................
+  
+  res = FillIndex(collection, idx);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeBitarrayIndex(idx);
+    return NULL;
+  }
+  
+
+  // ...........................................................................
+  // store index within the collection and return
+  // ...........................................................................
+  
+  TRI_PushBackVectorPointer(&collection->_indexes, idx);
+  
+  if (created != NULL) {
+    *created = true;
+  }
+  
+  return idx;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores an index
+////////////////////////////////////////////////////////////////////////////////
+
+static int BitarrayIndexFromJson (TRI_sim_collection_t* sim,
+                                  TRI_json_t* definition,
+                                  TRI_idx_iid_t iid) {
+  return BitarrayBasedIndexFromJson(sim, definition, iid, CreateBitarrayIndexSimCollection);
+}
+                                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
+                                                   const TRI_vector_pointer_t* attributes) {
+  TRI_index_t* idx;
+  TRI_vector_pointer_t fields;
+  TRI_vector_t paths;
+  int result;
+  
+  // ...........................................................................
+  // determine the unsorted shape ids for the attributes
+  // ...........................................................................
+  
+  result = TRI_PidNamesByAttributeNames(attributes, sim->base._shaper, &paths,
+                                     &fields, false);
+
+  if (result != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  
+  
+  // .............................................................................
+  // attempt to go through the indexes within the collection and see if we can
+  // locate the index
+  // .............................................................................
+  
+  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, false);
+  
+  
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  // .............................................................................
+  // release memory allocated to vector
+  // .............................................................................
+
+  TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
+
+  return idx;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
+                                                   const TRI_vector_pointer_t* attributes,
+                                                   const TRI_vector_pointer_t* values,
+                                                   bool supportUndef,
+                                                   bool* created) {
+  TRI_index_t* idx;
+  int res;
+
+  // .............................................................................
+  // inside write-lock the collection
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  
+  idx = CreateBitarrayIndexSimCollection(sim, attributes, values, 0, supportUndef, created);
+  
+  if (idx == NULL) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    return NULL;
+  }
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  if (created) {
+    res = TRI_SaveIndex(&sim->base, idx);
+  
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
+}                                                
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           SELECT BY EXAMPLE QUERY

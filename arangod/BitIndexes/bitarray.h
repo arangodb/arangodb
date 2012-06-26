@@ -37,13 +37,13 @@
 extern "C" {
 #endif
 
-#define BITARRAY_MASTER_TABLE_BLOCKSIZE 32
+#define BITARRAY_MASTER_TABLE_BLOCKSIZE 8
 
 #define BITARRAY_MASTER_TABLE_INITIAL_SIZE 1024
 #define BITARRAY_MASTER_TABLE_GROW_FACTOR 1.2
 
-#define BITARRAY_INITIAL_SIZE 1024
-#define BITARRAY_GROW_FACTOR 1.2
+#define BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE 10
+#define BITARRAY_NUMBER_OF_COLUMN_BLOCKS_GROW_FACTOR 1.2
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             bitarray public types
@@ -79,9 +79,11 @@ typedef struct TRI_master_table_position_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_bitarray_s {
-  size_t _numColumns; // number of bitarrays particpating in index
-  char* _columns;     // the actual bit array columns
-  size_t _columnLength; // the length of a column (all columns are the same size)
+  size_t  _numColumns;         // number of bitarrays particpating in index
+  char*   _columns;            // the actual bit array columns
+  size_t  _numBlocksInColumn;  // the number of blocks (allocated not necessarily used) within a column
+  //uint8_t _usedBitLength;      // the number of bits which have been used in the last block used.
+  size_t  _lastBlockUsed;      // the number of the last block which contains active columns
   TRI_memory_zone_t* _memoryZone; 
   void* _masterTable;
 } TRI_bitarray_t;

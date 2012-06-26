@@ -1112,6 +1112,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
     // .............................................................................
 
     case MODE_CONSOLE: {
+    
       // run a shell
       V8LineEditor* console = new V8LineEditor(context, ".arango");
 
@@ -1124,7 +1125,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
         char* input = console->prompt("arangod> ");
  
         if (input == 0) {
-          printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+          printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
           break;
         }
 
@@ -1162,7 +1163,7 @@ int ArangoServer::executeShell (shell_operation_mode_e mode) {
     delete v8g;
   }
 
-  // close the database
+  
   closeDatabase();
   Random::shutdown();
 
@@ -1300,7 +1301,7 @@ int ArangoServer::executeRubyShell () {
     char* input = console->prompt("arangod> ");
 
     if (input == 0) {
-      printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+      printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
       break;
     }
 
