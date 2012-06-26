@@ -179,14 +179,43 @@ function measurementSuite() {
 /// @brief test to get an unknown measurement for a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUnknownMeasurement : function () {
+    testUnknownMeasurementOnVertex : function () {
       var v1 = graph.addVertex(1);
 
       assertException(function () {
         v1.measurement("unknown");
       });
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to get diameter and radius for a graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testDiameterAndRadius : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5);
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v1, v3);
+      graph.addEdge(v1, v4);
+      graph.addEdge(v4, v5);
+
+      assertEqual(graph.measurement("diameter"), 3);
+      assertEqual(graph.measurement("radius"), 2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to get an unknown measurement for a graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnknownMeasurementOnGraph : function () {
+      assertException(function () {
+        graph.measurement("unknown");
+      });
+    }
   };
 }
 
