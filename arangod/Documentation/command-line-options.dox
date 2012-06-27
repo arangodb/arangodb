@@ -132,6 +132,18 @@
 /// that the server will run as a daemon. Note that, as with the daemon flag,
 /// this flag requires that the pid-file parameter will set.
 ///
+/// @verbinclude supervisor
+/// 
+/// As can be seen (e.g. by executing the ps command), this will start a supervisor 
+/// process and the actual database process:
+///
+/// @verbinclude supervisor-ps1
+/// 
+/// When the database process terminates unexpectedly, the supervisor process will
+/// start up a new database process:
+///
+/// @verbinclude supervisor-ps2
+///
 /// @anchor CommandLineUid
 /// @copydetails triagens::rest::ApplicationServer::_uid
 ///
