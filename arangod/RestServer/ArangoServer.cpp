@@ -847,7 +847,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
           char* input = console->prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+            printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
             break;
           }
 
@@ -887,7 +887,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
   _applicationV8->beginShutdown();
   _applicationV8->shutdown();
 
-  // close the database
+  
   closeDatabase();
   Random::shutdown();
 
@@ -1018,7 +1018,7 @@ int ArangoServer::executeRubyConsole () {
     char* input = console->prompt("arangod> ");
 
     if (input == 0) {
-      printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! До свидания! さようなら\n");
+      printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
       break;
     }
 

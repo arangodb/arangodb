@@ -53,6 +53,7 @@ lib/BasicsC/local-configuration.h
 .libev-build-*
 .libs
 *.lo
+configure
 m4/component.engine
 m4/component.files
 m4/component.storage

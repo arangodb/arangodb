@@ -295,15 +295,6 @@ static bool AddPQueue(TRI_pqueue_t* pq, void* item) {
   // ...........................................................................  
   FixPQ(pq, pq->_base._count);
 
-  /*
-  for (k = 0; k < pq->_base._count; ++k) {
-    tt = (xx*)( (k * pq->_base._itemSize) + pq->_base._items);
-    printf("%s:%u:zzzzzzzzzzzzzzzzzzzzzz:%f:%u;%u\n",__FILE__,__LINE__,
-            *((double*)((tt->fields)->_data.data)),
-            tt->pqSlot,
-            tt->numFields);
-  } 
-  */
   
   return true;
 }

@@ -1137,7 +1137,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   size_t i;
-
+  
   // starts unloading of collections
   for (i = 0;  i < vocbase->_collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
