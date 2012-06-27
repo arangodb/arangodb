@@ -28,10 +28,16 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/MutexLocker.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "VocBase/vocbase.h"
-//#include "ProtocolBuffers/arangodb.pb.h"
+#include "GeneralServer/GeneralCommTask.h"
+#include "GeneralServer/GeneralServerBatchJob.h"
+#include "GeneralServer/GeneralServerJob.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpServer.h"
+#include "ProtocolBuffers/HttpRequestProtobuf.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -52,7 +58,18 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+  : RestVocbaseBaseHandler(request, vocbase),
+    _missingResponses(0),
+    _outputMessages(new PB_ArangoMessage),
+    _handled(false) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief denstructor
+////////////////////////////////////////////////////////////////////////////////
+
+RestBatchHandler::~RestBatchHandler () {
+  delete _outputMessages;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,97 +108,204 @@ string const& RestBatchHandler::queue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestBatchHandler::execute () {
-  return HANDLER_DONE;
-}
-
-/*
-  bool found;
-  char const* valueStr = request->value("value", found);
-
-  if (found) {
-    sleep(::atoi(valueStr));
-  }
-  else {
-    sleep(5);
-  }
   // extract the request type
   HttpRequest::HttpRequestType type = request->requestType();
   string contentType = StringUtils::tolower(StringUtils::trim(request->header("content-type")));
-
+  
   if (type != HttpRequest::HTTP_REQUEST_POST || contentType != "application/x-protobuf") {
     generateNotImplemented("ILLEGAL " + BATCH_PATH);
     return HANDLER_DONE;
   }
 
-  LOGGER_INFO << "body size: " << request->bodySize();
+  /*
   FILE* fp = fopen("got","w");
   fwrite(request->body(), request->bodySize(), 1, fp);
   fclose(fp);
   */
-/*
-  PB_ArangoMessage messages;
-  bool result = messages.ParseFromArray(request->body(), request->bodySize());
+  PB_ArangoMessage inputMessages;
+
+  bool result = inputMessages.ParseFromArray(request->body(), request->bodySize());
   if (!result) {
-    LOGGER_INFO << "invalid message";
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, // TODO FIXME
                   "invalid protobuf message");
     return HANDLER_DONE;
   }
-  response = new HttpResponse(HttpResponse::CREATED);
 
+  size_t asyncResponses = 0;
+
+  for (int i = 0; i < inputMessages.messages_size(); ++i) {
+    const PB_ArangoBatchMessage inputMessage = inputMessages.messages(i);
+ 
+    { // locked
+      MUTEX_LOCKER(_handlerLock); 
+      _outputMessages->add_messages();
+    } // locked end
+
+    HttpRequestProtobuf* request = new HttpRequestProtobuf(inputMessage);
+    HttpHandler* handler = _task->getServer()->createHandler(request);
+
+    if (handler == 0) {
+      delete request;
+      // TODO: handle fail
+    }
+    else {
+      {
+        MUTEX_LOCKER(_handlerLock);
+        _handlers.push_back(handler);
+      }
+
+      if (handler->isDirect()) {
+        // execute handler directly
+        Handler::status_e status = Handler::HANDLER_FAILED;
+
+        try {
+          status = handler->execute();
+        }
+        catch (...) {
+          // TODO
+        }
+        
+        if (status != Handler::HANDLER_REQUEUE) {
+          addResponse(handler);
+        }
+      }
+      else {
+        // execute handler via dispatcher
+        ++_missingResponses;
+        ++asyncResponses;
+        HttpServer* server = dynamic_cast<HttpServer*>(_task->getServer());
+
+        Scheduler* scheduler = server->getScheduler();
+        Dispatcher* dispatcher = server->getDispatcher();
+
+        Job* job = handler->createJob(scheduler, dispatcher, _task);
+  
+        GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* generalJob = dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(job);
+        generalJob->attachObserver(this);
+
+        dispatcher->addJob(job);
+      }
+        
+    }
+  }   
+
+  if (asyncResponses == 0) {
+    // signal ourselves
+    GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask = 
+      dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(_task);
+
+    atask->signal();
+  }
+
+  return Handler::HANDLER_DONE; 
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a special job for the handler
+////////////////////////////////////////////////////////////////////////////////
+
+Job* RestBatchHandler::createJob (Scheduler* scheduler, Dispatcher* dispatcher, HttpCommTask* task) {
+  HttpServer* server = dynamic_cast<HttpServer*>(task->getServer());
+  GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, GeneralCommTask<HttpServer, HttpHandlerFactory> >* atask = 
+    dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, GeneralCommTask<HttpServer, HttpHandlerFactory> >*>(task);
+
+  GeneralServerBatchJob<HttpServer, HttpHandlerFactory::GeneralHandler>* job
+    = new GeneralServerBatchJob<HttpServer, HttpHandlerFactory::GeneralHandler>(server, scheduler, dispatcher, atask, this);
+
+  setJob(job);
+
+  return job;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a response supplied by a handler
+////////////////////////////////////////////////////////////////////////////////
+  
+void RestBatchHandler::addResponse (HttpHandler* handler) {
+  MUTEX_LOCKER(_handlerLock);
+
+  for (size_t i = 0; i < _handlers.size(); ++i) {
+    if (_handlers[i] == handler) {
+      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
+
+      handler->getResponse()->write(batch);
+      return;
+    }
+  }
+  
+  // handler not found
+  LOGGER_WARNING << "handler not found. this should not happen."; 
+}
+    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief notification routine
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
+  if (type != Job::JOB_CLEANUP) {
+    return;
+  }
+        
+  GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* generalJob = dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(job);
+
+  HttpHandler* handler = generalJob->getHandler();
+  addResponse(handler);
+  if (--_missingResponses == 0) {
+    handleAsync();
+  }
+}
+
+
+bool RestBatchHandler::handleAsync () {
+  if (_missingResponses == 0) {
+    { // locked
+      MUTEX_LOCKER(_handlerLock);
+      if (_handled) {
+        return true;
+      }
+
+      _handled = true;
+    } // lock end
+    
+    assembleResponse();
+  
+    GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* generalJob = dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(_job);
+    generalJob->setDone();
+
+    _task->setHandler(0);
+    GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask = 
+      dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(_task);
+    atask->setHandler(0);
+//    atask->signal();
+
+    _task->handleResponse(getResponse());
+    return _job->beginShutdown();
+  }
+
+  return true;
+}
+
+
+void RestBatchHandler::assembleResponse () {
+  assert(_missingResponses == 0);
+
+  response = new HttpResponse;
   response->setContentType("application/x-protobuf");
 
-  response->body().appendText("hihi");
-
-        string contentType = StringUtils::tolower(StringUtils::trim(request->header("content-type")));
-        if (request->requestType() == HttpRequest::HTTP_REQUEST_POST && contentType == "application/x-protobuf") {
-          return handleProtobufRequest();
-        } 
-
-    HttpRequest::HttpRequestType getRequestTypeFromProtoBuf(const PB_ArangoRequestType type) {
-      switch (type) {
-        case PB_REQUEST_TYPE_DELETE:
-          return HttpRequest::HTTP_REQUEST_DELETE;
-        case PB_REQUEST_TYPE_GET:
-          return HttpRequest::HTTP_REQUEST_GET;
-        case PB_REQUEST_TYPE_HEAD:
-          return HttpRequest::HTTP_REQUEST_HEAD;
-        case PB_REQUEST_TYPE_POST:
-          return HttpRequest::HTTP_REQUEST_POST;
-        case PB_REQUEST_TYPE_PUT:
-          return HttpRequest::HTTP_REQUEST_PUT;
-      }
-    }
-
-    
-    bool HttpCommTask::handleProtobufRequest () {
-      PB_ArangoMessage messages;
-      bool result = messages.ParseFromArray(request->body(), request->bodySize());
+  string data;
+  if (!_outputMessages->SerializeToString(&data)) {
+    // TODO
+  }
+  response->body().appendText(data);
   
-      if (!result) {
-        LOGGER_INFO << "invalid message";
-        generateError(HttpResponse::BAD,
-                      TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                      "invalid protobuf message");
-        return HANDLER_DONE;
-      }
-
-      for (int i = 0; i < messages.messages_size(); ++i) {
-        PB_ArangoBatchMessage* message = messages(i);
-
-        assert(message->type() == PB_BLOB_REQUEST);
-  
-        PB_ArangoBlobRequest* blob = message->request();
-        HttpRequest::HttpRequestType requestType = getRequestTypeFromProtoBuf(blob->requesttype());
-
-        const string url = blob->url();
-      }    
-      PB_ArangoKeyValue* kv;
-
-      return HANDLER_DONE;
-    }
-*/
+  MUTEX_LOCKER(_handlerLock); // locked
+  for (size_t i = 0; i < _handlers.size(); ++i) {
+    HttpHandler* handler = _handlers[i];
+    _task->getServer()->destroyHandler(handler);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
