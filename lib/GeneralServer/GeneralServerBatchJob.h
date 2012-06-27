@@ -78,7 +78,7 @@ namespace triagens {
         void cleanup () {
           // do nothing in cleanup
         }
-
+        
     };
   }
 }
