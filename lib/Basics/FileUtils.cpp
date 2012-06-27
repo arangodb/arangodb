@@ -357,6 +357,17 @@ namespace triagens {
 
         return res == 0;
       }
+      
+      
+      off_t size (string const& path) {
+        struct stat stbuf;
+        int res = stat(path.c_str(), &stbuf);
+        if (res != 0) {
+          return 0;
+        }
+
+        return stbuf.st_size;
+      }
 
 
 
