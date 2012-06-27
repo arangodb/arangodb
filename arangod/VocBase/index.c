@@ -3566,7 +3566,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
         if (acc != NULL) {
           TRI_FreeShapeAccessor(acc);
         }
-        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
+        return TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }  
       
       
@@ -4038,8 +4038,8 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   // there.
   // ............................................................................
   
-  if (result != TRI_ERROR_NO_ERROR) {
-    if (result != TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) {
+  if (result != TRI_ERROR_NO_ERROR) {  
+    if (result != TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
       LOG_WARNING("error returned when an attempt to update bitarray index");
       return result;
@@ -4103,7 +4103,6 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   // ............................................................................
       
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-  
   return result;
 }
   
@@ -4118,22 +4117,64 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
                                       TRI_vector_pointer_t* values,
                                       bool supportUndef) {
   TRI_bitarray_index_t* baIndex;
-  size_t j;
+  size_t i,j,k;
   int result;
   void* createContext;
   int cardinality;
   
+
+  // ...........................................................................
+  // Before we start moving things about, ensure that the attributes have 
+  // not been repeated
+  // ...........................................................................
+  
+  for (j = 0;  j < paths->_length;  ++j) {
+    TRI_shape_pid_t* leftShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,j));
+    for (i = j + 1; i < paths->_length;  ++i) {
+      TRI_shape_pid_t* rightShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,i));
+      if (*leftShape == *rightShape) {
+        LOG_WARNING("bitarray index creation failed -- duplicate keys in index");
+        return NULL;
+      }
+    }
+  }  
+
+  
+  
+  // ...........................................................................
+  // For each key (attribute) ensure that the list of supported values are 
+  // unique
+  // ...........................................................................
+
+  for (k = 0;  k < paths->_length;  ++k) {
+    TRI_json_t* valueList = (TRI_json_t*)(TRI_AtVectorPointer(values,k));
+    if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {    
+      LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
+      return NULL;
+    } 
+    for (j = 0; j < valueList->_value._objects._length; ++j) {
+      TRI_json_t* leftValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), j));            
+      for (i = j + 1; i < valueList->_value._objects._length; ++i) {
+        TRI_json_t* rightValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));            
+        if (TRI_EqualJsonJson(leftValue, rightValue)) {
+          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");
+          return NULL;
+        }
+      }
+    }
+  }
+
+
   
   // ...........................................................................
   // attempt to allocate memory for the bit array index structure
   // ...........................................................................
   
   baIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
-  if (!baIndex) {
+  if (baIndex == NULL) {
     LOG_WARNING("bitarray index creation failed -- out of memory");
     return NULL;
   }
-
   
   baIndex->base._iid        = TRI_NewTickVocBase();
   baIndex->base._type       = TRI_IDX_TYPE_BITARRAY_INDEX;
@@ -4146,8 +4187,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   baIndex->base.insert      = InsertBitarrayIndex;
   baIndex->base.remove      = RemoveBitarrayIndex;
   baIndex->base.update      = UpdateBitarrayIndex;
-  
-  
+    
   baIndex->_supportUndef    = supportUndef;
   baIndex->_bitarrayIndex   = NULL;
 
@@ -4188,6 +4228,11 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   
   createContext = NULL;
   
+
+
+  // ...........................................................................
+  // Check that the attributes have not been repeated
+  // ...........................................................................
   
   // ...........................................................................
   // Determine the cardinality of the Bitarray index (that is, the number of 
@@ -4236,6 +4281,8 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
     return NULL;
   }
     
+ 
+  
   
   // ...........................................................................
   // attempt to create a new bitarray index
