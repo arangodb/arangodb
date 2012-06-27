@@ -31,6 +31,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "GeneralServer/GeneralServerJob.h"
 
 namespace triagens {
   namespace rest {
