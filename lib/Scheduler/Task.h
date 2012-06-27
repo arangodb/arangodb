@@ -44,7 +44,7 @@ namespace triagens {
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-    class  Task {
+    class Task {
       friend class TaskManager;
       Task (Task const&);
       Task& operator= (Task const&);
