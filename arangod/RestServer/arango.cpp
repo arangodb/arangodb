@@ -54,7 +54,9 @@ int main (int argc, char* argv[]) {
   // create and start a ArangoDB server
   ArangoServer server(argc, argv);
 
+  
   int res = server.start();
+
 
   // shutdown
   TRI_ShutdownVocBase();
