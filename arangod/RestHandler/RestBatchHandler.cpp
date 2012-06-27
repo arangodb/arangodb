@@ -127,20 +127,19 @@ HttpHandler::status_e RestBatchHandler::execute () {
     return HANDLER_DONE;
   }
 
-  /*
-  FILE* fp = fopen("got","w");
-  fwrite(request->body(), request->bodySize(), 1, fp);
-  fclose(fp);
-  */
   PB_ArangoMessage inputMessages;
 
   bool result = inputMessages.ParseFromArray(request->body(), request->bodySize());
   if (!result) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, // TODO FIXME
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid protobuf message");
     return HANDLER_DONE;
   }
+  
+  assert(_task);
+  HttpServer* server = dynamic_cast<HttpServer*>(_task->getServer());
+  assert(server);
 
   bool failed = false;
   bool hasAsync = false;
@@ -152,7 +151,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
     // create a handler for each input part 
     const PB_ArangoBatchMessage inputMessage = inputMessages.messages(i);
     HttpRequestProtobuf* request = new HttpRequestProtobuf(inputMessage);
-    HttpHandler* handler = _task->getServer()->createHandler(request);
+    HttpHandler* handler = server->createHandler(request);
 
     if (!handler) {
       failed = true;
@@ -200,8 +199,6 @@ HttpHandler::status_e RestBatchHandler::execute () {
     }
     else {
       // execute handler via dispatcher
-      HttpServer* server = dynamic_cast<HttpServer*>(_task->getServer());
-
       Scheduler* scheduler = server->getScheduler();
       Dispatcher* dispatcher = server->getDispatcher();
 
