@@ -92,6 +92,7 @@ namespace triagens {
 
         enum status_e {
           JOB_DONE,
+          JOB_DETACH,
 #ifdef TRI_ENABLE_ZEROMQ
           JOB_DONE_ZEROMQ,
 #endif
