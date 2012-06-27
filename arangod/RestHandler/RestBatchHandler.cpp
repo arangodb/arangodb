@@ -72,11 +72,14 @@ RestBatchHandler::~RestBatchHandler () {
   // delete protobuf message
   delete _outputMessages;
  
-  // clear all handlers 
+  // clear all handlers that still exist
   for (size_t i = 0; i < _handlers.size(); ++i) {
     HttpHandler* handler = _handlers[i];
-    _task->getServer()->destroyHandler(handler);
-    _handlers[i] = 0;
+
+    if (handler != 0) {
+      _task->getServer()->destroyHandler(handler);
+      _handlers[i] = 0;
+    }
   }
 }
 
@@ -141,6 +144,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
   }
 
   bool failed = false;
+  bool hasAsync = false;
 
   // loop over the input messages once to set up the output structures without concurrency
   for (int i = 0; i < inputMessages.messages_size(); ++i) {
@@ -160,6 +164,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
       if (!handler->isDirect()) {
         // async handler
         ++_missingResponses;
+        hasAsync = true;
       }
     }
   }
@@ -215,12 +220,14 @@ HttpHandler::status_e RestBatchHandler::execute () {
     std::cout << "SOMETHING WENT WRONG - EXCEPTION\n";
   }
 
+ 
+  if (hasAsync) {
+    while (_missingResponses > 0) {
+      usleep(10*1000);
+    }
 
-  while (_missingResponses > 0) {
-    usleep(10*1000);
+    assert(_missingResponses == 0);
   }
-
-  assert(_missingResponses == 0);
   assembleResponse();
 
   _reallyDone = 1;
@@ -240,6 +247,9 @@ void RestBatchHandler::addResponse (HttpHandler* handler) {
       PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
 
       handler->getResponse()->write(batch);
+      // delete the handler
+      _task->getServer()->destroyHandler(handler);
+      _handlers[i] = 0;
       return;
     }
   }
