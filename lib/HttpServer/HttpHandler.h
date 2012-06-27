@@ -28,6 +28,10 @@
 #ifndef TRIAGENS_FYN_REST_HTTP_HANDLER_H
 #define TRIAGENS_FYN_REST_HTTP_HANDLER_H 1
 
+#include <Logger/Logger.h>
+#include <Scheduler/Scheduler.h>
+#include <Scheduler/Task.h>
+#include <Dispatcher/Dispatcher.h>
 #include <Rest/Handler.h>
 #include <HttpServer/HttpCommTask.h>
 
@@ -36,6 +40,7 @@ namespace triagens {
     class HttpHandlerFactory;
     class HttpRequest;
     class HttpResponse;
+    class HttpCommTask;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @ingroup HttpServer
@@ -48,6 +53,8 @@ namespace triagens {
         HttpHandler& operator= (HttpHandler const&);
 
       public:
+
+        using Handler::createJob;
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief constructs a new handler
@@ -78,6 +85,18 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool handleAsync ();
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief create a job
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual Job* createJob ();
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief create a job
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual Job* createJob (Scheduler*, Dispatcher*, HttpCommTask*);
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief shut down the handler
@@ -116,6 +135,14 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse* getResponse ();
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief default job notification routine
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void notify (Job* job, Job::notification_e type) {
+          // do noting
+        }
 
       protected:
 
