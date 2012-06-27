@@ -184,11 +184,12 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create}}
+/// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create-flag}}
 ///
 /// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
-/// used. If @FA{createCollection} is true, then the collection is created if it
-/// does not exists.
+/// used. If @FA{create-flag} has a value of @LIT{true} or @LIT{yes}, then the 
+/// collection is created if it does not yet exist. Other values for @FA{create-flag}
+/// will be ignored so the collection must be present for the operation to succeed.
 ///
 /// @EXAMPLES
 ///
