@@ -33,7 +33,6 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/vocbase.h"
 #include "GeneralServer/GeneralCommTask.h"
-#include "GeneralServer/GeneralServerBatchJob.h"
 #include "GeneralServer/GeneralServerJob.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServer.h"
@@ -123,7 +122,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
   HttpRequest::HttpRequestType type = request->requestType();
   string contentType = StringUtils::tolower(StringUtils::trim(request->header("content-type")));
   
-  if (type != HttpRequest::HTTP_REQUEST_POST || contentType != "application/x-protobuf") {
+  if (type != HttpRequest::HTTP_REQUEST_POST || contentType != getContentType()) {
     generateNotImplemented("ILLEGAL " + BATCH_PATH);
     return HANDLER_DONE;
   }
@@ -220,19 +219,50 @@ HttpHandler::status_e RestBatchHandler::execute () {
     std::cout << "SOMETHING WENT WRONG - EXCEPTION\n";
   }
 
- 
-  if (hasAsync) {
-    while (_missingResponses > 0) {
-      usleep(10*1000);
-    }
-
-    assert(_missingResponses == 0);
+  if (!hasAsync) {
+    _reallyDone = 1;
+    return Handler::HANDLER_DONE;
   }
-  assembleResponse();
 
-  _reallyDone = 1;
+  // we have async jobs
+  return Handler::HANDLER_DETACH;
+}
 
-  return Handler::HANDLER_DONE; 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBatchHandler::handleAsync () {
+  if (_reallyDone) {
+    assembleResponse();
+    toServerJob(_job)->setDone();
+    return HttpHandler::handleAsync();
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// notification routine called by async sub jobs
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
+  if (type != Job::JOB_CLEANUP) {
+    return;
+  }
+  
+  assert(_reallyDone == 0);
+  HttpHandler* handler = toServerJob(job)->getHandler();
+  addResponse(handler);
+ 
+  if (--_missingResponses == 0) {
+    _reallyDone = 1;
+
+    // signal to the task that we are done
+    GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask = 
+      dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(_task);
+    atask->signal();
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,32 +289,14 @@ void RestBatchHandler::addResponse (HttpHandler* handler) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// notification routine called by async sub jobs
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
-  if (type != Job::JOB_CLEANUP) {
-    return;
-  }
-  
-  GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* generalJob = 
-    dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(job);
-
-  HttpHandler* handler = generalJob->getHandler();
-  addResponse(handler);
- 
-  --_missingResponses;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an overall protobuf response from the array of responses
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBatchHandler::assembleResponse () {
   assert(_missingResponses == 0);
 
-  response = new HttpResponse;
-  response->setContentType("application/x-protobuf");
+  response = new HttpResponse(HttpResponse::OK);
+  response->setContentType(getContentType());
 
   string data;
   if (!_outputMessages->SerializeToString(&data)) {
@@ -294,15 +306,21 @@ void RestBatchHandler::assembleResponse () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief convert a Job* to a GeneralServerJob* 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::handleAsync () {
-  if (_reallyDone) {
-    return HttpHandler::handleAsync();
-  }
+GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* RestBatchHandler::toServerJob(Job* job) {
+  return dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(job);
+}
 
-  return true;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the required content type string
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestBatchHandler::getContentType () {
+  static string const contentType = "application/x-protobuf"; 
+  
+  return contentType;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
