@@ -1,0 +1,2 @@
+> ./arangod --supervisor --pid-file /var/run/arangodb.pid /tmp/vocbase/
+2012-06-27T15:58:28Z [10133] INFO starting up in supervisor mode
