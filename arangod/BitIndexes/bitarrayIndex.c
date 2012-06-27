@@ -418,28 +418,63 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
   }
 
   switch (left->_type) {
+  
     case TRI_JSON_UNUSED: {
       return true;
     }
+    
     case TRI_JSON_NULL: {
       return true;
     }
+    
     case TRI_JSON_BOOLEAN: {
       return (left->_value._boolean == right->_value._boolean);
     }    
+    
     case TRI_JSON_NUMBER: {
       return (left->_value._number == right->_value._number);
     }    
+    
     case TRI_JSON_STRING: {
       return (strcmp(left->_value._string.data, right->_value._string.data) == 0);
     }    
+    
     case TRI_JSON_ARRAY: {
-    }    
-    case TRI_JSON_LIST: {
       int j;
+      
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
+      
+      for (j = 0; j < (left->_value._objects._length / 2); ++j) {
+        TRI_json_t* leftName;
+        TRI_json_t* leftValue;
+        TRI_json_t* rightValue;
+
+        leftName = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),2*j));
+        if (leftName == NULL) {
+          return false;
+        }
+        
+        leftValue  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),(2*j) + 1));
+        rightValue = TRI_LookupArrayJson(right, leftName->_value._string.data);        
+
+        if (isEqualJson(leftValue, rightValue)) {
+          continue;
+        }
+        return false;
+      }
+      
+      return true;
+    }    
+    
+    case TRI_JSON_LIST: {
+      int j;
+      
+      if (left->_value._objects._length != right->_value._objects._length) {
+        return false;
+      }
+      
       for (j = 0; j < left->_value._objects._length; ++j) {
         TRI_json_t* subLeft;
         TRI_json_t* subRight;
@@ -450,7 +485,10 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
         }
         return false;
       }
-    }    
+      
+      return true;
+    }   
+    
     default: {
       assert(false);
     }  
@@ -547,14 +585,23 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
       }
   
   
-      // ..........................................................................
-      // remove the json entry created from the shaped json
-      // ..........................................................................
-    
-      TRI_DestroyJson(shaper->_memoryZone, value);
-      
     }
+     
+    // ............................................................................
+    // remove the json entry created from the shaped json
+    // ............................................................................
+    
+    TRI_FreeJson(shaper->_memoryZone, value);
       
+     
+    // ............................................................................
+    // When we create a bitarray index, for example: ensureBitarray("x",[0,[],1,2,3])
+    // and we insert doc with {"x" : "hello world"}, then, since the value of "x"
+    // does not match 0,1,2 or 3 and [] appears as a valid list item, the doc is
+    // inserted with a mask of 01000
+    // This is what other means below
+    // ............................................................................
+    
     if (tempMask == 0) {
       tempMask = other;
     }

@@ -304,6 +304,10 @@ extern "C" {
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
 ///   required by the bitarray index.
+/// - 3402: @CODE{bitarray index update warning - attribute missing in revised document}
+///   Will be raised when an attempt to update a document results in the
+///   revised document not having one or more attributes which are required by
+///   the bitarray index.
 /// - 3411: @CODE{bitarray index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a bitarray index
 ///   fails when document can not be located within that index.
@@ -1610,6 +1614,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING      (3400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3402: WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING
+///
+/// bitarray index update warning - attribute missing in revised document
+///
+/// Will be raised when an attempt to update a document results in the revised
+/// document not having one or more attributes which are required by the
+/// bitarray index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING        (3402)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3411: WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING
