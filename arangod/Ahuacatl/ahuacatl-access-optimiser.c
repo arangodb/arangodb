@@ -451,6 +451,11 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     TRI_FreeAccessAql(rhs);
     return lhs;
   }
+
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
   
   assert(false);
   return NULL;
@@ -813,6 +818,46 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
                                                     TRI_aql_field_access_t* rhs) {
   
   assert(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
+
+  if (rhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+    int compareResult;
+    
+    // check lower bound
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value);
+    if (compareResult > 0) {
+      // we'll patch lhs with the value of rhs
+      lhs->_value._between._lower._type = rhs->_value._between._lower._type;
+      lhs->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._lower._value);
+      if (lhs->_value._between._lower._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
+    }
+    else if (compareResult == 0 && rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED) {
+      // lhs and rhs value is the same, but if rhs is a > range, we can safely use it 
+      lhs->_value._between._lower._type = rhs->_value._between._lower._type;
+    }
+    
+    // check upper bound
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value);
+    if (compareResult < 0) {
+      // we'll patch lhs with the value of rhs
+      lhs->_value._between._upper._type = rhs->_value._between._upper._type;
+      lhs->_value._between._upper._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._upper._value);
+      if (lhs->_value._between._upper._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
+    }
+    else if (compareResult == 0 && rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED) {
+      // lhs and rhs value is the same, but if rhs is a < range, we can safely use it 
+      lhs->_value._between._upper._type = rhs->_value._between._upper._type;
+    }
+
+    // we patched lhs so we'll always free rhs
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
 
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
       rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
@@ -1288,6 +1333,46 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
                                                    TRI_aql_field_access_t* lhs,
                                                    TRI_aql_field_access_t* rhs) {
   assert(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
+
+  if (rhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+    int compareResult;
+    
+    // check lower bound
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value);
+    if (compareResult < 0) {
+      // we'll patch lhs with the value of rhs
+      lhs->_value._between._lower._type = rhs->_value._between._lower._type;
+      lhs->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._lower._value);
+      if (lhs->_value._between._lower._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
+    }
+    else if (compareResult == 0 && rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED) {
+      // lhs and rhs value is the same, but if rhs is a >= range, we must use it 
+      lhs->_value._between._lower._type = rhs->_value._between._lower._type;
+    }
+    
+    // check upper bound
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value);
+    if (compareResult > 0) {
+      // we'll patch lhs with the value of rhs
+      lhs->_value._between._upper._type = rhs->_value._between._upper._type;
+      lhs->_value._between._upper._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._upper._value);
+      if (lhs->_value._between._upper._value == NULL) {
+        // OOM
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
+    }
+    else if (compareResult == 0 && rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED) {
+      // lhs and rhs value is the same, but if rhs is a <= range, we must use it 
+      lhs->_value._between._upper._type = rhs->_value._between._upper._type;
+    }
+
+    // we patched lhs so we'll always free rhs
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
   
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
       rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
