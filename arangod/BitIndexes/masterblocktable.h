@@ -261,7 +261,7 @@ static int extendMasterTable(MasterTable_t* mt) {
     // ........................................................................
     // something is terribly wrong
     // ........................................................................
-
+    assert(false);
     return TRI_ERROR_INTERNAL;
   }
 
@@ -279,13 +279,14 @@ static int extendMasterTable(MasterTable_t* mt) {
     TRI_Free(mt->_memoryZone, mt->_blocks);
   }
   
+  mt->_blocks = newBlocks;
+  
   for (j = mt->_numBlocks; j < newNumBlocks; ++j) {
     MasterTableBlock_t* block = mt->_blocks + j;     
     block->_free = ~((bit_column_int_t)(0));
     TRI_PushBackVector(&(mt->_freeBlockPosition), &j);      
   }
   
-  mt->_blocks    = newBlocks;
   mt->_numBlocks = newNumBlocks;  
   
   return TRI_ERROR_NO_ERROR;
