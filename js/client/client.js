@@ -284,7 +284,7 @@ function start_pretty_print () {
   var internal = require("internal");
 
   if (! internal.PRETTY_PRINT) {
-    internal.print("use pretty printing");
+    internal.print("using pretty printing");
     internal.PRETTY_PRINT = true;
   }
 }
