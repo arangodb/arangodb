@@ -23,7 +23,9 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-make configure
+make
+make latex
+make wiki
 
 git commit -m "release version $VERSION" -a
 git push
