@@ -285,7 +285,7 @@ static string JS_client_client =
   "  var internal = require(\"internal\");\n"
   "\n"
   "  if (! internal.PRETTY_PRINT) {\n"
-  "    internal.print(\"use pretty printing\");\n"
+  "    internal.print(\"using pretty printing\");\n"
   "    internal.PRETTY_PRINT = true;\n"
   "  }\n"
   "}\n"
