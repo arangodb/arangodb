@@ -27,6 +27,10 @@
 
 * added option SKIP_RANGES=1 for make unittests
 
+* fixed several range-related assertion failures in the AQL query optimiser
+
+* fixed AQL query optimisations for some edge cases (e.g. nested subqueries with invalid constant filter expressions)
+
 
 1.0.alpha1 (2012-05-28)
 -----------------------

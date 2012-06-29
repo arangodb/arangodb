@@ -1806,8 +1806,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
   const uint32_t argc = argv.Length();
 
-  if (argc < 1 || argc > 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_EXPLAIN(<querystring>, <bindvalues>)")));
+  if (argc < 1 || argc > 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_EXPLAIN(<querystring>, <bindvalues>, <performoptimisations>)")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -1836,13 +1836,19 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
     return scope.Close(v8::ThrowException(errorObject));
   }
+  
+  bool performOptimisations = true;
+  if (argc > 2) {
+    // turn off optimisations ? 
+    performOptimisations = TRI_ObjectToBoolean(argv[2]);
+  }
 
   TRI_json_t* explain = 0;
 
   if (!TRI_ValidateQueryContextAql(context) ||
       !TRI_BindQueryContextAql(context, parameters.ptr()) ||
       !TRI_LockQueryContextAql(context) ||
-      !TRI_OptimiseQueryContextAql(context) ||
+      (performOptimisations && !TRI_OptimiseQueryContextAql(context)) ||
       !(explain = TRI_ExplainAql(context))) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     TRI_FreeContextAql(context);
