@@ -54,6 +54,7 @@ namespace triagens {
 
         enum status_e {
           HANDLER_DONE,
+          HANDLER_DETACH,
           HANDLER_REQUEUE,
           HANDLER_FAILED
         };

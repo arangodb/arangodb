@@ -230,35 +230,42 @@ void DispatcherThread::run () {
       // cleanup
       _queue->_monopolizer = 0;
 
-      // finish jobs
-      try {
-        job->setDispatcherThread(0);
+      // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
+      // it is not safe to use detached jobs after job->work()
 
-        if (status == Job::JOB_DONE) {
-          job->cleanup();
-        }
+      if (status != Job::JOB_DETACH) {
+        // finish jobs
+        try {
+          assert(status != Job::JOB_DETACH);
+
+          job->setDispatcherThread(0);
+
+          if (status == Job::JOB_DONE) {
+            job->cleanup();
+          }
 #ifdef TRI_ENABLE_ZEROMQ
-        else if (status == Job::JOB_DONE_ZEROMQ) {
-          job->finish(zBridge);
-        }
+          else if (status == Job::JOB_DONE_ZEROMQ) {
+            job->finish(zBridge);
+          }
 #endif
-        else if (status == Job::JOB_REQUEUE) {
-          _queue->_dispatcher->addJob(job);
+          else if (status == Job::JOB_REQUEUE) {
+            _queue->_dispatcher->addJob(job);
+          }
+          else if (status == Job::JOB_FAILED) {
+            job->cleanup();
+          }
         }
-        else if (status == Job::JOB_FAILED) {
-          job->cleanup();
-        }
-      }
-      catch (...) {
+        catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-        if (_queue->_stopping != 0) {
-          LOGGER_WARNING << "caught cancellation exception during cleanup";
-          _queue->_accessQueue.unlock();
-          throw;
-        }
+          if (_queue->_stopping != 0) {
+            LOGGER_WARNING << "caught cancellation exception during cleanup";
+            _queue->_accessQueue.unlock();
+            throw;
+          }
 #endif
 
-        LOGGER_WARNING << "caught error while cleaning up!";
+          LOGGER_WARNING << "caught error while cleaning up!";
+        }
       }
 
       if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {

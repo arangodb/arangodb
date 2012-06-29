@@ -119,9 +119,6 @@ namespace triagens {
                 return false;
               }
               else {
-//                GeneralServerJob<S, typename HF::GeneralHandler>* job
-//                  = new GeneralServerJob<S, typename HF::GeneralHandler>(dynamic_cast<S*>(this), this->_scheduler, _dispatcher, atask, handler);
-
                 atask->setHandler(handler);
                 Job* job = handler->createJob(this->_scheduler, _dispatcher, atask);
                 _dispatcher->addJob(job);
