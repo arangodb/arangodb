@@ -324,6 +324,11 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     return lhs;
   }
 
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
+
   assert(false);
   return NULL;
 }
@@ -787,6 +792,11 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     return lhs;
   }
 
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
+
   assert(false);
   return NULL;
 }
@@ -807,6 +817,11 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
       rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
     // for simplicity, always return the const access
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
+
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
     TRI_FreeAccessAql(rhs);
     return lhs;
   }
@@ -922,6 +937,11 @@ static TRI_aql_field_access_t* MergeAndReferenceRange (TRI_aql_context_t* const 
     }
 
     // return either side (we pick lhs, but it does not matter)
+    TRI_FreeAccessAql(rhs);
+    return lhs;
+  }
+
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
     TRI_FreeAccessAql(rhs);
     return lhs;
   }
@@ -1102,6 +1122,11 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     return lhs;
   }
 
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
+    TRI_FreeAccessAql(lhs);
+    return rhs;
+  }
+
   assert(false);
   return NULL;
 }
@@ -1272,6 +1297,11 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
     lhs->_type = TRI_AQL_ACCESS_ALL;
 
     return lhs;
+  }
+
+  if (rhs->_type == TRI_AQL_ACCESS_ALL) {
+    TRI_FreeAccessAql(lhs);
+    return rhs;
   }
   
   assert(false);

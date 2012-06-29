@@ -1575,7 +1575,8 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-escaping.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
+			@srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-variables.js \
 			@srcdir@/js/server/tests/ahuacatl-bind.js \
@@ -1600,6 +1601,11 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 ################################################################################
 SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+
+################################################################################
+################################################################################
+BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
+UNITTESTS_SERVER_BITARRAY = $(addprefix --unit-tests ,$(BITARRAY_COMMON))
 PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
@@ -5046,7 +5052,7 @@ unittests-brief: \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
 	unittests-http-server \
-	unittests-shell-client
+	unittests-shell-client 
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -5194,6 +5200,23 @@ unittests-http-server:
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
+	@echo
+
+.PHONY:	unittests-bitarray-index
+
+unittests-bitarray-index:
+	@echo
+	@echo "================================================================================"
+	@echo "<< BITARRAY INDEX TESTS                                                       >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
+
+	@ rm -rf "$(VOCDIR)"
 	@echo
 
 ################################################################################
