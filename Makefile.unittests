@@ -177,6 +177,22 @@ unittests-shell-server:
 ################################################################################
 
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
+			@srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js \
 			@srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-variables.js \
