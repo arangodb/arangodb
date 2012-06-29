@@ -542,7 +542,7 @@ int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
   int j;
   char* newColumns;
  
-  
+
   // ............................................................................
   // allocate memory for the new columns
   // ............................................................................
@@ -595,18 +595,20 @@ int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
     oldColumn = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
     newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
     if (oldColumn->_column == NULL) {
+      assert(false);
       continue;
     } 
-    memcpy(newColumn, oldColumn, sizeof(bit_column_int_t) * ba->_numBlocksInColumn);        
+    memcpy(newColumn->_column, oldColumn->_column, sizeof(bit_column_int_t) * ba->_numBlocksInColumn);        
     TRI_Free(ba->_memoryZone,oldColumn->_column);
   }
   
   
   TRI_Free(ba->_memoryZone, ba->_columns);
+
   
   ba->_columns = newColumns;
   ba->_numBlocksInColumn = newBlocks;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -619,6 +621,9 @@ void printBitarray(TRI_bitarray_t* ba) {
   int j;
   uint64_t bb;
   bit_column_int_t oo;  
+  
+  return;
+  
   // ...........................................................................
   // Determine the number of blocks -- remember to add one more if there is 
   // an started and unfinished block.
@@ -633,6 +638,9 @@ void printBitarray(TRI_bitarray_t* ba) {
     
   printf("-------------------------------------------------------------------------------------------------\n");
   for (bb = 0; bb <= ba->_lastBlockUsed ; ++bb) {
+    if (bb != ba->_lastBlockUsed) {
+      continue;
+    }  
     printf("==\n");
     for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
       printf("ROW %lu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
