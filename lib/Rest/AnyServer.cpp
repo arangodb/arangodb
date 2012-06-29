@@ -68,7 +68,7 @@ static void CheckPidFile (string const& pidFile) {
       TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
-    else if (FileUtils::exists(pidFile)) {
+    else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
 
       ifstream f(pidFile.c_str());
@@ -137,7 +137,7 @@ static void WritePidFile (string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (! out) {
-    cerr << "cannot write pid\n";
+    cerr << "cannot write pid-file \"" << pidFile << "\"\n";
     exit(EXIT_FAILURE);
   }
 
@@ -158,6 +158,9 @@ static int forkProcess (string const& pidFile, string const& workingDirectory, s
     LOGGER_FATAL << "cannot fork";
     exit(EXIT_FAILURE);
   }
+
+  // Upon successful completion, fork() shall return 0 to the child process and 
+  // shall return the process ID of the child process to the parent process.
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {

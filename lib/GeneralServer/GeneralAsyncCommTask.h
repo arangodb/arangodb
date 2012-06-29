@@ -67,7 +67,6 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         ~GeneralAsyncCommTask () {
-          // this has shut down the job before, should we now free the handler if any?
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -109,8 +108,6 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void setHandler (Handler* handler) {
-          assert(handler);
-
           _handler = handler;
         }
 
@@ -122,7 +119,9 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         bool handleAsync () {
-          assert(_handler);
+          if (_handler == 0) {
+            return true;
+          }
 
           return _handler->handleAsync();
         }

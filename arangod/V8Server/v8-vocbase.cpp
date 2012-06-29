@@ -2275,12 +2275,10 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   return scope.Close(index);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
 ///
-/// @FUN{ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA(value2},...,@FA{fieldn}, @FA{valuen})}
+/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
 ///
 /// Creates a bitarray index on all documents using attributes as paths to
 /// the fields. At least one attribute and one set of possible values must be given.

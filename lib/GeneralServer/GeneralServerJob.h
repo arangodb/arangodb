@@ -141,6 +141,7 @@ namespace triagens {
 
           switch (status) {
             case Handler::HANDLER_DONE:    return Job::JOB_DONE;
+            case Handler::HANDLER_DETACH:  return Job::JOB_DETACH;
             case Handler::HANDLER_REQUEUE: return Job::JOB_REQUEUE;
             case Handler::HANDLER_FAILED:  return Job::JOB_FAILED;
           }
@@ -207,12 +208,12 @@ namespace triagens {
         /// @brief set the job to done from the outside
         ////////////////////////////////////////////////////////////////////////////////
 
-        void setDone () {
+        virtual void setDone () {
           _done = 1;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief general server
+        /// @brief get the general server
         ////////////////////////////////////////////////////////////////////////////////
 
         S* getServer () const {
@@ -228,7 +229,7 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief dispatcher
+        /// @brief get the dispatcher
         ////////////////////////////////////////////////////////////////////////////////
 
         Dispatcher* getDispatcher () const {
@@ -236,7 +237,7 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief task
+        /// @brief get the task
         ////////////////////////////////////////////////////////////////////////////////
 
         AsyncTask* getTask () const {
@@ -244,11 +245,19 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handler
+        /// @brief get the handler
         ////////////////////////////////////////////////////////////////////////////////
 
         H* getHandler () const {
           return _handler;
+        }
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief set the handler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setHandler (H* handler) {
+          _handler = handler;
         }
 
       protected:
