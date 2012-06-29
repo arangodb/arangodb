@@ -1576,6 +1576,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 ################################################################################
 ################################################################################
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
+			@srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
 			@srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@srcdir@/js/server/tests/ahuacatl-functions.js \
 			@srcdir@/js/server/tests/ahuacatl-variables.js \
