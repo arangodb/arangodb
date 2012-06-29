@@ -247,13 +247,15 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
   size_t i, n;
   size_t start;
   size_t scopes;
+  size_t ignoreScopes;
 
   assert(list);
   assert(position >= 0);
   n = list->_statements._length;
 
-  // remove from position backwards to scope start
+  // walk the scope from the specified position backwards until we find the start of the scope
   scopes = 1;
+  ignoreScopes = 0;
   i = position;
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
@@ -263,18 +265,33 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
     start = i;
 
     if (type == TRI_AQL_NODE_SCOPE_START) {
+      // node is a scope start
       TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
 
-      if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
-        break;
+      if (ignoreScopes > 0) {
+        // this is an inner, parallel scope that we can ignore
+        --ignoreScopes;
       }
-      scopes++;
+      else {
+        if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
+          // we have reached the scope and need to stop
+          break;
+        }
+        scopes++;
+      }
+    }
+    else if (type == TRI_AQL_NODE_SCOPE_END) {
+      // we found the end of another scope
+      // we must remember how many other scopes we passed
+      ignoreScopes++;
     }
 
     if (i-- == 0) {
       break;
     }
   }
+
+  assert(ignoreScopes == 0);
 
   // remove from position forwards to scope end
   i = position;
