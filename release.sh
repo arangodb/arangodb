@@ -30,7 +30,8 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-make
+./configure --enable-all-in-one --disable-flex --disable-bison --disable-mruby
+make configuration
 make latex
 make wiki
 
