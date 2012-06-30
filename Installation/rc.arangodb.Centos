@@ -14,10 +14,10 @@
 ARANGO_BIN=/usr/sbin/arangod
 test -x $ARANGO_BIN || exit 5
 
-ARANGO_SYSCONFIG=/etc/arango.conf
+ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
 test -r $ARANGO_SYSCONFIG || exit 6
 
-pidfile=/var/run/arangod/pid
+pidfile=/var/run/arangodb/arangod.pid
 
 RETVAL=0
 

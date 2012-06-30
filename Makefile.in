@@ -835,7 +835,7 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-DATA = $(nobase_arangosysconf_DATA) $(nobase_pkgdata_DATA)
+DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -1013,7 +1013,7 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 ### @brief source to build before compile
 ################################################################################
-BUILT_SOURCES = build.h Installation/arango.conf $(JAVASCRIPT_HEADER) \
+BUILT_SOURCES = build.h Installation/arangod.conf $(JAVASCRIPT_HEADER) \
 	$(JAVASCRIPT_BROWSER) $(MRUBY_HEADER) $(am__append_14) \
 	$(am__append_15) Doxygen/.setup-directories \
 	.setup-js-directories $(am__append_17) $(am__append_19) \
@@ -1100,13 +1100,16 @@ PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
+arangosysconfdir = $(sysconfdir)/$(PACKAGE_TARNAME)
+databasedir = $(localstatedir)/$(PACKAGE_TARNAME)
+logdir = $(localstatedir)/log/$(PACKAGE_TARNAME)
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${arangosysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
-	-I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
-	$(am__append_1) $(am__append_3)
+	-D_DATABASEDIR_='"${databasedir}"' -I@top_srcdir@/lib \
+	@BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
+	@PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1) \
+	$(am__append_3)
 
 ################################################################################
 ### @brief linker flags
@@ -1127,8 +1130,7 @@ noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 ################################################################################
 ### @brief /etc data
 ################################################################################
-arangosysconfdir = $(sysconfdir)/arango
-nobase_arangosysconf_DATA = Installation/arango.conf
+arangosysconf_DATA = Installation/arangod.conf
 
 ################################################################################
 ### @brief /share data
@@ -4579,26 +4581,23 @@ PerfTests/bin_zserver-zserver.obj: PerfTests/zserver.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
-install-nobase_arangosysconfDATA: $(nobase_arangosysconf_DATA)
+install-arangosysconfDATA: $(arangosysconf_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(arangosysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)"
-	@list='$(nobase_arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
-	$(am__nobase_list) | while read dir files; do \
-	  xfiles=; for file in $$files; do \
-	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
-	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
-	  test -z "$$xfiles" || { \
-	    test "x$$dir" = x. || { \
-	      echo "$(MKDIR_P) '$(DESTDIR)$(arangosysconfdir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(arangosysconfdir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(arangosysconfdir)/$$dir" || exit $$?; }; \
+	@list='$(arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(arangosysconfdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(arangosysconfdir)" || exit $$?; \
 	done
 
-uninstall-nobase_arangosysconfDATA:
+uninstall-arangosysconfDATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
-	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	@list='$(arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	test -n "$$files" || exit 0; \
 	echo " ( cd '$(DESTDIR)$(arangosysconfdir)' && rm -f" $$files ")"; \
 	cd "$(DESTDIR)$(arangosysconfdir)" && rm -f $$files
@@ -4978,7 +4977,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-data-local install-nobase_arangosysconfDATA \
+install-data-am: install-arangosysconfDATA install-data-local \
 	install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
@@ -5026,7 +5025,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS uninstall-nobase_arangosysconfDATA \
+uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 .MAKE: all check install install-am install-strip
@@ -5039,24 +5038,23 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_arangosysconfDATA \
 	distclean-compile distclean-generic distclean-hdr \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-data install-data-am \
-	install-data-local install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_arangosysconfDATA \
+	install-arangosysconfDATA install-binPROGRAMS install-data \
+	install-data-am install-data-local install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man \
 	install-nobase_pkgdataDATA install-pdf install-pdf-am \
 	install-ps install-ps-am install-sbinPROGRAMS install-strip \
 	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-binPROGRAMS \
-	uninstall-nobase_arangosysconfDATA \
+	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
-Installation/arango.conf: Installation/arango.conf.in
+Installation/arangod.conf: Installation/arangod.conf.in
 	sed \
-		-e 's%@LOGDIR@%${localstatedir}/arangod%g' \
-		-e 's%@DATABASE@%${localstatedir}/${PACKAGE_TARNAME}%g' \
+		-e 's%@LOGDIR@%${logdir}%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
 		-e 's%@STATICFILES@%${pkgdatadir}%g' \
 		$< > $@
 
