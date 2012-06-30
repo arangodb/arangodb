@@ -5312,7 +5312,7 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: $(BUILT_SOURCES)
+built-sources: build.h errorfiles
 
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
