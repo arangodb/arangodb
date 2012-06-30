@@ -1,6 +1,6 @@
 # -*- mode: Makefile; -*-
 
-MANUAL_DST="www@www.arangodb.org:/srv/www/www.arangodb.org/avoc/manuals"
+MANUAL_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals"
 
 ################################################################################
 ## publish
