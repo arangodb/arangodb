@@ -234,7 +234,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
 void ArangoServer::buildApplicationServer () {
   _applicationServer = new ApplicationServer("[<options>] <database-directory>", TRIAGENS_VERSION);
-  _applicationServer->setUserConfigFile(".arango/arango.conf");
+  _applicationServer->setUserConfigFile(".arango/arangod.conf");
 
   // .............................................................................
   // multi-threading scheduler and dispatcher
@@ -328,7 +328,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
 
-  _applicationServer->setSystemConfigFile("arango.conf", _binaryPath + "/../etc");
+  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
 #else
@@ -351,7 +351,7 @@ void ArangoServer::buildApplicationServer () {
   // use absolute paths
   // .............................................................................
 
-  _applicationServer->setSystemConfigFile("arango.conf");
+  _applicationServer->setSystemConfigFile("arangod.conf");
   _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
 
 #endif
