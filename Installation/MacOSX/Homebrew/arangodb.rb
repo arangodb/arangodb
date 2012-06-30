@@ -28,7 +28,8 @@ class Arangodb < Formula
 
     system "make install"
 
-    (var+'arango').mkpath
+    (var+'arangodb').mkpath
+    (var+'log/arangodb').mkpath
     
     plist_path.write startup_plist
     plist_path.chmod 0644    
@@ -66,8 +67,10 @@ class Arangodb < Formula
   <dict>
     <key>KeepAlive</key>
     <true/>
+
     <key>Label</key>
     <string>#{plist_name}</string>
+
     <key>ProgramArguments</key>
     <array>
       <string>#{HOMEBREW_PREFIX}/sbin/arangod</string>
@@ -78,7 +81,7 @@ class Arangodb < Formula
     <key>RunAtLoad</key>
     <true/>
     
-	<key>UserName</key>
+    <key>UserName</key>
     <string>#{`whoami`.chomp}</string>
     
   </dict>
