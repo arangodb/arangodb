@@ -71,8 +71,10 @@ AM_CPPFLAGS = \
 	@V8_CPPFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_CPPFLAGS += \
 	@ZEROMQ_CPPFLAGS@
+
 endif
 
 ################################################################################
@@ -90,8 +92,10 @@ AM_LDFLAGS = \
 	@V8_LDFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_LDFLAGS += \
 	@ZEROMQ_LDFLAGS@
+
 endif
 
 ################################################################################
@@ -112,9 +116,11 @@ LIBS = \
 ################################################################################
 
 if ENABLE_MRUBY
+
 AM_CPPFLAGS += @MRUBY_CPPFLAGS@
 AM_CPPFLAGS += @MRUBY_LDFLAGS@
 LIBS += @MRUBY_LIBS@
+
 endif
 
 ################################################################################
@@ -172,6 +178,23 @@ bin_PROGRAMS += bin/arangoirb
 endif
 
 ################################################################################
+### @brief /etc data
+################################################################################
+
+arangosysconfdir=$(sysconfdir)/arango
+
+nobase_arangosysconf_DATA = Installation/arango.conf
+
+BUILT_SOURCES += Installation/arango.conf
+
+Installation/arango.conf: Installation/arango.conf.in
+	sed \
+		-e 's%@LOGDIR@%${localstatedir}/arangod%g' \
+		-e 's%@DATABASE@%${localstatedir}/${PACKAGE_TARNAME}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
+
+################################################################################
 ### @brief /share data
 ################################################################################
 
@@ -187,14 +210,25 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
+if ENABLE_MRUBY
+
+nobase_pkgdata_DATA += \
+	$(shell find @srcdir@/js/actions/system -name "*.rb" -print) \
+	$(shell find @srcdir@/js/common/modules -name "*.rb" -print) \
+	$(shell find @srcdir@/js/server/modules -name "*.rb" -print) \
+	$(shell find @srcdir@/js/client/modules -name "*.rb" -print)
+
+endif
+
 ################################################################################
 ### @brief /var data
 ################################################################################
 
 if ENABLE_INSTALL_DBDIR
+
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+
 endif
 
 ################################################################################

@@ -1,13 +1,27 @@
-1.0.alpha2 (2012-06-??)
------------------------
+v1.0.alpha3 (2012-06-30)
+------------------------
 
-* fixed issue #84 explain command 
+* fixed issue #116: createCollection=create option doesn't work
 
-* fixed issue #100: "count" attribute exists in cursor response with "count: false"
+* fixed issue #115: Compilation issue under OSX 10.7 Lion & 10.8 Mountain Lion (homebrew)
+
+* fixed issue #114: image not found
+
+* fixed issue #111: crash during "make unittests"
+
+* fixed issue #104: client.js -> ARANGO_QUIET is not defined
+
+
+v1.0.alpha2 (2012-06-24)
+------------------------
+
+* fixed issue #112: do not accept document with duplicate attribute names
 
 * fixed issue #103: Should we cleanup the directory structure
 
-* fixed issue #112: do not accept document with duplicate attribute names
+* fixed issue #100: "count" attribute exists in cursor response with "count: false"
+
+* fixed issue #84 explain command 
 
 * added new MRuby version (2012-06-02)
 
@@ -32,7 +46,7 @@
 * fixed AQL query optimisations for some edge cases (e.g. nested subqueries with invalid constant filter expressions)
 
 
-1.0.alpha1 (2012-05-28)
------------------------
+v1.0.alpha1 (2012-05-28)
+------------------------
 
 Alpha Release of ArangoDB 1.0

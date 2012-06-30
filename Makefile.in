@@ -227,6 +227,12 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_6 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_7 = bin/arangoirb
+@ENABLE_MRUBY_TRUE@am__append_8 = \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/actions/system -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/common/modules -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/server/modules -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/client/modules -name "*.rb" -print)
+
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.unittests \
@@ -247,51 +253,51 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-@ENABLE_ZEROMQ_TRUE@am__append_8 = \
+@ENABLE_ZEROMQ_TRUE@am__append_9 = \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
-@ENABLE_MRUBY_TRUE@am__append_9 = \
+@ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
-@ENABLE_MRUBY_TRUE@am__append_10 = \
+@ENABLE_MRUBY_TRUE@am__append_11 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
-@ENABLE_ZEROMQ_TRUE@am__append_11 = \
+@ENABLE_ZEROMQ_TRUE@am__append_12 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LIBS@
 
-@ENABLE_BOOST_TEST_TRUE@am__append_12 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_BOOST_TEST_TRUE@am__append_13 = UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_13 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_14 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_MRUBY_TRUE@am__append_14 = .setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_15 = .setup-mr-directories
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_15 = $(MRUBY_HEADER) .setup-mr-directories
-@ENABLE_FLEX_TRUE@am__append_16 = $(FLEX_FILES) $(FLEXXX_FILES)
-
-################################################################################
-### @brief cleanup
-################################################################################
+@ENABLE_MRUBY_TRUE@am__append_16 = $(MRUBY_HEADER) .setup-mr-directories
 @ENABLE_FLEX_TRUE@am__append_17 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_18 = $(BISON_FILES) $(BISONXX_FILES)
+
+################################################################################
+### @brief cleanup
+################################################################################
+@ENABLE_FLEX_TRUE@am__append_18 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_19 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_19 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_20 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_21 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_22 = @ZEROMQ_LIBS@
+@ENABLE_BISON_TRUE@am__append_20 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_21 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_22 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_23 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -560,7 +566,7 @@ am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__EXEEXT_1 = bin/arangoirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
-	"$(DESTDIR)$(pkgdatadir)"
+	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
 @ENABLE_ZEROMQ_TRUE@am__EXEEXT_2 = bin/zclient$(EXEEXT) \
 @ENABLE_ZEROMQ_TRUE@	bin/zserver$(EXEEXT)
 @ENABLE_BOOST_TEST_TRUE@am__EXEEXT_3 =  \
@@ -829,7 +835,7 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-DATA = $(nobase_pkgdata_DATA)
+DATA = $(nobase_arangosysconf_DATA) $(nobase_pkgdata_DATA)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -1007,12 +1013,12 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 ### @brief source to build before compile
 ################################################################################
-BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
-	$(MRUBY_HEADER) $(am__append_13) $(am__append_14) \
-	Doxygen/.setup-directories .setup-js-directories \
-	$(am__append_16) $(am__append_18) @PROTOBUF_LIBS@ \
-	$(PROTOBUF_FILES) $(am__append_20) $(am__append_21) \
-	$(am__append_22)
+BUILT_SOURCES = build.h Installation/arango.conf $(JAVASCRIPT_HEADER) \
+	$(JAVASCRIPT_BROWSER) $(MRUBY_HEADER) $(am__append_14) \
+	$(am__append_15) Doxygen/.setup-directories \
+	.setup-js-directories $(am__append_17) $(am__append_19) \
+	@PROTOBUF_LIBS@ $(PROTOBUF_FILES) $(am__append_21) \
+	$(am__append_22) $(am__append_23)
 
 ################################################################################
 ### @brief files to cleanup
@@ -1029,10 +1035,10 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_15) $(DOXYGEN) $(addsuffix .md,$(addprefix \
+CLEANUP = $(am__append_16) $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
 	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
-	.setup-js-directories $(am__append_17) $(am__append_19) \
+	.setup-js-directories $(am__append_18) $(am__append_20) \
 	$(PROTOBUF_FILES)
 
 ################################################################################
@@ -1119,20 +1125,24 @@ noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 	lib/libarango_fe.a lib/libarango_client.a $(am__append_6)
 
 ################################################################################
+### @brief /etc data
+################################################################################
+arangosysconfdir = $(sysconfdir)/arango
+nobase_arangosysconf_DATA = Installation/arango.conf
+
+################################################################################
 ### @brief /share data
 ################################################################################
-nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.css" -print) \
-	$(shell find @srcdir@/html -name "*.gif" -print) \
-	$(shell find @srcdir@/html -name "*.html" -print) \
-	$(shell find @srcdir@/html -name "*.ico" -print) \
-	$(shell find @srcdir@/html -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.png" -print)
-
+nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions/system -name \
+	"*.js" -print) $(shell find @srcdir@/js/common/modules -name \
+	"*.js" -print) $(shell find @srcdir@/js/server/modules -name \
+	"*.js" -print) $(shell find @srcdir@/js/client/modules -name \
+	"*.js" -print) $(shell find @srcdir@/html -name "*.css" \
+	-print) $(shell find @srcdir@/html -name "*.gif" -print) \
+	$(shell find @srcdir@/html -name "*.html" -print) $(shell find \
+	@srcdir@/html -name "*.ico" -print) $(shell find @srcdir@/html \
+	-name "*.js" -print) $(shell find @srcdir@/html -name "*.png" \
+	-print) $(am__append_8)
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -1292,7 +1302,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
 	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp $(am__append_8)
+	lib/Variant/VariantVector.cpp $(am__append_9)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1387,8 +1397,8 @@ bin_arangod_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_9) \
-	$(am__append_11)
+	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_10) \
+	$(am__append_12)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -1442,7 +1452,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c $(am__append_10)
+	arangod/VocBase/vocbase.c $(am__append_11)
 bin_arangosh_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
@@ -4569,6 +4579,29 @@ PerfTests/bin_zserver-zserver.obj: PerfTests/zserver.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
+install-nobase_arangosysconfDATA: $(nobase_arangosysconf_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(arangosysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)"
+	@list='$(nobase_arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo "$(MKDIR_P) '$(DESTDIR)$(arangosysconfdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(arangosysconfdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(arangosysconfdir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_arangosysconfDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(arangosysconfdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(arangosysconfdir)" && rm -f $$files
 install-nobase_pkgdataDATA: $(nobase_pkgdata_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(pkgdatadir)" || $(MKDIR_P) "$(DESTDIR)$(pkgdatadir)"
@@ -4797,7 +4830,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -4945,7 +4978,8 @@ info: info-am
 
 info-am:
 
-install-data-am: install-data-local install-nobase_pkgdataDATA
+install-data-am: install-data-local install-nobase_arangosysconfDATA \
+	install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
 
@@ -4992,8 +5026,8 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
-	uninstall-sbinPROGRAMS
+uninstall-am: uninstall-binPROGRAMS uninstall-nobase_arangosysconfDATA \
+	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 .MAKE: all check install install-am install-strip
 
@@ -5008,23 +5042,30 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 	install-binPROGRAMS install-data install-data-am \
 	install-data-local install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_pkgdataDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-nobase_arangosysconfDATA \
+	install-nobase_pkgdataDATA install-pdf install-pdf-am \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-binPROGRAMS \
+	uninstall-nobase_arangosysconfDATA \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
+
+Installation/arango.conf: Installation/arango.conf.in
+	sed \
+		-e 's%@LOGDIR@%${localstatedir}/arangod%g' \
+		-e 's%@DATABASE@%${localstatedir}/${PACKAGE_TARNAME}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
 
 ################################################################################
 ### @brief /var data
 ################################################################################
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
-@ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-@ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+@ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
 
 ################################################################################
 ################################################################################
@@ -5478,7 +5519,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 
 %.pb.cpp: %.proto
-	@top_srcdir@/3rdParty/protobuf-2.4.1/src/protoc --cpp_out . $<
+	@top_srcdir@/3rdParty/protobuf-2.4.1/BUILD/bin/protoc --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 
 ################################################################################
