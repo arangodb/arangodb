@@ -32,6 +32,7 @@ mv configure.ac.tmp configure.ac
 
 ./configure --enable-all-in-one --disable-flex --disable-bison --disable-mruby
 make built-sources
+make doxygen
 make latex
 make wiki
 
