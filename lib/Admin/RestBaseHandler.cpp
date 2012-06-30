@@ -104,8 +104,8 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::handleError (TriagensError const& error) {
-  if (response != 0) {
-    delete response;
+  if (_response != 0) {
+    delete _response;
   }
 
   generateError(HttpResponse::SERVER_ERROR, 
@@ -131,13 +131,13 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (TRI_json_t* json) {
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
 
-  int res = TRI_StringifyJson(response->body().stringBuffer(), json);
+  int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    delete response;
+    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -149,16 +149,16 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (VariantObject* result) {
-  response = new HttpResponse(HttpResponse::OK);
+  _response = new HttpResponse(HttpResponse::OK);
 
   string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
 
   if (ok) {
-    response->setContentType(contentType);
+    _response->setContentType(contentType);
   }
   else {
-    delete response;
+    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -187,7 +187,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
-  response = new HttpResponse(code);
+  _response = new HttpResponse(code);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
@@ -196,21 +196,21 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
   result->add("errorMessage", new VariantString(message));
 
   string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
 
   if (ok) {
-    response->setContentType(contentType);
+    _response->setContentType(contentType);
   }
   else {
-    response->body().appendText("{ \"error\" : true, \"errorMessage\" : \"" );
-    response->body().appendText(StringUtils::escapeUnicode(message));
-    response->body().appendText("\", \"code\" : ");
-    response->body().appendInteger(code);
-    response->body().appendText("\", \"errorNum\" : ");
-    response->body().appendInteger(errorCode);
-    response->body().appendText("}");
+    _response->body().appendText("{ \"error\" : true, \"errorMessage\" : \"" );
+    _response->body().appendText(StringUtils::escapeUnicode(message));
+    _response->body().appendText("\", \"code\" : ");
+    _response->body().appendInteger(code);
+    _response->body().appendText("\", \"errorNum\" : ");
+    _response->body().appendInteger(errorCode);
+    _response->body().appendText("}");
 
-    response->setContentType("application/json; charset=utf-8");
+    _response->setContentType("application/json; charset=utf-8");
   }
 
   delete result;
@@ -221,7 +221,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
-  boost::scoped_ptr<VariantArray> json(InputParser::jsonArray(request));
+  boost::scoped_ptr<VariantArray> json(InputParser::jsonArray(_request));
   bool ok = desc.parse(json.get());
 
   if (! ok) {

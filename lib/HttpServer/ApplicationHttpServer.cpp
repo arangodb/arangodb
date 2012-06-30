@@ -250,45 +250,8 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   _httpServers.push_back(httpServer);
 
   // open http ports
-  deque<AddressPort> addresses;
-  addresses.insert(addresses.begin(), ports.begin(), ports.end());
-
-  while (! addresses.empty()) {
-    AddressPort ap = addresses[0];
-    addresses.pop_front();
-
-    string bindAddress = ap._address;
-    int port = ap._port;
-
-    bool result;
-
-    if (bindAddress.empty()) {
-      LOGGER_TRACE << "trying to open port " << port << " for http requests";
-
-      result = httpServer->addPort(port, _applicationScheduler->addressReuseAllowed());
-    }
-    else {
-      LOGGER_TRACE << "trying to open address " << bindAddress
-                   << " on port " << port
-                   << " for http requests";
-
-      result = httpServer->addPort(bindAddress, port, _applicationScheduler->addressReuseAllowed());
-    }
-
-    if (result) {
-      LOGGER_DEBUG << "opened port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-    }
-    else {
-      LOGGER_TRACE << "failed to open port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-      addresses.push_back(ap);
-
-      if (scheduler->isShutdownInProgress()) {
-        addresses.clear();
-      }
-      else {
-        sleep(1);
-      }
-    }
+  for (vector<AddressPort>::iterator i = _httpAddressPorts.begin();  i != _httpAddressPorts.end();  ++i) {
+    httpServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
   }
 
   return httpServer;

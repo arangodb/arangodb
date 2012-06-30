@@ -25,15 +25,7 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandler.h"
-
-#include "Logger/Logger.h"
-#include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "GeneralServer/GeneralServerJob.h"
-
-using namespace triagens::rest;
+#include "Handler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -45,26 +37,17 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::HttpHandler (HttpRequest* request)
-  : _request(request),
-    _response(0) {
+Handler::Handler () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::~HttpHandler () {
-  if (_request != 0) {
-    delete _request;
-  }
-
-  if (_response != 0) {
-    delete _response;
-  }
+Handler::~Handler () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,39 +64,27 @@ HttpHandler::~HttpHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
+/// @brief returns the job type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::getResponse () {
-  return _response;
+Job::JobType Handler::type () {
+  return Job::READ_JOB;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief returns the queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+string const& Handler::queue () {
+  static string standard = "STANDARD";
+  return standard;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
+/// @brief sets the thread which currently dealing with the job
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-Job* HttpHandler::createJob (Dispatcher* dispatcher, AsyncJobServer* server) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-
-  if (httpServer == 0) {
-    LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
-    return 0;
-  }
-
-  return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, dispatcher, this);
+void Handler::setDispatcherThread (DispatcherThread*) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

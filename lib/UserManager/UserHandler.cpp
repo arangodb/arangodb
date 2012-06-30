@@ -138,7 +138,7 @@ bool UserHandler::isDirect () {
 HttpHandler::status_e UserHandler::execute () {
 
   // extract the username
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
   
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_SESSION_USERHANDLER_URL_INVALID);
@@ -148,7 +148,7 @@ HttpHandler::status_e UserHandler::execute () {
   string const& name = suffix[0];
   
   // execute the request
-  switch (request->requestType()) {
+  switch (_request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST: return executePost(name);
     case HttpRequest::HTTP_REQUEST_GET: return executeGet(name);
     case HttpRequest::HTTP_REQUEST_PUT: return executePut(name);
@@ -178,7 +178,7 @@ HttpHandler::status_e UserHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool UserHandler::hasRight (right_t right) {
-  Session* session = authSession(request);
+  Session* session = authSession(_request);
 
   if (session == 0) {
     return false;
@@ -192,7 +192,7 @@ bool UserHandler::hasRight (right_t right) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool UserHandler::isSelf (string const& username) {
-  Session* session = authSession(request);
+  Session* session = authSession(_request);
 
   if (session == 0) {
     return false;

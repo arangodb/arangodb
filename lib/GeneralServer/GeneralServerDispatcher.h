@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H
-#define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H
+#define TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H 1
 
 #include "GeneralServer/GeneralServer.h"
 
@@ -35,44 +35,200 @@
 #include "Dispatcher/Job.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralAsyncCommTask.h"
+#include "Rest/AsyncJobServer.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
     class Dispatcher;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief general server with dispatcher
-    ////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class GeneralServer
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief general server with dispatcher
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
-    class GeneralServerDispatcher : public GeneralServer<S, HF, CT> {
-      GeneralServerDispatcher (GeneralServerDispatcher const&);
-      GeneralServerDispatcher& operator= (GeneralServerDispatcher const&);
+    class GeneralServerDispatcher : public GeneralServer<S, HF, CT>, public AsyncJobServer {
+      private:
+        GeneralServerDispatcher (GeneralServerDispatcher const&);
+        GeneralServerDispatcher& operator= (GeneralServerDispatcher const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new general server
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new general server
+////////////////////////////////////////////////////////////////////////////////
 
         explicit
         GeneralServerDispatcher (Scheduler* scheduler)
-          : GeneralServer<S, HF, CT>(scheduler), _dispatcher(0) {
+          : GeneralServer<S, HF, CT>(scheduler),
+            _dispatcher(0),
+            _handler2job(),
+            _job2handler() {
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new general server
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new general server
+////////////////////////////////////////////////////////////////////////////////
 
         GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher)
           : GeneralServer<S, HF, CT>(scheduler), _dispatcher(dispatcher) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback if the job is done
+////////////////////////////////////////////////////////////////////////////////
+
+        void jobDone (Job* job) {
+          GeneralAsyncCommTask<S, HF, CT>* task = 0;
+
+          {
+            MUTEX_LOCKER(this->_mappingLock);
+
+            // extract the handler
+            typename std::map< Job*, typename HF::GeneralHandler* >::iterator i
+              = _job2handler.find(job);
+
+            if (i == _job2handler.end()) {
+              LOGGER_WARNING << "jobDone called, but no handler is known";
+              return;
+            }
+
+            typename HF::GeneralHandler* handler = i->second;
+
+            // clear job map
+            _job2handler.erase(job);
+            _handler2job.erase(handler);
+
+            // look up the task
+            typename std::map< typename HF::GeneralHandler*, Task* >::iterator j
+              = this->_handler2task.find(handler);
+
+            if (j == this->_handler2task.end()) {
+              LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
+
+              delete handler;
+              return;
+            }
+
+            task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(i->second);
+          }
+
+          if (task == 0) {
+            LOGGER_WARNING << "task for handler is not an async task, giving up";
+            return;
+          }
+
+          task->signal();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback if the handler received a signal
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleAsync (Task* task) {
+          typename HF::GeneralHandler* handler = 0;
+
+          {
+            MUTEX_LOCKER(this->_mappingLock);
+          
+            typename std::map< Task*, typename HF::GeneralHandler* >::iterator i = this->_task2handler.find(task);
+
+            if (i == this->_task2handler.end()) {
+              LOGGER_WARNING << "cannot find a task for the handler, giving up";
+              return;
+            }
+
+            handler = i->second;
+
+            this->_task2handler.erase(i);
+            this->_handler2task.erase(handler);
+          }
+
+          typename HF::GeneralResponse * response = handler->getResponse();
+          
+          if (response == 0) {
+            basics::InternalError err("no response received from handler");
+
+            handler->handleError(err);
+            response = handler->getResponse();
+          }
+
+          if (response != 0) {
+            GeneralAsyncCommTask<S, HF, CT>* atask
+              = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
+
+            if (atask == 0) {
+              atask->handleResponse(response);
+            }
+            else {
+              LOGGER_ERROR << "expected a GeneralAsyncCommTask, giving up";
+            }
+          }
+          else {
+            LOGGER_ERROR << "cannot get any response";
+          }
+
+          delete handler;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             GeneralServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
         void handleConnected (socket_t socket, ConnectionInfo& info) {
           SocketTask* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
@@ -80,30 +236,23 @@ namespace triagens {
           this->_scheduler->registerTask(task);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequest (CT * task, typename HF::GeneralHandler *& handler) {
+        bool handleRequest (CT * task, typename HF::GeneralHandler* handler) {
+          registerHandler(handler, task);
 
           // execute handler and (possibly) requeue
-          bool done = false;
-          
-          assert(handler);
-
-          while (! done) {
+          while (true) {
 
             // directly execute the handler within the scheduler thread
             if (handler->isDirect()) {
               Handler::status_e status = this->handleRequestDirectly(task, handler);
 
               if (status != Handler::HANDLER_REQUEUE) {
-                done = true;
-                this->destroyHandler(handler);
-                handler = 0;
-              }
-              else {
-                continue;
+                this->shutdownHandlerByTask(task);
+                return true;
               }
             }
 
@@ -113,27 +262,30 @@ namespace triagens {
 
               if (atask == 0) {
                 LOGGER_WARNING << "task is indirect, but not asynchronous - this cannot work!";
-                this->destroyHandler(handler);
-                handler = 0;
 
+                this->shutdownHandlerByTask(task);
                 return false;
               }
               else {
-                atask->setHandler(handler);
-                Job* job = handler->createJob(this->_scheduler, _dispatcher, atask);
-                _dispatcher->addJob(job);
-              }
+                Job* job = handler->createJob(_dispatcher, this);
 
-              return true;
+                if (job == 0) {
+                  LOGGER_WARNING << "task is indirect, but handler failed to create a job - this cannot work!";
+
+                  this->shutdownHandlerByTask(task);
+                  return false;
+                }
+
+                registerJob(handler, job);
+                return true;
+              }
             }
 
             // without a dispatcher, simply give up
             else {
               LOGGER_WARNING << "no dispatcher is known";
 
-              this->destroyHandler(handler);
-              handler = 0;
-
+              this->shutdownHandlerByTask(task);
               return false;
             }
           }
@@ -141,19 +293,109 @@ namespace triagens {
           return true;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut downs a handler for a task
+////////////////////////////////////////////////////////////////////////////////
+
+        void shutdownHandlerByTask (Task* task) { 
+          MUTEX_LOCKER(this->_mappingLock);
+
+          typename std::map< Task*, typename HF::GeneralHandler* >::iterator i
+            = this->_task2handler.find(task);
+
+          if (i == this->_task2handler.end()) {
+            LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
+          }
+          else {
+            typename HF::GeneralHandler* handler = i->second;
+
+            this->_task2handler.erase(i);
+            this->_handler2task.erase(handler);
+
+            typename std::map< typename HF::GeneralHandler*, Job* >::iterator j = _handler2job.find(handler);
+
+            if (j == _handler2job.end()) {
+              delete handler;
+            }
+            else {
+              j->second->beginShutdown();
+            }
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       protected:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief the dispatcher
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a new job
+////////////////////////////////////////////////////////////////////////////////
+
+        void registerJob (typename HF::GeneralHandler* handler, Job* job) {
+          MUTEX_LOCKER(this->_mappingLock);
+
+          _job2handler[job] = handler;
+          _handler2job[handler] = job;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the dispatcher
+////////////////////////////////////////////////////////////////////////////////
 
         Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map handler to job
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map< typename HF::GeneralHandler*, Job* > _handler2job;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map task to handler
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map< Job*, typename HF::GeneralHandler* > _job2handler;
     };
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
-
-
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// End:
