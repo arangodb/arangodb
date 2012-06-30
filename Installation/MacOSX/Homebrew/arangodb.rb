@@ -2,19 +2,19 @@ require 'formula'
 
 class Arangodb < Formula
   homepage 'http://www.arangodb.org/'
-  url "https://github.com/triAGENS/ArangoDB/zipball/v1.0.alpha2"
-  sha1 'd6e90221dcc02252ae9bb66085a797d495be5bc4'
+  url "https://github.com/triAGENS/ArangoDB/zipball/v1.0.alpha3"
+  sha1 ''
 
   head "https://github.com/triAGENS/ArangoDB.git"
-
-  depends_on 'libev'
-  depends_on 'v8'
 
   devel do
     version "devel"
     url "https://github.com/triAGENS/ArangoDB/zipball/devel"
     sha1 ''
   end
+
+  depends_on 'libev'
+  depends_on 'v8'
 
   def install
     system "./configure", "--prefix=#{prefix}",
@@ -72,7 +72,7 @@ class Arangodb < Formula
     <array>
       <string>#{HOMEBREW_PREFIX}/sbin/arangod</string>
       <string>-c</string>
-      <string>#{etc}/arango.conf</string>
+      <string>#{etc}/arangodb/arangod.conf</string>
     </array>
     
     <key>RunAtLoad</key>
