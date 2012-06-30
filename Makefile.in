@@ -5306,6 +5306,14 @@ unittests-bitarray-index:
 clean-local:
 	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
 
+################################################################################
+### @brief generated files
+################################################################################
+
+.PHONY: built-sources
+
+built-sources: $(BUILT_SOURCES)
+
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
 @ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap

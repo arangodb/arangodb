@@ -278,6 +278,7 @@ include Makefile.unittests
 .PHONY: errorfiles
 
 if ENABLE_ERRORS_DEPENDENCY
+
 errorfiles: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
@@ -285,6 +286,7 @@ errorfiles: lib/BasicsC/errors.dat
 
 BUILT_SOURCES += \
 	errorfiles
+
 endif
 
 ################################################################################
@@ -293,6 +295,14 @@ endif
 
 clean-local:
 	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+
+################################################################################
+### @brief generated files
+################################################################################
+
+.PHONY: built-sources
+
+built-sources: $(BUILT_SOURCES)
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES
