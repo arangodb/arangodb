@@ -302,7 +302,7 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: build.h errorfiles
+built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES
