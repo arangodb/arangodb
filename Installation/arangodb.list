@@ -25,7 +25,7 @@ $release=${arangodb_release}
 
 d 0755 ${susr} ${sgrp} /etc/arangodb -
 d 0755 ${susr} ${sgrp} /etc/arangodb/${vers_dir} -
-f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf.in
+f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arangod.conf.template ${project_dir}/Installation/arangod.conf.in
 
 f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/bin/arangod
 l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
@@ -35,7 +35,7 @@ f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/bin/arangosh
 
 # database directory
 d 0755 ${rusr} ${rgrp} ${data_dir} -
-d 0755 ${susr} ${sgrp} ${data_dir}/arango -
+d 0755 ${susr} ${sgrp} ${data_dir}/arangodb -
 
 # static files
 d 0755 ${susr} ${sgrp} ${static_dir} -
@@ -43,10 +43,10 @@ d 0755 ${susr} ${sgrp} ${static_dir}/js -
 d 0755 ${susr} ${sgrp} ${static_dir}/html -
 
 # PID file directory
-d 0755 ${susr} ${sgrp} /var/run/arangod -
+d 0755 ${susr} ${sgrp} /var/run/arangodb -
 
 # logfile directory
-d 0755 ${rusr} ${rgrp} /var/log/arangod -
+d 0755 ${rusr} ${rgrp} /var/log/arangodb -
 
 %include ${project_dir}/Installation/arangodb.sublist
 
@@ -55,7 +55,7 @@ d 0755 ${rusr} ${rgrp} /var/log/arangod -
 ################################################################################
 
 %postinstall <<EOF
-sed -e 's%@LOGDIR@%/var/log/arangod%g' -e 's%@DATABASE@%${data_dir}/arango%g' -e 's%@STATICFILES@%${static_dir}/arango%g' /etc/arangodb/${vers_dir}/arango.conf.template > /etc/arango.conf
+sed -e 's%@LOGDIR@%/var/log/arangodb%g' -e 's%@DATABASE@%${data_dir}/arangodb%g' -e 's%@STATICFILES@%${static_dir}/arangodb%g' /etc/arangodb/${vers_dir}/arangod.conf.template > /etc/arangodb/arangod.conf
 EOF
 
 %ifdef macosx

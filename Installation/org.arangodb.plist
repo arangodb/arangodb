@@ -12,7 +12,7 @@
 	<array>
 		<string>@BINARY@</string>
 		<string>-c</string>
-		<string>@CONFIGDIR@/arango.conf</string>
+		<string>@CONFIGDIR@/arangdb/arangod.conf</string>
 	</array>
 
         <key>UserName</key>

@@ -56,10 +56,14 @@ PROTOBUF_FILES =
 ### @brief preprocessor flags
 ################################################################################
 
+arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
+databasedir=$(localstatedir)/$(PACKAGE_TARNAME)
+logdir=$(localstatedir)/log/$(PACKAGE_TARNAME)
+
 AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${sysconfdir}"' \
+	-D_SYSCONFDIR_='"${arangosysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
+	-D_DATABASEDIR_='"${databasedir}"' \
 	-I@top_srcdir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
@@ -181,16 +185,14 @@ endif
 ### @brief /etc data
 ################################################################################
 
-arangosysconfdir=$(sysconfdir)/arango
+arangosysconf_DATA = Installation/arangod.conf
 
-nobase_arangosysconf_DATA = Installation/arango.conf
+BUILT_SOURCES += Installation/arangod.conf
 
-BUILT_SOURCES += Installation/arango.conf
-
-Installation/arango.conf: Installation/arango.conf.in
+Installation/arangod.conf: Installation/arangod.conf.in
 	sed \
-		-e 's%@LOGDIR@%${localstatedir}/arangod%g' \
-		-e 's%@DATABASE@%${localstatedir}/${PACKAGE_TARNAME}%g' \
+		-e 's%@LOGDIR@%${logdir}%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
 		-e 's%@STATICFILES@%${pkgdatadir}%g' \
 		$< > $@
 

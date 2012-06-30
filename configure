@@ -559,7 +559,7 @@ MAKEFLAGS=
 
 # Identity of this package.
 PACKAGE_NAME='triAGENS ArangoDB'
-PACKAGE_TARNAME='arango'
+PACKAGE_TARNAME='arangodb'
 PACKAGE_VERSION='1.0.alpha3'
 PACKAGE_STRING='triAGENS ArangoDB 1.0.alpha3'
 PACKAGE_BUGREPORT='info@triagens.de'
@@ -1455,7 +1455,7 @@ Fine tuning of the installation directories:
   --infodir=DIR           info documentation [DATAROOTDIR/info]
   --localedir=DIR         locale-dependent data [DATAROOTDIR/locale]
   --mandir=DIR            man documentation [DATAROOTDIR/man]
-  --docdir=DIR            documentation root [DATAROOTDIR/doc/arango]
+  --docdir=DIR            documentation root [DATAROOTDIR/doc/arangodb]
   --htmldir=DIR           html documentation [DOCDIR]
   --dvidir=DIR            dvi documentation [DOCDIR]
   --pdfdir=DIR            pdf documentation [DOCDIR]
@@ -3218,7 +3218,7 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE='arango'
+ PACKAGE='arangodb'
  VERSION='1.0.alpha3'
 
 

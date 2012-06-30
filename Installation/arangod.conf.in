@@ -10,7 +10,7 @@ threads = 4
 [log]
 level = info
 severity = human
-file = @LOGDIR@/arango.log
+file = @LOGDIR@/arangod.log
 
 [database]
 directory= @DATABASE@
