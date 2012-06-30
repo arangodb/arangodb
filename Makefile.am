@@ -302,7 +302,7 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: $(BUILT_SOURCES)
+built-sources: build.h errorfiles
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES
