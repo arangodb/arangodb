@@ -262,7 +262,7 @@ namespace triagens {
         }
       }
       else {
-        readBuffer->appendText(tmpReadBuffer, nr);
+        _readBuffer->appendText(tmpReadBuffer, nr);
       }
 
       return true;

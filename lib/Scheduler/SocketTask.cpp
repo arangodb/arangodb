@@ -54,7 +54,7 @@ SocketTask::SocketTask (socket_t fd)
     writeBuffer(0),
     ownBuffer(true),
     writeLength(0) {
-  readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
 
@@ -71,7 +71,7 @@ SocketTask::~SocketTask () {
     }
   }
 
-  delete readBuffer;
+  delete _readBuffer;
 
   delete[] tmpReadBuffer;
 }
@@ -324,7 +324,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   int nr = read(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
 
   if (nr > 0) {
-    readBuffer->appendText(tmpReadBuffer, nr);
+    _readBuffer->appendText(tmpReadBuffer, nr);
 
     return true;
   }

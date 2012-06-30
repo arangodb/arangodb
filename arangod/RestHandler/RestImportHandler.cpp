@@ -94,7 +94,7 @@ string const& RestImportHandler::queue () {
 HttpHandler::status_e RestImportHandler::execute () {
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = request->requestType();
+  HttpRequest::HttpRequestType type = _request->requestType();
 
   // prepare logging
   static LoggerData::Task const logCreate(DOCUMENT_IMPORT_PATH + " [create]");
@@ -117,7 +117,7 @@ HttpHandler::status_e RestImportHandler::execute () {
     case HttpRequest::HTTP_REQUEST_POST: {
         // extract the import type
         bool found;
-        string documentType = request->value("type", found);
+        string documentType = _request->value("type", found);
         
         if (found && documentType == "documents") {
           res = createByArray();  
@@ -168,7 +168,7 @@ bool RestImportHandler::createByArray () {
   size_t numCreated = 0;
   size_t numError = 0;
   
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -179,7 +179,7 @@ bool RestImportHandler::createByArray () {
 
   // extract the collection name
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -189,11 +189,11 @@ bool RestImportHandler::createByArray () {
   }
   
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // find and load collection given by name or identifier
@@ -218,7 +218,7 @@ bool RestImportHandler::createByArray () {
   size_t next = 0;
   string line;
   
-  string body(request->body(), request->bodySize());
+  string body(_request->body(), _request->bodySize());
 
   while (next != string::npos && start < body.size()) {
     next = body.find('\n', start);
@@ -292,7 +292,7 @@ bool RestImportHandler::createByList () {
   size_t numCreated = 0;
   size_t numError = 0;
   
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -303,7 +303,7 @@ bool RestImportHandler::createByList () {
 
   // extract the collection name
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -313,15 +313,15 @@ bool RestImportHandler::createByList () {
   }
   
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   size_t start = 0;
-  string body(request->body(), request->bodySize());
+  string body(_request->body(), _request->bodySize());
   size_t next = body.find('\n', start);
   
   if (next == string::npos) {
@@ -471,12 +471,11 @@ bool RestImportHandler::createByList () {
 
 
 void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError) {
+  _response = new HttpResponse(HttpResponse::CREATED);
 
-  response = new HttpResponse(HttpResponse::CREATED);
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->setContentType("application/json; charset=utf-8");
-
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"created\":")
     .appendInteger(numCreated)
     .appendText(",\"errors\":")

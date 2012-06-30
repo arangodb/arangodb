@@ -112,13 +112,114 @@ namespace triagens {
 
 
 
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief sets a handler factory
+        ///
+        /// Note that the general server claims the ownership of the factory.
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setHandlerFactory (HF* factory) {
+          if (_handlerFactory != 0) {
+            delete _handlerFactory;
+          }
+
+          _handlerFactory = factory;
+        }
+
     HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) {
+          READ_LOCKER(_maintenanceLock);
+
+          if (_maintenance) {
+            return ((S*) this)->createMaintenanceRequest(ptr, length);
+          }
+
+          return _handlerFactory == 0 ? 0 : _handlerFactory->createRequest(ptr, length);
+
       return new HttpRequestPlain(ptr, length);
     }
 
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief maintenance mode
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool _maintenance;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief maintenance mode lock
+        ////////////////////////////////////////////////////////////////////////////////
+
+        basics::ReadWriteLock _maintenanceLock;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief activates the maintenance mode
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void activateMaintenance () {
+          WRITE_LOCKER(_maintenanceLock);
+
+          _maintenance = 1;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief deactivates the maintenance mode
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void deactivateMaintenance () {
+          WRITE_LOCKER(_maintenanceLock);
+
+          _maintenance = 0;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns header and body size restrictions
+        ////////////////////////////////////////////////////////////////////////////////
+
+        pair<size_t, size_t> sizeRestrictions () {
+          static size_t m = (size_t) -1;
+
+          if (_handlerFactory == 0) {
+            return make_pair(m, m);
+          }
+          else {
+            return _handlerFactory->sizeRestrictions();
+          }
+        }
+
+
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief destroys a finished handler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void destroyHandler (typename HF::GeneralHandler* handler) {
+          assert(handler);
+
+          handler->beginShutdown();
+        }
 
 
     HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
+          READ_LOCKER(_maintenanceLock);
+
+          if (_maintenance) {
+            return ((S*) this)->createMaintenanceHandler();
+          }
+
+          if (_handlerFactory == 0) {
+            return 0;
+          }
+
+          typename HF::GeneralHandler* handler = _handlerFactory->createHandler(request);
+
+          handler->setHandlerFactory(_handlerFactory);
+
+          return handler;
+
+
+
+
       map<string, create_fptr> const& ii = _constructors;
       string path = request->requestPath();
       map<string, create_fptr>::const_iterator i = ii.find(path);

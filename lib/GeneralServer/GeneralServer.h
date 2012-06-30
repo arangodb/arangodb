@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,13 +23,13 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_H
-#define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_H
+#define TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -37,175 +37,262 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <Basics/StringUtils.h>
 
-#include <Basics/Exceptions.h>
-#include <Logger/Logger.h>
-#include <Basics/ReadLocker.h>
-#include <Basics/ReadWriteLock.h>
-#include <Basics/WriteLocker.h>
-#include <Rest/Handler.h>
-
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SocketTask.h"
-#include "Scheduler/ListenTask.h"
+#include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/SpecificCommTask.h"
+#include "Logger/Logger.h"
+#include "Rest/Handler.h"
+#include "Scheduler/ListenTask.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SocketTask.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class GeneralServer
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace rest {
-    class Scheduler;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief general server
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief general server
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
     class GeneralServer : protected TaskManager {
-      GeneralServer (GeneralServer const&);
-      GeneralServer const& operator= (GeneralServer const&);
+      private:
+        GeneralServer (GeneralServer const&);
+        GeneralServer const& operator= (GeneralServer const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new general server
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new general server
+////////////////////////////////////////////////////////////////////////////////
 
         explicit
         GeneralServer (Scheduler* scheduler)
-          : _scheduler(scheduler), _handlerFactory(0), _maintenance(false), _maintenanceLock() {
+          : _scheduler(scheduler),
+            _ports(),
+            _listenTasks(),
+            _mappingLock(),
+            _handler2task(),
+            _task2handler() {
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief destructs a general server
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a general server
+////////////////////////////////////////////////////////////////////////////////
 
         ~GeneralServer () {
-          if (_handlerFactory != 0) {
-            delete _handlerFactory;
-          }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief sets a handler factory
-        ///
-        /// Note that the general server claims the ownership of the factory.
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the scheduler
+////////////////////////////////////////////////////////////////////////////////
 
-        void setHandlerFactory (HF* factory) {
-          if (_handlerFactory != 0) {
-            delete _handlerFactory;
-          }
-
-          _handlerFactory = factory;
+        Scheduler* getScheduler () {
+          return _scheduler;
         }
 
-      public:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds port for general connections
+////////////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief activates the maintenance mode
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void activateMaintenance () {
-          WRITE_LOCKER(_maintenanceLock);
-
-          _maintenance = 1;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief deactivates the maintenance mode
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void deactivateMaintenance () {
-          WRITE_LOCKER(_maintenanceLock);
-
-          _maintenance = 0;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief creates a new request
-        ////////////////////////////////////////////////////////////////////////////////
-
-        typename HF::GeneralRequest * createRequest (char const* ptr, size_t length) {
-          READ_LOCKER(_maintenanceLock);
-
-          if (_maintenance) {
-            return ((S*) this)->createMaintenanceRequest(ptr, length);
-          }
-
-          return _handlerFactory == 0 ? 0 : _handlerFactory->createRequest(ptr, length);
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief creates a new request
-        ////////////////////////////////////////////////////////////////////////////////
-
-        typename HF::GeneralHandler * createHandler (typename HF::GeneralRequest* request) {
-          READ_LOCKER(_maintenanceLock);
-
-          if (_maintenance) {
-            return ((S*) this)->createMaintenanceHandler();
-          }
-
-          if (_handlerFactory == 0) {
-            return 0;
-          }
-
-          typename HF::GeneralHandler* handler = _handlerFactory->createHandler(request);
-
-          handler->setHandlerFactory(_handlerFactory);
-
-          return handler;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief destroys a finished handler
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void destroyHandler (typename HF::GeneralHandler* handler) {
-          assert(handler);
-
-          handler->beginShutdown();
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief returns header and body size restrictions
-        ////////////////////////////////////////////////////////////////////////////////
-
-        pair<size_t, size_t> sizeRestrictions () {
-          static size_t m = (size_t) -1;
-
-          if (_handlerFactory == 0) {
-            return make_pair(m, m);
-          }
-          else {
-            return _handlerFactory->sizeRestrictions();
-          }
-        }
-
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief starts listening for general connections on given port
-        ///
-        /// The token is passed to the listen task which sends it back when accepting
-        /// a connection.
-        ////////////////////////////////////////////////////////////////////////////////
-
-        bool addPort (int port, bool reuseAddress)  {
+        void addPort (int port, bool reuseAddress)  {
           return addPort("", port, reuseAddress);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief starts listening for general connections on given port and address
-        ///
-        /// The token is passed to the listen task which sends it back when accepting
-        /// a connection.
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds address and port for general connections
+////////////////////////////////////////////////////////////////////////////////
 
-        bool addPort (string const& address, int port, bool reuseAddress) {
+        void addPort (string const& address, int port, bool reuseAddress) {
+          port_info_t pi;
+          pi._address = address;
+          pi._port = port;
+          pi._reuseAddress = reuseAddress;
+
+          _ports.push_back(pi);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts listining
+////////////////////////////////////////////////////////////////////////////////
+
+        void startListening () {
+          deque<port_info_t> addresses;
+          addresses.insert(addresses.begin(), _ports.begin(), _ports.end());
+
+          while (! addresses.empty()) {
+            port_info_t ap = addresses[0];
+            addresses.pop_front();
+
+            if (ap._address.empty()) {
+              LOGGER_TRACE << "trying to open port " << ap._port << " for requests";
+            }
+            else {
+              LOGGER_TRACE << "trying to open address " << ap._address << " on port " << ap._port << " for requests";
+            }
+
+            bool ok = openListenPort(ap);
+
+            if (ok) {
+              LOGGER_DEBUG << "opened port " << ap._port << " for " << (ap._address.empty() ? "any" : ap._address);
+            }
+            else {
+              LOGGER_TRACE << "failed to open port " << ap._port << " for " << (ap._address.empty() ? "any" : ap._address);
+              addresses.push_back(ap);
+
+              if (_scheduler->isShutdownInProgress()) {
+                break;
+              }
+              else {
+                sleep(1);
+              }
+            }
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops listining
+////////////////////////////////////////////////////////////////////////////////
+
+        void stopListening () {
+          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
+            _scheduler->unregisterTask(*i);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles connection request
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
+          SocketTask* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
+
+          _scheduler->registerTask(task);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a connection close
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleCommunicationClosed (Task* task) {
+          shutdownHandlerByTask(task);
+          _scheduler->destroyTask(task);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a connection failure
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleCommunicationFailure (Task* task) {
+          shutdownHandlerByTask(task);
+          _scheduler->destroyTask(task);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a request
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool handleRequest (CT * task, typename HF::GeneralHandler* handler) {
+          registerHandler(handler, task);
+
+          // execute handle and requeue
+          while (true) {
+            Handler::status_e status = handleRequestDirectly(task, handler);
+
+            if (status != Handler::HANDLER_REQUEUE) {
+              shutdownHandlerByTask(task);
+              return true;
+            }
+          }
+
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   protected types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief port and address
+////////////////////////////////////////////////////////////////////////////////
+
+        struct port_info_t {
+          string _address;
+          int _port;
+          bool _reuseAddress;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens a listen port
+////////////////////////////////////////////////////////////////////////////////
+
+        bool openListenPort (port_info_t ap) {
           struct addrinfo *result, *aip;
           struct addrinfo hints;
           int error;
@@ -216,122 +303,45 @@ namespace triagens {
           hints.ai_socktype = SOCK_STREAM;
           hints.ai_protocol = 0;
 
-          string portString = basics::StringUtils::itoa(port);
+          string portString = basics::StringUtils::itoa(ap._port);
 
-          if (address.empty()) {
+          if (ap._address.empty()) {
             error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
           }
           else {
-            error = getaddrinfo(address.c_str(), portString.c_str(), &hints, &result);
+            error = getaddrinfo(ap._address.c_str(), portString.c_str(), &hints, &result);
           }
 
           if (error != 0) {
-            LOGGER_ERROR << "getaddrinfo for host: " << address.c_str() << " => " << gai_strerror(error);
+            LOGGER_ERROR << "getaddrinfo for host: " << ap._address.c_str() << " => " << gai_strerror(error);
             return false;
           }
-          
+
           bool gotTask = false;
-          
+
           // Try all returned addresses
           for (aip = result; aip != NULL; aip = aip->ai_next) {
-            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, reuseAddress);
+            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, ap._reuseAddress);
 
             if (! task->isBound()) {
               deleteTask(task);
             }
             else {
               _scheduler->registerTask(task);
+              _listenTasks.push_back(task);
               gotTask = true;
             }
 
           }
 
           freeaddrinfo(result);
-          
+
           return gotTask;
-
-//          ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), address, port, reuseAddress);
-//
-//          if (! task->isBound()) {
-//            deleteTask(task);
-//            return false;
-//          }
-//
-//          _scheduler->registerTask(task);
-//
-//          return true;
         }
 
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handles connection request
-        ////////////////////////////////////////////////////////////////////////////////
-
-        virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
-          SocketTask* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
-
-          _scheduler->registerTask(task);
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handles a request
-        ////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool handleRequest (CT * task, typename HF::GeneralHandler*& handler) {
-
-          // execute handle and requeue
-          bool done = false;
-
-          while (! done) {
-            Handler::status_e status = handleRequestDirectly(task, handler);
-
-            if (status != Handler::HANDLER_REQUEUE) {
-              done = true;
-              assert(handler);
-              task->setHandler(0);
-              destroyHandler(handler);
-              handler = 0;
-            }
-            else {
-              continue;
-            }
-          }
-
-          return true;
-        }
-
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handles a connection close
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void handleCommunicationClosed (Task* task) {
-          _scheduler->destroyTask(task);
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handles a connection failure
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void handleCommunicationFailure (Task* task) {
-          _scheduler->destroyTask(task);
-        }
-        
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief return the scheduler
-        ////////////////////////////////////////////////////////////////////////////////
-
-        Scheduler* getScheduler () {
-          return _scheduler; 
-        }
-
-      protected:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handle request directly
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle request directly
+////////////////////////////////////////////////////////////////////////////////
 
         Handler::status_e handleRequestDirectly (CT* task, typename HF::GeneralHandler * handler) {
           Handler::status_e status = Handler::HANDLER_FAILED;
@@ -386,33 +396,104 @@ namespace triagens {
           return status;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a task
+////////////////////////////////////////////////////////////////////////////////
+
+        void registerHandler (typename HF::GeneralHandler* handler, Task* task) {
+          MUTEX_LOCKER(_mappingLock);
+
+          _task2handler[task] = handler;
+          _handler2task[handler] = task;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut downs a handler for a task
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void shutdownHandlerByTask (Task* task) {
+          MUTEX_LOCKER(_mappingLock);
+
+          typename std::map< Task*, typename HF::GeneralHandler* >::iterator i = _task2handler.find(task);
+
+          if (i == _task2handler.end()) {
+            LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
+          }
+          else {
+            typename HF::GeneralHandler* handler = i->second;
+
+            _task2handler.erase(i);
+            _handler2task.erase(handler);
+
+            delete handler;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       protected:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief the scheduler
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the scheduler
+////////////////////////////////////////////////////////////////////////////////
 
         Scheduler* _scheduler;
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief the handler factory
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defined ports and addresses
+////////////////////////////////////////////////////////////////////////////////
 
-        HF* _handlerFactory;
+        std::vector< port_info_t > _ports;
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief maintenance mode
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief active listen tasks
+////////////////////////////////////////////////////////////////////////////////
 
-        bool _maintenance;
+        std::vector< ListenTask* > _listenTasks;
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief maintenance mode lock
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for mapping structures
+////////////////////////////////////////////////////////////////////////////////
 
-        basics::ReadWriteLock _maintenanceLock;
+        basics::Mutex _mappingLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map handler to task
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map< typename HF::GeneralHandler*, Task* > _handler2task;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map task to handler
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map< Task*, typename HF::GeneralHandler* > _task2handler;
     };
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// End:

@@ -67,15 +67,15 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     bool HttpCommTask::processRead () {
-      if (requestPending || readBuffer->c_str() == 0) {
+      if (_requestPending || _readBuffer->c_str() == 0) {
         return true;
       }
 
       bool handleRequest = false;
 
-      if (! readRequestBody) {
-        const char * ptr = readBuffer->c_str() + readPosition;
-        const char * end = readBuffer->end() - 3;
+      if (! _readRequestBody) {
+        const char * ptr = _readBuffer->c_str() + _readPosition;
+        const char * end = _readBuffer->end() - 3;
 
         for (;  ptr < end;  ptr++) {
           if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
@@ -83,46 +83,46 @@ namespace triagens {
           }
         }
 
-        size_t headerLength = ptr - readBuffer->c_str();
+        size_t headerLength = ptr - _readBuffer->c_str();
 
-        if (headerLength > maximalHeaderSize) {
-          LOGGER_WARNING << "maximal header size is " << maximalHeaderSize << ", request header size is "
+        if (headerLength > _maximalHeaderSize) {
+          LOGGER_WARNING << "maximal header size is " << _maximalHeaderSize << ", request header size is "
                          << headerLength;
           return false;
         }
 
         if (ptr < end) {
-          readPosition = ptr - readBuffer->c_str() + 4;
+          _readPosition = ptr - _readBuffer->c_str() + 4;
 
           LOGGER_TRACE << "HTTP READ FOR " << static_cast<Task*>(this) << ":\n"
-                       << string(readBuffer->c_str(), readPosition);
+                       << string(_readBuffer->c_str(), _readPosition);
 
           // check that we know, how to serve this request
-          request = server->createRequest(readBuffer->c_str(), readPosition);
+          _request = _server->createRequest(_readBuffer->c_str(), _readPosition);
 
-          if (request == 0) {
+          if (_request == 0) {
             LOGGER_ERROR << "cannot generate request";
             return false;
           }
 
           // update the connection information, i. e. client and server addresses and ports
-          request->setConnectionInfo(connectionInfo);
+          _request->setConnectionInfo(_connectionInfo);
 
-          LOGGER_TRACE << "server port = " << connectionInfo.serverPort << ", client port = " << connectionInfo.clientPort;
+          LOGGER_TRACE << "server port = " << _connectionInfo.serverPort << ", client port = " << _connectionInfo.clientPort;
 
           // set body start to current position
-          bodyPosition = readPosition;
+          _bodyPosition = _readPosition;
 
           // and different methods
-          switch (request->requestType()) {
+          switch (_request->requestType()) {
             case HttpRequest::HTTP_REQUEST_GET:
             case HttpRequest::HTTP_REQUEST_DELETE:
             case HttpRequest::HTTP_REQUEST_HEAD:
-              bodyLength = request->contentLength();
+              _bodyLength = _request->contentLength();
 
-              if (bodyLength > 0) {
+              if (_bodyLength > 0) {
                 LOGGER_WARNING << "received http GET/DELETE/HEAD request with body length, this should not happen";
-                readRequestBody = true;
+                _readRequestBody = true;
               }
               else {
                 handleRequest = true;
@@ -131,10 +131,10 @@ namespace triagens {
 
             case HttpRequest::HTTP_REQUEST_POST:
             case HttpRequest::HTTP_REQUEST_PUT:
-              bodyLength = request->contentLength();
+              _bodyLength = _request->contentLength();
 
-              if (bodyLength > 0) {
-                readRequestBody = true;
+              if (_bodyLength > 0) {
+                _readRequestBody = true;
               }
               else {
                 handleRequest = true;
@@ -142,14 +142,14 @@ namespace triagens {
               break;
 
             default:
-              LOGGER_WARNING << "got corrupted HTTP request '" << string(readBuffer->c_str(), (readPosition < 6 ? readPosition : 6)) << "'";
+              LOGGER_WARNING << "got corrupted HTTP request '" << string(_readBuffer->c_str(), (_readPosition < 6 ? _readPosition : 6)) << "'";
               return false;
           }
 
           // check for a 100-continue
-          if (readRequestBody) {
+          if (_readRequestBody) {
             bool found;
-            string const& expect = request->header("expect", found);
+            string const& expect = _request->header("expect", found);
 
             if (found && StringUtils::trim(expect) == "100-continue") {
               LOGGER_TRACE << "received a 100-continue request";
@@ -157,77 +157,78 @@ namespace triagens {
               StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
               buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
 
-              writeBuffers.push_back(buffer);
+              _writeBuffers.push_back(buffer);
               fillWriteBuffer();
             }
           }
         }
         else {
-          if (readBuffer->c_str() < end) {
-            readPosition = end - readBuffer->c_str();
+          if (_readBuffer->c_str() < end) {
+            _readPosition = end - _readBuffer->c_str();
           }
         }
       }
 
       // readRequestBody might have changed, so cannot use else
-      if (readRequestBody) {
-        if (bodyLength > maximalBodySize) {
-          LOGGER_WARNING << "maximal body size is " << maximalBodySize << ", request body size is " << bodyLength;
+      if (_readRequestBody) {
+        if (_bodyLength > _maximalBodySize) {
+          LOGGER_WARNING << "maximal body size is " << _maximalBodySize << ", request body size is " << _bodyLength;
           return false;
         }
 
-        if (readBuffer->length() - bodyPosition < bodyLength) {
+        if (_readBuffer->length() - _bodyPosition < _bodyLength) {
           return true;
         }
 
         // read "bodyLength" from read buffer and add this body to "httpRequest"
-        request->setBody(readBuffer->c_str() + bodyPosition, bodyLength);
+        _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
-        LOGGER_TRACE << string(readBuffer->c_str() + bodyPosition, bodyLength);
+        LOGGER_TRACE << string(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
         // remove body from read buffer and reset read position
-        readRequestBody = false;
+        _readRequestBody = false;
         handleRequest = true;
       }
 
       // we have to delete request in here or pass it to a handler, which will delete it
       if (handleRequest) {
-        readBuffer->erase_front(bodyPosition + bodyLength);
+        _readBuffer->erase_front(_bodyPosition + _bodyLength);
 
-        requestPending = true;
+        _requestPending = true;
 
-        string connectionType = StringUtils::tolower(StringUtils::trim(request->header("connection")));
+        string connectionType = StringUtils::tolower(StringUtils::trim(_request->header("connection")));
 
         if (connectionType == "close") {
           LOGGER_DEBUG << "connection close requested by client";
           closeRequested = true;
         }
-        else if (server->getCloseWithoutKeepAlive() && connectionType != "keep-alive") {
+        else if (_server->getCloseWithoutKeepAlive() && connectionType != "keep-alive") {
           LOGGER_DEBUG << "no keep-alive, connection close requested by client";
           closeRequested = true;
         }
 
-        readPosition = 0;
-        bodyPosition = 0;
-        bodyLength = 0;
+        _readPosition = 0;
+        _bodyPosition = 0;
+        _bodyLength = 0;
 
-        _handler = server->createHandler(request);
+        _handler = _server->createHandler(_request);
         bool ok = false;
 
         if (_handler == 0) {
           LOGGER_TRACE << "no handler is known, giving up";
-          delete request;
-          request = 0;
+          delete _request;
+          _request = 0;
 
           HttpResponse response(HttpResponse::NOT_FOUND);
           handleResponse(&response);
         }
         else {
+
           // let the handler know the comm task
           _handler->setTask(this);
 
-          request = 0;
-          ok = server->handleRequest(this, _handler);
+          _request = 0;
+          ok = _server->handleRequest(this, _handler);
 
           if (! ok) {
             HttpResponse response(HttpResponse::SERVER_ERROR);
@@ -250,7 +251,7 @@ namespace triagens {
       response->writeHeader(buffer);
       buffer->appendText(response->body());
 
-      writeBuffers.push_back(buffer);
+      _writeBuffers.push_back(buffer);
 
       LOGGER_TRACE << "HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str();
 

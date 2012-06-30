@@ -217,6 +217,8 @@ void Scheduler::shutdown () {
   for (set<Task*>::iterator i = taskRegistered.begin();
        i != taskRegistered.end();
        ++i) {
+    LOGGER_WARNING << "forcefully removing task '" << (*i)->getName() << "'";
+
     deleteTask(*i);
   }
 

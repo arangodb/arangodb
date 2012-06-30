@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,30 +23,54 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_GENERAL_SERVER_SPECIFIC_COMM_TASK_H
-#define TRIAGENS_FYN_GENERAL_SERVER_SPECIFIC_COMM_TASK_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_SPECIFIC_COMM_TASK_H
+#define TRIAGENS_GENERAL_SERVER_SPECIFIC_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
-
-#include <Basics/Exceptions.h>
 
 namespace triagens {
   namespace rest {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief task for specific communication
-    ////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class SpecificCommTask
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task for specific communication
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename T>
     class SpecificCommTask : public T {
+      private:
+        SpecificCommTask (SpecificCommTask const&);
+        SpecificCommTask& operator= (SpecificCommTask const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new task with a given socket
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new task with a given socket
+////////////////////////////////////////////////////////////////////////////////
 
         SpecificCommTask (S* server, socket_t fd, ConnectionInfo const& info)
           : Task("SpecificCommTask"),
@@ -56,4 +80,17 @@ namespace triagens {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// End:

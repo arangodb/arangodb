@@ -65,27 +65,27 @@ namespace triagens {
     HttpHandler::status_e PathHandler::execute () {
       static string const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
-      vector<string> names = request->suffix();
+      vector<string> names = _request->suffix();
       string name = path;
       string last = "";
 
       if (names.empty() && ! defaultFile.empty()) {
-        string url = request->requestPath();
+        string url = _request->requestPath();
 
         if (! url.empty() && url[url.size() - 1] != '/') {
           url += "/" + defaultFile;
         }
 
-        response = new HttpResponse(HttpResponse::MOVED_PERMANENTLY);
+        _response = new HttpResponse(HttpResponse::MOVED_PERMANENTLY);
 
-        response->setHeader("location", url);
-        response->setContentType("text/html");
+        _response->setHeader("location", url);
+        _response->setContentType("text/html");
 
-        response->body().appendText("<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"");
-        response->body().appendText(url);
-        response->body().appendText(">");
-        response->body().appendText(url);
-        response->body().appendText("</a>.</p></body></html>");
+        _response->body().appendText("<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"");
+        _response->body().appendText(url);
+        _response->body().appendText(">");
+        _response->body().appendText(url);
+        _response->body().appendText("</a>.</p></body></html>");
 
         return HANDLER_DONE;
       }
@@ -96,16 +96,16 @@ namespace triagens {
         if (next == ".") {
           LOGGER_WARNING << "file '" << name << "' contains '.'";
 
-          response = new HttpResponse(HttpResponse::FORBIDDEN);
-          response->body().appendText("path contains '.'");
+          _response = new HttpResponse(HttpResponse::FORBIDDEN);
+          _response->body().appendText("path contains '.'");
           return HANDLER_DONE;
         }
 
         if (next == "..") {
           LOGGER_WARNING << "file '" << name << "' contains '..'";
 
-          response = new HttpResponse(HttpResponse::FORBIDDEN);
-          response->body().appendText("path contains '..'");
+          _response = new HttpResponse(HttpResponse::FORBIDDEN);
+          _response->body().appendText("path contains '..'");
           return HANDLER_DONE;
         }
 
@@ -114,8 +114,8 @@ namespace triagens {
         if (sc != string::npos) {
           LOGGER_WARNING << "file '" << name << "' contains illegal character";
 
-          response = new HttpResponse(HttpResponse::FORBIDDEN);
-          response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
+          _response = new HttpResponse(HttpResponse::FORBIDDEN);
+          _response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
           return HANDLER_DONE;
         }
 
@@ -123,8 +123,8 @@ namespace triagens {
           if (! FileUtils::isDirectory(path)) {
             LOGGER_WARNING << "file '" << name << "' not found";
 
-            response = new HttpResponse(HttpResponse::NOT_FOUND);
-            response->body().appendText("file not found");
+            _response = new HttpResponse(HttpResponse::NOT_FOUND);
+            _response->body().appendText("file not found");
             return HANDLER_DONE;
           }
         }
@@ -135,8 +135,8 @@ namespace triagens {
         if (! allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
           LOGGER_WARNING << "file '" << name << "' contains symbolic link";
 
-          response = new HttpResponse(HttpResponse::FORBIDDEN);
-          response->body().appendText("symbolic links are not allowed");
+          _response = new HttpResponse(HttpResponse::FORBIDDEN);
+          _response->body().appendText("symbolic links are not allowed");
           return HANDLER_DONE;
         }
       }
@@ -144,23 +144,23 @@ namespace triagens {
       if (! FileUtils::isRegularFile(name)) {
         LOGGER_WARNING << "file '" << name << "' not found";
 
-        response = new HttpResponse(HttpResponse::NOT_FOUND);
-        response->body().appendText("file not found");
+        _response = new HttpResponse(HttpResponse::NOT_FOUND);
+        _response->body().appendText("file not found");
         return HANDLER_DONE;
       }
 
-      response = new HttpResponse(HttpResponse::OK);
+      _response = new HttpResponse(HttpResponse::OK);
 
       try {
-        FileUtils::slurp(name, response->body());
+        FileUtils::slurp(name, _response->body());
       }
       catch (...) {
-        delete response;
+        delete _response;
 
         LOGGER_WARNING << "file '" << name << "' not readable";
 
-        response = new HttpResponse(HttpResponse::NOT_FOUND);
-        response->body().appendText("file not readable");
+        _response = new HttpResponse(HttpResponse::NOT_FOUND);
+        _response->body().appendText("file not readable");
         return HANDLER_DONE;
       }
 
@@ -170,39 +170,39 @@ namespace triagens {
         string suffix = last.substr(d);
 
         if (suffix == ".jpg") {
-          response->setContentType("image/jpg");
+          _response->setContentType("image/jpg");
         }
         else if (suffix == ".js") {
-          response->setContentType("text/javascript");
+          _response->setContentType("text/javascript");
         }
         else if (suffix == ".gif") {
-          response->setContentType("image/gif");
+          _response->setContentType("image/gif");
         }
         else if (suffix == ".png") {
-          response->setContentType("image/png");
+          _response->setContentType("image/png");
         }
         else if (suffix == ".css") {
-          response->setContentType("text/css");
+          _response->setContentType("text/css");
         }
         else if (suffix == ".html") {
-          response->setContentType("text/html");
+          _response->setContentType("text/html");
         }
         else if (suffix == ".ico") {
-          response->setContentType("image/x-icon");
+          _response->setContentType("image/x-icon");
         }
         else if (suffix == ".pdf") {
-          response->setContentType("application/pdf");
+          _response->setContentType("application/pdf");
         }
         else if (suffix == ".txt") {
-          response->setContentType("text/plain");
+          _response->setContentType("text/plain");
         }
         else {
           LOGGER_WARNING << "unknown suffix = " << suffix;
-          response->setContentType(contentType);
+          _response->setContentType(contentType);
         }
       }
       else {
-        response->setContentType(contentType);
+        _response->setContentType(contentType);
       }
 
       return HANDLER_DONE;
@@ -211,7 +211,7 @@ namespace triagens {
 
 
     void PathHandler::handleError (TriagensError const&) {
-      response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      _response = new HttpResponse(HttpResponse::SERVER_ERROR);
     }
   }
 }

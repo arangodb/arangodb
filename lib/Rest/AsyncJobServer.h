@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for handlers
+/// @brief async server for jobs
 ///
 /// @file
 ///
@@ -22,21 +22,25 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Martin Schoenert
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandler.h"
+#ifndef TRIAGENS_REST_ASYNC_JOB_SERVER_H
+#define TRIAGENS_REST_ASYNC_JOB_SERVER_H 1
 
-#include "Logger/Logger.h"
-#include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "GeneralServer/GeneralServerJob.h"
-
-using namespace triagens::rest;
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace rest {
+    class Job;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class AsyncJobServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,27 +49,10 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
+/// @brief async server for jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::HttpHandler (HttpRequest* request)
-  : _request(request),
-    _response(0) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandler::~HttpHandler () {
-  if (_request != 0) {
-    delete _request;
-  }
-
-  if (_response != 0) {
-    delete _response;
-  }
-}
+    class AsyncJobServer {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -80,45 +67,22 @@ HttpHandler::~HttpHandler () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
-////////////////////////////////////////////////////////////////////////////////
-
-HttpResponse* HttpHandler::getResponse () {
-  return _response;
-}
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief notify the server
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-Job* HttpHandler::createJob (Dispatcher* dispatcher, AsyncJobServer* server) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-
-  if (httpServer == 0) {
-    LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
-    return 0;
+        virtual void jobDone (Job*) = 0;
+    };
   }
-
-  return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, dispatcher, this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

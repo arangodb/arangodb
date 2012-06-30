@@ -68,6 +68,7 @@ RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::~RestBatchHandler () {
+#if 0
   // delete protobuf message
   delete _outputMessages;
  
@@ -80,6 +81,7 @@ RestBatchHandler::~RestBatchHandler () {
       _handlers[i] = 0;
     }
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +120,7 @@ string const& RestBatchHandler::queue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestBatchHandler::execute () {
+#if 0
   // extract the request type
   HttpRequest::HttpRequestType type = request->requestType();
   string contentType = StringUtils::tolower(StringUtils::trim(request->header("content-type")));
@@ -223,6 +226,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
 
   // we have async jobs
   return Handler::HANDLER_DETACH;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +234,7 @@ HttpHandler::status_e RestBatchHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::handleAsync () {
+#if 0
   if (_reallyDone) {
     assembleResponse();
     toServerJob(_job)->setDone();
@@ -237,6 +242,7 @@ bool RestBatchHandler::handleAsync () {
   }
 
   return true;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,14 +298,14 @@ void RestBatchHandler::addResponse (HttpHandler* handler) {
 void RestBatchHandler::assembleResponse () {
   assert(_missingResponses == 0);
 
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType(getContentType());
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType(getContentType());
 
   string data;
   if (!_outputMessages->SerializeToString(&data)) {
     // TODO
   }
-  response->body().appendText(data);
+  _response->body().appendText(data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

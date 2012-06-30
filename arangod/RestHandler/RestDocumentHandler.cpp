@@ -95,7 +95,7 @@ string const& RestDocumentHandler::queue () {
 HttpHandler::status_e RestDocumentHandler::execute () {
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = request->requestType();
+  HttpRequest::HttpRequestType type = _request->requestType();
 
   // prepare logging
   static LoggerData::Task const logCreate(DOCUMENT_PATH + " [create]");
@@ -222,7 +222,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -233,7 +233,7 @@ bool RestDocumentHandler::createDocument () {
 
   // extract the cid
   bool found;
-  char const* collection = request->value("collection", found);
+  char const* collection = _request->value("collection", found);
 
   if (! found || *collection == '\0') {
     generateError(HttpResponse::BAD,
@@ -243,11 +243,11 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
@@ -328,7 +328,7 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  size_t len = request->suffix().size();
+  size_t len = _request->suffix().size();
 
   switch (len) {
     case 0:
@@ -393,7 +393,7 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   /// check for an etag
   TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
@@ -495,7 +495,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // extract the cid
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   // find and load collection given by name oder identifier
   int res = useCollection(collection);
@@ -570,10 +570,10 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+  _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
   TRI_AnnihilateStringBuffer(&buffer);
 
@@ -597,7 +597,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
@@ -674,7 +674,7 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
@@ -819,7 +819,7 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
