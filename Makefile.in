@@ -5312,7 +5312,7 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: build.h errorfiles
+built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
