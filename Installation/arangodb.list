@@ -25,7 +25,7 @@ $release=${arangodb_release}
 
 d 0755 ${susr} ${sgrp} /etc/arangodb -
 d 0755 ${susr} ${sgrp} /etc/arangodb/${vers_dir} -
-f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf
+f 0644 ${susr} ${sgrp} /etc/arangodb/${vers_dir}/arango.conf.template ${project_dir}/Installation/arango.conf.in
 
 f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/bin/arangod
 l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}

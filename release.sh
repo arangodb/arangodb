@@ -14,6 +14,13 @@ if [ "$?" == 0 ];  then
   exit 1
 fi
 
+fgrep -q "v$VERSION" CHANGELOG
+
+if [ "$?" != 0 ];  then
+  echo "$0: version $VERSION not defined in CHANGELOG"
+  exit 1
+fi
+
 echo "$VERSION" > VERSION
 
 cat configure.ac \
