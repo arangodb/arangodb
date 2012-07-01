@@ -112,22 +112,20 @@ AddressPort ApplicationHttpServer::addPort (string const& name) {
 /// @brief builds the http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-  return buildHttpServer(0, httpHandlerFactory, _httpAddressPorts);
+HttpServer* ApplicationHttpServer::buildServer () {
+  return buildHttpServer(0, _httpAddressPorts);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerFactory,
-                                                vector<AddressPort> const& ports) {
+HttpServer* ApplicationHttpServer::buildServer (vector<AddressPort> const& ports) {
   if (ports.empty()) {
-    delete httpHandlerFactory;
     return 0;
   }
   else {
-    return buildHttpServer(0, httpHandlerFactory, ports);
+    return buildHttpServer(0, ports);
   }
 }
 
@@ -136,14 +134,12 @@ HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerF
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildServer (HttpServer* httpServer,
-                                                HttpHandlerFactory* httpHandlerFactory,
                                                 vector<AddressPort> const& ports) {
   if (ports.empty()) {
-    delete httpHandlerFactory;
     return 0;
   }
   else {
-    return buildHttpServer(httpServer, httpHandlerFactory, ports);
+    return buildHttpServer(httpServer, ports);
   }
 }
 
@@ -219,7 +215,6 @@ void ApplicationHttpServer::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
-                                                    HttpHandlerFactory* httpHandlerFactory,
                                                     vector<AddressPort> const& ports) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
@@ -240,8 +235,7 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
     httpServer = new HttpServer(scheduler, dispatcher);
   }
 
-  httpServer->setHandlerFactory(httpHandlerFactory);
-
+  // update close-without-keep-alive flag
   if (_requireKeepAlive) {
     httpServer->setCloseWithoutKeepAlive(true);
   }

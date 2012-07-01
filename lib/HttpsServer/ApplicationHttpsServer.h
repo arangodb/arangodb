@@ -123,7 +123,7 @@ namespace triagens {
 /// Note that the server claims ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer* buildServer (HttpHandlerFactory*);
+        HttpsServer* buildServer ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the https server
@@ -131,7 +131,7 @@ namespace triagens {
 /// Note that the server claims ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&);
+        HttpsServer* buildServer (vector<AddressPort> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -177,7 +177,7 @@ namespace triagens {
 /// @brief build an http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer* buildHttpsServer (HttpHandlerFactory*, vector<AddressPort> const&);
+        HttpsServer* buildHttpsServer (vector<AddressPort> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

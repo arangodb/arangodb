@@ -250,6 +250,7 @@ bool RestBatchHandler::handleAsync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
+#if 0
   if (type != Job::JOB_CLEANUP) {
     return;
   }
@@ -266,6 +267,7 @@ void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
       dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(_task);
     atask->signal();
   }
+#endif
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,6 +275,7 @@ void RestBatchHandler::notify (Job* job, const Job::notification_e type) {
 ////////////////////////////////////////////////////////////////////////////////
   
 void RestBatchHandler::addResponse (HttpHandler* handler) {
+#if 0
   for (size_t i = 0; i < _handlers.size(); ++i) {
     if (_handlers[i] == handler) {
       // avoid concurrent modifications to the structure
@@ -289,6 +292,7 @@ void RestBatchHandler::addResponse (HttpHandler* handler) {
   
   // handler not found
   LOGGER_WARNING << "handler not found. this should not happen."; 
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
