@@ -50,6 +50,20 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SocketTask.h"
 
+#define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
+
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+#define GENERAL_SERVER_INIT TRI_InitSpin
+#define GENERAL_SERVER_DESTROY TRI_DestroySpin
+#define GENERAL_SERVER_LOCK TRI_LockSpin
+#define GENERAL_SERVER_UNLOCK TRI_UnlockSpin
+#else
+#define GENERAL_SERVER_INIT TRI_InitMutex
+#define GENERAL_SERVER_DESTROY TRI_DestroyMutex
+#define GENERAL_SERVER_LOCK TRI_LockMutex
+#define GENERAL_SERVER_UNLOCK TRI_UnlockMutex
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class GeneralServer
 // -----------------------------------------------------------------------------
@@ -96,11 +110,11 @@ namespace triagens {
           : _scheduler(scheduler),
             _ports(),
             _listenTasks(),
-            _commTasksLock(),
             _commTasks(),
-            _mappingLock(),
             _handler2task(),
             _task2handler() {
+          GENERAL_SERVER_INIT(&_commTasksLock);
+          GENERAL_SERVER_INIT(&_mappingLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +127,9 @@ namespace triagens {
           }
 
           stopListening();
+
+          GENERAL_SERVER_DESTROY(&_mappingLock);
+          GENERAL_SERVER_DESTROY(&_commTasksLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,11 +231,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void shutdownHandlers () {
-          MUTEX_LOCKER(_commTasksLock);
+          GENERAL_SERVER_LOCK(&_commTasksLock);
 
           for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
             (*i)->beginShutdown();
           }
+
+          GENERAL_SERVER_UNLOCK(&_commTasksLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,10 +249,9 @@ namespace triagens {
 
           _scheduler->registerTask(task);
 
-          {
-            MUTEX_LOCKER(_commTasksLock);
-            _commTasks.insert(task);
-          }
+          GENERAL_SERVER_LOCK(&_commTasksLock);
+          _commTasks.insert(task);
+          GENERAL_SERVER_UNLOCK(&_commTasksLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,10 +261,9 @@ namespace triagens {
         void handleCommunicationClosed (Task* task) {
           shutdownHandlerByTask(task);
 
-          {
-            MUTEX_LOCKER(_commTasksLock);
-            _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
-          }
+          GENERAL_SERVER_LOCK(&_commTasksLock);
+          _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
+          GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
           _scheduler->destroyTask(task);
         }
@@ -258,10 +275,9 @@ namespace triagens {
         void handleCommunicationFailure (Task* task) {
           shutdownHandlerByTask(task);
 
-          {
-            MUTEX_LOCKER(_commTasksLock);
-            _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
-          }
+          GENERAL_SERVER_LOCK(&_commTasksLock);
+          _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
+          GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
           _scheduler->destroyTask(task);
         }
@@ -439,10 +455,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void registerHandler (typename HF::GeneralHandler* handler, Task* task) {
-          MUTEX_LOCKER(_mappingLock);
+          GENERAL_SERVER_LOCK(&_mappingLock);
 
           _task2handler[task] = handler;
           _handler2task[handler] = task;
+
+          GENERAL_SERVER_UNLOCK(&_mappingLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +468,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void shutdownHandlerByTask (Task* task) {
-          MUTEX_LOCKER(_mappingLock);
+          GENERAL_SERVER_LOCK(&_mappingLock);
 
           typename std::map< Task*, typename HF::GeneralHandler* >::iterator i = _task2handler.find(task);
 
@@ -465,6 +483,8 @@ namespace triagens {
 
             delete handler;
           }
+
+          GENERAL_SERVER_UNLOCK(&_mappingLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,7 +524,11 @@ namespace triagens {
 /// @brief mutex for comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Mutex _commTasksLock;
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+        TRI_spin_t _commTasksLock;
+#else
+        TRI_mutex_t _commTasksLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active comm tasks
@@ -516,7 +540,11 @@ namespace triagens {
 /// @brief mutex for mapping structures
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Mutex _mappingLock;
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+        TRI_spin_t _mappingLock;
+#else
+        TRI_mutex_t _mappingLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map handler to task

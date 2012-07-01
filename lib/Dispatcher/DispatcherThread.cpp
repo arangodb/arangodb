@@ -35,10 +35,6 @@
 #include "Dispatcher/Job.h"
 #include "Logger/Logger.h"
 
-#ifdef TRI_ENABLE_ZEROMQ
-#include "ZeroMQ/ApplicationZeroMQ.h"
-#endif
-
 using namespace triagens::basics;
 using namespace triagens::rest;
 
