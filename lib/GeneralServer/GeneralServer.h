@@ -44,6 +44,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/SpecificCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/Handler.h"
@@ -88,6 +89,7 @@ namespace triagens {
         GeneralServer const& operator= (GeneralServer const&);
 
         typedef typename HF::GeneralHandler GeneralHandler;
+        typedef GeneralServerJob<S, typename HF::GeneralHandler> ServerJob;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -114,8 +116,8 @@ namespace triagens {
             _ports(),
             _listenTasks(),
             _commTasks(),
-            _handlers(512),
-            _task2handler(512) {
+            _handlers(1024),
+            _task2handler(1024) {
           GENERAL_SERVER_INIT(&_commTasksLock);
           GENERAL_SERVER_INIT(&_mappingLock);
         }
@@ -337,7 +339,7 @@ namespace triagens {
         struct handler_task_job_t {
           GeneralHandler* _handler;
           Task* _task;
-          Job* _job;
+          ServerJob* _job;
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,37 +401,6 @@ namespace triagens {
 
             static uint32_t hashElement (handler_task_job_t const& element) {
               return (uint32_t) (intptr_t) element._task;
-            }
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Job lookup
-////////////////////////////////////////////////////////////////////////////////
-
-        struct handler_task_job_job_desc {
-          public:
-            static void clearElement (handler_task_job_t& element) {
-              element._job = 0;
-            }
-
-            static bool isEmptyElement (handler_task_job_t const& element) {
-              return element._job == 0;
-            }
-
-            static bool isEqualKeyElement (Job* job, handler_task_job_t const& element) {
-              return job == element._job;
-            }
-
-            static bool isEqualElementElement (handler_task_job_t const& left, handler_task_job_t const& right) {
-              return left._job == right._job;
-            }
-
-            static uint32_t hashKey (Job* key) {
-              return (uint32_t) (intptr_t) key;
-            }
-
-            static uint32_t hashElement (handler_task_job_t const& element) {
-              return (uint32_t) (intptr_t) element._job;
             }
         };
 
