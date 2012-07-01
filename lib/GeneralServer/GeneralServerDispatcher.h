@@ -64,6 +64,10 @@ namespace triagens {
         GeneralServerDispatcher (GeneralServerDispatcher const&);
         GeneralServerDispatcher& operator= (GeneralServerDispatcher const&);
 
+        typedef typename HF::GeneralHandler GeneralHandler;
+        typedef typename GeneralServer<S, HF, CT>::handler_task_job_t handler_task_job_t;
+        typedef typename GeneralServer<S, HF, CT>::handler_task_job_job_desc handler_task_job_job_desc;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,8 +91,7 @@ namespace triagens {
         GeneralServerDispatcher (Scheduler* scheduler)
           : GeneralServer<S, HF, CT>(scheduler),
             _dispatcher(0),
-            _handler2job(),
-            _job2handler() {
+            _job2handler(128) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +99,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher)
-          : GeneralServer<S, HF, CT>(scheduler), _dispatcher(dispatcher) {
+          : GeneralServer<S, HF, CT>(scheduler),
+            _dispatcher(dispatcher),
+            _job2handler(128) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,13 +128,17 @@ namespace triagens {
 
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          for (typename std::map< Job*, typename HF::GeneralHandler* >::iterator i = _job2handler.begin();
-               i != _job2handler.end();
-               ++i) {
-            Job* job = i->first;
-            typename HF::GeneralHandler* handler = i->second;
+          size_t size;
+          handler_task_job_t const* table = _job2handler.tableAndSize(size);
 
-            handler->abandonJob(_dispatcher, job);
+          for (size_t i = 0;  i < size;  ++i) {
+            Job* job = table[i]._job;
+
+            if (job != 0) {
+              GeneralHandler* handler = table[i]._handler;
+              
+              handler->abandonJob(_dispatcher, job);
+            }
           }
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
@@ -140,23 +149,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleAsync (Task* task) {
-          typename HF::GeneralHandler* handler = 0;
-
           GENERAL_SERVER_LOCK(&this->_mappingLock);
           
-          typename std::map< Task*, typename HF::GeneralHandler* >::iterator i = this->_task2handler.find(task);
+          handler_task_job_t element = this->_task2handler.removeKey(task);
 
-          if (i == this->_task2handler.end()) {
+          if (element._task != task) {
             LOGGER_WARNING << "cannot find a task for the handler, giving up";
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
           }
 
-          handler = i->second;
+          GeneralHandler* handler = element._handler;
 
-          this->_task2handler.erase(i);
-          this->_handler2task.erase(handler);
+          this->_handlers.removeKey(handler);
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
@@ -207,33 +213,36 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void jobDone (Job* job) {
-          GeneralAsyncCommTask<S, HF, CT>* task = 0;
-
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          // extract the handler
-          typename std::map< Job*, typename HF::GeneralHandler* >::iterator i
-            = _job2handler.find(job);
-
-          if (i == _job2handler.end()) {
-            LOGGER_WARNING << "jobDone called, but no handler is known";
+          // remove the job from the map
+          handler_task_job_t element = _job2handler.removeKey(job);
+          
+          if (element._job != job) {
+            LOGGER_WARNING << "jobDone called, but job is unknown";
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
           }
 
-          typename HF::GeneralHandler* handler = i->second;
+          // locate the handler
+          GeneralHandler* handler = element._handler;
+          handler_task_job_t const& element2 = this->_handlers.findKey(handler);
 
-          // clear job map
-          _job2handler.erase(i);
-          _handler2job.erase(handler);
+          if (element2._handler != handler) {
+            LOGGER_WARNING << "jobDone called, but handler is unknown";
 
-          // look up the task
-          typename std::map< typename HF::GeneralHandler*, Task* >::iterator j
-            = this->_handler2task.find(handler);
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+            return;
+          }
 
-          if (j == this->_handler2task.end()) {
+          // remove the job from the mapping
+          const_cast<handler_task_job_t&>(element2)._job = 0;
+
+          // if there is no task, assume the client has died
+          if (element2._task == 0) {
             LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
+            this->_handlers.removeKey(handler);
 
             delete handler;
 
@@ -241,12 +250,13 @@ namespace triagens {
             return;
           }
 
-          task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(j->second);
+          // signal the task, to continue its work
+          GeneralAsyncCommTask<S, HF, CT>* task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(element2._task);
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
           if (task == 0) {
-            LOGGER_WARNING << "task for handler is not an async task, giving up";
+            LOGGER_WARNING << "task for handler is no GeneralAsyncCommTask, giving up";
             return;
           }
 
@@ -283,7 +293,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequest (CT * task, typename HF::GeneralHandler* handler) {
+        bool handleRequest (CT * task, GeneralHandler* handler) {
           registerHandler(handler, task);
 
           // execute handler and (possibly) requeue
@@ -343,29 +353,47 @@ namespace triagens {
         void shutdownHandlerByTask (Task* task) { 
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          typename std::map< Task*, typename HF::GeneralHandler* >::iterator i
-            = this->_task2handler.find(task);
+          // remove the task from the map
+          handler_task_job_t element = this->_task2handler.removeKey(task);
 
-          if (i == this->_task2handler.end()) {
+          if (element._task != task) {
             LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
+
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+            return;
           }
+
+          GeneralHandler* handler = element._handler;
+
+          // check if the handler contains a job or not
+          handler_task_job_t const& element2 = this->_handlers.findKey(handler);
+
+          if (element2._handler != handler) {
+            LOGGER_DEBUG << "shutdownHandler called, but handler of task is unknown";
+
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+            return;
+          }
+
+          // if we do not know a job, delete handler
+          Job* job = element2._job;
+
+          if (job == 0) {
+            this->_handlers.removeKey(handler);
+
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+
+            delete handler;
+            return;
+          }
+
+          // initiate shutdown if a job is known
           else {
-            typename HF::GeneralHandler* handler = i->second;
+            job->beginShutdown();
 
-            this->_task2handler.erase(i);
-            this->_handler2task.erase(handler);
-
-            typename std::map< typename HF::GeneralHandler*, Job* >::iterator j = _handler2job.find(handler);
-
-            if (j == _handler2job.end()) {
-              delete handler;
-            }
-            else {
-              j->second->beginShutdown();
-            }
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+            return;
           }
-
-          GENERAL_SERVER_UNLOCK(&this->_mappingLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,11 +415,28 @@ namespace triagens {
 /// @brief registers a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerJob (typename HF::GeneralHandler* handler, Job* job) {
+        void registerJob (GeneralHandler* handler, Job* job) {
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          _job2handler[job] = handler;
-          _handler2job[handler] = job;
+          // add job the the job to handler mapping
+          handler_task_job_t element;
+          element._handler = handler;
+          element._task = 0;
+          element._job = job;
+
+          _job2handler.addElement(element);
+
+          // update the handler information
+          handler_task_job_t const& element2 = this->_handlers.findKey(handler);
+
+          if (element2._handler != handler) {
+            LOGGER_DEBUG << "registerJob called for an unknown handler";
+
+            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+            return;
+          }
+
+          const_cast<handler_task_job_t&>(element2)._job = job;
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
@@ -420,16 +465,10 @@ namespace triagens {
         Dispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief map handler to job
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map< typename HF::GeneralHandler*, Job* > _handler2job;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief map task to handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map< Job*, typename HF::GeneralHandler* > _job2handler;
+        basics::AssociativeArray<Job*, handler_task_job_t, handler_task_job_job_desc> _job2handler;
     };
   }
 }
