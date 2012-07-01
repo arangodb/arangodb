@@ -91,7 +91,7 @@ namespace triagens {
         GeneralServerDispatcher (Scheduler* scheduler)
           : GeneralServer<S, HF, CT>(scheduler),
             _dispatcher(0),
-            _job2handler(128) {
+            _job2handler(512) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,7 @@ namespace triagens {
         GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher)
           : GeneralServer<S, HF, CT>(scheduler),
             _dispatcher(dispatcher),
-            _job2handler(128) {
+            _job2handler(512) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

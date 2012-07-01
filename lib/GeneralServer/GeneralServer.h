@@ -114,8 +114,8 @@ namespace triagens {
             _ports(),
             _listenTasks(),
             _commTasks(),
-            _handlers(128),
-            _task2handler(128) {
+            _handlers(512),
+            _task2handler(512) {
           GENERAL_SERVER_INIT(&_commTasksLock);
           GENERAL_SERVER_INIT(&_mappingLock);
         }
