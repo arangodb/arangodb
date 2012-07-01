@@ -66,7 +66,7 @@ namespace triagens {
 
         typedef typename HF::GeneralHandler GeneralHandler;
         typedef typename GeneralServer<S, HF, CT>::handler_task_job_t handler_task_job_t;
-        typedef typename GeneralServer<S, HF, CT>::handler_task_job_job_desc handler_task_job_job_desc;
+        typedef GeneralServerJob<S, typename HF::GeneralHandler> ServerJob;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -90,8 +90,7 @@ namespace triagens {
         explicit
         GeneralServerDispatcher (Scheduler* scheduler)
           : GeneralServer<S, HF, CT>(scheduler),
-            _dispatcher(0),
-            _job2handler(512) {
+            _dispatcher(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,8 +99,7 @@ namespace triagens {
 
         GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher)
           : GeneralServer<S, HF, CT>(scheduler),
-            _dispatcher(dispatcher),
-            _job2handler(512) {
+            _dispatcher(dispatcher) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,15 +127,13 @@ namespace triagens {
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
           size_t size;
-          handler_task_job_t const* table = _job2handler.tableAndSize(size);
+          handler_task_job_t const* table = this->_handlers.tableAndSize(size);
 
           for (size_t i = 0;  i < size;  ++i) {
-            Job* job = table[i]._job;
+            ServerJob* job = table[i]._job;
 
-            if (job != 0) {
-              GeneralHandler* handler = table[i]._handler;
-              
-              handler->abandonJob(_dispatcher, job);
+            if (table[i]._handler != 0 && job != 0) {
+              job->abandon();
             }
           }
 
@@ -212,24 +208,21 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void jobDone (Job* job) {
-          GENERAL_SERVER_LOCK(&this->_mappingLock);
+        void jobDone (Job* ajob) {
+          ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
-          // remove the job from the map
-          handler_task_job_t element = _job2handler.removeKey(job);
-          
-          if (element._job != job) {
-            LOGGER_WARNING << "jobDone called, but job is unknown";
-
-            GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+          if (job == 0) {
+            LOGGER_WARNING << "jobDone called, but Job is no ServerJob";
             return;
           }
 
-          // locate the handler
-          GeneralHandler* handler = element._handler;
-          handler_task_job_t const& element2 = this->_handlers.findKey(handler);
+          GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          if (element2._handler != handler) {
+          // locate the handler
+          GeneralHandler* handler = job->getHandler();
+          handler_task_job_t const& element = this->_handlers.findKey(handler);
+
+          if (element._handler != handler) {
             LOGGER_WARNING << "jobDone called, but handler is unknown";
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
@@ -237,10 +230,10 @@ namespace triagens {
           }
 
           // remove the job from the mapping
-          const_cast<handler_task_job_t&>(element2)._job = 0;
+          const_cast<handler_task_job_t&>(element)._job = 0;
 
           // if there is no task, assume the client has died
-          if (element2._task == 0) {
+          if (element._task == 0) {
             LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
             this->_handlers.removeKey(handler);
 
@@ -251,7 +244,7 @@ namespace triagens {
           }
 
           // signal the task, to continue its work
-          GeneralAsyncCommTask<S, HF, CT>* task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(element2._task);
+          GeneralAsyncCommTask<S, HF, CT>* task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(element._task);
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
@@ -320,7 +313,8 @@ namespace triagens {
                 return false;
               }
               else {
-                Job* job = handler->createJob(_dispatcher, this);
+                Job* ajob = handler->createJob(_dispatcher, this);
+                ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
                 if (job == 0) {
                   LOGGER_WARNING << "task is indirect, but handler failed to create a job - this cannot work!";
@@ -389,6 +383,7 @@ namespace triagens {
 
           // initiate shutdown if a job is known
           else {
+            const_cast<handler_task_job_t&>(element2)._task = 0;
             job->beginShutdown();
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
@@ -415,28 +410,20 @@ namespace triagens {
 /// @brief registers a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerJob (GeneralHandler* handler, Job* job) {
+        void registerJob (GeneralHandler* handler, ServerJob* job) {
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
-          // add job the the job to handler mapping
-          handler_task_job_t element;
-          element._handler = handler;
-          element._task = 0;
-          element._job = job;
-
-          _job2handler.addElement(element);
-
           // update the handler information
-          handler_task_job_t const& element2 = this->_handlers.findKey(handler);
+          handler_task_job_t const& element = this->_handlers.findKey(handler);
 
-          if (element2._handler != handler) {
+          if (element._handler != handler) {
             LOGGER_DEBUG << "registerJob called for an unknown handler";
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
           }
 
-          const_cast<handler_task_job_t&>(element2)._job = job;
+          const_cast<handler_task_job_t&>(element)._job = job;
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
@@ -463,12 +450,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Dispatcher* _dispatcher;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief map task to handler
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::AssociativeArray<Job*, handler_task_job_t, handler_task_job_job_desc> _job2handler;
     };
   }
 }
