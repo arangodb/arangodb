@@ -301,14 +301,7 @@ void Thread::runMe () {
     run();
   }
   catch (...) {
-    LOGGER_DEBUG << "caught exception on " << _name;
     _running = 0;
-
-    if (_finishedCondition != 0) {
-      CONDITION_LOCKER(locker, *_finishedCondition);
-      locker.broadcast();
-    }
-
     throw;
   }
 
