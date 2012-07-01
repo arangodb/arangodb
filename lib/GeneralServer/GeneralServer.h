@@ -38,6 +38,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "Basics/AssociativeArray.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -86,6 +87,8 @@ namespace triagens {
         GeneralServer (GeneralServer const&);
         GeneralServer const& operator= (GeneralServer const&);
 
+        typedef typename HF::GeneralHandler GeneralHandler;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,8 +114,8 @@ namespace triagens {
             _ports(),
             _listenTasks(),
             _commTasks(),
-            _handler2task(),
-            _task2handler() {
+            _handlers(128),
+            _task2handler(128) {
           GENERAL_SERVER_INIT(&_commTasksLock);
           GENERAL_SERVER_INIT(&_mappingLock);
         }
@@ -286,7 +289,7 @@ namespace triagens {
 /// @brief handles a request
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleRequest (CT * task, typename HF::GeneralHandler* handler) {
+        virtual bool handleRequest (CT * task, GeneralHandler* handler) {
           registerHandler(handler, task);
 
           // execute handle and requeue
@@ -325,6 +328,109 @@ namespace triagens {
           string _address;
           int _port;
           bool _reuseAddress;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Handler, Job, and Task tuple
+////////////////////////////////////////////////////////////////////////////////
+
+        struct handler_task_job_t {
+          GeneralHandler* _handler;
+          Task* _task;
+          Job* _job;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Handler lookup
+////////////////////////////////////////////////////////////////////////////////
+
+        struct handler_task_job_handler_desc {
+          public:
+            static void clearElement (handler_task_job_t& element) {
+              element._handler = 0;
+            }
+
+            static bool isEmptyElement (handler_task_job_t const& element) {
+              return element._handler == 0;
+            }
+
+            static bool isEqualKeyElement (GeneralHandler* handler, handler_task_job_t const& element) {
+              return handler == element._handler;
+            }
+
+            static bool isEqualElementElement (handler_task_job_t const& left, handler_task_job_t const& right) {
+              return left._handler == right._handler;
+            }
+
+            static uint32_t hashKey (GeneralHandler* key) {
+              return (uint32_t) (intptr_t) key;
+            }
+
+            static uint32_t hashElement (handler_task_job_t const& element) {
+              return (uint32_t) (intptr_t) element._handler;
+            }
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Task lookup
+////////////////////////////////////////////////////////////////////////////////
+
+        struct handler_task_job_task_desc {
+          public:
+            static void clearElement (handler_task_job_t& element) {
+              element._task = 0;
+            }
+
+            static bool isEmptyElement (handler_task_job_t const& element) {
+              return element._task == 0;
+            }
+
+            static bool isEqualKeyElement (Task* task, handler_task_job_t const& element) {
+              return task == element._task;
+            }
+
+            static bool isEqualElementElement (handler_task_job_t const& left, handler_task_job_t const& right) {
+              return left._task == right._task;
+            }
+
+            static uint32_t hashKey (Task* key) {
+              return (uint32_t) (intptr_t) key;
+            }
+
+            static uint32_t hashElement (handler_task_job_t const& element) {
+              return (uint32_t) (intptr_t) element._task;
+            }
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Job lookup
+////////////////////////////////////////////////////////////////////////////////
+
+        struct handler_task_job_job_desc {
+          public:
+            static void clearElement (handler_task_job_t& element) {
+              element._job = 0;
+            }
+
+            static bool isEmptyElement (handler_task_job_t const& element) {
+              return element._job == 0;
+            }
+
+            static bool isEqualKeyElement (Job* job, handler_task_job_t const& element) {
+              return job == element._job;
+            }
+
+            static bool isEqualElementElement (handler_task_job_t const& left, handler_task_job_t const& right) {
+              return left._job == right._job;
+            }
+
+            static uint32_t hashKey (Job* key) {
+              return (uint32_t) (intptr_t) key;
+            }
+
+            static uint32_t hashElement (handler_task_job_t const& element) {
+              return (uint32_t) (intptr_t) element._job;
+            }
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +503,7 @@ namespace triagens {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_e handleRequestDirectly (CT* task, typename HF::GeneralHandler * handler) {
+        Handler::status_e handleRequestDirectly (CT* task, GeneralHandler * handler) {
           Handler::status_e status = Handler::HANDLER_FAILED;
 
           try {
@@ -434,17 +540,17 @@ namespace triagens {
               task->handleResponse(response);
             }
             else {
-              LOGGER_ERROR << "cannot get any response in " << __FILE__ << "@" << __LINE__;
+              LOGGER_ERROR << "cannot get any response";
             }
           }
           catch (basics::TriagensError const& ex) {
-            LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__ << ": " << DIAGNOSTIC_INFORMATION(ex);
+            LOGGER_ERROR << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
           }
           catch (std::exception const& ex) {
-            LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__ << ": " << ex.what();
+            LOGGER_ERROR << "caught exception: " << ex.what();
           }
           catch (...) {
-            LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__;
+            LOGGER_ERROR << "caught exception";
           }
 
           return status;
@@ -454,11 +560,16 @@ namespace triagens {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerHandler (typename HF::GeneralHandler* handler, Task* task) {
+        void registerHandler (GeneralHandler* handler, Task* task) {
           GENERAL_SERVER_LOCK(&_mappingLock);
 
-          _task2handler[task] = handler;
-          _handler2task[handler] = task;
+          handler_task_job_t element;
+          element._handler = handler;
+          element._task = task;
+          element._job = 0;
+
+          _handlers.addElement(element);
+          _task2handler.addElement(element);
 
           GENERAL_SERVER_UNLOCK(&_mappingLock);
         }
@@ -470,21 +581,22 @@ namespace triagens {
         virtual void shutdownHandlerByTask (Task* task) {
           GENERAL_SERVER_LOCK(&_mappingLock);
 
-          typename std::map< Task*, typename HF::GeneralHandler* >::iterator i = _task2handler.find(task);
+          // remove the job from the map
+          handler_task_job_t element = _task2handler.removeKey(task);
 
-          if (i == _task2handler.end()) {
+          if (element._task != task) {
             LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
-          }
-          else {
-            typename HF::GeneralHandler* handler = i->second;
 
-            _task2handler.erase(i);
-            _handler2task.erase(handler);
-
-            delete handler;
+            GENERAL_SERVER_UNLOCK(&_mappingLock);
+            return;
           }
+
+          // remove and delete the handler
+          _handlers.removeKey(element._handler);
 
           GENERAL_SERVER_UNLOCK(&_mappingLock);
+
+          delete element._handler;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,13 +662,13 @@ namespace triagens {
 /// @brief map handler to task
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map< typename HF::GeneralHandler*, Task* > _handler2task;
+        basics::AssociativeArray<GeneralHandler*, handler_task_job_t, handler_task_job_handler_desc> _handlers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map task to handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map< Task*, typename HF::GeneralHandler* > _task2handler;
+        basics::AssociativeArray<Task*, handler_task_job_t, handler_task_job_task_desc> _task2handler;
     };
   }
 }
