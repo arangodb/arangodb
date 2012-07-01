@@ -27,6 +27,9 @@
 
 #include "Handler.h"
 
+using namespace triagens::rest;
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------

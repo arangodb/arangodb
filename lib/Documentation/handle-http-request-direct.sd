@@ -24,7 +24,7 @@ HttpHandler:HttpResponse.new
 HttpServer[1]:response=HttpHandler.getResponse
 HttpServer:HttpCommTask.handleResponse
 
-HttpServer:HttpServer.shutdownHandler
+HttpServer:HttpServer.shutdownHandlerByTask
 HttpServer:HttpHandler.destroy
 HttpHandler:HttpRequest.destroy
 HttpHandler:HttpResponse.destroy

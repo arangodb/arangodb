@@ -154,21 +154,20 @@ AddressPort ApplicationHttpsServer::addPort (string const& name) {
 /// @brief builds the https server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-  return buildServer(httpHandlerFactory, _httpsAddressPorts);
+HttpsServer* ApplicationHttpsServer::buildServer () {
+  return buildServer(_httpsAddressPorts);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the https server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandlerFactory, vector<AddressPort> const& ports) {
+HttpsServer* ApplicationHttpsServer::buildServer (vector<AddressPort> const& ports) {
   if (ports.empty()) {
-    delete httpHandlerFactory;
     return 0;
   }
   else {
-    return buildHttpsServer(httpHandlerFactory, ports);
+    return buildHttpsServer(ports);
   }
 }
 
@@ -248,8 +247,7 @@ bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpHandlerFactory,
-                                                       vector<AddressPort> const& ports) {
+HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const& ports) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -274,8 +272,7 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpH
   // create new server
   HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _sslContext);
 
-  httpsServer->setHandlerFactory(httpHandlerFactory);
-
+  // update close-without-keep-alive flag
   if (_requireKeepAlive) {
     httpsServer->setCloseWithoutKeepAlive(true);
   }

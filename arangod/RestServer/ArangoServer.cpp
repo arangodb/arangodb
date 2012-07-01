@@ -579,27 +579,30 @@ int ArangoServer::startupServer () {
 
   // if we want a http port create the factory
   if (useHttpPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
-
+    // set up a port list
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
 
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
+    // create the server
+    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), ports);
+
+    // create the handlers
+    httpOptions._contexts.insert("user");
+    httpOptions._contexts.insert("api");
+
+    DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
 
     if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+      DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
       httpOptions._contexts.insert("admin");
     }
 
     // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
+    _httpServer->addPrefixHandler("/",
+                                  RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                  (void*) &httpOptions);
 
-    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, ports);
   }
 
   // .............................................................................
@@ -613,23 +616,25 @@ int ArangoServer::startupServer () {
 
   // if we want a admin http port create the factory
   if (useAdminPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
 
-    adminOptions._contexts.insert("api");
-    adminOptions._contexts.insert("admin");
-
+    // set up a port list
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+    // create the server
+    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminPorts);
+
+    // create the handlers
+    adminOptions._contexts.insert("api");
+    adminOptions._contexts.insert("admin");
+
+    DefineApiHandlers(_adminHttpServer, _applicationAdminServer, _vocbase);
+    DefineAdminHandlers(_adminHttpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &adminOptions);
-
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, adminPorts);
+    _adminHttpServer->addPrefixHandler("/",
+                                       RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                       (void*) &adminOptions);
   }
 
   // .............................................................................
