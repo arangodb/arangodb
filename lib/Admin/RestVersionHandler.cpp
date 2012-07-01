@@ -29,6 +29,8 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/conversions.h"
+#include "Rest/HttpRequest.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -104,6 +106,20 @@ HttpHandler::status_e RestVersionHandler::execute () {
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+
+  if (! _isDirect) {
+    bool found;
+    char const* valueStr = _request->value("sleep", found);
+
+    if (found) {
+      int32_t s = TRI_Int32String(valueStr);
+
+      if (0 < s) {
+        sleep(s);
+      }
+    }
+  }
+  
 
   return HANDLER_DONE;
 }
