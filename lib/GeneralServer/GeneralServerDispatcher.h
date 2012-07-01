@@ -115,50 +115,24 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback if the job is done
+/// @brief shuts down handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-        void jobDone (Job* job) {
-          GeneralAsyncCommTask<S, HF, CT>* task = 0;
+        void shutdownHandlers () {
+          GeneralServer<S, HF, CT>::shutdownHandlers();          
 
           {
             MUTEX_LOCKER(this->_mappingLock);
 
-            // extract the handler
-            typename std::map< Job*, typename HF::GeneralHandler* >::iterator i
-              = _job2handler.find(job);
+            for (typename std::map< Job*, typename HF::GeneralHandler* >::iterator i = _job2handler.begin();
+                 i != _job2handler.end();
+                 ++i) {
+              Job* job = i->first;
+              typename HF::GeneralHandler* handler = i->second;
 
-            if (i == _job2handler.end()) {
-              LOGGER_WARNING << "jobDone called, but no handler is known";
-              return;
+              handler->abandonJob(_dispatcher, job);
             }
-
-            typename HF::GeneralHandler* handler = i->second;
-
-            // clear job map
-            _job2handler.erase(job);
-            _handler2job.erase(handler);
-
-            // look up the task
-            typename std::map< typename HF::GeneralHandler*, Task* >::iterator j
-              = this->_handler2task.find(handler);
-
-            if (j == this->_handler2task.end()) {
-              LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
-
-              delete handler;
-              return;
-            }
-
-            task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(i->second);
           }
-
-          if (task == 0) {
-            LOGGER_WARNING << "task for handler is not an async task, giving up";
-            return;
-          }
-
-          task->signal();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +171,7 @@ namespace triagens {
             GeneralAsyncCommTask<S, HF, CT>* atask
               = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
 
-            if (atask == 0) {
+            if (atask != 0) {
               atask->handleResponse(response);
             }
             else {
@@ -209,6 +183,68 @@ namespace triagens {
           }
 
           delete handler;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AsyncJobServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void jobDone (Job* job) {
+          GeneralAsyncCommTask<S, HF, CT>* task = 0;
+
+          {
+            MUTEX_LOCKER(this->_mappingLock);
+
+            // extract the handler
+            typename std::map< Job*, typename HF::GeneralHandler* >::iterator i
+              = _job2handler.find(job);
+
+            if (i == _job2handler.end()) {
+              LOGGER_WARNING << "jobDone called, but no handler is known";
+              return;
+            }
+
+            typename HF::GeneralHandler* handler = i->second;
+
+            // clear job map
+            _job2handler.erase(job);
+            _handler2job.erase(handler);
+
+            // look up the task
+            typename std::map< typename HF::GeneralHandler*, Task* >::iterator j
+              = this->_handler2task.find(handler);
+
+            if (j == this->_handler2task.end()) {
+              LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
+
+              delete handler;
+              return;
+            }
+
+            task = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(j->second);
+          }
+
+          if (task == 0) {
+            LOGGER_WARNING << "task for handler is not an async task, giving up";
+            return;
+          }
+
+          task->signal();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,9 +267,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleConnected (socket_t socket, ConnectionInfo& info) {
-          SocketTask* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
+          GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
 
           this->_scheduler->registerTask(task);
+          this->_commTasks.insert(task);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,10 +380,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void registerJob (typename HF::GeneralHandler* handler, Job* job) {
-          MUTEX_LOCKER(this->_mappingLock);
+          {
+            MUTEX_LOCKER(this->_mappingLock);
 
-          _job2handler[job] = handler;
-          _handler2job[handler] = job;
+            _job2handler[job] = handler;
+            _handler2job[handler] = job;
+          }
+
+          _dispatcher->addJob(job);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

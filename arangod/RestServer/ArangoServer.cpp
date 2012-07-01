@@ -702,7 +702,7 @@ int ArangoServer::startupServer () {
   // and cleanup
   // .............................................................................
 
-  _applicationServer->shutdown();
+  _applicationServer->stop();
   closeDatabase();
 
   return 0;
@@ -889,8 +889,8 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 
   _applicationV8->exitContext(context);
 
-  _applicationV8->beginShutdown();
-  _applicationV8->shutdown();
+  _applicationV8->close();
+  _applicationV8->stop();
 
   
   closeDatabase();
