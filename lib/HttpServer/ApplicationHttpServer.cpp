@@ -192,7 +192,42 @@ bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationHttpServer::shutdown () {
+bool ApplicationHttpServer::open () {
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->startListening();
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpServer::close () {
+
+  // close all open connections
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->shutdownHandlers();
+  }
+
+  // close all listen sockets
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->stopListening();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpServer::stop () {
   for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
   _httpServers.clear();
 }
@@ -244,7 +279,7 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   _httpServers.push_back(httpServer);
 
   // open http ports
-  for (vector<AddressPort>::iterator i = _httpAddressPorts.begin();  i != _httpAddressPorts.end();  ++i) {
+  for (vector<AddressPort>::const_iterator i = ports.begin();  i != ports.end();  ++i) {
     httpServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
   }
 

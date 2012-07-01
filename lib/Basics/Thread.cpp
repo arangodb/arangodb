@@ -206,6 +206,30 @@ void Thread::join () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stops and joins the thread
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::shutdown () {
+  size_t const MAX_TRIES = 10;
+  size_t const WAIT = 10000;
+
+  for (size_t i = 0;  i < MAX_TRIES;  ++i) {
+    if (_running == 0) {
+      break;
+    }
+
+    usleep(WAIT);
+  }
+
+  if (_running != 0) {
+    LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
+    TRI_StopThread(&_thread);
+  }
+
+  TRI_JoinThread(&_thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief send signal to thread
 ////////////////////////////////////////////////////////////////////////////////
 

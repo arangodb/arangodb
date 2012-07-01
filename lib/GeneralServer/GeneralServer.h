@@ -96,6 +96,8 @@ namespace triagens {
           : _scheduler(scheduler),
             _ports(),
             _listenTasks(),
+            _commTasksLock(),
+            _commTasks(),
             _mappingLock(),
             _handler2task(),
             _task2handler() {
@@ -106,6 +108,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~GeneralServer () {
+          for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
+            _scheduler->destroyTask(*i);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +203,20 @@ namespace triagens {
           for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
             _scheduler->unregisterTask(*i);
           }
+
+          _listenTasks.clear();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down handlers
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void shutdownHandlers () {
+          MUTEX_LOCKER(_commTasksLock);
+
+          for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
+            (*i)->beginShutdown();
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,9 +224,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
-          SocketTask* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
+          GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
 
           _scheduler->registerTask(task);
+
+          {
+            MUTEX_LOCKER(_commTasksLock);
+            _commTasks.insert(task);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,6 +240,12 @@ namespace triagens {
 
         void handleCommunicationClosed (Task* task) {
           shutdownHandlerByTask(task);
+
+          {
+            MUTEX_LOCKER(_commTasksLock);
+            _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
+          }
+
           _scheduler->destroyTask(task);
         }
 
@@ -225,6 +255,12 @@ namespace triagens {
 
         void handleCommunicationFailure (Task* task) {
           shutdownHandlerByTask(task);
+
+          {
+            MUTEX_LOCKER(_commTasksLock);
+            _commTasks.erase(dynamic_cast<GeneralCommTask<S, HF>*>(task));
+          }
+
           _scheduler->destroyTask(task);
         }
 
@@ -461,6 +497,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector< ListenTask* > _listenTasks;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for comm tasks
+////////////////////////////////////////////////////////////////////////////////
+
+        basics::Mutex _commTasksLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief active comm tasks
+////////////////////////////////////////////////////////////////////////////////
+
+        std::set< GeneralCommTask<S, HF>* > _commTasks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for mapping structures

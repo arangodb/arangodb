@@ -188,16 +188,7 @@ void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>
 
 bool ApplicationDispatcher::prepare () {
   buildDispatcher();
-  buildDispatcherReporter();
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationDispatcher::isStartable () {
   return true;
 }
 
@@ -206,6 +197,8 @@ bool ApplicationDispatcher::isStartable () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::start () {
+  buildDispatcherReporter();
+
   bool ok = _dispatcher->start();
 
   if (! ok) {
@@ -217,19 +210,12 @@ bool ApplicationDispatcher::start () {
     return false;
   }
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationDispatcher::isStarted () {
-  if (_dispatcher != 0) {
-    return _dispatcher->isStarted();
+  while (! _dispatcher->isStarted()) {
+    LOGGER_DEBUG << "waiting for dispatcher to start";
+    usleep(500 * 1000);
   }
 
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,38 +234,26 @@ bool ApplicationDispatcher::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationDispatcher::isRunning () {
-  if (_dispatcher != 0) {
-    return _dispatcher->isRunning();
+void ApplicationDispatcher::stop () {
+  size_t const MAX_TRIES = 10;
+
+  if (_dispatcherReporterTask != 0) {
+    _applicationScheduler->scheduler()->destroyTask(_dispatcherReporterTask);
+    _dispatcherReporterTask = 0;
   }
 
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationDispatcher::beginShutdown () {
   if (_dispatcher != 0) {
     _dispatcher->beginShutdown();
-  }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationDispatcher::shutdown () {
-  if (_dispatcher != 0) {
-    _dispatcher->shutdown();
-
-    int count = 0;
-
-    while (++count < 6 && _dispatcher->isRunning()) {
+    for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
       LOGGER_TRACE << "waiting for dispatcher to stop";
       sleep(1);
     }
+
+    _dispatcher->shutdown();
+
+    delete _dispatcher;
+    _dispatcher = 0;
   }
 }
 

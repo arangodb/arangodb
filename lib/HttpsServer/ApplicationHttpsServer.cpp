@@ -235,6 +235,50 @@ bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationHttpsServer::open () {
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->startListening();
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpsServer::close () {
+
+  // close all open connections
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->shutdownHandlers();
+  }
+
+  // close all listen sockets
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->stopListening();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpsServer::stop () {
+  for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
+  _httpsServers.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -281,7 +325,7 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
   _httpsServers.push_back(httpsServer);
 
   // open http ports
-  for (vector<AddressPort>::iterator i = _httpsAddressPorts.begin();  i != _httpsAddressPorts.end();  ++i) {
+  for (vector<AddressPort>::const_iterator i = ports.begin();  i != ports.end();  ++i) {
     httpsServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
   }
 
