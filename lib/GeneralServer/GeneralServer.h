@@ -111,6 +111,8 @@ namespace triagens {
           for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
             _scheduler->destroyTask(*i);
           }
+
+          stopListening();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +203,7 @@ namespace triagens {
 
         void stopListening () {
           for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
-            _scheduler->unregisterTask(*i);
+            _scheduler->destroyTask(*i);
           }
 
           _listenTasks.clear();

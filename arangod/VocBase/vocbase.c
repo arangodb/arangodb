@@ -503,7 +503,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     name = files._buffer[i];
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
-      LOG_DEBUG("ignoring file/directory '%s''", name);
+      LOG_DEBUG("ignoring file/directory '%s'", name);
       continue;
     }
 
