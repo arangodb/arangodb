@@ -50,7 +50,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SocketTask.h"
 
-#define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
+// #define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
 
 #ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
 #define GENERAL_SERVER_INIT TRI_InitSpin
