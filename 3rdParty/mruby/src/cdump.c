@@ -45,7 +45,7 @@ str_format_len(mrb_value str)
 
   char *src;
 
-  for (src = RSTRING_PTR(str); src < RSTRING_END(str); src++) {
+  for (src = RSTRING_PTR(str); src < RSTRING_END(str);) {
     switch (*src) {
     case 0x07:/* BEL */ /* fall through */
     case 0x08:/* BS  */ /* fall through */
@@ -58,11 +58,11 @@ str_format_len(mrb_value str)
     case 0x27:/* '   */ /* fall through */
     case 0x3F:/* ?   */ /* fall through */
     case 0x5C:/* \   */ /* fall through */
-      dump_len += 2;
+      dump_len += 2; src += 2;
       break;
 
     default:
-      dump_len++;
+      dump_len++; src++;
       break;
     }
   }
@@ -73,23 +73,22 @@ str_format_len(mrb_value str)
 static char*
 str_to_format(mrb_value str, char *buf)
 {
-  char *src;
-  char *dst;
+  char *src, *dst;
 
-  for (src = RSTRING_PTR(str), dst = buf; src < RSTRING_END(str); src++) {
+  for (src = RSTRING_PTR(str), dst = buf; src < RSTRING_END(str);) {
     switch (*src) {
-    case 0x07:/* BEL */  *dst++ = '\\'; *dst++ = 'a'; break;
-    case 0x08:/* BS  */  *dst++ = '\\'; *dst++ = 'b'; break;
-    case 0x09:/* HT  */  *dst++ = '\\'; *dst++ = 't'; break;
-    case 0x0A:/* LF  */  *dst++ = '\\'; *dst++ = 'n'; break;
-    case 0x0B:/* VT  */  *dst++ = '\\'; *dst++ = 'v'; break;
-    case 0x0C:/* FF  */  *dst++ = '\\'; *dst++ = 'f'; break;
-    case 0x0D:/* CR  */  *dst++ = '\\'; *dst++ = 'r'; break;
-    case 0x22:/* "   */  *dst++ = '\\'; *dst++ = '\"'; break;
-    case 0x27:/* '   */  *dst++ = '\\'; *dst++ = '\''; break;
-    case 0x3F:/* ?   */  *dst++ = '\\'; *dst++ = '\?'; break;
-    case 0x5C:/* \   */  *dst++ = '\\'; *dst++ = '\\'; break;
-    default: *dst++ = *src; break;
+    case 0x07:/* BEL */  memcpy(dst, "\\a", 2); dst+=2; src+=2; break;
+    case 0x08:/* BS  */  memcpy(dst, "\\b", 2); dst+=2; src+=2; break;
+    case 0x09:/* HT  */  memcpy(dst, "\\t", 2); dst+=2; src+=2; break;
+    case 0x0A:/* LF  */  memcpy(dst, "\\n", 2); dst+=2; src+=2; break;
+    case 0x0B:/* VT  */  memcpy(dst, "\\v", 2); dst+=2; src+=2; break;
+    case 0x0C:/* FF  */  memcpy(dst, "\\f", 2); dst+=2; src+=2; break;
+    case 0x0D:/* CR  */  memcpy(dst, "\\r", 2); dst+=2; src+=2; break;
+    case 0x22:/* "   */  memcpy(dst, "\\\"", 2); dst+=2; src+=2; break;
+    case 0x27:/* '   */  memcpy(dst, "\\\'", 2); dst+=2; src+=2; break;
+    case 0x3F:/* ?   */  memcpy(dst, "\\\?", 2); dst+=2; src+=2; break;
+    case 0x5C:/* \   */  memcpy(dst, "\\\\", 2); dst+=2; src+=2; break;
+    default: *dst++ = *src++; break;
     }
   }
 
@@ -196,6 +195,7 @@ mrb_cdump_irep(mrb_state *mrb, int n, FILE *f,const char *initname)
 
   SOURCE_CODE0("  mrb->irep_len = idx;");
   SOURCE_CODE0("");
+  SOURCE_CODE0("  extern mrb_value mrb_top_self(mrb_state *mrb);");
   SOURCE_CODE0("  mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));");
   SOURCE_CODE0("}");
 

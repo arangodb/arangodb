@@ -5,7 +5,6 @@
 */
 
 #include "mruby.h"
-#ifdef ENABLE_STRUCT
 #include <string.h>
 #include "error.h"
 #include "mruby/struct.h"
@@ -13,9 +12,13 @@
 #include <stdarg.h>
 //#include "defines.h"
 
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 #include "encoding.h"
 #endif
+mrb_sym rb_frame_this_func(mrb_state *mrb);
+mrb_sym mrb_frame_callee(mrb_state *mrb);
+mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mrb_value, int),
+                                  mrb_value obj, mrb_value paired_obj, void* arg);
 
 #include "mruby/numeric.h"
 #include "mruby/hash.h"
@@ -93,7 +96,7 @@ mrb_struct_s_members_m(mrb_state *mrb, mrb_value klass)
     mrb_value *p, *pend;
 
     members = mrb_struct_s_members(mrb, klass);
-    ary = mrb_ary_new_capa(mrb, RARRAY_LEN(members));
+    ary = mrb_ary_new_capa(mrb, RARRAY_LEN(members));//mrb_ary_new2(RARRAY_LEN(members));
     p = RARRAY_PTR(members); pend = p + RARRAY_LEN(members);
     while (p < pend) {
       mrb_ary_push(mrb, ary, *p);
@@ -131,7 +134,7 @@ mrb_struct_getmember(mrb_state *mrb, mrb_value obj, mrb_sym id)
     ptr = RSTRUCT_PTR(obj);
     members = mrb_struct_members(mrb, obj);
     ptr_members = RARRAY_PTR(members);
-    slot = mrb_symbol_value(id);
+    slot = mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id));
     len = RARRAY_LEN(members);
     for (i=0; i<len; i++) {
       if (mrb_obj_equal(mrb, ptr_members[i], slot)) {
@@ -145,7 +148,8 @@ mrb_struct_getmember(mrb_state *mrb, mrb_value obj, mrb_sym id)
 static mrb_value
 mrb_struct_ref(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_struct_getmember(mrb, obj, mrb->ci->mid);
+    //return mrb_struct_getmember(mrb, obj, rb_frame_this_func(mrb));
+    return mrb_nil_value();
 }
 
 static mrb_value mrb_struct_ref0(mrb_state* mrb, mrb_value obj) {return RSTRUCT_PTR(obj)[0];}
@@ -182,60 +186,33 @@ mrb_struct_modify(mrb_value s)
 }
 
 mrb_sym
-mrb_id_attrset(mrb_state *mrb, mrb_sym id)
+mrb_id_attrset(mrb_sym id)
 {
-  const char *name;
-  char *buf;
-  int len;
-  mrb_sym mid;
-
-  name = mrb_sym2name_len(mrb, id, &len);
-  buf = mrb_malloc(mrb, len+2);
-  memcpy(buf, name, len);
-  buf[len] = '=';
-  buf[len+1] = '\0';
-
-  mid = mrb_intern2(mrb, buf, len+1);
-  mrb_free(mrb, buf);
-  return mid;
+    //id &= ~ID_SCOPE_MASK;
+    //id |= ID_ATTRSET;
+    return id;
 }
 
 static mrb_value
 mrb_struct_set(mrb_state *mrb, mrb_value obj, mrb_value val)
 {
-  const char *name;
-  int i, len;
-  mrb_sym mid;
-  mrb_value members, slot, *ptr, *ptr_members;
+    mrb_value members, slot, *ptr, *ptr_members;
+    long i, len;
 
-  /* get base id */
-  name = mrb_sym2name_len(mrb, mrb->ci->mid, &len);
-  mid = mrb_intern2(mrb, name, len-1); /* omit last "=" */
-
-  members = mrb_struct_members(mrb, obj);
-  ptr_members = RARRAY_PTR(members);
-  len = RARRAY_LEN(members);
-  mrb_struct_modify(obj);
-  ptr = RSTRUCT_PTR(obj);
-  for (i=0; i<len; i++) {
-    slot = ptr_members[i];
-    if (SYM2ID(slot) == mid) {
-      return ptr[i] = val;
+    members = mrb_struct_members(mrb, obj);
+    ptr_members = RARRAY_PTR(members);
+    len = RARRAY_LEN(members);
+    mrb_struct_modify(obj);
+    ptr = RSTRUCT_PTR(obj);
+    for (i=0; i<len; i++) {
+      slot = ptr_members[i];
+      if (mrb_id_attrset(SYM2ID(slot)) == 0/*rb_frame_this_func(mrb)*/) {
+          return ptr[i] = val;
+      }
     }
-  }
-
-  mrb_name_error(mrb, mid, "`%s' is not a struct member",
-		 mrb_sym2name(mrb, mid));
-  return mrb_nil_value();            /* not reached */
-}
-
-static mrb_value
-mrb_struct_set_m(mrb_state *mrb, mrb_value obj)
-{
-  mrb_value val;
-
-  mrb_get_args(mrb, "o", &val);
-  return mrb_struct_set(mrb, obj, val);
+    mrb_name_error(mrb, 0/*rb_frame_this_func(mrb)*/, "`%s' is not a struct member",
+              mrb_sym2name(mrb, 0/*rb_frame_this_func(mrb)*/));
+    return mrb_nil_value();            /* not reached */
 }
 
 #define is_notop_id(id) (id)//((id)>tLAST_TOKEN)
@@ -286,8 +263,8 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass * k
     nstr = mrb_obj_value(c);
     mrb_iv_set(mrb, nstr, mrb_intern(mrb, "__members__"), members);
 
-    mrb_define_class_method(mrb, c, "new", mrb_instance_new, ARGS_ANY());
-    mrb_define_class_method(mrb, c, "[]", mrb_instance_new, ARGS_ANY());
+    mrb_define_class_method(mrb, c, "new", mrb_class_new_instance_m, ARGS_ANY());
+    mrb_define_class_method(mrb, c, "[]", mrb_class_new_instance_m, ARGS_ANY());
     mrb_define_class_method(mrb, c, "members", mrb_struct_s_members_m, ARGS_NONE());
     //RSTRUCT(nstr)->basic.c->super = c->c;
     ptr_members = RARRAY_PTR(members);
@@ -296,12 +273,12 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass * k
       mrb_sym id = SYM2ID(ptr_members[i]);
       if (mrb_is_local_id(id) || mrb_is_const_id(id)) {
           if (i < N_REF_FUNC) {
-            mrb_define_method_id(mrb, c, id, ref_func[i], ARGS_NONE());
+            mrb_define_method_id(mrb, c, id, (mrb_func_t)ref_func[i], 0);
           }
           else {
-            mrb_define_method_id(mrb, c, id, mrb_struct_ref, ARGS_NONE());
+            mrb_define_method_id(mrb, c, id, mrb_struct_ref, 0);
           }
-          mrb_define_method_id(mrb, c, mrb_id_attrset(mrb, id), mrb_struct_set_m, ARGS_REQ(1));
+          mrb_define_method_id(mrb, c, mrb_id_attrset(id), (mrb_func_t)mrb_struct_set, 1);
       }
     }
 
@@ -322,7 +299,7 @@ mrb_struct_define(mrb_state *mrb, const char *name, ...)
     va_start(ar, name);
     while ((mem = va_arg(ar, char*)) != 0) {
       mrb_sym slot = mrb_intern(mrb, mem);
-      mrb_ary_push(mrb, ary, mrb_symbol_value(slot));
+      mrb_ary_push(mrb, ary, mrb_str_new_cstr(mrb, mrb_sym2name(mrb, slot)));
     }
     va_end(ar);
 
@@ -387,6 +364,10 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
       mrb_ary_unshift(mrb, rest, name);
       name = mrb_nil_value();
     }
+    for (i=0; i<RARRAY_LEN(rest); i++) {
+      id = mrb_to_id(mrb, RARRAY_PTR(rest)[i]);
+      RARRAY_PTR(rest)[i] = mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id));
+    }
   }
   else {
     pargv = &argv[1];
@@ -399,10 +380,6 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
       argcnt++;
     }
     rest = mrb_ary_new_from_values(mrb, argcnt, pargv);
-  }
-  for (i=0; i<RARRAY_LEN(rest); i++) {
-    id = mrb_to_id(mrb, RARRAY_PTR(rest)[i]);
-    RARRAY_PTR(rest)[i] = mrb_symbol_value(id);
   }
   st = make_struct(mrb, name, rest, struct_class(mrb));
   if (!mrb_nil_p(b)) {
@@ -439,10 +416,12 @@ mrb_struct_initialize_withArg(mrb_state *mrb, int argc, mrb_value *argv, mrb_val
     mrb_raise(mrb, E_ARGUMENT_ERROR, "struct size differs");
   }
   st = RSTRUCT(self);
-  st->ptr = mrb_calloc(mrb, sizeof(mrb_value), n);
+  st->ptr = mrb_malloc(mrb, sizeof(mrb_value)*argc);
   st->len = n;
   memcpy(st->ptr, argv, sizeof(mrb_value)*argc);
-
+  //if (n > argc) {
+  //  mrb_mem_clear(RSTRUCT_PTR(self)+argc, n-argc);
+  //}
   return self;
 }
 
@@ -477,7 +456,7 @@ mrb_struct_new(mrb_state *mrb, struct RClass *klass, ...)
 
     size = mrb_long2int(num_members(mrb, klass));
     if (size > numberof(tmpargs)) {
-      tmpargs[0] = mrb_ary_new_capa(mrb, size);
+      tmpargs[0] = mrb_ary_tmp_new(mrb, size);
       mem = RARRAY_PTR(tmpargs[0]);
     }
     va_start(args, klass);
@@ -493,7 +472,7 @@ static mrb_value
 inspect_struct(mrb_state *mrb, mrb_value s, mrb_value dummy, int recur)
 {
     const char *cn = mrb_class_name(mrb, mrb_obj_class(mrb, s));
-    mrb_value members, str = mrb_str_new(mrb, "#<struct ", 9);
+    mrb_value members, str = mrb_str_new2(mrb, "#<struct ");
     mrb_value *ptr, *ptr_members;
     long i, len;
 
@@ -521,11 +500,8 @@ inspect_struct(mrb_state *mrb, mrb_value s, mrb_value dummy, int recur)
       slot = ptr_members[i];
       id = SYM2ID(slot);
       if (mrb_is_local_id(id) || mrb_is_const_id(id)) {
-	const char *name;
-	int len;
-
-	name = mrb_sym2name_len(mrb, id, &len);
-        mrb_str_append(mrb, str, mrb_str_new(mrb, name, len));
+        //mrb_str_append(str, mrb_id2str(id));
+        mrb_str_append(mrb, str, mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id)));
       }
       else {
           mrb_str_append(mrb, str, mrb_inspect(mrb, slot));
@@ -714,6 +690,22 @@ mrb_struct_aset(mrb_state *mrb, mrb_value s)
   return RSTRUCT_PTR(s)[i] = val;
 }
 
+static mrb_value
+recursive_equal(mrb_state *mrb, mrb_value s, mrb_value s2, int recur)
+{
+    mrb_value *ptr, *ptr2;
+    long i, len;
+
+    if (recur) return mrb_true_value(); /* Subtle! */
+    ptr = RSTRUCT_PTR(s);
+    ptr2 = RSTRUCT_PTR(s2);
+    len = RSTRUCT_LEN(s);
+    for (i=0; i<len; i++) {
+      if (!mrb_equal(mrb, ptr[i], ptr2[i])) return mrb_false_value();
+    }
+    return mrb_true_value();
+}
+
 /* 15.2.18.4.1  */
 /*
  *  call-seq:
@@ -736,8 +728,6 @@ static mrb_value
 mrb_struct_equal(mrb_state *mrb, mrb_value s)
 {
   mrb_value s2;
-  mrb_value *ptr, *ptr2;
-  long i, len;
 
   mrb_get_args(mrb, "o", &s2);
   if (mrb_obj_equal(mrb, s, s2)) return mrb_true_value();
@@ -746,13 +736,24 @@ mrb_struct_equal(mrb_state *mrb, mrb_value s)
   if (RSTRUCT_LEN(s) != RSTRUCT_LEN(s2)) {
     mrb_bug("inconsistent struct"); /* should never happen */
   }
-  ptr = RSTRUCT_PTR(s);
-  ptr2 = RSTRUCT_PTR(s2);
-  len = RSTRUCT_LEN(s);
-  for (i=0; i<len; i++) {
-    if (!mrb_equal(mrb, ptr[i], ptr2[i])) return mrb_false_value();
-  }
-  return mrb_true_value();
+
+  return mrb_exec_recursive_paired(mrb, recursive_equal, s, s2, (void*)0);
+}
+
+static mrb_value
+recursive_eql(mrb_state *mrb, mrb_value s, mrb_value s2, int recur)
+{
+    mrb_value *ptr, *ptr2;
+    long i, len;
+
+    if (recur) return mrb_true_value(); /* Subtle! */
+    ptr = RSTRUCT_PTR(s);
+    ptr2 = RSTRUCT_PTR(s2);
+    len = RSTRUCT_LEN(s);
+    for (i=0; i<len; i++) {
+      if (!mrb_eql(mrb, ptr[i], ptr2[i])) return mrb_false_value();
+    }
+    return mrb_true_value();
 }
 
 /* 15.2.18.4.12(x)  */
@@ -767,8 +768,6 @@ static mrb_value
 mrb_struct_eql(mrb_state *mrb, mrb_value s)
 {
   mrb_value s2;
-  mrb_value *ptr, *ptr2;
-  long i, len;
 
   mrb_get_args(mrb, "o", &s2);
   if (mrb_obj_equal(mrb, s, s2)) return mrb_true_value();
@@ -778,13 +777,7 @@ mrb_struct_eql(mrb_state *mrb, mrb_value s)
     mrb_bug("inconsistent struct"); /* should never happen */
   }
 
-  ptr = RSTRUCT_PTR(s);
-  ptr2 = RSTRUCT_PTR(s2);
-  len = RSTRUCT_LEN(s);
-  for (i=0; i<len; i++) {
-    if (!mrb_eql(mrb, ptr[i], ptr2[i])) return mrb_false_value();
-  }
-  return mrb_true_value();
+  return mrb_exec_recursive_paired(mrb, recursive_eql, s, s2, (void*)0);
 }
 
 /*
@@ -807,7 +800,9 @@ mrb_init_struct(mrb_state *mrb)
 {
   struct RClass *st;
   st = mrb_define_class(mrb, "Struct",  mrb->object_class);
+  //mrb_include_module(mrb_cStruct, rb_mEnumerable);
 
+  //mrb_undef_alloc_func(mrb_cStruct);
   mrb_define_class_method(mrb, st, "new",             mrb_struct_s_def,       ARGS_ANY());  /* 15.2.18.3.1  */
 
   mrb_define_method(mrb, st,       "==",              mrb_struct_equal,       ARGS_REQ(1)); /* 15.2.18.4.1  */
@@ -821,4 +816,3 @@ mrb_init_struct(mrb_state *mrb)
   mrb_define_method(mrb, st,       "eql?",            mrb_struct_eql,         ARGS_REQ(1)); /* 15.2.18.4.12(x)  */
 
 }
-#endif	/* ENABLE_STRUCT */

@@ -5,10 +5,6 @@ assert('FalseClass', '15.2.6') do
   FalseClass.class == Class
 end
 
-assert('FalseClass superclass', '15.2.6.2') do
-  FalseClass.superclass == Object
-end
-
 assert('FalseClass false', '15.2.6.1') do
   not false
 end

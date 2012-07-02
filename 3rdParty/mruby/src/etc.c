@@ -10,6 +10,14 @@
 #include "mruby/numeric.h"
 #include "mruby/data.h"
 
+#ifndef FALSE
+#define FALSE   0
+#endif
+
+#ifndef TRUE
+#define TRUE    1
+#endif
+
 struct RData*
 mrb_data_object_alloc(mrb_state *mrb, struct RClass *klass, void *ptr, const struct mrb_data_type *type)
 {
@@ -70,6 +78,21 @@ mrb_lastline_get(mrb_state *mrb)
   }
 }
 
+mrb_value
+mrb_rescue2(mrb_state *mrb, mrb_value (* b_proc) (ANYARGS), mrb_value *data1,
+                           mrb_value (* r_proc) (ANYARGS), mrb_value *data2, ...)
+{
+    mrb_value result = (*b_proc) (mrb, data1);
+    return result;
+}
+
+mrb_value
+mrb_rescue(mrb_state *mrb, mrb_value (* b_proc)(ANYARGS), mrb_value *data1,
+                          mrb_value (* r_proc)(ANYARGS), mrb_value *data2)
+{
+  return mrb_rescue2(mrb, b_proc, data1, r_proc, data2, mrb->eStandardError_class,
+                         mrb_fixnum_value(0));
+}
 /* ------------------------------------------------ */
 /*
  * Calls func(obj, arg, recursive), where recursive is non-zero if the
@@ -87,6 +110,14 @@ mrb_exec_recursive(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mr
  * Calls func(obj, arg, recursive), where recursive is non-zero if the
  * current method is called recursively on the ordered pair <obj, paired_obj>
  */
+
+mrb_value
+mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state *, mrb_value, mrb_value, int),
+                                             mrb_value obj, mrb_value paired_obj, void* arg)
+{
+  //  return mrb_exec_recursive_paired(mrb, recursive_eql, hash1, hash2, mrb_fixnum_value((int)&data));
+  return func(mrb, obj, paired_obj, 0);
+}
 
 mrb_sym
 mrb_to_id(mrb_state *mrb, mrb_value name)

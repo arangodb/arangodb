@@ -235,8 +235,8 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-MRLineEditor::MRLineEditor (mrb_state* mrb, string const& history)
-  : LineEditor(history), _current(), _mrb(mrb) {
+MRLineEditor::MRLineEditor (MR_state_t* mrs, string const& history)
+  : LineEditor(history), _current(), _mrs(mrs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

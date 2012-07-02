@@ -39,6 +39,15 @@
 #include "Scheduler/AsyncTask.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace rest {
+    class Dispatcher;
+    class Scheduler;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            class GeneralServerJob
 // -----------------------------------------------------------------------------
 
@@ -46,9 +55,6 @@
 /// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
@@ -79,12 +85,13 @@ namespace triagens {
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralServerJob (S* server, H* handler)
+        GeneralServerJob (S* server, Dispatcher* dispatcher, H* handler)
           : Job("HttpServerJob"),
             _server(server),
+            _dispatcher(dispatcher),
             _handler(handler),
             _shutdown(0),
-            _abandon(false) {
+            _abandon(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,8 +121,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void abandon () {
-          MUTEX_LOCKER(&_abandonLock);
-          _abandon = true;
+          _abandon = 1;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,19 +201,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void cleanup () {
-          {
-            MUTEX_LOCKER(&_abandonLock);
-
-            if (! _abandon) {
-              _server->jobDone(this);
-            }
+          if (_abandon == 0) {
+            _server->jobDone(this);
           }
 
           delete this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief shuts down the execution and deletes everything
 ////////////////////////////////////////////////////////////////////////////////
 
         bool beginShutdown () {
@@ -247,6 +249,12 @@ namespace triagens {
         S* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+        Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -259,16 +267,10 @@ namespace triagens {
         volatile sig_atomic_t _shutdown;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server is dead lock
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::Mutex _abandonLock;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief server is dead
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _abandon;
+        volatile sig_atomic_t _abandon;
     };
   }
 }
