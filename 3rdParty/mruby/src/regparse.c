@@ -32,7 +32,7 @@
 #include <string.h>
 #include "regparse.h"
 #include <stdarg.h>
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 
 #define WARN_BUFSIZE    256
 
@@ -298,7 +298,7 @@ strcat_capa_from_static(UChar* dest, UChar* dest_end,
   onig_strcpy(r + (dest_end - dest), src, src_end);
   return r;
 }
-#endif //ENABLE_REGEXP
+#endif //INCLUDE_REGEXP
 
 #ifdef INCLUDE_ENCODING
 #ifdef USE_ST_LIBRARY
@@ -393,7 +393,7 @@ onig_st_insert_strend(hash_table_type* table, const UChar* str_key,
 #endif /* USE_ST_LIBRARY */
 #endif //INCLUDE_ENCODING
 
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 #ifdef USE_NAMED_GROUP
 
 #define INIT_NAME_BACKREFS_ALLOC_NUM   8
@@ -5597,4 +5597,4 @@ onig_scan_env_set_error_string(ScanEnv* env, int ecode ARG_UNUSED,
   env->error     = arg;
   env->error_end = arg_end;
 }
-#endif //ENABLE_REGEXP
+#endif //INCLUDE_REGEXP

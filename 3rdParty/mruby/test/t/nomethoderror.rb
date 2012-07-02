@@ -11,8 +11,3 @@ assert('NoMethodError', '15.2.32') do
 
   NoMethodError.class == Class and e2.class == NoMethodError
 end
-
-assert('NoMethodError superclass', '15.2.32.2') do
-  NoMethodError.superclass == NameError
-end
-

@@ -28,7 +28,7 @@
  */
 
 #include "mruby.h"
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 #include <string.h>
 #include "regint.h"
 #include <stdio.h> /* for vsnprintf() */
@@ -372,4 +372,4 @@ onig_snprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc,
           pat, pat_end, fmt, args);
   va_end(args);
 }
-#endif //ENABLE_REGEXP
+#endif //INCLUDE_REGEXP

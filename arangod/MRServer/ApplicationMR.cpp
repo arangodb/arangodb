@@ -251,7 +251,7 @@ void ApplicationMR::collectGarbage () {
     if (context != 0) {
       LOGGER_TRACE << "collecting MR garbage";
 
-      mrb_garbage_collect(context->_mrb);
+      // TODO
 
       context->_dirt = 0;
 
@@ -403,17 +403,17 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
   MRContext* context = _contexts[i] = new MRContext();
 
   // create a new shell
-  mrb_state* mrb = context->_mrb = MR_OpenShell();
+  context->_mrs = MR_OpenShell();
 
-  TRI_InitMRUtils(mrb);
+  TRI_InitMRUtils(context->_mrs);
 
   if (! _actionPath.empty()) {
-    TRI_InitMRActions(mrb, this);
+    TRI_InitMRActions(context->_mrs, this);
   }
 
   // load all init files
   for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = _startupLoader.loadScript(mrb, files[i]);
+    bool ok = _startupLoader.loadScript(&context->_mrs->_mrb, files[i]);
 
     if (! ok) {
       LOGGER_FATAL << "cannot load Ruby utilities from file '" << files[i] << "'";
@@ -424,7 +424,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
 
   // load all actions
   if (! _actionPath.empty()) {
-    bool ok = _actionLoader.executeAllScripts(mrb);
+    bool ok = _actionLoader.executeAllScripts(&context->_mrs->_mrb);
 
     if (! ok) {
       LOGGER_FATAL << "cannot load Ruby actions from directory '" << _actionLoader.getDirectory() << "'";
@@ -448,12 +448,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
 void ApplicationMR::shutdownMRInstance (size_t i) {
   LOGGER_TRACE << "shutting down MR context #" << i;
 
-  MRContext* context = _contexts[i];
-  mrb_state* mrb = context->_mrb;
-
-  mrb_garbage_collect(mrb);
-
-  MR_CloseShell(mrb);
+  // TODO cleanup: MRContext* context = _contexts[i];
 
   LOGGER_TRACE << "closed MR context #" << i;
 }

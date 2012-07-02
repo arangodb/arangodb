@@ -28,7 +28,7 @@ mrb_class(mrb_state *mrb, mrb_value v)
 {
   switch (mrb_type(v)) {
   case MRB_TT_FALSE:
-    if (v.value.i)
+    if (v.value.p)
       return mrb->false_class;
     return mrb->nil_class;
   case MRB_TT_TRUE:
@@ -40,7 +40,14 @@ mrb_class(mrb_state *mrb, mrb_value v)
   case MRB_TT_FLOAT:
     return mrb->float_class;
 
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
+//  case MRB_TT_REGEX:
+//    return mrb->regex_class;
+//  case MRB_TT_MATCH:
+//    return mrb->match_class;
+//  case MRB_TT_DATA:
+//    return mrb->encode_class;
+#else
   case MRB_TT_REGEX:
   case MRB_TT_MATCH:
     mrb_raise(mrb, E_TYPE_ERROR, "type mismatch: %s given",
@@ -70,10 +77,6 @@ struct RProc *mrb_method_search(mrb_state*, struct RClass*, mrb_sym);
 struct RClass* mrb_class_real(struct RClass* cl);
 
 void mrb_obj_call_init(mrb_state *mrb, mrb_value obj, int argc, mrb_value *argv);
-
-void mrb_gc_mark_mt(mrb_state*, struct RClass*);
-size_t mrb_gc_mark_mt_size(mrb_state*, struct RClass*);
-void mrb_gc_free_mt(mrb_state*, struct RClass*);
 
 #if defined(__cplusplus)
 }  /* extern "C" { */

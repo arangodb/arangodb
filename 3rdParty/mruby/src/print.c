@@ -13,11 +13,11 @@ printstr(mrb_state *mrb, mrb_value obj)
 {
   struct RString *str;
   char *s;
-  int len;
+  size_t len;
 
   if (mrb_type(obj) == MRB_TT_STRING) {
     str = mrb_str_ptr(obj);
-    s = str->ptr;
+    s = str->buf;
     len = str->len;
     while (len--) {
       putc(*s, stdout);

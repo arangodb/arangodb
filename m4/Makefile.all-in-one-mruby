@@ -15,7 +15,7 @@ BUILT_SOURCES += @MRUBY_LIBS@
 .mruby-build-@TRI_BITS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING mruby"
+	@echo "BUILDING LIBEV"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
