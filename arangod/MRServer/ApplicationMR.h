@@ -88,7 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct MRContext {
-          MR_state_t* _mrs;
+          mrb_state* _mrb;
           size_t _dirt;
         };
 

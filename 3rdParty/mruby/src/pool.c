@@ -8,6 +8,18 @@
 #include <stddef.h>
 #include <string.h>
 
+/* configuration section */
+/* allcated memory address should be multiple of POOL_ALLOC_ALIGN */
+/* or undef it if alignment does not matter */
+#ifndef POOL_ALIGNMENT
+#define POOL_ALIGNMENT 4
+#endif
+/* page size of memory pool */
+#ifndef POOL_PAGE_SIZE
+#define POOL_PAGE_SIZE 16000
+#endif
+/* end of configuration section */
+
 struct mrb_pool_page {
   struct mrb_pool_page *next;
   size_t offset;
@@ -29,10 +41,8 @@ struct mrb_pool {
 #define mrb_free(m,p) free(p)
 #endif
 
-#define POOL_PAGE_SIZE 16000
-
-#ifdef ALLOC_ALIGN
-#  define ALIGN_PADDING(x) ((x % ALLOC_ALIGN) ? ALLOC_ALIGN - (x % ALLOC_ALIGN) : 0)
+#ifdef POOL_ALIGNMENT
+#  define ALIGN_PADDING(x) ((-x) & (POOL_ALIGNMENT - 1))
 #else
 #  define ALIGN_PADDING(x) (0)
 #endif

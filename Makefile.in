@@ -5529,7 +5529,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ### @brief protocol buffers
 ################################################################################
 
-%.pb.cpp: %.proto
+%.pb.cpp: %.proto .protobuf-build-@TRI_BITS@
 	@top_srcdir@/3rdParty/protobuf-2.4.1/BUILD/bin/protoc --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 
@@ -5587,7 +5587,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@.mruby-build-@TRI_BITS@:
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_MRUBY_TRUE@	@echo "BUILDING mruby"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
