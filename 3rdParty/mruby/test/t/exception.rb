@@ -5,6 +5,10 @@ assert('Exception', '15.2.22') do
   Exception.class == Class
 end
 
+assert('Exception superclass', '15.2.22.2') do
+  Exception.superclass == Object
+end
+
 assert('Exception.exception', '15.2.22.4.1') do
   e = Exception.exception('a')
 
@@ -20,7 +24,7 @@ end
 
 assert('Exception#message', '15.2.22.5.2') do
   e = Exception.exception('a')
-  
+
   e.message == 'a'
 end
 
@@ -35,6 +39,26 @@ assert('Exception.exception', '15.2.22.4.1') do
   e.initialize('a')
 
   e.message == 'a'
+end
+
+assert('ScriptError', '15.2.37') do
+  begin
+    raise ScriptError.new
+  rescue ScriptError
+    true
+  else
+    false
+  end
+end
+
+assert('SyntaxError', '15.2.38') do
+  begin
+    raise SyntaxError.new
+  rescue SyntaxError
+    true
+  else
+    false
+  end
 end
 
 # Not ISO specified
@@ -192,4 +216,40 @@ assert('Exception 10') do
   ensure
     7+7
   end == 12
+end
+
+assert('Exception 11') do
+  a = :ok
+  begin
+    begin
+      raise Exception
+    rescue
+      a = :ng
+    end
+  rescue Exception
+  end
+  a == :ok
+end
+
+assert('Exception 12') do
+  a = :ok
+  begin
+    raise Exception rescue a = :ng
+  rescue Exception
+  end
+  a == :ok
+end
+
+assert('Exception 13') do
+  a = :ng
+  begin
+    raise StandardError
+  rescue TypeError, ArgumentError
+    a = :ng
+  rescue
+    a = :ok
+  else
+    a = :ng
+  end
+  a == :ok
 end

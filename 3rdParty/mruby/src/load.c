@@ -8,18 +8,10 @@
 #include "mruby/dump.h"
 
 #include "mruby/string.h"
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
 #include "re.h"
 #endif
 #include "mruby/irep.h"
-
-#ifndef FALSE
-#define FALSE   0
-#endif
-
-#ifndef TRUE
-#define TRUE    1
-#endif
 
 typedef struct _RiteFILE
 {
@@ -413,7 +405,7 @@ read_rite_irep_record(mrb_state *mrb, unsigned char *src, mrb_irep *irep, uint32
 
       switch (tt) {                           //pool data
       case MRB_TT_FIXNUM:
-        fix_num = readint(buf, 10);
+        fix_num = strtol(buf, NULL, 10);
         irep->pool[i] = mrb_fixnum_value(fix_num);
         break;
 
@@ -426,7 +418,7 @@ read_rite_irep_record(mrb_state *mrb, unsigned char *src, mrb_irep *irep, uint32
         irep->pool[i] = mrb_str_new(mrb, buf, pdl);
         break;
 
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
       case MRB_TT_REGEX:
         str = mrb_str_new(mrb, buf, pdl);
         irep->pool[i] = mrb_reg_quote(mrb, str);
@@ -477,7 +469,7 @@ read_rite_irep_record(mrb_state *mrb, unsigned char *src, mrb_irep *irep, uint32
       memcpy(buf, src, snl);                  //symbol name
       src += snl;
       buf[snl] = '\0';
-      irep->syms[i] = mrb_intern(mrb, buf);
+      irep->syms[i] = mrb_intern2(mrb, buf, snl);
     }
   }
   crc = calc_crc_16_ccitt((unsigned char*)pStart, src - pStart);     //Calculate CRC
@@ -616,13 +608,11 @@ static char*
 hex_to_str(char *hex, char *str, uint16_t *str_len)
 {
   char *src, *dst;
-  uint16_t hex_len = strlen(hex);
+  int escape = 0;
 
   *str_len = 0;
-
-  for (src = hex, dst = str; hex_len > 0; (*str_len)++, hex_len--) {
-    if (*src == '\\' && hex_len > 1) {
-      src++; hex_len--;
+  for (src = hex, dst = str; *src != '\0'; src++) {
+    if (escape) {
       switch(*src) {
       case 'a':  *dst++ = '\a'/* BEL */; break;
       case 'b':  *dst++ = '\b'/* BS  */; break;
@@ -637,12 +627,18 @@ hex_to_str(char *hex, char *str, uint16_t *str_len)
       case '\\': *dst++ = *src; break;
       default:break;
       }
-      src++;
+      escape = 0;
     } else {
-      *dst++ = *src++;
+      if (*src == '\\') {
+        escape = 1;
+      } else {
+        escape = 0;
+        *dst++ = *src;
+      }
+    }
+    if (!escape) {
+      (*str_len)++;
     }
   }
-
   return str;
 }
-
