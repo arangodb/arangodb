@@ -158,6 +158,11 @@ main(int argc, char **argv)
   struct _args args;
   struct mrb_parser_state *p;
 
+  if (mrb == NULL) {
+    fprintf(stderr, "Invalid mrb_state, exiting mrbc");
+    return EXIT_FAILURE;
+  }
+
   n = parse_args(mrb, argc, argv, &args);
 
   if (n < 0 || args.rfp == NULL) {

@@ -115,12 +115,6 @@ module Arango
     @@HTTP_SERVICE_UNAVAILABLE  = 503
 
     def service(req, res)
-      p "Body: <#{req.body}>"
-      p "Headers: <#{req.headers}>"
-      p "Parameters: <#{req.parameters}>"
-      p "RequestType: <#{req.request_type}>"
-      p "Suffix: <#{req.suffix}>"
-
       method = req.request_type
 
       if method == "GET"

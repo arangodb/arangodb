@@ -12,3 +12,53 @@ class Exception
     self.new(*args, &block)
   end
 end
+
+# ISO 15.2.24
+class ArgumentError < StandardError
+end
+
+# ISO 15.2.25
+class LocalJumpError < StandardError
+end
+
+# ISO 15.2.26
+class RangeError < StandardError
+end
+
+class FloatDomainError < RangeError
+end
+
+# ISO 15.2.26
+class RegexpError < StandardError
+end
+
+# ISO 15.2.29
+class TypeError < StandardError
+end
+
+# ISO 15.2.31
+class NameError < StandardError
+end
+
+# ISO 15.2.32
+class NoMethodError < NameError
+end
+
+# ISO 15.2.33
+class IndexError < StandardError
+end
+
+class KeyError < IndexError
+end
+
+# ISO 15.2.37
+class ScriptError < Exception
+end
+
+# ISO 15.2.38
+class SyntaxError < ScriptError
+end
+
+class NotImplementedError < ScriptError
+end
+

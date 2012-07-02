@@ -5,6 +5,10 @@ assert('String', '15.2.10') do
   String.class == Class
 end
 
+assert('String superclass', '15.2.10.2') do
+  String.superclass == Object
+end
+
 assert('String#*', '15.2.10.5.1') do
   'a' * 5 == 'aaaaa'
 end
@@ -252,6 +256,9 @@ assert('String#slice', '15.2.10.5.34') do
   d1 = 'abc'.slice(0, 0)
   e1 = 'abc'.slice(1, 2)
 
+  # slice of shared string
+  e11 = e1.slice(0)
+
   # args is RegExp
   # TODO SEGFAULT ATM
 
@@ -261,16 +268,17 @@ assert('String#slice', '15.2.10.5.34') do
 
   a == 'a' and b == 'c' and c == nil and d == nil and
     a1 == nil and b1 == nil and c1 == nil and d1 == '' and
-    e1 == 'bc' and
+    e1 == 'bc' and e11 == 'b' and
     a3 == 'bc' and b3 == nil
 end
 
 # TODO Broken ATM
 assert('String#split', '15.2.10.5.35') do
   # without RegExp behavior is actually unspecified
-  a = 'abc abc abc'.split
-
-  a == ['abc', 'abc', 'abc']
+  'abc abc abc'.split == ['abc', 'abc', 'abc'] and
+    'a,b,c,,d'.split(',') == ["a", "b", "c", "", "d"] and
+    'abc abc abc'.split(nil) == ['abc', 'abc', 'abc'] and
+    'abc'.split("") == ['a', 'b', 'c']
 end
 
 # TODO ATM broken assert('String#sub', '15.2.10.5.36') do
@@ -319,3 +327,11 @@ assert('String#upcase!', '15.2.10.5.43') do
 
   a == 'ABC'
 end
+
+# Not ISO specified
+
+assert('String interpolation (mrb_str_concat for shared strings)') do
+  a = "A" * 32
+  "#{a}:" == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:"
+end
+
