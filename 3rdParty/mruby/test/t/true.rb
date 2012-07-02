@@ -5,6 +5,10 @@ assert('TrueClass', '15.2.5') do
   TrueClass.class == Class
 end
 
+assert('TrueClass superclass', '15.2.5.2') do
+  TrueClass.superclass == Object
+end
+
 assert('TrueClass true', '15.2.5.1') do
   true
 end

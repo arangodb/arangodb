@@ -51,12 +51,14 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
   memset(args, 0, sizeof(*args));
 
   for (argc--,argv++; argc > 0; argc--,argv++) {
+    char *item;
     if (argv[0][0] != '-') break;
 
     if (strlen(*argv) <= 1)
       return -1;
 
-    switch ((*argv)[1]) {
+    item = argv[0] + 1;
+    switch (*item++) {
     case 'b':
       args->mrbfile = 1;
       break;
@@ -64,19 +66,24 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       args->check_syntax = 1;
       break;
     case 'e':
-      if (argc > 1) {
+      if (item[0]) {
+        goto append_cmdline;
+      }
+      else if (argc > 1) {
         argc--; argv++;
+        item = argv[0];
+append_cmdline:
         if (!args->cmdline) {
           char *buf;
 
-          buf = mrb_malloc(mrb, strlen(argv[0])+1);
-          strcpy(buf, argv[0]);
+          buf = mrb_malloc(mrb, strlen(item)+1);
+          strcpy(buf, item);
           args->cmdline = buf;
         }
         else {
-          args->cmdline = mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(argv[0])+2);
+          args->cmdline = mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(item)+2);
           strcat(args->cmdline, "\n");
-          strcat(args->cmdline, argv[0]);
+          strcat(args->cmdline, item);
         }
       }
       else {
@@ -141,6 +148,11 @@ main(int argc, char **argv)
   int i;
   struct _args args;
   struct mrb_parser_state *p;
+
+  if (mrb == NULL) {
+    fprintf(stderr, "Invalid mrb_state, exiting mruby");
+    return EXIT_FAILURE;
+  }
 
   n = parse_args(mrb, argc, argv, &args);
   if (n < 0 || (args.cmdline == NULL && args.rfp == NULL)) {

@@ -11,14 +11,6 @@
 #include "mruby/class.h"
 #include "mruby/numeric.h"
 
-#ifndef FALSE
-#define FALSE   0
-#endif
-
-#ifndef TRUE
-#define TRUE    1
-#endif
-
 int
 mrb_obj_eq(mrb_state *mrb, mrb_value v1, mrb_value v2)
 {
@@ -159,7 +151,7 @@ true_xor(mrb_state *mrb, mrb_value obj)
 static mrb_value
 true_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_str_new_cstr(mrb, "true");
+  return mrb_str_new(mrb, "true", 4);
 }
 
 /* 15.2.5.3.4  */
@@ -272,7 +264,7 @@ false_or(mrb_state *mrb, mrb_value obj)
 static mrb_value
 false_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_str_new_cstr(mrb, "false");
+  return mrb_str_new(mrb, "false", 5);
 }
 
 void
@@ -350,8 +342,8 @@ mrb_convert_type(mrb_state *mrb, mrb_value val, mrb_int type, const char *tname,
   if (mrb_type(val) == type) return val;
   v = convert_type(mrb, val, tname, method, 1/*Qtrue*/);
   if (mrb_type(v) != type) {
-    mrb_raise(mrb, E_TYPE_ERROR, "%s#%s should return %s",
-     mrb_obj_classname(mrb, val), method, tname);
+    mrb_raise(mrb, E_TYPE_ERROR, "%s cannot be converted to %s by #%s",
+     mrb_obj_classname(mrb, val), tname, method);
   }
   return v;
 }
@@ -433,7 +425,7 @@ mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t)
         }
         else if (mrb_special_const_p(x)) {
           s = mrb_str_ptr(mrb_obj_as_string(mrb, x));
-          etype = s->buf;
+          etype = s->ptr;
         }
         else {
           etype = mrb_obj_classname(mrb, x);
@@ -470,9 +462,7 @@ mrb_any_to_s(mrb_state *mrb, mrb_value obj)
   len = strlen(cname)+6+16;
   str = mrb_str_new(mrb, 0, len); /* 6:tags 16:addr */
   s = mrb_str_ptr(str);
-  //  snprintf(RSTRING(str)->ptr, len+1, "#<%s:0x%lx>", cname, obj);
-  sprintf(s->buf, "#<%s:0x%lx>", cname, (unsigned long)(obj.value.p));
-  s->len = strlen(s->buf);
+  s->len = sprintf(s->ptr, "#<%s:0x%lx>", cname, (unsigned long)(obj.value.p));
 
   return str;
 }

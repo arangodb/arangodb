@@ -30,6 +30,7 @@ module Kernel
       i += 1
     end
     __printstr__ "\n" if len == 0
+    nil
   end
 
   ##
@@ -45,5 +46,26 @@ module Kernel
       i += 1
     end
     args[0]
+  end
+
+  ##
+  # Invoke method +sprintf+ and pass +*args+ to it.
+  # Pass return value to +print+ of STDOUT.
+  def printf(*args)
+    if Kernel.respond_to?(:sprintf)
+      __printstr__(sprintf(*args))
+    else
+      raise NotImplementedError.new('sprintf not available')
+    end
+  end
+
+  ##
+  # +sprintf+ is defined in +src/sprintf.c+
+  # This stub method is only to inform the user
+  # that +sprintf+ isn't implemented.
+  unless Kernel.respond_to?(:sprintf)
+    def sprintf(*args)
+      raise NotImplementedError.new('sprintf not available')
+    end
   end
 end
