@@ -105,7 +105,7 @@ HttpResponse* HttpHandler::getResponse () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job* HttpHandler::createJob (Dispatcher* dispatcher, AsyncJobServer* server) {
+Job* HttpHandler::createJob (AsyncJobServer* server) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
   if (httpServer == 0) {
@@ -113,7 +113,7 @@ Job* HttpHandler::createJob (Dispatcher* dispatcher, AsyncJobServer* server) {
     return 0;
   }
 
-  return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, dispatcher, this);
+  return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
