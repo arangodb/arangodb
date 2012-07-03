@@ -284,12 +284,12 @@ namespace triagens {
         MUTEX_LOCKER(writeBufferLock);
 
         // write buffer to SSL connection
-        size_t len = writeBuffer->length() - writeLength;
+        size_t len = _writeBuffer->length() - writeLength;
         int nr = 0;
 
         if (0 < len) {
           writeBlockedOnRead = false;
-          nr = SSL_write(ssl, writeBuffer->begin() + writeLength, (int) len);
+          nr = SSL_write(ssl, _writeBuffer->begin() + writeLength, (int) len);
 
           if (nr <= 0) {
             int res = SSL_get_error(ssl, nr);
@@ -348,10 +348,9 @@ namespace triagens {
 
         if (len == 0) {
           if (ownBuffer) {
-            delete writeBuffer;
+            delete _writeBuffer;
           }
 
-          writeBuffer = 0;
           callCompletedWriteBuffer = true;
         }
         else {

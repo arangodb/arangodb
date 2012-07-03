@@ -29,14 +29,13 @@
 #include "HttpCommTask.h"
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralFigures.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-
 #include "Scheduler/Scheduler.h"
-#include "GeneralServer/GeneralFigures.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpServer.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -94,6 +93,15 @@ bool HttpCommTask::processRead () {
   bool handleRequest = false;
 
   if (! _readRequestBody) {
+#ifdef TRI_ENABLE_FIGURES
+
+    if (_readPosition == 0 && _readBuffer->c_str() != _readBuffer->end()) {
+      RequestStatisticsAgent::acquire();
+      RequestStatisticsAgentSetReadStart(this);
+    }
+
+#endif
+
     const char * ptr = _readBuffer->c_str() + _readPosition;
     const char * end = _readBuffer->end() - 3;
 
@@ -178,6 +186,13 @@ bool HttpCommTask::processRead () {
           buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
 
           _writeBuffers.push_back(buffer);
+
+#ifdef TRI_ENABLE_FIGURES
+
+          _writeBuffersStats.push_back(0);
+
+#endif
+
           fillWriteBuffer();
         }
       }
@@ -212,6 +227,9 @@ bool HttpCommTask::processRead () {
 
   // we have to delete request in here or pass it to a handler, which will delete it
   if (handleRequest) {
+    RequestStatisticsAgentSetReadEnd(this);
+    RequestStatisticsAgentAddReceivedBytes(this, _bodyPosition + _bodyLength);
+
     _readBuffer->erase_front(_bodyPosition + _bodyLength);
 
     _requestPending = true;
@@ -243,6 +261,7 @@ bool HttpCommTask::processRead () {
       handleResponse(&response);
     }
     else {
+      this->RequestStatisticsAgent::transfer(handler);
 
       _request = 0;
       ok = _server->handleRequest(this, handler);
@@ -272,6 +291,12 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   buffer->appendText(response->body());
 
   _writeBuffers.push_back(buffer);
+
+#ifdef TRI_ENABLE_FIGURES
+
+  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+
+#endif
 
   LOGGER_TRACE << "HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str();
 

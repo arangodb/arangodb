@@ -136,6 +136,7 @@ void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Dispatcher::addJob (Job* job) {
+  RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
   if (_stopping != 0) {

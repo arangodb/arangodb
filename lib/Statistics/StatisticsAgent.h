@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics agent
+/// @brief statistics agents
 ///
 /// @file
 ///
@@ -30,8 +30,10 @@
 
 #include "Basics/Common.h"
 
+#include "Statistics/request-statistics.h"
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                      class RequestStatisticsAgent
+// --SECTION--                                             class StatisticsAgent
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,19 +73,32 @@ namespace triagens {
 /// @brief constructs a new agent
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_FIGURES
+
         StatisticsAgent ()
           : _statistics(0) {
         }
 
+#else
+
+        StatisticsAgent () {
+        }
+
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs an agent
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
 
         ~StatisticsAgent () {
           if (_statistics != 0) {
             FUNC::release(_statistics);
           }
         }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -101,12 +116,84 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a new statistics block
+////////////////////////////////////////////////////////////////////////////////
+
+        STAT* acquire () {
+#ifdef TRI_ENABLE_FIGURES
+
+          if (_statistics != 0) {
+            return _statistics;
+          }
+
+          return _statistics = FUNC::acquire();
+
+#else
+          return 0;
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a statistics block
+////////////////////////////////////////////////////////////////////////////////
+
+        STAT* release () {
+#ifdef TRI_ENABLE_FIGURES
+
+          if (_statistics != 0) {
+            FUNC::release(_statistics);
+            _statistics = 0;
+          }
+
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a statistics block
+////////////////////////////////////////////////////////////////////////////////
+
+        void replace (STAT* statistics) {
+#ifdef TRI_ENABLE_FIGURES
+          
+          if (_statistics != 0) {
+            FUNC::release(_statistics);
+          }
+
+          _statistics = statistics;
+
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief transfers statistics information
 ////////////////////////////////////////////////////////////////////////////////
 
         void transfer (StatisticsAgent* agent) {
-          agent->_statistics = this->_statistics;
-          this->_statistics = 0;
+#ifdef TRI_ENABLE_FIGURES
+
+          agent->replace(_statistics);
+          _statistics = 0;
+
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transfers statistics information
+////////////////////////////////////////////////////////////////////////////////
+
+        STAT* transfer () {
+#ifdef TRI_ENABLE_FIGURES
+
+          STAT* statistics = _statistics;
+          _statistics = 0;
+
+          return statistics;
+
+#else
+
+          return 0;
+
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +201,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,16 +209,273 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_FIGURES
+
         STAT* _statistics;
+
+#endif
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class StatisticsAgent
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Statistics
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request statistics description
+////////////////////////////////////////////////////////////////////////////////
+
+    struct RequestStatisticsAgentDesc {
+      static TRI_request_statistics_t* acquire () {
+        return TRI_AcquireRequestStatistics();
+      }
+
+      static void release (TRI_request_statistics_t* stat) {
+        TRI_ReleaseRequestStatistics(stat);
+      }
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request statistics agent
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef StatisticsAgent<TRI_request_statistics_t, RequestStatisticsAgentDesc> RequestStatisticsAgent;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the read start
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetReadStart(a)                                        \
+    do {                                                                             \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                           \
+        (a)->RequestStatisticsAgent::_statistics->_readStart = TRI_StatisticsTime(); \
+      }                                                                              \
+    }                                                                                \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetReadStart(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the read end
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetReadEnd(a)                                        \
+    do {                                                                           \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                         \
+        (a)->RequestStatisticsAgent::_statistics->_readEnd = TRI_StatisticsTime(); \
+      }                                                                            \
+    }                                                                              \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetReadEnd(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the write start
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetWriteStart(a)                                        \
+    do {                                                                              \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+        (a)->RequestStatisticsAgent::_statistics->_writeStart = TRI_StatisticsTime(); \
+      }                                                                               \
+    }                                                                                 \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetWriteStart(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the write end
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetWriteEnd(a)                                        \
+    do {                                                                            \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                          \
+        (a)->RequestStatisticsAgent::_statistics->_writeEnd = TRI_StatisticsTime(); \
+      }                                                                             \
+    }                                                                               \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetWriteEnd(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the queue start
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetQueueStart(a)                                        \
+    do {                                                                                \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                              \
+        (a)->RequestStatisticsAgent::_statistics->_queueStart = TRI_StatisticsTime(); \
+      }                                                                                 \
+    }                                                                                   \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetQueueStart(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the queue end
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetQueueEnd(a)                                        \
+    do {                                                                              \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+        (a)->RequestStatisticsAgent::_statistics->_queueEnd = TRI_StatisticsTime(); \
+      }                                                                               \
+    }                                                                                 \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetQueueEnd(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the request start
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetRequestStart(a)                                        \
+    do {                                                                                \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                              \
+        (a)->RequestStatisticsAgent::_statistics->_requestStart = TRI_StatisticsTime(); \
+      }                                                                                 \
+    }                                                                                   \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetRequestStart(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the request end
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetRequestEnd(a)                                        \
+    do {                                                                              \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+        (a)->RequestStatisticsAgent::_statistics->_requestEnd = TRI_StatisticsTime(); \
+      }                                                                               \
+    }                                                                                 \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetRequestEnd(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets execution error
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetExecuteError(a)                         \
+    do {                                                                 \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+        (a)->RequestStatisticsAgent::_statistics->_executeError = true;  \
+      }                                                                  \
+    }                                                                    \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentSetExecuteError(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds bytes received
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentAddReceivedBytes(a,b)                      \
+    do {                                                                 \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+        (a)->RequestStatisticsAgent::_statistics->_receivedBytes += (b); \
+      }                                                                  \
+    }                                                                    \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentAddReceivedBytes(a,b) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds bytes sent
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentAddSentBytes(a,b)                      \
+    do {                                                             \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {           \
+        (a)->RequestStatisticsAgent::_statistics->_sentBytes += (b); \
+      }                                                              \
+    }                                                                \
+    while (0)
+    
+#else
+
+#define RequestStatisticsAgentAddSentBytes(a,b) while (0)
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
