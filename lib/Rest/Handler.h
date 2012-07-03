@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_REST_HANDLER_H
 #define TRIAGENS_REST_HANDLER_H 1
 
-#include "Basics/Common.h"
+#include "Statistics/StatisticsAgent.h"
 
 #include "Basics/Exceptions.h"
 #include "Dispatcher/Job.h"
@@ -55,7 +55,7 @@ namespace triagens {
 /// @brief abstract class for handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Handler {
+    class Handler : public RequestStatisticsAgent {
       private:
         Handler (Handler const&);
         Handler& operator= (Handler const&);

@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_DISPATCHER_JOB_H
 #define TRIAGENS_DISPATCHER_JOB_H 1
 
-#include "Basics/Common.h"
+#include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -57,7 +57,7 @@ namespace triagens {
 /// @brief abstract base class for jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Job {
+    class Job : public RequestStatisticsAgent {
       private:
         Job (Job const&);
         Job& operator= (Job const&);

@@ -126,6 +126,7 @@ void DispatcherThread::run () {
       Job::status_e status = Job::JOB_FAILED;
 
       try {
+        RequestStatisticsAgentSetQueueEnd(job);
 
         // set current thread
         job->setDispatcherThread(this);

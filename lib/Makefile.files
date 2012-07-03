@@ -80,6 +80,8 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c \
 	lib/ShapedJson/shaped-json.c \
+	lib/Statistics/request-statistics.c \
+	lib/Statistics/statistics.c \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Variant/VariantArray.cpp \

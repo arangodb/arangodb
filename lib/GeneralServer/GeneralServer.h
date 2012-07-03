@@ -477,24 +477,32 @@ namespace triagens {
         Handler::status_e handleRequestDirectly (CT* task, GeneralHandler * handler) {
           Handler::status_e status = Handler::HANDLER_FAILED;
 
+          RequestStatisticsAgentSetRequestStart(handler);
+
           try {
             try {
               status = handler->execute();
             }
             catch (basics::TriagensError const& ex) {
+              RequestStatisticsAgentSetExecuteError(handler);
+
               handler->handleError(ex);
             }
             catch (std::exception const& ex) {
-              basics::InternalError err(ex);
+              RequestStatisticsAgentSetExecuteError(handler);
 
+              basics::InternalError err(ex);
               handler->handleError(err);
             }
             catch (...) {
+              RequestStatisticsAgentSetExecuteError(handler);
+
               basics::InternalError err;
               handler->handleError(err);
             }
 
             if (status == Handler::HANDLER_REQUEUE) {
+              handler->RequestStatisticsAgent::transfer(task);
               return status;
             }
 
@@ -507,6 +515,9 @@ namespace triagens {
               response = handler->getResponse();
             }
 
+            RequestStatisticsAgentSetRequestEnd(handler);
+            handler->RequestStatisticsAgent::transfer(task);
+
             if (response != 0) {
               task->handleResponse(response);
             }
@@ -515,12 +526,18 @@ namespace triagens {
             }
           }
           catch (basics::TriagensError const& ex) {
+            RequestStatisticsAgentSetExecuteError(handler);
+
             LOGGER_ERROR << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
           }
           catch (std::exception const& ex) {
+            RequestStatisticsAgentSetExecuteError(handler);
+
             LOGGER_ERROR << "caught exception: " << ex.what();
           }
           catch (...) {
+            RequestStatisticsAgentSetExecuteError(handler);
+
             LOGGER_ERROR << "caught exception";
           }
 

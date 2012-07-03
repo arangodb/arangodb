@@ -178,11 +178,15 @@ namespace triagens {
         status_e work () {
           LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
 
+          this->RequestStatisticsAgent::transfer(_handler);
+
           if (_shutdown != 0) {
             return Job::JOB_DONE;
           }
 
+          RequestStatisticsAgentSetRequestStart(_handler);
           Handler::status_e status = _handler->execute();
+          RequestStatisticsAgentSetRequestEnd(_handler);
 
           LOGGER_TRACE << "finished job " << static_cast<Job*>(this) << " with status " << status;
 

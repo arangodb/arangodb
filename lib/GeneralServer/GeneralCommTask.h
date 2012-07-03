@@ -31,10 +31,9 @@
 
 #include "Basics/Common.h"
 
-#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-
 #include "Scheduler/SocketTask.h"
 
 // -----------------------------------------------------------------------------
@@ -84,6 +83,9 @@ namespace triagens {
             _server(server),
             _connectionInfo(info),
             _writeBuffers(),
+#ifdef TRI_ENABLE_FIGURES
+            _writeBuffersStats(),
+#endif
             _readPosition(0),
             _bodyPosition(0),
             _bodyLength(0),
@@ -116,12 +118,20 @@ namespace triagens {
 
           // free write buffers
           for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
-            basics::StringBuffer * buffer = *i;
+            basics::StringBuffer* buffer = *i;
 
             delete buffer;
           }
 
-          _writeBuffers.clear();
+#ifdef TRI_ENABLE_FIGURES
+
+          for (deque<TRI_request_statistics_t*>::iterator i = _writeBuffersStats.begin();  i != _writeBuffersStats.end();  i++) {
+            TRI_request_statistics_t* buffer = *i;
+
+            TRI_ReleaseRequestStatistics(buffer);
+          }
+
+#endif
 
           // free http request
           if (_request != 0) {
@@ -216,7 +226,14 @@ namespace triagens {
             basics::StringBuffer * buffer = _writeBuffers.front();
             _writeBuffers.pop_front();
 
-            setWriteBuffer(buffer);
+#ifdef TRI_ENABLE_FIGURES
+            TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+            _writeBuffersStats.pop_front();
+#else
+            TRI_request_statistics_t* statistics = 0;
+#endif
+
+            setWriteBuffer(buffer, statistics);
           }
         }
 
@@ -264,6 +281,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void completedWriteBuffer (bool& closed) {
+          _writeBuffer = 0;
+
+#ifdef TRI_ENABLE_FIGURES
+          if (_writeBufferStatistics != 0) {
+            _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+
+            TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+            _writeBufferStatistics = 0;
+          }
+#endif
+
           fillWriteBuffer();
 
           if (_closeRequested && ! hasWriteBuffer() && _writeBuffers.empty()) {
@@ -304,6 +332,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         deque<basics::StringBuffer*> _writeBuffers;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics buffers
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+        deque<TRI_request_statistics_t*> _writeBuffersStats;
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current read position

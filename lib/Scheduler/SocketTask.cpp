@@ -30,20 +30,26 @@
 
 #include <errno.h>
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-static Mutex lockNumWrites;
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new task with a given socket
+////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::SocketTask (socket_t fd)
   : Task("SocketTask"),
@@ -51,30 +57,305 @@ SocketTask::SocketTask (socket_t fd)
     writeWatcher(0),
     watcher(0),
     commSocket(fd),
-    writeBuffer(0),
+    _writeBuffer(0),
+#ifdef TRI_ENABLE_FIGURES
+    _writeBufferStatistics(0),
+#endif
     ownBuffer(true),
     writeLength(0) {
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a socket task
+///
+/// This method will close the underlying socket.
+////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::~SocketTask () {
   if (commSocket != -1) {
     close(commSocket);
   }
 
-  if (writeBuffer != 0) {
+  if (_writeBuffer != 0) {
     if (ownBuffer) {
-      delete writeBuffer;
+      delete _writeBuffer;
     }
   }
+
+#ifdef TRI_ENABLE_FIGURES
+
+  if (_writeBufferStatistics != 0) {
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+  }
+
+#endif
 
   delete _readBuffer;
 
   delete[] tmpReadBuffer;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         protected virtual methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the read buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool SocketTask::fillReadBuffer (bool& closed) {
+  closed = false;
+
+  int nr = read(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
+
+  if (nr > 0) {
+    _readBuffer->appendText(tmpReadBuffer, nr);
+
+    return true;
+  }
+  else if (nr == 0) {
+    closed = true;
+
+    LOGGER_TRACE << "read return 0 with " << errno << " (" << strerror(errno) << ")";
+
+    return false;
+  }
+  else {
+    if (errno == EINTR) {
+      return fillReadBuffer(closed);
+    }
+    else if (errno != EWOULDBLOCK) {
+      LOGGER_TRACE << "read failed with " << errno << " (" << strerror(errno) << ")";
+
+      return false;
+    }
+    else {
+      LOGGER_TRACE << "read would block with " << errno << " (" << strerror(errno) << ")";
+
+      return true;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a write
+////////////////////////////////////////////////////////////////////////////////
+
+bool SocketTask::handleWrite (bool& closed, bool noWrite) {
+
+  closed = false;
+
+  if (noWrite) {
+    return true;
+  }
+
+  bool callCompletedWriteBuffer = false;
+
+  {
+    MUTEX_LOCKER(writeBufferLock);
+
+    size_t len = _writeBuffer->length() - writeLength;
+
+    int nr = 0;
+
+    if (0 < len) {
+      nr = write(commSocket, _writeBuffer->begin() + writeLength, (int) len);
+
+      if (nr < 0) {
+        if (errno == EINTR) {
+          return handleWrite(closed, noWrite);
+        }
+        else if (errno != EWOULDBLOCK) {
+          LOGGER_DEBUG << "write failed with " << errno << " (" << strerror(errno) << ")";
+
+          return false;
+        }
+        else {
+          nr = 0;
+        }
+      }
+
+      len -= nr;
+    }
+
+    if (len == 0) {
+      if (ownBuffer) {
+        delete _writeBuffer;
+      }
+
+      callCompletedWriteBuffer = true;
+    }
+    else {
+      writeLength += nr;
+    }
+  }
+
+  // we have to release the lock, before calling completedWriteBuffer
+  if (callCompletedWriteBuffer) {
+    completedWriteBuffer(closed);
+
+    if (closed) {
+      return false;
+    }
+  }
+
+  // we might have a new write buffer or none at all
+  {
+    MUTEX_LOCKER(writeBufferLock);
+
+    if (_writeBuffer == 0) {
+      scheduler->stopSocketEvents(writeWatcher);
+    }
+    else {
+      scheduler->startSocketEvents(writeWatcher);
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets an active write buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t* statistics, bool ownBuffer) {
+  bool callCompletedWriteBuffer = false;
+
+  {
+    MUTEX_LOCKER(writeBufferLock);
+
+#ifdef TRI_ENABLE_FIGURES
+
+    _writeBufferStatistics = statistics;
+
+    if (_writeBufferStatistics != 0) {
+      _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+      _writeBufferStatistics->_sentBytes += buffer->length();
+    }
+
+#endif
+
+    writeLength = 0;
+
+    if (buffer->empty()) {
+      if (ownBuffer) {
+        delete buffer;
+      }
+
+      callCompletedWriteBuffer = true;
+    }
+    else {
+      if (_writeBuffer != 0) {
+        if (this->ownBuffer) {
+          delete _writeBuffer;
+        }
+
+      }
+
+      _writeBuffer = buffer;
+      this->ownBuffer = ownBuffer;
+    }
+  }
+
+  // we have to release the lock before calling completedWriteBuffer
+  if (callCompletedWriteBuffer) {
+    bool closed;
+    completedWriteBuffer(closed);
+  }
+
+  // we might have a new write buffer or none at all
+  if (tid == Thread::currentThreadId()) {
+    MUTEX_LOCKER(writeBufferLock);
+
+    if (_writeBuffer == 0) {
+      scheduler->stopSocketEvents(writeWatcher);
+    }
+    else {
+      scheduler->startSocketEvents(writeWatcher);
+    }
+  }
+  else {
+    scheduler->sendAsync(watcher);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends or creates an active write buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
+  if (buffer->empty()) {
+    return;
+  }
+
+  bool newBuffer = false;
+
+  {
+    MUTEX_LOCKER(writeBufferLock);
+
+    if (_writeBuffer == 0) {
+      writeLength = 0;
+
+      _writeBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+
+      newBuffer = true;
+    }
+
+    _writeBuffer->appendText(*buffer);
+  }
+
+  // we might have a new write buffer
+  if (newBuffer) {
+    if (tid == Thread::currentThreadId()) {
+      MUTEX_LOCKER(writeBufferLock);
+
+      scheduler->startSocketEvents(writeWatcher);
+    }
+    else {
+      scheduler->sendAsync(watcher);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for presence of an active write buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool SocketTask::hasWriteBuffer () const {
+  MUTEX_LOCKER(writeBufferLock);
+
+  return _writeBuffer != 0;
+}
+
+
+
+
+
+
 
 // -----------------------------------------------------------------------------
 // Task methods
@@ -119,7 +400,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
     {
       MUTEX_LOCKER(writeBufferLock);
-      noWrite = (writeBuffer == 0);
+      noWrite = (_writeBuffer == 0);
     }
 
     if (revents & EVENT_SOCKET_WRITE) {
@@ -130,7 +411,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   if (result) {
     MUTEX_LOCKER(writeBufferLock);
 
-    if (writeBuffer == 0) {
+    if (_writeBuffer == 0) {
       scheduler->stopSocketEvents(writeWatcher);
     }
     else {
@@ -141,213 +422,3 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// protected methods
-// -----------------------------------------------------------------------------
-
-bool SocketTask::handleWrite (bool& closed, bool noWrite) {
-
-  closed = false;
-
-  if (noWrite) {
-    return true;
-  }
-
-  bool callCompletedWriteBuffer = false;
-
-  {
-    MUTEX_LOCKER(writeBufferLock);
-
-    size_t len = writeBuffer->length() - writeLength;
-
-    int nr = 0;
-
-    if (0 < len) {
-      nr = write(commSocket, writeBuffer->begin() + writeLength, (int) len);
-
-      if (nr < 0) {
-        if (errno == EINTR) {
-          return handleWrite(closed, noWrite);
-        }
-        else if (errno != EWOULDBLOCK) {
-          LOGGER_DEBUG << "write failed with " << errno << " (" << strerror(errno) << ")";
-
-          return false;
-        }
-        else {
-          nr = 0;
-        }
-      }
-
-      len -= nr;
-    }
-
-    if (len == 0) {
-      if (ownBuffer) {
-        delete writeBuffer;
-      }
-
-      writeBuffer = 0;
-      callCompletedWriteBuffer = true;
-    }
-    else {
-      writeLength += nr;
-    }
-  }
-
-  // we have to release the lock, before calling completedWriteBuffer
-  if (callCompletedWriteBuffer) {
-    completedWriteBuffer(closed);
-
-    if (closed) {
-      return false;
-    }
-  }
-
-  // we might have a new write buffer or none at all
-  {
-    MUTEX_LOCKER(writeBufferLock);
-
-    if (writeBuffer == 0) {
-      scheduler->stopSocketEvents(writeWatcher);
-    }
-    else {
-      scheduler->startSocketEvents(writeWatcher);
-    }
-  }
-
-  return true;
-}
-
-
-
-bool SocketTask::hasWriteBuffer () const {
-  MUTEX_LOCKER(writeBufferLock);
-
-  return writeBuffer != 0;
-}
-
-
-
-void SocketTask::setWriteBuffer (StringBuffer* buffer, bool ownBuffer) {
-  bool callCompletedWriteBuffer = false;
-
-  {
-    MUTEX_LOCKER(writeBufferLock);
-
-    writeLength = 0;
-
-    if (buffer->empty()) {
-      if (ownBuffer) {
-        delete buffer;
-      }
-
-      writeBuffer = 0;
-      callCompletedWriteBuffer = true;
-    }
-    else {
-      if (writeBuffer != 0) {
-        if (this->ownBuffer) {
-          delete writeBuffer;
-        }
-
-      }
-
-      writeBuffer = buffer;
-      this->ownBuffer = ownBuffer;
-    }
-  }
-
-  // we have to release the lock before calling completedWriteBuffer
-  if (callCompletedWriteBuffer) {
-    bool closed;
-    completedWriteBuffer(closed);
-  }
-
-  // we might have a new write buffer or none at all
-  if (tid == Thread::currentThreadId()) {
-    MUTEX_LOCKER(writeBufferLock);
-
-    if (writeBuffer == 0) {
-      scheduler->stopSocketEvents(writeWatcher);
-    }
-    else {
-      scheduler->startSocketEvents(writeWatcher);
-    }
-  }
-  else {
-    scheduler->sendAsync(watcher);
-  }
-}
-
-
-
-void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
-  if (buffer->empty()) {
-    return;
-  }
-
-  bool newBuffer = false;
-
-  {
-    MUTEX_LOCKER(writeBufferLock);
-
-    if (writeBuffer == 0) {
-      writeLength = 0;
-
-      writeBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
-
-      newBuffer = true;
-    }
-
-    writeBuffer->appendText(*buffer);
-  }
-
-  // we might have a new write buffer
-  if (newBuffer) {
-    if (tid == Thread::currentThreadId()) {
-      MUTEX_LOCKER(writeBufferLock);
-
-      scheduler->startSocketEvents(writeWatcher);
-    }
-    else {
-      scheduler->sendAsync(watcher);
-    }
-  }
-}
-
-
-
-bool SocketTask::fillReadBuffer (bool& closed) {
-  closed = false;
-
-  int nr = read(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
-
-  if (nr > 0) {
-    _readBuffer->appendText(tmpReadBuffer, nr);
-
-    return true;
-  }
-  else if (nr == 0) {
-    closed = true;
-
-    LOGGER_TRACE << "read return 0 with " << errno << " (" << strerror(errno) << ")";
-
-    return false;
-  }
-  else {
-    if (errno == EINTR) {
-      return fillReadBuffer(closed);
-    }
-    else if (errno != EWOULDBLOCK) {
-      LOGGER_TRACE << "read failed with " << errno << " (" << strerror(errno) << ")";
-
-      return false;
-    }
-    else {
-      LOGGER_TRACE << "read would block with " << errno << " (" << strerror(errno) << ")";
-
-      return true;
-    }
-  }
-}

@@ -130,10 +130,12 @@ namespace triagens {
           handler_task_job_t const* table = this->_handlers.tableAndSize(size);
 
           for (size_t i = 0;  i < size;  ++i) {
-            ServerJob* job = table[i]._job;
+            if (table[i]._handler != 0) {
+              ServerJob* job = table[i]._job;
 
-            if (table[i]._handler != 0 && job != 0) {
-              job->abandon();
+              if (job != 0) {
+                job->abandon();
+              }
             }
           }
 
@@ -176,6 +178,8 @@ namespace triagens {
               = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
 
             if (atask != 0) {
+              handler->RequestStatisticsAgent::transfer(atask);
+
               atask->handleResponse(response);
             }
             else {
@@ -307,6 +311,8 @@ namespace triagens {
               GeneralAsyncCommTask<S, HF, CT>* atask = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
 
               if (atask == 0) {
+                RequestStatisticsAgentSetExecuteError(handler);
+
                 LOGGER_WARNING << "task is indirect, but not asynchronous - this cannot work!";
 
                 this->shutdownHandlerByTask(task);
@@ -317,6 +323,8 @@ namespace triagens {
                 ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
                 if (job == 0) {
+                  RequestStatisticsAgentSetExecuteError(handler);
+
                   LOGGER_WARNING << "task is indirect, but handler failed to create a job - this cannot work!";
 
                   this->shutdownHandlerByTask(task);
@@ -330,6 +338,8 @@ namespace triagens {
 
             // without a dispatcher, simply give up
             else {
+              RequestStatisticsAgentSetExecuteError(handler);
+
               LOGGER_WARNING << "no dispatcher is known";
 
               this->shutdownHandlerByTask(task);
@@ -426,6 +436,8 @@ namespace triagens {
           const_cast<handler_task_job_t&>(element)._job = job;
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+
+          handler->RequestStatisticsAgent::transfer(job);
 
           _dispatcher->addJob(job);
         }

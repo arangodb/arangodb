@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_STATISTICS_REQUEST_STATISTICS_H
 #define TRIAGENS_STATISTICS_REQUEST_STATISTICS_H 1
 
+#include "Statistics/statistics.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,6 +48,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_request_statistics_s {
+  void* _next;
+
   double _readStart;
   double _readEnd;
   double _queueStart;
@@ -56,9 +60,10 @@ typedef struct TRI_request_statistics_s {
   double _writeEnd;
 
   double _receivedBytes;
-  double _sendBytes;
+  double _sentBytes;
 
   bool _tooLarge;
+  bool _executeError;
 }
 TRI_request_statistics_t;
 
@@ -79,13 +84,25 @@ TRI_request_statistics_t;
 /// @brief gets a new statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_request_statistics_t* TRI_AquireRequestStatistics ();
+TRI_request_statistics_t* TRI_AcquireRequestStatistics (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the request statistics
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateRequestStatistics (double now);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module init function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseRequestStatistics (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

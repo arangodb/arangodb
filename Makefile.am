@@ -113,7 +113,8 @@ LIBS = \
 	@NCURSES_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@PROTOBUF_LIBS@ \
-	@READLINE_LIBS@
+	@READLINE_LIBS@ \
+	-lrt
 
 ################################################################################
 ### @brief ruby additions
