@@ -168,7 +168,7 @@ namespace triagens {
 /// @brief create a job
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job* createJob (Dispatcher*, AsyncJobServer*) = 0;
+        virtual Job* createJob (AsyncJobServer*) = 0;
     };
   }
 }
