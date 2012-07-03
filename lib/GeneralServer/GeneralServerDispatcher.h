@@ -313,7 +313,7 @@ namespace triagens {
                 return false;
               }
               else {
-                Job* ajob = handler->createJob(_dispatcher, this);
+                Job* ajob = handler->createJob(this);
                 ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
                 if (job == 0) {

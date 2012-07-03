@@ -114,7 +114,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void abandon () {
-          MUTEX_LOCKER(&_abandonLock);
+          MUTEX_LOCKER(_abandonLock);
           _abandon = true;
         }
 
@@ -196,7 +196,7 @@ namespace triagens {
 
         void cleanup () {
           {
-            MUTEX_LOCKER(&_abandonLock);
+            MUTEX_LOCKER(_abandonLock);
 
             if (! _abandon) {
               _server->jobDone(this);
