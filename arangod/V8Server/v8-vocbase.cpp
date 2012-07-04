@@ -2846,6 +2846,9 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ///   dead documents.
 /// - @LIT{dead.deletion}: The total number of deletion markers.
 /// - @LIT{datafiles.count}: The number of active datafiles.
+/// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
+/// - @LIT{journals.count}: The number of journal files.
+/// - @LIT{journals.fileSize}: The total filesize of the journal files.
 ///
 /// @EXAMPLES
 ///
