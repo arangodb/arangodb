@@ -1,3 +1,5 @@
+* fixed issue #122: arangod doesn't start if <log.file> cannot be created
+
 * fixed issue #121: wrong collection size reported
 
 * fixed escaping of document data in HTML admin front end
