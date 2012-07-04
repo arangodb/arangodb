@@ -1650,7 +1650,7 @@ function drawCollectionsTable () {
           processData: false,
           async: false,   
           success: function(data) {
-            size = data.figures.alive.size / 1024; 
+            size = data.figures.journals.fileSize + data.figures.datafiles.fileSize; 
             alive = data.figures.alive.count; 
           },
           error: function(data) {
@@ -1658,7 +1658,7 @@ function drawCollectionsTable () {
         });
         
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
+        val.id, val.name, tempStatus,  bytesToSize(size), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
