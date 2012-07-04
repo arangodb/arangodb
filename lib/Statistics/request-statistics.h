@@ -129,13 +129,14 @@ void TRI_UpdateRequestStatistics (double now);
 
 #ifdef __cplusplus
 
-triagens::basics::VariantArray* TRI_RequestStatistics (TRI_request_statistics_granularity_e granularity,
-                                                       size_t limit,
-                                                       bool showTotalTime,
-                                                       bool showQueueTime,
-                                                       bool showRequestTime,
-                                                       bool showBytesSent,
-                                                       bool showBytesReceived);
+triagens::basics::VariantArray*
+ TRI_RequestStatistics (TRI_request_statistics_granularity_e granularity,
+                        size_t limit,
+                        bool showTotalTime,
+                        bool showQueueTime,
+                        bool showRequestTime,
+                        bool showBytesSent,
+                        bool showBytesReceived);
 
 #endif
 

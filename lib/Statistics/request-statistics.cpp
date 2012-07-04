@@ -67,15 +67,24 @@ using namespace std;
 struct RequestStatisticsDesc {
   RRF_DISTRIBUTION(RequestStatisticsDesc,
                    total,
-                   (0.0001) << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#ifdef TRI_ENABLE_HIRES_FIGURES
+                   (0.0001) << 
+#endif
+                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
   RRF_DISTRIBUTION(RequestStatisticsDesc,
                    queue,
-                   (0.0001) << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#ifdef TRI_ENABLE_HIRES_FIGURES
+                   (0.0001) << 
+#endif
+                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
   RRF_DISTRIBUTION(RequestStatisticsDesc,
                    request,
-                   (0.0001) << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#ifdef TRI_ENABLE_HIRES_FIGURES
+                   (0.0001) << 
+#endif
+                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
   RRF_DISTRIBUTION(RequestStatisticsDesc,
                    bytesSent,

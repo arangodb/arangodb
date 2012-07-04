@@ -1513,7 +1513,8 @@ Optional Features:
   --enable-zone-debug     enables memory zone debugging (default: no)
   --enable-logger         enable logging and timing (default: yes)
   --enable-timing         enable timing (default: yes)
-  --enable-figures        enable figures (default: yes)
+  --enable-figures        enable figures, use 'yes', 'no', or 'hires'(default:
+                          yes)
   --disable-largefile     omit support for large files
   --enable-gcov           enables gnu coverage (default: no)
   --enable-curses         enable ncurses support (default:
@@ -5859,6 +5860,17 @@ if test "x$tr_FIGURES" = xyes;  then
 
 cat >>confdefs.h <<_ACEOF
 #define TRI_ENABLE_FIGURES 1
+_ACEOF
+
+elif test "x$tr_FIGURES" = xhires;  then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_FIGURES 1
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_HIRES_FIGURES 1
 _ACEOF
 
 fi

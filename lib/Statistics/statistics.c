@@ -31,10 +31,6 @@
 #include "BasicsC/threads.h"
 #include "Statistics/request-statistics.h"
 
-// #define TRI_USE_TIME_FIGURES 1
-// #define TRI_USE_CLOCK_GETTIME_FIGURES 1
-#define TRI_USE_THREAD_TIME 1
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -122,7 +118,7 @@ static void StatisticsLoop (void* data) {
 /// @brief gets the current wallclock time
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_USE_CLOCK_GETTIME_FIGURES
+#ifdef TRI_ENABLE_HIRES_FIGURES
 
 double TRI_StatisticsTime () { 
   struct timespec tp;
@@ -132,21 +128,8 @@ double TRI_StatisticsTime () {
   return tp.tv_sec + (tp.tv_nsec / 1000000000.0);
 }
 
-#endif
-
-
-
+#else
 #ifdef TRI_USE_TIME_FIGURES
-
-double TRI_StatisticsTime () { 
-  return time(NULL);
-}
-
-#endif
-
-
-
-#ifdef TRI_USE_THREAD_TIME
 
 double TRI_StatisticsTime () {
   double result;
@@ -158,6 +141,13 @@ double TRI_StatisticsTime () {
   return result;
 }
 
+#else
+
+double TRI_StatisticsTime () { 
+  return time(NULL);
+}
+
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
