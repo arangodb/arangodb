@@ -30,6 +30,20 @@
 
 #include "Statistics/statistics.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+#ifdef __cplusplus
+
+namespace triagens {
+  namespace basics {
+    class VariantArray;
+  }
+}
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +56,17 @@ extern "C" {
 /// @addtogroup Statistics
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request granularity
+////////////////////////////////////////////////////////////////////////////////
+
+enum TRI_request_statistics_granularity_e {
+  TRI_REQUEST_STATISTICS_SECONDS,
+  TRI_REQUEST_STATISTICS_MINUTES,
+  TRI_REQUEST_STATISTICS_HOURS,
+  TRI_REQUEST_STATISTICS_DAYS
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request statistics
@@ -97,6 +122,22 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UpdateRequestStatistics (double now);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a statistics list
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+
+triagens::basics::VariantArray* TRI_RequestStatistics (TRI_request_statistics_granularity_e granularity,
+                                                       size_t limit,
+                                                       bool showTotalTime,
+                                                       bool showQueueTime,
+                                                       bool showRequestTime,
+                                                       bool showBytesSent,
+                                                       bool showBytesReceived);
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function

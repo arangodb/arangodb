@@ -67,10 +67,6 @@ namespace {
           LOGGER_INFO << "control-c received, beginning shut down sequence";
           _server->beginShutdown();
         }
-        else if (_seen == 1) {
-          LOGGER_INFO << "control-c received, shutting down";
-          _server->stop();
-        }
         else {
           LOGGER_INFO << "control-c received, terminating";
           exit(EXIT_FAILURE);

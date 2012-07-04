@@ -112,10 +112,10 @@ HttpHandler::status_e RestVersionHandler::execute () {
     char const* valueStr = _request->value("sleep", found);
 
     if (found) {
-      int32_t s = TRI_Int32String(valueStr);
+      double s = TRI_DoubleString(valueStr);
 
       if (0 < s) {
-        sleep(s);
+        usleep(s * 1000.0 * 1000.0);
       }
     }
   }

@@ -32,8 +32,8 @@
 #include "Statistics/request-statistics.h"
 
 // #define TRI_USE_TIME_FIGURES 1
-#define TRI_USE_CLOCK_GETTIME_FIGURES 1
-// #define TRI_USE_THREAD_TIME 1
+// #define TRI_USE_CLOCK_GETTIME_FIGURES 1
+#define TRI_USE_THREAD_TIME 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
