@@ -395,6 +395,7 @@ var logTable = $('#logTableID').dataTable({
       tableView = true; 
       $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
+      $('#toggleEditedDocButtonText').text('Edit Source'); 
       
       $('#documentEditSourceView').hide();
       $('#documentEditTableView').show();
@@ -795,7 +796,6 @@ var logTable = $('#logTableID').dataTable({
         var collectionID; 
         var boxContent = $('#documentEditSourceBox').val();
         collectionID = globalCollectionID;  
-
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
@@ -966,7 +966,6 @@ var logTable = $('#logTableID').dataTable({
         var boxContent = $('#documentEditSourceBox').val(); 
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
-
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
             documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
@@ -2161,7 +2160,7 @@ function FormatJSON(oData, sIndent) {
         if (sDataType == "array") {
             sHTML += ("\n" + sIndent + sIndentStyle);
         } else {
-            sHTML += ("\n" + sIndent + sIndentStyle + "\"" + sKey + "\"" + ": ");
+            sHTML += ("\n" + sIndent + sIndentStyle + JSON.stringify(sKey) + ": ");
         }
 
         // display relevant data type
@@ -2178,7 +2177,7 @@ function FormatJSON(oData, sIndent) {
                 sHTML += "null";
                 break;
             case "string":
-                sHTML += ("\"" + (vValue.replace(/"/g,"\\\"")) + "\"");
+                sHTML += "\"" + vValue.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
                 break;
             default:
                 sHTML += ("TYPEOF: " + typeof(vValue));
@@ -2243,14 +2242,13 @@ function stateReplace (value) {
   var escaped = false;
 
   var output = "";
-
   while (position < length) {
     var c = value.charAt(position++);
 
     if (c === '\\') {
       if (escaped) {
         /* case: \ followed by \ */
-        output += '\\';
+        output += '\\\\';
         escaped = false;
       } 
       else {
@@ -2271,19 +2269,31 @@ function stateReplace (value) {
     } 
     else {
       if (inString) {
-        switch (c) {
-          case '\n':
-            output += '\\n';
-            break;
-          case '\t':
-            output += '\\t';
-            break;
-          case '\r':
-            output += '\\r';
-            break;
-          default:
-            output += c;
-            break;
+        if (escaped) {
+          output += '\\' + c;
+          escaped = false;
+        }
+        else {
+          switch (c) {
+            case '\b':
+              output += '\\b';
+              break;
+            case '\f':
+              output += '\\f';
+              break;
+            case '\n':
+              output += '\\n';
+              break;
+            case '\t':
+              output += '\\t';
+              break;
+            case '\r':
+              output += '\\r';
+              break;
+            default:
+              output += c;
+              break;
+          }
         }
       } 
       else {
@@ -2311,7 +2321,7 @@ $('#submitDocPageInput').live('click', function () {
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
           });
           $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
           collectionCurrentPage = enteredPage;
