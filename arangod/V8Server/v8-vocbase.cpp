@@ -2882,6 +2882,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_collection_info_t* info = doc->figures(doc);
   doc->endRead(doc);
 
+  if (info == NULL) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+
   v8::Handle<v8::Object> alive = v8::Object::New();
 
   result->Set(v8::String::New("alive"), alive);
@@ -2895,10 +2902,19 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   dead->Set(v8::String::New("size"), v8::Number::New(info->_sizeDead));
   dead->Set(v8::String::New("deletion"), v8::Number::New(info->_numberDeletion));
 
+  // datafile info
   v8::Handle<v8::Object> dfs = v8::Object::New();
 
   result->Set(v8::String::New("datafiles"), dfs);
   dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
+  dfs->Set(v8::String::New("fileSize"), v8::Number::New(info->_datafileSize));
+  
+  // journal info
+  v8::Handle<v8::Object> js = v8::Object::New();
+
+  result->Set(v8::String::New("journals"), js);
+  js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
+  js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
