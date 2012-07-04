@@ -169,8 +169,11 @@ Handler::status_e RequestStatisticsHandler::execute () {
     if (l == "current") {
       length = 0;
     }
+    else if (l == "all" || l == "*") {
+      length = -1;
+    }
     else {
-      length = StringUtils::uint32(l);
+      length = StringUtils::int32(l);
     }
   }
   else {
