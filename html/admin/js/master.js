@@ -492,7 +492,7 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + JSON.stringify(v) + "</pre>"]);  
+            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + "</pre>"]);  
           });
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
@@ -1808,17 +1808,17 @@ function value2html (value) {
   var checked = typeof(value); 
   switch(checked) { 
     case 'number': 
-    return ("<a class=sh_number>" + value + "</a>");
+    return ("<a class=\"sh_number\">" + value + "</a>");
     case 'string': 
-    return ("<a class=sh_string>"  + escaped(value) + "</a>");
+    return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
     case 'boolean': 
-    return ("<a class=sh_keyword>" + value + "</a>");
+    return ("<a class=\"sh_keyword\">" + value + "</a>");
     case 'object':
     if (value instanceof Array) {
-      return ("<a class=sh_array>" + JSON.stringify(value) + "</a>");
+      return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
     }
     else {
-      return ("<a class=sh_object>"+ JSON.stringify(value) + "</a>");
+      return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
     }
   }
 }
@@ -1938,7 +1938,7 @@ function createPrevDocPagination() {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     },
@@ -2035,8 +2035,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 70) {
-    return escaped(string.substr(0, 70)) + '...';
+  if (string.length > 1024) {
+    return escaped(string.substr(0, 1024)) + '...';
   }
   return escaped(string);
 }
