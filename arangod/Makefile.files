@@ -56,6 +56,7 @@ bin_arangod_SOURCES = \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
 	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
 	arangod/RestHandler/RequestStatisticsHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \

@@ -56,6 +56,7 @@
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
+#include "RestHandler/ConnectionStatisticsHandler.h"
 #include "RestHandler/RequestStatisticsHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -155,6 +156,10 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
   user->addHandlers(factory, "/_admin");
 
   // add statistics
+  factory->addHandler("/_admin/connection-statistics",
+                      RestHandlerCreator<ConnectionStatisticsHandler>::createNoData,
+                      0);
+
   factory->addHandler("/_admin/request-statistics",
                       RestHandlerCreator<RequestStatisticsHandler>::createNoData,
                       0);
