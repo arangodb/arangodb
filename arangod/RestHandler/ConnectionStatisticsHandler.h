@@ -87,9 +87,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ///
-/// @RESTHEADER{GET /_admin/request-statistics,reads the request statistics}
+/// @RESTHEADER{GET /_admin/connection-statistics,reads the connection statistics}
 ///
-/// @REST{GET /_admin/request-statistics?granalurity=@FA{granularity}&figures=@FA{figures}&length=@FA{length}}
+/// @REST{GET /_admin/connection-statistics?granalurity=@FA{granularity}&figures=@FA{figures}&length=@FA{length}}
 ///
 /// The call returns statistics about the current and past requests. The
 /// following parameter control which information is returned.
@@ -99,9 +99,8 @@ namespace triagens {
 ///   @LIT{minutes}.
 ///
 /// - @FA{figures}: a list of figures, comma-separated. Possible figures are
-///   @LIT{totalTime}, @LIT{queueTime}, @LIT{requestTime}, @LIT{bytesSent}, and
-///   @LIT{bytesReceived}. You can use @LIT{all} to get all figures. The default
-///   is @LIT{totalTime}, @LIT{bytesSent}, and @LIT{bytesReceived}.
+///   @LIT{httpConnections}. You can use @LIT{all} to get all figures. The default
+///   is @LIT{httpConnections}.
 ///
 /// - @FA{length}: If you want a time series, the maximal length of the series
 ///   as integer. You can use @LIT{all} to get all available information. You can
@@ -124,37 +123,7 @@ namespace triagens {
 ///
 /// - @LIT{queueTime}: the distribution of the queue time.
 ///
-/// - @LIT{requestTime}: the distribution of the request time.
-///
-/// - @LIT{bytesSent}: the distribution of the number of bytes sent.
-///
-/// - @LIT{bytesReceived}: the distribution of the number of bytes received.
-///
-/// A distribution contains the following fields:
-///
-/// - @LIT{count}: a list describing the number of requests per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{mean}: a list describing the mean of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{min}: a list describing the minimum of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{max}: a list describing the maximum of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{deviation}: a list describing the deviation of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{cuts}: a list [N1, N2, ... Nx] of numbers defining the intervals for
-///   the figure. The first interval is [0 .. N1), the last interval is [Nx
-///   .. INF).
-///
-/// - @LIT{distribution}: a list describing the distribution of the values per
-///   time interval. This corresponds to the field @LIT{start}. Each entry of the
-///   list is again a list. This list describes the number of requests per cut and
-///   corresponds to the field @{cuts}.
+/// - @LIT{httpConnections}: the number of aktive http connections.
 ///
 /// If @FA{length} is @LIT{current} the figures for the current interval are returned.
 ///
@@ -162,11 +131,11 @@ namespace triagens {
 ///
 /// A time-series:
 ///
-/// @EXAMPLE{request-statistics,request statistics as time series}
+/// @EXAMPLE{connection-statistics,connection statistics as time series}
 ///
 /// The current figures:
 ///
-/// @EXAMPLE{request-statistics-current,current request statistics}
+/// @EXAMPLE{connection-statistics-current,current connection statistics}
 ////////////////////////////////////////////////////////////////////////////////
 
         void compute (TRI_statistics_granularity_e, size_t length);

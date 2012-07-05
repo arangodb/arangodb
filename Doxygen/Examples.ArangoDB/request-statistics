@@ -1,4 +1,4 @@
-> curl -dump http://localhost:8529/_admin/statistics?granularity=minutes&figures=all&length=all
+> curl -dump http://localhost:8529/_admin/request-statistics?granularity=minutes&figures=all&length=all
 
 HTTP/1.1 200 OK
 {

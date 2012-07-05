@@ -503,6 +503,51 @@ namespace triagens {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the continuous figures
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantContinuous (VariantArray* result,
+                                        STAT const& s, 
+                                        std::string const& name) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      // generate the continuous figure
+      uint32_t count = ACC::access(s)._count;
+
+      VariantUInt32* valCount = new VariantUInt32(count);
+      values->add("count", valCount);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the distributions
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantContinuous (VariantArray* result,
+                                        typename std::vector<STAT> const& v, 
+                                        std::string const& name) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      if (! v.empty()) {
+
+        // generate the continuous figures
+        VariantVector* vecCount = new VariantVector();
+        values->add("count", vecCount);
+
+        for (typename std::vector<STAT>::const_iterator j = v.begin();  j != v.end();  ++j) {
+          STAT const& s = *j;
+
+          uint32_t count = ACC::access(s)._count;
+
+          vecCount->add(new VariantUInt32(count));
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

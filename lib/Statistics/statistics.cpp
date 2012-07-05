@@ -527,7 +527,8 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
                                   bool showQueueTime,
                                   bool showRequestTime,
                                   bool showBytesSent,
-                                  bool showBytesReceived) {
+                                  bool showBytesReceived,
+                                  bool showHttp) {
   vector<time_t> t;
   vector<StatisticsDesc> blocks;
 
@@ -630,6 +631,10 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
     if (showBytesReceived) {
       RRF_GenerateVariantDistribution<StatisticsDesc::bytesReceivedAccessor>(result, blocks[0], "bytesReceived");
     }
+
+    if (showHttp) {
+      RRF_GenerateVariantContinuous<StatisticsDesc::httpConnectionsAccessor>(result, blocks[0], "httpConnections");
+    }
   }
 
   // .............................................................................
@@ -681,6 +686,10 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
 
     if (showBytesReceived) {
       RRF_GenerateVariantDistributions<StatisticsDesc::bytesReceivedAccessor>(result, blocks, "bytesReceived");
+    }
+
+    if (showHttp) {
+      RRF_GenerateVariantContinuous<StatisticsDesc::httpConnectionsAccessor>(result, blocks, "httpConnections");
     }
   }
 
