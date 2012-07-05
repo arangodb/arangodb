@@ -1744,7 +1744,9 @@ function documentTableMakeEditable (tableID) {
     submit: 'Okay',
     cancel: 'Cancel', 
     onblur: 'cancel',
-    style: 'display: inline'
+    //style: 'display: inline',
+    type: "autogrow", 
+    autogrow: {lineHeight: 16, minHeight: 32}
   });
 }
 
