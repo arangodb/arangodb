@@ -136,7 +136,8 @@ void RequestStatisticsHandler::compute (TRI_statistics_granularity_e granularity
                                             showQueueTime,
                                             showRequestTime,
                                             showBytesSent,
-                                            showBytesReceived);
+                                            showBytesReceived,
+                                            false);
 
   generateResult(result);
 }

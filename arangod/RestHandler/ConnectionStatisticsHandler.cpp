@@ -70,11 +70,7 @@ ConnectionStatisticsHandler::ConnectionStatisticsHandler (triagens::rest::HttpRe
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granularity, size_t length) {
-  bool showTotalTime = false;
-  bool showQueueTime = false;
-  bool showRequestTime = false;
-  bool showBytesSent = false;
-  bool showBytesReceived = false;
+  bool showHttp = false;
 
   // .............................................................................
   // extract the figures to show
@@ -85,11 +81,7 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
 
   if (found) {
     if (figures == "*" || figures == "all") {
-      showTotalTime = true;
-      showQueueTime = true;
-      showRequestTime = true;
-      showBytesSent = true;
-      showBytesReceived = true;
+      showHttp = true;
     }
     else {
       vector<string> f = StringUtils::split(figures);
@@ -97,20 +89,8 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
       for (vector<string>::iterator i = f.begin();  i != f.end();  ++i) {
         string const& fn = *i;
         
-        if (fn == "totaltime") {
-          showTotalTime = true;
-        }
-        else if (fn == "queuetime") {
-          showQueueTime = true;
-        }
-        else if (fn == "requesttime") {
-          showRequestTime = true;
-        }
-        else if (fn == "bytessent") {
-          showBytesSent = true;
-        }
-        else if (fn == "bytesreceived") {
-          showBytesReceived = true;
+        if (fn == "httpconnections") {
+          showHttp = true;
         }
         else {
           generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "unknown figure '" + fn + "'");
@@ -121,9 +101,7 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
 
   }
   else {
-    showTotalTime = true;
-    showBytesSent = true;
-    showBytesReceived = true;
+    showHttp = true;
   }
 
   // .............................................................................
@@ -132,11 +110,12 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
 
   VariantArray* result = TRI_StatisticsInfo(granularity,
                                             length,
-                                            showTotalTime,
-                                            showQueueTime,
-                                            showRequestTime,
-                                            showBytesSent,
-                                            showBytesReceived);
+                                            false,
+                                            false,
+                                            false,
+                                            false,
+                                            false,
+                                            showHttp);
 
   generateResult(result);
 }

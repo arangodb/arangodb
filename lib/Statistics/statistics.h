@@ -215,7 +215,8 @@ triagens::basics::VariantArray*
                      bool showQueueTime,
                      bool showRequestTime,
                      bool showBytesSent,
-                     bool showBytesReceived);
+                     bool showBytesReceived,
+                     bool showHttp);
 
 #endif
 

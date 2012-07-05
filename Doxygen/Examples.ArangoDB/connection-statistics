@@ -1,0 +1,11 @@
+> curl -dump http://localhost:8529/_admin/connection-statistics?granularity=minutes&figures=all&length=all
+
+{
+  "resolution" : 60,
+  "start" : [1341517860, 1341517920, 1341517980],
+  "length" : 3,
+  "totalLength" : 120,
+  "httpConnections" : {
+    "count" : [10, 0, 1]
+  }
+}
