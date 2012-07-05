@@ -48,7 +48,7 @@ using namespace triagens::rest;
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestStatisticsHandler::RequestStatisticsHandler (HttpRequest* request) 
+RequestStatisticsHandler::RequestStatisticsHandler (triagens::rest::HttpRequest* request) 
   : RestBaseHandler(request) {
 }
 

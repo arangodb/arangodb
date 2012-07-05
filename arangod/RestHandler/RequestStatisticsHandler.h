@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief statistics handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RequestStatisticsHandler : public admin::RestBaseHandler {
+    class RequestStatisticsHandler : public triagens::admin::RestBaseHandler {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -67,7 +67,7 @@ namespace triagens {
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        RequestStatisticsHandler (rest::HttpRequest*);
+        RequestStatisticsHandler (triagens::rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -92,6 +92,87 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
+///
+/// @RESTHEADER{GET /_admin/request-statistics,reads the request statistics}
+///
+/// @REST{GET /_admin/request-statistics?granalurity=@FA{granularity}&figures=@FA{figures}&length=@FA{length}}
+///
+/// The call returns statistics about the current and past requests. The
+/// following parameter control which information is returned.
+///
+/// - @FA{granularity}: use @LIT{minutes} for a granularity of minutes,
+///   @LIT{hours} for hours, and @LIT{days} for days. The default is
+///   @LIT{minutes}.
+///
+/// - @FA{figures}: a list of figures, comma-separated. Possible figures are
+///   @LIT{totalTime}, @LIT{queueTime}, @LIT{requestTime}, @LIT{bytesSent}, and
+///   @LIT{bytesReceived}. You can use @LIT{all} to get all figures. The default
+///   is @LIT{totalTime}, @LIT{bytesSent}, and @LIT{bytesReceived}.
+///
+/// - @FA{length}: If you want a time series, the maximal length of the series
+///   as integer. You can use @LIT{all} to get all available information. You can
+///   use @LIT{current} to get the latest interval.
+///
+/// The returned statistics objects contains information of the request figures.
+///
+/// - @LIT{resolution}: the resolution in seconds aka granularity. The length of
+///   the time intervals.
+///
+/// - @LIT{start}: a list of time stamps in seconds since 1970-01-01. Each entry
+///   marks the start of an interval for which the figures were computed. The length
+///   of the interval is given by @LIT{resolution}.
+///
+/// - @LIT{length}: the number of returned intervals.
+///
+/// - @LIT{totalLength}: the number of available intervals.
+///
+/// - @LIT{totalTime}: the distribution of the total time.
+///
+/// - @LIT{queueTime}: the distribution of the queue time.
+///
+/// - @LIT{requestTime}: the distribution of the request time.
+///
+/// - @LIT{bytesSent}: the distribution of the number of bytes sent.
+///
+/// - @LIT{bytesReceived}: the distribution of the number of bytes received.
+///
+/// A distribution contains the following fields:
+///
+/// - @LIT{count}: a list describing the number of requests per time
+///   interval. This corresponds to the field @LIT{start}.
+///
+/// - @LIT{mean}: a list describing the mean of the values per time
+///   interval. This corresponds to the field @LIT{start}.
+///
+/// - @LIT{min}: a list describing the minimum of the values per time
+///   interval. This corresponds to the field @LIT{start}.
+///
+/// - @LIT{max}: a list describing the maximum of the values per time
+///   interval. This corresponds to the field @LIT{start}.
+///
+/// - @LIT{deviation}: a list describing the deviation of the values per time
+///   interval. This corresponds to the field @LIT{start}.
+///
+/// - @LIT{cuts}: a list [N1, N2, ... Nx] of numbers defining the intervals for
+///   the figure. The first interval is [0 .. N1), the last interval is [Nx
+///   .. INF).
+///
+/// - @LIT{distribution}: a list describing the distribution of the values per
+///   time interval. This corresponds to the field @LIT{start}. Each entry of the
+///   list is again a list. This list describes the number of requests per cut and
+///   corresponds to the field @{cuts}.
+///
+/// If @FA{length} is @LIT{current} the figures for the current interval are returned.
+///
+/// @EXAMPLES
+///
+/// A time-series:
+///
+/// @EXAMPLE{request-statistics,request statistics as time series}
+///
+/// The current figures:
+///
+/// @EXAMPLE{request-statistics-current,current request statistics}
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e execute ();
@@ -113,5 +194,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-
