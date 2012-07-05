@@ -4488,6 +4488,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
       return 0;
     }
     else {
+      // I wish this error provided me with more information!
+      // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                    "cannot execute cross collection index");
       return 0;
