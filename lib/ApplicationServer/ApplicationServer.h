@@ -657,10 +657,13 @@ namespace triagens {
 ///
 /// This option allows the user to specify the name of a file to which
 /// information is logged. By default, if no log file is specified, the standard
-/// output is used. Note that, if the file named by @CA{filename} does not
-/// exist, it will be created. However, if the file already exists, output is
-/// appended to the file. Use @LIT{+} to log to standard error. Use @LIT{-} to
-/// log to standard output. Use @LIT{""} to disable logging to file.
+/// output is used. Note that if the file named by @CA{filename} does not
+/// exist, it will be created. If the file cannot be created (e.g. due to 
+/// missing file privileges), the server will refuse to start. If the specified 
+/// file already exists, output is appended to that file. 
+///
+/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output. 
+/// Use @LIT{""} to disable logging to file.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logFile;

@@ -35,6 +35,8 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 
+#include "IndexIterators/index-iterator.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,16 +65,8 @@ typedef struct MasterTableBlockData_s {
 
 
 typedef struct MasterTableBlock_s {
-  //uint8_t _usedPointers;
-  //uint8_t _deletedPointers;
   bit_column_int_t _free;  
-  
   MasterTableBlockData_t _tablePointers [BITARRAY_MASTER_TABLE_BLOCKSIZE];  
-  // ............................................................................
-  // to test for deleted value
-  // Let 0 <= n <= (BITARRAY_MASTER_TABLE_BLOCKSIZE - 1). 
-  // if ((1 << n) && deleted) == 0, then item has been removed, otherwise not.  
-  // ............................................................................
 } MasterTableBlock_t;
 
 
@@ -115,7 +109,7 @@ static void destroyMasterTable       (MasterTable_t* mt);
 static void freeMasterTable          (MasterTable_t* mt); 
 static int  insertMasterTable        (MasterTable_t*, TRI_master_table_position_t*);
 static int  removeElementMasterTable (MasterTable_t*, TRI_master_table_position_t*);
-static int  storeElementMasterTable  (MasterTable_t*, TRI_vector_pointer_t*, TRI_master_table_position_t*);
+static int  storeElementMasterTable  (MasterTable_t*, void*, TRI_master_table_position_t*);
 // ............................................................................
 // forward declared functions associative array
 // ............................................................................
@@ -392,7 +386,10 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
   tableEntry->_bitNum    = blockEntryNum;
   tableEntry->_vectorNum = 0; // not currently used in this revision
   
-
+  block->_tablePointers[blockEntryNum]._numPointers  = 1;
+  block->_tablePointers[blockEntryNum]._tablePointer = tableEntry->_docPointer;
+  
+  
   // ..........................................................................
   // Insert the tableEntry into the associative array with the key being 
   // the document handle.
@@ -403,6 +400,7 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
   }  
   
   
+  //printf("%s:%d:@:%d:%d:%d:%lu \n",__FILE__,__LINE__,  block->_free,*freeBlock,blockEntryNum,  (uint64_t)(tableEntry->_docPointer) );
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -452,8 +450,17 @@ int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* pos
 
 
 
-int storeElementMasterTable(MasterTable_t* mt, TRI_vector_pointer_t* results, TRI_master_table_position_t* position) {
+int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_position_t* position) {
+  // should we store doc pointers directly or indirectly via BitarrayIndexElement
+  // need an Generic IndexElement structure to do this effectively
   MasterTableBlock_t* tableBlock;  
+  TRI_index_iterator_interval_t interval;
+  
+  TRI_index_iterator_t* iterator = (TRI_index_iterator_t*)(results);
+  
+  if (results == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
   
   // ...........................................................................
   // Determine the block within the master table we are concentrating on
@@ -467,16 +474,24 @@ int storeElementMasterTable(MasterTable_t* mt, TRI_vector_pointer_t* results, TR
   // if it is marked as free, then of course no reason to store the handle
   // ...........................................................................
   
-  if ((tableBlock->_free >> position->_bitNum) == 1) {
+  if (((tableBlock->_free >> position->_bitNum) & 1) == 1) {
     return TRI_ERROR_NO_ERROR;
   }
-
   
   // ...........................................................................
-  // entry not deleted so append it to the results vector
+  // entry not deleted so append it to the results which is an iterator 
   // ...........................................................................
   
-  TRI_PushBackVectorPointer(results,(tableBlock->_tablePointers[position->_bitNum])._tablePointer);
+  interval._leftEndPoint = (tableBlock->_tablePointers[position->_bitNum])._tablePointer;
+  
+  /*
+  printf("%s:%d:@:%lu:%d:%d:%d:%lu \n",__FILE__,__LINE__,
+  tableBlock->_free, (tableBlock->_free >> position->_bitNum),
+  position->_blockNum,position->_bitNum,
+  (uint64_t)(interval._leftEndPoint)
+  );
+  */
+  TRI_PushBackVector(&(iterator->_intervals), &interval);
   return TRI_ERROR_NO_ERROR;
 }
 

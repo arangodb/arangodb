@@ -216,10 +216,7 @@ nobase_pkgdata_DATA = \
 if ENABLE_MRUBY
 
 nobase_pkgdata_DATA += \
-	$(shell find @srcdir@/js/actions/system -name "*.rb" -print) \
-	$(shell find @srcdir@/js/common/modules -name "*.rb" -print) \
-	$(shell find @srcdir@/js/server/modules -name "*.rb" -print) \
-	$(shell find @srcdir@/js/client/modules -name "*.rb" -print)
+	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
 endif
 
