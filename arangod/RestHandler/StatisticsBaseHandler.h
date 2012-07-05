@@ -25,15 +25,34 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RequestStatisticsHandler.h"
+#ifndef TRIAGENS_REST_HANDLER_STATISTICS_BASE_HANDLER_H
+#define TRIAGENS_REST_HANDLER_STATISTICS_BASE_HANDLER_H 1
 
-#include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
-#include "Variant/VariantArray.h"
+#include "Admin/RestBaseHandler.h"
 
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::rest;
+#include "Statistics/statistics.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class RestDocumentHandler
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics handler
+////////////////////////////////////////////////////////////////////////////////
+
+    class StatisticsBaseHandler : public triagens::admin::RestBaseHandler {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -44,13 +63,34 @@ using namespace triagens::rest;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestStatisticsHandler::RequestStatisticsHandler (triagens::rest::HttpRequest* request) 
-  : StatisticsBaseHandler(request) {
-}
+        StatisticsBaseHandler (triagens::rest::HttpRequest*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            virtual public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute statistics
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void compute (TRI_statistics_granularity_e, size_t length) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -65,85 +105,28 @@ RequestStatisticsHandler::RequestStatisticsHandler (triagens::rest::HttpRequest*
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RequestStatisticsHandler::compute (TRI_statistics_granularity_e granularity, size_t length) {
-  bool showTotalTime = false;
-  bool showQueueTime = false;
-  bool showRequestTime = false;
-  bool showBytesSent = false;
-  bool showBytesReceived = false;
+        bool isDirect ();
 
-  // .............................................................................
-  // extract the figures to show
-  // .............................................................................
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-  bool found;
-  string figures = StringUtils::tolower(_request->value("figures", found));
-
-  if (found) {
-    if (figures == "*" || figures == "all") {
-      showTotalTime = true;
-      showQueueTime = true;
-      showRequestTime = true;
-      showBytesSent = true;
-      showBytesReceived = true;
-    }
-    else {
-      vector<string> f = StringUtils::split(figures);
-
-      for (vector<string>::iterator i = f.begin();  i != f.end();  ++i) {
-        string const& fn = *i;
-        
-        if (fn == "totaltime") {
-          showTotalTime = true;
-        }
-        else if (fn == "queuetime") {
-          showQueueTime = true;
-        }
-        else if (fn == "requesttime") {
-          showRequestTime = true;
-        }
-        else if (fn == "bytessent") {
-          showBytesSent = true;
-        }
-        else if (fn == "bytesreceived") {
-          showBytesReceived = true;
-        }
-        else {
-          generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "unknown figure '" + fn + "'");
-          return;
-        }
-      }
-    }
-
+        status_e execute ();
+    };
   }
-  else {
-    showTotalTime = true;
-    showBytesSent = true;
-    showBytesReceived = true;
-  }
-
-  // .............................................................................
-  // compute
-  // .............................................................................
-
-  VariantArray* result = TRI_StatisticsInfo(granularity,
-                                            length,
-                                            showTotalTime,
-                                            showQueueTime,
-                                            showRequestTime,
-                                            showBytesSent,
-                                            showBytesReceived);
-
-  generateResult(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -153,5 +136,3 @@ void RequestStatisticsHandler::compute (TRI_statistics_granularity_e granularity
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_REST_HANDLER_REQUEST_STATISTICS_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REQUEST_STATISTICS_HANDLER_H 1
 
-#include "Admin/RestBaseHandler.h"
+#include "RestHandler/StatisticsBaseHandler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class RestDocumentHandler
@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief statistics handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RequestStatisticsHandler : public triagens::admin::RestBaseHandler {
+    class RequestStatisticsHandler : public StatisticsBaseHandler {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -74,7 +74,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                     StatisticsBaseHandler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,12 +83,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -175,7 +169,7 @@ namespace triagens {
 /// @EXAMPLE{request-statistics-current,current request statistics}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_e execute ();
+        void compute (TRI_statistics_granularity_e, size_t length);
     };
   }
 }
