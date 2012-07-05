@@ -44,8 +44,6 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/socket-utils.h"
 #include "Logger/Logger.h"
-
-#include "GeneralServer/GeneralFigures.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -164,7 +162,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         LOGGER_ERROR << "too many accept failures, stopping logging";
       }
       
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
@@ -178,7 +176,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       close(connfd);
       
       LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
@@ -193,7 +192,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       close(connfd);
       
       LOGGER_WARNING << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
@@ -205,7 +205,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       close(connfd);
       
       LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
@@ -216,21 +217,15 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       close(connfd);
       
       LOGGER_ERROR << "cannot set close-on-exec: " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
     
-    // handle connection
-    ConnectionInfo info;
-/*
-        info.serverAddress = inet_ntoa(addr_out.sin_addr);
-        info.serverPort = port;
-        
-        info.clientAddress = inet_ntoa(addr.sin_addr);
-        info.clientPort = addr.sin_port;
-*/
     // set client address and port
+    ConnectionInfo info;
+
     char host[NI_MAXHOST], serv[NI_MAXSERV];
     if (getnameinfo((sockaddr*) &addr, len,
                     host, sizeof(host),
@@ -240,8 +235,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       info.clientPort = addr.sin_port;
     }
     else {
-          info.clientAddress = inet_ntoa(addr.sin_addr);
-          info.clientPort = addr.sin_port;
+      info.clientAddress = inet_ntoa(addr.sin_addr);
+      info.clientPort = addr.sin_port;
     }
     
     info.serverAddress = address;

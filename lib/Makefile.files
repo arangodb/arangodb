@@ -80,8 +80,7 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c \
 	lib/ShapedJson/shaped-json.c \
-	lib/Statistics/request-statistics.cpp \
-	lib/Statistics/statistics.c \
+	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Variant/VariantArray.cpp \
@@ -142,7 +141,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
-	lib/GeneralServer/GeneralFigures.cpp \
 	lib/HttpServer/ApplicationHttpServer.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \

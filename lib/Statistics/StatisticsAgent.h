@@ -30,7 +30,7 @@
 
 #include "Basics/Common.h"
 
-#include "Statistics/request-statistics.h"
+#include "Statistics/statistics.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class StatisticsAgent
@@ -137,7 +137,7 @@ namespace triagens {
 /// @brief releases a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-        STAT* release () {
+        void release () {
 #ifdef TRI_ENABLE_FIGURES
 
           if (_statistics != 0) {
@@ -221,19 +221,24 @@ namespace triagens {
 
 #endif
     };
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class StatisticsAgent
+// --SECTION--                                      class RequestStatisticsAgent
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Statistics
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request statistics description
@@ -474,6 +479,104 @@ namespace triagens {
 #else
 
 #define RequestStatisticsAgentAddSentBytes(a,b) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   class ConnectionStatisticsAgent
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Statistics
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace rest {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection statistics description
+////////////////////////////////////////////////////////////////////////////////
+
+    struct ConnectionStatisticsAgentDesc {
+      static TRI_connection_statistics_t* acquire () {
+        return TRI_AcquireConnectionStatistics();
+      }
+
+      static void release (TRI_connection_statistics_t* stat) {
+        TRI_ReleaseConnectionStatistics(stat);
+      }
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection statistics agent
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef StatisticsAgent<TRI_connection_statistics_t, ConnectionStatisticsAgentDesc> ConnectionStatisticsAgent;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the connection type
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define ConnectionStatisticsAgentSetHttp(a)                             \
+  do {                                                                  \
+    if ((a)->ConnectionStatisticsAgent::_statistics != 0) {             \
+      (a)->ConnectionStatisticsAgent::_statistics->_http = true;        \
+    }                                                                   \
+  }                                                                     \
+  while (0)
+    
+#else
+
+#define ConnectionStatisticsAgentSetHttp(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the connection start
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define ConnectionStatisticsAgentSetStart(a)                                          \
+  do {                                                                                \
+    if ((a)->ConnectionStatisticsAgent::_statistics != 0) {                           \
+      (a)->ConnectionStatisticsAgent::_statistics->_connStart = TRI_StatisticsTime(); \
+    }                                                                                 \
+  }                                                                                   \
+  while (0)
+    
+#else
+
+#define ConnectionStatisticsAgentSetStart(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the connection end
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define ConnectionStatisticsAgentSetEnd(a)                                          \
+  do {                                                                              \
+    if ((a)->ConnectionStatisticsAgent::_statistics != 0) {                         \
+      (a)->ConnectionStatisticsAgent::_statistics->_connEnd = TRI_StatisticsTime(); \
+    }                                                                               \
+  }                                                                                 \
+  while (0)
+    
+#else
+
+#define ConnectionStatisticsAgentSetEnd(a) while (0)
 
 #endif
 

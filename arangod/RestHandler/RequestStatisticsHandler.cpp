@@ -84,7 +84,7 @@ Handler::status_e RequestStatisticsHandler::execute () {
   bool showBytesSent = false;
   bool showBytesReceived = false;
 
-  TRI_request_statistics_granularity_e granularity = TRI_REQUEST_STATISTICS_MINUTES;
+  TRI_statistics_granularity_e granularity = TRI_STATISTICS_MINUTES;
 
   int length = -1;
 
@@ -146,17 +146,17 @@ Handler::status_e RequestStatisticsHandler::execute () {
 
   if (found) {
     if (gran == "minute" || gran == "minutes") {
-      granularity = TRI_REQUEST_STATISTICS_MINUTES;
+      granularity = TRI_STATISTICS_MINUTES;
     }
     else if (gran == "hour" || gran == "hours") {
-      granularity = TRI_REQUEST_STATISTICS_HOURS;
+      granularity = TRI_STATISTICS_HOURS;
     }
     else if (gran == "day" || gran == "days") {
-      granularity = TRI_REQUEST_STATISTICS_DAYS;
+      granularity = TRI_STATISTICS_DAYS;
     }
   }
   else {
-    granularity = TRI_REQUEST_STATISTICS_MINUTES;
+    granularity = TRI_STATISTICS_MINUTES;
   }
 
   // .............................................................................
@@ -184,13 +184,13 @@ Handler::status_e RequestStatisticsHandler::execute () {
   // extract the statistics blocks
   // .............................................................................
 
-  VariantArray* result = TRI_RequestStatistics(granularity,
-                                               length,
-                                               showTotalTime,
-                                               showQueueTime,
-                                               showRequestTime,
-                                               showBytesSent,
-                                               showBytesReceived);
+  VariantArray* result = TRI_StatisticsInfo(granularity,
+                                            length,
+                                            showTotalTime,
+                                            showQueueTime,
+                                            showRequestTime,
+                                            showBytesSent,
+                                            showBytesReceived);
 
   generateResult(result);
   return HANDLER_DONE;
