@@ -14,6 +14,13 @@ if [ "$?" == 0 ];  then
   exit 1
 fi
 
+fgrep -q "v$VERSION" CHANGELOG
+
+if [ "$?" != 0 ];  then
+  echo "$0: version $VERSION not defined in CHANGELOG"
+  exit 1
+fi
+
 echo "$VERSION" > VERSION
 
 cat configure.ac \
@@ -23,7 +30,11 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-make configure
+./configure --enable-all-in-one --disable-flex --disable-bison --disable-mruby
+make built-sources
+make doxygen
+make latex
+make wiki
 
 git commit -m "release version $VERSION" -a
 git push

@@ -323,7 +323,28 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a sort expression
+/// @brief optimise a for statement
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
+                                    TRI_aql_node_t* node) {
+  TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 1);
+
+  if (expression->_type == TRI_AQL_NODE_LIST) {
+    // for statement with a list expression
+    if (expression->_members._length == 0) {
+      // list is empty => we can eliminate the for statement
+      TRI_AQL_LOG("optimised away empty for loop");
+
+      return TRI_GetDummyReturnEmptyNodeAql();
+    }
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise a sort statement
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
@@ -384,7 +405,7 @@ static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a filter expression
+/// @brief optimise a filter statement
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
@@ -861,7 +882,7 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a statement
+/// @brief optimise statement, first iteration
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walker, 
@@ -871,6 +892,8 @@ static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walk
    
   // node optimisations
   switch (node->_type) {
+    case TRI_AQL_NODE_FOR:
+      return OptimiseFor(walker, node);
     case TRI_AQL_NODE_SORT:
       return OptimiseSort(walker, node);
     case TRI_AQL_NODE_FILTER:
@@ -987,7 +1010,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise the AST
+/// @brief optimise the AST, first iteration
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OptimiseAst (TRI_aql_context_t* const context) {

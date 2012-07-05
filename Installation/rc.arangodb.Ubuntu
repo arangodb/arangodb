@@ -17,9 +17,9 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
 DESC="session voc server"
 NAME="arangos"
-PIDDIR=/var/run/arangod
-PIDFILE=${PIDDIR}/pid
-CONF=/etc/arango.conf
+PIDDIR=/var/run/arangodb
+PIDFILE=${PIDDIR}/arangod.pid
+CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 

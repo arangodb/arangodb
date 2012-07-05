@@ -234,7 +234,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
 void ArangoServer::buildApplicationServer () {
   _applicationServer = new ApplicationServer("[<options>] <database-directory>", TRIAGENS_VERSION);
-  _applicationServer->setUserConfigFile(".arango/arango.conf");
+  _applicationServer->setUserConfigFile(".arango/arangod.conf");
 
   // .............................................................................
   // multi-threading scheduler and dispatcher
@@ -328,7 +328,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
 
-  _applicationServer->setSystemConfigFile("arango.conf", _binaryPath + "/../etc");
+  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
 #else
@@ -351,7 +351,7 @@ void ArangoServer::buildApplicationServer () {
   // use absolute paths
   // .............................................................................
 
-  _applicationServer->setSystemConfigFile("arango.conf");
+  _applicationServer->setSystemConfigFile("arangod.conf");
   _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
 
 #endif
@@ -426,6 +426,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional["Server Options:help-admin"]
     ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
+    ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
 
   additional["THREAD Options:help-admin"]
@@ -438,6 +439,14 @@ void ArangoServer::buildApplicationServer () {
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     exit(EXIT_FAILURE);
+  }
+  
+  // .............................................................................
+  // disable access to the HTML admin interface
+  // .............................................................................
+
+  if (_applicationServer->programOptions().has("server.disable-admin-interface")) {
+    _applicationAdminServer->allowAdminDirectory(false);
   }
 
   // .............................................................................

@@ -86,8 +86,9 @@
 /// http://packagist.org/packages/triagens/ArangoDb
 /// 
 /// @subsection HomePython Python
-/// 
-/// @subsection HomeREST REST
+///
+/// There is a Python client available in a separate project:
+/// https://github.com/joymax/arango-python
 /// 
 /// @subsection HomeRuby Ruby
 ///

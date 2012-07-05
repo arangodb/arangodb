@@ -395,6 +395,7 @@ var logTable = $('#logTableID').dataTable({
       tableView = true; 
       $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
+      $('#toggleEditedDocButtonText').text('Edit Source'); 
       
       $('#documentEditSourceView').hide();
       $('#documentEditTableView').show();
@@ -492,7 +493,7 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + JSON.stringify(v) + "</pre>"]);  
+            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + "</pre>"]);  
           });
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
@@ -795,7 +796,6 @@ var logTable = $('#logTableID').dataTable({
         var collectionID; 
         var boxContent = $('#documentEditSourceBox').val();
         collectionID = globalCollectionID;  
-
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
@@ -966,7 +966,6 @@ var logTable = $('#logTableID').dataTable({
         var boxContent = $('#documentEditSourceBox').val(); 
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
-
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
             documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
@@ -1651,7 +1650,7 @@ function drawCollectionsTable () {
           processData: false,
           async: false,   
           success: function(data) {
-            size = data.figures.alive.size / 1024; 
+            size = data.figures.journals.fileSize + data.figures.datafiles.fileSize; 
             alive = data.figures.alive.count; 
           },
           error: function(data) {
@@ -1659,7 +1658,7 @@ function drawCollectionsTable () {
         });
         
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus,  bytesToSize(size*1024), alive]);
+        val.id, val.name, tempStatus,  bytesToSize(size), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
@@ -1808,17 +1807,17 @@ function value2html (value) {
   var checked = typeof(value); 
   switch(checked) { 
     case 'number': 
-    return ("<a class=sh_number>" + value + "</a>");
+    return ("<a class=\"sh_number\">" + value + "</a>");
     case 'string': 
-    return ("<a class=sh_string>"  + escaped(value) + "</a>");
+    return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
     case 'boolean': 
-    return ("<a class=sh_keyword>" + value + "</a>");
+    return ("<a class=\"sh_keyword\">" + value + "</a>");
     case 'object':
     if (value instanceof Array) {
-      return ("<a class=sh_array>" + JSON.stringify(value) + "</a>");
+      return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
     }
     else {
-      return ("<a class=sh_object>"+ JSON.stringify(value) + "</a>");
+      return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
     }
   }
 }
@@ -1938,7 +1937,7 @@ function createPrevDocPagination() {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     },
@@ -2035,8 +2034,8 @@ function showCursor() {
 }
 
 function cutByResolution (string) {
-  if (string.length > 70) {
-    return escaped(string.substr(0, 70)) + '...';
+  if (string.length > 1024) {
+    return escaped(string.substr(0, 1024)) + '...';
   }
   return escaped(string);
 }
@@ -2161,7 +2160,7 @@ function FormatJSON(oData, sIndent) {
         if (sDataType == "array") {
             sHTML += ("\n" + sIndent + sIndentStyle);
         } else {
-            sHTML += ("\n" + sIndent + sIndentStyle + "\"" + sKey + "\"" + ": ");
+            sHTML += ("\n" + sIndent + sIndentStyle + JSON.stringify(sKey) + ": ");
         }
 
         // display relevant data type
@@ -2178,7 +2177,7 @@ function FormatJSON(oData, sIndent) {
                 sHTML += "null";
                 break;
             case "string":
-                sHTML += ("\"" + (vValue.replace(/"/g,"\\\"")) + "\"");
+                sHTML += "\"" + vValue.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
                 break;
             default:
                 sHTML += ("TYPEOF: " + typeof(vValue));
@@ -2243,14 +2242,13 @@ function stateReplace (value) {
   var escaped = false;
 
   var output = "";
-
   while (position < length) {
     var c = value.charAt(position++);
 
     if (c === '\\') {
       if (escaped) {
         /* case: \ followed by \ */
-        output += '\\';
+        output += '\\\\';
         escaped = false;
       } 
       else {
@@ -2271,19 +2269,31 @@ function stateReplace (value) {
     } 
     else {
       if (inString) {
-        switch (c) {
-          case '\n':
-            output += '\\n';
-            break;
-          case '\t':
-            output += '\\t';
-            break;
-          case '\r':
-            output += '\\r';
-            break;
-          default:
-            output += c;
-            break;
+        if (escaped) {
+          output += '\\' + c;
+          escaped = false;
+        }
+        else {
+          switch (c) {
+            case '\b':
+              output += '\\b';
+              break;
+            case '\f':
+              output += '\\f';
+              break;
+            case '\n':
+              output += '\\n';
+              break;
+            case '\t':
+              output += '\\t';
+              break;
+            case '\r':
+              output += '\\r';
+              break;
+            default:
+              output += c;
+              break;
+          }
         }
       } 
       else {
@@ -2311,7 +2321,7 @@ $('#submitDocPageInput').live('click', function () {
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
           });
           $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
           collectionCurrentPage = enteredPage;
