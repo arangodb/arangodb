@@ -25,11 +25,10 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RequestStatisticsHandler.h"
+#include "StatisticsBaseHandler.h"
 
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
-#include "Variant/VariantArray.h"
 
 using namespace triagens::arango;
 using namespace triagens::basics;
@@ -48,8 +47,8 @@ using namespace triagens::rest;
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestStatisticsHandler::RequestStatisticsHandler (triagens::rest::HttpRequest* request) 
-  : StatisticsBaseHandler(request) {
+StatisticsBaseHandler::StatisticsBaseHandler (triagens::rest::HttpRequest* request) 
+  : RestBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,76 +68,68 @@ RequestStatisticsHandler::RequestStatisticsHandler (triagens::rest::HttpRequest*
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RequestStatisticsHandler::compute (TRI_statistics_granularity_e granularity, size_t length) {
-  bool showTotalTime = false;
-  bool showQueueTime = false;
-  bool showRequestTime = false;
-  bool showBytesSent = false;
-  bool showBytesReceived = false;
+bool StatisticsBaseHandler::isDirect () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Handler::status_e StatisticsBaseHandler::execute () {
+  TRI_statistics_granularity_e granularity = TRI_STATISTICS_MINUTES;
+
+  int length = -1;
 
   // .............................................................................
-  // extract the figures to show
+  // extract the granularity to show
   // .............................................................................
 
   bool found;
-  string figures = StringUtils::tolower(_request->value("figures", found));
+  string gran = StringUtils::tolower(_request->value("granularity", found));
 
   if (found) {
-    if (figures == "*" || figures == "all") {
-      showTotalTime = true;
-      showQueueTime = true;
-      showRequestTime = true;
-      showBytesSent = true;
-      showBytesReceived = true;
+    if (gran == "minute" || gran == "minutes") {
+      granularity = TRI_STATISTICS_MINUTES;
     }
-    else {
-      vector<string> f = StringUtils::split(figures);
-
-      for (vector<string>::iterator i = f.begin();  i != f.end();  ++i) {
-        string const& fn = *i;
-        
-        if (fn == "totaltime") {
-          showTotalTime = true;
-        }
-        else if (fn == "queuetime") {
-          showQueueTime = true;
-        }
-        else if (fn == "requesttime") {
-          showRequestTime = true;
-        }
-        else if (fn == "bytessent") {
-          showBytesSent = true;
-        }
-        else if (fn == "bytesreceived") {
-          showBytesReceived = true;
-        }
-        else {
-          generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "unknown figure '" + fn + "'");
-          return;
-        }
-      }
+    else if (gran == "hour" || gran == "hours") {
+      granularity = TRI_STATISTICS_HOURS;
     }
-
+    else if (gran == "day" || gran == "days") {
+      granularity = TRI_STATISTICS_DAYS;
+    }
   }
   else {
-    showTotalTime = true;
-    showBytesSent = true;
-    showBytesReceived = true;
+    granularity = TRI_STATISTICS_MINUTES;
   }
 
   // .............................................................................
-  // compute
+  // extract the length
   // .............................................................................
 
-  VariantArray* result = TRI_StatisticsInfo(granularity,
-                                            length,
-                                            showTotalTime,
-                                            showQueueTime,
-                                            showRequestTime,
-                                            showBytesSent,
-                                            showBytesReceived);
+  string l = StringUtils::tolower(_request->value("length", found));
 
-  generateResult(result);
+  if (found) {
+    if (l == "current") {
+      length = 0;
+    }
+    else if (l == "all" || l == "*") {
+      length = -1;
+    }
+    else {
+      length = StringUtils::int32(l);
+    }
+  }
+  else {
+    length = -1;
+  }
+
+  // .............................................................................
+  // compute the statistics
+  // .............................................................................
+
+  compute(granularity, length);
+  return HANDLER_DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
