@@ -637,6 +637,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
 	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
 	arangod/RestHandler/RequestStatisticsHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
@@ -699,6 +700,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT) \
@@ -1438,6 +1440,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
 	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
 	arangod/RestHandler/RequestStatisticsHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
@@ -2566,6 +2569,9 @@ arangod/RestHandler/$(DEPDIR)/$(am__dirstamp):
 arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -2819,6 +2825,7 @@ mostlyclean-compile:
 	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT)
@@ -3080,6 +3087,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po@am__quote@
@@ -4199,6 +4207,22 @@ arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj: arangod/RestHandler/S
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/StatisticsBaseHandler.cpp' object='arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj `if test -f 'arangod/RestHandler/StatisticsBaseHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/StatisticsBaseHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/StatisticsBaseHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o: arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o `test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/ConnectionStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o `test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/ConnectionStatisticsHandler.cpp
+
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj: arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj `if test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/ConnectionStatisticsHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/ConnectionStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj `if test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/ConnectionStatisticsHandler.cpp'; fi`
 
 arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o: arangod/RestHandler/RequestStatisticsHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o `test -f 'arangod/RestHandler/RequestStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RequestStatisticsHandler.cpp
