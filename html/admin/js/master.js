@@ -1739,14 +1739,14 @@ function documentTableMakeEditable (tableID) {
       }
     }, 
     //type: 'textarea',
+    type: "autogrow", 
     tooltip: 'click to edit', 
     cssclass : 'jediTextarea', 
     submit: 'Okay',
     cancel: 'Cancel', 
     onblur: 'cancel',
     //style: 'display: inline',
-    type: "autogrow", 
-    autogrow: {lineHeight: 16, minHeight: 32}
+    autogrow: {lineHeight: 20, minHeight: 40}
   });
 }
 
