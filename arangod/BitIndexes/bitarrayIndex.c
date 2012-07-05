@@ -40,6 +40,7 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "BasicsC/logging.h"
 
 
 
@@ -47,20 +48,22 @@
 // forward declaration of static functions used for iterator callbacks
 // .............................................................................
 
+static void  BitarrayIndexDestroyIterator          (TRI_index_iterator_t*);
 static bool  BitarrayIndexHasNextIterationCallback (TRI_index_iterator_t*);
 static void* BitarrayIndexNextIterationCallback    (TRI_index_iterator_t*);
 static void* BitarrayIndexNextsIterationCallback   (TRI_index_iterator_t*, int64_t);
 static bool  BitarrayIndexHasPrevIterationCallback (TRI_index_iterator_t*);
 static void* BitarrayIndexPrevIterationCallback    (TRI_index_iterator_t*);
 static void* BitarrayIndexPrevsIterationCallback   (TRI_index_iterator_t*, int64_t);
-static void  BitarrayIndexDestroyIterator          (TRI_index_iterator_t*);
- 
+static void  BitarrayIndexResetIterator            (TRI_index_iterator_t*, bool);
 // .............................................................................
 // forward declaration of static functions used here
 // .............................................................................
 
-static void BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
+static int  BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
 static int  generateBitMask          (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
+static int  generateEqualBitMask     (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
+static void debugPrintMask           (BitarrayIndex*, uint64_t);
 
 
 
@@ -88,8 +91,8 @@ void BitarrayIndex_destroy(BitarrayIndex* baIndex) {
   }
   TRI_DestroyVector(&baIndex->_values);
   
-  TRI_FreeBitarray(baIndex->bitarray);
-  baIndex->bitarray = NULL;
+  TRI_FreeBitarray(baIndex->_bitarray);
+  baIndex->_bitarray = NULL;
 }
 
 
@@ -202,7 +205,7 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
   // Create the bit arrays
   // ...........................................................................  
   
-  result = TRI_InitBitarray(&((*baIndex)->bitarray), memoryZone, numArrays, NULL);
+  result = TRI_InitBitarray(&((*baIndex)->_bitarray), memoryZone, numArrays, NULL);
 
 
   // ...........................................................................  
@@ -241,7 +244,7 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   // insert the bit mask into the bit array
   // ..........................................................................
   
-  result = TRI_InsertBitMaskElementBitarray(baIndex->bitarray, &mask, element->data);  
+  result = TRI_InsertBitMaskElementBitarray(baIndex->_bitarray, &mask, element->data);  
   return result;
 }
 
@@ -254,6 +257,7 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
 TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex, 
                                          TRI_index_operator_t* indexOperator,
                                          TRI_vector_t* shapeList,
+                                         void* collectionIndex,
                                          bool (*filter) (TRI_index_iterator_t*) ) {
 
   TRI_index_iterator_t* iterator;
@@ -275,7 +279,7 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   // ...........................................................................  
   
   TRI_InitVector(&(iterator->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_interval_t));
-  iterator->_index           = baIndex;  
+  iterator->_index           = collectionIndex;  
   iterator->_currentInterval = 0;  
   iterator->_cursor          = NULL;
   
@@ -287,6 +291,7 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   iterator->_prev            = BitarrayIndexPrevIterationCallback;
   iterator->_prevs           = BitarrayIndexPrevsIterationCallback;
   iterator->_destroyIterator = BitarrayIndexDestroyIterator;
+  iterator->_reset           = BitarrayIndexResetIterator;
   
   BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator);
   
@@ -311,7 +316,7 @@ int BitarrayIndex_insert(BitarrayIndex* baIndex, BitarrayIndexElement* element) 
 
 int BitarrayIndex_remove(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   int result;
-  result = TRI_RemoveElementBitarray(baIndex->bitarray, element->data); 
+  result = TRI_RemoveElementBitarray(baIndex->_bitarray, element->data); 
   return result;
 }
 
@@ -344,44 +349,162 @@ int BitarrayIndex_update(BitarrayIndex* baIndex,
 // forward declaration of static functions used for iterator callbacks
 // .............................................................................
 
+void BitarrayIndexDestroyIterator(TRI_index_iterator_t* iterator) {
+  TRI_DestroyVector(&(iterator->_intervals));
+}  
+ 
+
 bool  BitarrayIndexHasNextIterationCallback(TRI_index_iterator_t* iterator) {
-  assert(0);
-  return false;
+
+  if (iterator->_intervals._length == 0) {
+    return false;
+  }
+    
+  if (iterator->_currentInterval >= iterator->_intervals._length) {
+    return false;
+  }  
+  
+  return true;  
 }
 
   
 void* BitarrayIndexNextIterationCallback(TRI_index_iterator_t* iterator) {
-  assert(0);
-  return NULL;
+  TRI_index_iterator_interval_t* interval;
+
+  iterator->_currentDocument = NULL;
+
+  if (iterator->_cursor == NULL) {
+    iterator->_currentInterval = 0;
+  }
+  
+  
+  if (iterator->_intervals._length == 0) {
+    return NULL;
+  }
+  
+  
+  if (iterator->_currentInterval >= iterator->_intervals._length) {
+    return NULL;
+  }  
+
+ 
+  interval = (TRI_index_iterator_interval_t*)(TRI_AtVector(&(iterator->_intervals),iterator->_currentInterval));
+  
+  if (interval == NULL) { // should not occur -- something is wrong
+    LOG_WARNING("internal error in BitarrayIndexNextIterationCallback");
+    return NULL;
+  }
+  
+  iterator->_cursor          = interval->_leftEndPoint;
+  iterator->_currentDocument = interval->_leftEndPoint;      
+  
+  ++iterator->_currentInterval;
+  return iterator->_currentDocument;
 }
 
 
 void* BitarrayIndexNextsIterationCallback(TRI_index_iterator_t* iterator, int64_t jumpSize) {
-  assert(0);
-  return NULL;
+  int64_t j;
+  void* result = NULL;
+  void* lastValidResult = NULL;
+  
+  for (j = 0; j < jumpSize; ++j) {
+    result = BitarrayIndexNextIterationCallback(iterator);  
+    if (result != NULL) {
+      lastValidResult = result;
+    }  
+    if (result == NULL) {
+      break;
+    }  
+  }
+  return lastValidResult;
 }
 
   
 bool BitarrayIndexHasPrevIterationCallback(TRI_index_iterator_t* iterator) {
-  assert(0);
-  return false;
+
+  if (iterator->_intervals._length == 0) {
+    return false;
+  }
+    
+  if (iterator->_currentInterval >= iterator->_intervals._length) {
+    return false;
+  }  
+  
+  return true;  
 }
 
   
 void* BitarrayIndexPrevIterationCallback(TRI_index_iterator_t* iterator) {
-  assert(0);
-  return NULL;
+  TRI_index_iterator_interval_t* interval;
+
+  iterator->_currentDocument = NULL;
+
+  if (iterator->_cursor == NULL) {
+    iterator->_currentInterval = iterator->_intervals._length - 1;
+  }
+  
+  if (iterator->_currentInterval >= iterator->_intervals._length) {
+    return false;
+  }  
+  
+  if (iterator->_intervals._length == 0) {
+    return NULL;
+  }
+  
+ 
+  interval = (TRI_index_iterator_interval_t*)(TRI_AtVector(&(iterator->_intervals),iterator->_currentInterval));
+  
+  if (interval == NULL) { // should not occur -- something is wrong
+    LOG_WARNING("internal error in BitarrayIndexPrevIterationCallback");
+    return NULL;
+  }
+  
+  iterator->_cursor          = interval->_leftEndPoint;
+  iterator->_currentDocument = interval->_leftEndPoint;      
+  
+  if (iterator->_currentInterval == 0) {
+    iterator->_currentInterval = iterator->_intervals._length;
+  }
+  else {
+    --iterator->_currentInterval;
+  }  
+  return iterator->_currentDocument;
 }
 
   
 void* BitarrayIndexPrevsIterationCallback(TRI_index_iterator_t* iterator, int64_t jumpSize) {
-  assert(0);
-  return NULL;
+  int64_t j;
+  void* result = NULL;
+  void* lastValidResult = NULL;
+  
+  for (j = 0; j < jumpSize; ++j) {
+    result = BitarrayIndexPrevIterationCallback(iterator);  
+    if (result != NULL) {
+      lastValidResult = result;
+    }  
+    if (result == NULL) {
+      break;
+    }  
+  }
+  return lastValidResult;
 }
 
   
-void BitarrayIndexDestroyIterator(TRI_index_iterator_t* iterator) {
-  assert(0);
+void BitarrayIndexResetIterator(TRI_index_iterator_t* iterator, bool beginning) {
+  if (beginning) {
+    iterator->_cursor = NULL;
+    iterator->_currentInterval = 0;
+    iterator->_currentDocument = NULL;
+    return;
+  }
+
+  iterator->_cursor = NULL;
+  iterator->_currentInterval = 0;
+  iterator->_currentDocument = NULL;
+  if (iterator->_intervals._length > 0) {
+    iterator->_currentInterval = iterator->_intervals._length - 1;
+  }
 }  
  
  
@@ -389,11 +512,127 @@ void BitarrayIndexDestroyIterator(TRI_index_iterator_t* iterator) {
 // forward declaration of static functions used internally here
 // .............................................................................
 
-void BitarrayIndex_findHelper(BitarrayIndex* baIndex, 
+int BitarrayIndex_findHelper(BitarrayIndex* baIndex, 
                               TRI_vector_t* shapeList, 
                               TRI_index_operator_t* indexOperator, 
                               TRI_index_iterator_t* iterator) {
-  assert(0);                              
+
+  BitarrayIndexElement element;
+  TRI_bitarray_mask_t mask;
+  int result;
+  
+  element.fields      = NULL;
+  element.numFields   = 0;
+  element.collection  = NULL;
+  element.data        = NULL;
+  
+  mask._mask       = 0;
+  mask._ignoreMask = 0;
+  
+  // ............................................................................
+  // Prepare the values variable with details about the fields and collection
+  // these may be required later. These values make sense only for relational
+  // type operators.
+  // ............................................................................
+  
+  switch (indexOperator->_type) {
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR: 
+    case TRI_LT_INDEX_OPERATOR: 
+    case TRI_GE_INDEX_OPERATOR: 
+    case TRI_GT_INDEX_OPERATOR: {
+      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+      element.fields     = relationOperator->_fields;
+      element.numFields  = relationOperator->_numFields;
+      element.collection = relationOperator->_collection;
+      break;
+    }
+    
+    default: {
+      // ..........................................................................
+      // If it is not a relational index operator we may not have access
+      // access _fields and _collection
+      // ..........................................................................
+      break;       
+    }
+  }
+
+
+  // ............................................................................
+  // Process the indexOperator recursively
+  // ............................................................................
+  
+  switch (indexOperator->_type) {
+
+    case TRI_AND_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }
+
+  
+    case TRI_OR_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }
+    
+    
+    case TRI_EQ_INDEX_OPERATOR: {
+      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+
+      // ............................................................................
+      // for bitarray indexes, the number of attribute values ALWAYS matches the
+      // the number of parameters for a TRI_EQ_INDEX_OPERATOR. However, the client
+      // may wish some attributes to be ignored, so some values will be '{}'.
+      // ............................................................................
+      
+      if (relationOperator->_numFields != shapeList->_length) {
+        assert(false);
+      } 
+
+
+      // ............................................................................
+      // generate the bit mask
+      // ............................................................................
+      
+      result = generateEqualBitMask(baIndex, relationOperator, &mask); 
+      //debugPrintMask(baIndex, mask._mask);      
+      //debugPrintMask(baIndex, mask._ignoreMask);      
+      
+      result = TRI_LookupBitMaskBitarray(baIndex->_bitarray, &mask, iterator);
+
+      break;    
+    }
+    
+    case TRI_LE_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }  
+    
+    
+    case TRI_LT_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }  
+    
+
+    case TRI_GE_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }  
+  
+  
+    case TRI_GT_INDEX_OPERATOR: {
+      assert(false);
+      break;    
+    }  
+    
+    default: {
+      assert(0);
+    }
+    
+  } // end of switch statement
+   
+  return result;   
 }
             
 
@@ -613,6 +852,159 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
   }  
   
   return TRI_ERROR_NO_ERROR;
+}
+
+
+int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
+  int j;
+  int shiftLeft;
+  
+  // ...........................................................................
+  // some safety checks first
+  // ...........................................................................
+  
+  if (baIndex == NULL || relationOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+
+  // ...........................................................................
+  // supportUndef -- refers to where the document does not have 1 or more 
+  // attributes which are defined in the index. (Not related to whether or
+  // not the attribute has a value defined in the set of supported values.)
+  // ...........................................................................
+  
+  
+  // ...........................................................................
+  // if the number of attributes is 0, then something must be wrong
+  // ...........................................................................
+  
+  if (relationOperator->_numFields == 0) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  
+  // ...........................................................................
+  // if an attribute which was defined in the index, was not sent by the client,
+  // then that bitarray column is ignored.
+  // ...........................................................................
+    
+  mask->_mask       = 0;
+  mask->_ignoreMask = 0;
+  shiftLeft         = 0;
+  
+  for (j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
+    TRI_json_t* valueList;
+    TRI_json_t* value;
+    uint64_t    other;    
+    int         i;
+    uint64_t    tempMask;
+    
+    
+    value     = (TRI_json_t*)(TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));       
+    valueList = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
+    
+    
+    // .........................................................................
+    // client did not send us this attribute (hence undefined value), therefore
+    // this particular column we ignore
+    // .........................................................................
+    
+    if (value->_type == TRI_JSON_UNUSED) {    
+      tempMask = (uint64_t)(1) << (valueList->_value._objects._length - 1);      
+      mask->_ignoreMask = mask->_ignoreMask | (tempMask << shiftLeft);      
+      continue;
+    }
+    
+    
+    other      = 0;
+    tempMask   = 0;
+    
+    for (i = 0; i < valueList->_value._objects._length; ++i) {    
+      TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
+      int k;
+      
+      // .......................................................................
+      // if the ith possible set of values is not a list, do comparison 
+      // .......................................................................
+      
+      if (listEntry->_type != TRI_JSON_LIST) {
+        if (isEqualJson(value, listEntry)) {
+          tempMask = tempMask | (1 << i);
+        }  
+        continue;
+      }
+      
+      
+      // .......................................................................
+      // ith entry in the set of possible values is a list
+      // .......................................................................
+      
+      // .......................................................................
+      // Special case of an empty list -- this means all other values
+      // .......................................................................
+      
+      if (listEntry->_value._objects._length == 0) { // special case 
+        other = (1 << i);
+        continue;
+      }
+      
+      
+      for (k = 0; k < listEntry->_value._objects._length; k++) {
+        TRI_json_t* subListEntry;
+        subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
+        if (isEqualJson(value, subListEntry)) {
+          tempMask = tempMask | (1 << i);
+          break;
+        }  
+      }      
+      
+    }
+     
+     
+    // ............................................................................
+    // When we create a bitarray index, for example: ensureBitarray("x",[0,[],1,2,3])
+    // and we insert doc with {"x" : "hello world"}, then, since the value of "x"
+    // does not match 0,1,2 or 3 and [] appears as a valid list item, the doc is
+    // inserted with a mask of 01000
+    // This is what other means below
+    // ............................................................................
+    
+    if (tempMask == 0) {
+      tempMask = other;
+    }
+    
+    
+    mask->_mask = mask->_mask | (tempMask << shiftLeft);
+    
+    shiftLeft += valueList->_value._objects._length;
+  }  
+  
+  // ................................................................................
+  // check whether we actually ignore everything!
+  // ................................................................................
+
+  if (mask->_mask == 0 && !baIndex->_supportUndef) {
+    return TRI_ERROR_INTERNAL;
+  }    
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
+  int j;
+  
+  printf("------------------- mask --------------------------\n");
+  for (j = 0; j < baIndex->_bitarray->_numColumns; ++j) {
+    if ((mask & ((uint64_t)(1) << j)) == 0) {
+      printf("0");
+    }
+    else {
+      printf("1");
+    }
+  }
+  printf("\n\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
