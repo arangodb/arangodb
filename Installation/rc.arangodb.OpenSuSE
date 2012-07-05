@@ -21,11 +21,11 @@
 ARANGO_BIN=/usr/sbin/arangod
 test -x $ARANGO_BIN || exit 5
 
-ARANGO_SYSCONFIG=/etc/arango.conf
+ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
 test -r $ARANGO_SYSCONFIG || exit 6
 
 
-ARANGO_PIDFILE=/var/run/arangod/pid
+ARANGO_PIDFILE=/var/run/arangodb/arangod.pid
 
 . /etc/rc.status
 

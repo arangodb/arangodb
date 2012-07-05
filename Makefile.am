@@ -56,10 +56,14 @@ PROTOBUF_FILES =
 ### @brief preprocessor flags
 ################################################################################
 
+arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
+databasedir=$(localstatedir)/$(PACKAGE_TARNAME)
+logdir=$(localstatedir)/log/$(PACKAGE_TARNAME)
+
 AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${sysconfdir}"' \
+	-D_SYSCONFDIR_='"${arangosysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
+	-D_DATABASEDIR_='"${databasedir}"' \
 	-I@top_srcdir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
@@ -71,8 +75,10 @@ AM_CPPFLAGS = \
 	@V8_CPPFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_CPPFLAGS += \
 	@ZEROMQ_CPPFLAGS@
+
 endif
 
 ################################################################################
@@ -90,8 +96,10 @@ AM_LDFLAGS = \
 	@V8_LDFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_LDFLAGS += \
 	@ZEROMQ_LDFLAGS@
+
 endif
 
 ################################################################################
@@ -112,9 +120,11 @@ LIBS = \
 ################################################################################
 
 if ENABLE_MRUBY
+
 AM_CPPFLAGS += @MRUBY_CPPFLAGS@
 AM_CPPFLAGS += @MRUBY_LDFLAGS@
 LIBS += @MRUBY_LIBS@
+
 endif
 
 ################################################################################
@@ -172,6 +182,21 @@ bin_PROGRAMS += bin/arangoirb
 endif
 
 ################################################################################
+### @brief /etc data
+################################################################################
+
+arangosysconf_DATA = Installation/arangod.conf
+
+BUILT_SOURCES += Installation/arangod.conf
+
+Installation/arangod.conf: Installation/arangod.conf.in
+	sed \
+		-e 's%@LOGDIR@%${logdir}%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
+
+################################################################################
 ### @brief /share data
 ################################################################################
 
@@ -187,14 +212,22 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
+if ENABLE_MRUBY
+
+nobase_pkgdata_DATA += \
+	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
+
+endif
+
 ################################################################################
 ### @brief /var data
 ################################################################################
 
 if ENABLE_INSTALL_DBDIR
+
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+
 endif
 
 ################################################################################
@@ -242,6 +275,7 @@ include Makefile.unittests
 .PHONY: errorfiles
 
 if ENABLE_ERRORS_DEPENDENCY
+
 errorfiles: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
@@ -249,6 +283,7 @@ errorfiles: lib/BasicsC/errors.dat
 
 BUILT_SOURCES += \
 	errorfiles
+
 endif
 
 ################################################################################
@@ -257,6 +292,14 @@ endif
 
 clean-local:
 	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+
+################################################################################
+### @brief generated files
+################################################################################
+
+.PHONY: built-sources
+
+built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES

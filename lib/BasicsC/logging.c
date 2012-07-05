@@ -1347,6 +1347,11 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
 
   // allocate space
   appender = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_file_t), false);
+  if (appender == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   // logging to stdout
   if (TRI_EqualString(filename, "+")) {
@@ -1372,6 +1377,12 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
     TRI_SetCloseOnExecFile(appender->_fd);
 
     appender->_filename = TRI_DuplicateString(filename);
+    if (appender->_filename == NULL) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      TRI_Free(TRI_CORE_MEM_ZONE, appender);
+
+      return NULL;
+    }
   }
 
   // set methods

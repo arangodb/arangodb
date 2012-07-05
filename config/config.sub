@@ -1,10 +1,10 @@
 #! /bin/sh
 # Configuration validation subroutine script.
 #   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-#   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+#   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
 #   Free Software Foundation, Inc.
 
-timestamp='2010-01-22'
+timestamp='2009-11-20'
 
 # This file is (in principle) common to ALL GNU software.
 # The presence of a machine in this file suggests that SOME GNU software
@@ -75,9 +75,8 @@ Report bugs and patches to <config-patches@gnu.org>."
 version="\
 GNU config.sub ($timestamp)
 
-Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010 Free
-Software Foundation, Inc.
+Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
+2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software Foundation, Inc.
 
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -381,8 +380,7 @@ case $basic_machine in
 	| sparclite-* \
 	| sparcv8-* | sparcv9-* | sparcv9b-* | sparcv9v-* | strongarm-* | sv1-* | sx?-* \
 	| tahoe-* | thumb-* \
-	| tic30-* | tic4x-* | tic54x-* | tic55x-* | tic6x-* | tic80-* \
-	| tile-* | tilegx-* \
+	| tic30-* | tic4x-* | tic54x-* | tic55x-* | tic6x-* | tic80-* | tile-* \
 	| tron-* \
 	| ubicom32-* \
 	| v850-* | v850e-* | vax-* \
@@ -1087,11 +1085,6 @@ case $basic_machine in
 		basic_machine=tic6x-unknown
 		os=-coff
 		;;
-        # This must be matched before tile*.
-        tilegx*)
-		basic_machine=tilegx-unknown
-		os=-linux-gnu
-		;;
 	tile*)
 		basic_machine=tile-unknown
 		os=-linux-gnu
@@ -1442,8 +1435,6 @@ case $os in
 	-dicos*)
 		os=-dicos
 		;;
-        -nacl*)
-	        ;;
 	-none)
 		;;
 	*)

@@ -16,8 +16,8 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
 DESC="arango database server"
 NAME="arangod"
-PIDFILE=/var/run/arangod/pid
-CONF=/etc/arango.conf
+PIDFILE=/var/run/arangodb/arangod.pid
+CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
