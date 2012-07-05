@@ -59,7 +59,8 @@ namespace triagens {
 /// @brief base class for input-output tasks from sockets
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SocketTask : virtual public Task {
+    class SocketTask : virtual public Task,
+                       public ConnectionStatisticsAgent {
       private:
         SocketTask (SocketTask const&);
         SocketTask& operator= (SocketTask const&);

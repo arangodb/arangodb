@@ -65,6 +65,9 @@ SocketTask::SocketTask (socket_t fd)
     writeLength(0) {
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
+
+  ConnectionStatisticsAgent::acquire();
+  ConnectionStatisticsAgentSetStart(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +98,9 @@ SocketTask::~SocketTask () {
   delete _readBuffer;
 
   delete[] tmpReadBuffer;
+
+  ConnectionStatisticsAgentSetEnd(this);
+  ConnectionStatisticsAgent::release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

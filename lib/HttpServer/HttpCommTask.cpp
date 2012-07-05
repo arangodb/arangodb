@@ -29,7 +29,6 @@
 #include "HttpCommTask.h"
 
 #include "Basics/StringUtils.h"
-#include "GeneralServer/GeneralFigures.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -39,7 +38,6 @@
 
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::rest::GeneralFigures;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,7 +55,8 @@ using namespace triagens::rest::GeneralFigures;
 HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo const& info)
   : Task("HttpCommTask"),
     GeneralCommTask<HttpServer, HttpHandlerFactory>(server, fd, info) {
-  incCounter<GeneralServerStatistics::httpAccessor>();
+  ConnectionStatisticsAgentSetHttp(this);
+  ConnectionStatisticsAgent::release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,8 @@ HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo cons
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask () {
-  decCounter<GeneralServerStatistics::httpAccessor>();
+  ConnectionStatisticsAgent::acquire();
+  ConnectionStatisticsAgentSetHttp(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

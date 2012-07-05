@@ -383,8 +383,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
 	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
-	lib/Statistics/request-statistics.cpp \
-	lib/Statistics/statistics.c lib/Utilities/LineEditor.cpp \
+	lib/Statistics/statistics.cpp lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
 	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
 	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
@@ -461,7 +460,6 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/ShapedJson/json-shaper.$(OBJEXT) \
 	lib/ShapedJson/shape-accessor.$(OBJEXT) \
 	lib/ShapedJson/shaped-json.$(OBJEXT) \
-	lib/Statistics/request-statistics.$(OBJEXT) \
 	lib/Statistics/statistics.$(OBJEXT) \
 	lib/Utilities/LineEditor.$(OBJEXT) \
 	lib/Utilities/ScriptLoader.$(OBJEXT) \
@@ -508,7 +506,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Dispatcher/DispatcherQueue.$(OBJEXT) \
 	lib/Dispatcher/DispatcherThread.$(OBJEXT) \
 	lib/Dispatcher/Job.$(OBJEXT) \
-	lib/GeneralServer/GeneralFigures.$(OBJEXT) \
 	lib/HttpServer/ApplicationHttpServer.$(OBJEXT) \
 	lib/HttpServer/HttpCommTask.$(OBJEXT) \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
@@ -1298,8 +1295,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Rest/JsonContainer.cpp lib/Rest/SslInterface.cpp \
 	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
-	lib/Statistics/request-statistics.cpp \
-	lib/Statistics/statistics.c lib/Utilities/LineEditor.cpp \
+	lib/Statistics/statistics.cpp lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
 	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
 	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
@@ -1337,7 +1333,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
-	lib/GeneralServer/GeneralFigures.cpp \
 	lib/HttpServer/ApplicationHttpServer.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
@@ -1936,9 +1931,6 @@ lib/Statistics/$(am__dirstamp):
 lib/Statistics/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/Statistics/$(DEPDIR)
 	@: > lib/Statistics/$(DEPDIR)/$(am__dirstamp)
-lib/Statistics/request-statistics.$(OBJEXT):  \
-	lib/Statistics/$(am__dirstamp) \
-	lib/Statistics/$(DEPDIR)/$(am__dirstamp)
 lib/Statistics/statistics.$(OBJEXT): lib/Statistics/$(am__dirstamp) \
 	lib/Statistics/$(DEPDIR)/$(am__dirstamp)
 lib/Utilities/$(am__dirstamp):
@@ -2085,15 +2077,6 @@ lib/Dispatcher/DispatcherThread.$(OBJEXT):  \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
 lib/Dispatcher/Job.$(OBJEXT): lib/Dispatcher/$(am__dirstamp) \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
-lib/GeneralServer/$(am__dirstamp):
-	@$(MKDIR_P) lib/GeneralServer
-	@: > lib/GeneralServer/$(am__dirstamp)
-lib/GeneralServer/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/GeneralServer/$(DEPDIR)
-	@: > lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
-lib/GeneralServer/GeneralFigures.$(OBJEXT):  \
-	lib/GeneralServer/$(am__dirstamp) \
-	lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/$(am__dirstamp):
 	@$(MKDIR_P) lib/HttpServer
 	@: > lib/HttpServer/$(am__dirstamp)
@@ -2926,7 +2909,6 @@ mostlyclean-compile:
 	-rm -f lib/Dispatcher/DispatcherQueue.$(OBJEXT)
 	-rm -f lib/Dispatcher/DispatcherThread.$(OBJEXT)
 	-rm -f lib/Dispatcher/Job.$(OBJEXT)
-	-rm -f lib/GeneralServer/GeneralFigures.$(OBJEXT)
 	-rm -f lib/HttpServer/ApplicationHttpServer.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpCommTask.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandler.$(OBJEXT)
@@ -2991,7 +2973,6 @@ mostlyclean-compile:
 	-rm -f lib/ShapedJson/shaped-json.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
-	-rm -f lib/Statistics/request-statistics.$(OBJEXT)
 	-rm -f lib/Statistics/statistics.$(OBJEXT)
 	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
 	-rm -f lib/UserManager/Role.$(OBJEXT)
@@ -3188,7 +3169,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherQueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Job.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/GeneralServer/$(DEPDIR)/GeneralFigures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ApplicationHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
@@ -3253,7 +3233,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/request-statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
@@ -4955,8 +4934,6 @@ distclean-generic:
 	-rm -f lib/BasicsC/$(am__dirstamp)
 	-rm -f lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Dispatcher/$(am__dirstamp)
-	-rm -f lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/GeneralServer/$(am__dirstamp)
 	-rm -f lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/HttpServer/$(am__dirstamp)
 	-rm -f lib/HttpsServer/$(DEPDIR)/$(am__dirstamp)
@@ -5009,7 +4986,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5058,7 +5035,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
