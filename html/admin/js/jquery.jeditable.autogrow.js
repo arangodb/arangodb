@@ -33,6 +33,6 @@ $.editable.addInputType('autogrow', {
         return(textarea);
     },
     plugin : function(settings, original) {
-        //$('textarea', this).autogrow(settings.autogrow);
+        $('textarea', this).autogrow(settings.autogrow);
     }
 });
