@@ -79,6 +79,10 @@ typedef struct TRI_index_iterator_interval_s {
 
 // .............................................................................
 // The structure of an index iterator
+// TODO: for safety sakes whenever we define a structure which we will pass
+//       around as an object, add an identifier to the object as the first field
+//       within the structure -- this will let everyone one whether or not you
+//       have a valid object.
 // .............................................................................
 
 typedef struct TRI_index_iterator_s {
@@ -86,6 +90,7 @@ typedef struct TRI_index_iterator_s {
   TRI_vector_t _intervals;  // zero or more intervals of the type TRI_index_iterator_interval_t
   size_t _currentInterval;  // the current interval we are operating with
   void* _cursor;            // initially null -- the position within an interval -- typecast to appropriate structure
+  void* _currentDocument;   // the result of a call to _next or _prev is stored here.
   
   // ...........................................................................
   // Iteration callback functions:
@@ -127,6 +132,7 @@ typedef struct TRI_index_iterator_s {
   bool  (*_hasPrev) (struct TRI_index_iterator_s*);
   void* (*_prev)    (struct TRI_index_iterator_s*);
   void* (*_prevs)   (struct TRI_index_iterator_s*, int64_t jumpSize);  
+  void  (*_reset)   (struct TRI_index_iterator_s*, bool beginning);  
   
   
   // ...........................................................................
