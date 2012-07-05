@@ -155,7 +155,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
   user->addHandlers(factory, "/_admin");
 
   // add statistics
-  factory->addHandler("/_admin/statistics",
+  factory->addHandler("/_admin/request-statistics",
                       RestHandlerCreator<RequestStatisticsHandler>::createNoData,
                       0);
 }
