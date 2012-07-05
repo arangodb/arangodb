@@ -241,7 +241,14 @@ void ApplicationServer::setupLogging () {
     TRI_SetFileToLog(i->c_str());
   }
 
-  TRI_CreateLogAppenderFile(_logFile);
+  if (NULL == TRI_CreateLogAppenderFile(_logFile)) {
+    if (_logFile.length() > 0) {
+      // the user specified a log file to use but it could not be created. bail out
+      std::cerr << "failed to create logfile " << _logFile << std::endl;
+      exit(EXIT_FAILURE);      
+
+    }
+  }
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
 
 #ifdef TRI_HAVE_SETGID

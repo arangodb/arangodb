@@ -1,3 +1,13 @@
+* fixed issue #122: arangod doesn't start if <log.file> cannot be created
+
+* fixed issue #121: wrong collection size reported
+
+* fixed escaping of document data in HTML admin front end
+
+* added server startup option --server.disable-admin-interface to turn off the HTML admin interface
+
+* honor server startup option --database.maximal-journal-size when creating new collections without specific journalsize setting. Previously, these collections were always created with journal file sizes of 32 MB and the --database.maximal-journal-size setting was ignored
+
 v1.0.alpha3 (2012-06-30)
 ------------------------
 

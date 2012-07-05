@@ -375,9 +375,10 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&sim->base, journal->_fid);
-
-    dfi->_numberAlive += 1;
-    dfi->_sizeAlive += header->_document._data.length;
+    if (dfi != NULL) {
+      dfi->_numberAlive += 1;
+      dfi->_sizeAlive += header->_document._data.length;
+    }
 
     // update immediate indexes
     res = CreateImmediateIndexes(sim, header);
@@ -653,17 +654,19 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+    if (dfi != NULL) {
+      dfi->_numberAlive -= 1;
+      dfi->_sizeAlive -= header->_document._data.length;
 
-    dfi->_numberAlive -= 1;
-    dfi->_sizeAlive -= header->_document._data.length;
-
-    dfi->_numberDead += 1;
-    dfi->_sizeDead += header->_document._data.length;
+      dfi->_numberDead += 1;
+      dfi->_sizeDead += header->_document._data.length;
+    }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
-
-    dfi->_numberAlive += 1;
-    dfi->_sizeAlive += update._document._data.length;
+    if (dfi != NULL) {
+      dfi->_numberAlive += 1;
+      dfi->_sizeAlive += update._document._data.length;
+    }
 
     // update immediate indexes
     res = UpdateImmediateIndexes(collection, header, &update);
@@ -813,16 +816,18 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+    if (dfi != NULL) {
+      dfi->_numberAlive -= 1;
+      dfi->_sizeAlive -= header->_document._data.length;
 
-    dfi->_numberAlive -= 1;
-    dfi->_sizeAlive -= header->_document._data.length;
-
-    dfi->_numberDead += 1;
-    dfi->_sizeDead += header->_document._data.length;
+      dfi->_numberDead += 1;
+      dfi->_sizeDead += header->_document._data.length;
+    }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
-
-    dfi->_numberDeletion += 1;
+    if (dfi != NULL) {
+      dfi->_numberDeletion += 1;
+    }
 
     // update immediate indexes
     DeleteImmediateIndexes(collection, header, marker->base._tick);
@@ -884,7 +889,7 @@ static void DebugDatafileInfoDatafile (TRI_doc_collection_t* collection,
   printf("  size alive:   %ld\n", (long) dfi->_sizeAlive);
   printf("  number dead:  %ld\n", (long) dfi->_numberDead);
   printf("  size dead:    %ld\n", (long) dfi->_sizeDead);
-  printf("  deletion:     %ld\n\n", ( long) dfi->_numberDeletion);
+  printf("  deletion:     %ld\n\n", (long) dfi->_numberDeletion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1331,9 +1336,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-      dfi->_numberAlive += 1;
-      dfi->_sizeAlive += header->_document._data.length;
+      if (dfi != NULL) {
+        dfi->_numberAlive += 1;
+        dfi->_sizeAlive += header->_document._data.length;
+      }
 
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
@@ -1353,17 +1359,19 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+      if (dfi != NULL) {
+        dfi->_numberAlive -= 1;
+        dfi->_sizeAlive -= found->_document._data.length;
 
-      dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= found->_document._data.length;
-
-      dfi->_numberDead += 1;
-      dfi->_sizeDead += found->_document._data.length;
+        dfi->_numberDead += 1;
+        dfi->_sizeDead += found->_document._data.length;
+      }
 
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-      dfi->_numberAlive += 1;
-      dfi->_sizeAlive += update._document._data.length;
+      if (dfi != NULL) {
+        dfi->_numberAlive += 1;
+        dfi->_sizeAlive += update._document._data.length;
+      }
 
       // update immediate indexes
       UpdateImmediateIndexes(collection, found, &update);
@@ -1372,9 +1380,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is a stale update
     else {
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-      dfi->_numberDead += 1;
-      dfi->_sizeDead += found->_document._data.length;
+      if (dfi != NULL) {
+        dfi->_numberDead += 1;
+        dfi->_sizeDead += found->_document._data.length;
+      }
     }
   }
 
@@ -1411,8 +1420,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-      dfi->_numberDeletion += 1;
+      if (dfi != NULL) {
+        dfi->_numberDeletion += 1;
+      }
     }
 
     // it is a real delete
@@ -1425,16 +1435,17 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+      if (dfi != NULL) {
+        dfi->_numberAlive -= 1;
+        dfi->_sizeAlive -= found->_document._data.length;
 
-      dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= found->_document._data.length;
-
-      dfi->_numberDead += 1;
-      dfi->_sizeDead += found->_document._data.length;
-
+        dfi->_numberDead += 1;
+        dfi->_sizeDead += found->_document._data.length;
+      }
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-      dfi->_numberDeletion += 1;
+      if (dfi != NULL) {
+        dfi->_numberDeletion += 1;
+      }
     }
 
     // it is a double delete
