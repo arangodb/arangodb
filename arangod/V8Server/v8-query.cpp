@@ -477,7 +477,9 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
     // The client may have sent values for all of the Attributes or for 
     // a subset of them. If the value for an Attribute is missing, then we
     // assume that the client wishes to IGNORE the value of that Attribute.
-    // In the later case, we add the json object '{}' to indicate that 
+    // In the later case, we add the json object 'TRI_JSON_UNUSED' to 
+    // indicate that this attribute is to be ignored. Notice that it is
+    // possible to ignore all the attributes defined as part of the index.
     // ......................................................................
     
 

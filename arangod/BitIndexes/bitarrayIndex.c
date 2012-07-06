@@ -858,7 +858,7 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
 int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
   int j;
   int shiftLeft;
-  
+  int ignoreShiftLeft;
   // ...........................................................................
   // some safety checks first
   // ...........................................................................
@@ -892,6 +892,7 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
   mask->_mask       = 0;
   mask->_ignoreMask = 0;
   shiftLeft         = 0;
+  ignoreShiftLeft   = 0;
   
   for (j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
     TRI_json_t* valueList;
@@ -905,62 +906,67 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     valueList = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
     
     
+    ignoreShiftLeft += valueList->_value._objects._length;
+    
     // .........................................................................
     // client did not send us this attribute (hence undefined value), therefore
     // this particular column we ignore
     // .........................................................................
     
     if (value->_type == TRI_JSON_UNUSED) {    
-      tempMask = (uint64_t)(1) << (valueList->_value._objects._length - 1);      
-      mask->_ignoreMask = mask->_ignoreMask | (tempMask << shiftLeft);      
-      continue;
+      tempMask = ~((~(uint64_t)(0)) << ignoreShiftLeft);
+      other    = (~(uint64_t)(0)) << (ignoreShiftLeft - valueList->_value._objects._length);
+      mask->_ignoreMask = mask->_ignoreMask | (tempMask & other);      
+      other    = 0;
+      tempMask = 0;
     }
+        
     
-    
-    other      = 0;
-    tempMask   = 0;
-    
-    for (i = 0; i < valueList->_value._objects._length; ++i) {    
-      TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
-      int k;
+    else {
+      other    = 0;
+      tempMask = 0;
       
-      // .......................................................................
-      // if the ith possible set of values is not a list, do comparison 
-      // .......................................................................
-      
-      if (listEntry->_type != TRI_JSON_LIST) {
-        if (isEqualJson(value, listEntry)) {
-          tempMask = tempMask | (1 << i);
-        }  
-        continue;
+      for (i = 0; i < valueList->_value._objects._length; ++i) {    
+        TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
+        int k;
+        
+        // .......................................................................
+        // if the ith possible set of values is not a list, do comparison 
+        // .......................................................................
+        
+        if (listEntry->_type != TRI_JSON_LIST) {
+          if (isEqualJson(value, listEntry)) {
+            tempMask = tempMask | (1 << i);
+          }  
+          continue;
+        }
+        
+        
+        // .......................................................................
+        // ith entry in the set of possible values is a list
+        // .......................................................................
+        
+        // .......................................................................
+        // Special case of an empty list -- this means all other values
+        // .......................................................................
+        
+        if (listEntry->_value._objects._length == 0) { // special case 
+          other = (1 << i);
+          continue;
+        }
+        
+        
+        for (k = 0; k < listEntry->_value._objects._length; k++) {
+          TRI_json_t* subListEntry;
+          subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
+          if (isEqualJson(value, subListEntry)) {
+            tempMask = tempMask | (1 << i);
+            break;
+          }  
+        }      
+        
       }
-      
-      
-      // .......................................................................
-      // ith entry in the set of possible values is a list
-      // .......................................................................
-      
-      // .......................................................................
-      // Special case of an empty list -- this means all other values
-      // .......................................................................
-      
-      if (listEntry->_value._objects._length == 0) { // special case 
-        other = (1 << i);
-        continue;
-      }
-      
-      
-      for (k = 0; k < listEntry->_value._objects._length; k++) {
-        TRI_json_t* subListEntry;
-        subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
-        if (isEqualJson(value, subListEntry)) {
-          tempMask = tempMask | (1 << i);
-          break;
-        }  
-      }      
-      
-    }
-     
+    }     
      
     // ............................................................................
     // When we create a bitarray index, for example: ensureBitarray("x",[0,[],1,2,3])
