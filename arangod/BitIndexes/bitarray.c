@@ -407,6 +407,14 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
       // ..........................................................................
 
       bitValues = bitValues & ~(mask->_ignoreMask);
+
+      /*
+      if (j_bitNum == 0) {
+        debugPrintMask(ba,mask->_ignoreMask);
+        debugPrintMask(ba,mask->_mask);
+        debugPrintMask(ba,bitValues);
+      }
+      */
       
       if (mask->_mask == 0 && bitValues != 0) {
         continue;
@@ -711,9 +719,7 @@ static void setBitarrayMask(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, TRI_m
   
 void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
   int j;
-  
-  return;
-  
+    
   printf("------------------- Bitarray mask --------------------------\n");
   for (j = 0; j < ba->_numColumns; ++j) {
     if ((mask & ((uint64_t)(1) << j)) == 0) {
