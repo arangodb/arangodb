@@ -283,7 +283,10 @@ namespace triagens {
           GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
 
           this->_scheduler->registerTask(task);
+
+          GENERAL_SERVER_LOCK(&this->_commTasksLock);
           this->_commTasks.insert(task);
+          GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
