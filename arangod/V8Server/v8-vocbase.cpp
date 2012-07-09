@@ -2846,6 +2846,9 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ///   dead documents.
 /// - @LIT{dead.deletion}: The total number of deletion markers.
 /// - @LIT{datafiles.count}: The number of active datafiles.
+/// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
+/// - @LIT{journals.count}: The number of journal files.
+/// - @LIT{journals.fileSize}: The total filesize of the journal files.
 ///
 /// @EXAMPLES
 ///
@@ -2882,6 +2885,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_collection_info_t* info = doc->figures(doc);
   doc->endRead(doc);
 
+  if (info == NULL) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+
   v8::Handle<v8::Object> alive = v8::Object::New();
 
   result->Set(v8::String::New("alive"), alive);
@@ -2895,10 +2905,19 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   dead->Set(v8::String::New("size"), v8::Number::New(info->_sizeDead));
   dead->Set(v8::String::New("deletion"), v8::Number::New(info->_numberDeletion));
 
+  // datafile info
   v8::Handle<v8::Object> dfs = v8::Object::New();
 
   result->Set(v8::String::New("datafiles"), dfs);
   dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
+  dfs->Set(v8::String::New("fileSize"), v8::Number::New(info->_datafileSize));
+  
+  // journal info
+  v8::Handle<v8::Object> js = v8::Object::New();
+
+  result->Set(v8::String::New("journals"), js);
+  js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
+  js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -4469,6 +4488,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
       return 0;
     }
     else {
+      // I wish this error provided me with more information!
+      // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                    "cannot execute cross collection index");
       return 0;

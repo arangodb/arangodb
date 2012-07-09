@@ -168,15 +168,15 @@ static int DestroyLock (TRI_doc_collection_t* document,
 
 static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
   TRI_doc_collection_info_t* info;
+  TRI_collection_t* base;
   size_t i;
 
+  // prefill with 0's to init counters
   info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
   if (info == NULL) {
     return NULL;
   }
-
-  info->_numberDatafiles = document->_datafileInfo._nrUsed;
 
   for (i = 0;  i < document->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = document->_datafileInfo._table[i];
@@ -188,6 +188,22 @@ static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
       info->_sizeDead += d->_sizeDead;
       info->_numberDeletion += d->_numberDeletion;
     }
+  }
+
+  // add the file sizes for datafiles and journals
+  base = &document->base;
+  for (i = 0; i < base->_datafiles._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
+
+    info->_datafileSize += df->_maximalSize;
+    ++info->_numberDatafiles;
+  }
+
+  for (i = 0; i < base->_journals._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
+
+    info->_journalfileSize += df->_maximalSize;
+    ++info->_numberJournalfiles;
   }
 
   return info;

@@ -228,10 +228,7 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_6 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_7 = bin/arangoirb
 @ENABLE_MRUBY_TRUE@am__append_8 = \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/actions/system -name "*.rb" -print) \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/common/modules -name "*.rb" -print) \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/server/modules -name "*.rb" -print) \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/js/client/modules -name "*.rb" -print)
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \

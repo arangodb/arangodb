@@ -33,6 +33,7 @@
 #include "SkipLists/skiplistIndex.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-vocbase.h"
+#include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -436,6 +437,96 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
   return 0;
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the bitarray index operator for a bitarray condition query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_operator_t* SetupConditionsBitarray (TRI_index_t* idx, TRI_shaper_t* shaper, v8::Handle<v8::Object> conditions) {
+  assert(false);
+}  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an index operator for a bitarray example query
+///
+/// this will set up a JSON container with the example values as a list
+/// at the end, one skiplist equality operator is created for the entire list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_t* shaper, v8::Handle<v8::Object> example) {
+  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (parameters == 0) {
+    return 0;
+  }
+
+  
+  // ........................................................................
+  // Observe that the client can have sent any number of parameters which
+  // do not match the list of attributes defined in the index.
+  // These parameters are IGNORED -- no error is reported.
+  // ........................................................................
+  
+  for (size_t i = 0; i < idx->_fields._length; ++i) {
+    v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
+    TRI_json_t* json;
+
+    // ......................................................................
+    // The client may have sent values for all of the Attributes or for 
+    // a subset of them. If the value for an Attribute is missing, then we
+    // assume that the client wishes to IGNORE the value of that Attribute.
+    // In the later case, we add the json object 'TRI_JSON_UNUSED' to 
+    // indicate that this attribute is to be ignored. Notice that it is
+    // possible to ignore all the attributes defined as part of the index.
+    // ......................................................................
+    
+
+    if (example->HasOwnProperty(key)) {
+      // ....................................................................
+      // for this index attribute, there is such an attribute given as a 
+      // as a parameter by the client -- determine the value (or values)
+      // of this attribute parameter and store it for later use in the 
+      // lookup
+      // ....................................................................
+      v8::Handle<v8::Value> value = example->Get(key);
+      json = TRI_JsonObject(value);
+    }
+    
+    else {
+      // ....................................................................
+      // for this index attribute we can not locate it in the list of parameters
+      // sent to us by the client. Assign it an 'unused' (perhaps should be
+      // renamed to 'unknown' or 'undefined').
+      // ....................................................................
+      json = (TRI_json_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t), true);
+      json->_type = TRI_JSON_UNUSED;
+    }
+
+    
+    // ......................................................................
+    // Check and ensure we have a json object defined before we store it.
+    // ......................................................................
+    
+    if (json == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+      return 0;
+    }
+
+    
+    // ......................................................................
+    // store it in an list json object -- eventually wil be stored as part
+    // of the index operator.
+    // ......................................................................
+    
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
+  }
+
+
+  return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the example object for hash index
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,6 +706,230 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 
   // free data allocated by skiplist index result
   TRI_FreeSkiplistIterator(skiplistIterator);
+
+  result->Set(v8::String::New("total"), v8::Number::New((double) total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+
+  TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a bitarray index query (by condition or by example)
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Example of a filter associated with an interator
+////////////////////////////////////////////////////////////////////////////////
+
+static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
+  BitarrayIndexElement* indexElement;
+  TRI_bitarray_index_t* baIndex;
+  TRI_doc_mptr_t* doc;
+    
+    
+  indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
+
+  if (indexElement == NULL) {
+    return false;
+  }
+
+  baIndex = (TRI_bitarray_index_t*) indexIterator->_index;
+    
+  if (baIndex == NULL) {     
+    return false;
+  }
+    
+  doc = (TRI_doc_mptr_t*) indexElement->data;
+    
+  // ..........................................................................
+  // Now perform any additional filter operations you require on the doc
+  // using baIndex which you now have access to.
+  // ..........................................................................
+    
+  return true;
+}
+
+static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
+  v8::HandleScope scope;
+  v8::Handle<v8::Object> err;
+  const TRI_vocbase_col_t* collection;
+  TRI_voc_ssize_t skip;
+  TRI_voc_size_t limit;
+
+  // ...........................................................................
+  // extract and use the simple collection
+  // ...........................................................................
+
+  
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+
+                                               
+  // ...........................................................................
+  // Check the parameters, expecting index, example, skip, and limit
+  // e.g. ("110597/962565", {"x":1}, null, null)
+  // ...........................................................................
+
+  if (argv.Length() < 2) {
+    TRI_ReleaseCollection(collection);
+
+    std::string usage("Usage: ");
+    usage += signature;
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,usage)));
+  }
+  
+
+  // ...........................................................................
+  // Check that the second parameter is an associative array (json object)
+  // ...........................................................................
+  
+  if (! argv[1]->IsObject()) {
+    TRI_ReleaseCollection(collection);
+    std::string msg;
+
+    if (type == QUERY_EXAMPLE) {
+      msg = "<example> must be an object";
+    }
+    else {
+      msg = "<conditions> must be an object";
+    }
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
+  }
+ 
+  
+  TRI_shaper_t* shaper = sim->base._shaper;
+
+  
+  // .............................................................................
+  // extract skip and limit
+  // .............................................................................
+
+  ExtractSkipAndLimit(argv, 2, skip, limit);
+
+  
+  // .............................................................................
+  // Create the json object result which stores documents located
+  // .............................................................................
+  
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  
+  // .............................................................................
+  // Create the array to store documents located
+  // .............................................................................
+  
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
+  
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+
+
+  // .............................................................................
+  // extract the index
+  // .............................................................................
+  
+  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+
+  if (idx == 0) {
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  
+  if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+  }
+
+  
+  TRI_index_operator_t* indexOperator;
+  v8::Handle<v8::Object> values = argv[1]->ToObject();
+  if (type == QUERY_EXAMPLE) {
+    indexOperator = SetupExampleBitarray(idx, shaper, values);
+  }
+  else {
+    indexOperator = SetupConditionsBitarray(idx, shaper, values);
+  }
+
+  
+  if (indexOperator == 0) { // something wrong
+    collection->_collection->endRead(collection->_collection);
+
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+  }
+
+  
+  // .............................................................................
+  // attempt to locate the documents 
+  // .............................................................................
+  
+  TRI_index_iterator_t* indexIterator = TRI_LookupBitarrayIndex(idx, indexOperator, BitarrayFilterExample);
+
+  
+  // .............................................................................
+  // Take care of the case where the index iterator is returned as NULL -- may
+  // occur when some catasphric error occurs.
+  // .............................................................................
+  
+  TRI_barrier_t* barrier = 0;
+  TRI_voc_ssize_t total = 0;
+  TRI_voc_size_t count = 0;
+
+  if (indexIterator != NULL) {
+  
+    while (true) {
+      TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
+
+      if (data == NULL) {
+        break;
+      }
+
+      
+      ++total;
+
+      if (total > skip && count < limit) {
+        if (barrier == 0) {
+          barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+        }
+        // TODO: barrier might be 0
+        documents->Set(count, TRI_WrapShapedJson(collection, data, barrier));
+        ++count;
+      }
+    }
+    
+    // free data allocated by index result
+    TRI_FreeIndexIterator(indexIterator);
+  }
+  
+  else {
+    LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
+  }
+  
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
@@ -1265,6 +1580,20 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
   return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example using a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
+  std::string signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
+
+  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all edges for a set of vertices
 ///
@@ -1532,6 +1861,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
   v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
   v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
+  v8::Handle<v8::String> ByExampleBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY"));
   v8::Handle<v8::String> ByExampleHashFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH"));
   v8::Handle<v8::String> ByExampleSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
@@ -1548,6 +1878,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
+  rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
@@ -1562,6 +1893,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
+  rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));

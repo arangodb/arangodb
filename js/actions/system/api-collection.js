@@ -277,8 +277,14 @@ function GET_api_collections (req, res) {
 /// - @LIT{figures.dead.deletion}: The total number of deletion markers.
 ///
 /// - @LIT{figures.datafiles.count}: The number of active datafiles.
+/// - @LIT{figures.datafiles.fileSize}: The total filesize of datafiles.
+///
+/// - @LIT{figures.journals.count}: The number of journal files.
+/// - @LIT{figures.journals.fileSize}: The total filesize of journal files.
 ///
 /// - @LIT{journalSize}: The maximal size of the journal in bytes.
+///
+/// Note: the filesizes of shapes and compactor files are not reported.
 ///
 /// @EXAMPLES
 /////////////
