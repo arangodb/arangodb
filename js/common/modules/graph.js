@@ -1494,6 +1494,48 @@ Graph.prototype.size = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return all shortest paths
+///
+/// @FUN{@FA{graph}.geodesics()}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.geodesics = function (options) {
+  var sources = this._vertices.toArray(),
+    targets = sources.slice(),
+    geodesics = [],
+    graph = this,
+    vertexConstructor;
+
+  options = options || {};
+
+  vertexConstructor = function(raw_vertex) {
+    return graph.constructVertex(raw_vertex._id);
+  };
+
+  sources = sources.map(vertexConstructor);
+  targets = targets.map(vertexConstructor);
+
+  sources.forEach(function(source) {
+    targets = targets.slice(1);
+
+    targets.forEach(function(target) {
+      var pathes = source.pathTo(target);
+
+      if (pathes.length > 0 && (!options.threshold || pathes[0].length > 2)) {
+        if (options.grouped) {
+          geodesics.push(pathes);
+        } else {
+          geodesics = geodesics.concat(pathes);
+        }
+      }
+    });
+  });
+
+  return geodesics;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate a measurement
 ///
 /// @FUN{@FA{vertex}.measurement(@FA{measurement})}
