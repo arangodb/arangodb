@@ -95,8 +95,12 @@ struct StatisticsDesc {
                    bytesReceived,
                    (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000));
 
-  RRF_CONTINUOUS(StatisticsDesc,
-                 httpConnections);
+  RRF_COUNTER(StatisticsDesc,
+              httpConnections);
+
+  RRF_DISTRIBUTION(StatisticsDesc,
+                   httpDuration,
+                   (0.1) << (1.0) << (60.0));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -441,15 +445,18 @@ void UpdateConnectionStatistics (double now) {
       MUTEX_LOCKER(Statistics._lock);
 
       if (statistics->_connStart != 0) {
-        Statistics._minute.incCounter<StatisticsDesc::httpConnectionsAccessor>();
-        Statistics._hour.incCounter<StatisticsDesc::httpConnectionsAccessor>();
-        Statistics._day.incCounter<StatisticsDesc::httpConnectionsAccessor>();
-      }
+        if (statistics->_connEnd == 0) {
+          Statistics._minute.incCounter<StatisticsDesc::httpConnectionsAccessor>();
+          Statistics._hour.incCounter<StatisticsDesc::httpConnectionsAccessor>();
+          Statistics._day.incCounter<StatisticsDesc::httpConnectionsAccessor>();
+        }
+        else {
+          double totalTime = statistics->_connEnd - statistics->_connStart;
 
-      if (statistics->_connEnd != 0) {
-        Statistics._minute.decCounter<StatisticsDesc::httpConnectionsAccessor>();
-        Statistics._hour.decCounter<StatisticsDesc::httpConnectionsAccessor>();
-        Statistics._day.decCounter<StatisticsDesc::httpConnectionsAccessor>();
+          Statistics._minute.addDistribution<StatisticsDesc::httpDurationAccessor>(totalTime);
+          Statistics._hour.addDistribution<StatisticsDesc::httpDurationAccessor>(totalTime);
+          Statistics._day.addDistribution<StatisticsDesc::httpDurationAccessor>(totalTime);
+        }
       }
     }
 
@@ -613,27 +620,28 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
     result->add("start", new VariantUInt32((uint32_t) t[0]));
 
     if (showTotalTime) {
-      RRF_GenerateVariantDistribution<StatisticsDesc::totalAccessor>(result, blocks[0], "totalTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::totalAccessor>(result, blocks[0], "totalTime", true, false, false);
     }
 
     if (showQueueTime) {
-      RRF_GenerateVariantDistribution<StatisticsDesc::queueAccessor>(result, blocks[0], "queueTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::queueAccessor>(result, blocks[0], "queueTime", true, false, false);
     }
 
     if (showRequestTime) {
-      RRF_GenerateVariantDistribution<StatisticsDesc::requestAccessor>(result, blocks[0], "requestTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::requestAccessor>(result, blocks[0], "requestTime", true, false, false);
     }
 
     if (showBytesSent) {
-      RRF_GenerateVariantDistribution<StatisticsDesc::bytesSentAccessor>(result, blocks[0], "bytesSent");
+      RRF_GenerateVariantDistribution<StatisticsDesc::bytesSentAccessor>(result, blocks[0], "bytesSent", true, false, false);
     }
 
     if (showBytesReceived) {
-      RRF_GenerateVariantDistribution<StatisticsDesc::bytesReceivedAccessor>(result, blocks[0], "bytesReceived");
+      RRF_GenerateVariantDistribution<StatisticsDesc::bytesReceivedAccessor>(result, blocks[0], "bytesReceived", true, false, false);
     }
 
     if (showHttp) {
-      RRF_GenerateVariantContinuous<StatisticsDesc::httpConnectionsAccessor>(result, blocks[0], "httpConnections");
+      RRF_GenerateVariantCounter<StatisticsDesc::httpConnectionsAccessor>(result, blocks[0], "httpConnections", resolution);
+      RRF_GenerateVariantDistribution<StatisticsDesc::httpDurationAccessor>(result, blocks[0], "httpDuration", true, false, false);
     }
   }
 
@@ -669,27 +677,28 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
     result->add("totalLength", new VariantUInt64(total));
 
     if (showTotalTime) {
-      RRF_GenerateVariantDistributions<StatisticsDesc::totalAccessor>(result, blocks, "totalTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::totalAccessor>(result, blocks, "totalTime", true, false, false);
     }
 
     if (showQueueTime) {
-      RRF_GenerateVariantDistributions<StatisticsDesc::queueAccessor>(result, blocks, "queueTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::queueAccessor>(result, blocks, "queueTime", true, false, false);
     }
 
     if (showRequestTime) {
-      RRF_GenerateVariantDistributions<StatisticsDesc::requestAccessor>(result, blocks, "requestTime");
+      RRF_GenerateVariantDistribution<StatisticsDesc::requestAccessor>(result, blocks, "requestTime", true, false, false);
     }
 
     if (showBytesSent) {
-      RRF_GenerateVariantDistributions<StatisticsDesc::bytesSentAccessor>(result, blocks, "bytesSent");
+      RRF_GenerateVariantDistribution<StatisticsDesc::bytesSentAccessor>(result, blocks, "bytesSent", true, false, false);
     }
 
     if (showBytesReceived) {
-      RRF_GenerateVariantDistributions<StatisticsDesc::bytesReceivedAccessor>(result, blocks, "bytesReceived");
+      RRF_GenerateVariantDistribution<StatisticsDesc::bytesReceivedAccessor>(result, blocks, "bytesReceived", true, false, false);
     }
 
     if (showHttp) {
-      RRF_GenerateVariantContinuous<StatisticsDesc::httpConnectionsAccessor>(result, blocks, "httpConnections");
+      RRF_GenerateVariantCounter<StatisticsDesc::httpConnectionsAccessor>(result, blocks, "httpConnections", resolution);
+      RRF_GenerateVariantDistribution<StatisticsDesc::httpDurationAccessor>(result, blocks, "httpDuration", true, false, false);
     }
   }
 

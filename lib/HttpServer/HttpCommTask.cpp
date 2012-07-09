@@ -57,6 +57,10 @@ HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo cons
     GeneralCommTask<HttpServer, HttpHandlerFactory>(server, fd, info) {
   ConnectionStatisticsAgentSetHttp(this);
   ConnectionStatisticsAgent::release();
+
+  ConnectionStatisticsAgent::acquire();
+  ConnectionStatisticsAgentSetStart(this);
+  ConnectionStatisticsAgentSetHttp(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,8 +68,6 @@ HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo cons
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask () {
-  ConnectionStatisticsAgent::acquire();
-  ConnectionStatisticsAgentSetHttp(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

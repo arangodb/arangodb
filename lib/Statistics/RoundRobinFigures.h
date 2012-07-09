@@ -370,7 +370,10 @@ namespace triagens {
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantDistribution (VariantArray* result,
                                           STAT const& s, 
-                                          std::string const& name) {
+                                          std::string const& name,
+                                          bool showMinimum,
+                                          bool showMaximum,
+                                          bool showDeviation) {
       VariantArray* values = new VariantArray();
       result->add(name, values);
 
@@ -405,14 +408,20 @@ namespace triagens {
         }
       }
 
-      VariantDouble* valDeviation = new VariantDouble(w);
-      values->add("deviation", valDeviation);
+      if (showDeviation) {
+        VariantDouble* valDeviation = new VariantDouble(w);
+        values->add("deviation", valDeviation);
+      }
 
-      VariantDouble* valMin = new VariantDouble(ACC::access(s)._minimum);
-      values->add("min", valMin);
+      if (showMinimum) {
+        VariantDouble* valMin = new VariantDouble(ACC::access(s)._minimum);
+        values->add("min", valMin);
+      }
 
-      VariantDouble* valMax = new VariantDouble(ACC::access(s)._maximum);
-      values->add("max", valMax);
+      if (showMaximum) {
+        VariantDouble* valMax = new VariantDouble(ACC::access(s)._maximum);
+        values->add("max", valMax);
+      }
 
       VariantVector* dists = new VariantVector();
       values->add("distribution", dists);
@@ -427,9 +436,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ACC, typename STAT>
-    void RRF_GenerateVariantDistributions (VariantArray* result,
+    void RRF_GenerateVariantDistribution (VariantArray* result,
                                           typename std::vector<STAT> const& v, 
-                                          std::string const& name) {
+                                          std::string const& name,
+                                          bool showMinimum,
+                                          bool showMaximum,
+                                          bool showDeviation) {
       VariantArray* values = new VariantArray();
       result->add(name, values);
 
@@ -455,14 +467,26 @@ namespace triagens {
         VariantVector* vecMean = new VariantVector();
         values->add("mean", vecMean);
 
-        VariantVector* vecMin = new VariantVector();
-        values->add("min", vecMin);
+        VariantVector* vecMin = 0;
 
-        VariantVector* vecMax = new VariantVector();
-        values->add("max", vecMax);
+        if (showMinimum) {
+          vecMin = new VariantVector();
+          values->add("min", vecMin);
+        }
 
-        VariantVector* vecDeviation = new VariantVector();
-        values->add("deviation", vecDeviation);
+        VariantVector* vecMax = 0;
+
+        if (showMaximum) {
+          vecMax = new VariantVector();
+          values->add("max", vecMax);
+        }
+
+        VariantVector* vecDeviation = 0;
+
+        if (showDeviation) {
+          vecDeviation = new VariantVector();
+          values->add("deviation", vecDeviation);
+        }
 
         VariantVector* vecDistribution = new VariantVector();
         values->add("distribution", vecDistribution);
@@ -477,20 +501,27 @@ namespace triagens {
           vecCount->add(new VariantUInt32(count));
           vecMean->add(new VariantDouble(count == 0 ? 0.0 : (sum / count)));
 
-          double w = 0;
+          if (showDeviation) {
+            double w = 0;
 
-          if (1 < count) {
-            try {
-              w = sqrt(squares - sum * sum / count) / (count - 1);
+            if (1 < count) {
+              try {
+                w = sqrt(squares - sum * sum / count) / (count - 1);
+              }
+              catch (...) {
+              }
             }
-            catch (...) {
-            }
+
+            vecDeviation->add(new VariantDouble(w));
           }
 
-          vecDeviation->add(new VariantDouble(w));
+          if (showMinimum) {
+            vecMin->add(new VariantDouble(ACC::access(s)._minimum));
+          }
 
-          vecMin->add(new VariantDouble(ACC::access(s)._minimum));
-          vecMax->add(new VariantDouble(ACC::access(s)._maximum));
+          if (showMaximum) {
+            vecMax->add(new VariantDouble(ACC::access(s)._maximum));
+          }
 
           VariantVector* dists = new VariantVector();
           vecDistribution->add(dists);
@@ -498,6 +529,57 @@ namespace triagens {
           for (vector<uint32_t>::const_iterator m = ACC::access(s)._counts.begin();  m != ACC::access(s)._counts.end();  ++m) {
             dists->add(new VariantUInt32(*m));
           }
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the counter
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantCounter (VariantArray* result,
+                                     STAT const& s, 
+                                     std::string const& name,
+                                     double resolution) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      // generate the continuous figure
+      uint32_t count = ACC::access(s)._count;
+
+      values->add("count", new VariantUInt32(count));
+      values->add("perSecond", new VariantDouble(count / resolution));
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the counter
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantCounter (VariantArray* result,
+                                     typename std::vector<STAT> const& v, 
+                                     std::string const& name,
+                                     double resolution) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      if (! v.empty()) {
+
+        // generate the continuous figures
+        VariantVector* vecCount = new VariantVector();
+        values->add("count", vecCount);
+
+        VariantVector* vecSecond = new VariantVector();
+        values->add("perSecond", vecSecond);
+
+        for (typename std::vector<STAT>::const_iterator j = v.begin();  j != v.end();  ++j) {
+          STAT const& s = *j;
+
+          uint32_t count = ACC::access(s)._count;
+
+          vecCount->add(new VariantUInt32(count));
+          vecSecond->add(new VariantDouble(count / resolution));
         }
       }
     }
@@ -521,7 +603,7 @@ namespace triagens {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a variant representation for the distributions
+/// @brief generates a variant representation for the continuous figures
 ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ACC, typename STAT>
