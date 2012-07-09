@@ -138,13 +138,7 @@ namespace triagens {
 /// - @LIT{mean}: a list describing the mean of the values per time
 ///   interval. This corresponds to the field @LIT{start}.
 ///
-/// - @LIT{min}: a list describing the minimum of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
 /// - @LIT{max}: a list describing the maximum of the values per time
-///   interval. This corresponds to the field @LIT{start}.
-///
-/// - @LIT{deviation}: a list describing the deviation of the values per time
 ///   interval. This corresponds to the field @LIT{start}.
 ///
 /// - @LIT{cuts}: a list [N1, N2, ... Nx] of numbers defining the intervals for

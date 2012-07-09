@@ -123,7 +123,11 @@ namespace triagens {
 ///
 /// - @LIT{queueTime}: the distribution of the queue time.
 ///
-/// - @LIT{httpConnections}: the number of aktive http connections.
+/// - @LIT{httpConnections}: the number of opened http connections
+///   during the interval.
+///
+/// - @LIT{httpDuration}: the distribution of the duration of the
+///   closed http connections during the interval.
 ///
 /// If @FA{length} is @LIT{current} the figures for the current interval are returned.
 ///
