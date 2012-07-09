@@ -1,0 +1,73 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timing helper macros
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRIAGENS_BASICS_C_TIMER_H
+#define TRIAGENS_BASICS_C_TIMER_H 1
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup timing
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify the timer name
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TIMER_NAME(name) timer ## name
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief declare and initialise a timer
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TIMER_INIT(name) double TRI_TIMER_NAME(name) = TRI_microtime();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current value of a timer
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TIMER_GET(name) (TRI_microtime() - TRI_TIMER_NAME(name))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log a timer value to the log in debug mode
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TIMER_LOG(name) LOG_DEBUG("timer %s: %f", #name, TRI_TIMER_GET(name));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

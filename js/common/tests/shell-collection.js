@@ -440,7 +440,10 @@ function CollectionSuite () {
 
       f = c1.figures();
 
-      assertEqual(1, f.datafiles.count);
+      assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.datafiles.fileSize);
+      assertEqual(1, f.journals.count);
+      assertTrue(f.journals.fileSize > 0);
       assertEqual(1, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -451,7 +454,10 @@ function CollectionSuite () {
 
       f = c1.figures();
 
-      assertEqual(1, f.datafiles.count);
+      assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.datafiles.fileSize);
+      assertEqual(1, f.journals.count);
+      assertTrue(f.journals.fileSize > 0);
       assertEqual(2, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -462,7 +468,10 @@ function CollectionSuite () {
 
       f = c1.figures();
 
-      assertEqual(1, f.datafiles.count);
+      assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.datafiles.fileSize);
+      assertEqual(1, f.journals.count);
+      assertTrue(f.journals.fileSize > 0);
       assertEqual(1, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(1, f.dead.count);
@@ -473,7 +482,10 @@ function CollectionSuite () {
 
       f = c1.figures();
 
-      assertEqual(1, f.datafiles.count);
+      assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.datafiles.fileSize);
+      assertEqual(1, f.journals.count);
+      assertTrue(f.journals.fileSize > 0);
       assertEqual(0, f.alive.count);
       assertEqual(0, f.alive.size);
       assertEqual(2, f.dead.count);

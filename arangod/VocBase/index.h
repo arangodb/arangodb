@@ -602,7 +602,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 /// @brief returns an iterator for a lookup query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, TRI_index_operator_t*);
+TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, TRI_index_operator_t*, bool (*filter) (TRI_index_iterator_t*) );
 
 
 ////////////////////////////////////////////////////////////////////////////////

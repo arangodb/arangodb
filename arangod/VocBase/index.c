@@ -3502,8 +3502,40 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // .............................................................................
 
 
-static void FillLookupBitarrayOperator(TRI_index_operator_t* slOperator, TRI_doc_collection_t* collection) {
-  assert(false);
+static void FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_doc_collection_t* collection) {
+  TRI_relation_index_operator_t* relationOperator;
+  TRI_logical_index_operator_t*  logicalOperator;
+  
+  if (indexOperator == NULL) {
+    return;
+  }
+  
+  switch (indexOperator->_type) {
+    case TRI_AND_INDEX_OPERATOR: 
+    case TRI_NOT_INDEX_OPERATOR:
+    case TRI_OR_INDEX_OPERATOR: {
+    
+      logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);
+      FillLookupBitarrayOperator(logicalOperator->_left,collection);
+      FillLookupBitarrayOperator(logicalOperator->_right,collection);
+      break;
+    }
+    
+    case TRI_EQ_INDEX_OPERATOR: 
+    case TRI_GE_INDEX_OPERATOR: 
+    case TRI_GT_INDEX_OPERATOR: 
+    case TRI_NE_INDEX_OPERATOR: 
+    case TRI_LE_INDEX_OPERATOR: 
+    case TRI_LT_INDEX_OPERATOR: {
+    
+      relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_collection = collection;
+      relationOperator->_fields     = NULL; // we use json rather than shaped_json 
+      break;
+      
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3511,15 +3543,33 @@ static void FillLookupBitarrayOperator(TRI_index_operator_t* slOperator, TRI_doc
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
-// Note: this function will destroy the passed slOperator before it returns
+// Note: this function will destroy the passed index operator before it returns
 // Warning: who ever calls this function is responsible for destroying
-// TRI_skiplist_iterator_t* results
+// TRI_index_iterator_t* results
 // .............................................................................
 
 
-TRI_index_iterator_t* TRI_LookupBitarrayIndex(TRI_index_t* idx, TRI_index_operator_t* slOperator) {
-  assert(false);
-  return NULL;  
+TRI_index_iterator_t* TRI_LookupBitarrayIndex(TRI_index_t* idx, 
+                                              TRI_index_operator_t* indexOperator, 
+                                              bool (*filter) (TRI_index_iterator_t*)) {
+  TRI_bitarray_index_t* baIndex;
+  TRI_index_iterator_t* result;
+  
+  baIndex = (TRI_bitarray_index_t*)(idx);
+  
+  // .........................................................................
+  // fill the relation operators which may be embedded in the indexOperator 
+  // with additional information. Recall the indexOperator is what information 
+  // was received from a client for querying the bitarray index.
+  // .........................................................................
+  
+  FillLookupBitarrayOperator(indexOperator, baIndex->base._collection); 
+  
+  result = BitarrayIndex_find(baIndex->_bitarrayIndex, indexOperator, &baIndex->_paths, idx, NULL);
+
+  TRI_FreeIndexOperator(indexOperator); 
+  
+  return result;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
