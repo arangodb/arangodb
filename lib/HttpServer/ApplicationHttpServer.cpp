@@ -68,6 +68,8 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationS
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationHttpServer::~ApplicationHttpServer () {
+  for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
+  _httpServers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +230,11 @@ void ApplicationHttpServer::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpServer::stop () {
-  for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
-  _httpServers.clear();
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->stop();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -171,7 +171,6 @@ namespace triagens {
         void beginShutdown ()  {
           if (commSocket != -1) {
             close(commSocket);
-            commSocket = -1;
           }
         }
 

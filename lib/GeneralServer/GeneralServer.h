@@ -220,18 +220,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops listining
-////////////////////////////////////////////////////////////////////////////////
-
-        void stopListening () {
-          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
-            _scheduler->destroyTask(*i);
-          }
-
-          _listenTasks.clear();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down handlers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -246,17 +234,49 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stops listining
+////////////////////////////////////////////////////////////////////////////////
+
+        void stopListening () {
+          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
+            _scheduler->destroyTask(*i);
+          }
+
+          _listenTasks.clear();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes all listen and comm tasks
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void stop () {
+          GENERAL_SERVER_LOCK(&_commTasksLock);
+
+          while (! _commTasks.empty()) {
+            GeneralCommTask<S, HF>* task = *_commTasks.begin();
+            _commTasks.erase(task);
+            
+
+            GENERAL_SERVER_UNLOCK(&_commTasksLock);
+            _scheduler->destroyTask(task);
+            GENERAL_SERVER_LOCK(&_commTasksLock);
+          }
+
+          GENERAL_SERVER_UNLOCK(&_commTasksLock);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
           GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
 
-          _scheduler->registerTask(task);
-
           GENERAL_SERVER_LOCK(&_commTasksLock);
           _commTasks.insert(task);
           GENERAL_SERVER_UNLOCK(&_commTasksLock);
+
+          _scheduler->registerTask(task);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

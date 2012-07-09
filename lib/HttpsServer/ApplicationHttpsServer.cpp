@@ -110,6 +110,7 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicatio
 
 ApplicationHttpsServer::~ApplicationHttpsServer () {
   for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
+  _httpsServers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +275,11 @@ void ApplicationHttpsServer::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpsServer::stop () {
-  for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
-  _httpsServers.clear();
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->stop();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

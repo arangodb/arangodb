@@ -122,8 +122,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void shutdownHandlers () {
-          GeneralServer<S, HF, CT>::shutdownHandlers();          
-
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
           size_t size;
@@ -135,11 +133,14 @@ namespace triagens {
 
               if (job != 0) {
                 job->abandon();
+                const_cast<handler_task_job_t*>(table)[i]._job = 0;
               }
             }
           }
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
+
+          GeneralServer<S, HF, CT>::shutdownHandlers();          
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,11 +283,11 @@ namespace triagens {
         void handleConnected (socket_t socket, ConnectionInfo& info) {
           GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
 
-          this->_scheduler->registerTask(task);
-
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
-          this->_commTasks.insert(task);
+          this->_commTasks.insert(dynamic_cast<GeneralCommTask<S, HF>*>(task));
           GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
+
+          this->_scheduler->registerTask(task);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
