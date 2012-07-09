@@ -953,25 +953,43 @@ Vertex.prototype.outDegree = function () {
 
 Vertex.prototype.measurement = function (measurement) {
   var graph = this._graph,
-    vertices = graph._vertices.toArray(),
-    source = this;
+    source = this,
+    vertices,
+    value,
+    options;
 
-  return vertices.reduce(function (calculated, target) {
-    var distance = source.distanceTo(graph.getVertex(target._id));
+  if (measurement === "betweenness") {
+    options = { grouped: true, threshold: true };
 
-    switch (measurement) {
-    case "eccentricity":
-      calculated = Math.max(calculated, distance);
-      break;
-    case "closeness":
-      calculated += distance;
-      break;
-    default:
-      throw "Unknown Measurement '" + measurement + "'";
-    }
+    value = graph.geodesics(options).reduce(function (count, geodesic_group) {
+      var included = geodesic_group.filter(function (geodesic) {
+        return geodesic.slice(1, -1).indexOf(source.getId()) > -1;
+      });
 
-    return calculated;
-  }, 0);
+      return (included ? count + (included.length / geodesic_group.length) : count);
+    }, 0);
+  } else {
+    vertices = graph._vertices.toArray();
+
+    value = vertices.reduce(function (calculated, target) {
+      var distance = source.distanceTo(graph.getVertex(target._id));
+
+      switch (measurement) {
+      case "eccentricity":
+        calculated = Math.max(calculated, distance);
+        break;
+      case "closeness":
+        calculated += distance;
+        break;
+      default:
+        throw "Unknown Measurement '" + measurement + "'";
+      }
+
+      return calculated;
+    }, 0);
+  }
+
+  return value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1509,17 +1527,17 @@ Graph.prototype.geodesics = function (options) {
 
   options = options || {};
 
-  vertexConstructor = function(raw_vertex) {
+  vertexConstructor = function (raw_vertex) {
     return graph.constructVertex(raw_vertex._id);
   };
 
   sources = sources.map(vertexConstructor);
   targets = targets.map(vertexConstructor);
 
-  sources.forEach(function(source) {
+  sources.forEach(function (source) {
     targets = targets.slice(1);
 
-    targets.forEach(function(target) {
+    targets.forEach(function (target) {
       var pathes = source.pathTo(target);
 
       if (pathes.length > 0 && (!options.threshold || pathes[0].length > 2)) {

@@ -746,8 +746,30 @@ function geodesicSuite() {
       assertEqual(geodesics.length, 4);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Betweenness on Vertices
+////////////////////////////////////////////////////////////////////////////////
 
+    testBetweenness: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5);
 
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      assertEqual(v1.measurement('betweenness'), 0);
+      assertEqual(v2.measurement('betweenness'), 3);
+      assertEqual(v3.measurement('betweenness'), 1);
+      assertEqual(v4.measurement('betweenness'), 1);
+      assertEqual(v5.measurement('betweenness'), 0);
+    }
   };
 }
 
@@ -755,9 +777,9 @@ function geodesicSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(neighborSuite);
-//jsunity.run(dijkstraSuite);
-//jsunity.run(commonSuite);
+jsunity.run(neighborSuite);
+jsunity.run(dijkstraSuite);
+jsunity.run(commonSuite);
 jsunity.run(geodesicSuite);
 
 return jsunity.done();
