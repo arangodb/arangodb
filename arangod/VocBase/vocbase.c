@@ -719,10 +719,9 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     TRI_sim_collection_t* sim;
     TRI_col_parameter_t parameter;
 
-    TRI_InitParameterCollection(&parameter, collection->_name, vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, collection->_name, vocbase->_defaultMaximalSize);
 
     parameter._type = type;
-    parameter._waitForSync = false;
 
     sim = TRI_CreateSimCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
@@ -1100,6 +1099,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // defaults
   vocbase->_removeOnDrop = true;
   vocbase->_removeOnCompacted = true;
+  vocbase->_defaultWaitForSync = false;
   vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
 
   // scan the database path for collections

@@ -366,7 +366,8 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 /// @brief initializes a collection parameter block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
+void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
+                                  TRI_col_parameter_t* parameter,
                                   char const* name,
                                   TRI_voc_size_t maximalSize) {
   assert(parameter);
@@ -374,7 +375,7 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 
   parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
 
-  parameter->_waitForSync = false;
+  parameter->_waitForSync = vocbase->_defaultWaitForSync;
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
 
   parameter->_isSystem = false;
