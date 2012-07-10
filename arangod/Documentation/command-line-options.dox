@@ -47,6 +47,7 @@
 ///     <ul>
 ///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
 ///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
@@ -161,6 +162,12 @@
 ///
 /// @anchor CommandLineArangoAdminPort
 /// @copydetails triagens::arango::ArangoServer::_adminPort
+///
+/// @anchor CommandLineArangoDisableAdminInterface
+/// @CMDOPT{--disable-admin-interface}
+///
+/// If this option is specified, then the HTML admininstration interface at 
+/// URL http://server:port/ will be disabled and cannot used by any user at all.
 ///
 /// @anchor CommandLineArangoDirectory
 /// @copydetails triagens::arango::ArangoServer::_databasePath
