@@ -91,9 +91,11 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicationScheduler,
+ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationServer,
+                                                ApplicationScheduler* applicationScheduler,
                                                 ApplicationDispatcher* applicationDispatcher)
   : ApplicationFeature("HttpsServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _showPort(true),
@@ -287,6 +289,8 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpH
   deque<AddressPort> addresses;
   addresses.insert(addresses.begin(), ports.begin(), ports.end());
 
+  _applicationServer->raisePrivileges();
+
   while (! addresses.empty()) {
     AddressPort ap = addresses[0];
     addresses.pop_front();
@@ -324,6 +328,8 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpH
       }
     }
   }
+
+  _applicationServer->dropPrivileges();
 
   return httpsServer;
 }

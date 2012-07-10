@@ -362,7 +362,7 @@ void ArangoServer::buildApplicationServer () {
   // a http server
   // .............................................................................
 
-  _applicationHttpServer = new ApplicationHttpServer(_applicationScheduler, _applicationDispatcher);
+  _applicationHttpServer = new ApplicationHttpServer(_applicationServer, _applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
