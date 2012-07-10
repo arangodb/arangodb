@@ -16,7 +16,7 @@ package_type=""
 product_name="arangodb"
 project_name="arangodb"
 runlevels="runlevel(035)"
-
+curl_version="curl -s -o - http://localhost:8529/_api/version"
 
 # name of the epm configuration file
 LIST="Installation/${project_name}.list"
@@ -161,7 +161,6 @@ echo "Call mkepmlist to create a sublist"
       mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
 
-echo "Call mkepmlist to create a sublist"
   for dir in . css css/images media media/icons media/images js js/modules; do
     for typ in css html js png gif ico;  do
       FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
@@ -253,3 +252,143 @@ echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${
 cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}
 echo "########################################################"
 echo 
+
+
+start_server=
+stop_server=
+install_package=
+remove_package=
+mount_install_package=
+unmount_install_package=
+
+case $TRI_OS_LONG in
+
+  Linux-openSUSE*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo rpm -i ${hudson_base}/${package_name}"
+    remove_package="sudo rpm -e $product_name"
+
+    ;;
+
+  Linux-Debian*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo dpkg -i ${hudson_base}/${package_name}"
+    remove_package="sudo dpkg --purge $product_name"
+    ;;
+
+  Linux-CentOS-*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo rpm -i ${hudson_base}/${package_name}"
+    remove_package="sudo rpm -e $product_name"
+    ;;
+
+  Linux-Ubuntu-*)
+    start_server="sudo /etc/init.d/arango start"
+    stop_server="sudo /etc/init.d/arango stop"
+
+    install_package="sudo dpkg -i ${hudson_base}/${package_name}"
+    remove_package="sudo dpkg --purge $product_name"
+    ;;
+
+  Darwin*)
+    start_server=""
+    stop_server="sudo launchctl unload /Library/LaunchDaemons/org.arangodb.plist"
+
+    install_package="sudo installer -pkg /Volumes/${product_name}/${product_name}.pkg -target / "
+    remove_package=""
+
+    mount_install_package="hdiutil attach ${hudson_base}/${package_name}"
+    unmount_install_package="hdiutil detach /Volumes/${product_name}"
+    ;;
+
+  *)
+    ;;
+
+esac
+
+
+echo 
+echo "########################################################"
+echo "                     INSTALL TEST "
+echo "########################################################"
+echo 
+
+# stop and uninstall server
+if [ "${stop_server}x" != "x" ]; then 
+  $stop_server > /dev/null 2>&1
+fi
+
+if [ "${remove_package}x" != "x" ]; then 
+  $remove_package > /dev/null 2>&1 
+fi
+
+if [ "${unmount_install_package}x" != "x" ]; then 
+  $unmount_install_package > /dev/null 2>&1 
+fi
+
+if [ "${mount_install_package}x" != "x" ]; then 
+  $mount_install_package > /dev/null 2>&1 
+fi
+
+echo 
+echo "########################################################"
+echo "Install"
+echo "    ${install_package}"
+${install_package} || exit 1
+echo "########################################################"
+
+if [ "${start_server}x" != "x" ]; then 
+echo "Start"
+echo "    ${start_server}"
+${start_server} || exit 1
+echo "########################################################"
+fi
+
+echo "Successfully installed ${package_name}."
+echo "########################################################"
+echo "Wait for server..."
+echo "    sleep 5"
+sleep 5
+
+echo 
+echo "########################################################"
+echo "Request version number "
+echo "   $curl_version"
+answer=$( $curl_version )
+expect='{"server":"arango","version":"'$arangodb_version.$arangodb_release'"}'
+if [ "x$answer" == "x$expect" ]; then 
+  echo "ok: $answer"
+else
+  echo "error: $answer != $expect"
+  exit 1
+fi
+echo "########################################################"
+echo 
+
+echo 
+echo "########################################################"
+if [ "${stop_server}x" != "x" ]; then 
+echo "Stop"
+echo "    $stop_server"
+$stop_server || exit 1
+echo "########################################################"
+fi
+if [ "${remove_package}x" != "x" ]; then 
+echo "Uninstall"
+echo "    $remove_package"
+$remove_package || exit 1
+echo "########################################################"
+echo "Successfully uninstalled ${product_name}."
+echo "########################################################"
+fi
+echo 
+
+if [ "${unmount_install_package}x" != "x" ]; then 
+  $unmount_install_package > /dev/null 2>&1 
+fi
