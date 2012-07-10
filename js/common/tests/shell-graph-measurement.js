@@ -220,8 +220,172 @@ function measurementSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Geodesic Distances and Betweenness
+////////////////////////////////////////////////////////////////////////////////
+
+function geodesicSuite() {
+  var Graph = require("graph").Graph,
+    graph_name = "UnitTestsCollectionGraph",
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        try {
+          // Drop the graph if it exsits
+          graph = new Graph(graph_name);
+          print("FOUND: ");
+          PRINT_OBJECT(graph);
+          graph.drop();
+        } catch (err1) {
+        }
+
+        graph = new Graph(graph_name, vertex, edge);
+      } catch (err2) {
+        console.error("[FAILED] setup failed:" + err2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      try {
+        if (graph !== null) {
+          graph.drop();
+        }
+      } catch (err) {
+        console.error("[FAILED] tear-down failed:" + err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Geodesics
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeodesics: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        geodesics;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      geodesics = graph.geodesics().map(function(geodesic) {
+        return geodesic.length;
+      });
+      geodesics.sort();
+
+      assertEqual(geodesics.length, 12);
+      assertEqual(geodesics.indexOf(2), 0);
+      assertEqual(geodesics.indexOf(3), 6);
+      assertEqual(geodesics.indexOf(4), 10);
+      assertEqual(geodesics[11], 4);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Grouped Geodesics
+////////////////////////////////////////////////////////////////////////////////
+
+    testGroupedGeodesics: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        geodesics;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      geodesics = graph.geodesics({ grouped: true }).map(function(geodesic) {
+        return geodesic.length;
+      });
+      geodesics.sort();
+
+      assertEqual(geodesics.length, 10);
+      assertEqual(geodesics.indexOf(1), 0);
+      assertEqual(geodesics.indexOf(2), 8);
+      assertEqual(geodesics[9], 2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Grouped Geodesics with Threshold
+////////////////////////////////////////////////////////////////////////////////
+
+    testGroupedGeodesicsWithThreshold: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        options,
+        geodesics;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      options = { grouped: true, threshold: true };
+      geodesics = graph.geodesics(options).sort();
+
+      assertEqual(geodesics.length, 4);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test Betweenness on Vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testBetweenness: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5);
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      assertEqual(v1.measurement('betweenness'), 0);
+      assertEqual(v2.measurement('betweenness'), 3);
+      assertEqual(v3.measurement('betweenness'), 1);
+      assertEqual(v4.measurement('betweenness'), 1);
+      assertEqual(v5.measurement('betweenness'), 0);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(measurementSuite);
+jsunity.run(geodesicSuite);
+
 return jsunity.done();
