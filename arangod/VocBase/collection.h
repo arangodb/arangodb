@@ -230,7 +230,8 @@ TRI_collection_t;
 /// @brief initializes a collection parameter block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitParameterCollection (TRI_col_parameter_t*,
+void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
+                                  TRI_col_parameter_t*,
                                   char const* name,
                                   TRI_voc_size_t maximalSize);
 
