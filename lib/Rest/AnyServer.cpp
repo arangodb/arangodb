@@ -334,6 +334,8 @@ void AnyServer::prepareServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::startupSupervisor () {
+  static time_t MIN_TIME_ALIVE_IN_SEC = 30;
+
   LOGGER_INFO << "starting up in supervisor mode";
   
   string current;
@@ -341,10 +343,13 @@ int AnyServer::startupSupervisor () {
   
   // main process
   if (result == 0) {
+    return 0;
   }
   
   // child process
   else if (result == 1) {
+    time_t startTime = time(0);
+    time_t t;
     bool done = false;
     result = 0;
     
@@ -368,8 +373,18 @@ int AnyServer::startupSupervisor () {
             done = true;
           }
           else {
-            LOGGER_ERROR << "child " << pid << " died of a horrible death, exit status " << WEXITSTATUS(status);
-            done = false;
+            t = time(0) - startTime;
+
+            LOGGER_ERROR << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
+            
+
+            if (t < MIN_TIME_ALIVE_IN_SEC) {
+              LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+              done = true;
+            }
+            else {
+              done = false;
+            }
           }
         }
         else if (WIFSIGNALED(status)) {
@@ -382,13 +397,23 @@ int AnyServer::startupSupervisor () {
               break;
               
             default:
-              LOGGER_ERROR << "child " << pid << " died of a horrible death, signal " << WTERMSIG(status);
-              done = false;
+              t = time(0) - startTime;
+
+              LOGGER_ERROR << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
+
+              if (t < MIN_TIME_ALIVE_IN_SEC) {
+                LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+                done = true;
+              }
+              else {
+                done = false;
+              }
+
               break;
           }
         }
         else {
-          LOGGER_ERROR << "child " << pid << " died of a horrible death";
+          LOGGER_ERROR << "child " << pid << " died a horrible death, unknown cause";
           done = false;
         }
       }
