@@ -165,7 +165,9 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
       }
     }
 
+    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
