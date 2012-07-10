@@ -1,19 +1,30 @@
+v1.x.x (2012-XX-XX)
+-------------------
+
 * fixed issue #122: arangod doesn't start if <log.file> cannot be created
 
 * fixed issue #121: wrong collection size reported
 
 * fixed escaping of document data in HTML admin front end
 
-* added server startup option --server.disable-admin-interface to turn off the HTML admin interface
+* added server startup option --server.disable-admin-interface to turn off the
+  HTML admin interface
 
-* honor server startup option --database.maximal-journal-size when creating new collections without specific journalsize setting. Previously, these collections were always created with journal file sizes of 32 MB and the --database.maximal-journal-size setting was ignored
+* honor server startup option --database.maximal-journal-size when creating new
+  collections without specific journalsize setting. Previously, these
+  collections were always created with journal file sizes of 32 MB and the
+  --database.maximal-journal-size setting was ignored
+
+* added server startup option --database.wait-for-sync to control the default
+  behavior
 
 v1.0.alpha3 (2012-06-30)
 ------------------------
 
 * fixed issue #116: createCollection=create option doesn't work
 
-* fixed issue #115: Compilation issue under OSX 10.7 Lion & 10.8 Mountain Lion (homebrew)
+* fixed issue #115: Compilation issue under OSX 10.7 Lion & 10.8 Mountain Lion
+  (homebrew)
 
 * fixed issue #114: image not found
 
@@ -29,7 +40,8 @@ v1.0.alpha2 (2012-06-24)
 
 * fixed issue #103: Should we cleanup the directory structure
 
-* fixed issue #100: "count" attribute exists in cursor response with "count: false"
+* fixed issue #100: "count" attribute exists in cursor response with "count:
+  false"
 
 * fixed issue #84 explain command 
 
@@ -53,7 +65,8 @@ v1.0.alpha2 (2012-06-24)
 
 * fixed several range-related assertion failures in the AQL query optimiser
 
-* fixed AQL query optimisations for some edge cases (e.g. nested subqueries with invalid constant filter expressions)
+* fixed AQL query optimisations for some edge cases (e.g. nested subqueries with
+  invalid constant filter expressions)
 
 
 v1.0.alpha1 (2012-05-28)
