@@ -18,12 +18,19 @@ LIBR := ../lib/libmruby.a
 # libraries, includes
 INCLUDES = -I../src -I../include
 
-DEBUG_MODE = 1
-ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g
-else
-CFLAGS = -O3
+ifeq ($(strip $(COMPILE_MODE)),)
+  # default compile option
+  COMPILE_MODE = debug
 endif
+
+ifeq ($(COMPILE_MODE),debug)
+  CFLAGS = -g -O3
+else ifeq ($(COMPILE_MODE),release)
+  CFLAGS = -O3
+else ifeq ($(COMPILE_MODE),small)
+  CFLAGS = -Os
+endif
+
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
 ifeq ($(OS),Windows_NT)
   MAKE_FLAGS = CC=$(CC) LL=$(LL) ALL_CFLAGS="$(ALL_CFLAGS)"

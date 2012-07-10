@@ -20,14 +20,6 @@
 
 #define warn_printf printf
 
-#ifndef FALSE
-#define FALSE   0
-#endif
-
-#ifndef TRUE
-#define TRUE    1
-#endif
-
 mrb_value
 mrb_exc_new(mrb_state *mrb, struct RClass *c, const char *ptr, long len)
 {
@@ -79,14 +71,14 @@ static mrb_value
 exc_exception(mrb_state *mrb, mrb_value self)
 {
   mrb_value exc;
-  mrb_value *argv;
+  mrb_value a;
   int argc;
 
-  mrb_get_args(mrb, "*", &argv, &argc);
+  argc = mrb_get_args(mrb, "|o", &a);
   if (argc == 0) return self;
-  if (argc == 1 && mrb_obj_equal(mrb, self, argv[0])) return self;
+  if (mrb_obj_equal(mrb, self, a)) return self;
   exc = mrb_obj_clone(mrb, self);
-  exc_initialize(mrb, exc);
+  mrb_iv_set(mrb, exc, mrb_intern(mrb, "mesg"), a);
 
   return exc;
 }
@@ -134,20 +126,15 @@ exc_message(mrb_state *mrb, mrb_value exc)
 static mrb_value
 exc_inspect(mrb_state *mrb, mrb_value exc)
 {
-  mrb_value str, klass;
+  mrb_value str;
 
-  klass = mrb_str_new2(mrb, mrb_obj_classname(mrb, exc));
+  str = mrb_str_new2(mrb, mrb_obj_classname(mrb, exc));
   exc = mrb_obj_as_string(mrb, exc);
-  if (RSTRING_LEN(exc) == 0) {
-    return klass;
+
+  if (RSTRING_LEN(exc) > 0) {
+    mrb_str_cat2(mrb, str, ": ");
+    mrb_str_append(mrb, str, exc);
   }
-
-  str = mrb_str_new2(mrb, "#<");
-  mrb_str_append(mrb, str, klass);
-  mrb_str_cat2(mrb, str, ": ");
-  mrb_str_append(mrb, str, exc);
-  mrb_str_cat2(mrb, str, ">");
-
   return str;
 }
 
@@ -186,24 +173,19 @@ mrb_exc_raise(mrb_state *mrb, mrb_value exc)
 }
 
 void
-mrb_raise_va(mrb_state *mrb, struct RClass *c, const char *fmt, va_list args)
-{
-  char buf[256];
-
-  vsnprintf(buf, 256, fmt, args);
-  mrb_exc_raise(mrb, mrb_exc_new(mrb, c, buf, strlen(buf)));
-}
-
-void
 mrb_raise(mrb_state *mrb, struct RClass *c, const char *fmt, ...)
 {
   va_list args;
   char buf[256];
+  int n;
 
   va_start(args, fmt);
-  vsnprintf(buf, 256, fmt, args);
+  n = vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
-  mrb_exc_raise(mrb, mrb_exc_new(mrb, c, buf, strlen(buf)));
+  if (n < 0) {
+    n = 0;
+  }
+  mrb_exc_raise(mrb, mrb_exc_new(mrb, c, buf, n));
 }
 
 void
@@ -212,51 +194,44 @@ mrb_name_error(mrb_state *mrb, mrb_sym id, const char *fmt, ...)
   mrb_value exc, argv[2];
   va_list args;
   char buf[256];
+  int n;
 
   va_start(args, fmt);
-  //argv[0] = mrb_vsprintf(fmt, args);
-  vsnprintf(buf, 256, fmt, args);
-  argv[0] = mrb_str_new(mrb, buf, strlen(buf));
+  n = vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
-
-  argv[1] = mrb_str_new_cstr(mrb, mrb_sym2name(mrb, id));
-  exc = mrb_class_new_instance(mrb, 2, argv, E_NAME_ERROR);
+  if (n < 0) {
+    n = 0;
+  }
+  argv[0] = mrb_str_new(mrb, buf, n);
+  argv[1] = mrb_symbol_value(id); /* ignore now */
+  exc = mrb_class_new_instance(mrb, 1, argv, E_NAME_ERROR);
   mrb_exc_raise(mrb, exc);
 }
+
 mrb_value
 mrb_sprintf(mrb_state *mrb, const char *fmt, ...)
 {
   va_list args;
   char buf[256];
+  int n;
 
   va_start(args, fmt);
-  vsnprintf(buf, 256, fmt, args);
+  n = vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
-  return mrb_str_new(mrb, buf, strlen(buf));
+  if (n < 0) {
+    n = 0;
+  }
+  return mrb_str_new(mrb, buf, n);
 }
 
 void
 mrb_warn(const char *fmt, ...)
 {
   va_list args;
-  char buf[256];
 
   va_start(args, fmt);
-  snprintf(buf, 256, "warning: %s", fmt);
-  printf(buf, args);
-  va_end(args);
-}
-
-
-void
-mrb_warning(const char *fmt, ...)
-{
-  va_list args;
-  char buf[256];
-
-  va_start(args, fmt);
-  snprintf(buf, 256, "warning: %s", fmt);
-  printf(buf, args);
+  printf("warning: ");
+  vprintf(fmt, args);
   va_end(args);
 }
 
@@ -264,12 +239,12 @@ void
 mrb_bug(const char *fmt, ...)
 {
   va_list args;
-  char buf[256];
 
   va_start(args, fmt);
-  snprintf(buf, 256, "bug: %s", fmt);
-  printf(buf, args);
+  printf("bug: ");
+  vprintf(fmt, args);
   va_end(args);
+  exit(EXIT_FAILURE);
 }
 
 static const char *
@@ -304,28 +279,6 @@ sysexit_status(mrb_state *mrb, mrb_value err)
   return mrb_fixnum(st);
 }
 
-void
-error_pos(void)
-{
-#if 0
-  const char *sourcefile = mrb_sourcefile();
-  int sourceline = mrb_sourceline();
-
-  if (sourcefile) {
-    if (sourceline == 0) {
-      warn_printf("%s", sourcefile);
-    }
-    else if (mrb_frame_callee()) {
-      warn_printf("%s:%d:in `%s'", sourcefile, sourceline,
-                mrb_sym2name(mrb, mrb_frame_callee()));
-    }
-    else {
-      warn_printf("%s:%d", sourcefile, sourceline);
-    }
-  }
-#endif
-}
-
 static void
 set_backtrace(mrb_state *mrb, mrb_value info, mrb_value bt)
 {
@@ -348,7 +301,7 @@ make_exception(mrb_state *mrb, int argc, mrb_value *argv, int isstr)
       if (isstr) {
         mesg = mrb_check_string_type(mrb, argv[0]);
         if (!mrb_nil_p(mesg)) {
-          mesg = mrb_exc_new3(mrb, mrb->eRuntimeError_class, mesg);
+          mesg = mrb_exc_new3(mrb, E_RUNTIME_ERROR, mesg);
           break;
         }
       }
@@ -368,7 +321,7 @@ exception_call:
       //  mrb_raise(mrb, E_TYPE_ERROR, "exception class/object expected");
       //}
       if (mrb_respond_to(mrb, argv[0], mrb_intern(mrb, "exception"))) {
-        mesg = mrb_funcall(mrb, argv[0], "exception", n, argv+1);
+        mesg = mrb_funcall_argv(mrb, argv[0], "exception", n, argv+1);
       }
       else {
         /* undef */
@@ -399,16 +352,13 @@ mrb_make_exception(mrb_state *mrb, int argc, mrb_value *argv)
 void
 mrb_sys_fail(mrb_state *mrb, const char *mesg)
 {
-  mrb_raise(mrb, mrb->eRuntimeError_class, "%s", mesg);
+  mrb_raise(mrb, E_RUNTIME_ERROR, "%s", mesg);
 }
 
 void
 mrb_init_exception(mrb_state *mrb)
 {
   struct RClass *e;
-  struct RClass *eIndexError;
-  struct RClass *eRangeError;
-  struct RClass *eNameError;
 
   mrb->eException_class = e = mrb_define_class(mrb, "Exception",           mrb->object_class);         /* 15.2.22 */
   mrb_define_class_method(mrb, e, "exception", mrb_instance_new, ARGS_ANY());
@@ -419,32 +369,6 @@ mrb_init_exception(mrb_state *mrb)
   mrb_define_method(mrb, e, "message", exc_message, ARGS_NONE());
   mrb_define_method(mrb, e, "inspect", exc_inspect, ARGS_NONE());
 
-  mrb->eStandardError_class     = mrb_define_class(mrb, "StandardError",       mrb->eException_class);     /* 15.2.23 */
-  mrb->eRuntimeError_class      = mrb_define_class(mrb, "RuntimeError",        mrb->eStandardError_class); /* 15.2.28 */
-
-  mrb_define_class(mrb, "TypeError",           mrb->eStandardError_class); /* 15.2.29 */
-  mrb_define_class(mrb, "ArgumentError",       mrb->eStandardError_class); /* 15.2.24 */
-  eIndexError             = mrb_define_class(mrb, "IndexError",          mrb->eStandardError_class); /* 15.2.33 */
-  eRangeError             = mrb_define_class(mrb, "RangeError",          mrb->eStandardError_class); /* 15.2.26 */
-  eNameError              = mrb_define_class(mrb, "NameError",           mrb->eStandardError_class); /* 15.2.31 */
-
-  mrb_define_class(mrb, "NoMethodError",       eNameError);          /* 15.2.32 */
-  //  eScriptError            = mrb_define_class(mrb, "ScriptError",         mrb->eException_class);     /* 15.2.37 */
-  //  mrb_define_class(mrb, "SyntaxError",         eScriptError);        /* 15.2.38 */
-  //  mrb_define_class(mrb, "LoadError",           eScriptError);        /* 15.2.39 */
-  //  mrb_define_class(mrb, "NotImplementedError", eScriptError_class);
-  //  mrb_define_class(mrb, "SystemCallError",     mrb->eStandardError_class); /* 15.2.36 */
-  mrb_define_class(mrb, "LocalJumpError",      mrb->eStandardError_class); /* 15.2.25 */
-
-#ifdef INCLUDE_REGEX
-  mrb_define_class(mrb, "RegexpError",         mrb->eStandardError_class); /* 15.2.27 */
-#endif
-
-#ifdef INCLUDE_ENCODING
-  mrb_define_class(mrb, "EncodingError",       mrb->eStandardError_class);
-#endif
-  // mrb_define_class(mrb, "ZeroDivisionError",   mrb->eStandardError_class); /* 15.2.30 */
-
-  mrb_define_class(mrb, "FloatDomainError",    eRangeError);
-  mrb_define_class(mrb, "KeyError",            eIndexError);
+  mrb->eStandardError_class     = mrb_define_class(mrb, "StandardError",       mrb->eException_class); /* 15.2.23 */
+  mrb_define_class(mrb, "RuntimeError", mrb->eStandardError_class);                                    /* 15.2.28 */
 }
