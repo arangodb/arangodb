@@ -1015,11 +1015,12 @@ int ArangoServer::executeRubyConsole () {
 
   // enter MR context
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
+  mrb_state* mrb = context->_mrb;
 
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(context->_mrs, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
 
   console->open(false);
 
@@ -1038,7 +1039,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(&context->_mrs->_mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(mrb, input);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1046,24 +1047,24 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(&context->_mrs->_mrb, p->tree);
+    int n = mrb_generate_code(mrb, p->tree);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(&context->_mrs->_mrb,
-                               mrb_proc_new(&context->_mrs->_mrb, context->_mrs->_mrb.irep[n]),
-                               mrb_top_self(&context->_mrs->_mrb));
+    mrb_value result = mrb_run(mrb,
+                               mrb_proc_new(mrb, mrb->irep[n]),
+                               mrb_top_self(mrb));
 
-    if (context->_mrs->_mrb.exc) {
+    if (mrb->exc) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(&context->_mrs->_mrb, mrb_obj_value(context->_mrs->_mrb.exc));
-      context->_mrs->_mrb.exc = 0;
+      mrb_p(mrb, mrb_obj_value(mrb->exc));
+      mrb->exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(&context->_mrs->_mrb, result);
+      mrb_p(mrb, result);
     }
   }
 

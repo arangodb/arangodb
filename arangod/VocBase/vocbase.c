@@ -1090,6 +1090,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   TRI_InitReadWriteLock(&vocbase->_lock);
 
+  vocbase->_syncWaiters = 0;
+  TRI_InitCondition(&vocbase->_syncWaitersCondition);
+
   // .............................................................................
   // scan directory for collections and start helper threads
   // .............................................................................
@@ -1185,8 +1188,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, vocbase->_lockFile);
 
-  // destroy lock
+  // destroy locks
   TRI_DestroyReadWriteLock(&vocbase->_lock);
+  TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
 
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
