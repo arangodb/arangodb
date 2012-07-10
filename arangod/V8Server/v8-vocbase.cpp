@@ -752,10 +752,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
                                                    "<properties>.journalSize too small")));
       }
 
-      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), (TRI_voc_size_t) s);
     }
     else {
-      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
     }
 
     if (p->Has(waitForSyncKey)) {
@@ -767,7 +767,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     }
   }
   else {
-    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
   }
 
   TRI_voc_cid_t cid = 0;
@@ -775,10 +775,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
   // extract collection id
   if (3 <= argv.Length()) {
     v8::Handle<v8::Value> val = argv[2];
-    if (!val->IsNull() && !val->IsUndefined()) {
-      // a pre-defined collection is passed when data is re-imported from a dump etc.
-      // this allows reproduction of data from different servers
+
+    // a pre-defined collection is passed when data is re-imported from a dump etc.
+    // this allows reproduction of data from different servers
+    if (! val->IsNull() && ! val->IsUndefined()) {
       cid = TRI_ObjectToUInt64(argv[2]);
+
       if (cid <= 0) {
         return scope.Close(v8::ThrowException(
                            TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,

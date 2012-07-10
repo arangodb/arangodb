@@ -347,6 +347,7 @@ typedef struct TRI_vocbase_s {
 
   bool _removeOnDrop; // wipe collection from disk after dropping
   bool _removeOnCompacted; // wipe datafile from disk after compaction
+  bool _defaultWaitForSync;
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;

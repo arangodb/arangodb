@@ -49,6 +49,7 @@
 ///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
+///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
 ///     </ul>
 ///    </li>
@@ -167,6 +168,9 @@
 ///
 /// @anchor CommandLineArangoMaximalJournalSize
 /// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
+///
+/// @anchor CommandLineArangoWaitForSync
+/// @copydetails triagens::arango::ArangoServer::_defaultWaitForSync
 ///
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop

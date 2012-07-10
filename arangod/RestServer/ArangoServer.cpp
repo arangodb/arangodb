@@ -195,6 +195,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+    _defaultWaitForSync(false),
     _vocbase(0) {
   char* p;
 
@@ -414,6 +415,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-admin"]
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
+    ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
   ;
 
   additional["DATABASE Options:help-devel"]
@@ -1102,6 +1104,7 @@ void ArangoServer::openDatabase () {
   _vocbase->_removeOnDrop = _removeOnDrop;
   _vocbase->_removeOnCompacted = _removeOnCompacted;
   _vocbase->_defaultMaximalSize = _defaultMaximalSize;
+  _vocbase->_defaultWaitForSync = _defaultWaitForSync;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
