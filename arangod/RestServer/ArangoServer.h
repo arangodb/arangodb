@@ -393,6 +393,19 @@ namespace triagens {
         uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default journal size
+///
+/// @CMDOPT{--database.wait-for-size @CA{boolean}}
+///
+/// Default wait-for-sync value. Can be overwritten when creating a new
+/// collection.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _defaultWaitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
 /// @CMDOPT{--unit-tests @CA{test-file}}
