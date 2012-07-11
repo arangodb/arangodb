@@ -227,7 +227,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 

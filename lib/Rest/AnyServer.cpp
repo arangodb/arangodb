@@ -37,9 +37,10 @@
 #include <fstream>
 
 #include "ApplicationServer/ApplicationServer.h"
-#include <Basics/FileUtils.h>
-#include <Basics/safe_cast.h>
-#include <Logger/Logger.h>
+#include "Basics/FileUtils.h"
+#include "Basics/safe_cast.h"
+#include "BasicsC/process-utils.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens;
@@ -364,6 +365,14 @@ int AnyServer::startupSupervisor () {
       
       // parent
       if (pid > 0) {
+        char const* title = "arangodb [supervisor]";
+
+        TRI_SetProcessTitle(title);
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+        prctl(PR_SET_NAME, title, 0, 0, 0);
+#endif
+
         int status;
         waitpid(pid, &status, 0);
         
@@ -471,6 +480,9 @@ int AnyServer::startupDaemon () {
   
   // main process
   if (result == 0) {
+#ifdef TRI_HAVE_SYS_PRCTL_H
+        prctl(PR_SET_NAME, "arangodb [daemon]", 0, 0, 0);
+#endif
   }
   
   // child process

@@ -111,8 +111,8 @@ namespace {
 
 namespace triagens {
   namespace rest {
-    void InitialiseRest () {
-      TRIAGENS_BASICS_INITIALISE;
+    void InitialiseRest (int argc, char* argv[]) {
+      TRIAGENS_BASICS_INITIALISE(argc, argv);
 
       TRI_InitialiseUrl();
 
