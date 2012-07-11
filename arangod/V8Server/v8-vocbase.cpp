@@ -3047,7 +3047,12 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
 ///
-/// Note that it is not possible to change the journal size after creation.
+/// - @LIT{journalSize} : The size of the journal in bytes.
+///
+/// Note that it is not possible to change the journal size after the journal or
+/// datafile has been created. Changing this parameter will only effect newly
+/// created journals. Also note that you cannot lower the journal size to less
+/// then size of the largest document already stored in the collection.
 ///
 /// @EXAMPLES
 ///
@@ -3089,19 +3094,47 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     if (par->IsObject()) {
       v8::Handle<v8::Object> po = par->ToObject();
 
-      // holding a lock on the vocbase collection: if we ever want to
-      // change the maximal size a real lock is required.
-      bool waitForSync = sim->base.base._waitForSync;
+      // get the old values
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-      // extract sync after objects
+      bool waitForSync = sim->base.base._waitForSync;
+      size_t maximalSize = sim->base.base._maximalSize;
+      size_t maximumMarkerSize = sim->base.base._maximumMarkerSize;
+
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+
+      // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
         waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
-      sim->base.base._waitForSync = waitForSync;
+      // extract the journal size
+      if (po->Has(v8g->JournalSizeKey)) {
+        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+
+        if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+
+        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+      }
+
+      // update collection
+      TRI_col_parameter_t newParameter;
+
+      newParameter._maximalSize = maximalSize;
+      newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(&sim->base.base);
+      int res = TRI_UpdateParameterInfoCollection(&sim->base.base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);

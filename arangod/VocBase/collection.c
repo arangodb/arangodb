@@ -29,11 +29,12 @@
 
 #include <regex.h>
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/json.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/json.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -68,6 +69,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   collection->_maximalSize = info->_maximalSize;
   collection->_waitForSync = info->_waitForSync;
   collection->_deleted = false;
+  collection->_maximumMarkerSize = 0;
 
   collection->_directory = directory;
 
@@ -142,7 +144,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_col_header_marker_t* cm;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
-        // TODO: memory allocation might fail
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
@@ -154,8 +155,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
           break;
         }
 
-        assert(datafile);
-
         TRI_PushBackVectorPointer(&all, datafile);
 
         // check the document header
@@ -164,7 +163,8 @@ static bool CheckCollection (TRI_collection_t* collection) {
         cm = (TRI_col_header_marker_t*) ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
-          LOG_ERROR("collection header mismatch, expected TRI_COL_MARKER_HEADER, found %lu",
+          LOG_ERROR("collection header mismatch in file '%s', expected TRI_COL_MARKER_HEADER, found %lu",
+                    filename,
                     (unsigned long) cm->base._type);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -674,18 +674,40 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
-  TRI_col_info_t parameter;
+int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection, TRI_col_parameter_t const* parameter) {
+  TRI_col_info_t info;
 
-  parameter._version = collection->_version;
-  parameter._type = collection->_type;
-  parameter._cid = collection->_cid;
-  TRI_CopyString(parameter._name, collection->_name, sizeof(parameter._name));
-  parameter._maximalSize = collection->_maximalSize;
-  parameter._waitForSync = collection->_waitForSync;
-  parameter._deleted = collection->_deleted;
+  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
+  }
 
-  return TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
+  info._version = collection->_version;
+  info._type = collection->_type;
+  info._cid = collection->_cid;
+  TRI_CopyString(info._name, collection->_name, sizeof(info._name));
+  info._deleted = collection->_deleted;
+
+  if (parameter != 0) {
+    info._maximalSize = parameter->_maximalSize;
+    info._waitForSync = parameter->_waitForSync;
+
+    collection->_maximalSize = parameter->_maximalSize;
+    collection->_waitForSync = parameter->_waitForSync;
+
+    if (collection->_maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+      collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
+    }
+  }
+  else {
+    info._maximalSize = collection->_maximalSize;
+    info._waitForSync = collection->_waitForSync;
+  }
+
+  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
+  }
+
+  return TRI_SaveParameterInfoCollection(collection->_directory, &info);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

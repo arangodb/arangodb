@@ -178,7 +178,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
 
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-    journal = TRI_CreateJournalDocCollection(&sim->base);
+    journal = TRI_CreateJournalSimCollection(sim);
 
     if (journal != NULL) {
       LOG_DEBUG("created new journal '%s'", journal->_filename);
