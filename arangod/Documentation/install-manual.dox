@@ -196,14 +196,14 @@
 ///
 /// This will compile the ArangoDB and create a binary of the server in
 ///
-/// @LIT{./arangod}
+/// @LIT{./bin/arangod}
 ///
 /// @subsection CompilingAIOTest Test
 /////////////////////////////////////
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./arangod --server.http-port 12345 /tmp/vocbase}
+/// @LIT{./bin/arangod --server.http-port 12345 /tmp/vocbase}
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to any address. You should see the startup messages
@@ -220,6 +220,10 @@
 ///
 /// as result.
 ///
+/// Note that starting arangodb in this way will result in error messages being
+/// displayed, because the paths are not yet set up. This will be corrected in
+/// the next step.
+///
 /// @subsection CompilingAIOInstall Install
 ///////////////////////////////////////////
 ///
@@ -229,6 +233,22 @@
 ///
 /// You must be root to do this or at least have write permission to the
 /// corresponding directories.
+///
+/// The server will by default be installed in
+///
+/// @LIT{/usr/sbin/arangod}
+///
+/// The configuration file will be installed in
+///
+/// @LIT{/etc/arangodb/arangod.conf}
+///
+/// The database will be installed in
+///
+/// @LIT{/var/arangodb}
+///
+/// The arango shell will be installed in
+///
+/// @LIT{/usr/bin/arangosh}
 ///
 /// @section CompilingDevel Devel Version
 /////////////////////////////////////////
