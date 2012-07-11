@@ -516,7 +516,7 @@ static void RunShell (mrb_state* mrb) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
