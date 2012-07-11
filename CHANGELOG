@@ -5,6 +5,10 @@ v1.x.x (2012-XX-XX)
 
 * fixed issue #121: wrong collection size reported
 
+* fixed issue #98: Unable to change journalSize
+
+* fixed issue #88: fds not closed
+
 * fixed escaping of document data in HTML admin front end
 
 * added server startup option --server.disable-admin-interface to turn off the

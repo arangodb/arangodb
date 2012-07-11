@@ -320,6 +320,9 @@ SchedulerLibev::~SchedulerLibev () {
     ev_loop_destroy(((struct ev_loop**) _loops)[i]);
   }
   
+  ev_async_stop(((struct ev_loop**) _loops)[0], ((ev_async**) _wakers)[0]);
+  ev_default_destroy();
+
   // and delete threads
   for (size_t i = 0;  i < nrThreads;  ++i) {
     delete threads[i];
