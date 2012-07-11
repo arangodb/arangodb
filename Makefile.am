@@ -189,7 +189,7 @@ arangosysconf_DATA = Installation/arangod.conf
 
 BUILT_SOURCES += Installation/arangod.conf
 
-Installation/arangod.conf: Installation/arangod.conf.in
+Installation/arangod.conf: Installation/arangod.conf.in Makefile
 	sed \
 		-e 's%@LOGDIR@%${logdir}%g' \
 		-e 's%@DATABASE@%${databasedir}%g' \

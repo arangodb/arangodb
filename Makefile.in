@@ -5048,7 +5048,7 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
-Installation/arangod.conf: Installation/arangod.conf.in
+Installation/arangod.conf: Installation/arangod.conf.in Makefile
 	sed \
 		-e 's%@LOGDIR@%${logdir}%g' \
 		-e 's%@DATABASE@%${databasedir}%g' \
