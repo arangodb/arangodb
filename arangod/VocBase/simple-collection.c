@@ -143,6 +143,10 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
 
   TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
+  if (sim->base.base._maximumMarkerSize < size) {
+    sim->base.base._maximumMarkerSize = size;
+  }
+
   while (sim->base.base._state == TRI_COL_STATE_WRITE) {
     n = sim->base.base._journals._length;
 
@@ -1324,6 +1328,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       exit(EXIT_FAILURE);
     }
 
+    if (collection->base.base._maximumMarkerSize < markerSize) {
+      collection->base.base._maximumMarkerSize = markerSize;
+    }
+
     found = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
 
     // it is a new entry
@@ -1932,6 +1940,18 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
+
+  if (collection->_maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+    LOG_WARNING("maximal size is %lu, but maximal marker size is %lu plus overhead %lu: adjusting maximal size to %lu",
+                (unsigned long) collection->_maximalSize,
+                (unsigned long) collection->_maximumMarkerSize,
+                (unsigned long) TRI_JOURNAL_OVERHEAD,
+                (unsigned long) (collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD));
+
+    collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
+  }
+
+
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
   // output infomations about datafiles and journals
