@@ -66,10 +66,16 @@ static bool Initialised = false;
 static TRI_vector_string_t FileNames;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief descriptors of blocking files
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_t FileDescriptors;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector FileNames
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_read_write_lock_t LockFileNames;
+static TRI_read_write_lock_t FileNamesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -95,7 +101,7 @@ static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char con
   int idx = -1;
   size_t i;
 
-  TRI_ReadLockReadWriteLock(&LockFileNames);
+  TRI_ReadLockReadWriteLock(&FileNamesLock);
 
   for (i = 0;  i < vector->_length;  i++) {
     if (TRI_EqualString(element, vector->_buffer[i])) {
@@ -104,7 +110,7 @@ static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char con
     }
   }
 
-  TRI_ReadUnlockReadWriteLock(&LockFileNames);
+  TRI_ReadUnlockReadWriteLock(&FileNamesLock);
   return idx;
 }
 
@@ -114,15 +120,21 @@ static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char con
 
 static void RemoveAllLockedFiles (void) {
   size_t i;
+  int fd;
 
-  TRI_WriteLockReadWriteLock(&LockFileNames);
+  TRI_WriteLockReadWriteLock(&FileNamesLock);
 
   for (i = 0;  i < FileNames._length;  i++) {
     TRI_UnlinkFile(FileNames._buffer[i]);
     TRI_RemoveVectorString(&FileNames, i);
+
+    fd = * (int*) TRI_AtVector(&FileDescriptors, i);
+
+    TRI_CLOSE(fd);
+    TRI_RemoveVector(&FileDescriptors, i);
   }
 
-  TRI_WriteUnlockReadWriteLock(&LockFileNames);
+  TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +147,9 @@ static void InitialiseLockFiles (void) {
   }
 
   TRI_InitVectorString(&FileNames, TRI_CORE_MEM_ZONE);
-  TRI_InitReadWriteLock(&LockFileNames);
+  TRI_InitVector(&FileDescriptors, TRI_CORE_MEM_ZONE, sizeof(int));
+
+  TRI_InitReadWriteLock(&FileNamesLock);
 
   atexit(&RemoveAllLockedFiles);
   Initialised = true;
@@ -660,7 +674,7 @@ int TRI_CreateLockFile (char const* filename) {
 
   InitialiseLockFiles();
 
-  if (LookupElementVectorString(&FileNames, filename) >= 0) {
+  if (0 <= LookupElementVectorString(&FileNames, filename)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -672,7 +686,6 @@ int TRI_CreateLockFile (char const* filename) {
 
   pid = TRI_CurrentProcessId();
   buf = TRI_StringUInt32(pid);
-  // TODO: buf might be NULL
 
   rv = TRI_WRITE(fd, buf, strlen(buf));
 
@@ -690,28 +703,31 @@ int TRI_CreateLockFile (char const* filename) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
   TRI_CLOSE(fd);
 
+  // try to open pid file
   fd = TRI_OPEN(filename, O_RDONLY);
-  // TODO: return value of fd is not checked
 
+  if (fd < 0) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  // try to lock pid file
   rv = flock(fd, LOCK_EX);
 
-  if (rv == -1) { // file may be locked already
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  if (rv == -1) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
 
-    return TRI_errno();
+    return res;
   }
 
-  // TODO: fd is never closed from here on, resource is lost 
-
   fn = TRI_DuplicateString(filename);
-  // TODO: fn might be NULL
 
-  TRI_WriteLockReadWriteLock(&LockFileNames);
+  TRI_WriteLockReadWriteLock(&FileNamesLock);
   TRI_PushBackVectorString(&FileNames, fn);
-  TRI_WriteUnlockReadWriteLock(&LockFileNames);
+  TRI_PushBackVector(&FileDescriptors, &fd);
+  TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -737,7 +753,8 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
-  if (n == 0) { // file empty
+  // file empty
+  if (n == 0) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
@@ -758,9 +775,15 @@ int TRI_VerifyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd < 0) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
 
-  if (can_lock == 0) { // file was not yet be locked
+  // file was not yet be locked
+  if (can_lock == 0) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     flock(fd, LOCK_UN);
@@ -777,7 +800,7 @@ int TRI_VerifyLockFile (char const* filename) {
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DestroyLockFile (char const* filename) {
+int TRI_DestroyLockFile (char const* filename) {
   int fd;
   int n;
   int res;
@@ -796,12 +819,16 @@ bool TRI_DestroyLockFile (char const* filename) {
   if (res == 0) {
     TRI_UnlinkFile(filename);
 
-    TRI_WriteLockReadWriteLock(&LockFileNames);
+    TRI_WriteLockReadWriteLock(&FileNamesLock);
+
     TRI_RemoveVectorString(&FileNames, n);
-    TRI_WriteUnlockReadWriteLock(&LockFileNames);
+    fd = * (int*) TRI_AtVector(&FileDescriptors, n);
+    TRI_CLOSE(fd);
+
+    TRI_WriteUnlockReadWriteLock(&FileNamesLock);
   }
 
-  return res == 0;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
