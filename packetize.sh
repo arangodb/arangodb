@@ -36,7 +36,7 @@ prefix=/usr
 exec_prefix=${prefix}
 sbindir=${exec_prefix}/sbin
 bindir=${exec_prefix}/bin
-data_dir=${prefix}/var
+data_dir=/var
 static_dir=${prefix}/share
 vers_dir=arango-${arangodb_version}
 docdir=${prefix}/share/doc/voc/${vers_dir}
@@ -248,8 +248,8 @@ rm -f ${hudson_base}/${package_name} > /dev/null
 echo 
 echo "########################################################"
 echo "Copy package '${product_name}*.${package_type}' to '${package_name}'."
-echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}"
-cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}
+echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${sfolder_name}/${package_name}"
+cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${sfolder_name}/${package_name}
 echo "########################################################"
 echo 
 
@@ -267,7 +267,7 @@ case $TRI_OS_LONG in
     start_server=""
     stop_server=""
 
-    install_package="sudo rpm -i ${hudson_base}/${package_name}"
+    install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
 
     ;;
@@ -276,7 +276,7 @@ case $TRI_OS_LONG in
     start_server=""
     stop_server=""
 
-    install_package="sudo dpkg -i ${hudson_base}/${package_name}"
+    install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
@@ -284,7 +284,7 @@ case $TRI_OS_LONG in
     start_server=""
     stop_server=""
 
-    install_package="sudo rpm -i ${hudson_base}/${package_name}"
+    install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
     ;;
 
@@ -292,7 +292,7 @@ case $TRI_OS_LONG in
     start_server="sudo /etc/init.d/arango start"
     stop_server="sudo /etc/init.d/arango stop"
 
-    install_package="sudo dpkg -i ${hudson_base}/${package_name}"
+    install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
@@ -303,7 +303,7 @@ case $TRI_OS_LONG in
     install_package="sudo installer -pkg /Volumes/${product_name}/${product_name}.pkg -target / "
     remove_package=""
 
-    mount_install_package="hdiutil attach ${hudson_base}/${package_name}"
+    mount_install_package="hdiutil attach ${sfolder_name}/${package_name}"
     unmount_install_package="hdiutil detach /Volumes/${product_name}"
     ;;
 
@@ -317,23 +317,27 @@ echo
 echo "########################################################"
 echo "                     INSTALL TEST "
 echo "########################################################"
-echo 
+echo "Stop and uninstall server"
 
 # stop and uninstall server
 if [ "${stop_server}x" != "x" ]; then 
-  $stop_server > /dev/null 2>&1
+  echo "     $stop_server"
+  $stop_server
 fi
 
 if [ "${remove_package}x" != "x" ]; then 
-  $remove_package > /dev/null 2>&1 
+  echo "     $remove_package"
+  $remove_package
 fi
 
 if [ "${unmount_install_package}x" != "x" ]; then 
-  $unmount_install_package > /dev/null 2>&1 
+  echo "     $unmount_install_package"
+  $unmount_install_package
 fi
 
 if [ "${mount_install_package}x" != "x" ]; then 
-  $mount_install_package > /dev/null 2>&1 
+  echo "     $mount_install_package"
+  $mount_install_package
 fi
 
 echo 
@@ -352,9 +356,14 @@ fi
 
 echo "Successfully installed ${package_name}."
 echo "########################################################"
+
+echo "Check process"
+process=$(ps aux | grep arangod | grep -v grep)
+echo "$process"
+
 echo "Wait for server..."
-echo "    sleep 5"
-sleep 5
+echo "    sleep 10"
+sleep 10
 
 echo 
 echo "########################################################"
