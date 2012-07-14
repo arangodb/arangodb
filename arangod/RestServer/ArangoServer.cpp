@@ -373,8 +373,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -385,9 +383,16 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
-    ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
+    ("supervisor", "starts a supervisor and runs as daemon")
     ("working directory", &_workingDirectory, "working directory in daemon mode")
+  ;
+
+  additional["JAVASCRIPT Options:help-admin"]
+    ("javascript.script", &_scriptFile, "do not start as server, run script instead")
+    ("javascript.script-parameter", &_scriptParameters, "script parameter")
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -473,12 +478,16 @@ void ArangoServer::buildApplicationServer () {
     int res = executeConsole(MODE_CONSOLE);
     exit(res);
   }
-  else if (! _unitTests.empty()) {
+  else if (_applicationServer->programOptions().has("javascript.unit-tests")) {
     int res = executeConsole(MODE_UNITTESTS);
     exit(res);
   }
   else if (_applicationServer->programOptions().has("jslint")) {
     int res = executeConsole(MODE_JSLINT);
+    exit(res);
+  }
+  else if (_applicationServer->programOptions().has("javascript.script")) {
+    int res = executeConsole(MODE_SCRIPT);
     exit(res);
   }
 
@@ -767,7 +776,12 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
     v8::HandleScope globalScope;
 
     // run the shell
-    printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    if (mode != MODE_SCRIPT) {
+      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    }
+    else {
+      LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
+    }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
@@ -845,8 +859,32 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
+      case MODE_SCRIPT: {
+
+        // parameter array
+        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+        sysTestFiles->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
+
+        for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+          sysTestFiles->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
+        }
+
+        context->_context->Global()->Set(v8::String::New("ARGV"), sysTestFiles);
+        context->_context->Global()->Set(v8::String::New("ARGC"), v8::Number::New(1 + _scriptParameters.size()));
+
+        for (size_t i = 0;  i < _scriptFile.size();  ++i) {
+          TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+        }
+
+        break;
+      }
+
+      // .............................................................................
+      // run console
+      // .............................................................................
+
       case MODE_CONSOLE: {
-        // run a shell
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);

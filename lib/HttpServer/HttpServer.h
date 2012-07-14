@@ -30,6 +30,7 @@
 #define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "GeneralServer/GeneralServerDispatcher.h"
+
 #include "HttpServer/HttpCommTask.h"
 
 // -----------------------------------------------------------------------------

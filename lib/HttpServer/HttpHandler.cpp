@@ -142,5 +142,27 @@ namespace triagens {
       return job;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief handles authentication
+    ////////////////////////////////////////////////////////////////////////////////
+
+    bool HttpHandler::handleAuthentication () {
+      if (request == 0) {
+        return false;
+      }
+
+      bool found;
+      char const* auth = request->header("authorization", found);
+
+      if (found) {
+        return false;
+      }
+
+      response = new HttpResponse(HttpResponse::UNAUTHORIZED);
+
+      response->setHeader("www-authenticate", "basic realm=\"arangod\"");
+
+      return true;
+    }
   }
 }

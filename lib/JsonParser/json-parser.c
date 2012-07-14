@@ -2276,12 +2276,13 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case NUMBER_CONSTANT: {
       char* ep;
       double d;
- 
+
       if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
         return NULL;
       }
 
+      // yytext is null-terminated. can use it directly without copying it into a temporary buffer
       d = strtod(yytext, &ep);
 
       if (d == HUGE_VAL && errno == ERANGE) {
@@ -2294,7 +2295,6 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
         return NULL;
       }
 
-//      if (ep != buffer + yyleng) {
       if (ep != yytext + yyleng) {
         yyextra._message = "cannot parse number";
         return NULL;

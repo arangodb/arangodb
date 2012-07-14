@@ -86,8 +86,31 @@ namespace triagens {
 
         bool handleRequest (CT * task, typename HF::GeneralHandler *& handler) {
 
+          // check if need to authenticate
+          bool done = handler->handleAuthentication();
+
+          if (done) {
+            typename HF::GeneralResponse * response = handler->getResponse();
+
+            if (response == 0) {
+              basics::InternalError err("no response received from handler");
+
+              handler->handleError(err);
+              response = handler->getResponse();
+            }
+
+            if (response != 0) {
+              task->handleResponse(response);
+            }
+            else {
+              LOGGER_ERROR << "cannot get any response in " << __FILE__ << "@" << __LINE__;
+            }
+
+            return true;
+          }
+
           // execute handler and (possibly) requeue
-          bool done = false;
+          done = false;
           
           assert(handler);
 

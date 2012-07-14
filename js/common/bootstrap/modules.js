@@ -409,6 +409,8 @@ ModuleCache["/console"] = new Module("/console");
   var internal = ModuleCache["/internal"].exports;
   var console = ModuleCache["/console"].exports;
 
+  console.getline = SYS_GETLINE;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug message
 ///

@@ -329,7 +329,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-interval", &_gcInterval, "JavaScript garbage collection interval (each x requests)")
   ;
 
-  options["DIRECTORY Options:help-admin"]
+  options["JAVASCRIPT Options:help-admin"]
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
