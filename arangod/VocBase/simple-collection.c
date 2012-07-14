@@ -2646,7 +2646,7 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   TRI_json_t* keyValues;
   TRI_vector_pointer_t attributes;
   TRI_vector_pointer_t values;
-  bool unique;
+  // bool unique;
   bool supportUndef;
   bool created;
   size_t fieldCount;
@@ -2680,13 +2680,13 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   // the bitarray index.
   // ...........................................................................
   
-  unique = false;
+  // unique = false;
   uniqueIndex = TRI_LookupArrayJson(definition, "unique");
   if (uniqueIndex == NULL || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }  
-  unique = uniqueIndex->_value._boolean;
+  // unique = uniqueIndex->_value._boolean;
    
 
   // ...........................................................................

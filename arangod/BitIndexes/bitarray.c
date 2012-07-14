@@ -68,9 +68,9 @@ typedef struct BitColumn_s {
 // -----------------------------------------------------------------------------
 
 static int  extendColumns   (TRI_bitarray_t*, size_t); 
-static void printBitarray   (TRI_bitarray_t*); 
+// static void printBitarray   (TRI_bitarray_t*); 
 static void setBitarrayMask (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_master_table_position_t*); 
-static void debugPrintMask  (TRI_bitarray_t*, uint64_t);
+// static void debugPrintMask  (TRI_bitarray_t*, uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup bitarray
@@ -345,7 +345,7 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* resultStorage ) {
-  int result;
+  // int result;
   uint8_t numBits;
   int i_blockNum,j_bitNum,k_colNum;
   TRI_master_table_position_t position;
@@ -424,7 +424,7 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
         //debugPrintMask(ba,mask->_ignoreMask);
         position._blockNum = i_blockNum;
         position._bitNum   = j_bitNum;
-        result = storeElementMasterTable(ba->_masterTable, resultStorage, &position);
+        /* result = */ storeElementMasterTable(ba->_masterTable, resultStorage, &position);
       }
       
     }
@@ -617,6 +617,7 @@ int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
 /// @brief debugging purposes only -- prints a visual representation of the bitarrays
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 void printBitarray(TRI_bitarray_t* ba) {
   int j;
   uint64_t bb;
@@ -660,7 +661,8 @@ void printBitarray(TRI_bitarray_t* ba) {
       printf("\n");      
     }  
   }
-}  
+} 
+*/ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a bitmask into a bit array
@@ -717,6 +719,7 @@ static void setBitarrayMask(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, TRI_m
   
   
   
+/*
 void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
   int j;
     
@@ -731,6 +734,7 @@ void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
   }
   printf("\n\n");
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
