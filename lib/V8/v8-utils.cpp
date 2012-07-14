@@ -579,6 +579,23 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a line from stdin
+///
+/// @FUN{console.getline()}
+///
+/// Reads in a line from the console.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  string line;
+  getline(cin, line);
+
+  return scope.Close(v8::String::New(line.c_str(), line.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
 /// @FUN{internal.load(@FA{filename})}
@@ -1314,6 +1331,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_EXECUTE"),
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_GETLINE"),
+                         v8::FunctionTemplate::New(JS_Getline)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_LOAD"),

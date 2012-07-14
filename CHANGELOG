@@ -22,6 +22,8 @@ v1.x.x (2012-XX-XX)
 * added server startup option --database.wait-for-sync to control the default
   behavior
 
+* renamed "--unit-tests" to "--javascript.unit-tests"
+
 v1.0.alpha3 (2012-06-30)
 ------------------------
 

@@ -336,25 +336,30 @@ namespace triagens {
         Handler::status_e handleRequestDirectly (CT* task, typename HF::GeneralHandler * handler) {
           Handler::status_e status = Handler::HANDLER_FAILED;
 
+          // check if need to authenticate
+          bool done = handler->handleAuthentication();
+
           try {
-            try {
-              status = handler->execute();
-            }
-            catch (basics::TriagensError const& ex) {
-              handler->handleError(ex);
-            }
-            catch (std::exception const& ex) {
-              basics::InternalError err(ex);
+            if (! done) {
+              try {
+                status = handler->execute();
+              }
+              catch (basics::TriagensError const& ex) {
+                handler->handleError(ex);
+              }
+              catch (std::exception const& ex) {
+                basics::InternalError err(ex);
 
-              handler->handleError(err);
-            }
-            catch (...) {
-              basics::InternalError err;
-              handler->handleError(err);
-            }
+                handler->handleError(err);
+              }
+              catch (...) {
+                basics::InternalError err;
+                handler->handleError(err);
+              }
 
-            if (status == Handler::HANDLER_REQUEUE) {
-              return status;
+              if (status == Handler::HANDLER_REQUEUE) {
+                return status;
+              }
             }
 
             typename HF::GeneralResponse * response = handler->getResponse();

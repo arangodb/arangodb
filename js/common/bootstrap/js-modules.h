@@ -410,6 +410,8 @@ static string JS_common_bootstrap_modules =
   "  var internal = ModuleCache[\"/internal\"].exports;\n"
   "  var console = ModuleCache[\"/console\"].exports;\n"
   "\n"
+  "  console.getline = SYS_GETLINE;\n"
+  "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
   "/// @brief logs debug message\n"
   "///\n"
