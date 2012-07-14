@@ -418,10 +418,7 @@ static const struct mrb_data_type MR_ArangoConnection_Type = {
 };
 
 static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* connection) {
-  MR_state_t* mrs;
   struct RClass *rcl;
-
-  mrs = (MR_state_t*) mrb;
 
   // .............................................................................
   // arango client connection

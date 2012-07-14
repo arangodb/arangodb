@@ -729,7 +729,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   BitarrayIndexElement* indexElement;
   TRI_bitarray_index_t* baIndex;
-  TRI_doc_mptr_t* doc;
+  // TRI_doc_mptr_t* doc;
     
     
   indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
@@ -744,7 +744,7 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
     return false;
   }
     
-  doc = (TRI_doc_mptr_t*) indexElement->data;
+  /* doc = (TRI_doc_mptr_t*) indexElement->data; */
     
   // ..........................................................................
   // Now perform any additional filter operations you require on the doc
