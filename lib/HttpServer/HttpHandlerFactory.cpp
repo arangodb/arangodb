@@ -48,7 +48,7 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    HttpHandlerFactory::HttpHandlerFactory (string const& authenticationRealm,
+    HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
                                             auth_fptr checkAuthentication)
       : _numberActiveHandlers(0),
         _authenticationRealm(authenticationRealm),

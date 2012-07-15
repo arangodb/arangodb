@@ -304,8 +304,8 @@ namespace triagens {
 ///
 /// @CMDOPT{--server.http-auth @CA{flag}}
 ///
-/// If @CA{flag} is @LIT{yes}, then the HTTP access is secures with a basic
-/// authentication. The user and sha256 of the password are storted in a 
+/// If @CA{flag} is @LIT{yes}, then the HTTP access is secured with "HTTP Basic
+/// Authentication". The user and sha256 of the password are stored in a
 /// collection @LIT{_users}.
 ////////////////////////////////////////////////////////////////////////////////
 

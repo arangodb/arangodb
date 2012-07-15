@@ -1209,6 +1209,7 @@ WIKI = \
 	Compiling \
 	DbaManual \
 	DbaManualBasics \
+	DbaManualAuthentication \
 	DefineAction \
 	ExamplesSetup \
 	FirstStepsArangoDB \

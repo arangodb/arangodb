@@ -47,6 +47,7 @@
 ///     <ul>
 ///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
 ///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
 ///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
@@ -163,6 +164,9 @@
 ///
 /// @anchor CommandLineArangoAdminPort
 /// @copydetails triagens::arango::ArangoServer::_adminPort
+///
+/// @anchor CommandLineArangoHttpAuth
+/// @copydetails triagens::arango::ArangoServer::_httpAuth
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
 /// @CMDOPT{--disable-admin-interface}
