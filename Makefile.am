@@ -146,7 +146,8 @@ noinst_LIBRARIES = \
 ################################################################################
 
 sbin_PROGRAMS = \
-	bin/arangod
+	bin/arangod \
+        bin/arango-password
 
 ################################################################################
 ### @brief /bin programs
@@ -201,10 +202,10 @@ Installation/arangod.conf: Installation/arangod.conf.in Makefile
 ################################################################################
 
 nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/actions -name "*.js" -print) \
+	$(shell find @srcdir@/js/common -name "*.js" -print) \
+	$(shell find @srcdir@/js/server -name "*.js" -print) \
+	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
@@ -300,6 +301,20 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+################################################################################
+### @brief arango password
+################################################################################
+
+bin/arango-password: bin/arango-password.in
+	sed \
+		-e 's%@SBINDIR@%${DESTDIR}${sbindir}%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
+	chmod 755 $@
+
+CLEANUP += bin/arango-password
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES

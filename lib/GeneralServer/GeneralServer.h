@@ -125,6 +125,22 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
+        /// @brief authenticates a new request
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool authenticateRequest (typename HF::GeneralRequest * request) {
+          return _handlerFactory == 0 ? true : _handlerFactory->authenticateRequest(request);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the authentication realm
+        ////////////////////////////////////////////////////////////////////////////////
+
+        std::string authenticationRealm (typename HF::GeneralRequest * request) {
+          return _handlerFactory == 0 ? "world" : _handlerFactory->authenticationRealm(request);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
         /// @brief creates a new request
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -336,30 +352,25 @@ namespace triagens {
         Handler::status_e handleRequestDirectly (CT* task, typename HF::GeneralHandler * handler) {
           Handler::status_e status = Handler::HANDLER_FAILED;
 
-          // check if need to authenticate
-          bool done = handler->handleAuthentication();
-
           try {
-            if (! done) {
-              try {
-                status = handler->execute();
-              }
-              catch (basics::TriagensError const& ex) {
-                handler->handleError(ex);
-              }
-              catch (std::exception const& ex) {
-                basics::InternalError err(ex);
+            try {
+              status = handler->execute();
+            }
+            catch (basics::TriagensError const& ex) {
+              handler->handleError(ex);
+            }
+            catch (std::exception const& ex) {
+              basics::InternalError err(ex);
 
-                handler->handleError(err);
-              }
-              catch (...) {
-                basics::InternalError err;
-                handler->handleError(err);
-              }
+              handler->handleError(err);
+            }
+            catch (...) {
+              basics::InternalError err;
+              handler->handleError(err);
+            }
 
-              if (status == Handler::HANDLER_REQUEUE) {
-                return status;
-              }
+            if (status == Handler::HANDLER_REQUEUE) {
+              return status;
             }
 
             typename HF::GeneralResponse * response = handler->getResponse();

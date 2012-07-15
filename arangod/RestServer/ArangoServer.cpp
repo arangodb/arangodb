@@ -67,6 +67,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
+#include "VocBase/auth.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -189,6 +190,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpServer(0),
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
+    _httpAuth(false),
     _adminPort(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
@@ -403,6 +405,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional["PORT Options"]
     ("server.http-port", &_httpPort, "port for client access")
+    ("server.http-auth", &_httpAuth, "use basic authentication")
   ;
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
@@ -597,9 +600,15 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
+  HttpHandlerFactory::auth_fptr auth = 0;
+
+  if (_httpAuth) {
+    auth = TRI_CheckAuthenticationAuthInfo;
+  }
+
   // if we want a http port create the factory
   if (useHttpPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
 
     httpOptions._contexts.insert("user");
     httpOptions._contexts.insert("api");
@@ -633,7 +642,7 @@ int ArangoServer::startupServer () {
 
   // if we want a admin http port create the factory
   if (useAdminPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
 
     adminOptions._contexts.insert("api");
     adminOptions._contexts.insert("admin");
@@ -860,21 +869,50 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // .............................................................................
 
       case MODE_SCRIPT: {
-
-        // parameter array
-        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-        sysTestFiles->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
-
-        for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
-          sysTestFiles->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
-        }
-
-        context->_context->Global()->Set(v8::String::New("ARGV"), sysTestFiles);
-        context->_context->Global()->Set(v8::String::New("ARGC"), v8::Number::New(1 + _scriptParameters.size()));
+        v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-          TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+
+          if (! r) {
+            LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
+            ok = false;
+            break;
+          }
+        }
+
+        if (ok) {
+
+          // parameter array
+          v8::Handle<v8::Array> params = v8::Array::New();
+
+          params->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
+
+          for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+            params->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
+          }
+
+          // call main
+          v8::Handle<v8::String> mainFuncName = v8::String::New("main");
+          v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
+
+          if (main.IsEmpty() || main->IsUndefined()) {
+            LOGGER_FATAL << "no main function defined, giving up";
+            ok = false;
+          }
+          else {
+            v8::Handle<v8::Value> args[] = { params };
+
+            v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+            if (tryCatch.HasCaught()) {
+              TRI_LogV8Exception(&tryCatch);
+              ok = false;
+            }
+            else {
+              ok = TRI_ObjectToDouble(result) == 0;
+            }
+          }
         }
 
         break;

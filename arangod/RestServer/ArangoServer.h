@@ -300,6 +300,18 @@ namespace triagens {
         string _httpPort;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use basic http authentication
+///
+/// @CMDOPT{--server.http-auth @CA{flag}}
+///
+/// If @CA{flag} is @LIT{yes}, then the HTTP access is secures with a basic
+/// authentication. The user and sha256 of the password are storted in a 
+/// collection @LIT{_users}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _httpAuth;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief list port for admin requests
 ///
 /// @CMDOPT{--server.admin-port @CA{port}}
