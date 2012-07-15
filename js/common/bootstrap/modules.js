@@ -274,6 +274,7 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.read = SYS_READ;
   internal.sprintf = SYS_SPRINTF;
   internal.time = SYS_TIME;
+  internal.sha256 = SYS_SHA256;
 
 
   // command line parameter

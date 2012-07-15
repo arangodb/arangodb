@@ -11,6 +11,8 @@ v1.x.x (2012-XX-XX)
 
 * fixed escaping of document data in HTML admin front end
 
+* added HTTP basic authentication, use "--server.http-auth yes" to enable
+
 * added server startup option --server.disable-admin-interface to turn off the
   HTML admin interface
 

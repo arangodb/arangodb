@@ -28,13 +28,13 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
 #define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/associative.h>
-#include <BasicsC/locks.h>
-#include <BasicsC/threads.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/voc-errors.h>
+#include "BasicsC/associative.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/threads.h"
+#include "BasicsC/vector.h"
+#include "BasicsC/voc-errors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -363,6 +363,9 @@ typedef struct TRI_vocbase_s {
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
+
+  TRI_associative_pointer_t _authInfo;
+  TRI_read_write_lock_t _authInfoLock;
 
   sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
   TRI_thread_t _synchroniser;
