@@ -638,7 +638,6 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
-	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
@@ -699,7 +698,6 @@ am_bin_arangod_OBJECTS =  \
 	arangod/IndexOperators/bin_arangod-index-operator.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT) \
-	arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT) \
@@ -1437,7 +1435,6 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
-	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
@@ -2569,9 +2566,6 @@ arangod/RestHandler/$(am__dirstamp):
 arangod/RestHandler/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestHandler/$(DEPDIR)
 	@: > arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
-arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT):  \
-	arangod/RestHandler/$(am__dirstamp) \
-	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -2819,7 +2813,6 @@ mostlyclean-compile:
 	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
-	-rm -f arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT)
@@ -3079,7 +3072,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestImportHandler.Po@am__quote@
@@ -4197,22 +4189,6 @@ arangod/Actions/bin_arangod-RestActionHandler.obj: arangod/Actions/RestActionHan
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/Actions/RestActionHandler.cpp' object='arangod/Actions/bin_arangod-RestActionHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Actions/bin_arangod-RestActionHandler.obj `if test -f 'arangod/Actions/RestActionHandler.cpp'; then $(CYGPATH_W) 'arangod/Actions/RestActionHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Actions/RestActionHandler.cpp'; fi`
-
-arangod/RestHandler/bin_arangod-RestBatchHandler.o: arangod/RestHandler/RestBatchHandler.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestBatchHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.o `test -f 'arangod/RestHandler/RestBatchHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestBatchHandler.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RestBatchHandler.cpp' object='arangod/RestHandler/bin_arangod-RestBatchHandler.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.o `test -f 'arangod/RestHandler/RestBatchHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestBatchHandler.cpp
-
-arangod/RestHandler/bin_arangod-RestBatchHandler.obj: arangod/RestHandler/RestBatchHandler.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestBatchHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.obj `if test -f 'arangod/RestHandler/RestBatchHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestBatchHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestBatchHandler.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RestBatchHandler.cpp' object='arangod/RestHandler/bin_arangod-RestBatchHandler.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.obj `if test -f 'arangod/RestHandler/RestBatchHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestBatchHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestBatchHandler.cpp'; fi`
 
 arangod/RestHandler/bin_arangod-RestDocumentHandler.o: arangod/RestHandler/RestDocumentHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestDocumentHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestDocumentHandler.o `test -f 'arangod/RestHandler/RestDocumentHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestDocumentHandler.cpp
