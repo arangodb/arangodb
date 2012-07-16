@@ -69,8 +69,8 @@
 ///
 /// @EMBEDTOC{InstallingTOC}
 ///
-/// @section BinaryPackages
-///////////////////
+/// @section BinaryPackages Binary Packages
+///////////////////////////////////////////
 ///
 /// You can find various binary packages here:
 ///
@@ -78,15 +78,15 @@
 ///
 ///
 /// @section PackagesManager Install ArangoDB by a package manager
-///////////////////
+//////////////////////////////////////////////////////////////////
 ///
 /// @subsection OpenSUSE
-//////////////////////////////
+////////////////////////
 ///
 /// Add the repository as follows:
 ///
 /// @code
-/// zypper addrepo -r -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
+/// zypper addrepo -f -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
 /// @endcode
 ///
 /// Update repository data:
@@ -107,9 +107,8 @@
 /// zypper install arangodb
 /// @endcode
 ///
-///
 /// @subsection CentOS
-//////////////////////////////
+//////////////////////
 ///
 /// Download and import GPG-PublicKey
 ///
@@ -150,7 +149,7 @@
 ///
 ///
 /// @subsection Debian Debian and Ubuntu
-//////////////////////////////
+////////////////////////////////////////
 ///
 /// Download and import GPG-PublicKey
 ///
@@ -186,7 +185,6 @@
 /// aptitude install arangodb
 /// @endcode
 ///
-//////////////////////////////
 /// @section MacOSX
 ///////////////////
 ///
