@@ -1,6 +1,8 @@
 v1.x.x (2012-XX-XX)
 -------------------
 
+* fixed issue #126: Access-Shaper must be cached
+
 * fixed issue #122: arangod doesn't start if <log.file> cannot be created
 
 * fixed issue #121: wrong collection size reported
