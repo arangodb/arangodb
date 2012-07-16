@@ -204,20 +204,28 @@ target_triplet = @target@
 @ENABLE_ZEROMQ_TRUE@am__append_1 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_CPPFLAGS@
 
-@ENABLE_ZEROMQ_TRUE@am__append_2 = \
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@am__append_2 = \
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@am__append_3 = \
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+
+@ENABLE_ZEROMQ_TRUE@am__append_4 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LDFLAGS@
 
 
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
-@ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_5 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_6 = @MRUBY_LIBS@
 sbin_PROGRAMS = bin/arangod$(EXEEXT) bin/arango-password$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
 noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
-@ENABLE_ZEROMQ_TRUE@am__append_5 = \
+@ENABLE_ZEROMQ_TRUE@am__append_7 = \
 @ENABLE_ZEROMQ_TRUE@	bin/zclient \
 @ENABLE_ZEROMQ_TRUE@	bin/zserver
 
@@ -225,9 +233,9 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_6 = lib/libarango_mruby.a
-@ENABLE_MRUBY_TRUE@am__append_7 = bin/arangoirb
-@ENABLE_MRUBY_TRUE@am__append_8 = \
+@ENABLE_MRUBY_TRUE@am__append_8 = lib/libarango_mruby.a
+@ENABLE_MRUBY_TRUE@am__append_9 = bin/arangoirb
+@ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
@@ -250,51 +258,51 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-@ENABLE_ZEROMQ_TRUE@am__append_9 = \
+@ENABLE_ZEROMQ_TRUE@am__append_11 = \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
-@ENABLE_MRUBY_TRUE@am__append_10 = \
+@ENABLE_MRUBY_TRUE@am__append_12 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
-@ENABLE_MRUBY_TRUE@am__append_11 = \
+@ENABLE_MRUBY_TRUE@am__append_13 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
-@ENABLE_ZEROMQ_TRUE@am__append_12 = \
+@ENABLE_ZEROMQ_TRUE@am__append_14 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LIBS@
 
-@ENABLE_BOOST_TEST_TRUE@am__append_13 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_BOOST_TEST_TRUE@am__append_15 = UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_14 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_16 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_MRUBY_TRUE@am__append_15 = .setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_17 = .setup-mr-directories
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_16 = $(MRUBY_HEADER) .setup-mr-directories
-@ENABLE_FLEX_TRUE@am__append_17 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_MRUBY_TRUE@am__append_18 = $(MRUBY_HEADER) .setup-mr-directories
+@ENABLE_FLEX_TRUE@am__append_19 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_18 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_19 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_20 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_21 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_20 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_21 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_22 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_23 = @ZEROMQ_LIBS@
+@ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_23 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_24 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_25 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -905,7 +913,7 @@ LIBOBJS = @LIBOBJS@
 ### @brief libraries
 ################################################################################
 LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ @PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_4)
+	@OPENSSL_LIBS@ @PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_6)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -1016,11 +1024,11 @@ ACLOCAL_AMFLAGS = -I m4
 ### @brief source to build before compile
 ################################################################################
 BUILT_SOURCES = build.h Installation/arangod.conf $(JAVASCRIPT_HEADER) \
-	$(JAVASCRIPT_BROWSER) $(MRUBY_HEADER) $(am__append_14) \
-	$(am__append_15) Doxygen/.setup-directories \
-	.setup-js-directories $(am__append_17) $(am__append_19) \
-	@PROTOBUF_LIBS@ $(PROTOBUF_FILES) $(am__append_21) \
-	$(am__append_22) $(am__append_23)
+	$(JAVASCRIPT_BROWSER) $(MRUBY_HEADER) $(am__append_16) \
+	$(am__append_17) Doxygen/.setup-directories \
+	.setup-js-directories $(am__append_19) $(am__append_21) \
+	@PROTOBUF_LIBS@ $(PROTOBUF_FILES) $(am__append_23) \
+	$(am__append_24) $(am__append_25)
 
 ################################################################################
 ### @brief files to cleanup
@@ -1037,10 +1045,10 @@ BUILT_SOURCES = build.h Installation/arangod.conf $(JAVASCRIPT_HEADER) \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = bin/arango-password $(am__append_16) $(DOXYGEN) $(addsuffix \
+CLEANUP = bin/arango-password $(am__append_18) $(DOXYGEN) $(addsuffix \
 	.md,$(addprefix Doxygen/xml/,$(WIKI))) $(addsuffix \
 	.md,$(addprefix Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
-	.setup-js-directories $(am__append_18) $(am__append_20) \
+	.setup-js-directories $(am__append_20) $(am__append_22) \
 	$(PROTOBUF_FILES)
 
 ################################################################################
@@ -1102,23 +1110,31 @@ PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-arangosysconfdir = $(sysconfdir)/$(PACKAGE_TARNAME)
-databasedir = $(localstatedir)/$(PACKAGE_TARNAME)
-logdir = $(localstatedir)/log/$(PACKAGE_TARNAME)
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${arangosysconfdir}"' \
-	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${databasedir}"' -I@top_srcdir@/lib \
-	@BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ \
-	@NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
-	@PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1) \
-	$(am__append_3)
+AM_CPPFLAGS = -I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
+	$(am__append_1) $(am__append_2) $(am__append_3) \
+	$(am__append_5)
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = $(localstatedir)/log/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = /tmp
+@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_LOG_DIR = $(prefix)/var/log/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_PKGDATA_DIR = ${pkgdatadir}
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_PKGDATA_DIR = .
+@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_PKGDATA_DIR = $(prefix)/share/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SBIN_DIR = ${sbindir}
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SBIN_DIR = bin
+@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_SBIN_DIR = ${prefix}/sbin
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SYSCONF_DIR = $(sysconfdir)/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_SYSCONF_DIR = ${prefix}/etc/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_DATABASE_DIR = $(localstatedir)/$(PACKAGE_TARNAME)
+@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_DATABASE_DIR = $(localstatedir)/$(PACKAGE_TARNAME)
 
 ################################################################################
 ### @brief linker flags
 ################################################################################
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 	@NCURSES_LDFLAGS@ @OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ \
-	@PROTOBUF_LDFLAGS@ @V8_LDFLAGS@ $(am__append_2)
+	@PROTOBUF_LDFLAGS@ @V8_LDFLAGS@ $(am__append_4)
 
 ################################################################################
 ################################################################################
@@ -1127,11 +1143,12 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 ### @brief auxiliary libraries
 ################################################################################
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
-	lib/libarango_fe.a lib/libarango_client.a $(am__append_6)
+	lib/libarango_fe.a lib/libarango_client.a $(am__append_8)
 
 ################################################################################
 ### @brief /etc data
 ################################################################################
+arangosysconfdir = $(sysconfdir)/$(PACKAGE_TARNAME)
 arangosysconf_DATA = Installation/arangod.conf
 
 ################################################################################
@@ -1146,7 +1163,7 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	"*.html" -print) $(shell find @srcdir@/html -name "*.ico" \
 	-print) $(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print) \
-	$(am__append_8)
+	$(am__append_10)
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -1307,7 +1324,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
 	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
 	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp $(am__append_9)
+	lib/Variant/VariantVector.cpp $(am__append_11)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1402,8 +1419,8 @@ bin_arangod_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_10) \
-	$(am__append_12)
+	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_12) \
+	$(am__append_14)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -1458,7 +1475,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c $(am__append_11)
+	arangod/VocBase/vocbase.c $(am__append_13)
 bin_arangosh_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
@@ -5086,9 +5103,9 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 
 Installation/arangod.conf: Installation/arangod.conf.in Makefile
 	sed \
-		-e 's%@LOGDIR@%${logdir}%g' \
-		-e 's%@DATABASE@%${databasedir}%g' \
-		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		-e 's%@LOGDIR@%${TRI_LOG_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 
 ################################################################################
@@ -5353,9 +5370,9 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 bin/arango-password: bin/arango-password.in
 	sed \
-		-e 's%@SBINDIR@%${DESTDIR}${sbindir}%g' \
-		-e 's%@DATABASE@%${databasedir}%g' \
-		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
 
