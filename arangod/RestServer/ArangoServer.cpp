@@ -193,12 +193,14 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpAuth(false),
     _adminPort(),
     _dispatcherThreads(8),
-    _databasePath("/var/lib/arango"),
+    _databasePath("/var/lib/arangodb"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _vocbase(0) {
+
+  // locate path to binary
   char* p;
 
   p = TRI_LocateBinaryPath(argv[0]);
@@ -206,15 +208,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
+  // set working directory and database directory
+  _workingDirectory = "/var/tmp";
+  
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
-    _workingDirectory = _binaryPath + "/../tmp";
-    _databasePath = _binaryPath + "/../var/arango";
+  _workingDirectory = _binaryPath + "/../tmp";
+  _databasePath = _binaryPath + "/../var/arangodb";
 #endif
 
-    _workingDirectory = "/var/tmp";
-
 #ifdef _DATABASEDIR_
-    _databasePath = _DATABASEDIR_;
+  _databasePath = _DATABASEDIR_;
 #endif
 }
 
@@ -331,7 +334,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
 
-  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc");
+  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc/arangodb");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
 #else
