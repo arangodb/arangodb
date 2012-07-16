@@ -29,13 +29,6 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "VocBase/vocbase.h"
-#include "GeneralServer/GeneralCommTask.h"
-#include "GeneralServer/GeneralServerJob.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpServer.h"
 #include "ProtocolBuffers/HttpRequestProtobuf.h"
 
 using namespace std;
@@ -67,18 +60,9 @@ RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::~RestBatchHandler () {
-  // delete protobuf message
-  delete _outputMessages;
- 
-  // clear all handlers that still exist
-  for (size_t i = 0; i < _handlers.size(); ++i) {
-    HttpHandler* handler = _handlers[i];
-
-    if (handler != 0) {
-      // TODO
-//      _task->getServer()->destroyHandler(handler);
-      _handlers[i] = 0;
-    }
+  if (_outputMessages) {
+    // delete protobuf message
+    delete _outputMessages;
   }
 }
 
@@ -120,16 +104,14 @@ string const& RestBatchHandler::queue () {
 Job* RestBatchHandler::createJob (AsyncJobServer* server) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
-std::cout << "createJob()\n";
-
   if (httpServer == 0) {
     LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
     return 0;
   }
 
-  BatchJob* b = new BatchJob(httpServer, this);
+  BatchJob* batchJob = new BatchJob(httpServer, this);
 
-  return b;
+  return batchJob;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +119,6 @@ std::cout << "createJob()\n";
 ////////////////////////////////////////////////////////////////////////////////
         
 vector<HttpHandler*> RestBatchHandler::subhandlers () {
-std::cout << "subhandlers()\n";
   return _handlers;
 }
 
@@ -145,56 +126,55 @@ std::cout << "subhandlers()\n";
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestBatchHandler::execute () {
-std::cout << "execute()\n";
+Handler::status_e RestBatchHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType type = _request->requestType();
   string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
   
   if (type != HttpRequest::HTTP_REQUEST_POST || contentType != getContentType()) {
-    generateNotImplemented("ILLEGAL " + BATCH_PATH);
-    return HANDLER_DONE;
-  }
-
-  PB_ArangoMessage inputMessages;
-
-  bool result = inputMessages.ParseFromArray(_request->body(), _request->bodySize());
-  if (!result) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid protobuf message");
-    return HANDLER_DONE;
+                  "invalid request data sent");
+
+    return Handler::HANDLER_FAILED;
   }
 
-  bool failed = false;
+  if (! _inputMessages.ParseFromArray(_request->body(), _request->bodySize())) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid protobuf input message");
+
+    return Handler::HANDLER_FAILED;
+  }
+
 
   // loop over the input messages once to set up the output structures without concurrency
-  for (int i = 0; i < inputMessages.messages_size(); ++i) {
+  for (int i = 0; i < _inputMessages.messages_size(); ++i) {
     _outputMessages->add_messages();
   
     // create a handler for each input part 
-    const PB_ArangoBatchMessage inputMessage = inputMessages.messages(i);
-    HttpRequestProtobuf* request = new HttpRequestProtobuf(inputMessage);
+    const PB_ArangoBatchMessage* inputMessage = _inputMessages.mutable_messages(i);
+    HttpRequestProtobuf* request = new HttpRequestProtobuf(*inputMessage);
+
+    if (! request) {
+      return Handler::HANDLER_FAILED;
+    }
+
+    // handler is responsible for freeing the request later
     HttpHandler* handler = _server->createHandler(request);
 
-    if (!handler) {
-      failed = true;
-      break;
+    if (! handler) {
+      delete request;
+
+      return Handler::HANDLER_FAILED;
     }
-    else {
-      _handlers.push_back(handler);
-      ++_missingResponses;
-    }
+    
+    ++_missingResponses;
+    _handlers.push_back(handler);
   }
 
-  if (failed) {
-    // TODO: handle error!
-    std::cout << "SOMETHING FAILED--------------------------------------------------------------------------\n";
-    return Handler::HANDLER_DONE;
-  }
-  
-  // we have async jobs
-  return Handler::HANDLER_DETACH;
+  // success
+  return Handler::HANDLER_DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,17 +182,17 @@ std::cout << "execute()\n";
 ////////////////////////////////////////////////////////////////////////////////
   
 void RestBatchHandler::addResponse (HttpHandler* handler) {
-std::cout << "addResponse\n";
   for (size_t i = 0; i < _handlers.size(); ++i) {
     if (_handlers[i] == handler) {
+
       // avoid concurrent modifications to the structure
       MUTEX_LOCKER(_handlerLock);
       PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
 
       handler->getResponse()->write(batch);
-      // delete the handler
-//      _task->getServer()->destroyHandler(handler);
-//      _handlers[i] = 0;
+      if (--_missingResponses == 0) {
+        assembleResponse();
+      }
       return;
     }
   }
@@ -226,7 +206,6 @@ std::cout << "addResponse\n";
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBatchHandler::assembleResponse () {
-std::cout << "assembleResponse\n";
   assert(_missingResponses == 0);
 
   _response = new HttpResponse(HttpResponse::OK);
@@ -234,19 +213,18 @@ std::cout << "assembleResponse\n";
 
   string data;
   if (!_outputMessages->SerializeToString(&data)) {
-    // TODO
+    delete _response;
+
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
+    return;
+
   }
+
   _response->body().appendText(data);
 }
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a Job* to a GeneralServerJob* 
-////////////////////////////////////////////////////////////////////////////////
 
-GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* RestBatchHandler::toServerJob(Job* job) {
-  return dynamic_cast<GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler> * >(job);
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the required content type string
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,6 +233,20 @@ string const& RestBatchHandler::getContentType () {
   static string const contentType = "application/x-protobuf"; 
   
   return contentType;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy handlers in case setup went wrong
+////////////////////////////////////////////////////////////////////////////////
+  
+void RestBatchHandler::destroyHandlers () {
+  for (size_t i = 0; i < _handlers.size(); ++i) {
+    HttpHandler* handler = _handlers[i];
+
+    delete handler;
+  }
+
+  _handlers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
