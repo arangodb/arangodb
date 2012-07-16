@@ -26,10 +26,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_BATCH_JOB_H
-#define TRIAGENS_REST_HANDLER_BATCH_JOB_H 1
+#include "BatchJob.h"
+#include "RestHandler/BatchSubjob.h"
 
-#include "GeneralServer/GeneralServerJob.h"
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -45,7 +46,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
-  : GeneralServer<HttpServer, HttpHandler>(server, handler),
+  : GeneralServerJob<HttpServer, HttpHandler>(server, handler),
     _handlers(),
     _subjobs(),
     _doneLock(),
@@ -78,14 +79,14 @@ BatchJob::~BatchJob () {
 /// @brief sub-job is done
 ////////////////////////////////////////////////////////////////////////////////
 
-BatchJob::jobDone (BatchSubjob* subjob) {
+void BatchJob::jobDone (BatchSubjob* subjob) {
   MUTEX_LOCKER(_doneLock);
 
   ++_jobsDone;
 
   if (_jobsDone >= _handlers.size()) {
     if (_cleanup) {
-      GeneralServer<HttpServer, HttpHandler>(server, handler)::cleanup();
+      GeneralServerJob<HttpServer, HttpHandler>::cleanup();
     }
     else {
       _done = true;
@@ -114,18 +115,17 @@ BatchJob::jobDone (BatchSubjob* subjob) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-status_e BatchJob::work () {
+Job::status_e BatchJob::work () {
   LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
 
   if (_shutdown != 0) {
     return Job::JOB_DONE;
   }
 
-  bool direct = true;
   _handlers = _handler->subhandlers();
 
   {
-    MUTEX_LOCKER(&_doneLock);
+    MUTEX_LOCKER(_doneLock);
 
     for (vector<HttpHandler*>::iterator i = _handlers.begin();  i != _handlers.end();  ++i) {
       HttpHandler* handler = *i;
@@ -150,7 +150,7 @@ void BatchJob::cleanup () {
   bool done = false;
 
   {
-    MUTEX_LOCKER(&_doneLock);
+    MUTEX_LOCKER(_doneLock);
 
     if (_done) {
       done = true;
@@ -161,7 +161,7 @@ void BatchJob::cleanup () {
   }
 
   if (done) {
-    GeneralServer<HttpServer, HttpHandler>(server, handler)::cleanup();
+    GeneralServerJob<HttpServer, HttpHandler>::cleanup();
   }
 }
 
@@ -175,14 +175,14 @@ bool BatchJob::beginShutdown () {
   _shutdown = 1;
 
   {
-    MUTEX_LOCKER(&_abandonLock);
+    MUTEX_LOCKER(_abandonLock);
 
-    for (vector<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
+    for (set<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
       (*i)->abandon();
     }
   }
 
-  MUTEX_LOCKER(&_doneLock);
+  MUTEX_LOCKER(_doneLock);
 
   if (_cleanup) {
     delete this;
@@ -214,11 +214,11 @@ bool BatchJob::beginShutdown () {
 void BatchJob::createSubjob (HttpHandler* handler) {
 
   // execute handler via dispatcher
-  Dispatcher* dispatcher = server->getDispatcher();
+  Dispatcher* dispatcher = _server->getDispatcher();
 
-  BatchSubjob* job = new BatchSubjob(this, server, handler);
+  BatchSubjob* job = new BatchSubjob(this, _server, handler);
 
-  _subjobs->insert(job);
+  _subjobs.insert(job);
   dispatcher->addJob(job);
 }
 
