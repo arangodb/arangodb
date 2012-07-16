@@ -80,21 +80,29 @@ BatchJob::~BatchJob () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void BatchJob::jobDone (BatchSubjob* subjob) {
-  MUTEX_LOCKER(_doneLock);
+  _handler->addResponse(subjob->getHandler());
+  _doneLock.lock();
 
   ++_jobsDone;
 
   if (_jobsDone >= _handlers.size()) {
     if (_cleanup) {
+      _doneLock.unlock();
+
+      // cleanup might delete ourselves!
       GeneralServerJob<HttpServer, HttpHandler>::cleanup();
     }
     else {
       _done = true;
       _subjobs.clear();
+      _doneLock.unlock();
+
+      cleanup();
     }
   }
   else {
     _subjobs.erase(subjob);
+    _doneLock.unlock();
   }
 }
 
@@ -122,21 +130,39 @@ Job::status_e BatchJob::work () {
     return Job::JOB_DONE;
   }
 
+  // handler::execute() is called to prepare the batch handler
+  // if it returns anything else but HANDLER_DONE, this is an
+  // indication of an error
+  if (_handler->execute() != Handler::HANDLER_DONE) {
+    // handler failed
+    _done = true;
+
+    return Job::JOB_FAILED;
+  }
+
+  // handler did not fail
+
+  bool hasAsync = false;
   _handlers = _handler->subhandlers();
 
-  {
-    MUTEX_LOCKER(_doneLock);
+  for (vector<HttpHandler*>::const_iterator i = _handlers.begin();  i != _handlers.end();  ++i) {
+    HttpHandler* handler = *i;
 
-    for (vector<HttpHandler*>::iterator i = _handlers.begin();  i != _handlers.end();  ++i) {
-      HttpHandler* handler = *i;
-
-      if (handler->isDirect()) {
-        executeDirectHandler(handler);
-      }
-      else {
-        createSubjob(handler);
-      }
+    if (handler->isDirect()) {
+      executeDirectHandler(handler);
     }
+    else {
+      hasAsync = true;
+      createSubjob(handler);
+    }
+  }
+
+  if (hasAsync) {
+    // we must do this ourselves. it is not safe to have the dispatcherthread
+    // call this method because the job might be deleted before that
+    setDispatcherThread(0);
+
+    return Job::JOB_DETACH;
   }
 
   return Job::JOB_DONE;
@@ -212,14 +238,12 @@ bool BatchJob::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void BatchJob::createSubjob (HttpHandler* handler) {
-
-  // execute handler via dispatcher
-  Dispatcher* dispatcher = _server->getDispatcher();
-
   BatchSubjob* job = new BatchSubjob(this, _server, handler);
-
-  _subjobs.insert(job);
-  dispatcher->addJob(job);
+  {
+    MUTEX_LOCKER(_doneLock);
+    _subjobs.insert(job);
+  }
+  _server->getDispatcher()->addJob(job);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +272,11 @@ void BatchJob::executeDirectHandler (HttpHandler* handler) {
   }
   while (status == Handler::HANDLER_REQUEUE);
 
+  if (status == Handler::HANDLER_DONE) {
+    _handler->addResponse(handler);
+  }
+
+  MUTEX_LOCKER(_doneLock);
   ++_jobsDone;
 
   if (_jobsDone >= _handlers.size()) {
