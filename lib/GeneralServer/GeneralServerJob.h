@@ -35,6 +35,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Rest/Handler.h"
 #include "Scheduler/AsyncTask.h"
 
