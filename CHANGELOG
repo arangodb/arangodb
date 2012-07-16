@@ -1,5 +1,8 @@
 v1.x.x (2012-XX-XX)
 -------------------
+* changed implementation of TRI_BlockCrc32 algorithm to use 8 bytes at a time
+
+* fixed Unicode unescaping bugs for \f and surrogate pairs in BasicsC/strings.c
 
 * fixed issue #122: arangod doesn't start if <log.file> cannot be created
 
