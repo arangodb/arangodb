@@ -51,7 +51,7 @@ BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
     _handlers(),
     _subjobs(),
     _doneLock(),
-    _iteratorLock(),
+    _setupLock(),
     _jobsDone(0),
     _cleanup(false) {
 }
@@ -61,7 +61,7 @@ BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
 ////////////////////////////////////////////////////////////////////////////////
 
 BatchJob::~BatchJob () {
-  MUTEX_LOCKER(_iteratorLock);
+  MUTEX_LOCKER(_setupLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +136,7 @@ Job::status_e BatchJob::work () {
  
   // we must grab this lock so no one else can kill us while we're iterating 
   // over the sub handlers 
-  MUTEX_LOCKER(_iteratorLock);
+  MUTEX_LOCKER(_setupLock);
 
   // handler::execute() is called to prepare the batch handler
   // if it returns anything else but HANDLER_DONE, this is an
@@ -214,24 +214,26 @@ void BatchJob::cleanup () {
 
 bool BatchJob::beginShutdown () {
   LOGGER_TRACE << "shutdown job " << static_cast<Job*>(this);
-
-  MUTEX_LOCKER(_doneLock);
-  _shutdown = 1;
-
+  
+  bool cleanup;
   {
-    MUTEX_LOCKER(_abandonLock);
+    MUTEX_LOCKER(_doneLock);
+    _shutdown = 1;
 
-    for (set<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
-      (*i)->abandon();
+    {
+      MUTEX_LOCKER(_abandonLock);
+  
+      for (set<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
+        (*i)->abandon();
+      }
     }
-  }
 
-  if (_cleanup) {
-    //GeneralServerJob<HttpServer, HttpHandler>::cleanup();
-
-  }
-  else {
     _doneAccomplisher = TASK;
+    cleanup = _cleanup;
+  }
+
+  if (cleanup) {
+    GeneralServerJob<HttpServer, HttpHandler>::cleanup();
   }
 
   return true;
