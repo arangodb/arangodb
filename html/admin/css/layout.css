@@ -1,3 +1,27 @@
+.ui-tooltip-content {
+  font-size: 0.7em !important;
+  font-weight:normal !important;
+  background-color: #525252; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+}
+
+#statisticRadioDiv {
+  height:10px !important;  
+  padding-bottom:30px;    
+}
+
+#statisticRadioDiv .ui-state-active {
+  background-color: #9EAF5A !important;
+  font-weight: normal;
+}
+
+#statisticRadioDiv .ui-state-default {
+  color: #555555;
+  font-weight: normal;
+}
+
 .cuttedContent, .prettify ul li, .writeable a {
   white-space: nowrap !important;
   overflow: hidden !important;
