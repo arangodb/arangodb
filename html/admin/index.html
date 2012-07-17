@@ -6,11 +6,17 @@
     <style type="text/css" title="screen"> 
       @import "css/layout.css";
       @import "css/jquery.snippet.css";
+      @import "css/jquery.qtip.css";
       @import "css/jquery-ui-1.8.19.custom.css";
       @import "css/jquery.dataTables_themeroller.css";  
     </style>
       <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.qtip.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.stack.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.resize.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.crosshair.js"></script>
       <script type="text/javascript" language="javascript" src="js/json2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
@@ -50,6 +56,7 @@
         <button class="minimal" id="Query">Query</button>
         <button class="minimal" id="AvocSH">Shell</button>
         <button class="minimal" id="Logs">Logs</button>
+        <button class="minimal" id="Status">Statistics</button>
         <a href="http://www.arangodb.org/manuals/" target="_blank"><button class="minimal" id="Documentation">Documentation</button></a>
       </div>
 
@@ -393,6 +400,22 @@
       </div>
  
       <div id="statusView" style="display: none">
+      
+        <div id="statisticRadioDiv">
+          <form action="#" id="statsRadio" style="font-size:0.8em;">
+            <input type="radio" id="radio1" name="statsRadio" value="minutes" checked/>
+            <label for="radio1" class="cb-enable selected"><span>Minutes</span></label>
+            <input type="radio" id="radio2" name="statsRadio" value="hours"/>
+            <label for="radio2" class="cb-disable"><span>Hours</span></label>
+            <input type="radio" id="radio3" name="statsRadio" value="days"/>
+            <label for="radio3" class="cb-disable"><span>Days</span></label>
+          </form>
+        </div>
+
+        <a style="font-size:0.8em;">Connections</a>
+        <div id="placeholderConnection" style="width:100%;height:150px; margin-top: 10px; "></div>
+        <a style="font-size:0.8em; padding-top: 10px;  ">Requests</a>
+        <div id="placeholderBytesSent" style="width:100%;height:150px; margin-top: 10px; " class="box"></div>
       </div>
 
       <div id="configView" style="display: none">
@@ -422,7 +445,7 @@
       <div id="queryView" style="display: none">
         <a style="color:#797979; font-size:0.9em;">Output:</a>
         <div id="queryOutput">
-          <a style="padding-left:10px">Please enter your query in the box below</a>
+          <a style="padding-left:10px"></a>
         </div>
         <a style="color:#797979; font-size:0.9em;">Input:</a>
         <form id="queryForm" method="post" onsubmit="return false">

@@ -12,7 +12,6 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
 
-
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -576,7 +575,10 @@ var logTable = $('#logTableID').dataTable({
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
-      createnav ("Status"); 
+      createnav ("Statistics"); 
+      //TODO
+      $( "#statisticRadioDiv" ).buttonset();
+      drawStatistics("minutes"); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2434,3 +2436,234 @@ function validate(evt) {
     if(theEvent.preventDefault) theEvent.preventDefault();
   }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// live click statistic radio buttons 
+///////////////////////////////////////////////////////////////////////////////
+
+$('#radio1').live('click', function () {
+  drawStatistics("minutes");  
+});
+
+$('#radio2').live('click', function () {
+  drawStatistics("hours");  
+});
+
+$('#radio3').live('click', function () {
+  drawStatistics("days");  
+});
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw hours statistics 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawStatistics (granularity) {
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw connections (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+  var array = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/connection-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+      if (data.start.length == data.httpDuration.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          array.push([data.start[i]*1000,data.httpDuration.count[i]]);
+        }
+
+        var options = {
+          legend: {
+            show: true,
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            lines: { show: true, 
+                     steps: true, 
+                     fill: true, 
+                     lineWidth: 0.5, 
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.6 } ] } 
+            },
+            points: { show: false },
+            label: "Connections"
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          grid: { hoverable: true, autoHighlight: false },
+          colors: ["#9EAF5A"],
+          grid: {
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true, 
+          }
+        };
+
+        $.plot($("#placeholderConnection"), [array], options);
+
+        $("#placeholderConnection").qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$("#placeholderConnection").bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw requests (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+  var arraySent = [];
+  var arrayReceived = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/request-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+ 
+      if (data.start.length == data.bytesSent.count.length && data.start.length == data.bytesReceived.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          arraySent.push([data.start[i]*1000,data.bytesSent.count[i]]);
+          arrayReceived.push([data.start[i]*1000,data.bytesReceived.count[i]]);
+        }
+        var stack = 0, bars = true, lines = true, steps = true;
+        var options = {
+          legend: {
+            show: true,
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            stack: stack,
+            lines: { show: true, 
+                     steps: true, 
+                     fill: true, 
+                     lineWidth: 0.5,
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
+            },
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          colors: ["#9EAF5A", "#5C3317"],
+          grid: {
+            mouseActiveRadius: 5, 
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true 
+          }
+        };
+
+        $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+
+
+        $("#placeholderBytesSent").qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$("#placeholderBytesSent").bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            if (item.series.label == "Bytes received") {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[2];
+            }
+            else {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            } 
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+
+
+
+}
+
+
+
+
