@@ -158,7 +158,7 @@ bool Dispatcher::addJob (Job* job) {
   // add the job to the list of ready jobs
   queue->addJob(job);
 
-  // indicate sucess, BUT never access job after it has been added to the queue
+  // indicate success, BUT never access job after it has been added to the queue
   return true;
 }
 

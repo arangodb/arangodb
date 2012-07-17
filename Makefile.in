@@ -644,6 +644,8 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
+	arangod/RestHandler/BatchJob.cpp \
+	arangod/RestHandler/BatchSubjob.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
@@ -707,6 +709,8 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
@@ -1446,6 +1450,8 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
+	arangod/RestHandler/BatchJob.cpp \
+	arangod/RestHandler/BatchSubjob.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
@@ -2589,6 +2595,12 @@ arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT):  \
 arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestServer
 	@: > arangod/RestServer/$(am__dirstamp)
@@ -2824,6 +2836,8 @@ mostlyclean-compile:
 	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT)
@@ -3086,6 +3100,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po@am__quote@
@@ -4318,6 +4334,38 @@ arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.obj: arangod/RestHandler/
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RestVocbaseBaseHandler.cpp' object='arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.obj `if test -f 'arangod/RestHandler/RestVocbaseBaseHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestVocbaseBaseHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestVocbaseBaseHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-BatchJob.o: arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchJob.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchJob.o `test -f 'arangod/RestHandler/BatchJob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchJob.cpp' object='arangod/RestHandler/bin_arangod-BatchJob.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchJob.o `test -f 'arangod/RestHandler/BatchJob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchJob.cpp
+
+arangod/RestHandler/bin_arangod-BatchJob.obj: arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchJob.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchJob.obj `if test -f 'arangod/RestHandler/BatchJob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchJob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchJob.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchJob.cpp' object='arangod/RestHandler/bin_arangod-BatchJob.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchJob.obj `if test -f 'arangod/RestHandler/BatchJob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchJob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchJob.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-BatchSubjob.o: arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchSubjob.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchSubjob.o `test -f 'arangod/RestHandler/BatchSubjob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchSubjob.cpp' object='arangod/RestHandler/bin_arangod-BatchSubjob.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchSubjob.o `test -f 'arangod/RestHandler/BatchSubjob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchSubjob.cpp
+
+arangod/RestHandler/bin_arangod-BatchSubjob.obj: arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchSubjob.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchSubjob.obj `if test -f 'arangod/RestHandler/BatchSubjob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchSubjob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchSubjob.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchSubjob.cpp' object='arangod/RestHandler/bin_arangod-BatchSubjob.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchSubjob.obj `if test -f 'arangod/RestHandler/BatchSubjob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchSubjob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchSubjob.cpp'; fi`
 
 arangod/RestServer/bin_arangod-ArangoHttpServer.o: arangod/RestServer/ArangoHttpServer.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoHttpServer.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.o `test -f 'arangod/RestServer/ArangoHttpServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoHttpServer.cpp
