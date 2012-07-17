@@ -26,10 +26,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_BATCH_JOB_H
-#define TRIAGENS_REST_HANDLER_BATCH_JOB_H 1
+#include "BatchJob.h"
+#include "RestHandler/BatchSubjob.h"
 
-#include "GeneralServer/GeneralServerJob.h"
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -45,7 +46,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
-  : GeneralServer<HttpServer, HttpHandler>(server, handler),
+  : GeneralServerJob<HttpServer, HttpHandler>(server, handler),
     _handlers(),
     _subjobs(),
     _doneLock(),
@@ -78,22 +79,30 @@ BatchJob::~BatchJob () {
 /// @brief sub-job is done
 ////////////////////////////////////////////////////////////////////////////////
 
-BatchJob::jobDone (BatchSubjob* subjob) {
-  MUTEX_LOCKER(_doneLock);
+void BatchJob::jobDone (BatchSubjob* subjob) {
+  _handler->addResponse(subjob->getHandler());
+  _doneLock.lock();
 
   ++_jobsDone;
 
   if (_jobsDone >= _handlers.size()) {
     if (_cleanup) {
-      GeneralServer<HttpServer, HttpHandler>(server, handler)::cleanup();
+      _doneLock.unlock();
+
+      // cleanup might delete ourselves!
+      GeneralServerJob<HttpServer, HttpHandler>::cleanup();
     }
     else {
       _done = true;
       _subjobs.clear();
+      _doneLock.unlock();
+
+      cleanup();
     }
   }
   else {
     _subjobs.erase(subjob);
+    _doneLock.unlock();
   }
 }
 
@@ -114,29 +123,46 @@ BatchJob::jobDone (BatchSubjob* subjob) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-status_e BatchJob::work () {
+Job::status_e BatchJob::work () {
   LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
 
   if (_shutdown != 0) {
     return Job::JOB_DONE;
   }
 
-  bool direct = true;
+  // handler::execute() is called to prepare the batch handler
+  // if it returns anything else but HANDLER_DONE, this is an
+  // indication of an error
+  if (_handler->execute() != Handler::HANDLER_DONE) {
+    // handler failed
+    _done = true;
+
+    return Job::JOB_FAILED;
+  }
+
+  // handler did not fail
+
+  bool hasAsync = false;
   _handlers = _handler->subhandlers();
 
-  {
-    MUTEX_LOCKER(&_doneLock);
+  for (vector<HttpHandler*>::const_iterator i = _handlers.begin();  i != _handlers.end();  ++i) {
+    HttpHandler* handler = *i;
 
-    for (vector<HttpHandler*>::iterator i = _handlers.begin();  i != _handlers.end();  ++i) {
-      HttpHandler* handler = *i;
-
-      if (handler->isDirect()) {
-        executeDirectHandler(handler);
-      }
-      else {
-        createSubjob(handler);
-      }
+    if (handler->isDirect()) {
+      executeDirectHandler(handler);
     }
+    else {
+      hasAsync = true;
+      createSubjob(handler);
+    }
+  }
+
+  if (hasAsync) {
+    // we must do this ourselves. it is not safe to have the dispatcherthread
+    // call this method because the job might be deleted before that
+    setDispatcherThread(0);
+
+    return Job::JOB_DETACH;
   }
 
   return Job::JOB_DONE;
@@ -150,7 +176,7 @@ void BatchJob::cleanup () {
   bool done = false;
 
   {
-    MUTEX_LOCKER(&_doneLock);
+    MUTEX_LOCKER(_doneLock);
 
     if (_done) {
       done = true;
@@ -161,7 +187,7 @@ void BatchJob::cleanup () {
   }
 
   if (done) {
-    GeneralServer<HttpServer, HttpHandler>(server, handler)::cleanup();
+    GeneralServerJob<HttpServer, HttpHandler>::cleanup();
   }
 }
 
@@ -175,14 +201,14 @@ bool BatchJob::beginShutdown () {
   _shutdown = 1;
 
   {
-    MUTEX_LOCKER(&_abandonLock);
+    MUTEX_LOCKER(_abandonLock);
 
-    for (vector<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
+    for (set<BatchSubjob*>::iterator i = _subjobs.begin();  i != _subjobs.end();  ++i) {
       (*i)->abandon();
     }
   }
 
-  MUTEX_LOCKER(&_doneLock);
+  MUTEX_LOCKER(_doneLock);
 
   if (_cleanup) {
     delete this;
@@ -212,14 +238,12 @@ bool BatchJob::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void BatchJob::createSubjob (HttpHandler* handler) {
-
-  // execute handler via dispatcher
-  Dispatcher* dispatcher = server->getDispatcher();
-
-  BatchSubjob* job = new BatchSubjob(this, server, handler);
-
-  _subjobs->insert(job);
-  dispatcher->addJob(job);
+  BatchSubjob* job = new BatchSubjob(this, _server, handler);
+  {
+    MUTEX_LOCKER(_doneLock);
+    _subjobs.insert(job);
+  }
+  _server->getDispatcher()->addJob(job);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +272,11 @@ void BatchJob::executeDirectHandler (HttpHandler* handler) {
   }
   while (status == Handler::HANDLER_REQUEUE);
 
+  if (status == Handler::HANDLER_DONE) {
+    _handler->addResponse(handler);
+  }
+
+  MUTEX_LOCKER(_doneLock);
   ++_jobsDone;
 
   if (_jobsDone >= _handlers.size()) {

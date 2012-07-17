@@ -232,11 +232,15 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   }
 
   LOGGER_TRACE << "found handler for path '" << path << "'";
-  return i->second(request, data);
+  HttpHandler* handler = i->second(request, data);
+
+  handler->setServer(this);
+
+  return handler;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a handler from the list active handlers and destroys it
+/// @brief removes a handler from the list of active handlers and destroys it
 ////////////////////////////////////////////////////////////////////////////////
 
 #if 0
