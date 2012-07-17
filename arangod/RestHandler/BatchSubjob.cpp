@@ -74,12 +74,17 @@ BatchSubjob::~BatchSubjob () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void BatchSubjob::cleanup () {
+
+  bool abandon;
+
   {
     MUTEX_LOCKER(_abandonLock);
+    abandon = _abandon;
+  }
 
-    if (! _abandon) {
-      _parent->jobDone(this);
-    }
+  if (! abandon) {
+    // signal the parent (batch job) that a subjob is done
+    _parent->jobDone(this);
   }
 
   delete this;

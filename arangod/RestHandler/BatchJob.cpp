@@ -31,7 +31,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::rest;
-
+    
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -50,6 +50,7 @@ BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
     _handlers(),
     _subjobs(),
     _doneLock(),
+    _iteratorLock(),
     _jobsDone(0),
     _done(false),
     _cleanup(false) {
@@ -60,6 +61,7 @@ BatchJob::BatchJob (HttpServer* server, HttpHandler* handler)
 ////////////////////////////////////////////////////////////////////////////////
 
 BatchJob::~BatchJob () {
+  MUTEX_LOCKER(_iteratorLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +83,7 @@ BatchJob::~BatchJob () {
 
 void BatchJob::jobDone (BatchSubjob* subjob) {
   _handler->addResponse(subjob->getHandler());
-  _doneLock.lock();
+  _doneLock.lock(); 
 
   ++_jobsDone;
 
@@ -96,7 +98,8 @@ void BatchJob::jobDone (BatchSubjob* subjob) {
       _done = true;
       _subjobs.clear();
       _doneLock.unlock();
-
+      
+      //_server->jobDone(this);
       cleanup();
     }
   }
@@ -129,6 +132,8 @@ Job::status_e BatchJob::work () {
   if (_shutdown != 0) {
     return Job::JOB_DONE;
   }
+  
+  MUTEX_LOCKER(_iteratorLock);
 
   // handler::execute() is called to prepare the batch handler
   // if it returns anything else but HANDLER_DONE, this is an
@@ -139,8 +144,8 @@ Job::status_e BatchJob::work () {
 
     return Job::JOB_FAILED;
   }
-
-  // handler did not fail
+  
+  // setup did not fail
 
   bool hasAsync = false;
   _handlers = _handler->subhandlers();
@@ -152,16 +157,17 @@ Job::status_e BatchJob::work () {
       executeDirectHandler(handler);
     }
     else {
-      hasAsync = true;
+      if (!hasAsync) {
+        // we must do this ourselves. it is not safe to have the dispatcherThread
+        // call this method because the job might be deleted before that
+        _handler->setDispatcherThread(0);
+        hasAsync = true;
+      }
       createSubjob(handler);
     }
   }
 
   if (hasAsync) {
-    // we must do this ourselves. it is not safe to have the dispatcherthread
-    // call this method because the job might be deleted before that
-    setDispatcherThread(0);
-
     return Job::JOB_DETACH;
   }
 
@@ -198,6 +204,7 @@ void BatchJob::cleanup () {
 bool BatchJob::beginShutdown () {
   LOGGER_TRACE << "shutdown job " << static_cast<Job*>(this);
 
+  MUTEX_LOCKER(_doneLock);
   _shutdown = 1;
 
   {
@@ -208,10 +215,9 @@ bool BatchJob::beginShutdown () {
     }
   }
 
-  MUTEX_LOCKER(_doneLock);
-
   if (_cleanup) {
-    delete this;
+    //GeneralServerJob<HttpServer, HttpHandler>::cleanup();
+
   }
   else {
     _done = true;
