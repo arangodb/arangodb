@@ -46,6 +46,7 @@
 #include "V8Server/v8-objects.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/voc-shaper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -4128,30 +4129,25 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
-
-  if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
-    return scope.Close(v8::Handle<v8::Value>());
-  }
-
-  // convert to v8 value
-  TRI_shape_t const* shape = acc->_shape;
-  TRI_shaped_json_t json;
-
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
 
-  if (TRI_ExecuteShapeAccessor(acc, &document, &json)) {
-    TRI_FreeShapeAccessor(acc);
-    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
-  }
+  TRI_shaped_json_t json;
+  TRI_shape_t const* shape;
 
-  TRI_FreeShapeAccessor(acc);
-  return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+
+  if (ok) {
+    if (shape == 0) {
+      return scope.Close(v8::Handle<v8::Value>());
+    }
+    else {
+      return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
+    }
+  }
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4274,18 +4270,13 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+  TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
   if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  TRI_FreeShapeAccessor(acc);
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }
 
