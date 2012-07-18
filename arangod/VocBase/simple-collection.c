@@ -4708,10 +4708,10 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
                             size_t len, 
                             TRI_shape_pid_t* pids,
                             TRI_shaped_json_t** values) {
-  TRI_shape_access_t const* accessor;
   TRI_shaped_json_t const* document;
   TRI_shaped_json_t* example;
   TRI_shaped_json_t result;
+  TRI_shape_t const* shape;
   bool ok;
   size_t i;
 
@@ -4719,39 +4719,15 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
 
   for (i = 0;  i < len;  ++i) {
     example = values[i];
-    accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pids[i]);
 
-    if (accessor == NULL) {
-      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
-                (unsigned long) document->_sid,
-                (unsigned long) pids[i]);
+    ok = TRI_ExtractShapedJsonVocShaper(shaper,
+                                        document,
+                                        example->_sid,
+                                        pids[i],
+                                        &result,
+                                        &shape);
 
-      return false;
-    }
-
-    if (accessor->_shape == NULL) {
-      LOG_TRACE("expecting an array for path %lu",
-                (unsigned long) pids[i]);
-
-      return false;
-    }
-
-    if (accessor->_shape->_sid != example->_sid) {
-      LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
-                (unsigned long) example->_sid,
-                (unsigned long) pids[i],
-                (unsigned long) accessor->_shape->_sid);
-
-      return false;
-    }
-
-    ok = TRI_ExecuteShapeAccessor(accessor, document, &result);
-
-    if (! ok) {
-      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
-                (unsigned long) document->_sid,
-                (unsigned long) pids[i]);
-
+    if (! ok || shape == NULL) {
       return false;
     }
 

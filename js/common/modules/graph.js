@@ -34,7 +34,6 @@
 
 var internal = require("internal"),
   db = internal.db,
-  edges = internal.edges,
   ArangoCollection = internal.ArangoCollection,
   ArangoEdgesCollection = internal.ArangoEdgesCollection,
   findOrCreateCollectionByName,
@@ -103,18 +102,14 @@ findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Edge(graph, id) {
-  var props;
+  var properties = graph._edges.document(id);
 
   this._graph = graph;
   this._id = id;
 
-  props = this._graph._edges.document(this._id);
-
-  if (props) {
-    // extract the custom identifier, label, edges
-    this._properties = props;
+  if (properties) {
+    this._properties = properties;
   } else {
-    // deleted
     throw "accessing a deleted edge";
   }
 }
@@ -244,6 +239,9 @@ Edge.prototype.setProperty = function (name, value) {
   var shallow = this._properties.shallowCopy,
     id;
 
+  // Could potentially change the weight of edges
+  this._graph.emptyCachedPredecessors();
+
   shallow.$id = this._properties.$id;
   shallow.$label = this._properties.$label;
   shallow[name] = value;
@@ -268,17 +266,7 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  var shallow = this._properties.shallowCopy;
-
-  delete shallow.$id;
-  delete shallow.$label;
-
-  delete shallow._id;
-  delete shallow._rev;
-  delete shallow._from;
-  delete shallow._to;
-
-  return shallow;
+  return this._properties.shallowCopy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +287,6 @@ Edge.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype._PRINT = function (seen, path, names) {
-
   // Ignores the standard arguments
   seen = path = names = null;
 
@@ -338,18 +325,14 @@ Edge.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Vertex(graph, id) {
-  var props;
+  var properties = graph._vertices.document(id);
 
   this._graph = graph;
   this._id = id;
 
-  props = this._graph._vertices.document(this._id);
-
-  if (props) {
-    // extract the custom identifier
-    this._properties = props;
+  if (properties) {
+    this._properties = properties;
   } else {
-    // deleted
     throw "accessing a deleted edge";
   }
 }
@@ -440,21 +423,12 @@ Vertex.prototype.addOutEdge = function (ine, id, label, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
-  var query,
-    result,
-    graph,
-    i;
+  var graph = this._graph,
+    query = graph._edges.edges(this._id);
 
-  graph = this._graph;
-  query = graph._edges.edges(this._id);
-
-  result = [];
-
-  for (i = 0;  i < query.length;  ++i) {
-    result.push(graph.constructEdge(query[i]._id));
-  }
-
-  return result;
+  return query.map(function (result) {
+    return graph.constructEdge(result._id);
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,27 +461,13 @@ Vertex.prototype.getId = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
-  var labels,
-    result,
-    i;
-
-  if (arguments.length === 0) {
+  var labels = Array.prototype.slice.call(arguments),
     result = this.inbound();
-  } else {
-    labels = {};
 
-    for (i = 0;  i < arguments.length;  ++i) {
-      labels[arguments[i]] = true;
-    }
-
-    edges = this.inbound();
-    result = [];
-
-    for (i = 0;  i < edges.length;  ++i) {
-      if (labels.hasOwnProperty(edges[i].getLabel())) {
-        result.push(edges[i]);
-      }
-    }
+  if (labels.length > 0) {
+    result = result.filter(function (edge) {
+      return (labels.lastIndexOf(edge.getLabel()) > -1);
+    });
   }
 
   return result;
@@ -526,26 +486,13 @@ Vertex.prototype.getInEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
-  var labels,
-    result,
-    i;
-
-  if (arguments.length === 0) {
+  var labels = Array.prototype.slice.call(arguments),
     result = this.outbound();
-  } else {
-    labels = {};
-    for (i = 0;  i < arguments.length;  ++i) {
-      labels[arguments[i]] = true;
-    }
 
-    edges = this.outbound();
-    result = [];
-
-    for (i = 0;  i < edges.length;  ++i) {
-      if (labels.hasOwnProperty(edges[i].getLabel())) {
-        result.push(edges[i]);
-      }
-    }
+  if (labels.length > 0) {
+    result = result.filter(function (edge) {
+      return (labels.lastIndexOf(edge.getLabel()) > -1);
+    });
   }
 
   return result;
@@ -596,21 +543,11 @@ Vertex.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inbound = function () {
-  var query,
-    result,
-    graph,
-    i;
+  var graph = this._graph;
 
-  graph = this._graph;
-  query = graph._edges.inEdges(this._id);
-
-  result = [];
-
-  for (i = 0;  i < query.length;  ++i) {
-    result.push(graph.constructEdge(query[i]._id));
-  }
-
-  return result;
+  return graph._edges.inEdges(this._id).map(function (result) {
+    return graph.constructEdge(result._id);
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,21 +563,11 @@ Vertex.prototype.inbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outbound = function () {
-  var query,
-    result,
-    graph,
-    i;
+  var graph = this._graph;
 
-  graph = this._graph;
-  query = graph._edges.outEdges(this._id);
-
-  result = [];
-
-  for (i = 0;  i < query.length;  ++i) {
-    result.push(graph.constructEdge(query[i]._id));
-  }
-
-  return result;
+  return graph._edges.outEdges(this._id).map(function (result) {
+    return graph.constructEdge(result._id);
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,14 +583,7 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  var shallow = this._properties.shallowCopy;
-
-  delete shallow.$id;
-
-  delete shallow._id;
-  delete shallow._rev;
-
-  return shallow;
+  return this._properties.shallowCopy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,6 +685,10 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shortest path to a certain vertex, return the ID
 ///
 /// @FUN{@FA{vertex}.pathTo(@FA{target_vertex}, @FA{options})}
@@ -772,44 +696,77 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
-  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {});
+  var predecessors = target_vertex.determinePredecessors(this, options || {});
   return target_vertex.pathesForTree(predecessors);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine all the pathes to this node from source id
+/// @brief find the shortest path and return the number of edges to the target vertex
 ///
-/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id}, @FA{options})}
+/// @FUN{@FA{vertex}.distanceTo(@FA{target_vertex}, @FA{options})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.determinePredecessors = function (source_id, options) {
-  var determined_list = [],  // [ID]
-    predecessors = {},       // { ID => [ID] }
-    todo_list = [source_id], // [ID]
-    distances = {},          // { ID => Number }
-    current_vertex,          // Vertex
-    current_vertex_id;       // ID
+Vertex.prototype.distanceTo = function (target_vertex, options) {
+  var predecessors = target_vertex.determinePredecessors(this, options || {}),
+    current_vertex_id = target_vertex.getId(),
+    count = 0;
 
+  while (predecessors[current_vertex_id] !== undefined) {
+    current_vertex_id = predecessors[current_vertex_id][0];
+    count += 1;
+  }
+
+  if (current_vertex_id !== this.getId()) {
+    count = Infinity;
+  }
+
+  return count;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine all the pathes to this node from source
+///
+/// @FUN{@FA{vertex}.determinePredecessors(@FA{source}, @FA{options})}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.determinePredecessors = function (source, options) {
+  var graph = this._graph,      // Graph
+    determined_list = [],       // [ID]
+    predecessors,               // { ID => [ID] }
+    source_id = source.getId(), // ID
+    todo_list = [source_id],    // [ID]
+    distances = {},             // { ID => Number }
+    current_vertex,             // Vertex
+    current_vertex_id;          // ID
   distances[source_id] = 0;
 
-  while (todo_list.length > 0) {
-    current_vertex_id = this._getShortestDistance(todo_list, distances);
-    current_vertex = this._graph.getVertex(current_vertex_id);
+  if (options.cached) {
+    predecessors = graph.getCachedPredecessors(this, source);
+  }
 
-    if (current_vertex_id === this.getId()) {
-      break;
-    } else {
-      todo_list.removeLastOccurrenceOf(current_vertex_id);
-      determined_list.push(current_vertex_id);
+  if (!predecessors) {
+    predecessors = {};
+    while (todo_list.length > 0) {
+      current_vertex_id = this._getShortestDistance(todo_list, distances);
+      current_vertex = this._graph.getVertex(current_vertex_id);
 
-      todo_list = todo_list.unite(current_vertex._processNeighbors(
-        determined_list,
-        distances,
-        predecessors,
-        options
-      ));
+      if (current_vertex_id === this.getId()) {
+        break;
+      } else {
+        todo_list.removeLastOccurrenceOf(current_vertex_id);
+        determined_list.push(current_vertex_id);
+
+        todo_list = todo_list.unite(current_vertex._processNeighbors(
+          determined_list,
+          distances,
+          predecessors,
+          options
+        ));
+      }
     }
+    graph.setCachedPredecessors(this, source, predecessors);
   }
 
   return predecessors;
@@ -963,6 +920,95 @@ Vertex.prototype._getShortestDistance = function (todo_list, distances) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of edges
+///
+/// @FUN{@FA{vertex}.degree()}
+///
+/// Returns the number of edges of the @FA{vertex}.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.degree = function () {
+  return this._graph._edges.edges(this._id).length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of in-edges
+///
+/// @FUN{@FA{vertex}.inDegree()}
+///
+/// Returns the number of inbound edges of the @FA{vertex}.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.inDegree = function () {
+  return this._graph._edges.inEdges(this._id).length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of out-edges
+///
+/// @FUN{@FA{vertex}.outDegree()}
+///
+/// Returns the number of outbound edges of the @FA{vertex}.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.outDegree = function () {
+  return this._graph._edges.outEdges(this._id).length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a measurement
+///
+/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+///
+/// Calculates the eccentricity or closeness of the vertex
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.measurement = function (measurement) {
+  var graph = this._graph,
+    source = this,
+    vertices,
+    value,
+    options;
+
+  if (measurement === "betweenness") {
+    options = { grouped: true, threshold: true };
+
+    value = graph.geodesics(options).reduce(function (count, geodesic_group) {
+      var included = geodesic_group.filter(function (geodesic) {
+        return geodesic.slice(1, -1).indexOf(source.getId()) > -1;
+      });
+
+      return (included ? count + (included.length / geodesic_group.length) : count);
+    }, 0);
+  } else {
+    vertices = graph._vertices.toArray();
+
+    value = vertices.reduce(function (calculated, target) {
+      var distance = source.distanceTo(graph.getVertex(target._id));
+
+      switch (measurement) {
+      case "eccentricity":
+        calculated = Math.max(calculated, distance);
+        break;
+      case "closeness":
+        calculated += distance;
+        break;
+      default:
+        throw "Unknown Measurement '" + measurement + "'";
+      }
+
+      return calculated;
+    }, 0);
+  }
+
+  return value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1033,16 +1079,15 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph(name, vertices, edges) {
-  var gdb,
+  var gdb = internal.db._collection("_graph"),
     graphProperties,
-    graphPropertiesId,
-    optionsForGraphCreation;
-
-  gdb = internal.db._collection("_graph");
+    graphPropertiesId;
 
   if (gdb === null) {
-    optionsForGraphCreation = { waitForSync : true, isSystem : true };
-    gdb = internal.db._create("_graph", optionsForGraphCreation);
+    gdb = internal.db._create("_graph", {
+      waitForSync : true,
+      isSystem : true
+    });
 
     // Currently buggy:
     // gdb.ensureUniqueConstraint("name");
@@ -1138,6 +1183,10 @@ function Graph(name, vertices, edges) {
   // and weak dictionary for vertices and edges
   this._weakVertices = new WeakDictionary();
   this._weakEdges = new WeakDictionary();
+
+  // and store the cashes
+  this.predecessors = {};
+  this.distances = {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1162,9 +1211,7 @@ function Graph(name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function () {
-  var gdb;
-
-  gdb = internal.db._collection("_graph");
+  var gdb = internal.db._collection("_graph");
 
   gdb.remove(this._properties);
 
@@ -1205,6 +1252,8 @@ Graph.prototype.drop = function () {
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   var ref,
     shallow;
+
+  this.emptyCachedPredecessors();
 
   if (typeof label === 'object') {
     data = label;
@@ -1329,13 +1378,10 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var that,
-    all,
+  var that = this,
+    all = this._vertices.all(),
     v,
     Iterator;
-
-  that = this;
-  all = this._vertices.all();
 
   Iterator = function () {
     this.next = function next() {
@@ -1377,13 +1423,10 @@ Graph.prototype.getVertices = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var that,
-    all,
+  var that = this,
+    all = this._edges.all(),
     v,
     Iterator;
-
-  that = this;
-  all = this._edges.all();
 
   Iterator = function () {
     this.next = function next() {
@@ -1425,23 +1468,22 @@ Graph.prototype.getEdges = function () {
 
 Graph.prototype.removeVertex = function (vertex) {
   var result,
-    i;
+    graph = this;
 
-  if (!vertex._id) {
-    return;
-  }
+  this.emptyCachedPredecessors();
 
-  edges = vertex.edges();
-  result = this._vertices.remove(vertex._properties);
+  if (vertex._id) {
+    result = this._vertices.remove(vertex._properties);
 
-  if (!result) {
-    throw "cannot delete vertex";
-  }
+    if (!result) {
+      throw "cannot delete vertex";
+    }
 
-  vertex._id = undefined;
+    vertex.edges().forEach(function (edge) {
+      graph.removeEdge(edge);
+    });
 
-  for (i = 0;  i < edges.length;  ++i) {
-    this.removeEdge(edges[i]);
+    vertex._id = undefined;
   }
 };
 
@@ -1460,17 +1502,163 @@ Graph.prototype.removeVertex = function (vertex) {
 Graph.prototype.removeEdge = function (edge) {
   var result;
 
-  if (!edge._id) {
-    return;
+  this.emptyCachedPredecessors();
+
+  if (edge._id) {
+    result = this._edges.remove(edge._properties);
+
+    if (!result) {
+      throw "cannot delete edge";
+    }
+
+    edge._id = undefined;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Empty the internal cache for Predecessors
+///
+/// @FUN{@FA{graph}.emptyCachedPredecessors()
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.emptyCachedPredecessors = function () {
+  this.predecessors = {};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get Predecessors for a pair from the internal cache
+///
+/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source}})
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getCachedPredecessors = function (target, source) {
+  var predecessors;
+
+  if (this.predecessors[target.getId()]) {
+    predecessors = this.predecessors[target.getId()][source.getId()];
   }
 
-  result = this._edges.remove(edge._properties);
+  return predecessors;
+};
 
-  if (!result) {
-    throw "cannot delete edge";
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set Predecessors for a pair in the internal cache
+///
+/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value}})
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.setCachedPredecessors = function (target, source, value) {
+  if (!this.predecessors[target.getId()]) {
+    this.predecessors[target.getId()] = {};
   }
 
-  edge._id = undefined;
+  this.predecessors[target.getId()][source.getId()] = value;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of vertices
+///
+/// @FUN{@FA{graph}.order()}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.order = function () {
+  return this._vertices.count();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of edges
+///
+/// @FUN{@FA{graph}.size()}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.size = function () {
+  return this._edges.count();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all shortest paths
+///
+/// @FUN{@FA{graph}.geodesics()}
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.geodesics = function (options) {
+  var sources = this._vertices.toArray(),
+    targets = sources.slice(),
+    geodesics = [],
+    graph = this,
+    vertexConstructor;
+
+  options = options || {};
+
+  vertexConstructor = function (raw_vertex) {
+    return graph.constructVertex(raw_vertex._id);
+  };
+
+  sources = sources.map(vertexConstructor);
+  targets = targets.map(vertexConstructor);
+
+  sources.forEach(function (source) {
+    targets = targets.slice(1);
+
+    targets.forEach(function (target) {
+      var pathes = source.pathTo(target);
+
+      if (pathes.length > 0 && (!options.threshold || pathes[0].length > 2)) {
+        if (options.grouped) {
+          geodesics.push(pathes);
+        } else {
+          geodesics = geodesics.concat(pathes);
+        }
+      }
+    });
+  });
+
+  return geodesics;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a measurement
+///
+/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+///
+/// Calculates the eccentricity or closeness of the vertex
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.measurement = function (measurement) {
+  var graph = this,
+    vertices = graph._vertices.toArray(),
+    start_value;
+
+  switch (measurement) {
+  case "diameter":
+    start_value = 0;
+    break;
+  case "radius":
+    start_value = Infinity;
+    break;
+  default:
+    throw "Unknown Measurement '" + measurement + "'";
+  }
+
+  return vertices.reduce(function (calculated, vertex) {
+    vertex = graph.getVertex(vertex._id);
+
+    switch (measurement) {
+    case "diameter":
+      calculated = Math.max(calculated, vertex.measurement("eccentricity"));
+      break;
+    case "radius":
+      calculated = Math.min(calculated, vertex.measurement("eccentricity"));
+      break;
+    }
+
+    return calculated;
+  }, start_value);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

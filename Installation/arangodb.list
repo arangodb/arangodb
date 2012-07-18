@@ -46,7 +46,7 @@ d 0755 ${susr} ${sgrp} ${static_dir}/html -
 d 0755 ${susr} ${sgrp} /var/run/arangodb -
 
 # logfile directory
-d 0755 ${rusr} ${rgrp} /var/log/arangodb -
+d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
 %include ${project_dir}/Installation/arangodb.sublist
 

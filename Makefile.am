@@ -56,14 +56,7 @@ PROTOBUF_FILES =
 ### @brief preprocessor flags
 ################################################################################
 
-arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
-databasedir=$(localstatedir)/$(PACKAGE_TARNAME)
-logdir=$(localstatedir)/log/$(PACKAGE_TARNAME)
-
 AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${arangosysconfdir}"' \
-	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${databasedir}"' \
 	-I@top_srcdir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
@@ -79,6 +72,42 @@ if ENABLE_ZEROMQ
 AM_CPPFLAGS += \
 	@ZEROMQ_CPPFLAGS@
 
+endif
+
+
+
+if ENABLE_RELATIVE_SYSTEM
+
+TRI_LOG_DIR=$(prefix)/var/log/$(PACKAGE_TARNAME)
+TRI_PKGDATA_DIR=$(prefix)/share/$(PACKAGE_TARNAME)
+TRI_SBIN_DIR=${prefix}/sbin
+TRI_SYSCONF_DIR=${prefix}/etc/$(PACKAGE_TARNAME)
+
+else
+if ENABLE_RELATIVE_DEVEL
+
+TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
+TRI_LOG_DIR=/tmp
+TRI_PKGDATA_DIR=.
+TRI_SBIN_DIR=bin
+
+AM_CPPFLAGS += \
+	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+
+else
+
+TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
+TRI_LOG_DIR=$(localstatedir)/log/$(PACKAGE_TARNAME)
+TRI_PKGDATA_DIR=${pkgdatadir}
+TRI_SBIN_DIR=${sbindir}
+TRI_SYSCONF_DIR=$(sysconfdir)/$(PACKAGE_TARNAME)
+
+AM_CPPFLAGS += \
+	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
+	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
+	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+
+endif
 endif
 
 ################################################################################
@@ -186,15 +215,16 @@ endif
 ### @brief /etc data
 ################################################################################
 
+arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
 arangosysconf_DATA = Installation/arangod.conf
 
 BUILT_SOURCES += Installation/arangod.conf
 
 Installation/arangod.conf: Installation/arangod.conf.in Makefile
 	sed \
-		-e 's%@LOGDIR@%${logdir}%g' \
-		-e 's%@DATABASE@%${databasedir}%g' \
-		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		-e 's%@LOGDIR@%${TRI_LOG_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 
 ################################################################################
@@ -308,9 +338,9 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 bin/arango-password: bin/arango-password.in
 	sed \
-		-e 's%@SBINDIR@%${DESTDIR}${sbindir}%g' \
-		-e 's%@DATABASE@%${databasedir}%g' \
-		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
 
