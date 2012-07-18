@@ -419,9 +419,12 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   additional["DATABASE Options:help-devel"]
+    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
+  ;
+   
+  additional["JAVASCRIPT Options:help-devel"]
     ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
 
   // .............................................................................
