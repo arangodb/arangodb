@@ -239,6 +239,9 @@ Edge.prototype.setProperty = function (name, value) {
   var shallow = this._properties.shallowCopy,
     id;
 
+  // Could potentially change the weight of edges
+  this._graph.emptyCachedPredecessors();
+
   shallow.$id = this._properties.$id;
   shallow.$label = this._properties.$label;
   shallow[name] = value;
@@ -682,6 +685,10 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shortest path to a certain vertex, return the ID
 ///
 /// @FUN{@FA{vertex}.pathTo(@FA{target_vertex}, @FA{options})}
@@ -689,7 +696,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
-  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {});
+  var predecessors = target_vertex.determinePredecessors(this, options || {});
   return target_vertex.pathesForTree(predecessors);
 };
 
@@ -701,7 +708,7 @@ Vertex.prototype.pathTo = function (target_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.distanceTo = function (target_vertex, options) {
-  var predecessors = target_vertex.determinePredecessors(this.getId(), options || {}),
+  var predecessors = target_vertex.determinePredecessors(this, options || {}),
     current_vertex_id = target_vertex.getId(),
     count = 0;
 
@@ -718,39 +725,48 @@ Vertex.prototype.distanceTo = function (target_vertex, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine all the pathes to this node from source id
+/// @brief determine all the pathes to this node from source
 ///
-/// @FUN{@FA{vertex}.determinePredecessors(@FA{source_id}, @FA{options})}
+/// @FUN{@FA{vertex}.determinePredecessors(@FA{source}, @FA{options})}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.determinePredecessors = function (source_id, options) {
-  var determined_list = [],  // [ID]
-    predecessors = {},       // { ID => [ID] }
-    todo_list = [source_id], // [ID]
-    distances = {},          // { ID => Number }
-    current_vertex,          // Vertex
-    current_vertex_id;       // ID
-
+Vertex.prototype.determinePredecessors = function (source, options) {
+  var graph = this._graph,      // Graph
+    determined_list = [],       // [ID]
+    predecessors,               // { ID => [ID] }
+    source_id = source.getId(), // ID
+    todo_list = [source_id],    // [ID]
+    distances = {},             // { ID => Number }
+    current_vertex,             // Vertex
+    current_vertex_id;          // ID
   distances[source_id] = 0;
 
-  while (todo_list.length > 0) {
-    current_vertex_id = this._getShortestDistance(todo_list, distances);
-    current_vertex = this._graph.getVertex(current_vertex_id);
+  if (options.cached) {
+    predecessors = graph.getCachedPredecessors(this, source);
+  }
 
-    if (current_vertex_id === this.getId()) {
-      break;
-    } else {
-      todo_list.removeLastOccurrenceOf(current_vertex_id);
-      determined_list.push(current_vertex_id);
+  if (!predecessors) {
+    predecessors = {};
+    while (todo_list.length > 0) {
+      current_vertex_id = this._getShortestDistance(todo_list, distances);
+      current_vertex = this._graph.getVertex(current_vertex_id);
 
-      todo_list = todo_list.unite(current_vertex._processNeighbors(
-        determined_list,
-        distances,
-        predecessors,
-        options
-      ));
+      if (current_vertex_id === this.getId()) {
+        break;
+      } else {
+        todo_list.removeLastOccurrenceOf(current_vertex_id);
+        determined_list.push(current_vertex_id);
+
+        todo_list = todo_list.unite(current_vertex._processNeighbors(
+          determined_list,
+          distances,
+          predecessors,
+          options
+        ));
+      }
     }
+    graph.setCachedPredecessors(this, source, predecessors);
   }
 
   return predecessors;
@@ -1167,6 +1183,10 @@ function Graph(name, vertices, edges) {
   // and weak dictionary for vertices and edges
   this._weakVertices = new WeakDictionary();
   this._weakEdges = new WeakDictionary();
+
+  // and store the cashes
+  this.predecessors = {};
+  this.distances = {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1232,6 +1252,8 @@ Graph.prototype.drop = function () {
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   var ref,
     shallow;
+
+  this.emptyCachedPredecessors();
 
   if (typeof label === 'object') {
     data = label;
@@ -1448,6 +1470,8 @@ Graph.prototype.removeVertex = function (vertex) {
   var result,
     graph = this;
 
+  this.emptyCachedPredecessors();
+
   if (vertex._id) {
     result = this._vertices.remove(vertex._properties);
 
@@ -1478,6 +1502,8 @@ Graph.prototype.removeVertex = function (vertex) {
 Graph.prototype.removeEdge = function (edge) {
   var result;
 
+  this.emptyCachedPredecessors();
+
   if (edge._id) {
     result = this._edges.remove(edge._properties);
 
@@ -1488,6 +1514,47 @@ Graph.prototype.removeEdge = function (edge) {
     edge._id = undefined;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Empty the internal cache for Predecessors
+///
+/// @FUN{@FA{graph}.emptyCachedPredecessors()
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.emptyCachedPredecessors = function () {
+  this.predecessors = {};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get Predecessors for a pair from the internal cache
+///
+/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source}})
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getCachedPredecessors = function (target, source) {
+  var predecessors;
+
+  if (this.predecessors[target.getId()]) {
+    predecessors = this.predecessors[target.getId()][source.getId()];
+  }
+
+  return predecessors;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set Predecessors for a pair in the internal cache
+///
+/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value}})
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.setCachedPredecessors = function (target, source, value) {
+  if (!this.predecessors[target.getId()]) {
+    this.predecessors[target.getId()] = {};
+  }
+
+  this.predecessors[target.getId()][source.getId()] = value;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of vertices
