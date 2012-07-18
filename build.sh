@@ -7,7 +7,7 @@ echo
 
 . config/detect_distro.sh
 
-OPTIONS="--disable-dependency-tracking --disable-relative"
+OPTIONS="--disable-dependency-tracking --enable-relative=devel"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
@@ -61,7 +61,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --with-boost-test --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -110,7 +110,7 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     RESULTS="$RESULTS arangoirb"
     ;;
 

@@ -147,6 +147,17 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*,
                                                      TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a sub-shape
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
+                                     TRI_shaped_json_t const* document,
+                                     TRI_shape_sid_t sid,
+                                     TRI_shape_pid_t pid,
+                                     TRI_shaped_json_t* result,
+                                     TRI_shape_t const** shape);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
