@@ -57,7 +57,6 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationS
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _showPort(true),
-    _requireKeepAlive(false),
     _httpServers(),
     _httpPorts(),
     _httpAddressPorts() {
@@ -168,10 +167,6 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
       ("server.port", &_httpPorts, "listen port or address:port")
     ;
   }
-
-  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
-    ("server.require-keep-alive", "close connection, if keep-alive is missing")
-  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,10 +174,6 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
-  if (options.has("server.require-keep-alive")) {
-    _requireKeepAlive= true;
-  }
-
   for (vector<string>::const_iterator i = _httpPorts.begin();  i != _httpPorts.end();  ++i) {
     addPort(*i);
   }
@@ -273,11 +264,6 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
     }
 
     httpServer = new HttpServer(scheduler, dispatcher);
-  }
-
-  // update close-without-keep-alive flag
-  if (_requireKeepAlive) {
-    httpServer->setCloseWithoutKeepAlive(true);
   }
 
   // keep a list of active server
