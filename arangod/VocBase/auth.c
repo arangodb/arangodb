@@ -32,6 +32,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -69,19 +70,17 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
                                       TRI_shaped_json_t const* document,
                                       char const* path) {
   TRI_json_t* json;
-  TRI_shape_access_t* acc;
   TRI_shape_pid_t pid;
+  TRI_shape_t const* shape;
   TRI_shaped_json_t shaped;
+  bool ok;
   char* result;
 
   pid = shaper->findAttributePathByName(shaper, path);
-  acc = TRI_ShapeAccessor(shaper, document->_sid, pid);
 
-  if (acc == NULL || acc->_shape == NULL) {
-    return NULL;
-  }
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
-  if (! TRI_ExecuteShapeAccessor(acc, document, &shaped)) {
+  if (! ok || shape == NULL) {
     return NULL;
   }
 
@@ -111,34 +110,31 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
                                       char const* path,
                                       bool* found) {
   TRI_json_t* json;
-  TRI_shape_access_t* acc;
   TRI_shape_pid_t pid;
+  TRI_shape_t const* shape;
   TRI_shaped_json_t shaped;
   bool result;
+  bool ok;
 
   if (found != NULL) {
     *found = false;
   }
 
   pid = shaper->findAttributePathByName(shaper, path);
-  acc = TRI_ShapeAccessor(shaper, document->_sid, pid);
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
-  if (acc == NULL || acc->_shape == NULL) {
-    return NULL;
-  }
-
-  if (! TRI_ExecuteShapeAccessor(acc, document, &shaped)) {
-    return NULL;
+  if (! ok || shape == NULL) {
+    return false;
   }
 
   json = TRI_JsonShapedJson(shaper, &shaped);
 
   if (json == NULL) {
-    return NULL;
+    return false;
   }
 
   if (json->_type != TRI_JSON_BOOLEAN) {
-    return NULL;
+    return false;
   }
 
   if (found != NULL) {
