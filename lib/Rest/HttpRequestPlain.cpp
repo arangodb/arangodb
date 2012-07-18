@@ -383,6 +383,40 @@ int HttpRequestPlain::setBody (char const* newBody, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the header type
+////////////////////////////////////////////////////////////////////////////////
+
+HttpRequest::HttpRequestType HttpRequestPlain::getRequestType (const char* ptr, const size_t length) {
+  switch (length) {
+    case 3:
+      if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
+        return HTTP_REQUEST_GET;
+      }
+      if (ptr[0] == 'p' && ptr[1] == 'u' && ptr[2] == 't') { 
+        return HTTP_REQUEST_PUT;
+      }
+      break;
+
+    case 4:
+      if (ptr[0] == 'p' && ptr[1] == 'o' && ptr[2] == 's' && ptr[3] == 't') { 
+        return HTTP_REQUEST_POST;
+      }
+      if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') { 
+        return HTTP_REQUEST_HEAD;
+      }
+      break;
+
+    case 6:
+      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') { 
+        return HTTP_REQUEST_DELETE;
+      }
+      break;
+  }
+
+  return HTTP_REQUEST_ILLEGAL;
+}       
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the http header
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -427,6 +461,7 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
         // extract the value
         keyEnd = e;
 
+        // trim value from the start
         while (e < end && *e == ' ') {
           ++e;
         }
@@ -470,6 +505,32 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
             else {
               valueEnd = e;
 
+              // HTTP protocol version is expected next
+              // trim value
+              while (e < end && *e == ' ') {
+                ++e;
+              }
+
+              if (end - e > strlen("http/1.x")) {
+                if ((e[0] == 'h' || e[0] == 'H') &&
+                    (e[1] == 't' || e[1] == 'T') &&
+                    (e[2] == 't' || e[2] == 'T') &&
+                    (e[3] == 'p' || e[3] == 'P') &&
+                     e[4] == '/' &&
+                     e[5] == '1' &&
+                     e[6] == '.') {
+                  if (e[7] == '1') {
+                    _version = HTTP_1_1;
+                  }
+                  else {
+                    _version = HTTP_1_0;
+                  }
+
+                  e += strlen("http/1.x");
+                }
+              }
+
+              // go on until eol
               while (e < end && *e != '\n') {
                 ++e;
               }
@@ -487,21 +548,7 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
         }
 
         // check the key
-        if (strcmp(keyBegin, "post") == 0) {
-          _type = HTTP_REQUEST_POST;
-        }
-        else if (strcmp(keyBegin, "put") == 0) {
-          _type = HTTP_REQUEST_PUT;
-        }
-        else if (strcmp(keyBegin, "delete") == 0) {
-          _type = HTTP_REQUEST_DELETE;
-        }
-        else if (strcmp(keyBegin, "get") == 0) {
-          _type = HTTP_REQUEST_GET;
-        }
-        else if (strcmp(keyBegin, "head") == 0) {
-          _type = HTTP_REQUEST_HEAD;
-        }
+        _type = getRequestType(keyBegin, keyEnd - keyBegin);
 
         // extract the path and decode the url and parameters
         if (_type != HTTP_REQUEST_ILLEGAL) {
@@ -577,21 +624,7 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
         }
 
         // check the key
-        if (strcmp(keyBegin, "post") == 0) {
-          _type = HTTP_REQUEST_POST;
-        }
-        else if (strcmp(keyBegin, "put") == 0) {
-          _type = HTTP_REQUEST_PUT;
-        }
-        else if (strcmp(keyBegin, "delete") == 0) {
-          _type = HTTP_REQUEST_DELETE;
-        }
-        else if (strcmp(keyBegin, "get") == 0) {
-          _type = HTTP_REQUEST_GET;
-        }
-        else if (strcmp(keyBegin, "head") == 0) {
-          _type = HTTP_REQUEST_HEAD;
-        }
+        _type = getRequestType(keyBegin, keyEnd - keyBegin);
       }
     }
 

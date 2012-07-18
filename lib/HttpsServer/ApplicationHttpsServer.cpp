@@ -97,7 +97,6 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicatio
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _showPort(true),
-    _requireKeepAlive(false),
     _sslProtocol(3),
     _sslCacheMode(0),
     _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
@@ -197,7 +196,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
   }
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-    ("server.secure-require-keep-alive", "close connection, if keep-alive is missing")
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
@@ -211,12 +209,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
-
-  // check keep alive
-  if (options.has("server.secure-require-keep-alive")) {
-    _requireKeepAlive= true;
-  }
-
 
   // add ports
   for (vector<string>::const_iterator i = _httpsPorts.begin();  i != _httpsPorts.end();  ++i) {
@@ -319,11 +311,6 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
 
   // create new server
   HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _sslContext);
-
-  // update close-without-keep-alive flag
-  if (_requireKeepAlive) {
-    httpsServer->setCloseWithoutKeepAlive(true);
-  }
 
   // keep a list of active server
   _httpsServers.push_back(httpsServer);
