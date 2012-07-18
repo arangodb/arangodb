@@ -142,6 +142,12 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = classTempl->NewInstance();
 
+  if (result.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(result);
+  }
+  
   // set the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(type));
   result->SetInternalField(SLOT_CLASS, v8::External::New(y));
@@ -1149,6 +1155,13 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
+  
+  if (cursorObject.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(cursorObject);
+  }  
+  
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSGeneralCursors.find(cursor);
 
   if (i == v8g->JSGeneralCursors.end()) {
@@ -4354,7 +4367,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  errorObject->SetPrototype(proto);
+  if (!proto.IsEmpty()) {
+    errorObject->SetPrototype(proto);
+  }
 
   return errorObject;
 }
@@ -4638,6 +4653,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
+
+  if (result.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(result);
+  }  
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
