@@ -90,7 +90,7 @@ namespace triagens {
       }
     }
 
-    void SimpleHttpResult::addHeaderField (string const& line) {
+    void SimpleHttpResult::addHeaderField (std::string const& line) {
       string key;
       string value;
       
@@ -113,7 +113,7 @@ namespace triagens {
        }      
     }
     
-    void SimpleHttpResult::addHeaderField (string const& key, string const& value) {
+    void SimpleHttpResult::addHeaderField (std::string const& key, std::string const& value) {
       string k = StringUtils::trim(StringUtils::tolower(key));
 
       if (k == "http/1.1") {

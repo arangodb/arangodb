@@ -96,7 +96,7 @@ Module.prototype.require = function (path) {
     f = SYS_EXECUTE(content, undefined, path);
   }
   catch (err) {
-    CONSOLE_ERROR("in file %s: %o", path, err.stack);
+    require("console").error("in file %s: %o", path, err.stack);
     throw err;
   }
 
@@ -274,6 +274,7 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.read = SYS_READ;
   internal.sprintf = SYS_SPRINTF;
   internal.time = SYS_TIME;
+  internal.sha256 = SYS_SHA256;
 
 
   // command line parameter
@@ -408,6 +409,8 @@ ModuleCache["/console"] = new Module("/console");
 (function () {
   var internal = ModuleCache["/internal"].exports;
   var console = ModuleCache["/console"].exports;
+
+  console.getline = SYS_GETLINE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug message

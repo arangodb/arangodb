@@ -36,7 +36,7 @@
 #include "GeneralServer/GeneralFigures.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpServerImpl.h"
+#include "HttpServer/HttpServer.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest::GeneralFigures;
@@ -48,9 +48,10 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    HttpCommTask::HttpCommTask (HttpServerImpl* server, socket_t fd, ConnectionInfo const& info)
+    HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo const& info)
       : Task("HttpCommTask"),
-        GeneralCommTask<HttpServerImpl, HttpHandlerFactory>(server, fd, info) {
+        GeneralCommTask<HttpServer, HttpHandlerFactory>(server, fd, info),
+        _handler(0) {
       incCounter<GeneralServerStatistics::httpAccessor>();
     }
 
@@ -58,6 +59,7 @@ namespace triagens {
 
     HttpCommTask::~HttpCommTask () {
       decCounter<GeneralServerStatistics::httpAccessor>();
+      destroyHandler();      
     }
 
     // -----------------------------------------------------------------------------
@@ -209,25 +211,46 @@ namespace triagens {
         bodyPosition = 0;
         bodyLength = 0;
 
-        HttpHandler* handler = server->createHandler(request);
-        bool ok = false;
+        bool auth = server->authenticateRequest(request);
 
-        if (handler == 0) {
-          LOGGER_TRACE << "no handler is known, giving up";
+        // authenticated
+        if (auth) {
+          _handler = server->createHandler(request);
+          bool ok = false;
+
+          if (_handler == 0) {
+            LOGGER_TRACE << "no handler is known, giving up";
+            delete request;
+            request = 0;
+
+            HttpResponse response(HttpResponse::NOT_FOUND);
+            handleResponse(&response);
+          }
+          else {
+            // let the handler know the comm task
+            _handler->setTask(this);
+
+            request = 0;
+            ok = server->handleRequest(this, _handler);
+
+            if (! ok) {
+              HttpResponse response(HttpResponse::SERVER_ERROR);
+              handleResponse(&response);
+            }
+          }
+        }
+
+        // not authenticated
+        else {
+          string realm = "basic realm=\"" + server->authenticationRealm(request) + "\"";
+
           delete request;
           request = 0;
 
-          HttpResponse response(HttpResponse::NOT_FOUND);
-          handleResponse(&response);
-        }
-        else {
-          request = 0;
-          ok = server->handleRequest(this, handler);
+          HttpResponse response(HttpResponse::UNAUTHORIZED);
+          response.setHeader("www-authenticate", realm.c_str());
 
-          if (! ok) {
-            HttpResponse response(HttpResponse::SERVER_ERROR);
-            handleResponse(&response);
-          }
+          handleResponse(&response);
         }
 
         return processRead();
@@ -235,7 +258,6 @@ namespace triagens {
 
       return true;
     }
-
 
 
     void HttpCommTask::addResponse (HttpResponse* response) {
@@ -256,5 +278,18 @@ namespace triagens {
       // start output
       fillWriteBuffer();
     }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief destroy the handler if any present
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    void HttpCommTask::destroyHandler () {
+      if (_handler) {
+        _handler->setTask(0);
+        server->destroyHandler(_handler);
+        _handler = 0;
+      }
+    }
+
   }
 }

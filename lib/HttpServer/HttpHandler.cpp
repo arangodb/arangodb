@@ -27,9 +27,11 @@
 
 #include "HttpHandler.h"
 
-#include <Logger/Logger.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/HttpResponse.h>
+#include "Logger/Logger.h"
+#include "HttpServer/HttpServer.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "GeneralServer/GeneralServerJob.h"
 
 namespace triagens {
   namespace rest {
@@ -38,10 +40,12 @@ namespace triagens {
     // constructs and destructors
     // -----------------------------------------------------------------------------
 
-
-
     HttpHandler::HttpHandler (HttpRequest* request)
-      : request(request), response(0) {
+      : _handlerFactory(0),
+        request(request),
+        response(0),
+        _task(0), 
+        _job(0) {
     }
 
 
@@ -54,6 +58,14 @@ namespace triagens {
       if (response != 0) {
         delete response;
       }
+
+      if (_task != 0) {
+        _task->setHandler(0);
+      }
+
+      if (_handlerFactory != 0) {
+        _handlerFactory->unregisterHandler(this);
+      }
     }
 
     // -----------------------------------------------------------------------------
@@ -62,6 +74,72 @@ namespace triagens {
 
     HttpResponse* HttpHandler::getResponse () {
       return response;
+    }
+
+
+
+    void HttpHandler::setHandlerFactory (HttpHandlerFactory* handlerFactory) {
+      _handlerFactory = handlerFactory;
+    }
+
+
+
+    bool HttpHandler::handleAsync () {
+      if (_job == 0) {
+        LOGGER_WARNING << "no job is known";
+      }
+      else {
+        HttpResponse* response = getResponse();
+
+        try {
+          if (response == 0) {
+            basics::InternalError err("no response received from handler");
+
+            handleError(err);
+            response = getResponse();
+          }
+
+          if (response != 0) {
+            _task->handleResponse(response);
+          }
+        }
+        catch (...) {
+          LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__;
+        }
+ 
+        // this might delete the handler (i.e. ourselves!)
+        return _job->beginShutdown();
+      }
+
+      return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief create a job
+    ////////////////////////////////////////////////////////////////////////////////
+
+    Job* HttpHandler::createJob () {
+      LOGGER_WARNING << "job creation requested for handler that is not intended to produce jobs";
+
+      return 0;
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief create a job
+    ////////////////////////////////////////////////////////////////////////////////
+
+    Job* HttpHandler::createJob (Scheduler* scheduler, Dispatcher* dispatcher, HttpCommTask* task) {
+      HttpServer* server = dynamic_cast<HttpServer*>(task->getServer());
+
+      GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask =
+        dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(task);
+
+      GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* job = 
+        new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(server, scheduler, dispatcher, atask, this);
+
+      setJob(job);
+
+      return job;
     }
   }
 }

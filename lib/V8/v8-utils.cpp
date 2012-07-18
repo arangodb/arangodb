@@ -39,10 +39,12 @@
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
+#include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   WEAK DICTIONARY
@@ -579,6 +581,23 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a line from stdin
+///
+/// @FUN{console.getline()}
+///
+/// Reads in a line from the console.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  string line;
+  getline(cin, line);
+
+  return scope.Close(v8::String::New(line.c_str(), line.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
 /// @FUN{internal.load(@FA{filename})}
@@ -752,40 +771,6 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads in a file
-///
-/// @FUN{internal.read(@FA{filename})}
-///
-/// Reads in a files and returns the content as string.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
-  }
-
-  v8::String::Utf8Value name(argv[0]);
-
-  if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
-  }
-
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
-
-  if (content == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
-  }
-
-  v8::Handle<v8::String> result = v8::String::New(content);
-
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process information
 ///
 /// @FUN{internal.processStat()}
@@ -830,6 +815,40 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
   result->Set(v8::String::New("numberThreads"), v8::Number::New((double) info._numberThreads));
   result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file
+///
+/// @FUN{internal.read(@FA{filename})}
+///
+/// Reads in a files and returns the content as string.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+
+  if (content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+  }
+
+  v8::Handle<v8::String> result = v8::String::New(content);
+
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
 }
@@ -945,6 +964,46 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::String::New(result.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha256 sum
+///
+/// @FUN{internal.sha256(@FA{text})}
+///
+/// Computes a sha256 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: sha256(<text>)")));
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create sha256
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1316,6 +1375,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("SYS_GETLINE"),
+                         v8::FunctionTemplate::New(JS_Getline)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("SYS_LOAD"),
                          v8::FunctionTemplate::New(JS_Load)->GetFunction(),
                          v8::ReadOnly);
@@ -1332,12 +1395,16 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
                          v8::FunctionTemplate::New(JS_Output)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("SYS_PROCESS_STAT"),
+                         v8::FunctionTemplate::New(JS_ProcessStat)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("SYS_READ"),
                          v8::FunctionTemplate::New(JS_Read)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("SYS_PROCESS_STAT"),
-                         v8::FunctionTemplate::New(JS_ProcessStat)->GetFunction(),
+  context->Global()->Set(v8::String::New("SYS_SHA256"),
+                         v8::FunctionTemplate::New(JS_Sha256)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_SPRINTF"),

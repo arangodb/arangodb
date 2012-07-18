@@ -1,0 +1,147 @@
+'\" t
+.\"     Title: zloop
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 08/30/2011
+.\"    Manual: czmq Manual
+.\"    Source: czmq 1.1.0
+.\"  Language: English
+.\"
+.TH "ZLOOP" "7" "08/30/2011" "czmq 1\&.1\&.0" "czmq Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+zloop \- event\-driven reactor
+.SH "SYNOPSIS"
+.sp
+.nf
+//  Callback function for reactor events
+typedef int (zloop_fn) (zloop_t *loop, zmq_pollitem_t *item, void *arg);
+
+//  Create a new zloop reactor
+zloop_t *
+    zloop_new (void);
+
+//  Destroy a reactor
+void
+    zloop_destroy (zloop_t **self_p);
+
+//  Register pollitem with the reactor\&. When the pollitem is ready, will call
+//  the handler, passing the arg\&. Returns 0 if OK, \-1 if there was an error\&.
+//  If you register the pollitem more than once, each instance will invoke its
+//  corresponding handler\&.
+int
+    zloop_poller (zloop_t *self, zmq_pollitem_t *item, zloop_fn handler, void *arg);
+
+//  Cancel a pollitem from the reactor, specified by socket or FD\&. If both
+//  are specified, uses only socket\&. If multiple poll items exist for same
+//  socket/FD, cancels ALL of them\&.
+void
+    zloop_poller_end (zloop_t *self, zmq_pollitem_t *item);
+
+//  Register a timer that expires after some delay and repeats some number of
+//  times\&. At each expiry, will call the handler, passing the arg\&. To
+//  run a timer forever, use 0 times\&. Returns 0 if OK, \-1 if there was an
+//  error\&.
+int
+    zloop_timer (zloop_t *self, size_t delay, size_t times, zloop_fn handler, void *arg);
+
+//  Cancel all timers for a specific argument (as provided in zloop_timer)
+void
+    zloop_timer_end (zloop_t *self, void *arg);
+
+//  Set verbose tracing of reactor on/off
+void
+    zloop_set_verbose (zloop_t *self, Bool verbose);
+
+//  Start the reactor\&. Takes control of the thread and returns when the 0MQ
+//  context is terminated or the process is interrupted, or any event handler
+//  returns \-1\&. Event handlers may register new sockets and timers, and
+//  cancel sockets\&. Returns 0 if interrupted, \-1 if cancelled by a handler\&.
+int
+    zloop_start (zloop_t *self);
+
+//  Self test of this class
+int
+    zloop_test (Bool verbose);
+.fi
+.SH "DESCRIPTION"
+.sp
+The zloop class provides an event\-driven reactor pattern\&. The reactor handles zmq_pollitem_t items (pollers or writers, sockets or fds), and once\-off or repeated timers\&. Its resolution is 1 msec\&. It uses a tickless timer to reduce CPU interrupts in inactive processes\&.
+.SH "EXAMPLE"
+.PP
+\fBFrom zloop_test method\fR. 
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+    zctx_t *ctx = zctx_new ();
+
+    void *output = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_bind (output, "inproc://zloop\&.test");
+    void *input = zsocket_new (ctx, ZMQ_PAIR);
+    zsocket_connect (input, "inproc://zloop\&.test");
+
+    zloop_t *loop = zloop_new ();
+    assert (loop);
+    zloop_set_verbose (loop, verbose);
+
+    //  After 10 msecs, send a ping message to output
+    zloop_timer (loop, 10, 1,  s_timer_event, output);
+    //  When we get the ping message, end the reactor
+    zmq_pollitem_t poll_input = { input, 0, ZMQ_POLLIN };
+    zloop_poller (loop, &poll_input, s_socket_event, NULL);
+    zloop_start (loop);
+
+    zloop_destroy (&loop);
+    assert (loop == NULL);
+
+    zctx_destroy (&ctx);
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.sp
+\fBczmq\fR(7)
+.SH "AUTHORS"
+.sp
+The czmq manual was written by Pieter Hintjens<\m[blue]\fBph@imatix\&.com\fR\m[]\&\s-2\u[1]\d\s+2>\&.
+.SH "RESOURCES"
+.sp
+Main web site: \m[blue]\fBhttp://czmq\&.zeromq\&.org/\fR\m[]
+.sp
+Report bugs to the 0MQ development mailing list: <\m[blue]\fBzeromq\-dev@lists\&.zeromq\&.org\fR\m[]\&\s-2\u[2]\d\s+2>
+.SH "COPYRIGHT"
+.sp
+Copyright (c) 1991\-2010 iMatix Corporation and contributors\&. License LGPLv3+: GNU LGPL 3 or later <\m[blue]\fBhttp://gnu\&.org/licenses/lgpl\&.html\fR\m[]>\&. This is free software: you are free to change it and redistribute it\&. There is NO WARRANTY, to the extent permitted by law\&. For details see the files COPYING and COPYING\&.LESSER included with the czmq distribution\&.
+.SH "NOTES"
+.IP " 1." 4
+ph@imatix.com
+.RS 4
+\%mailto:ph@imatix.com
+.RE
+.IP " 2." 4
+zeromq-dev@lists.zeromq.org
+.RS 4
+\%mailto:zeromq-dev@lists.zeromq.org
+.RE

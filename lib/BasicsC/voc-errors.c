@@ -63,6 +63,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
   REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -135,6 +136,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING, "skiplist index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING, "skiplist index update warning - attribute missing in revised document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING, "skiplist index remove failure - item missing in index");
+  REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING, "bitarray index insertion warning - attribute missing in document");
+  REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING, "bitarray index update warning - attribute missing in revised document");
+  REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING, "bitarray index remove failure - item missing in index");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

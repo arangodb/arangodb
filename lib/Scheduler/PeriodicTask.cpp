@@ -46,6 +46,9 @@ PeriodicTask::PeriodicTask (double offset, double intervall)
 
 
 PeriodicTask::~PeriodicTask () {
+  if (watcher != 0) {
+    scheduler->uninstallEvent(watcher);
+  }
 }
 
 // -----------------------------------------------------------------------------

@@ -43,9 +43,9 @@
 /// @brief initialise
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_RESULT_GENERATOR_INITIALISE            \
-  do {                                                  \
-    triagens::rest::InitialiseResultGenerator();        \
+#define TRIAGENS_RESULT_GENERATOR_INITIALISE(a,b)               \
+  do {                                                          \
+    triagens::rest::InitialiseResultGenerator((a), (b));        \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ namespace triagens {
 /// @brief initialise function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseResultGenerator ();
+    extern void InitialiseResultGenerator (int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function

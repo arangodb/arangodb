@@ -419,6 +419,14 @@ bool TRI_CaseEqualString (char const* left, char const* right) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if ASCII strings are equal ignoring case
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CaseEqualString2 (char const* left, char const* right, size_t n) {
+  return strncasecmp(left, right, n) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if second string is prefix of the first
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1135,10 +1143,6 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-  char c1;
-  char c2;
-  char c3;
-  char c4;
 
   buffer = TRI_Allocate(zone, inLength + 1, false);
 
@@ -1153,24 +1157,12 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
       ++ptr;
 
       switch (*ptr) {
-        case '/':
-          *qtr = '/';
-          break;
-
-        case '\\':
-          *qtr = '\\';
-          break;
-
-        case '"':
-          *qtr = '"';
-          break;
-
         case 'b':
           *qtr = '\b';
           break;
 
         case 'f':
-          *qtr = 'f';
+          *qtr = '\f';
           break;
 
         case 'n':
@@ -1186,24 +1178,31 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
           break;
 
         case 'u':
-
           // expecting at least 6 characters: \uXXXX
           if (ptr + 4 < end) {
-            c1 = ptr[1];
-            c2 = ptr[2];
-
             // check, if we have a surrogate pair
             if (ptr + 10 < end) {
               bool sp;
-
-              c3 = ptr[7];
-              c4 = ptr[8];
-
+              char c1 = ptr[1];
+           
               sp = (c1 == 'd' || c1 == 'D');
-              sp &= (c2 == '8' || c2 == '9' || c2 == 'A' || c2 == 'a' || c2 == 'B' || c2 == 'b');
-              sp &= (ptr[5] == '\\' || ptr[6] == 'u');
-              sp &= (c3 == 'd' || c3 == 'D');
-              sp &= (c4 == 'C' || c4 == 'c' || c4 == 'D' || c4 == 'd' || c4 == 'E' || c4 == 'e' || c4 == 'F' || c4 == 'f');
+
+              if (sp) {
+                char c2 = ptr[2];
+                sp &= (c2 == '8' || c2 == '9' || c2 == 'A' || c2 == 'a' || c2 == 'B' || c2 == 'b');
+              }
+
+              if (sp) {
+                char c3 = ptr[7];
+                
+                sp &= (ptr[5] == '\\' && ptr[6] == 'u'); 
+                sp &= (c3 == 'd' || c3 == 'D');
+              }
+
+              if (sp) {
+                char c4 = ptr[8];
+                sp &= (c4 == 'C' || c4 == 'c' || c4 == 'D' || c4 == 'd' || c4 == 'E' || c4 == 'e' || c4 == 'F' || c4 == 'f');
+              }
 
               if (sp) {
                 DecodeSurrogatePair(&qtr, ptr + 1, ptr + 7);
@@ -1219,35 +1218,43 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
               ptr += 4;
             }
           }
-
           // ignore wrong format
           else {
             *qtr = *ptr;
           }
           break;
-
+  
         default:
+          // this includes cases \/, \\, and \"
           *qtr = *ptr;
           break;
-
       }
     }
-    else {
-      *qtr = *ptr;
-    }
+    
+    *qtr = *ptr;
   }
 
   *qtr = '\0';
   *outLength = qtr - buffer;
 
-  qtr = TRI_Allocate(zone, *outLength + 1, false);
+ 
+  // we might have wasted some space if the unescaped string is shorter than the
+  // escaped one. this is the case if the string contained escaped characters
+  if (*outLength < (ptr - in)) {
+    // result string is shorter than original string
+    qtr = TRI_Allocate(zone, *outLength + 1, false);
+ 
+    if (qtr != NULL) {
+      memcpy(qtr, buffer, *outLength + 1);
+      TRI_Free(zone, buffer);
 
-  if (qtr != NULL) {
-    memcpy(qtr, buffer, *outLength + 1);
+      return qtr;
+    }
+
+    // intentional fall-through
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
-  return qtr;
+  return buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -37,9 +37,10 @@
 #include <fstream>
 
 #include "ApplicationServer/ApplicationServer.h"
-#include <Basics/FileUtils.h>
-#include <Basics/safe_cast.h>
-#include <Logger/Logger.h>
+#include "Basics/FileUtils.h"
+#include "Basics/safe_cast.h"
+#include "BasicsC/process-utils.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens;
@@ -68,7 +69,7 @@ static void CheckPidFile (string const& pidFile) {
       TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
-    else if (FileUtils::exists(pidFile)) {
+    else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
 
       ifstream f(pidFile.c_str());
@@ -137,7 +138,7 @@ static void WritePidFile (string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (! out) {
-    cerr << "cannot write pid\n";
+    cerr << "cannot write pid-file \"" << pidFile << "\"\n";
     exit(EXIT_FAILURE);
   }
 
@@ -158,6 +159,9 @@ static int forkProcess (string const& pidFile, string const& workingDirectory, s
     LOGGER_FATAL << "cannot fork";
     exit(EXIT_FAILURE);
   }
+
+  // Upon successful completion, fork() shall return 0 to the child process and 
+  // shall return the process ID of the child process to the parent process.
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
@@ -331,6 +335,8 @@ void AnyServer::prepareServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::startupSupervisor () {
+  static time_t MIN_TIME_ALIVE_IN_SEC = 30;
+
   LOGGER_INFO << "starting up in supervisor mode";
   
   string current;
@@ -338,10 +344,13 @@ int AnyServer::startupSupervisor () {
   
   // main process
   if (result == 0) {
+    return 0;
   }
   
   // child process
   else if (result == 1) {
+    time_t startTime = time(0);
+    time_t t;
     bool done = false;
     result = 0;
     
@@ -356,6 +365,14 @@ int AnyServer::startupSupervisor () {
       
       // parent
       if (pid > 0) {
+        char const* title = "arangodb [supervisor]";
+
+        TRI_SetProcessTitle(title);
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+        prctl(PR_SET_NAME, title, 0, 0, 0);
+#endif
+
         int status;
         waitpid(pid, &status, 0);
         
@@ -365,8 +382,18 @@ int AnyServer::startupSupervisor () {
             done = true;
           }
           else {
-            LOGGER_ERROR << "child " << pid << " died of a horrible death, exit status " << WEXITSTATUS(status);
-            done = false;
+            t = time(0) - startTime;
+
+            LOGGER_ERROR << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
+            
+
+            if (t < MIN_TIME_ALIVE_IN_SEC) {
+              LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+              done = true;
+            }
+            else {
+              done = false;
+            }
           }
         }
         else if (WIFSIGNALED(status)) {
@@ -379,13 +406,23 @@ int AnyServer::startupSupervisor () {
               break;
               
             default:
-              LOGGER_ERROR << "child " << pid << " died of a horrible death, signal " << WTERMSIG(status);
-              done = false;
+              t = time(0) - startTime;
+
+              LOGGER_ERROR << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
+
+              if (t < MIN_TIME_ALIVE_IN_SEC) {
+                LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+                done = true;
+              }
+              else {
+                done = false;
+              }
+
               break;
           }
         }
         else {
-          LOGGER_ERROR << "child " << pid << " died of a horrible death";
+          LOGGER_ERROR << "child " << pid << " died a horrible death, unknown cause";
           done = false;
         }
       }
@@ -443,6 +480,9 @@ int AnyServer::startupDaemon () {
   
   // main process
   if (result == 0) {
+#ifdef TRI_HAVE_SYS_PRCTL_H
+        prctl(PR_SET_NAME, "arangodb [daemon]", 0, 0, 0);
+#endif
   }
   
   // child process

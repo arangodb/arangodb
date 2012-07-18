@@ -125,6 +125,22 @@ namespace triagens {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
+        /// @brief authenticates a new request
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool authenticateRequest (typename HF::GeneralRequest * request) {
+          return _handlerFactory == 0 ? true : _handlerFactory->authenticateRequest(request);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the authentication realm
+        ////////////////////////////////////////////////////////////////////////////////
+
+        std::string authenticationRealm (typename HF::GeneralRequest * request) {
+          return _handlerFactory == 0 ? "world" : _handlerFactory->authenticationRealm(request);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
         /// @brief creates a new request
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,7 +165,15 @@ namespace triagens {
             return ((S*) this)->createMaintenanceHandler();
           }
 
-          return _handlerFactory == 0 ? 0 : _handlerFactory->createHandler(request);
+          if (_handlerFactory == 0) {
+            return 0;
+          }
+
+          typename HF::GeneralHandler* handler = _handlerFactory->createHandler(request);
+
+          handler->setHandlerFactory(_handlerFactory);
+
+          return handler;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -157,12 +181,9 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         void destroyHandler (typename HF::GeneralHandler* handler) {
-          if (_handlerFactory == 0) {
-            delete handler;
-          }
-          else {
-            _handlerFactory->destroyHandler(handler);
-          }
+          assert(handler);
+
+          handler->beginShutdown();
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -229,8 +250,7 @@ namespace triagens {
           
           // Try all returned addresses
           for (aip = result; aip != NULL; aip = aip->ai_next) {
-            
-            ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), aip, reuseAddress);
+            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, reuseAddress);
 
             if (! task->isBound()) {
               deleteTask(task);
@@ -274,7 +294,7 @@ namespace triagens {
         /// @brief handles a request
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleRequest (CT * task, typename HF::GeneralHandler * handler) {
+        virtual bool handleRequest (CT * task, typename HF::GeneralHandler*& handler) {
 
           // execute handle and requeue
           bool done = false;
@@ -284,7 +304,10 @@ namespace triagens {
 
             if (status != Handler::HANDLER_REQUEUE) {
               done = true;
+              assert(handler);
+              task->setHandler(0);
               destroyHandler(handler);
+              handler = 0;
             }
             else {
               continue;
@@ -300,7 +323,7 @@ namespace triagens {
         /// @brief handles a connection close
         ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommunicationClosed (Task* task)  {
+        void handleCommunicationClosed (Task* task) {
           _scheduler->destroyTask(task);
         }
 
@@ -308,8 +331,16 @@ namespace triagens {
         /// @brief handles a connection failure
         ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommunicationFailure (Task* task)  {
+        void handleCommunicationFailure (Task* task) {
           _scheduler->destroyTask(task);
+        }
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief return the scheduler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        Scheduler* getScheduler () {
+          return _scheduler; 
         }
 
       protected:

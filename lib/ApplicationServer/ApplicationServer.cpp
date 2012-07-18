@@ -108,6 +108,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _features(),
     _exitOnParentDeath(false),
     _watchParent(0),
+    _stopping(0),
     _title(title),
     _version(version),
     _configFile(),
@@ -115,9 +116,11 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _systemConfigFile(),
     _systemConfigPath(),
     _uid(),
-    _loggingUid(0),
+    _realUid(0),
+    _effectiveUid(0),
     _gid(),
-    _loggingGid(0),
+    _realGid(0),
+    _effectiveGid(0),
     _logApplicationName("triagens"),
     _logHostName("-"),
     _logFacility("-"),
@@ -192,25 +195,9 @@ void ApplicationServer::setUserConfigFile (string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::setupLogging () {
-#ifdef TRI_HAVE_SETGID
-  gid_t gid;
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  uid_t uid;
-#endif
-
-#ifdef TRI_HAVE_SETGID
-  gid = getegid();
-  setegid(_loggingGid);
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  uid = geteuid();
-  seteuid(_loggingUid);
-#endif
-
   bool threaded = TRI_ShutdownLogging();
+
+  TRI_InitialiseLogging(threaded);
 
   Logger::setApplicationName(_logApplicationName);
   Logger::setHostName(_logHostName);
@@ -234,18 +221,19 @@ void ApplicationServer::setupLogging () {
   TRI_SetPrefixLogging(_logPrefix);
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  TRI_InitialiseLogging(threaded);
+  for (vector<string>::iterator i = _logFilter.begin();  i != _logFilter.end();  ++i) {
+    TRI_SetFileToLog(i->c_str());
+  }
 
-  TRI_CreateLogAppenderFile(_logFile);
+  if (NULL == TRI_CreateLogAppenderFile(_logFile)) {
+    if (_logFile.length() > 0) {
+      // the user specified a log file to use but it could not be created. bail out
+      std::cerr << "failed to create logfile " << _logFile << std::endl;
+      exit(EXIT_FAILURE);      
+
+    }
+  }
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
-
-#ifdef TRI_HAVE_SETGID
-  setegid(gid);
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  seteuid(uid);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,8 +322,18 @@ bool ApplicationServer::parse (int argc,
     exit(EXIT_SUCCESS);
   }
 
+  // .............................................................................
+  // UID and GID
+  // .............................................................................
+
+  storeRealPrivileges();
+  extractPrivileges();
+  dropPrivileges();
+
+  // .............................................................................
   // setup logging
-  storeLoggingPrivileges();
+  // .............................................................................
+
   setupLogging();
 
   // .............................................................................
@@ -362,7 +360,6 @@ bool ApplicationServer::parse (int argc,
 
   // re-set logging using the additional config file entries
   setupLogging();
-
 
   // .............................................................................
   // parse phase 2
@@ -395,17 +392,34 @@ bool ApplicationServer::parse (int argc,
     }
   }
 
-  // .............................................................................
-  // now drop all privilegs
-  // .............................................................................
-
-  dropPriviliges();
-
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the scheduler
+/// @brief prepares the server
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::prepare () {
+
+  // prepare all features
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+
+    bool ok = feature->prepare();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the server
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::start () {
@@ -415,14 +429,47 @@ void ApplicationServer::start () {
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
 
+  // start all startable features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-    bool ok = (*i)->start();
+    ApplicationFeature* feature = *i;
+
+    if (! feature->isStartable()) {
+      continue;
+    }
+
+    bool ok = feature->start();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to start server";
+      LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
       exit(EXIT_FAILURE);      
     }
+
+    LOGGER_INFO << "starting server feature '" << feature->getName() << "'";
+
+    while (! feature->isStarted()) {
+      usleep(1000);
+    }
+
+    LOGGER_TRACE << "started server feature '" << feature->getName() << "'";
   }
+
+  // now open all features
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "opening server feature '" << feature->getName() << "'";
+
+    bool ok = feature->open();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "opened server feature '" << feature->getName() << "'";
+  }
+
+  dropPrivilegesPermanently();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -432,11 +479,24 @@ void ApplicationServer::start () {
 void ApplicationServer::wait () {
   bool running = true;
 
-  while (running) {
+  // get all startable features
+  vector<ApplicationFeature*> startable;
+
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    if (feature->isStartable()) {
+      startable.push_back(feature);
+    }
+  }
+
+  // wait until all startable features have stopped
+  while (running && _stopping == 0) {
 
     // check the parent and wait for a second
-    if (_features.empty()) {
+    if (startable.empty()) {
       if (! checkParent()) {
+        running = false;
         break;
       }
 
@@ -447,14 +507,17 @@ void ApplicationServer::wait () {
     else {
       running = false;
 
-      for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-        bool r = (*i)->isRunning();
+      for (vector<ApplicationFeature*>::iterator i = startable.begin();  i != startable.end();  ++i) {
+        ApplicationFeature* feature = *i;
+
+        bool r = feature->isRunning();
 
         if (r) {
           running = r;
         }
 
         if (! checkParent()) {
+          running = false;
           break;
         }
       }
@@ -471,9 +534,21 @@ void ApplicationServer::wait () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::beginShutdown () {
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
-    (*i)->beginShutdown();
+  if (_stopping != 0) {
+    return;
   }
+
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "beginning shutdown sequence of server feature '" << feature->getName() << "'";
+
+    feature->beginShutdown();
+
+    LOGGER_TRACE << "shutdown sequence initiated for server feature '" << feature->getName() << "'";
+  }
+
+  _stopping = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,9 +558,133 @@ void ApplicationServer::beginShutdown () {
 void ApplicationServer::shutdown () {
   beginShutdown();
 
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
-    (*i)->shutdown();
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
+
+    feature->shutdown();
+
+    LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief raise the privileges
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::raisePrivileges () {
+
+#ifdef TRI_HAVE_SETGID
+
+  if (_effectiveGid != _realGid) {
+    int res = setegid(_realGid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+#endif
+
+#ifdef TRI_HAVE_SETUID
+
+  if (_effectiveUid != _realUid) {
+    int res = seteuid(_realUid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops the privileges
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::dropPrivileges () {
+
+#ifdef TRI_HAVE_SETGID
+
+  if (_effectiveGid != _realGid) {
+    int res = setegid(_effectiveGid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
+      cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+#endif
+
+#ifdef TRI_HAVE_SETUID
+
+  if (_effectiveUid != _realUid) {
+    int res = seteuid(_effectiveUid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
+      cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops the privileges permanently
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::dropPrivilegesPermanently () {
+  raisePrivileges();
+
+#ifdef TRI_HAVE_SETGID
+
+  if (_effectiveGid != _realGid) {
+    LOGGER_INFO << "permanently changing the gid to '" << _effectiveGid << "'";
+
+    int res = setgid(_effectiveGid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
+      cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+
+    _realGid = _effectiveGid;
+  }
+
+#endif
+
+#ifdef TRI_HAVE_SETUID
+
+  if (_effectiveUid != _realUid) {
+    LOGGER_INFO << "permanently changing the uid to '" << _effectiveUid << "'";
+
+    int res = setuid(_effectiveUid);
+
+    if (res != 0) {
+      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
+      cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
+      TRI_ShutdownLogging();
+      exit(EXIT_FAILURE);
+    }
+
+    _realUid = _effectiveUid;
+  }
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,20 +734,21 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // .............................................................................
 
   options[OPTIONS_LOGGER]
-    ("log.level,l", &_logLevel, "log level for severity 'human'")
     ("log.file", &_logFile, "log to file")
+    ("log.level,l", &_logLevel, "log level for severity 'human'")
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
-    ("log.thread", "log the thread identifier for severity 'human'")
-    ("log.severity", &_logSeverity, "log severities")
-    ("log.format", &_logFormat, "log format")
     ("log.application", &_logApplicationName, "application name")
     ("log.facility", &_logFacility, "facility name")
+    ("log.filter", &_logFilter, "filter for debug and trace")
+    ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")
-    ("log.prefix", &_logPrefix, "prefix log")
-    ("log.syslog", &_logSyslog, "use syslog facility")
     ("log.line-number", "always log file and line number")
+    ("log.prefix", &_logPrefix, "prefix log")
+    ("log.severity", &_logSeverity, "log severities")
+    ("log.syslog", &_logSyslog, "use syslog facility")
+    ("log.thread", "log the thread identifier for severity 'human'")
   ;
 
   options[OPTIONS_HIDDEN]
@@ -752,40 +952,26 @@ bool ApplicationServer::readConfigurationFile () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves the logging privileges
+/// @brief extract the privileges to use
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::storeLoggingPrivileges () {
-#ifdef TRI_HAVE_SETGID
-  _loggingGid = getegid();
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  _loggingUid = geteuid();
-#endif
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops the privileges
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::dropPriviliges () {
+void ApplicationServer::extractPrivileges() {
 
 #ifdef TRI_HAVE_SETGID
 
-  if (! _gid.empty()) {
-    LOGGER_TRACE << "trying to switch to group '" << _gid << "'";
-
+  if (_gid.empty()) {
+    _effectiveGid = getgid();
+  }
+  else {
     int gidNumber = TRI_Int32String(_gid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-      LOGGER_TRACE << "trying to switch to numeric gid '" << gidNumber << "' for '" << _gid << "'";
 
 #ifdef TRI_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
+        cerr << "unknown numeric gid '" << _gid << "'" << endl;
         LOGGER_FATAL << "unknown numeric gid '" << _gid << "'";
         TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
@@ -799,47 +985,41 @@ void ApplicationServer::dropPriviliges () {
 
       if (g != 0) {
         gidNumber = g->gr_gid;
-        LOGGER_TRACE << "trying to switch to numeric gid '" << gidNumber << "'";
       }
       else {
+        cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
         LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
         TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 #else
+      cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
       LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
       TRI_ShutdownLogging();
       exit(EXIT_FAILURE);
 #endif
     }
 
-    LOGGER_INFO << "changing gid to '" << gidNumber << "'";
-
-    int res = setegid(gidNumber);
-
-    if (res != 0) {
-      LOGGER_FATAL << "cannot set gid '" << _gid << "', because " << strerror(errno);
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
-    }
+    _effectiveGid = gidNumber;
   }
 
 #endif
 
 #ifdef TRI_HAVE_SETUID
 
-  if (! _uid.empty()) {
-    LOGGER_TRACE << "trying to switch to user '" << _uid << "'";
-
+  if (_uid.empty()) {
+    _effectiveUid = getuid();
+  }
+  else {
     int uidNumber = TRI_Int32String(_uid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-      LOGGER_TRACE << "trying to switch to numeric uid '" << uidNumber << "' for '" << _uid << "'";
 
 #ifdef TRI_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
+        cerr << "unknown numeric uid '" << _uid << "'" << endl;
         LOGGER_FATAL << "unknown numeric uid '" << _uid << "'";
         TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
@@ -853,31 +1033,38 @@ void ApplicationServer::dropPriviliges () {
 
       if (p != 0) {
         uidNumber = p->pw_uid;
-        LOGGER_TRACE << "trying to switch to numeric uid '" << uidNumber << "'";
       }
       else {
+        cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
         LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
         TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 #else
+      cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
       LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
       TRI_ShutdownLogging();
       exit(EXIT_FAILURE);
 #endif
     }
 
-    LOGGER_INFO << "changing uid to '" << uidNumber << "'";
-
-    int res = seteuid(uidNumber);
-
-    if (res != 0) {
-      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
-    }
+    _effectiveUid = uidNumber;
   }
 
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves the logging privileges
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::storeRealPrivileges () {
+#ifdef TRI_HAVE_SETGID
+  _realGid = getgid();
+#endif
+
+#ifdef TRI_HAVE_SETUID
+  _realUid = getuid();
 #endif
 }
 

@@ -37,7 +37,9 @@
 #include "HashIndex/hashindex.h"
 #include "PriorityQueue/pqueueindex.h"
 #include "SkipLists/skiplistIndex.h"
+#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
+#include "BitIndexes/bitarrayIndex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -194,6 +196,21 @@ typedef struct TRI_cap_constraint_s {
   size_t _size;
 }
 TRI_cap_constraint_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_bitarray_index_s {
+  TRI_index_t base;
+  
+  BitarrayIndex* _bitarrayIndex;  
+  TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
+  TRI_vector_t _values;           // a list of json objects which match the list of attributes used by the index
+  bool _supportUndef;            // allows documents which do not match the attribute list to be indexed
+}
+TRI_bitarray_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -523,14 +540,6 @@ void TRI_FreePriorityQueueIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 
-
-
-
-
-
-
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
 // -----------------------------------------------------------------------------
@@ -567,6 +576,56 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx);
+                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    BITARRAY INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an iterator for a lookup query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, TRI_index_operator_t*, bool (*filter) (TRI_index_iterator_t*) );
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s*,
+                                      TRI_vector_pointer_t*,
+                                      TRI_vector_t*,
+                                      TRI_vector_pointer_t*,
+                                      bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyBitarrayIndex (TRI_index_t* idx);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBitarrayIndex (TRI_index_t* idx);
                                   
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

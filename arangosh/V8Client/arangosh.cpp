@@ -551,7 +551,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("quiet,s", "no banner")
     ("request-timeout", &RequestTimeout, "request timeout in seconds")
     ("server", &ServerAddressPort, "server address and port, use 'none' to start without a server")
-    ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("use-pager", "use pager")
     (hidden, true)
   ;
@@ -1141,7 +1141,7 @@ static void addColors (v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 

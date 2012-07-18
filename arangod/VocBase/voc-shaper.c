@@ -910,7 +910,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   TRI_col_parameter_t parameter;
   bool ok;
 
-  TRI_InitParameterCollection(&parameter, name, SHAPER_DATAFILE_SIZE);
+  TRI_InitParameterCollection(vocbase, &parameter, name, SHAPER_DATAFILE_SIZE);
 
   collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
 
@@ -1029,6 +1029,10 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+  if (shaper == NULL) {
+    return NULL;
+  }
+
   TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
@@ -1078,11 +1082,13 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
     LOG_ERROR("cannot close blob collection of shaper, error %lu", (unsigned long) err);
   }
 
+  // TODO free the accessors
+
   return err;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a persistent shaper
+/// @brief finds an accessor for a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
@@ -1108,6 +1114,60 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
   TRI_UnlockMutex(&shaper->_accessorLock);
 
   return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a sub-shape
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
+                                     TRI_shaped_json_t const* document,
+                                     TRI_shape_sid_t sid,
+                                     TRI_shape_pid_t pid,
+                                     TRI_shaped_json_t* result,
+                                     TRI_shape_t const** shape) {
+  TRI_shape_access_t const* accessor;
+  bool ok;
+
+  accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pid);
+
+  if (accessor == NULL) {
+    LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+              (unsigned long) document->_sid,
+              (unsigned long) pid);
+
+    return false;
+  }
+
+  *shape = accessor->_shape;
+
+  if (accessor->_shape == NULL) {
+    LOG_TRACE("expecting any object for path %lu, got nothing",
+              (unsigned long) pid);
+
+    return sid == 0;
+  }
+
+  if (sid != 0 && sid != accessor->_shape->_sid) {
+    LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
+              (unsigned long) sid,
+              (unsigned long) pid,
+              (unsigned long) accessor->_shape->_sid);
+
+    return false;
+  }
+
+  ok = TRI_ExecuteShapeAccessor(accessor, document, result);
+
+  if (! ok) {
+    LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+              (unsigned long) document->_sid,
+              (unsigned long) pid);
+
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

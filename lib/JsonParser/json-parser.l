@@ -67,6 +67,7 @@ PLUS          [+]
 #define COMMA 10
 #define COLON 11
 #define UNQUOTED_STRING 12
+#define STRING_CONSTANT_ASCII 13
 
 struct jsonData {
   char const* _message;
@@ -98,6 +99,14 @@ struct jsonData {
  /* -----------------------------------------------------------------------------
   * strings
   * ----------------------------------------------------------------------------- */
+
+\"[ !\x23-\x5b\x5d-x7f]*\" {
+  // performance optimisation for all-ASCII strings without escape characters
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
+  // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
+  return STRING_CONSTANT_ASCII;
+}
+
 
 \"(\\.|[^\\\"])*\" {
   return STRING_CONSTANT;
@@ -239,10 +248,8 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
   TRI_json_t* sub;
   bool comma;
   char* name;
-  char const* ptr;
+  size_t nameLen;
   int c;
-  size_t len;
-  size_t outLength;
 
   comma = false;
   array = TRI_CreateArrayJson(yyextra._memoryZone);
@@ -272,16 +279,29 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
     }
 
     // attribute name
-    if (c != STRING_CONSTANT) {
+    if (c == STRING_CONSTANT) {
+      // "complex" attribute name
+      size_t outLength;
+      nameLen = yyleng - 2;
+
+      // do proper unescaping
+      name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
+
+    }
+    else if (c == STRING_CONSTANT_ASCII) {
+      // ASCII-only attribute name
+      nameLen = yyleng - 2;
+
+      // no unescaping necessary. just copy it
+      name = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, nameLen);
+    }
+    else {
+      // some other token found => invalid
       TRI_FreeJson(yyextra._memoryZone, array);
       yyextra._message = "expecting attribute name";
       return NULL;
     }
-
-    ptr = yytext;
-    len = yyleng;
-    name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
-
+      
     if (name == NULL) {
       TRI_FreeJson(yyextra._memoryZone, array);
       yyextra._message = "out-of-memory";
@@ -298,7 +318,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
       return NULL;
     }
 
-    // fallowed by an object
+    // followed by an object
     c = yylex(scanner);
     sub = ParseObject(scanner, c);
 
@@ -308,8 +328,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
       return NULL;
     }
 
-    TRI_Insert3ArrayJson(yyextra._memoryZone, array, name, sub);
-    TRI_FreeString(yyextra._memoryZone, name);
+    TRI_Insert4ArrayJson(yyextra._memoryZone, array, name, nameLen, sub);
 
     c = yylex(scanner);
   }
@@ -329,10 +348,6 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
   TRI_json_t* result;
 
   switch (c) {
-    case END_OF_FILE:
-      yyextra._message = "expecting atom, got end-of-file";
-      return NULL;
-
     case FALSE_CONSTANT:
       result = TRI_CreateBooleanJson(yyextra._memoryZone, false);
 
@@ -361,19 +376,16 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
       return result;
 
     case NUMBER_CONSTANT: {
-      char buffer[512];
       char* ep;
       double d;
 
-      if ((size_t) yyleng >= sizeof(buffer)) {
+      if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
         return NULL;
       }
 
-      memcpy(buffer, yytext, yyleng);
-      buffer[yyleng] = '\0';
-
-      d = strtod(buffer, &ep);
+      // yytext is null-terminated. can use it directly without copying it into a temporary buffer
+      d = strtod(yytext, &ep);
 
       if (d == HUGE_VAL && errno == ERANGE) {
         yyextra._message = "number too big";
@@ -385,7 +397,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
         return NULL;
       }
 
-      if (ep != buffer + yyleng) {
+      if (ep != yytext + yyleng) {
         yyextra._message = "cannot parse number";
         return NULL;
       }
@@ -418,16 +430,26 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 
       return result;
     }
+    
+    case STRING_CONSTANT_ASCII: {
+      result = TRI_CreateString2CopyJson(yyextra._memoryZone, yytext + 1, yyleng - 2);
+
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
+    }
 
     case OPEN_BRACE:
       return ParseArray(scanner);
 
+    case OPEN_BRACKET:
+      return ParseList(scanner);
+    
     case CLOSE_BRACE:
       yyextra._message = "expected object, got '}'";
       return NULL;
-
-    case OPEN_BRACKET:
-      return ParseList(scanner);
 
     case CLOSE_BRACKET:
       yyextra._message = "expected object, got ']'";
@@ -443,6 +465,10 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 
     case UNQUOTED_STRING:
       yyextra._message = "expected object, got unquoted string";
+      return NULL;
+    
+    case END_OF_FILE:
+      yyextra._message = "expecting atom, got end-of-file";
       return NULL;
   }
 

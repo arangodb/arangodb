@@ -75,12 +75,10 @@ DOXYGEN = \
 WIKI = \
 	ArangoErrors \
 	CommandLine \
-	CommandLineLogging \
-	CommandLineRandom \
-	CommandLineScheduler \
 	Compiling \
 	DbaManual \
 	DbaManualBasics \
+	DbaManualAuthentication \
 	DefineAction \
 	ExamplesSetup \
 	FirstStepsArangoDB \

@@ -57,9 +57,6 @@ PROTOBUF_FILES =
 ################################################################################
 
 AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${sysconfdir}"' \
-	-D_PKGDATADIR_='"${pkgdatadir}"' \
-	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
 	-I@top_srcdir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
@@ -67,11 +64,50 @@ AM_CPPFLAGS = \
 	@NCURSES_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
 	@READLINE_CPPFLAGS@ \
+	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_CPPFLAGS += \
 	@ZEROMQ_CPPFLAGS@
+
+endif
+
+
+
+if ENABLE_RELATIVE_SYSTEM
+
+TRI_LOG_DIR=$(prefix)/var/log/$(PACKAGE_TARNAME)
+TRI_PKGDATA_DIR=$(prefix)/share/$(PACKAGE_TARNAME)
+TRI_SBIN_DIR=${prefix}/sbin
+TRI_SYSCONF_DIR=${prefix}/etc/$(PACKAGE_TARNAME)
+
+else
+if ENABLE_RELATIVE_DEVEL
+
+TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
+TRI_LOG_DIR=/tmp
+TRI_PKGDATA_DIR=.
+TRI_SBIN_DIR=bin
+
+AM_CPPFLAGS += \
+	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+
+else
+
+TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
+TRI_LOG_DIR=$(localstatedir)/log/$(PACKAGE_TARNAME)
+TRI_PKGDATA_DIR=${pkgdatadir}
+TRI_SBIN_DIR=${sbindir}
+TRI_SYSCONF_DIR=$(sysconfdir)/$(PACKAGE_TARNAME)
+
+AM_CPPFLAGS += \
+	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
+	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
+	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+
+endif
 endif
 
 ################################################################################
@@ -85,11 +121,14 @@ AM_LDFLAGS = \
 	@NCURSES_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
+	@PROTOBUF_LDFLAGS@ \
 	@V8_LDFLAGS@
 
 if ENABLE_ZEROMQ
+
 AM_LDFLAGS += \
 	@ZEROMQ_LDFLAGS@
+
 endif
 
 ################################################################################
@@ -102,6 +141,7 @@ LIBS = \
 	@MATH_LIBS@ \
 	@NCURSES_LIBS@ \
 	@OPENSSL_LIBS@ \
+	@PROTOBUF_LIBS@ \
 	@READLINE_LIBS@
 
 ################################################################################
@@ -109,9 +149,11 @@ LIBS = \
 ################################################################################
 
 if ENABLE_MRUBY
+
 AM_CPPFLAGS += @MRUBY_CPPFLAGS@
 AM_CPPFLAGS += @MRUBY_LDFLAGS@
 LIBS += @MRUBY_LIBS@
+
 endif
 
 ################################################################################
@@ -133,7 +175,8 @@ noinst_LIBRARIES = \
 ################################################################################
 
 sbin_PROGRAMS = \
-	bin/arangod
+	bin/arangod \
+        bin/arango-password
 
 ################################################################################
 ### @brief /bin programs
@@ -169,14 +212,30 @@ bin_PROGRAMS += bin/arangoirb
 endif
 
 ################################################################################
+### @brief /etc data
+################################################################################
+
+arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
+arangosysconf_DATA = Installation/arangod.conf
+
+BUILT_SOURCES += Installation/arangod.conf
+
+Installation/arangod.conf: Installation/arangod.conf.in Makefile
+	sed \
+		-e 's%@LOGDIR@%${TRI_LOG_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+
+################################################################################
 ### @brief /share data
 ################################################################################
 
 nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
-	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/actions -name "*.js" -print) \
+	$(shell find @srcdir@/js/common -name "*.js" -print) \
+	$(shell find @srcdir@/js/server -name "*.js" -print) \
+	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
@@ -184,14 +243,22 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
+if ENABLE_MRUBY
+
+nobase_pkgdata_DATA += \
+	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
+
+endif
+
 ################################################################################
 ### @brief /var data
 ################################################################################
 
 if ENABLE_INSTALL_DBDIR
+
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+
 endif
 
 ################################################################################
@@ -239,6 +306,7 @@ include Makefile.unittests
 .PHONY: errorfiles
 
 if ENABLE_ERRORS_DEPENDENCY
+
 errorfiles: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
@@ -246,6 +314,7 @@ errorfiles: lib/BasicsC/errors.dat
 
 BUILT_SOURCES += \
 	errorfiles
+
 endif
 
 ################################################################################
@@ -254,6 +323,28 @@ endif
 
 clean-local:
 	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+
+################################################################################
+### @brief generated files
+################################################################################
+
+.PHONY: built-sources
+
+built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+################################################################################
+### @brief arango password
+################################################################################
+
+bin/arango-password: bin/arango-password.in
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+
+CLEANUP += bin/arango-password
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES
@@ -299,9 +390,8 @@ endif
 ### @brief protocol buffers
 ################################################################################
 
-if ENABLE_PROTOBUF_DEPENDENCY
+include m4/Makefile.all-in-one-protobuf
 include m4/Makefile.protobuf
-endif
 
 ################################################################################
 ## --SECTION--                                                EXTERNAL LIBRARIES

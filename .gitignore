@@ -53,6 +53,7 @@ lib/BasicsC/local-configuration.h
 .libev-build-*
 .libs
 *.lo
+configure
 m4/component.engine
 m4/component.files
 m4/component.storage
@@ -85,6 +86,7 @@ stamp-h*
 .svn
 *.swp
 tags
+TAGS
 UnitTests/basics_suite
 UnitTests/geo_suite
 UnitTests/HttpInterface/logs
@@ -149,3 +151,11 @@ VC++
 3rdParty/zeromq-2.2.0/tests/test_timeo
 .zeromq-build-64
 3rdParty/zeromq-2.2.0/BUILD/
+.czmq-build-64
+3rdParty/czmq-1.1.0/libtool
+3rdParty/czmq-1.1.0/src/czmq_selftest
+3rdParty/czmq-1.1.0/src/libczmq.pc
+3rdParty/czmq-1.1.0/src/platform.h
+.protobuf-build-64
+3rdParty/protobuf-2.4.1/BUILD/
+Installation/arangod.conf

@@ -188,7 +188,7 @@ int TRI_VerifyLockFile (char const* filename);
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DestroyLockFile (char const* filename);
+int TRI_DestroyLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program

@@ -79,19 +79,21 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructs a new http client
       ///
-      /// @param string hostport            server hostname and port
-      /// @param double connectTimeout      timeout in seconds for the tcp connect 
-      /// @param size_t connectRetries      maximum number of request retries
-      /// @param SimpleLogger* logger       a logger object
+      /// @param hostname               server hostname
+      /// @param port                   server port
+      /// @param requestTimeout         timeout in seconds for the request
+      /// @param connectTimeout         timeout in seconds for the tcp connect 
+      /// @param connectRetries         maximum number of request retries
+      /// @param warn                   enable warnings
       ///
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpClient (string const& hostname,
-                      int port,
-                      double requestTimeout,
-                      double connectTimeout, 
-                      size_t connectRetries,
-                      bool warn);
+                        int port,
+                        double requestTimeout,
+                        double connectTimeout, 
+                        size_t connectRetries,
+                        bool warn);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructs a http client
@@ -103,13 +105,13 @@ namespace triagens {
       /// @brief make a http request
       ///        The caller has to delete the result object
       ///
-      /// @param int method                           http method
-      /// @param string location                      request location
-      /// @param char* body                           request body
-      /// @param size_t bodyLength                    body length
-      /// @param map<string, string> headerFields     header fields
+      /// @param method                         http method
+      /// @param location                       request location
+      /// @param body                           request body
+      /// @param bodyLength                     body length
+      /// @param headerFields                   header fields
       ///
-      /// @return SimpleHttpResult          the request result
+      /// @return SimpleHttpResult              the request result
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (int method, 
@@ -153,9 +155,9 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets username and password 
       ///
-      /// @param string prefix              prefix for sending username and password
-      /// @param string username            username
-      /// @param string password            password
+      /// @param prefix                         prefix for sending username and password
+      /// @param username                       username
+      /// @param password                       password
       ///
       /// @return void
       ////////////////////////////////////////////////////////////////////////////////
@@ -178,11 +180,11 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief set the request
       ///
-      /// @param int method                           request method
-      /// @param string location                      request uri
-      /// @param char* body                           request body
-      /// @param size_t bodyLenght                    size of body
-      /// @param map<string, string> headerFields     list of header fields
+      /// @param method                         request method
+      /// @param location                       request uri
+      /// @param body                           request body
+      /// @param bodyLength                     size of body
+      /// @param headerFields                   list of header fields
       ////////////////////////////////////////////////////////////////////////////////
       
       void setRequest (int method,

@@ -35,6 +35,8 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 
+#include "IndexIterators/index-iterator.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,16 +65,8 @@ typedef struct MasterTableBlockData_s {
 
 
 typedef struct MasterTableBlock_s {
-  uint8_t _usedPointers;
-  uint8_t _deletedPointers;
-  bit_column_int_t _deleted;  
-  
+  bit_column_int_t _free;  
   MasterTableBlockData_t _tablePointers [BITARRAY_MASTER_TABLE_BLOCKSIZE];  
-  // ............................................................................
-  // to test for deleted value
-  // Let 0 <= n <= (BITARRAY_MASTER_TABLE_BLOCKSIZE - 1). 
-  // if ((1 << n) && deleted) == 0, then item has been removed, otherwise not.  
-  // ............................................................................
 } MasterTableBlock_t;
 
 
@@ -86,10 +80,11 @@ typedef struct MasterTableBlock_s {
 
 typedef struct MasterTable_s {
   size_t _numBlocks;               // the number of blocks allocated in the memory zone for the Master Table
-  size_t _usedBlocks;              // the number of used block (not necessarily completed) within the Master Table. 
   MasterTableBlock_t* _blocks;     // a list of blocks storing the document pointers
-  TRI_memory_zone_t* _memoryZone;  // the memory zone where the blocks will reside NOT where the table structure will reside
   TRI_associative_array_t _tablePosition; // The associated array - which stores the table position of a document
+  TRI_vector_t _freeBlockPosition; // a list of free blocks we can use
+  bool _shared;                    // if true, then this table is shared between various bitarrays
+  TRI_memory_zone_t* _memoryZone;  // the memory zone where the blocks will reside NOT where the table structure will reside
 } MasterTable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,12 +104,12 @@ typedef struct MasterTable_s {
 // forward declared functions
 // ............................................................................
 static int  extendMasterTable        (MasterTable_t*);
-static int  createMasterTable        (MasterTable_t**, TRI_memory_zone_t*); 
+static int  createMasterTable        (MasterTable_t**, TRI_memory_zone_t*, bool); 
 static void destroyMasterTable       (MasterTable_t* mt); 
 static void freeMasterTable          (MasterTable_t* mt); 
 static int  insertMasterTable        (MasterTable_t*, TRI_master_table_position_t*);
-static int  removeElementMasterTable (MasterTable_t*, TRI_master_table_position_t*, bool*);
-static int  storeElementMasterTable  (MasterTable_t*, TRI_vector_pointer_t*, TRI_master_table_position_t*);
+static int  removeElementMasterTable (MasterTable_t*, TRI_master_table_position_t*);
+static int  storeElementMasterTable  (MasterTable_t*, void*, TRI_master_table_position_t*);
 // ............................................................................
 // forward declared functions associative array
 // ............................................................................
@@ -124,7 +119,10 @@ static void     tablePositionClearElement          (TRI_associative_array_t*, vo
 static bool     tablePositionIsEmptyElement        (TRI_associative_array_t*, void*);
 static bool     tablePositionIsEqualKeyElement     (TRI_associative_array_t*, void*, void*);
 static bool     tablePositionIsEqualElementElement (TRI_associative_array_t*, void*, void*);
-
+// ............................................................................
+// forward declared functions for vector
+// ............................................................................
+static int64_t compareIndexOf(MasterTable_t*, size_t, bool*);
 
 // ............................................................................
 // Implementation of master table functions
@@ -136,15 +134,14 @@ static bool     tablePositionIsEqualElementElement (TRI_associative_array_t*, vo
 // Creates a Master Table (MT). Failure will return an appropriate error number 
 ///////////////////////////////////////////////////////////////////////////////
 
-static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone) {
-  int j;
-  MasterTableBlock_t* block;  
-
+static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, bool shared) {
+  size_t j;
+  
   // ..........................................................................  
   // If the MT has already been created, return, do nothing and report no error
   // ..........................................................................  
   
-  if ( *mt != NULL) {
+  if (*mt != NULL) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -153,7 +150,7 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone) 
   // If the memoryZone is invalid, return internal error
   // ..........................................................................  
   
-  if ( memoryZone == NULL) {
+  if (memoryZone == NULL) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -161,7 +158,7 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone) 
   // Create the MT structure
   // ..........................................................................  
   
-  *mt = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MasterTable_t), false);
+  *mt = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MasterTable_t), true);
   if (*mt == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
@@ -172,30 +169,25 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone) 
   // ..........................................................................  
   
   (*mt)->_numBlocks  = BITARRAY_MASTER_TABLE_INITIAL_SIZE;  
-  (*mt)->_usedBlocks = 0;
-  (*mt)->_blocks     = TRI_Allocate(memoryZone, (sizeof(MasterTableBlock_t) * (*mt)->_numBlocks), false);
+  
+  if ((*mt)->_numBlocks > 0) {
+    (*mt)->_blocks = TRI_Allocate(memoryZone, (sizeof(MasterTableBlock_t) * (*mt)->_numBlocks), true); 
+    if ((*mt)->_blocks == NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, *mt);
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }  
+  }
+  else {
+    (*mt)->_blocks = NULL;
+  }
+  
   (*mt)->_memoryZone = memoryZone;
-  
-  if ((*mt)->_blocks == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, *mt);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }  
-  
-  
-  // ..........................................................................  
-  // Clear all blocks in the table
-  // ..........................................................................  
-  
-  for (j = 0; j < (*mt)->_numBlocks; ++j) {
-    block = &((*mt)->_blocks[j]);
-    block->_usedPointers    = 0;
-    block->_deletedPointers = 0;
-    memset(&(block->_tablePointers), 0, BITARRAY_MASTER_TABLE_BLOCKSIZE * sizeof(MasterTableBlockData_t) );
-  }  
+  (*mt)->_shared     = shared;
   
   
   // ............................................................................
-  // The associative array for table position of a document
+  // The associative array for table position of a document based upon the 
+  // document handle
   // ............................................................................
 
   TRI_InitAssociativeArray(&((*mt)->_tablePosition), 
@@ -209,6 +201,22 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone) 
                            tablePositionIsEqualElementElement);
                            
   
+  // ............................................................................
+  // Fill in the free list of blocks -- this is how we insert entries into the
+  // master table. Entries are never deleted. We reuse the blocks whenever
+  // possible. Note that the free list is for BLOCKS only not for arrays 
+  // positions within a block. Once we have a free block we go to the block and
+  // then we find the first free position within the block using the block itself.
+  // ............................................................................
+  
+  TRI_InitVector(&((*mt)->_freeBlockPosition), memoryZone, sizeof(size_t)); 
+  
+  for (j = 0; j < (*mt)->_numBlocks; ++j) {
+    MasterTableBlock_t* block = (*mt)->_blocks + j;     
+    block->_free = ~((bit_column_int_t)(0));
+    TRI_PushBackVector(&((*mt)->_freeBlockPosition), &j);      
+  }
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -217,8 +225,11 @@ static void destroyMasterTable(MasterTable_t* mt) {
   if (mt == NULL) {
     return;
   }
-  freeMasterTable(mt);
-  TRI_Free(mt->_memoryZone, mt);
+  TRI_DestroyAssociativeArray(&(mt->_tablePosition));
+  TRI_DestroyVector(&(mt->_freeBlockPosition));
+  if (mt->_blocks != 0) {
+    TRI_Free(mt->_memoryZone, mt->_blocks);
+  }  
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -229,38 +240,50 @@ static void destroyMasterTable(MasterTable_t* mt) {
 
 static int extendMasterTable(MasterTable_t* mt) {
   MasterTableBlock_t* newBlocks;
-  MasterTableBlock_t* block;  
   size_t newNumBlocks;
-  int j;
+  size_t* freeBlock;
+  size_t j;
   
-  if (mt->_usedBlocks < mt->_numBlocks) {
-    return TRI_ERROR_NO_ERROR;
+  // ..........................................................................
+  // Obtain the first block which is free
+  // ..........................................................................
+  
+  freeBlock = TRI_AtVector(&(mt->_freeBlockPosition),0);
+  
+  if (freeBlock != NULL) {
+  
+    // ........................................................................
+    // something is terribly wrong
+    // ........................................................................
+    assert(false);
+    return TRI_ERROR_INTERNAL;
   }
 
+  
   newNumBlocks = (mt->_numBlocks * BITARRAY_MASTER_TABLE_GROW_FACTOR) + 1;  
-  newBlocks    = TRI_Allocate(mt->_memoryZone, (sizeof(MasterTableBlock_t) * newNumBlocks), false);
+  newBlocks    = TRI_Allocate(mt->_memoryZone, (sizeof(MasterTableBlock_t) * newNumBlocks), true);
   
   if (newBlocks == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
 
   
-  for (j = mt->_usedBlocks; j < newNumBlocks; ++j) {
-    block = &(newBlocks[j]);
-    block->_usedPointers    = 0;
-    block->_deletedPointers = 0;
-    memset(&(block->_tablePointers), 0, BITARRAY_MASTER_TABLE_BLOCKSIZE * sizeof(MasterTableBlockData_t) );
-  }  
+  if (mt->_blocks != NULL) {
+    memcpy(newBlocks, mt->_blocks, mt->_numBlocks * sizeof(MasterTableBlock_t));
+    TRI_Free(mt->_memoryZone, mt->_blocks);
+  }
   
-
-  memcpy(newBlocks, mt->_blocks, mt->_usedBlocks * sizeof(MasterTableBlock_t));
+  mt->_blocks = newBlocks;
   
-  TRI_Free(mt->_memoryZone, mt->_blocks);
-  mt->_blocks    = newBlocks;
+  for (j = mt->_numBlocks; j < newNumBlocks; ++j) {
+    MasterTableBlock_t* block = mt->_blocks + j;     
+    block->_free = ~((bit_column_int_t)(0));
+    TRI_PushBackVector(&(mt->_freeBlockPosition), &j);      
+  }
+  
   mt->_numBlocks = newNumBlocks;  
   
   return TRI_ERROR_NO_ERROR;
-    
 }
 
 
@@ -273,82 +296,100 @@ static void freeMasterTable(MasterTable_t* mt) {
   if (mt == NULL) {
     return;
   }
-  TRI_Free(mt->_memoryZone, mt->_blocks);
+  destroyMasterTable(mt);
+  TRI_Free(mt->_memoryZone, mt);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Always insert first, then apply the generated position 
-// Not optimised as yet for document handles with the same bit masks
+// Not optimised as yet for document pointers/handles with the same bit masks
 ///////////////////////////////////////////////////////////////////////////////
 
 static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tableEntry) {
   int result;
   MasterTableBlock_t* block;  
-
+  bit_column_int_t blockEntryNum;
+  size_t* freeBlock;
+  
+  
+  START: // I love goto it makes me nostalgic for the good old days of FORTRAN 
+  
   // ..........................................................................
-  // Check whether or not we have enough room remaining in the master table 
-  // array to store the new table entry.
+  // Obtain the first block which is free
   // ..........................................................................
   
-  result = extendMasterTable(mt);
+  freeBlock = TRI_AtVector(&(mt->_freeBlockPosition),0);
+  
+  if (freeBlock == NULL) {
+    // ........................................................................
+    // It appears that we have run out of remove in our master table. Extend
+    // the master table and try again.
+    // ........................................................................
 
-  if (result != TRI_ERROR_NO_ERROR) {
-    return result;
+    result = extendMasterTable(mt);
+
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
+    }
+    
+    goto START;
   }
+  
+
+  // ..........................................................................
+  // Store the number of the block within the position structure
+  // ..........................................................................
+  
+  tableEntry->_blockNum  = *freeBlock;
   
   
   // ..........................................................................
   // Extract the block in which we are going to operate on
   // ..........................................................................
   
-  block = &(mt->_blocks[mt->_usedBlocks]);
+  block = &(mt->_blocks[tableEntry->_blockNum]);
 
 
   // ..........................................................................
-  // Check that we do not need a new block if the currrent block is full
+  // Locate the first entry which is free within this block
+  // Note that if all entries within this block are occupied we have to try
+  // again.
   // ..........................................................................
-
-  if (block->_usedPointers == BITARRAY_MASTER_TABLE_BLOCKSIZE) {
-    ++(mt->_usedBlocks);
-    
+  
+  if (block->_free == 0) {
+  
     // ........................................................................
-    // Need to check again if we have enough remove
+    // this block is not free, remove it from the free list and try again
     // ........................................................................
 
-    result = extendMasterTable(mt);
-    if (result != TRI_ERROR_NO_ERROR) {
-      return result;
+    TRI_RemoveVector(&(mt->_freeBlockPosition),0);
+    goto START;    
+  }
+  
+  
+  blockEntryNum = 0;
+  while (true) {
+    bit_column_int_t tempInt = (bit_column_int_t)(1) << blockEntryNum;
+    if ((block->_free & tempInt)) {
+      block->_free = (block->_free & (~tempInt));
+      break;
     }
-    
-    
-    // ........................................................................
-    // Extract the block again this time we know it is empty
-    // ........................................................................
-    
-    block = &(mt->_blocks[mt->_usedBlocks]);
-  }  
-
+    ++blockEntryNum;
+    if (blockEntryNum == BITARRAY_MASTER_TABLE_BLOCKSIZE) {
+      assert(false);
+      return TRI_ERROR_INTERNAL;
+    }
+  }
   
-  
-  // ..........................................................................
-  // Set the document handle in the table
-  // ..........................................................................
-  
-  ((block->_tablePointers)[block->_usedPointers])._tablePointer = tableEntry->_docPointer;
-  ((block->_tablePointers)[block->_usedPointers])._numPointers  = 1;
-  ++(block->_usedPointers);  
-  
-
-  // ..........................................................................
-  // Set the position information so this can be passed back to the bitarray
-  // ..........................................................................
-
-  tableEntry->_blockNum  = mt->_usedBlocks;
-  tableEntry->_bitNum    = block->_usedPointers;
+  tableEntry->_blockNum  = *freeBlock;
+  tableEntry->_bitNum    = blockEntryNum;
   tableEntry->_vectorNum = 0; // not currently used in this revision
   
-
+  block->_tablePointers[blockEntryNum]._numPointers  = 1;
+  block->_tablePointers[blockEntryNum]._tablePointer = tableEntry->_docPointer;
+  
+  
   // ..........................................................................
   // Insert the tableEntry into the associative array with the key being 
   // the document handle.
@@ -359,38 +400,98 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
   }  
   
   
+  //printf("%s:%d:@:%d:%d:%d:%lu \n",__FILE__,__LINE__,  block->_free,*freeBlock,blockEntryNum,  (uint64_t)(tableEntry->_docPointer) );
   return TRI_ERROR_NO_ERROR;
 }
 
 
 
-int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* position, bool* compactColumns) {
-  /*
-  size_t _blockNum;   // the block within the Master Table
-  uint8_t _offset;    // with the given block, an integer from 0..255 which indicates where within the block the document pointer resides
-  void* _docPointer;  // the document pointer stored in that position 
-  */
+int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* position) {  
+  size_t vectorInsertPos;
+  bool equality;
+  MasterTableBlock_t* block = &(mt->_blocks[position->_blockNum]);
+  bit_column_int_t tempInt = (bit_column_int_t)(1) << position->_bitNum;
+  
+  
+  // ...........................................................................
+  // determine if this block already exists in the free block list
+  // ...........................................................................
+  
+  if (block->_free != 0) {
+  
+    // .........................................................................
+    // simple removal since block already exists in the free block list
+    // .........................................................................
+    
+    if ((block->_free & tempInt)) { // Catastrophic failure since the entry should NOT be free
+      assert(false);
+      return TRI_ERROR_INTERNAL;
+    }
+    
+    block->_free = block->_free | tempInt;
+    
+    return TRI_ERROR_NO_ERROR;
+
+  }
+  
+  // ...........................................................................
+  // The block we have is not on the free list -- we have to add it
+  // ...........................................................................
+
+  block->_free = block->_free | tempInt;
+  equality = false;
+  vectorInsertPos = compareIndexOf(mt, position->_blockNum, &equality);
+  if (!equality) {
+    TRI_InsertVector(&(mt->_freeBlockPosition), &(position->_blockNum), vectorInsertPos);
+  }
+    
   return TRI_ERROR_NO_ERROR;
 }
 
-int storeElementMasterTable(MasterTable_t* mt, TRI_vector_pointer_t* results, TRI_master_table_position_t* position) {
+
+
+int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_position_t* position) {
+  // should we store doc pointers directly or indirectly via BitarrayIndexElement
+  // need an Generic IndexElement structure to do this effectively
   MasterTableBlock_t* tableBlock;  
+  TRI_index_iterator_interval_t interval;
+  
+  TRI_index_iterator_t* iterator = (TRI_index_iterator_t*)(results);
+  
+  if (results == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  // ...........................................................................
+  // Determine the block within the master table we are concentrating on
+  // ...........................................................................
+  
   tableBlock = mt->_blocks + position->_blockNum;
   
+  
   // ...........................................................................
-  // Determine if the entry has been deleted
+  // Within the block determine if the entry (array entry) is marked as free
+  // if it is marked as free, then of course no reason to store the handle
   // ...........................................................................
   
-  if ((tableBlock->_deleted >> position->_bitNum) == 1) {
+  if (((tableBlock->_free >> position->_bitNum) & 1) == 1) {
     return TRI_ERROR_NO_ERROR;
   }
-
   
   // ...........................................................................
-  // entry not deleted so append it to the results vector
+  // entry not deleted so append it to the results which is an iterator 
   // ...........................................................................
   
-  TRI_PushBackVectorPointer(results,(tableBlock->_tablePointers[position->_bitNum])._tablePointer);
+  interval._leftEndPoint = (tableBlock->_tablePointers[position->_bitNum])._tablePointer;
+  
+  /*
+  printf("%s:%d:@:%lu:%d:%d:%d:%lu \n",__FILE__,__LINE__,
+  tableBlock->_free, (tableBlock->_free >> position->_bitNum),
+  position->_blockNum,position->_bitNum,
+  (uint64_t)(interval._leftEndPoint)
+  );
+  */
+  TRI_PushBackVector(&(iterator->_intervals), &interval);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -451,8 +552,43 @@ bool tablePositionIsEqualElementElement(TRI_associative_array_t* aa, void* left,
   }    
   return false;
 }
-  
 
+
+
+  
+////////////////////////////////////////////////////////////////////////////////
+// IMPLEMENTATION OF FORWARD DECLARED FUNCTIONS FOR VECTOR
+////////////////////////////////////////////////////////////////////////////////
+
+
+static int64_t compareIndexOf(MasterTable_t* mt, size_t item, bool* equality) {
+  int64_t leftPos;
+  int64_t rightPos;
+  int64_t midPos;
+  
+  leftPos  = 0;
+  rightPos = ((int64_t) (mt->_freeBlockPosition)._length) - 1;
+  
+  while (leftPos <= rightPos)  {
+    size_t* compareResult;
+    
+    midPos = (leftPos + rightPos) / 2;
+    compareResult = TRI_AtVector(&(mt->_freeBlockPosition), midPos);
+    if (*compareResult < item) {    
+      leftPos = midPos + 1;
+    }    
+    else if (*compareResult > item) {
+      rightPos = midPos - 1;
+    }
+    else {
+      *equality = true;
+      return midPos;
+    }  
+  }
+  *equality = false;
+  return leftPos; 
+}
+ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

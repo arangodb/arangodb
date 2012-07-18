@@ -136,7 +136,7 @@ function DefineHttp (options) {
   }
 
   if (typeof callback !== "function") {
-    console.error("callback for '%s' must be a function, got '%s'", url + (typeof callback));
+    console.error("callback for '%s' must be a function, got '%s'", url, (typeof callback));
     return;
   }
 
@@ -146,23 +146,14 @@ function DefineHttp (options) {
 
   var parameter = { parameters : parameters, prefix : prefix };
 
-  // console.debug("callback: %s", callback);
+  if (0 < contexts.length) {
+    console.debug("defining action '%s' in contexts '%s'", url, contexts);
 
-  for (var i = 0;  i < contexts.length;  ++i) {
-    var context = contexts[i];
-    var use = (internal.allowedActionContexts[context] === true)
-
-    if (use) {
-      try {
-        internal.defineAction(url, callback, parameter);
-        console.debug("defining action '%s' in context '%s' using queue '%s'", url, context, SYS_ACTION_QUEUE);
-      }
-      catch (err) {
-        console.error("action '%s' encountered error: %s", url, err);
-      }
+    try {
+      internal.defineAction(url, callback, parameter, contexts);
     }
-    else {
-      console.debug("ignoring '%s' for context '%s' in queue '%s'", url, context, SYS_ACTION_QUEUE);
+    catch (err) {
+      console.error("action '%s' encountered error: %s", url, err);
     }
   }
 }

@@ -14,19 +14,9 @@
 #include "error.h"
 #include "mruby/array.h"
 
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
 #include "re.h"
 #include "st.h"
-#endif
-
-KHASH_INIT(iv, mrb_sym, mrb_value, 1, kh_int_hash_func, kh_int_hash_equal)
-
-#ifndef FALSE
-#define FALSE   0
-#endif
-
-#ifndef TRUE
-#define TRUE    1
 #endif
 
 static void
@@ -104,10 +94,28 @@ mrb_obj_iv_get(mrb_state *mrb, struct RObject *obj, mrb_sym sym)
   return ivget(mrb, obj->iv, sym);
 }
 
+static int
+obj_iv_p(mrb_value obj)
+{
+  switch (mrb_type(obj)) {
+    case MRB_TT_OBJECT:
+    case MRB_TT_CLASS:
+    case MRB_TT_MODULE:
+    case MRB_TT_HASH:
+    case MRB_TT_DATA:
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
 mrb_value
 mrb_iv_get(mrb_state *mrb, mrb_value obj, mrb_sym sym)
 {
-  return mrb_obj_iv_get(mrb, mrb_obj_ptr(obj), sym);
+  if (obj_iv_p(obj)) {
+    return mrb_obj_iv_get(mrb, mrb_obj_ptr(obj), sym);
+  }
+  return mrb_nil_value();
 }
 
 static void
@@ -137,7 +145,30 @@ mrb_obj_iv_set(mrb_state *mrb, struct RObject *obj, mrb_sym sym, mrb_value v)
 void
 mrb_iv_set(mrb_state *mrb, mrb_value obj, mrb_sym sym, mrb_value v) /* mrb_ivar_set */
 {
-  mrb_obj_iv_set(mrb, mrb_obj_ptr(obj), sym, v);
+  if (obj_iv_p(obj)) {
+    mrb_obj_iv_set(mrb, mrb_obj_ptr(obj), sym, v);
+  }
+}
+
+mrb_value
+mrb_iv_remove(mrb_state *mrb, mrb_value obj, mrb_sym sym)
+{
+  mrb_value val;
+
+  if (obj_iv_p(obj)) {
+    khash_t(iv) *h = mrb_obj_ptr(obj)->iv;
+    khiter_t k;
+
+    if (h) {
+      k = kh_get(iv, h, sym);
+      if (k != kh_end(h)) {
+	val = kh_value(h, k);
+	kh_del(iv, h, k);
+	return val;
+      }
+    }
+  }
+  return mrb_undef_value();
 }
 
 mrb_value
@@ -152,6 +183,50 @@ mrb_vm_iv_set(mrb_state *mrb, mrb_sym sym, mrb_value v)
 {
   /* get self */
   mrb_iv_set(mrb, mrb->stack[0], sym, v);
+}
+
+/* 15.3.1.3.23 */
+/*
+ *  call-seq:
+ *     obj.instance_variables    -> array
+ *
+ *  Returns an array of instance variable names for the receiver. Note
+ *  that simply defining an accessor does not create the corresponding
+ *  instance variable.
+ *
+ *     class Fred
+ *       attr_accessor :a1
+ *       def initialize
+ *         @iv = 3
+ *       end
+ *     end
+ *     Fred.new.instance_variables   #=> [:@iv]
+ */
+mrb_value
+mrb_obj_instance_variables(mrb_state *mrb, mrb_value self)
+{
+  mrb_value ary;
+  kh_iv_t *h;
+  khint_t i;
+  int len;
+  const char* p;
+
+  ary = mrb_ary_new(mrb);
+  if (obj_iv_p(self)) {
+    h = ROBJECT_IVPTR(self);
+    if (h) {
+      for (i=0;i<kh_end(h);i++) {
+        if (kh_exist(h, i)) {
+          p = mrb_sym2name_len(mrb, kh_key(h,i), &len);
+          if (len > 1 && *p == '@') {
+            if (mrb_type(kh_value(h, i)) != MRB_TT_UNDEF)
+              mrb_ary_push(mrb, ary, mrb_str_new(mrb, p, len));
+          }
+        }
+      }
+    }
+  }
+  return ary;
 }
 
 mrb_value
@@ -235,6 +310,7 @@ const_get(mrb_state *mrb, struct RClass *base, mrb_sym sym)
   khiter_t k;
   mrb_sym cm = mrb_intern(mrb, "const_missing");
 
+ L_RETRY:
   while (c) {
     if (c->iv) {
       h = c->iv;
@@ -250,6 +326,10 @@ const_get(mrb_state *mrb, struct RClass *base, mrb_sym sym)
     c = c->super;
   }
 
+  if (base->tt == MRB_TT_MODULE) {
+    c = base = mrb->object_class;
+    goto L_RETRY;
+  }
   mrb_raise(mrb, E_NAME_ERROR, "uninitialized constant %s",
             mrb_sym2name(mrb, sym));
   /* not reached */
@@ -371,7 +451,7 @@ mrb_st_lookup(struct kh_iv *table, mrb_sym id, khiter_t *value)
   }
 }
 
-int
+static int
 kiv_lookup(khash_t(iv)* table, mrb_sym key, mrb_value *value)
 {
   khash_t(iv) *h=table;

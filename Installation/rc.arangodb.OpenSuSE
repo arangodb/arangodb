@@ -1,0 +1,145 @@
+#! /bin/sh
+# Copyright (c) 2011-2012 triAGENS GmbH Cologne, Germany.
+#
+# Author: Achim Brandt <a.brandt@triagens.de>
+#
+# /etc/init.d/arango
+#
+#   and symbolic its link
+#
+# /usr/sbin/rcarango
+#
+### BEGIN INIT INFO
+# Provides: arangod
+# Required-Start: $network
+# Required-Stop: $network
+# Default-Start: 3 5
+# Default-Stop: 0 1 2 6
+# Description: Start the session voc daemon
+### END INIT INFO
+
+ARANGO_BIN=/usr/sbin/arangod
+test -x $ARANGO_BIN || exit 5
+
+ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
+test -r $ARANGO_SYSCONFIG || exit 6
+
+
+ARANGO_PIDFILE=/var/run/arangodb/arangod.pid
+
+. /etc/rc.status
+
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     ditto but be verbose in local rc status
+#      rc_status -v -r  ditto and clear the local rc status
+#      rc_failed        set local and overall rc status to failed
+#      rc_reset         clear local rc status (overall remains)
+#      rc_exit          exit appropriate to overall rc status
+
+# First reset status of this service
+rc_reset
+
+case "$1" in
+
+  ################################################################################
+  ## Start daemon with startproc(8). If this fails
+  ## the echo return value is set appropriate.
+  ################################################################################
+
+  start)
+    echo -n "Starting ARANGO daemon"
+
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arango
+
+    # Remember status and be verbose
+    rc_status -v
+    ;;
+
+  ################################################################################
+  ## Stop daemon with killproc(8) and if this fails
+  ## set echo the echo return value.
+  ################################################################################
+
+  stop)
+    echo -n "Shutting down ARANGO daemon"
+
+    killproc -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
+
+    # Remember status and be verbose
+    rc_status -v
+    ;;
+
+  ################################################################################
+  ## Stop the service and if this succeeds (i.e. the
+  ## service was running before), start it again.
+  ################################################################################
+
+  try-restart)
+    $0 status >/dev/null &&  $0 restart
+
+    # Remember status and be quiet
+    rc_status
+
+    ;;
+
+  ################################################################################
+  ## Stop the service and regardless of whether it was
+  ## running or not, start it again.
+  ################################################################################
+
+  restart)
+    $0 stop
+    $0 start
+
+    # Remember status and be quiet
+    rc_status
+    ;;
+
+  ################################################################################
+  ## Signal the daemon to reload its config. Most daemons
+  ## do this on signal 1 (SIGHUP).
+  ################################################################################
+
+  force-reload|reload)
+    echo -n "Reload service ARANGO"
+
+    echo "reload is currently not supported"
+
+    rc_status -v
+
+    ;;
+
+  ################################################################################
+  ## Check status with checkproc(8), if process is running
+  ## checkproc will return with exit status 0.
+  ## Status has a slightly different for the status command:
+  ##
+  ## 0 - service running
+  ## 1 - service dead, but /var/run/  pid  file exists
+  ## 2 - service dead, but /var/lock/ lock file exists
+  ## 3 - service not running
+  ################################################################################
+
+  status)
+    echo -n "Checking for service ARANGO "
+
+    checkproc -p $ARANGO_PIDFILE $ARANGO_BIN
+
+    rc_status -v
+
+    ;;
+
+  ################################################################################
+  ## print usage message
+  ################################################################################
+
+  *)
+    echo "Usage: $0 {start|stop|status|try-restart|restart}"
+    exit 1
+
+    ;;
+esac
+
+rc_exit

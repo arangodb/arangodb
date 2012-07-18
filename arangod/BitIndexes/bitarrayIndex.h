@@ -60,7 +60,9 @@ extern "C" {
 
 
 typedef struct {
-  TRI_bitarray_t* bitarray;
+  TRI_bitarray_t* _bitarray;
+  TRI_vector_t _values; // list of json value which are allowed
+  bool _supportUndef;
 } BitarrayIndex;
 
 
@@ -116,13 +118,14 @@ void BitarrayIndex_free (BitarrayIndex*);
 
 
 
-int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, bool, bool, void*);
+int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, TRI_vector_t*, bool, void*);
 
 int BitarrayIndex_add (BitarrayIndex*, BitarrayIndexElement*);
 
 TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,  
                                           TRI_index_operator_t*, 
                                           TRI_vector_t*,
+                                          void*,
                                           bool (*filter) (TRI_index_iterator_t*) );
 
                                          
@@ -130,7 +133,7 @@ int BitarrayIndex_insert (BitarrayIndex*, BitarrayIndexElement*);
 
 int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*); 
 
-bool BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
+int BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
 
 
 
