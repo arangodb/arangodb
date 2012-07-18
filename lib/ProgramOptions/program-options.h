@@ -196,10 +196,11 @@ void TRI_FreeProgramOptions (TRI_program_options_t * options);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a double option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param double * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
@@ -211,10 +212,11 @@ void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a flag option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param bool * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
@@ -226,10 +228,11 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a 16-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param int16 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
@@ -241,10 +244,11 @@ void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a 32-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param int32 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
@@ -256,10 +260,11 @@ void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a 64-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param int64 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
@@ -271,10 +276,11 @@ void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a string option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param char ** variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddStringPODescription (TRI_PO_section_t * desc,
@@ -286,10 +292,11 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an unsigned 16-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param uint16 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
@@ -301,10 +308,11 @@ void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an unsigned 32-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param uint32 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
@@ -316,10 +324,11 @@ void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an unsigned 64-bit integer option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param uint64 * variable that will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
@@ -331,23 +340,24 @@ void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a vector string option
 ///
-/// @param TRI_PO_section_t* desc contains the section
-/// @param char * name is the name (identifier) of the option
-/// @param char * description is the description of the  option
-/// @param TRI_vector_string_t * variable will hold the result
+/// @param desc                 contains the section
+/// @param name                 is the name (identifier) of the option
+/// @param shortName            is the short name of the option
+/// @param description          is the description of the  option
+/// @param variable             will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
                                        char const * name,
                                        char shortName,
                                        char const * description,
-                                       TRI_vector_string_t * str_vector);
+                                       TRI_vector_string_t * variable);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new section
 ///
-/// @param TRI_PO_section_t* parent contains the section
-/// @param TRI_PO_section_t* child contains the sub-section
+/// @param parent               contains the section
+/// @param child                contains the sub-section
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddOptionsPODescription (TRI_PO_section_t * parent, TRI_PO_section_t * child);

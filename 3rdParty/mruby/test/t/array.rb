@@ -5,6 +5,10 @@ assert('Array', '15.2.12') do
   Array.class == Class
 end
 
+assert('Array superclass', '15.2.12.2') do
+  Array.superclass == Object
+end
+
 assert('Array.[]', '15.2.12.4.1') do
   Array.[](1,2,3) == [1, 2, 3]
 end
@@ -218,7 +222,9 @@ assert('Array#size', '15.2.12.5.28') do
 end
 
 assert('Array#slice', '15.2.12.5.29') do
-  [1,2,3].[](1) == 2
+  a = "12345".slice(1, 3)
+  b = a.slice(0)
+  "#{b}:" == "2:" and [1,2,3].[](1) == 2
 end
 
 assert('Array#unshift', '15.2.12.5.30') do
@@ -226,6 +232,14 @@ assert('Array#unshift', '15.2.12.5.30') do
   b = a.unshift(1)
 
   a == [1,2,3] and b == [1,2,3]
+end
+
+assert('Array#to_s', '15.2.12.5.31') do
+  a = [2, 3,   4, 5]
+  r1 = a.to_s
+  r2 = a.inspect
+
+  r1 == r2 and r1 == "[2, 3, 4, 5]"
 end
 
 # Not ISO specified

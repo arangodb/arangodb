@@ -43,8 +43,8 @@
 
 namespace triagens {
   namespace basics {
-    void InitialiseBasics () {
-      TRIAGENS_C_INITIALISE;
+    void InitialiseBasics (int argv, char* argc[]) {
+      TRIAGENS_C_INITIALISE(argv, argc);
 
       Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
       Random::UniformInteger random(0,1);

@@ -1,0 +1,39 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for PROTOBUF support
+dnl -----------------------------------------------------------------------------------------
+
+PROTOBUF_CPPFLAGS="-I${srcdir}/3rdParty/protobuf-2.4.1/src"
+PROTOBUF_LDFLAGS=""
+PROTOBUF_LIBS="${srcdir}/3rdParty/protobuf-2.4.1/src/.libs/libprotobuf.a"
+
+TRI_PROTOBUF_VERSION="2.4.1"
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AC_SUBST(PROTOBUF_CPPFLAGS)
+AC_SUBST(PROTOBUF_LDFLAGS)
+AC_SUBST(PROTOBUF_LIBS)
+
+PROTOBUF_CPPFLAGS="${PROTOBUF_CPPFLAGS} -DTRI_PROTOBUF_VERSION='\"${TRI_PROTOBUF_VERSION}\"'"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-PROTOBUF: enabled"
+
+LIB_INFO="$LIB_INFO|PROTOBUF VERSION: ${TRI_PROTOBUF_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|PROTOBUF_CPPFLAGS: ${PROTOBUF_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|PROTOBUF_LDFLAGS:  ${PROTOBUF_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|PROTOBUF_LIBS:     ${PROTOBUF_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

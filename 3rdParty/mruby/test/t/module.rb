@@ -5,6 +5,10 @@ assert('Module', '15.2.2') do
   Module.class == Class
 end
 
+assert('Module superclass', '15.2.2.2') do
+  Module.superclass == Object
+end
+
 assert('Module#const_defined?', '15.2.2.4.20') do
   module Test4ConstDefined
     Const4Test4ConstDefined = true

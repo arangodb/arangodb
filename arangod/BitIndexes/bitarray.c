@@ -67,7 +67,10 @@ typedef struct BitColumn_s {
 // --SECTION--                                       STATIC FORWARD DECLARATIONS
 // -----------------------------------------------------------------------------
 
-static int extendColumns (TRI_bitarray_t*, size_t); 
+static int  extendColumns   (TRI_bitarray_t*, size_t); 
+// static void printBitarray   (TRI_bitarray_t*); 
+static void setBitarrayMask (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_master_table_position_t*); 
+// static void debugPrintMask  (TRI_bitarray_t*, uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup bitarray
@@ -83,14 +86,13 @@ static int extendColumns (TRI_bitarray_t*, size_t);
 int TRI_InitBitarray(TRI_bitarray_t** bitArray, 
                      TRI_memory_zone_t* memoryZone,
                      size_t numArrays,
-                     void* masterTableBlock) {
+                     void* masterTable) {
   MasterTable_t* mt;
-  BitColumn_t* column;
   int result;
   int j;
   bool ok;
   
-  
+    
   // ...........................................................................
   // The memory for the bitArray is allocated here. We expect a NULL pointer to
   // be passed here.
@@ -111,12 +113,52 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-    
+  
+  // ...........................................................................
+  // For now each set of bit arrays will create and use its own MasteTable.
+  // ...........................................................................
+  
+  if (masterTable != NULL) {
+    assert(false);
+    mt = (MasterTable_t*)(masterTable);
+  }  
+  
+  // ...........................................................................
+  // Create the new master table here
+  // ...........................................................................
+  
+  else {
+    mt = NULL;
+    result = createMasterTable(&mt, memoryZone, false); 
+    if (result != TRI_ERROR_NO_ERROR) {
+      TRI_Free(memoryZone, *bitArray);
+      *bitArray = NULL;
+      return result;
+    }  
+  }
+
+
+  // ...........................................................................
+  // Check that we have a valid master table
+  // ...........................................................................
+  
+  if (mt == NULL) {
+    if (*bitArray != NULL) {
+      TRI_Free(memoryZone, *bitArray);
+    }
+    *bitArray = NULL;
+    return TRI_ERROR_INTERNAL;    
+  }
+  
+  (*bitArray)->_masterTable = mt;
+  
+
   // ...........................................................................
   // Store the number of columns in this set of bit arrays.
   // ...........................................................................
   
   (*bitArray)->_numColumns   = numArrays;
+
 
   
   // ...........................................................................
@@ -132,28 +174,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
-  
-  // ...........................................................................
-  // For now each set of bit arrays will create and use its own MasterBlockTable.
-  // Create the MasterBlockTable here.
-  // ...........................................................................
-  
-  if (masterTableBlock != NULL) {
-    assert(false);
-  }  
-  
-  else {
-    mt = NULL;
-    result = createMasterTable(&mt, memoryZone); 
-    if (result != TRI_ERROR_NO_ERROR) {
-      TRI_Free(memoryZone, (*bitArray)->_columns);
-      TRI_Free(memoryZone, *bitArray);
-      *bitArray = NULL;
-      return result;
-    }  
-    (*bitArray)->_masterTable = mt;
-  }
-  
+    
   
   // ...........................................................................
   // Create the bitarrays (the columns which will contain the bits)
@@ -162,8 +183,10 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
 
   ok = true;
   for (j = 0; j < (*bitArray)->_numColumns; ++j) {
+    BitColumn_t* column;
+    
     column = (BitColumn_t*)((*bitArray)->_columns + (sizeof(BitColumn_t) * j));
-    column->_column = TRI_Allocate(memoryZone, sizeof(bit_column_int_t) * BITARRAY_INITIAL_SIZE, true);    
+    column->_column = TRI_Allocate(memoryZone, sizeof(bit_column_int_t) * BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE, true);    
     if (column->_column == NULL) {
       ok = false;
       break;
@@ -178,6 +201,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     // ...........................................................................
     
     for (j = 0; j < (*bitArray)->_numColumns; ++j) {
+      BitColumn_t* column;
       column = (BitColumn_t*)((*bitArray)->_columns + (sizeof(BitColumn_t) * j));
       if (column->_column != NULL) {
         TRI_Free(memoryZone,column->_column);
@@ -188,7 +212,12 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     *bitArray = NULL;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
+
+  (*bitArray)->_numBlocksInColumn = BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE;  
+  //(*bitArray)->_usedBitLength     = 0;
+  (*bitArray)->_lastBlockUsed = 0;
+    
   // ...........................................................................
   // Everything ok
   // ...........................................................................
@@ -203,8 +232,28 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
 
 int TRI_DestroyBitarray(TRI_bitarray_t* ba) {
   MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
-  destroyMasterTable(mt);
-  // destroy the columns etc
+  int j;  
+  
+  // ..........................................................................
+  // if the master table is NOT shared, then delete it as well
+  // ..........................................................................
+  
+  if (!mt->_shared) {
+    freeMasterTable(mt);    
+  }
+  
+  // ..........................................................................
+  // destroy the array of columns
+  // ..........................................................................
+  
+  for (j = 0; j < ba->_numColumns; ++j) {
+    BitColumn_t* column;
+    column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
+    if (column->_column != NULL) {
+      TRI_Free(ba->_memoryZone,column->_column);
+    }  
+  }
+  TRI_Free(ba->_memoryZone, ba->_columns);
   
   return TRI_ERROR_NO_ERROR;
 } 
@@ -225,14 +274,9 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
   MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
   TRI_master_table_position_t position;
   int result;
-  size_t newLength;
-  int j;
-  BitColumn_t* column;
-  bit_column_int_t bitInteger;
-  bit_column_int_t tempBitInteger;
-  uint64_t bitMaskInteger;
   
-  if (ba == NULL || mask == NULL || element == NULL) {
+  if (ba == NULL || mask == NULL || element == NULL || mt == NULL) {
+    assert(NULL);
     return TRI_ERROR_INTERNAL;
   }
   
@@ -242,6 +286,7 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
   // ..........................................................................  
   
   if (TRI_FindByKeyAssociativeArray(&(mt->_tablePosition),element) != NULL) {
+    assert(false);
     return TRI_ERROR_INTERNAL; // Todo: return correct error
   }  
 
@@ -264,10 +309,8 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
   // locate the position in the bitarrays, extend the bit arrays if necessary
   // ...........................................................................
   
-  newLength = (BITARRAY_MASTER_TABLE_BLOCKSIZE * position._blockNum) + position._bitNum;
-
-  if (ba->_columnLength <= newLength) {
-    result = extendColumns(ba, newLength);
+  if (position._blockNum >= ba->_numBlocksInColumn) {
+    result = extendColumns(ba, position._blockNum + 1);  
     if (result != TRI_ERROR_NO_ERROR) {
       return result;
     }      
@@ -278,50 +321,19 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
   // Use the mask to set the bits in each column to 0 or 1
   // ...........................................................................
   
-  for (j = 0; j < ba->_numColumns; ++j) {
-  
-    // .........................................................................
-    // Extract the particular column
-    // .........................................................................
-    
-    column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
-    
-    
-    // .........................................................................
-    // Extract the integer which represents a block 
-    // .........................................................................
-    
-    bitInteger = *(column->_column + position._blockNum);
+  setBitarrayMask(ba, mask, &position); 
+  //debugPrintMask(ba,mask->_mask);
 
-    
-    // .........................................................................
-    // Determine if the bit in the bit mask is 0 or 1
-    // .........................................................................
-    
-    tempBitInteger = ((uint64_t)(1) << j);
-    bitMaskInteger = (tempBitInteger & mask->_mask) >> j;
-    
-    if (bitMaskInteger == 0) {
-      // we want a '0' in the offset position within this bit integer
-      tempBitInteger = (bit_column_int_t)(1) << position._bitNum;
-      tempBitInteger = ~tempBitInteger;
-      bitInteger     = bitInteger & tempBitInteger;
-    }
-    
-    else if (bitMaskInteger == 1) {
-      // we want a '1' in the offset position within this bit integer
-      tempBitInteger = (bit_column_int_t)(1) << position._bitNum;
-      bitInteger     = bitInteger | tempBitInteger;
-    }
-    
-    else {
-      // should never occur
-      assert(false);
-    }
-    
-    // todo: remove  necessity of intermeidate bitinteger
-    *(column->_column + position._blockNum) = bitInteger;
-  }
+  // ...........................................................................
+  // update the last block which is in use -- a small amount of help so that
+  // we do not keep scanning indefinitely down the columns
+  // ...........................................................................
+
+  if (ba->_lastBlockUsed < position._blockNum) {
+    ba->_lastBlockUsed = position._blockNum;
+  }  
+  
+  //printBitarray(ba);
   
   return TRI_ERROR_NO_ERROR;
 }  
@@ -332,95 +344,94 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
 /// @brief Given a bit mask returns a list of document pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm, TRI_vector_pointer_t* resultStorage ) {
-  int result;
-  BitColumn_t* column;
-  size_t numBlocks;   
-  uint8_t offsetLastBlock;
+int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* resultStorage ) {
+  // int result;
   uint8_t numBits;
-  bit_column_int_t bitInteger;
   int i_blockNum,j_bitNum,k_colNum;
   TRI_master_table_position_t position;
-  bit_column_int_t maskValue;
   
   // ...........................................................................
   // TODO: we need to add an 'undefined' special column. If this column is NOT 
   // set, then we do not bother checking the rest of columns.
   // ...........................................................................
-  
-  
-  // ...........................................................................
-  // Determine the number of blocks which we have to scan and the offset of
-  // the last block
-  // ...........................................................................
-  
-  numBlocks = (ba->_columnLength) / sizeof(bit_column_int_t);
-  offsetLastBlock = (uint8_t)(ba->_columnLength - ((ba->_columnLength) * sizeof(bit_column_int_t)));
-  if (offsetLastBlock != 0) {
-    ++numBlocks;
-  }
-  
-  
-  // ...........................................................................
-  // Check and see if the mask matches with row for a particular column
-  // ...........................................................................
+   
+  numBits = BITARRAY_MASTER_TABLE_BLOCKSIZE;
 
-  numBits = sizeof(bit_column_int_t);
 
-  for (i_blockNum = 0; i_blockNum < numBlocks; ++i_blockNum) {  
+  // ...........................................................................
+  // scan down the blocks 
+  // ...........................................................................
+  
+  for (i_blockNum = 0; i_blockNum < (ba->_lastBlockUsed + 1); ++i_blockNum) {  
 
-    if (i_blockNum == numBlocks - 1) {
-      numBits = offsetLastBlock;
-    }    
-    
     // .........................................................................
-    // scan down the bit integer
+    // within each block scan down the bit integer
     // .........................................................................
     
     for (j_bitNum = 0; j_bitNum < numBits; ++j_bitNum) {
-        
+      uint64_t bitValues = 0;
+      
+      // .......................................................................
+      // Within each bit in the integer scan across the columns, this will
+      // generate a 64 bit integer. Use this integer to compare to the bit
+      // mask (eventually masks) sent here. 
+      // .......................................................................
+              
       for (k_colNum = 0; k_colNum < ba->_numColumns; ++k_colNum) {
       
-        // .....................................................................
-        // If the kth column is set to ignore, then ignore it
-        // .....................................................................
-      
-        if ((bm->_ignoreMask >> k_colNum) == 1) {
-          continue;
-        }
-
-        maskValue = (bit_column_int_t)(bm->_mask >> k_colNum);
-        
+        BitColumn_t*     column;
+        bit_column_int_t bitInteger;
+        uint64_t         tempInteger;
         // .......................................................................
         // Extract the particular column
         // .......................................................................
     
         column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * k_colNum));
       
+      
         // .......................................................................
         // Obtain the integer representation of this block
         // .......................................................................
-    
-        bitInteger = *(column->_column + i_blockNum);
-      
-        if ((bitInteger >> j_bitNum) != maskValue) {
-          continue;
-        }
         
-        // .......................................................................
-        // Ok, this column can not be ignored and matches, so we add it
-        // .......................................................................
+        bitInteger  = *(column->_column + i_blockNum);      
+        
+        tempInteger = (uint64_t)((bitInteger >> j_bitNum) & (1)) << k_colNum;
+
+        bitValues  = bitValues | tempInteger;
+        
+      }
+
+      // ..........................................................................
+      // TODO: eventually we might have more than one bitmask to process
+      // when we have AND/OR operators.
+      // ..........................................................................
+
+      bitValues = bitValues & ~(mask->_ignoreMask);
+
+      /*
+      if (j_bitNum == 0) {
+        debugPrintMask(ba,mask->_ignoreMask);
+        debugPrintMask(ba,mask->_mask);
+        debugPrintMask(ba,bitValues);
+      }
+      */
+      
+      if (mask->_mask == 0 && bitValues != 0) {
+        continue;
+      }
+      
+      if ((bitValues & mask->_mask) == mask->_mask) { // add to the list of things
+        //debugPrintMask(ba,mask->_ignoreMask);
         position._blockNum = i_blockNum;
         position._bitNum   = j_bitNum;
-        
-        result = storeElementMasterTable(ba->_masterTable, resultStorage, &position);
-        if (result != TRI_ERROR_NO_ERROR) {
-          return result;
-        }  
-      }  
+        /* result = */ storeElementMasterTable(ba->_masterTable, resultStorage, &position);
+      }
+      
     }
   }
 
+  //printBitarray(ba);
+  
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -430,8 +441,11 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* bm, TRI_v
 
 int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   TRI_master_table_position_t* position;
-  bool compactColumns;
+  TRI_bitarray_mask_t mask;
   MasterTable_t* mt;
+  MasterTableBlock_t* block;
+  int result;
+  bool ok;
   
   // ..........................................................................
   // Attempt to locate the position of the element within the Master Block table
@@ -441,10 +455,50 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   position = (TRI_master_table_position_t*)(TRI_FindByKeyAssociativeArray(&(mt->_tablePosition),element));
  
   if (position == NULL) {
-    return TRI_ERROR_INTERNAL; // Todo: return correct error
+    return TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING; 
   }  
 
-  removeElementMasterTable(mt, position, &compactColumns);  
+  
+  // ..........................................................................
+  // Observe that we are NOT removing any entries from the actual bit arrays.
+  // All we are 'removing' are entries in the master block table. 
+  // ..........................................................................
+  
+  result = removeElementMasterTable(mt, position);  
+  
+  
+  // ...........................................................................
+  // It may happen that the block is completely free, moreover it may happen
+  // that we are fortunate and it is the last used block.
+  // ...........................................................................
+  block = &(mt->_blocks[position->_blockNum]);
+  
+  if (block->_free ==  ~((bit_column_int_t)(0))) {
+    if (ba->_lastBlockUsed == position->_blockNum) {
+      --ba->_lastBlockUsed;
+    }
+  }
+
+  if (result != TRI_ERROR_NO_ERROR) {
+    return result;
+  }
+  
+  mask._mask = 0;
+  mask._ignoreMask = 0;
+  setBitarrayMask(ba, &mask, position); 
+
+  
+  // ..........................................................................
+  // Remove the entry from associative array
+  // ..........................................................................
+  
+  ok = TRI_RemoveKeyAssociativeArray(&(mt->_tablePosition), element, NULL);
+  if (!ok) {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  
+  //printBitarray(ba); 
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -480,58 +534,212 @@ int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* ba ,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a bitmask into a bit array
+/// @brief extends the columns which comprise the bitarray
 ////////////////////////////////////////////////////////////////////////////////
 
-static int extendColumns(TRI_bitarray_t* ba, size_t newLength) {
+int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
   bool ok = true;
   int j;
-  void* newColumns;
-  BitColumn_t* column;
-  size_t newIntegerSize;
+  char* newColumns;
+ 
+
+  // ............................................................................
+  // allocate memory for the new columns
+  // ............................................................................
   
   newColumns = TRI_Allocate(ba->_memoryZone, sizeof(BitColumn_t) * ba->_numColumns, true);    
   if (newColumns == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  if (newLength < (1.2 * ba->_columnLength)) {
-    newLength = 1.2 * ba->_columnLength;
-  }
+  // ............................................................................
+  // allocate space for each column
+  // ............................................................................
   
-  newIntegerSize = (newLength / sizeof(bit_column_int_t)) + 1;
   for (j = 0; j < ba->_numColumns; ++j) {
-    column = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
-    column->_column = TRI_Allocate(ba->_memoryZone, newIntegerSize, true);    
-    if (column->_column == NULL) {
+    BitColumn_t* newColumn;
+    newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
+    newColumn->_column = TRI_Allocate(ba->_memoryZone, sizeof(bit_column_int_t) * newBlocks, true);    
+    if (newColumn->_column == NULL) {
       ok = false;
       break;
     }  
   }
 
-  if (! ok) { // memory allocation failure
+
+  // ............................................................................
+  // if memory allocation failed, undo allocation and return
+  // ............................................................................
+  
+  if (!ok) { // memory allocation failure
     for (j = 0; j < ba->_numColumns; ++j) {
-      column = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
-      if (column->_column != NULL) {
-        TRI_Free(ba->_memoryZone,column->_column);
+      BitColumn_t* newColumn;
+      newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
+      if (newColumn->_column != NULL) {
+        TRI_Free(ba->_memoryZone,newColumn->_column);
       }  
     }
     TRI_Free(ba->_memoryZone, newColumns);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
+  
+  // ............................................................................
+  // copy the old columns into the new and free that column
+  // ............................................................................
+  
   for (j = 0; j < ba->_numColumns; ++j) {
-    column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
-    if (column->_column != NULL) {
-      TRI_Free(ba->_memoryZone,column->_column);
-    }  
+    BitColumn_t* oldColumn;
+    BitColumn_t* newColumn;
+    
+    oldColumn = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
+    newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
+    if (oldColumn->_column == NULL) {
+      assert(false);
+      continue;
+    } 
+    memcpy(newColumn->_column, oldColumn->_column, sizeof(bit_column_int_t) * ba->_numBlocksInColumn);        
+    TRI_Free(ba->_memoryZone,oldColumn->_column);
   }
+  
+  
   TRI_Free(ba->_memoryZone, ba->_columns);
+
   
   ba->_columns = newColumns;
+  ba->_numBlocksInColumn = newBlocks;
 
   return TRI_ERROR_NO_ERROR;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugging purposes only -- prints a visual representation of the bitarrays
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+void printBitarray(TRI_bitarray_t* ba) {
+  int j;
+  uint64_t bb;
+  bit_column_int_t oo;  
+  
+  
+  // ...........................................................................
+  // Determine the number of blocks -- remember to add one more if there is 
+  // an started and unfinished block.
+  // ...........................................................................
+
+  printf("\n");
+  printf("THERE ARE %lu COLUMNS\n",ba->_numColumns);
+  printf("THE NUMBER OF ALLOCATED BLOCKS IN EACH COLUMN IS %lu\n",ba->_numBlocksInColumn);
+  printf("THE NUMBER OF THE LAST BLOCK USED IS %lu\n",ba->_lastBlockUsed);
+  printf("\n");
+  
+    
+  printf("-------------------------------------------------------------------------------------------------\n");
+  for (bb = 0; bb <= ba->_lastBlockUsed ; ++bb) {
+    if (bb != ba->_lastBlockUsed) {
+      //continue;
+    }  
+    printf("==\n");
+    for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
+      printf("ROW %lu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
+      for (j = 0; j < ba->_numColumns; ++j) {
+        BitColumn_t* column;
+        bit_column_int_t* bitInteger;
+        
+        column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));      
+        bitInteger = column->_column + bb;
+        
+        if ( (*bitInteger & ((bit_column_int_t)(1) << oo)) == 0) {
+          printf(" 0 ");  
+        }
+        else {
+          printf(" 1 ");  
+        }  
+      }
+      printf("\n");      
+    }  
+  }
+} 
+*/ 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a bitmask into a bit array
+////////////////////////////////////////////////////////////////////////////////
+  
+static void setBitarrayMask(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, TRI_master_table_position_t* position) {
+  size_t j;  
+  // ...........................................................................
+  // Use the mask to set the bits in each column to 0 or 1
+  // ...........................................................................
+  
+  for (j = 0; j < ba->_numColumns; ++j) {
+    BitColumn_t*      column;
+    bit_column_int_t* bitInteger;
+  
+    // .........................................................................
+    // Extract the particular column
+    // .........................................................................
+    
+    column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
+    
+    
+    // .........................................................................
+    // Extract the integer which represents a block 
+    // .........................................................................
+    
+    bitInteger = column->_column + position->_blockNum;
+
+    
+    // .........................................................................
+    // Determine if the jth bit in the bit mask is 0 or 1
+    // .........................................................................
+    
+    if ( (((uint64_t)(1) << j) & mask->_mask) == 0 ) {
+    
+      // .......................................................................
+      // For the jth column we have determined that a '0' is to be stored here.
+      // .......................................................................
+      
+      *bitInteger = (*bitInteger) & (~((bit_column_int_t)(1) << position->_bitNum));
+    }
+    
+    else {
+    
+      // .......................................................................
+      // For the jth column we have determined that a '0' is to be stored here.
+      // .......................................................................
+      
+      *bitInteger = (*bitInteger) | ((bit_column_int_t)(1) << position->_bitNum);
+    }
+    
+  }
+}
+  
+  
+  
+/*
+void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
+  int j;
+    
+  printf("------------------- Bitarray mask --------------------------\n");
+  for (j = 0; j < ba->_numColumns; ++j) {
+    if ((mask & ((uint64_t)(1) << j)) == 0) {
+      printf("0");
+    }
+    else {
+      printf("1");
+    }
+  }
+  printf("\n\n");
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 
 // Local Variables:
 // mode: outline-minor

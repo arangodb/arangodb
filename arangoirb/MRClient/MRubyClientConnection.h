@@ -99,7 +99,7 @@ namespace triagens {
 /// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
-        MRubyClientConnection (MR_state_t*,
+        MRubyClientConnection (mrb_state*,
                                const string& hostname, 
                                int port, 
                                double requestTimeout,
@@ -287,7 +287,7 @@ namespace triagens {
 /// @brief ruby state
 ////////////////////////////////////////////////////////////////////////////////
 
-      MR_state_t* _mrs;
+      mrb_state* _mrb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server version

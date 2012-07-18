@@ -103,29 +103,3 @@ enum node_type {
     NODE_ATTRASGN,
     NODE_LAST
 };
-
-typedef struct RNode {
-  unsigned long flags;
-  char *nd_file;
-  union {
-    struct RNode *node;
-    mrb_sym id;
-    mrb_value value;
-    //mrb_value (*cfunc)((ARGS_ANY()));
-    mrb_sym *tbl;
-  } u1;
-  union {
-    struct RNode *node;
-    mrb_sym id;
-    long argc;
-    mrb_value value;
-  } u2;
-  union {
-    struct RNode *node;
-    mrb_sym id;
-    long state;
-    struct global_entry *entry;
-    long cnt;
-    mrb_value value;
-  } u3;
-} NODE;

@@ -5,6 +5,10 @@ assert('Numeric', '15.2.7') do
   Numeric.class == Class
 end
 
+assert('Numeric superclass', '15.2.7.2') do
+  Numeric.superclass == Object
+end
+
 assert('Numeric#+@', '15.2.7.4.1') do
   +1 == +1
 end

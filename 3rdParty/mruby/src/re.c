@@ -13,7 +13,7 @@
 #include "regint.h"
 #include "mruby/class.h"
 #include "error.h"
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
 
 #define REGEX_CLASS (mrb_class_obj_get(mrb, "Regexp"))
 #define MATCH_CLASS (mrb_class_obj_get(mrb, "MatchData"))
@@ -25,14 +25,6 @@
 #define MKARG_A(c)    (((c) & 0xff) << 24)
 #define MKARG_B(c)    (((c) & 0xff) << 16)
 #define MKARG_C(c)    (((c) & 0xff) <<  8)
-
-#ifndef FALSE
-#define FALSE   0
-#endif
-
-#ifndef TRUE
-#define TRUE    1
-#endif
 
 #define ARG_REG_OPTION_MASK \
     (ONIG_OPTION_IGNORECASE|ONIG_OPTION_MULTILINE|ONIG_OPTION_EXTEND)
@@ -362,17 +354,17 @@ mrb_reg_options(mrb_state *mrb, mrb_value re)
 static mrb_value
 mrb_reg_desc(mrb_state *mrb, const char *s, long len, mrb_value re)
 {
-  mrb_value str = mrb_str_new_cstr(mrb, "/");//mrb_str_buf_new2("/");
+  mrb_value str = mrb_str_new(mrb, "/", 1);
 
   mrb_reg_expr_str(mrb, str, s, len);
-  mrb_str_buf_cat(mrb, str, "/", strlen("/"));
+  mrb_str_buf_cat(mrb, str, "/", 1);
   if (re.tt) {
     char opts[4];
     mrb_reg_check(mrb, re);
     if (*option_to_str(opts, RREGEXP(re)->ptr->options))
         mrb_str_buf_cat(mrb, str, opts, strlen(opts));//mrb_str_buf_cat2(str, opts);
     if (RBASIC(re)->flags & REG_ENCODING_NONE)
-        mrb_str_buf_cat(mrb, str, "n", strlen("n"));//mrb_str_buf_cat2(str, "n");
+        mrb_str_buf_cat(mrb, str, "n", 1);
   }
 
   return str;
@@ -1696,9 +1688,10 @@ mrb_reg_expr_str(mrb_state *mrb, mrb_value str, const char *s, long len)
       }
       else if (!ISSPACE(c)) {
         char b[8];
+	int n;
 
-        snprintf(b, sizeof(b), "\\x%02X", c);
-        mrb_str_buf_cat(mrb, str, b, 4);
+        n = snprintf(b, sizeof(b), "\\x%02X", c);
+        mrb_str_buf_cat(mrb, str, b, n);
       }
       else {
         mrb_str_buf_cat(mrb, str, p, 1);
@@ -1736,7 +1729,7 @@ mrb_reg_to_s(mrb_state *mrb, mrb_value re)
   const int embeddable = ONIG_OPTION_MULTILINE|ONIG_OPTION_IGNORECASE|ONIG_OPTION_EXTEND;
   long len;
   const UChar* ptr;
-  mrb_value str = mrb_str_new_cstr(mrb, "(?");
+  mrb_value str = mrb_str_new(mrb, "(?", 2);
   char optbuf[5];
   mrb_encoding *enc = mrb_enc_get(mrb, re);
 
@@ -1804,9 +1797,9 @@ again:
     mrb_str_buf_cat(mrb, str, optbuf, strlen(optbuf));
   }
 
-  mrb_str_buf_cat(mrb, str, ":", strlen(":"));
+  mrb_str_buf_cat(mrb, str, ":", 1);
   mrb_reg_expr_str(mrb, str, (char*)ptr, len);
-  mrb_str_buf_cat(mrb, str, ")", strlen(")"));
+  mrb_str_buf_cat(mrb, str, ")", 1);
 
   return str;
 }
@@ -1926,30 +1919,29 @@ mrb_match_inspect(mrb_state *mrb, mrb_value match)
     onig_foreach_name(regexp->ptr,
             match_inspect_name_iter, names);
 
-    str = mrb_str_new_cstr(mrb, "#<");//mrb_str_buf_new2("#<");
-    mrb_str_buf_cat(mrb, str, cname, strlen(cname));//mrb_str_buf_cat2(str, cname);
+    str = mrb_str_new(mrb, "#<", 2);
+    mrb_str_buf_cat(mrb, str, cname, strlen(cname));
 
     for (i = 0; i < num_regs; i++) {
         char buf[sizeof(num_regs)*3+1];
         mrb_value v;
-        mrb_str_buf_cat(mrb, str, " ", strlen(" "));//mrb_str_buf_cat2(str, " ");
+        mrb_str_buf_cat(mrb, str, " ", 1);
         if (0 < i) {
             if (names[i].name)
                 mrb_str_buf_cat(mrb, str, (const char*)names[i].name, names[i].len);
             else {
-                //mrb_str_catf(mrb, str, "%d", i);
-                sprintf(buf, "%d", i);
-                mrb_str_buf_cat(mrb, str, (const char*)buf, strlen(buf));
+	      int n = sprintf(buf, "%d", i);
+                mrb_str_buf_cat(mrb, str, (const char*)buf, n);
             }
-            mrb_str_buf_cat(mrb, str, ":", strlen(":"));//mrb_str_buf_cat2(str, ":");
+            mrb_str_buf_cat(mrb, str, ":", 1);
         }
         v = mrb_reg_nth_match(mrb, i, match);
         if (mrb_nil_p(v))
-            mrb_str_buf_cat(mrb, str, "nil", strlen("nil"));//mrb_str_buf_cat2(str, "nil");
+            mrb_str_buf_cat(mrb, str, "nil", 3);
         else
             mrb_str_buf_append(mrb, str, mrb_str_inspect(mrb, v));
     }
-    mrb_str_buf_cat(mrb, str, ">", strlen(">"));//mrb_str_buf_cat2(str, ">");
+    mrb_str_buf_cat(mrb, str, ">", 1);
 
     return str;
 }
@@ -2151,7 +2143,7 @@ mrb_reg_regsub(mrb_state *mrb, mrb_value str, mrb_value src, struct re_registers
                 break;
             }
             else {
-                mrb_raise(mrb, mrb->eRuntimeError_class, "invalid group name reference format");
+                mrb_raise(mrb, E_RUNTIME_ERROR, "invalid group name reference format");
             }
         }
 
@@ -2318,7 +2310,7 @@ mrb_backref_set(mrb_state *mrb, mrb_value val)
 {
   vm_svar_set(mrb, 1, val);
 }
-#endif //INCLUDE_REGEXP
+#endif //ENABLE_REGEXP
 
 #ifdef INCLUDE_ENCODING
 static inline long
@@ -2421,7 +2413,7 @@ mrb_memsearch(mrb_state *mrb, const void *x0, int m, const void *y0, int n, mrb_
 }
 #endif //INCLUDE_ENCODING
 
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
 mrb_value
 mrb_reg_init_str(mrb_state *mrb, mrb_value re, mrb_value s, int options)
 {
@@ -2469,7 +2461,7 @@ re_adjust_startpos(struct re_pattern_buffer *bufp, const char *string, int size,
   }*/
   return startpos;
 }
-#endif //INCLUDE_REGEXP
+#endif //ENABLE_REGEXP
 
 #ifdef INCLUDE_ENCODING
 static const unsigned char mbctab_ascii[] = {

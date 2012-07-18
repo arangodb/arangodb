@@ -46,6 +46,7 @@
 #include "V8Server/v8-objects.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/voc-shaper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -752,10 +753,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
                                                    "<properties>.journalSize too small")));
       }
 
-      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), (TRI_voc_size_t) s);
     }
     else {
-      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
     }
 
     if (p->Has(waitForSyncKey)) {
@@ -767,7 +768,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     }
   }
   else {
-    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
   }
 
   TRI_voc_cid_t cid = 0;
@@ -775,10 +776,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
   // extract collection id
   if (3 <= argv.Length()) {
     v8::Handle<v8::Value> val = argv[2];
-    if (!val->IsNull() && !val->IsUndefined()) {
-      // a pre-defined collection is passed when data is re-imported from a dump etc.
-      // this allows reproduction of data from different servers
+
+    // a pre-defined collection is passed when data is re-imported from a dump etc.
+    // this allows reproduction of data from different servers
+    if (! val->IsNull() && ! val->IsUndefined()) {
       cid = TRI_ObjectToUInt64(argv[2]);
+
       if (cid <= 0) {
         return scope.Close(v8::ThrowException(
                            TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -1806,8 +1809,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
   const uint32_t argc = argv.Length();
 
-  if (argc < 1 || argc > 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_EXPLAIN(<querystring>, <bindvalues>)")));
+  if (argc < 1 || argc > 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_EXPLAIN(<querystring>, <bindvalues>, <performoptimisations>)")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -1836,13 +1839,19 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
     return scope.Close(v8::ThrowException(errorObject));
   }
+  
+  bool performOptimisations = true;
+  if (argc > 2) {
+    // turn off optimisations ? 
+    performOptimisations = TRI_ObjectToBoolean(argv[2]);
+  }
 
   TRI_json_t* explain = 0;
 
   if (!TRI_ValidateQueryContextAql(context) ||
       !TRI_BindQueryContextAql(context, parameters.ptr()) ||
       !TRI_LockQueryContextAql(context) ||
-      !TRI_OptimiseQueryContextAql(context) ||
+      (performOptimisations && !TRI_OptimiseQueryContextAql(context)) ||
       !(explain = TRI_ExplainAql(context))) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     TRI_FreeContextAql(context);
@@ -2276,6 +2285,246 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on all documents using attributes as paths to
+/// the fields. At least one attribute and one set of possible values must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
+
+  v8::HandleScope scope;
+  bool ok;
+  string errorString;
+  // int errorCode;
+  TRI_index_t* bitarrayIndex = 0;
+  bool indexCreated;
+  v8::Handle<v8::Value> theIndex;
+  
+  // .............................................................................
+  // Check that we have a valid collection
+  // .............................................................................
+
+  v8::Handle<v8::Object> err;
+  const TRI_vocbase_col_t* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................
+
+  if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
+    LOG_WARNING("bitarray index creation failed -- invalid parameters (require key_1,values_1,...,key_n,values_n)");
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureBitarray(<path>, <list of values>, ...)")));
+  }
+
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the index.
+  // .............................................................................
+
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+  TRI_vector_pointer_t values;
+  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
+  ok = true;
+  
+  // .............................................................................
+  // Parameters into this ensureBitarray(...) method are passed pairs. That is,
+  // for every attribute next to it immediately on the right we have a list. For
+  // example: ensureBitarray("a",[0,1,2])
+  //          ensureBitarray("a",[0,1,2,["x","y"]],
+  //                         "b",["red","white",[1,2,3,[[12,13,14]]]])
+  // .............................................................................
+  
+  for (int j = 0;  j < argv.Length();  ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    // ...........................................................................
+    // Determine if we are expecting a string (attribute) or a list (set of values)
+    // ...........................................................................
+    
+    if ((j % 2) == 0) { // we are expecting a string
+    
+      if (! argument->IsString() ) {
+        errorString = "invalid parameter -- expected string parameter";
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+      v8::String::Utf8Value argumentString(argument);
+      char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+      TRI_PushBackVectorPointer(&attributes, cArgument);
+      
+    }
+
+    else { // we are expecting a value or set of values
+    
+      // .........................................................................
+      // Check that the javascript argument is in fact an array (list)
+      // .........................................................................
+      
+      if (! argument->IsArray() ) {
+        errorString = "invalid parameter -- expected an array (list)";
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+    
+
+      // .........................................................................
+      // Attempt to convert the V8 javascript function argument into a TRI_json_t
+      // .........................................................................
+      
+      TRI_json_t* value = TRI_JsonObject(argument);
+      
+      
+      // .........................................................................
+      // If the conversion from V8 value into a TRI_json_t fails, exit
+      // .........................................................................
+      
+      if (value == NULL) {
+        errorString = "invalid parameter -- expected an array (list)";
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+
+      // .........................................................................
+      // If the TRI_json_t is NOT a list, then exit with an error
+      // .........................................................................
+
+      if (value->_type != TRI_JSON_LIST) {
+        errorString = "invalid parameter -- expected an array (list)";
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        ok = false;
+        break;
+      }
+      
+      TRI_PushBackVectorPointer(&values, value);
+                  
+    }
+    
+  }
+  
+  
+  if (ok) {
+    // ...........................................................................
+    // Check that we have as many attributes as values
+    // ...........................................................................
+    
+    if (attributes._length != values._length) {
+      errorString = "invalid parameter -- expected an array (list)";
+      // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      ok = false;
+    }
+  }
+  
+  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  if (ok) {
+    bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
+    if (bitarrayIndex == 0) {
+      // errorCode = TRI_errno();
+      errorString = "index could not be created from Simple Collection";
+      ok = false;
+    }
+  }  
+  
+  
+  // .............................................................................
+  // remove the memory allocated to the list of attributes and values used for the 
+  // specification of the index 
+  // .............................................................................
+
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* attribute = (char*)(TRI_AtVectorPointer(&attributes, j));
+    TRI_json_t* value = (TRI_json_t*)(TRI_AtVectorPointer(&values, j));
+    TRI_Free(TRI_CORE_MEM_ZONE, attribute);
+    TRI_FreeJson (TRI_UNKNOWN_MEM_ZONE, value);
+  }  
+
+  TRI_DestroyVectorPointer(&attributes);
+  TRI_DestroyVectorPointer(&values);
+
+  
+  if (ok && bitarrayIndex != 0) {  
+    // ...........................................................................
+    // Create a json represention of the index
+    // ...........................................................................
+
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
+
+    if (json == NULL) {
+      // errorCode = TRI_errno();
+      errorString = "out of memory";
+      ok = false;
+    }  
+  
+    else {
+      theIndex = IndexRep(&collection->_collection->base, json);
+      if (theIndex->IsObject()) {
+        theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), indexCreated ? v8::True() : v8::False());
+      }
+    }
+      
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+
+  
+  TRI_ReleaseCollection(collection);
+
+  if (!ok || bitarrayIndex == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str())));
+  }
+
+  return scope.Close(theIndex);
+}
+
+static v8::Handle<v8::Value> JS_EnsureBitarrayVocbaseCol (v8::Arguments const& argv) {
+  return EnsureBitarray(argv, false);
+}
+
+static v8::Handle<v8::Value> JS_EnsureUndefBitarrayVocbaseCol (v8::Arguments const& argv) {
+  return EnsureBitarray(argv, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
 /// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
@@ -2600,6 +2849,9 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ///   dead documents.
 /// - @LIT{dead.deletion}: The total number of deletion markers.
 /// - @LIT{datafiles.count}: The number of active datafiles.
+/// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
+/// - @LIT{journals.count}: The number of journal files.
+/// - @LIT{journals.fileSize}: The total filesize of the journal files.
 ///
 /// @EXAMPLES
 ///
@@ -2636,6 +2888,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_collection_info_t* info = doc->figures(doc);
   doc->endRead(doc);
 
+  if (info == NULL) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+
   v8::Handle<v8::Object> alive = v8::Object::New();
 
   result->Set(v8::String::New("alive"), alive);
@@ -2649,10 +2908,19 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   dead->Set(v8::String::New("size"), v8::Number::New(info->_sizeDead));
   dead->Set(v8::String::New("deletion"), v8::Number::New(info->_numberDeletion));
 
+  // datafile info
   v8::Handle<v8::Object> dfs = v8::Object::New();
 
   result->Set(v8::String::New("datafiles"), dfs);
   dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
+  dfs->Set(v8::String::New("fileSize"), v8::Number::New(info->_datafileSize));
+  
+  // journal info
+  v8::Handle<v8::Object> js = v8::Object::New();
+
+  result->Set(v8::String::New("journals"), js);
+  js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
+  js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -2780,7 +3048,12 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
 ///
-/// Note that it is not possible to change the journal size after creation.
+/// - @LIT{journalSize} : The size of the journal in bytes.
+///
+/// Note that it is not possible to change the journal size after the journal or
+/// datafile has been created. Changing this parameter will only effect newly
+/// created journals. Also note that you cannot lower the journal size to less
+/// then size of the largest document already stored in the collection.
 ///
 /// @EXAMPLES
 ///
@@ -2822,19 +3095,47 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     if (par->IsObject()) {
       v8::Handle<v8::Object> po = par->ToObject();
 
-      // holding a lock on the vocbase collection: if we ever want to
-      // change the maximal size a real lock is required.
-      bool waitForSync = sim->base.base._waitForSync;
+      // get the old values
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-      // extract sync after objects
+      bool waitForSync = sim->base.base._waitForSync;
+      size_t maximalSize = sim->base.base._maximalSize;
+      size_t maximumMarkerSize = sim->base.base._maximumMarkerSize;
+
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+
+      // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
         waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
-      sim->base.base._waitForSync = waitForSync;
+      // extract the journal size
+      if (po->Has(v8g->JournalSizeKey)) {
+        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+
+        if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+
+        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+      }
+
+      // update collection
+      TRI_col_parameter_t newParameter;
+
+      newParameter._maximalSize = maximalSize;
+      newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(&sim->base.base);
+      int res = TRI_UpdateParameterInfoCollection(&sim->base.base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);
@@ -3815,30 +4116,25 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
-
-  if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
-    return scope.Close(v8::Handle<v8::Value>());
-  }
-
-  // convert to v8 value
-  TRI_shape_t const* shape = acc->_shape;
-  TRI_shaped_json_t json;
-
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
 
-  if (TRI_ExecuteShapeAccessor(acc, &document, &json)) {
-    TRI_FreeShapeAccessor(acc);
-    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
-  }
+  TRI_shaped_json_t json;
+  TRI_shape_t const* shape;
 
-  TRI_FreeShapeAccessor(acc);
-  return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+
+  if (ok) {
+    if (shape == 0) {
+      return scope.Close(v8::Handle<v8::Value>());
+    }
+    else {
+      return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
+    }
+  }
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3961,18 +4257,13 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+  TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
   if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  TRI_FreeShapeAccessor(acc);
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }
 
@@ -4223,6 +4514,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
       return 0;
     }
     else {
+      // I wish this error provided me with more information!
+      // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                    "cannot execute cross collection index");
       return 0;
@@ -4424,6 +4717,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
+  
+  v8::Handle<v8::String> EnsureBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureBitarray"));
+  v8::Handle<v8::String> EnsureUndefBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUndefBitarray"));
   v8::Handle<v8::String> EnsureCapConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureCapConstraint"));
   v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
@@ -4432,6 +4728,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
+  
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
@@ -4595,6 +4892,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  
+  rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
+  rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
@@ -4603,6 +4903,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -4640,6 +4941,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  
+  rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
+  rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
   rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
@@ -4648,6 +4952,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));

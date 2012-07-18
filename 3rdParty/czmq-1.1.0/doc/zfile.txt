@@ -1,0 +1,55 @@
+zfile(7)
+========
+
+NAME
+----
+zfile - helper functions for working with files.
+
+SYNOPSIS
+--------
+----
+//  Delete file. Does not complain if the file is absent
+int
+    zfile_delete (char *filename);
+
+//  Make directory (maximum one level depending on OS)
+int
+    zfile_mkdir (char *dirname);
+
+//  Return 1 if file exists, else zero
+int
+    zfile_exists (char *filename);
+
+//  Return size of file, or -1 if not found
+ssize_t
+    zfile_size (char *filename);
+
+//  Self test of this class
+int
+    zfile_test (Bool verbose);
+----
+
+DESCRIPTION
+-----------
+
+The zfile class provides methods to work with files.
+
+
+EXAMPLE
+-------
+.From zfile_test method
+----
+    int rc = zfile_delete ("nosuchfile");
+    assert (rc == -1);
+
+    rc = zfile_exists ("nosuchfile");
+    assert (rc == FALSE);
+
+    rc = (int) zfile_size ("nosuchfile");
+    assert (rc == -1);
+
+----
+
+SEE ALSO
+--------
+linkczmq:czmq[7]

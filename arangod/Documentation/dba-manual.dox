@@ -1,0 +1,156 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dba guide guide
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManual ArangoDB's DBA Manual
+///
+/// @if LATEX
+/// <ul>
+///  <li>@ref DbaManualBasics</li>
+///  <li>@ref ShellCollection</li>
+///  <li>@ref ShellIndex</li>
+///  <li>@ref IndexCap</li>
+///  <li>@ref IndexGeo</li>
+///  <li>@ref IndexHash</li>
+///  <li>@ref IndexSkiplist</li>
+///
+///  @latexonly\appendix@endlatexonly
+///  <li>@ref Glossary</li>
+/// </ul>
+/// @else
+/// @copydetails DbaManualBasicsTOC
+/// @copydetails ShellCollectionTOC
+/// @copydetails ShellIndexTOC
+/// @copydetails IndexesTOC
+/// @copydetails DbaManualAuthenticationTOC
+/// @endif
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualBasicsTOC
+///
+/// <ul>
+///  <li>@ref DbaManualBasics
+///   <ul>
+///    <li>@ref DbaManualBasicsDurability</li>
+///    <li>@ref DbaManualBasicsMvcc</li>
+///    <li>@ref DbaManualBasicsConfig</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualBasics Administrating ArangoDB
+///
+/// @EMBEDTOC{DbaManualBasicsTOC}
+///
+/// @section DbaManualBasicsDurability Mostly Memory/Durability
+///////////////////////////////////////////////////////////////
+///
+/// Database documents are stored in memory-mapped files. Per default, these
+/// memory-mapped files are synced frequently - storing all documents securely
+/// at once (durability).
+///
+/// @section DbaManualBasicsMvcc AppendOnly/MVCC
+////////////////////////////////////////////////
+/// 
+/// Instead of overwriting existing documents, a completely new version of the
+/// document is generated. The two benefits are:
+///
+/// - Objects can be stored coherently and compactly in the main memory.
+/// - Objects are preserved-isolated writing and reading transactions allow
+///   accessing these objects for parallel operations.
+///
+/// The system collects obsolete versions as garbage, recognizing them as
+/// forsaken. Garbage collection is asynchronous and runs parallel to other
+/// processes.
+///
+/// @section DbaManualBasicsConfig Configuration
+////////////////////////////////////////////////
+///
+/// @copydetails JS_PropertiesVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualAuthenticationTOC
+///
+/// <ul>
+///  <li>@ref DbaManualAuthentication
+///   <ul>
+///    <li>@ref DbaManualAuthenticationCommandLine</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualAuthentication Authentication and Authorisation
+///
+/// @EMBEDTOC{DbaManualAuthenticationTOC}
+///
+/// ArangoDB only provides a very simple authentication interface and
+/// no authorisation. We plan to add authorisation features in later
+/// releases, which will allow the administrator to restrict access to
+/// collections and queries to certain users, given them either read
+/// or write access.
+///
+/// Currently, you can only secure the access to the HTTP client and
+/// admin port in a all-or-nothing fashion.
+/// The collection @LIT{_users} contains all user and the SHA256 of
+/// their passwords. A user can be active or inactive. A typical document
+/// of this collection is
+///
+/// @verbinclude user-document
+///
+/// If the server is started using the option 
+///
+/// @LIT{--server.http-auth yes}
+///
+/// then access via HTTP requires a user name and password using "basic
+/// authentication". The user must exists in the @LIT{_users}
+/// collection and must be active.
+///
+/// In order to generate an entry, you can use the supplied shell script
+///
+/// @LIT{/usr/sbin/arango-password \<username> [\<password>]}
+///
+/// Note that you must stop the @LIT{arangod} server before executing this
+/// script.
+///
+/// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineArangoHttpAuth
+/// @copydetails triagens::arango::ArangoServer::_httpAuth
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

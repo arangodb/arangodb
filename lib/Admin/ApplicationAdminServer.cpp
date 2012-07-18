@@ -44,27 +44,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new feature
-////////////////////////////////////////////////////////////////////////////////
-
-ApplicationAdminServer* ApplicationAdminServer::create (ApplicationServer*) {
-  return new ApplicationAdminServer();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -78,7 +57,8 @@ ApplicationAdminServer* ApplicationAdminServer::create (ApplicationServer*) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationAdminServer::ApplicationAdminServer ()
-  : _allowLogViewer(false),
+  : ApplicationFeature("admin"),
+    _allowLogViewer(false),
     _allowAdminDirectory(false),
     _allowFeConfiguration(false),
     _allowVersion(false),
@@ -135,6 +115,14 @@ void ApplicationAdminServer::allowLogViewer () {
 
 void ApplicationAdminServer::allowAdminDirectory () {
   _allowAdminDirectory = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows or disallows webadmin directory
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationAdminServer::allowAdminDirectory (bool value) {
+  _allowAdminDirectory = value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

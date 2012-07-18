@@ -24,7 +24,12 @@
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////#include "HttpRequestProtobuf.h"#include "BasicsC/strings.h"#include "Basics/StringUtils.h"
+////////////////////////////////////////////////////////////////////////////////
+
+#include "HttpRequestProtobuf.h"
+
+#include "BasicsC/strings.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -59,7 +64,7 @@ HttpRequestProtobuf::HttpRequestProtobuf (PB_ArangoBatchMessage const& message)
     _request(0) {
   if (message.type() == PB_BLOB_REQUEST) {
     _valid = true;
-    _request = &message.request();
+    _request = &message.blobrequest();
 
     switch (_request->requesttype()) {
       case PB_REQUEST_TYPE_DELETE:
@@ -185,7 +190,7 @@ void HttpRequestProtobuf::write (TRI_string_buffer_t* buffer) const {
   }
 
   TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
-  TRI_AppendUInt64StringBuffer(buffer, _request->contentlength());
+  TRI_AppendUInt64StringBuffer(buffer, _request->content().size());
   TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
   TRI_AppendString2StringBuffer(buffer, _request->content().c_str(), _request->content().size());
 }
@@ -195,7 +200,7 @@ void HttpRequestProtobuf::write (TRI_string_buffer_t* buffer) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t HttpRequestProtobuf::contentLength () const {
-  return _request->contentlength();
+  return _request->content().size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +260,7 @@ map<string, string> HttpRequestProtobuf::headers () const {
     result[kv.key()] = kv.value();
   }
 
-  result["content-length"] = StringUtils::itoa(_request->contentlength());
+  result["content-length"] = StringUtils::itoa(_request->content().size());
 
   return result;
 }

@@ -418,6 +418,49 @@ TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    BITARRAY INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a bitarray index
+///
+/// Note that the caller must hold at least a read-lock.
+/// Also note that the only the set of attributes are used to distinguish 
+/// a bitarray index -- that is, a bitarray is considered to be the same if
+/// the attributes match irrespective of the possible values for an attribute.
+/// Finally observe that there is no notion of uniqueness for a bitarray index.
+/// TODO: allow changes to possible values to be made at run-time.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t*,
+                                                          const TRI_vector_pointer_t* attributes);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t*,
+                                                          const TRI_vector_pointer_t* attributes,
+                                                          const TRI_vector_pointer_t* values,
+                                                          bool supportUndef, 
+                                                          bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
 // -----------------------------------------------------------------------------

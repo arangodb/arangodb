@@ -1,0 +1,258 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user guide guide
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManual ArangoDB's User Manual
+///
+/// @if LATEX
+/// <ul>
+///  <li>@ref UserManualBasics</li>
+///  <li>@ref FirstStepsArangoDB</li>
+///  <li>@ref ShellCollection</li>
+///  <li>@ref ShellDocument</li>
+///  <li>@ref ShellEdge</li>
+///  <li>@ref SimpleQueries</li>
+///  <li>@ref Aql</li>
+///
+///  @latexonly\appendix@endlatexonly
+///  <li>@ref CommandLine</li>
+///  <li>@ref Glossary</li>
+/// </ul>
+/// @else
+/// @copydetails UserManualBasicsTOC
+/// @copydetails FirstStepsArangoDBTOC
+/// @copydetails ShellCollectionTOC
+/// @copydetails ShellDocumentTOC
+/// @copydetails ShellEdgeTOC
+/// @copydetails SimpleQueriesTOC
+/// @copydetails AqlTOC
+/// @copydetails CommandLineTOC
+/// @endif
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualBasicsTOC
+///
+/// <ul>
+///  <li>@ref UserManualBasics
+///   <ul>
+///    <li>@ref UserManualServerStartStop
+///     <ul>
+///      <li>@ref UserManualServerStartStopOptions</li>
+///     </ul>
+///    </li>
+///    <li>@ref UserManualServerFE</li>
+///    <li>@ref UserManualShellStartStop
+///     <ul>
+///      <li>@ref UserManualShellStartStopOptions</li>
+///     </ul>
+///    </li>
+///    </li>
+///    <li>@ref UserManualServerStartStopDebug
+///    </li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualBasics About ArangoDB
+///
+/// We recently started a new open source project - a universal nosql database
+/// called AvocadoDB which became ArangoDB in May 2012.
+///
+/// Key features include:
+/// 
+/// <ul>
+///  <li> Schema-free schemata let you combine the space efficiency of MySQL with
+///       the performance power of NoSQL</li>
+///  <li> Use ArangoDB as an application server and fuse your application and
+///       database together for maximal throughput</li>
+///  <li> JavaScript for all: no language zoo, you can use one language from your
+///       browser to your back-end</li>
+///  <li> ArangoDB is multi-threaded - exploit the power of all your cores</li>
+///  <li> Flexible data modeling: model your data as combination of key-value pairs,
+///       documents or graphs - perfect for social relations</li>
+///  <li> Free index choice: use the correct index for your problem, be it a skip
+///       list or a n-gram search</li>
+///  <li> Configurable durability: let the application decide if it needs more
+///       durability or more performance</li>
+///  <li> No-nonsense storage: ArangoDB uses all of the power of modern storage
+///       hardware, like SSD and large caches</li>
+///  <li> It is open source (Apache Licence 2.0)</li>
+/// </ul>
+///
+/// For more in-depth information
+///
+/// <ul>
+///  <li> read more on the@SPC@EXTREF{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
+///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
+///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
+///       is about.</li>
+///  <li> or  give it a@SPC@INTREF{InstallManual,try}.</li>
+/// </ul>
+///
+/// The ArangoDB database groups documents into collections. Collections and
+/// documents can be accessed using queries. For simple queries involving just
+/// one collection and one search criteria, you can use a simple interface from
+/// within JavaScript code or other languages supported by an API. This
+/// interface allows you to select documents from one collection based on just
+/// one search criteria. For more complex queries, you can use the Arango Query
+/// Language (AQL), which is an evolution of SQL resp. UNQL for the NoSQL
+/// world. AQL allows you to use more then one collection, similar to joins from
+/// SQL, while still retaining the document and list structures like UNQL.
+///
+/// The ArangoDB database packages comes with various programs:
+///
+/// - @LIT{arangod}: The ArangoDB database daemon. This server program is
+///   intended to run as daemon process and to server the various clients
+///   connection to the server via TCP / HTTP. See @ref
+///   UserManualServerStartStop.
+/// - @LIT{arangosh}: The ArangoDB shell. A client that implements a
+///   read-eval-print loop (REPL) and provides functions to access and
+///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
+/// - @LIT{arangoimp}: A bulk importer for the ArangoDB server.
+///   See @ref ImpManual
+///
+/// @EMBEDTOC{UserManualBasicsTOC}
+///
+/// @section UserManualServerStartStop Starting the ArangoDB Server
+///////////////////////////////////////////////////////////////////
+///
+/// The ArangoDB database server has two modes of operation: as server, where it
+/// will answer to client requests and an emergency console, in which you can
+/// access the database directly. The latter - as the name suggests - should 
+/// only be used in case of an emergency, for example, a corrupted
+/// collection. Using the emergency console allows you to issue all commands
+/// normally available in actions and transactions.
+///
+/// You should never start more than one server for the same database,
+/// independent from the mode of operation.
+///
+/// The following command starts the ArangoDB database in server mode. You will
+/// be able to access the server using HTTP requests on port 8529. See @ref
+/// UserManualServerStartStopOptions "below" for a list of frequently used
+/// options, see @ref CommandLine "here" for a complete list.
+///
+/// @TINYEXAMPLE{option-database-directory,starting the server}
+///
+/// After starting the server, point your favorite browser to:
+///
+/// @LIT{http://localhost:8529/}
+///
+/// to access the administration front-end.
+///
+/// @subsection UserManualServerStartStopOptions Frequently Used Options
+////////////////////////////////////////////////////////////////////////
+///
+/// The following command-line options are frequently used. For a full
+/// list of options see @ref CommandLine "here".
+///
+/// @CMDOPT{@CA{database-directory}}
+////////////////////////////////////
+///
+/// Uses the @CA{database-directory} as base directory. There is an alternative
+/// version available for use in configuration files, see @ref
+/// CommandLineArango "here".
+///
+/// @copydetails triagens::rest::ApplicationServer::_options
+////////////////////////////////////////////////////////////
+///
+/// @CMDOPT{--log @CA{level}}
+/////////////////////////////
+///
+/// Allows the user to choose the level of information which is logged by the
+/// server. The @CA{level} is specified as a string and can be one of the
+/// following values: fatal, error, warning, info, debug, trace.  For more
+/// information see @ref CommandLineLogging "here".
+///
+/// @copydetails triagens::arango::ArangoServer::_httpPort
+//////////////////////////////////////////////////////////
+///
+/// @CMDOPT{--daemon}
+/////////////////////
+///
+/// Runs the server as a daemon (as a background process).
+///
+/// @section UserManualServerFE ArangoDB's Front-End
+////////////////////////////////////////////////////
+///
+/// The ArangoDB server has a graphical front-end, which allows you to inspect
+/// the current state of the server. You can read the front-end using the
+/// following URL:
+///
+/// @LIT{http://localhost:8529/_admin}
+///
+/// Unless you have loaded an application into the ArangoDB server, which remaps
+/// the paths, the front-end will also be available under
+///
+/// @LIT{http://localhost:8529/}.
+///
+/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Front-End">@endhtmlonly
+/// @latexonly\includegraphics[width=12cm]{images/fe1.png}@endlatexonly
+///
+/// The front-end allows you the browser through the collections and
+/// documents. If you need to administrate the database, please use
+/// the ArgangoDB shell described in the next section.
+///
+/// @section UserManualShellStartStop Starting the ArangoDB Shell
+/////////////////////////////////////////////////////////////////
+///
+/// After the server has been @ref UserManualServerStartStop "started",
+/// you can use the ArangoDB shell to administrate the server. Without
+/// any arguments, the ArangoDB shell will try to contact the server
+/// on port 8529 on the localhost.
+///
+/// @TINYEXAMPLE{arangosh-start,starting the shell}
+///
+/// The shell will print its own version number and, if successfully connected
+/// to a server, the version number of the ArangoDB server.
+///
+/// @subsection UserManualShellStartStopOptions Command-Line Options
+////////////////////////////////////////////////////////////////////
+///
+/// Use @LIT{--help} to get a list of command-line options:
+///
+/// @TINYEXAMPLE{arangosh-options,shell options}
+///
+/// @section UserManualServerStartStopDebug Starting the ArangoDB Emergency Console
+///////////////////////////////////////////////////////////////////////////////////
+///
+/// The following command starts a emergency console. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @note Never start the emergency console for a database which also has a
+/// server attached to it. In general the ArangoDB shell is what you want.
+///
+/// @EXAMPLE{start-emergency-console,emergency console}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

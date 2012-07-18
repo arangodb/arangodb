@@ -1596,8 +1596,12 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
   ScopeOutputRegister(generator, subQueryRegister);
+#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "; /* subquery */\n");
-  
+#else
+  ScopeOutput(generator, ";\n");
+#endif
+    
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
 
@@ -1912,13 +1916,20 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator, 
                                 const TRI_aql_node_t* const node) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
   
   // var row = ...;
-  ScopeOutputRegister(generator, scope->_resultRegister);
+  ScopeOutputRegister(generator, resultRegister);
+#ifdef TRI_DEBUG_AQL
+  ScopeOutput(generator, " = [ ]; /* return empty */\n");
+#else
   ScopeOutput(generator, " = [ ];\n");
+#endif
   
-  generator->_lastResultRegister = scope->_resultRegister;
+  generator->_lastResultRegister = resultRegister;
+  
+  // }
+  CloseLoops(generator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

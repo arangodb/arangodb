@@ -44,7 +44,7 @@ namespace triagens {
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-    class  Task {
+    class Task {
       friend class TaskManager;
       Task (Task const&);
       Task& operator= (Task const&);
@@ -146,7 +146,7 @@ namespace triagens {
 
       private:
         string const name;
-        sig_atomic_t active;
+        volatile sig_atomic_t active;
     };
   }
 }

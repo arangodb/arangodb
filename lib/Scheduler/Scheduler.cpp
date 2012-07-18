@@ -133,6 +133,54 @@ bool Scheduler::start (ConditionVariable* cv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the scheduler threads are up and running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::isStarted () {
+  MUTEX_LOCKER(schedulerLock);
+
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    if (! threads[i]->isStarted()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens the scheduler for business
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::open () {
+  MUTEX_LOCKER(schedulerLock);
+
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    if (! threads[i]->open()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if scheduler is still running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::isRunning () {
+  MUTEX_LOCKER(schedulerLock);
+
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    if (threads[i]->isRunning()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -162,19 +210,19 @@ bool Scheduler::isShutdownInProgress () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if scheduler is still running
+/// @brief shuts down the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scheduler::isRunning () {
-  MUTEX_LOCKER(schedulerLock);
-
-  for (size_t i = 0;  i < nrThreads;  ++i) {
-    if (threads[i]->isRunning()) {
-      return true;
-    }
+void Scheduler::shutdown () {
+  for (set<Task*>::iterator i = taskRegistered.begin();
+       i != taskRegistered.end();
+       ++i) {
+    deleteTask(*i);
   }
 
-  return false;
+  taskRegistered.clear();
+  task2thread.clear();
+  current.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,6 +279,8 @@ void Scheduler::unregisterTask (Task* task) {
         taskRegistered.erase(task);
         --current[task->getName()];
       }
+
+      task2thread.erase(i);
     }
   }
 

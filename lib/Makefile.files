@@ -65,6 +65,8 @@ lib_libarango_a_SOURCES = \
 	lib/Logger/LoggerStream.cpp \
 	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
+	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/HttpRequest.cpp \
@@ -104,8 +106,10 @@ if ENABLE_ZEROMQ
 
 lib_libarango_a_SOURCES += \
 	lib/ZeroMQ/ApplicationZeroMQ.cpp \
-	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp
+	lib/ZeroMQ/ZeroMQBatchJob.cpp \
+	lib/ZeroMQ/ZeroMQThread.cpp \
+	lib/ZeroMQ/ZeroMQQueueThread.cpp \
+	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
 endif
 
@@ -137,18 +141,16 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/Job.cpp \
 	lib/GeneralServer/GeneralFigures.cpp \
 	lib/HttpServer/ApplicationHttpServer.cpp \
-	lib/HttpServer/ApplicationHttpServerImpl.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
+	lib/HttpServer/HttpServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
 	lib/HttpsServer/ApplicationHttpsServer.cpp \
-	lib/HttpsServer/ApplicationHttpsServerImpl.cpp \
 	lib/HttpsServer/HttpsAsyncCommTask.cpp \
 	lib/HttpsServer/HttpsServer.cpp \
-	lib/HttpsServer/HttpsServerImpl.cpp \
 	lib/ResultGenerator/HtmlResultGenerator.cpp \
 	lib/ResultGenerator/Initialise.cpp \
 	lib/ResultGenerator/JsonResultGenerator.cpp \

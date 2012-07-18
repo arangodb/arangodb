@@ -155,7 +155,7 @@ static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
   
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
                        row,
-                       "level", 
+                       "loopLevel", 
                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) explain->_level));
   
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 

@@ -9,7 +9,12 @@ location: /_api/collection/73482/figures
   "code": 200,
   "figures": {
     "datafiles": {
-      "count": 1
+      "count": 0,
+      "fileSize": 0
+    },
+    "journals": {
+      "count": 0,
+      "fileSize": 33554432 
     },
     "alive": {
       "size": 0,

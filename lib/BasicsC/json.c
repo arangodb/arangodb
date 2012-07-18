@@ -632,6 +632,22 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new attribute, not copying it but freeing the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject) {
+  TRI_json_t copy;
+
+  copy._type = TRI_JSON_STRING;
+  copy._value._string.length = nameLength + 1;
+  copy._value._string.data = name;
+
+  TRI_PushBackVector(&object->_value._objects, &copy);
+  TRI_PushBackVector(&object->_value._objects, subobject);
+  TRI_Free(zone, subobject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in an json array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -868,6 +884,104 @@ TRI_json_t* TRI_CopyJson (TRI_memory_zone_t* zone, TRI_json_t* src) {
 
   return dst;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines whether or not two json objects are equal
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
+
+  if (left == NULL && right == NULL) {
+    return true;
+  }
+
+  if (left == NULL || right == NULL) {
+    return false;
+  }
+
+  if (left->_type != right->_type) {
+    return false;
+  }
+
+  switch (left->_type) {
+  
+    case TRI_JSON_UNUSED: {
+      return true;
+    }
+    
+    case TRI_JSON_NULL: {
+      return true;
+    }
+    
+    case TRI_JSON_BOOLEAN: {
+      return (left->_value._boolean == right->_value._boolean);
+    }    
+    
+    case TRI_JSON_NUMBER: {
+      return (left->_value._number == right->_value._number);
+    }    
+    
+    case TRI_JSON_STRING: {
+      return (strcmp(left->_value._string.data, right->_value._string.data) == 0);
+    }    
+    
+    case TRI_JSON_ARRAY: {
+      int j;
+      
+      if (left->_value._objects._length != right->_value._objects._length) {
+        return false;
+      }
+      
+      for (j = 0; j < (left->_value._objects._length / 2); ++j) {
+        TRI_json_t* leftName;
+        TRI_json_t* leftValue;
+        TRI_json_t* rightValue;
+
+        leftName = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),2*j));
+        if (leftName == NULL) {
+          return false;
+        }
+        
+        leftValue  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),(2*j) + 1));
+        rightValue = TRI_LookupArrayJson(right, leftName->_value._string.data);        
+
+        if (TRI_EqualJsonJson(leftValue, rightValue)) {
+          continue;
+        }
+        return false;
+      }
+      
+      return true;
+    }    
+    
+    case TRI_JSON_LIST: {
+      int j;
+      
+      if (left->_value._objects._length != right->_value._objects._length) {
+        return false;
+      }
+      
+      for (j = 0; j < left->_value._objects._length; ++j) {
+        TRI_json_t* subLeft;
+        TRI_json_t* subRight;
+        subLeft  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),j));
+        subRight = (TRI_json_t*)(TRI_AtVector(&(right->_value._objects),j));
+        if (TRI_EqualJsonJson(subLeft, subRight)) {
+          continue;
+        }
+        return false;
+      }
+      
+      return true;
+    }   
+    
+    default: {
+      assert(false);
+    }  
+  }        
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

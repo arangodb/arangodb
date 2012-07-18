@@ -54,15 +54,27 @@ using namespace triagens::arango;
 RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* data)
   : RestVocbaseBaseHandler(request, data->_vocbase),
     _action(0),
-    _context(0),
-    _queue() {
+    _queue(),
+    _allowed(false) {
   _action = TRI_LookupActionVocBase(request);
 
-  if (_action == 0) {
-    _queue = "STANDARD";
+  // check if the action is allowed
+  if (_action != 0) {
+    for (set<string>::const_iterator i = data->_contexts.begin();  i != data->_contexts.end();  ++i) {
+      if (_action->_contexts.find(*i) != _action->_contexts.end()) {
+        _allowed = true;
+        break;
+      }
+    }
+
+    if (! _allowed) {
+      _action = 0;
+    }
   }
-  else {
-    _queue = data->_queue + _action->_type;
+
+  // use the queue from options if an action is known
+  if (_action != 0) {
+    _queue = data->_queue;
   }
 }
 
@@ -99,22 +111,13 @@ string const& RestActionHandler::queue () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestActionHandler::setDispatcherThread (DispatcherThread* thread) {
-  ActionDispatcherThread* actionThread = dynamic_cast<ActionDispatcherThread*>(thread);
-
-  if (actionThread != 0) {
-    _context = actionThread->context();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 HttpHandler::status_e RestActionHandler::execute () {
-  static LoggerData::Task const logExecute("ACTION [execute]");
+  static LoggerData::Task const logDelete("ACTION [delete]");
+  static LoggerData::Task const logGet("ACTION [get]");
   static LoggerData::Task const logHead("ACTION [head]");
   static LoggerData::Task const logIllegal("ACTION [illegal]");
+  static LoggerData::Task const logPost("ACTION [post]");
+  static LoggerData::Task const logPut("ACTION [put]");
 
   LoggerData::Task const * task = &logIllegal;
 
@@ -125,9 +128,9 @@ HttpHandler::status_e RestActionHandler::execute () {
     generateNotImplemented(request->requestPath());
   }
 
-  // need a context
-  else if (_context == 0) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "no execution context is known");
+  // need permission
+  else if (! _allowed) {
+    generateForbidden();
   }
 
   // execute
@@ -138,10 +141,10 @@ HttpHandler::status_e RestActionHandler::execute () {
 
     // prepare logging
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
+      case HttpRequest::HTTP_REQUEST_DELETE: task = &logDelete; break;
+      case HttpRequest::HTTP_REQUEST_GET: task = &logGet; break;
+      case HttpRequest::HTTP_REQUEST_POST: task = &logPost; break;
+      case HttpRequest::HTTP_REQUEST_PUT: task = &logPut; break;
       case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
       case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     }
@@ -188,7 +191,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::executeAction () {
-  response = _action->execute(_vocbase, _context, request);
+  response = _action->execute(_vocbase, request);
 
   if (response == 0) {
     generateNotImplemented(_action->_url);

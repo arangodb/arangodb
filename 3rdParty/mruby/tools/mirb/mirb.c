@@ -142,6 +142,11 @@ main(void)
 
   /* new interpreter instance */ 
   mrb_interpreter = mrb_open();
+  if (mrb_interpreter == NULL) {
+    fprintf(stderr, "Invalid mrb_interpreter, exiting mirb");
+    return EXIT_FAILURE;
+  }
+
   /* new parser instance */
   parser = mrb_parser_new(mrb_interpreter);
   memset(ruby_code, 0, sizeof(*ruby_code));

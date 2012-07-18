@@ -1,0 +1,193 @@
+CZMQ version 1.1.0 (stable), released on 2011/08/30
+===================================================
+
+Changes
+-------
+
+* Fixed issue CZMQ-2. (https://zeromq.jira.com/browse/CZMQ-2)
+
+* Removed unused ctx argument from zthread_new() call.
+
+* zloop works with zmq_pollitem_t * instead of void * sockets; allows
+  use of native FDs in reactor as well as 0MQ sockets.
+
+* zloop_reader renamed to zloop_poller.
+
+* zloop_cancel renamed to zloop_poller_end, and API changed to work with
+  zmq_pollitem_t * instead of a single 0MQ socket void *.
+
+* Added zloop_timer_end, taking same argument as for zloop_timer.
+
+* zloop_poller_end cancels ALL handlers for the socket or FD.
+
+* Added zmsg_content_size method to report full content size of message.
+
+* zmsg_save returns 0/-1 depending on success/failure (previously returned
+  void).
+
+* zmsg_dump limited to first 10 frames, to allow mix of large and small
+  messages in applications.
+
+* zframe_print truncates output at 70 chars to prevent over-long output.
+
+* Added ability for zsocket_bind to bind to ephemeral port in range 0xc000
+  to 0xffff.
+
+* zmq_bind always returns port number bound to, if successful.
+
+* Added zfile class with minimal helper functions.
+
+* Added zfile_size method to return file size, as ssize_t.
+
+* Added socket multipart flush to zctx_destroy to work around libzmq issue
+  134, which asserts if a fair-queuing socket still has input at close.
+
+* Added zframe_eq method to compare two frames' size and content.
+
+* Changed zmsg_load to append to an optional existing message.
+
+* Fixed zloop to allow timers to be added after reactor was started.
+  Without this fix, the reactor would spin at max speed instead of
+  properly calculating the timer. (Luc Heinrich)
+
+* Modified zmsg_pushstr and zmsg_addstr to accept variable argument list
+  and do vsnprintf formatting of provided string.
+
+* Added zhash_rename function to allow soft renaming of item keys.
+
+* Added tblsize and tbllast macros, so very useful when you need them.
+
+* Added zmsg_encode and zmsg_decode functions to serialize messages to
+  and from a byte buffer.
+
+* Added zframe_recv_nowait method to read frame without blocking.
+
+
+CZMQ version 1.0.0 (stable), released on 2011/04/26
+===================================================
+
+Changes
+-------
+
+* At build time, reports error if libzmq version isn't at least 2.1.
+
+* Renamed project to CZMQ for coherence with other language bindings.
+
+
+libzapi version 1.3.2 (beta), released on 2011/04/15
+====================================================
+
+Changes
+-------
+
+* Added zsocket_type_str method to return printable socket type.
+
+* Added zloop_set_verbose method to enable/disable reactor activity.
+
+* Fixed zloop to call right handlers even if handlers register/cancel
+  other handlers.
+
+* Fixed zloop to not call handlers when interrupted.
+
+* Added zsocket_set_hwm method to emulate 2.x option (sets both send
+  and recv high-water marks).
+
+* Several parts of the 3.0 porting didn't work properly - fixed.
+
+* Added macro set to aid portability from 2.1 to 3.0: ZMQ_POLL_MSEC,
+  ZMQ_DONTWAIT, zmq_sendmsg, zmq_recvmsg.
+
+
+libzapi version 1.3.1 (beta), released on 2011/04/09
+====================================================
+
+Changes
+-------
+
+* Added compatibility for new libzmq/3.0 API.
+
+
+libzapi version 1.3.0 (beta), released on 2011/04/08
+====================================================
+
+Changes
+-------
+
+* Ported to win32, all selftests pass successfully.
+
+* New zsockopt class provides API to set/get socket options.
+
+* New zsocket class provides API to connect and bind sockets using
+  printf semantics to format endpoints.
+
+* Threading API now supports detached and attached threads via zthread
+  class, and zthread_new and zthread_fork methods.
+
+* Pipes to attached threads have HWM of 1 (each side) to block runaway
+  writers.
+
+* In zframe class, added print, reset, strdup, streq, strhex, dup methods.
+
+* In zmsg class, added last, wrap, unwrap, popstr, pushstr, addstr, dup
+  methods.
+
+* In zclock class, added log method.
+
+* In zstr class, added sendm and recv_nowait methods.
+
+* Added Valgrind suppression file for libzmq.
+
+Bug Fixes
+---------
+
+* Fixed error in thread pipe handling which sometimes provoked libzmq
+  assertion failure at shutdown.
+
+
+libzapi version 1.2.1 (beta), released on 2011/04/01
+====================================================
+
+Changes
+-------
+
+* Rewrote zctx class, which was wrongly working with sockets in two
+  threads. Much simpler, and properly stable now.
+
+* Project renamed to 'libzapi' for consistency with 'libzmq'.
+
+* Expanded main documentation page significantly.
+
+
+zapi version 1.2.0 (beta), released on 2011/03/24
+=================================================
+
+Changes
+-------
+
+* Added zclock class for portable millisecond timers and delays.
+
+* Expanded documentation significantly.
+
+
+zapi version 1.1.0 (beta), released on 2011/03/23
+=================================================
+
+Changes
+-------
+
+* Added zctx_thread_new method to create child threads with a PAIR pipe
+  to talk to them.
+
+* Made zapi threadsafe, specifically multiple threads can share the same
+  context and thus talk to each other.
+
+
+zapi version 1.0.0 (beta), released on 2011/03/22
+=================================================
+
+Changes
+-------
+
+* Initial version of library finished, tested, documented, and packaged.
+
+

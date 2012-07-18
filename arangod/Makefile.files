@@ -55,20 +55,22 @@ bin_arangod_SOURCES = \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
+	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
-	arangod/RestServer/JavascriptDispatcherThread.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
+	arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c \
 	arangod/VocBase/blob-collection.c \
 	arangod/VocBase/collection.c \
@@ -93,9 +95,8 @@ bin_arangod_LDADD += \
 	@MRUBY_LIBS@
 
 bin_arangod_SOURCES += \
-	arangod/MRServer/mr-actions.cpp \
-	arangod/RestServer/RubyDispatcherThread.cpp
-
+	arangod/MRServer/ApplicationMR.cpp \
+	arangod/MRServer/mr-actions.cpp
 endif
 
 

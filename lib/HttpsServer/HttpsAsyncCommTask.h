@@ -38,14 +38,14 @@
 
 namespace triagens {
   namespace rest {
-    class HttpServerImpl;
+    class HttpServer;
     class HttpCommTask;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief task for https communication
     ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsAsyncCommTask : public GeneralAsyncCommTask<HttpServerImpl, HttpHandlerFactory, HttpCommTask> {
+    class HttpsAsyncCommTask : public GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask> {
       private:
         static size_t const READ_BLOCK_SIZE = 10000;
 
@@ -55,7 +55,7 @@ namespace triagens {
         /// @brief constructs a new task with a given socket
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsAsyncCommTask (HttpServerImpl*, socket_t, ConnectionInfo const&, BIO*);
+        HttpsAsyncCommTask (HttpServer*, socket_t, ConnectionInfo const&, BIO*);
 
       protected:
 

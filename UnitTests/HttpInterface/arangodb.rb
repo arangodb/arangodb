@@ -1,5 +1,6 @@
 # coding: utf-8
 
+require 'rubygems'
 require 'httparty'
 require 'json'
 
