@@ -402,20 +402,51 @@
       <div id="statusView" style="display: none">
       
         <div id="statisticRadioDiv">
-          <form action="#" id="statsRadio" style="font-size:0.8em;">
+          <form action="#" id="statsRadio" style="float: left; font-size:0.8em;">
             <input type="radio" id="radio1" name="statsRadio" value="minutes" checked/>
-            <label for="radio1" class="cb-enable selected"><span>Minutes</span></label>
+            <label for="radio1" class="cb-enable selected">Minutes</label>
             <input type="radio" id="radio2" name="statsRadio" value="hours"/>
-            <label for="radio2" class="cb-disable"><span>Hours</span></label>
+            <label for="radio2" class="cb-disable">Hours</label>
             <input type="radio" id="radio3" name="statsRadio" value="days"/>
-            <label for="radio3" class="cb-disable"><span>Days</span></label>
+            <label for="radio3" class="cb-disable">Days</label>
           </form>
-        </div>
 
-        <a style="font-size:0.8em;">Connections</a>
-        <div id="placeholderConnection" style="width:100%;height:150px; margin-top: 10px; "></div>
-        <a style="font-size:0.8em; padding-top: 10px;  ">Requests</a>
-        <div id="placeholderBytesSent" style="width:100%;height:150px; margin-top: 10px; " class="box"></div>
+          <div class="ItemActionButtons">
+            <div id="divSaveButton" class="buttonset" style="float: left; font-size:0.6em; margin-left: 10px; ">
+              <input id="btnAddNewStat" class="button" value="Add..." onclick="ItemActionButtons.onSaveExtraClick.apply(this)" type="button"></input>
+              <ul class="SaveExtraOptions ui-corner-bottom" id="btnSaveExtraOptions">
+                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowConnectionsStats.apply(this)"id="addconnectionsLiBtn">Connections</li>
+                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowRequestsStats.apply(this)"id="addrequestsLiBtn">Requests</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+        
+        <ul id="sortable">
+
+          <li id="connectionsLi" class="resizable">
+            <div id="connectionsDiv" class="statsBoxes">
+              <div class="greydiv">
+                <a class="statsHeader">Connections</a>
+                <a class="statsClose">X</a>
+              </div>
+              <div id="placeholderConnection" class="placeholderBox"></div>
+            </div>
+          </li>
+        
+          <li id="requestsLi" class="resizable">
+            <div id="requestsDiv" class="statsBoxes">
+              <div class="greydiv">
+                <a class="statsHeader">Requests</a>
+                <a class="statsClose">X</a>
+              </div>
+              <div id="placeholderBytesSent" class="placeholderBox"></div>
+            </div>
+          </li>
+
+        </ul>         
+
       </div>
 
       <div id="configView" style="display: none">
@@ -442,12 +473,16 @@
           <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
       </div>
 
-      <div id="queryView" style="display: none">
-        <a style="color:#797979; font-size:0.9em;">Output:</a>
+      <div id="queryView" style="display: none"> 
+        <div class="queryDiv">
+          <a>Output</a>
+        </div>
         <div id="queryOutput">
           <a style="padding-left:10px"></a>
         </div>
-        <a style="color:#797979; font-size:0.9em;">Input:</a>
+        <div class="queryDiv">
+          <a>Input</a>
+        </div>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>
