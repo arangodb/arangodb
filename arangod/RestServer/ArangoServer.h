@@ -300,23 +300,6 @@ namespace triagens {
         string _httpPort;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for admin requests
-///
-/// @CMDOPT{--server.admin-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to any address available.
-///
-/// @CMDOPT{--server.admin-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to the given @CA{address}, which can be a numeric value like
-/// 192.168.1.1 or a name.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _adminPort;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
 /// @CMDOPT{--server.threads @CA{number}}
