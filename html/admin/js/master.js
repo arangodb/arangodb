@@ -91,6 +91,13 @@ $("#documents_first").live('click', function () {
 $("#documents_last").live('click', function () {
   createLastPagination("#documentsTable"); 
 });
+
+
+$(".statsClose").live('click', function () {
+  var id = $(this).closest("li").attr("id"); 
+  $("#"+id).hide();  
+});
+
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -576,9 +583,14 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#statusView').show();
       createnav ("Statistics"); 
+      $( "#sortable" ).sortable();
+      $( "#sortable" ).disableSelection();
+      $( ".resizable" ).resizable({handles: 'e'}); 
       //TODO
       $( "#statisticRadioDiv" ).buttonset();
-      drawStatistics("minutes"); 
+      var name = $('input[name=statsRadio]:checked', '#statsRadio').val();
+      drawStatistics(name); 
+      updateGraphs(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2478,6 +2490,7 @@ function drawStatistics (granularity) {
 
         var options = {
           legend: {
+            margin: 0,  
             show: true,
             backgroundOpacity: 0.4 
           }, 
@@ -2572,19 +2585,21 @@ function drawStatistics (granularity) {
       if (data.start.length == data.bytesSent.count.length && data.start.length == data.bytesReceived.count.length) {
         var counter = 0; 
         for (i=0; i < data.start.length; i++) {
-          arraySent.push([data.start[i]*1000,data.bytesSent.count[i]]);
-          arrayReceived.push([data.start[i]*1000,data.bytesReceived.count[i]]);
+          arraySent.push([data.start[i]*1000,data.bytesSent.count[i]/1000]);
+          arrayReceived.push([data.start[i]*1000,data.bytesReceived.count[i]/1000]);
         }
         var stack = 0, bars = true, lines = true, steps = true;
         var options = {
           legend: {
             show: true,
+            margin: 0,  
+            noColumns: 0, 
             backgroundOpacity: 0.4 
           }, 
           series: {
             stack: stack,
             lines: { show: true, 
-                     steps: true, 
+                     steps: false,  
                      fill: true, 
                      lineWidth: 0.5,
                      fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
@@ -2659,11 +2674,93 @@ function drawStatistics (granularity) {
     error: function(data) {
     }
   });
+}
 
-
-
+function updateGraphs() {
+  var name = $('input[name=statsRadio]:checked', '#statsRadio').val();
+  drawStatistics(name); 
+  setTimeout(updateGraphs, 60000);
 }
 
 
 
+$(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
+$(document).delegate('#btnSaveExtraOptions', 'mouseenter', function () { ItemActionButtons.isHoverMenu = true; });
+$(document).delegate('#btnSaveExtraOptions', 'mouseleave', function () { $('#btnSaveExtraOptions').hide(); ItemActionButtons.isHoverMenu = false; });
+ 
+var $IsHoverExtraOptionsFlag = 0;
+ 
+$(document).ready(function () {
+  $(".button").button();
+  $(".buttonset").buttonset();
+ 
+  $('#btnAddNewStat').button({ icons: { primary: "ui-icon-plusthick" } });
+  $('#btnSaveExtraOptions li').addClass('ui-corner-all ui-widget');
+  $('#btnSaveExtraOptions li').hover(
+    function () {
+      $(this).addClass('ui-state-default'); 
+    },
+    function () {  
+      $(this).removeClass('ui-state-default'); 
+    }
+  );
+  $('#btnSaveExtraOptions li').mousedown(function () { 
+    $(this).addClass('ui-state-active'); 
+  });
+  $('#btnSaveExtraOptions li').mouseup(function () { 
+    $(this).removeClass('ui-state-active'); 
+  });
+});
+ 
+var ItemActionButtons = {
 
+  isHoverMenu: false,
+ 
+  AllowDelete: function (value) { value ? $("#btnDelete").show() : $("#btnDelete").hide() },
+  AllowCancel: function (value) { value ? $("#btnCancel").show() : $("#btnCancel").hide() },
+  AllowSave: function (value) { value ? $("#btnSave").show() : $("#btnSave").hide() },
+  AllowSaveExtra: function (value) { value ? $("#btnAddNewStat").show() : $("#btnAddNewStat").hide() },
+ 
+  onDeleteClick: function () { },
+  onCancelClick: function () { },
+  onSaveClick: function () { },
+  onSaveExtraClick: function () {
+
+ 
+    $('#btnSaveExtraOptions').toggle();
+ 
+    var btnLeft = $('#divSaveButton').offset().left;
+    var btnTop = $('#divSaveButton').offset().top + $('#divSaveButton').outerHeight(); // +$('#divSaveButton').css('padding');
+    var btnWidth = $('#divSaveButton').outerWidth();
+    $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
+  },
+  ShowConnectionsStats: function () {
+    $("#connectionsLi").show();  
+  },
+  ShowRequestsStats: function () { 
+    $("#requestsLi").show();  
+  }
+}
+
+$('#btnAddNewStat').live('click', function () { 
+  //Check which divs are already shown 
+    var statsArray = ["connectionsLi", "requestsLi"]; 
+
+    for (var i = 0; i < statsArray.length; ++i) {
+      if ($("#"+statsArray[i]).isVisible() == true) { 
+        $("add"+statsArray[i]+"Btn").addClass("statDisabled"); 
+        var id = "#add" + statsArray[i] + "Btn"; 
+        $(id).removeClass("statEnabled");  
+        $(id).addClass("statDisabled");  
+      }
+      else {
+        var id = "#add" + statsArray[i] + "Btn"; 
+        $(id).removeClass("statDisabled");  
+        $(id).addClass("statEnabled");  
+      }
+    }
+});
+
+$.fn.isVisible = function() {
+  return $.expr.filters.visible(this[0]);
+};
