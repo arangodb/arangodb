@@ -295,7 +295,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleRequest (CT * task, GeneralHandler* handler) {
-          registerHandler(handler, task);
+          this->registerHandler(handler, task);
 
           // execute handler and (possibly) requeue
           while (true) {
