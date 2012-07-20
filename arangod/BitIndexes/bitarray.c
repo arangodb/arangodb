@@ -634,7 +634,7 @@ void printBitarray(TRI_bitarray_t* ba) {
     }  
     printf("==\n");
     for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
-      printf("ROW %llu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
+      printf("ROW %llu: ", (unsigned long long) ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
       for (j = 0; j < ba->_numColumns; ++j) {
         BitColumn_t* column;
         bit_column_int_t* bitInteger;
