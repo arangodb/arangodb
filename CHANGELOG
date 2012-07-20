@@ -1,5 +1,9 @@
 v1.1.x (XXXX-XX-XX)
 -------------------
+* removed startup option "--server.admin-port". We will soon allow opening
+  multiple ports/endpoints anyway, and the distinction between admin and "other"
+  ports/endpoints will be made using privileges
+
 * removed startup options "--server.require-keep-alive" and 
   "--server.secure-require-keep-alive". 
   The server will now behave as follows which should be more conforming to the 
@@ -12,7 +16,8 @@ v1.1.x (XXXX-XX-XX)
     "keep-alive" if the request was an HTTP/1.1 request, and "close" if the
     request was an HTTP/1.0 request
 
-* internal optimisations for HTTP request parsing and response header handling
+* (minimal) internal optimisations for HTTP request parsing and response header 
+  handling
 
 
 v1.x.x (2012-XX-XX)

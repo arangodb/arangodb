@@ -199,7 +199,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpServer(0),
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
-    _adminPort(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
@@ -435,7 +434,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["Server Options:help-admin"]
-    ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
     ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
 
@@ -534,10 +532,6 @@ void ArangoServer::buildApplicationServer () {
 int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
 
-  bool useHttpPort = ! _httpPort.empty();
-  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
-  bool shareAdminPort = useHttpPort && _adminPort.empty();
-
   // .............................................................................
   // open the database
   // .............................................................................
@@ -552,20 +546,12 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
-  size_t actionConcurrency = _dispatcherThreads;
-
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      actionConcurrency += 2;
-    }
-  }
-
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setConcurrency(actionConcurrency);
+  _applicationV8->setConcurrency(_dispatcherThreads);
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
-  _applicationMR->setConcurrency(actionConcurrency);
+  _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
 
   _applicationServer->prepare();
@@ -578,13 +564,6 @@ int ArangoServer::startupServer () {
 
   Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
 
-  // use a separate queue for administrator requests
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      dispatcher->addQueue("SYSTEM", 2);
-    }
-  }
-
   // .............................................................................
   // create a client http server and http handler factory
   // .............................................................................
@@ -596,33 +575,26 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
-  // if we want a http port create the factory
-  if (useHttpPort) {
+  // set up a port list
+  vector<AddressPort> ports;
+  ports.push_back(AddressPort(_httpPort));
 
-    // set up a port list
-    vector<AddressPort> ports;
-    ports.push_back(AddressPort(_httpPort));
+  // create the server
+  _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), ports);
 
-    // create the server
-    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), ports);
+  // create the handlers
+  httpOptions._contexts.insert("user");
+  httpOptions._contexts.insert("api");
 
-    // create the handlers
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
+  DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
 
-    DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
+  DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
+  httpOptions._contexts.insert("admin");
 
-    if (shareAdminPort) {
-      DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
-      httpOptions._contexts.insert("admin");
-    }
-
-    // add action handler
-    _httpServer->addPrefixHandler("/",
-                                  RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                  (void*) &httpOptions);
-
-  }
+  // add action handler
+  _httpServer->addPrefixHandler("/",
+                                RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                (void*) &httpOptions);
 
   // .............................................................................
   // create a admin http server and http handler factory
@@ -632,29 +604,6 @@ int ArangoServer::startupServer () {
   RestActionHandler::action_options_t adminOptions;
   adminOptions._vocbase = _vocbase;
   adminOptions._queue = "SYSTEM";
-
-  // if we want a admin http port create the factory
-  if (useAdminPort) {
-
-    // set up a port list
-    vector<AddressPort> adminPorts;
-    adminPorts.push_back(AddressPort(_adminPort));
-
-    // create the server
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminPorts);
-
-    // create the handlers
-    adminOptions._contexts.insert("api");
-    adminOptions._contexts.insert("admin");
-
-    DefineApiHandlers(_adminHttpServer, _applicationAdminServer, _vocbase);
-    DefineAdminHandlers(_adminHttpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
-
-    // add action handler
-    _adminHttpServer->addPrefixHandler("/",
-                                       RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                       (void*) &adminOptions);
-  }
 
   // .............................................................................
   // create a http handler factory for zeromq
@@ -673,9 +622,7 @@ int ArangoServer::startupServer () {
 
     DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-    }
+    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
     factory->addPrefixHandler("/",
@@ -691,24 +638,7 @@ int ArangoServer::startupServer () {
   // start the main event loop
   // .............................................................................
 
-  if (useHttpPort) {
-    if (shareAdminPort) {
-      LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
-    }
-    else {
-      LOGGER_INFO << "HTTP client port: " << _httpPort;
-    }
-  }
-  else {
-    LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
-  }
-
-  if (useAdminPort) {
-    LOGGER_INFO << "HTTP admin port: " << _adminPort;
-  }
-  else if (! shareAdminPort) {
-    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
-  }
+  LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
 
   _applicationServer->start();
 
