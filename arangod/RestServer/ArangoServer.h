@@ -42,7 +42,9 @@ namespace triagens {
     class ApplicationHttpServer;
     class ApplicationHttpsServer;
     class ApplicationScheduler;
+#ifdef TRI_ENABLE_ZEROMQ
     class ApplicationZeroMQ;
+#endif 
     class HttpServer;
   }
 
@@ -261,7 +263,9 @@ namespace triagens {
 /// @brief ZeroMQ server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZEROMQ
         rest::ApplicationZeroMQ* _applicationZeroMQ;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed http server
