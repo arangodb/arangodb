@@ -991,7 +991,7 @@ void runTest (int mode)
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,222);
     gcmass(365,list1,222,26557002);
 
-    gcp1.latitude = 89,4;
+    gcp1.latitude = 89.0;
     gcp1.longitude= 179.9;
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,930000.0);
     gcmass(367,list1, 1857, 12304881);

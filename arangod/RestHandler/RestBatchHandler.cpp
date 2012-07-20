@@ -64,6 +64,8 @@ RestBatchHandler::~RestBatchHandler () {
     // delete protobuf message
     delete _outputMessages;
   }
+
+  destroyHandlers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,22 +209,46 @@ void RestBatchHandler::addResponse (HttpHandler* handler) {
 
 void RestBatchHandler::assembleResponse () {
   assert(_missingResponses == 0);
+  
+  size_t messageSize = _outputMessages->ByteSize();
+
+  // allocate output buffer
+  char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
+  if (output == NULL) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
+    return;
+  }
 
   _response = new HttpResponse(HttpResponse::OK);
   _response->setContentType(getContentType());
 
-  string data;
-  if (!_outputMessages->SerializeToString(&data)) {
+  // content of message is binary, cannot use null-terminated std::string
+  if (!_outputMessages->SerializeToArray(output, messageSize)) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
     delete _response;
 
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
     return;
-
   }
-
-  _response->body().appendText(data);
+/*
+  for (char* x = output; x < output + messageSize; ++x) {
+    if (*x >= ' ' && *x <= 'z') {
+      printf("%c", *x);
+    }
+    else if (*x == '\n' || *x == '\0') {
+      printf("\n");
+    } 
+    else {
+      printf(".");
+    }
+  }
+  */ 
+  _response->body().appendText(output, messageSize);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
