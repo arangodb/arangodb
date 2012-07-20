@@ -295,7 +295,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleRequest (CT * task, GeneralHandler* handler) {
-          registerHandler(handler, task);
+          this->registerHandler(handler, task);
 
           // execute handler and (possibly) requeue
           while (true) {
@@ -355,7 +355,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs a handler for a task
+/// @brief shuts down a handler for a task
 ////////////////////////////////////////////////////////////////////////////////
 
         void shutdownHandlerByTask (Task* task) { 
