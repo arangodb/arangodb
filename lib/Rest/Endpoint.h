@@ -94,9 +94,11 @@ namespace triagens {
 
         enum Protocol {
           PROTOCOL_UNKNOWN,
-          PROTOCOL_HTTP,
+          PROTOCOL_BINARY,
+#ifdef TRI_OPENSSL_VERSION
           PROTOCOL_HTTPS,
-          PROTOCOL_BINARY
+#endif
+          PROTOCOL_HTTP
         };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -147,14 +147,16 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   size_t found = copy.find('@');
   if (found != string::npos) {
     string protoString = copy.substr(0, found);
-    if (protoString == "https") {
-      protocol = PROTOCOL_HTTPS;
-      copy = copy.substr(strlen("https@"));
-    }
-    else if (protoString == "pb") {
+    if (protoString == "pb") {
       protocol = PROTOCOL_BINARY;
       copy = copy.substr(strlen("pb@"));
     }
+#ifdef TRI_OPENSSL_VERSION
+    else if (protoString == "https") {
+      protocol = PROTOCOL_HTTPS;
+      copy = copy.substr(strlen("https@"));
+    }
+#endif    
     else if (protoString == "http") {
       protocol = PROTOCOL_HTTP;
       copy = copy.substr(strlen("http@"));

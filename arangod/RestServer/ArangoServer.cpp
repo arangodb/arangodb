@@ -57,6 +57,7 @@
 
 #ifdef TRI_OPENSSL_VERSION
 #include "HttpsServer/ApplicationHttpsServer.h"
+#include "HttpsServer/HttpsServer.h"
 #endif
 
 #include "Logger/Logger.h"
@@ -202,6 +203,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _httpServer(0),
+    _httpsServer(0),
     _endpoints(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
@@ -627,6 +629,20 @@ int ArangoServer::startupServer () {
   _httpServer->addPrefixHandler("/",
                                 RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                 (void*) &httpOptions);
+  
+#ifdef TRI_OPENSSL_VERSION
+
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTPS) > 0) {
+    // create the https server
+    _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
+    DefineApiHandlers(_httpsServer, _applicationAdminServer, _vocbase);
+
+    // add action handler
+    _httpsServer->addPrefixHandler("/",
+                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                   (void*) &httpOptions);
+  }
+#endif
 
   // .............................................................................
   // create a admin http server and http handler factory
