@@ -77,13 +77,15 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-Endpoint::Endpoint (const EndpointType type, 
-                    const EndpointDomainType domainType, 
+Endpoint::Endpoint (const Endpoint::Type type, 
+                    const Endpoint::DomainType domainType, 
+                    const Endpoint::Protocol protocol,
                     const string& specification) :
   _connected(false),
   _socket(0),
   _type(type),
   _domainType(domainType),
+  _protocol(protocol),
   _specification(specification) {
 }
 
@@ -127,7 +129,7 @@ Endpoint* Endpoint::serverFactory (const string& specification) {
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory (const EndpointType type, 
+Endpoint* Endpoint::factory (const Endpoint::Type type, 
                              const string& specification) {
   if (specification.size() < 7) {
     return 0;
@@ -139,19 +141,46 @@ Endpoint* Endpoint::factory (const EndpointType type,
     copy = copy.substr(0, copy.size() - 1);
   }
 
-  string proto = StringUtils::tolower(copy.substr(0, 7));
-  if (StringUtils::isPrefix(proto, "unix://")) {
-    // unix socket
-    return new EndpointUnix(type, specification, copy.substr(7, copy.size() - 7));
+  Endpoint::Protocol protocol = PROTOCOL_UNKNOWN;
+
+  // read protocol from string
+  size_t found = copy.find('@');
+  if (found != string::npos) {
+    string protoString = copy.substr(0, found);
+    if (protoString == "https") {
+      protocol = PROTOCOL_HTTPS;
+      copy = copy.substr(strlen("https@"));
+    }
+    else if (protoString == "pb") {
+      protocol = PROTOCOL_BINARY;
+      copy = copy.substr(strlen("pb@"));
+    }
+    else if (protoString == "http") {
+      protocol = PROTOCOL_HTTP;
+      copy = copy.substr(strlen("http@"));
+    }
+    else {
+      // invalid protocol
+      return 0;
+    }
   }
-  else if (! StringUtils::isPrefix(proto, "tcp://")) {
+  else {
+    // no protocol specified, use HTTP
+    protocol = PROTOCOL_HTTP;
+  }
+  
+  string domainType = StringUtils::tolower(copy.substr(0, 7));
+  if (StringUtils::isPrefix(domainType, "unix://")) {
+    // unix socket
+    return new EndpointUnix(type, protocol, specification, copy.substr(strlen("unix://")));
+  }
+  else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return 0;
   }
 
   // tcp/ip
-  copy = copy.substr(6, copy.length() - 6);
-  size_t found;
+  copy = copy.substr(strlen("tcp://"), copy.length());
   
   if (copy[0] == '[') {
     // ipv6
@@ -160,14 +189,14 @@ Endpoint* Endpoint::factory (const EndpointType type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, specification, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, protocol, specification, copy.substr(1, found - 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -181,11 +210,11 @@ Endpoint* Endpoint::factory (const EndpointType type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, specification, copy.substr(0, found), port);
+    return new EndpointIpV4(type, protocol, specification, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, specification, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, protocol, specification, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,10 +280,11 @@ bool Endpoint::setSocketFlags (socket_t _socket) {
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnix::EndpointUnix (const EndpointType type, 
+EndpointUnix::EndpointUnix (const Endpoint::Type type, 
+                            const Endpoint::Protocol protocol,
                             string const& specification, 
                             string const& path) :
-    Endpoint(type, ENDPOINT_UNIX, specification),
+    Endpoint(type, ENDPOINT_UNIX, protocol, specification),
     _path(path) {
 }
 
@@ -416,12 +446,13 @@ bool EndpointUnix::initIncoming (socket_t incoming) {
 /// @brief creates an IP socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIp::EndpointIp (const EndpointType type, 
-                        const EndpointDomainType domainType, 
+EndpointIp::EndpointIp (const Endpoint::Type type, 
+                        const Endpoint::DomainType domainType, 
+                        const Endpoint::Protocol protocol,
                         string const& specification, 
                         string const& host, 
                         const uint16_t port) :
-    Endpoint(type, domainType, specification), _host(host), _port(port) {
+    Endpoint(type, domainType, protocol, specification), _host(host), _port(port) {
   
   assert(domainType == ENDPOINT_IPV4 || domainType == ENDPOINT_IPV6);
 }
@@ -628,11 +659,12 @@ bool EndpointIp::initIncoming (socket_t incoming) {
 /// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::EndpointIpV4 (const EndpointType type,
+EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
+                            const Endpoint::Protocol protocol,
                             string const& specification, 
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV4, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV4, protocol, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,11 +695,12 @@ EndpointIpV4::~EndpointIpV4 () {
 /// @brief creates an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV6::EndpointIpV6 (const EndpointType type,
+EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
+                            const Endpoint::Protocol protocol, 
                             string const& specification, 
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV6, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV6, protocol, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

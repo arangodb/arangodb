@@ -48,9 +48,8 @@ using namespace triagens::rest;
 /// @brief create an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
       
-EndpointList::EndpointList () : 
-   _httpEndpoints(),
-   _binaryEndpoints() {
+EndpointList::EndpointList () :
+   _lists() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,13 +57,12 @@ EndpointList::EndpointList () :
 ////////////////////////////////////////////////////////////////////////////////
       
 EndpointList::~EndpointList () {
-  // free memory
-  for (ListType::iterator i = _httpEndpoints.begin(); i != _httpEndpoints.end(); ++i) {
-    delete *i;
-  }
-  
-  for (ListType::iterator i = _binaryEndpoints.begin(); i != _binaryEndpoints.end(); ++i) {
-    delete *i;
+  for (map<Endpoint::Protocol, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
+    for (ListType::iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
+      delete *i2;
+    }
+ 
+    (*i).second.clear();
   }
 }
 
@@ -86,70 +84,37 @@ EndpointList::~EndpointList () {
 ////////////////////////////////////////////////////////////////////////////////
     
 void EndpointList::dump () {
-  for (EndpointList::ListType::const_iterator i = _httpEndpoints.begin(); i != _httpEndpoints.end(); ++i) {
-    LOGGER_INFO << "using endpoint '" << (*i)->getSpecification() << "' for HTTP requests";
-  }
-  
-  for (EndpointList::ListType::const_iterator i = _binaryEndpoints.begin(); i != _binaryEndpoints.end(); ++i) {
-    LOGGER_INFO << "using endpoint '" << (*i)->getSpecification() << "' for binary requests";
+  for (map<Endpoint::Protocol, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
+    for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
+      LOGGER_INFO << "using endpoint '" << (*i2)->getSpecification() << "' for " << getName((*i).first) << " requests";
+    }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints for HTTP requests
+/// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointList::ListType EndpointList::getHttpEndpoints () const {
+EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol protocol) const {
   EndpointList::ListType result;
+  map<Endpoint::Protocol, EndpointList::ListType>::const_iterator i = _lists.find(protocol);
 
-  for (EndpointList::ListType::const_iterator i = _httpEndpoints.begin(); i != _httpEndpoints.end(); ++i) {
-    result.insert(*i);
+  if (i != _lists.end()) {
+    for (ListType::const_iterator i2 = i->second.begin(); i2 != i->second.end(); ++i2) {
+      result.insert(*i2);
+    }
   }
 
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints for binary requests
+/// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointList::ListType EndpointList::getBinaryEndpoints () const {
-  EndpointList::ListType result;
+bool EndpointList::addEndpoint (const Endpoint::Protocol protocol, Endpoint* endpoint) {
+  _lists[protocol].insert(endpoint);
 
-  for (EndpointList::ListType::const_iterator i = _binaryEndpoints.begin(); i != _binaryEndpoints.end(); ++i) {
-    result.insert(*i);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint for HTTP requests
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointList::addHttpEndpoint (const string& specification) {
-  Endpoint* endpoint = Endpoint::serverFactory(specification);
-
-  if (endpoint == 0) {
-    return false;
-  }
-
-  _httpEndpoints.insert(endpoint);
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint for binary requests
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointList::addBinaryEndpoint (const string& specification) {
-  Endpoint* endpoint = Endpoint::serverFactory(specification);
-
-  if (endpoint == 0) {
-    return false;
-  }
-
-  _binaryEndpoints.insert(endpoint);
   return true;
 }
 

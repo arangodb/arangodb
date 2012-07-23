@@ -54,6 +54,11 @@
 #include "HttpServer/ApplicationHttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
+
+#ifdef TRI_OPENSSL_VERSION
+#include "HttpsServer/ApplicationHttpsServer.h"
+#endif
+
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
@@ -372,6 +377,17 @@ void ArangoServer::buildApplicationServer () {
   _applicationHttpServer = new ApplicationHttpServer(_applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpServer);
 
+#ifdef TRI_OPENSSL_VERSION
+
+  // .............................................................................
+  // an https server
+  // .............................................................................
+
+  _applicationHttpsServer = new ApplicationHttpsServer(_applicationScheduler, _applicationDispatcher);
+  _applicationServer->addFeature(_applicationHttpsServer);
+
+#endif
+
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
@@ -566,14 +582,24 @@ int ArangoServer::startupServer () {
 
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
-  // we pass the options be reference, so keep them until shutdown
+  // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.addHttpEndpoint(*i);
+    Endpoint* endpoint = Endpoint::serverFactory(*i);
+  
+    if (endpoint == 0) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+
+    assert(endpoint);
+
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint);
     if (! ok) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
