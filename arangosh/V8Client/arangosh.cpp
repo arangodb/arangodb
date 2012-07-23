@@ -195,7 +195,7 @@ static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string EndpointString = "tcp://127.0.0.1:8529";
+static string EndpointString;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -1180,6 +1180,8 @@ int main (int argc, char* argv[]) {
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
+  
+  EndpointString = EndpointSpecification::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options

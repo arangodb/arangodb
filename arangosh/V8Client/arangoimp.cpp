@@ -78,7 +78,7 @@ static EndpointSpecification* Endpoint = 0;
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string EndpointString = "tcp://127.0.0.1:8529";
+static string EndpointString;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -197,6 +197,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE;
   TRI_InitialiseLogging(false);
+
+  EndpointString = EndpointSpecification::getDefaultEndpoint();
 
   // parse the program options
   ParseProgramOptions(argc, argv);
