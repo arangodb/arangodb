@@ -46,7 +46,7 @@ var jsunity = require("jsunity"),
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Dijkstra
+/// @brief test suite: Dijkstra (Comparison with Data from Neo4j)
 ////////////////////////////////////////////////////////////////////////////////
 
 function dijkstraSuite() {
@@ -170,8 +170,108 @@ function dijkstraSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Measurements (Comparison with Gephi)
+////////////////////////////////////////////////////////////////////////////////
+
+function measurementSuite() {
+  var Graph = require("graph").Graph,
+    graph_name = "UnitTestsCollectionGraph",
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        try {
+          // Drop the graph if it exsits
+          graph = new Graph(graph_name);
+          print("FOUND: ");
+          PRINT_OBJECT(graph);
+          graph.drop();
+        } catch (err1) {
+        }
+
+        graph = new Graph(graph_name, vertex, edge);
+      } catch (err2) {
+        console.error("[FAILED] setup failed:" + err2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      try {
+        if (graph !== null) {
+          graph.drop();
+        }
+      } catch (err) {
+        console.error("[FAILED] tear-down failed:" + err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare with Gephi on a network of 50
+////////////////////////////////////////////////////////////////////////////////
+
+    testComparisonWithGephi50 : function () {
+      var base_path = "js/common/test-data/gephi50/",
+        console = require("console");
+
+      Helper.process(base_path + "vertices.csv", function (row) {
+        var vertex = graph.addVertex(row[0], {
+          in_degree: row[1],
+          out_degree: row[2],
+          degree: row[3],
+          eccentricity: row[4],
+          closeness: row[5],
+          betweenness: row[6]
+        });
+      });
+
+      Helper.process(base_path + "edges.csv", function (row) {
+        v1 = graph.getVertex(row[1]);
+        v2 = graph.getVertex(row[2]);
+        e = graph.addEdge(v1, v2, row[0]);
+      });
+
+      assertEqual(graph.order(), 50);
+      assertEqual(graph.size(), 62);
+
+      graph._vertices.toArray().forEach(function (raw_vertex) {
+        var vertex = graph.getVertex(raw_vertex._id);
+
+        assertEqual(vertex.getProperty("degree"), vertex.degree());
+        assertEqual(vertex.getProperty("in_degree"), vertex.inDegree());
+        assertEqual(vertex.getProperty("out_degree"), vertex.outDegree());
+        //assertEqual(parseFloat(vertex.getProperty("eccentricity")).toPrecision(21),
+          //vertex.measurement("eccentricity").toPrecision(21));
+        // console.log(vertex.getProperty("closeness"));
+        console.log("Reference: " + vertex.getProperty("closeness"));
+        console.log("Implementation: " + vertex.measurement("closeness"));
+      });
+
+      graph.normalizedMeasurement()
+
+    }
+  };
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(dijkstraSuite);
+//jsunity.run(dijkstraSuite);
+jsunity.run(measurementSuite);
+
 return jsunity.done();

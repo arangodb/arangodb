@@ -1623,9 +1623,9 @@ Graph.prototype.geodesics = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate a measurement
 ///
-/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+/// @FUN{@FA{graph}.measurement(@FA{measurement})}
 ///
-/// Calculates the eccentricity or closeness of the vertex
+/// Calculates the diameter or radius of a graph
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1659,6 +1659,56 @@ Graph.prototype.measurement = function (measurement) {
 
     return calculated;
   }, start_value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a normalized measurement
+///
+/// @FUN{@FA{graph}.normalizedMeasurement(@FA{measurement})}
+///
+/// Calculates the normalized degree, closeness, betweenness or eccentricity
+/// of all vertices in a graph
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.normalizedMeasurement = function (measurement) {
+  var graph = this,
+    vertices = graph._vertices.toArray(),
+    vertex_map,
+    max = 0;
+
+  vertex_map = vertices.reduce(function (map, raw_vertex) {
+    var vertex = graph.constructVertex(raw_vertex._id),
+      measured;
+
+    switch(measurement) {
+      case "closeness":
+        measured = 1 / vertex.measurement("closeness");
+        break;
+      case "betweenness":
+        measured = vertex.measurement("betweenness");
+        break;
+      case "eccentricity":
+        measured = 1 / vertex.measurement("eccentricity");
+        break;
+      default:
+        throw "Unknown measurement";
+    }
+
+    if (measured > max) {
+      max = measured;
+    }
+
+    map[vertex.getId()] = measured;
+
+    return map;
+  }, {});
+
+  Object.keys(vertex_map).forEach(function(key) {
+    vertex_map[key] = vertex_map[key] / max;
+  });
+
+  return vertex_map;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
