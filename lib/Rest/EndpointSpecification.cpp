@@ -49,10 +49,16 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set default port number 
+/// @brief set port if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint16_t EndpointSpecification::_defaultPort = 8529;
+const uint16_t EndpointSpecificationIp::_defaultPort = 8529;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default host if none specified
+////////////////////////////////////////////////////////////////////////////////
+
+const std::string EndpointSpecificationIp::_defaultHost = "127.0.0.1";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -161,7 +167,7 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointSpecificationIpV6(type, specification, copy.substr(1, found - 1), _defaultPort);
+      return new EndpointSpecificationIpV6(type, specification, copy.substr(1, found - 1), EndpointSpecificationIp::_defaultPort);
     }
 
     // invalid address specification
@@ -179,7 +185,7 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
   }
 
   // hostname only
-  return new EndpointSpecificationIpV4(type, specification, copy, _defaultPort);
+  return new EndpointSpecificationIpV4(type, specification, copy, EndpointSpecificationIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,6 +194,14 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
 
 bool EndpointSpecification::operator== (EndpointSpecification const &that) const {
   return getSpecification() == that.getSpecification();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the default endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+const std::string EndpointSpecification::getDefaultEndpoint () {   
+   return "tcp://" + EndpointSpecificationIp::_defaultHost + ":" + StringUtils::itoa(EndpointSpecificationIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
