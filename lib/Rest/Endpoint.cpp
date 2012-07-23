@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint specification
+/// @brief connection endpoints
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EndpointSpecification.h"
+#include "Endpoint.h"
 
 #include <netinet/in.h>
 #include <sys/file.h>
@@ -40,7 +40,7 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             EndpointSpecification
+// --SECTION--                                                          Endpoint
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,13 +52,13 @@ using namespace triagens::rest;
 /// @brief set port if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint16_t EndpointSpecificationIp::_defaultPort = 8529;
+const uint16_t EndpointIp::_defaultPort = 8529;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default host if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string EndpointSpecificationIp::_defaultHost = "127.0.0.1";
+const std::string EndpointIp::_defaultHost = "127.0.0.1";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -77,9 +77,9 @@ const std::string EndpointSpecificationIp::_defaultHost = "127.0.0.1";
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-EndpointSpecification::EndpointSpecification (const EndpointType type, 
-                                              const EndpointDomainType domainType, 
-                                              const string& specification) :
+Endpoint::Endpoint (const EndpointType type, 
+                    const EndpointDomainType domainType, 
+                    const string& specification) :
   _connected(false),
   _socket(0),
   _type(type),
@@ -91,7 +91,7 @@ EndpointSpecification::EndpointSpecification (const EndpointType type,
 /// @brief destroy an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-EndpointSpecification::~EndpointSpecification () {
+Endpoint::~Endpoint () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,24 +111,24 @@ EndpointSpecification::~EndpointSpecification () {
 /// @brief create a client endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecification* EndpointSpecification::clientFactory (const string& specification) {
-  return EndpointSpecification::factory(ENDPOINT_CLIENT, specification);
+Endpoint* Endpoint::clientFactory (const string& specification) {
+  return Endpoint::factory(ENDPOINT_CLIENT, specification);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecification* EndpointSpecification::serverFactory (const string& specification) {
-  return EndpointSpecification::factory(ENDPOINT_SERVER, specification);
+Endpoint* Endpoint::serverFactory (const string& specification) {
+  return Endpoint::factory(ENDPOINT_SERVER, specification);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecification* EndpointSpecification::factory (const EndpointType type, 
-                                                       const string& specification) {
+Endpoint* Endpoint::factory (const EndpointType type, 
+                             const string& specification) {
   if (specification.size() < 7) {
     return 0;
   }
@@ -142,7 +142,7 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
   string proto = StringUtils::tolower(copy.substr(0, 7));
   if (StringUtils::isPrefix(proto, "unix://")) {
     // unix socket
-    return new EndpointSpecificationUnix(type, specification, copy.substr(7, copy.size() - 7));
+    return new EndpointUnix(type, specification, copy.substr(7, copy.size() - 7));
   }
   else if (! StringUtils::isPrefix(proto, "tcp://")) {
     // invalid type
@@ -160,14 +160,14 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointSpecificationIpV6(type, specification, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, specification, copy.substr(1, found - 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointSpecificationIpV6(type, specification, copy.substr(1, found - 1), EndpointSpecificationIp::_defaultPort);
+      return new EndpointIpV6(type, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -181,18 +181,18 @@ EndpointSpecification* EndpointSpecification::factory (const EndpointType type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointSpecificationIpV4(type, specification, copy.substr(0, found), port);
+    return new EndpointIpV4(type, specification, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointSpecificationIpV4(type, specification, copy, EndpointSpecificationIp::_defaultPort);
+  return new EndpointIpV4(type, specification, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointSpecification::operator== (EndpointSpecification const &that) const {
+bool Endpoint::operator== (Endpoint const &that) const {
   return getSpecification() == that.getSpecification();
 }
 
@@ -200,15 +200,15 @@ bool EndpointSpecification::operator== (EndpointSpecification const &that) const
 /// @brief return the default endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string EndpointSpecification::getDefaultEndpoint () {   
-   return "tcp://" + EndpointSpecificationIp::_defaultHost + ":" + StringUtils::itoa(EndpointSpecificationIp::_defaultPort);
+const std::string Endpoint::getDefaultEndpoint () {   
+   return "tcp://" + EndpointIp::_defaultHost + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set common socket flags
 ////////////////////////////////////////////////////////////////////////////////
   
-bool EndpointSpecification::setSocketFlags (socket_t _socket) {
+bool Endpoint::setSocketFlags (socket_t _socket) {
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(_socket);
   if (!ok) {
@@ -235,7 +235,7 @@ bool EndpointSpecification::setSocketFlags (socket_t _socket) {
 #ifdef TRI_HAVE_LINUX_SOCKETS
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationUnix
+// --SECTION--                                                      EndpointUnix
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -251,10 +251,10 @@ bool EndpointSpecification::setSocketFlags (socket_t _socket) {
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationUnix::EndpointSpecificationUnix (const EndpointType type, 
-                                                      string const& specification, 
-                                                      string const& path) :
-    EndpointSpecification(type, ENDPOINT_UNIX, specification),
+EndpointUnix::EndpointUnix (const EndpointType type, 
+                            string const& specification, 
+                            string const& path) :
+    Endpoint(type, ENDPOINT_UNIX, specification),
     _path(path) {
 }
 
@@ -262,7 +262,7 @@ EndpointSpecificationUnix::EndpointSpecificationUnix (const EndpointType type,
 /// @brief destroys a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationUnix::~EndpointSpecificationUnix () {
+EndpointUnix::~EndpointUnix () {
   if (_connected) {
     disconnect();
   }
@@ -285,7 +285,7 @@ EndpointSpecificationUnix::~EndpointSpecificationUnix () {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-socket_t EndpointSpecificationUnix::connect () {
+socket_t EndpointUnix::connect () {
   assert(_socket == 0);
   assert(!_connected);
 
@@ -369,7 +369,7 @@ socket_t EndpointSpecificationUnix::connect () {
 /// @brief disconnect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void EndpointSpecificationUnix::disconnect () {
+void EndpointUnix::disconnect () {
   if (_connected) {
     assert(_socket);
 
@@ -389,7 +389,7 @@ void EndpointSpecificationUnix::disconnect () {
 /// @brief init an incoming connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointSpecificationUnix::initIncoming (socket_t incoming) {
+bool EndpointUnix::initIncoming (socket_t incoming) {
   return setSocketFlags(incoming);
 }
 
@@ -400,7 +400,7 @@ bool EndpointSpecificationUnix::initIncoming (socket_t incoming) {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           EndpointSpecificationIp
+// --SECTION--                                                        EndpointIp
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -416,12 +416,12 @@ bool EndpointSpecificationUnix::initIncoming (socket_t incoming) {
 /// @brief creates an IP socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIp::EndpointSpecificationIp (const EndpointType type, 
-                                                  const EndpointDomainType domainType, 
-                                                  string const& specification, 
-                                                  string const& host, 
-                                                  const uint16_t port) :
-    EndpointSpecification(type, domainType, specification), _host(host), _port(port) {
+EndpointIp::EndpointIp (const EndpointType type, 
+                        const EndpointDomainType domainType, 
+                        string const& specification, 
+                        string const& host, 
+                        const uint16_t port) :
+    Endpoint(type, domainType, specification), _host(host), _port(port) {
   
   assert(domainType == ENDPOINT_IPV4 || domainType == ENDPOINT_IPV6);
 }
@@ -430,7 +430,7 @@ EndpointSpecificationIp::EndpointSpecificationIp (const EndpointType type,
 /// @brief destroys an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIp::~EndpointSpecificationIp () {
+EndpointIp::~EndpointIp () {
   if (_connected) {
     disconnect();
   }
@@ -449,7 +449,7 @@ EndpointSpecificationIp::~EndpointSpecificationIp () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-socket_t EndpointSpecificationIp::connectSocket (const struct addrinfo* aip) {
+socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
   // set address and port
   char host[NI_MAXHOST], serv[NI_MAXSERV];
   if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
@@ -529,7 +529,7 @@ socket_t EndpointSpecificationIp::connectSocket (const struct addrinfo* aip) {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-socket_t EndpointSpecificationIp::connect () {
+socket_t EndpointIp::connect () {
   struct addrinfo* result = 0;
   struct addrinfo* aip;
   struct addrinfo hints;
@@ -578,7 +578,7 @@ socket_t EndpointSpecificationIp::connect () {
 /// @brief destroys an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void EndpointSpecificationIp::disconnect () {
+void EndpointIp::disconnect () {
   if (_connected) {
     assert(_socket);
 
@@ -593,7 +593,7 @@ void EndpointSpecificationIp::disconnect () {
 /// @brief init an incoming connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointSpecificationIp::initIncoming (socket_t incoming) {
+bool EndpointIp::initIncoming (socket_t incoming) {
   // disable nagle's algorithm
   int n = 1;
   int res = setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*) &n, sizeof(n));
@@ -612,7 +612,7 @@ bool EndpointSpecificationIp::initIncoming (socket_t incoming) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationIpV4
+// --SECTION--                                                      EndpointIpV4
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -628,18 +628,18 @@ bool EndpointSpecificationIp::initIncoming (socket_t incoming) {
 /// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIpV4::EndpointSpecificationIpV4 (const EndpointType type,
-                                                      string const& specification, 
-                                                      string const& host, 
-                                                      const uint16_t port) :
-    EndpointSpecificationIp(type, ENDPOINT_IPV4, specification, host, port) {
+EndpointIpV4::EndpointIpV4 (const EndpointType type,
+                            string const& specification, 
+                            string const& host, 
+                            const uint16_t port) :
+    EndpointIp(type, ENDPOINT_IPV4, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIpV4::~EndpointSpecificationIpV4 () {
+EndpointIpV4::~EndpointIpV4 () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,7 +647,7 @@ EndpointSpecificationIpV4::~EndpointSpecificationIpV4 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationIpV6
+// --SECTION--                                         EndpointIpV6
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -663,18 +663,18 @@ EndpointSpecificationIpV4::~EndpointSpecificationIpV4 () {
 /// @brief creates an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIpV6::EndpointSpecificationIpV6 (const EndpointType type,
-                                                      string const& specification, 
-                                                      string const& host, 
-                                                      const uint16_t port) :
-    EndpointSpecificationIp(type, ENDPOINT_IPV6, specification, host, port) {
+EndpointIpV6::EndpointIpV6 (const EndpointType type,
+                            string const& specification, 
+                            string const& host, 
+                            const uint16_t port) :
+    EndpointIp(type, ENDPOINT_IPV6, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointSpecificationIpV6::~EndpointSpecificationIpV6 () {
+EndpointIpV6::~EndpointIpV6 () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -42,7 +42,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "ImportHelper.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 #include "V8ClientConnection.h"
 
 using namespace std;
@@ -72,7 +72,7 @@ static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static EndpointSpecification* Endpoint = 0;
+static Endpoint* _endpoint = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
@@ -198,7 +198,7 @@ int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE;
   TRI_InitialiseLogging(false);
 
-  EndpointString = EndpointSpecification::getDefaultEndpoint();
+  EndpointString = Endpoint::getDefaultEndpoint();
 
   // parse the program options
   ParseProgramOptions(argc, argv);
@@ -214,23 +214,23 @@ int main (int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  Endpoint = EndpointSpecification::clientFactory(EndpointString); 
-  if (Endpoint == 0) {
+  _endpoint = Endpoint::clientFactory(EndpointString); 
+  if (_endpoint == 0) {
     cerr << "invalid endpoint specification." << endl;
     return EXIT_FAILURE;
   }
 
-  assert(Endpoint);
+  assert(_endpoint);
 
   clientConnection = new V8ClientConnection(
-      Endpoint,
+      _endpoint,
       (double) requestTimeout,
       DEFAULT_RETRIES, 
       (double) connectTimeout, 
       true);
 
   if (!clientConnection->isConnected()) {
-    cerr << "Could not connect to endpoint " << Endpoint->getSpecification() << endl;
+    cerr << "Could not connect to endpoint " << _endpoint->getSpecification() << endl;
     cerr << "Error message: '" << clientConnection->getErrorMessage() << "'" << endl;
 
     return EXIT_FAILURE;

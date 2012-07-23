@@ -30,7 +30,7 @@
 #define TRIAGENS_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
 
 #include "Scheduler/ListenTask.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class GeneralListenTask
@@ -73,7 +73,7 @@ namespace triagens {
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralListenTask (S* server, EndpointSpecification* endpoint, bool reuseAddress)
+        GeneralListenTask (S* server, Endpoint* endpoint, bool reuseAddress)
           : Task("GeneralListenTask"), ListenTask(endpoint, reuseAddress), server(server) {
         }
 

@@ -55,7 +55,7 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (EndpointSpecification* endpoint,
+    SimpleHttpClient::SimpleHttpClient (Endpoint* endpoint,
                                         double requestTimeout,
                                         double connectTimeout,
                                         size_t connectRetries,
@@ -173,7 +173,7 @@ namespace triagens {
       }
 
       if (_endpoint && !_isConnected) {
-        LOGGER_ERROR << "Could not connect to '" << _endpoint->getSpecification() << "'! Connection is dead";
+        LOGGER_ERROR << "Could not connect to '" << getEndpointSpecification() << "'! Connection is dead";
       }
 
       if (_isConnected) {

@@ -128,7 +128,7 @@ EndpointList::ListType EndpointList::getBinaryEndpoints () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EndpointList::addHttpEndpoint (const string& specification) {
-  EndpointSpecification* endpoint = EndpointSpecification::serverFactory(specification);
+  Endpoint* endpoint = Endpoint::serverFactory(specification);
 
   if (endpoint == 0) {
     return false;
@@ -143,7 +143,7 @@ bool EndpointList::addHttpEndpoint (const string& specification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EndpointList::addBinaryEndpoint (const string& specification) {
-  EndpointSpecification* endpoint = EndpointSpecification::serverFactory(specification);
+  Endpoint* endpoint = Endpoint::serverFactory(specification);
 
   if (endpoint == 0) {
     return false;

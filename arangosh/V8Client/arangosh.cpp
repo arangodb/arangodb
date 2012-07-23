@@ -42,7 +42,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -123,7 +123,7 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 /// @brief endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static EndpointSpecification* Endpoint = 0;
+static Endpoint* _endpoint = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -660,25 +660,25 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
   
-    if (Endpoint != 0) {
+    if (_endpoint != 0) {
       // close previous endpoint
-      delete Endpoint;
+      delete _endpoint;
     }
 
-    Endpoint = EndpointSpecification::clientFactory(definition);
-    if (Endpoint == 0) { 
+    _endpoint = Endpoint::clientFactory(definition);
+    if (_endpoint == 0) { 
       string errorMessage = "error in '" + definition + "'";
       return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
     }
   }
 
-  if (Endpoint == 0) { 
+  if (_endpoint == 0) { 
     return v8::Undefined();
   }   
   
-  assert(Endpoint); 
+  assert(_endpoint); 
 
-  V8ClientConnection* connection = new V8ClientConnection(Endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  V8ClientConnection* connection = new V8ClientConnection(_endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
   
   if (connection->isConnected()) {
     printf("Connected to ArangoDB '%s' Version %s\n", 
@@ -1181,7 +1181,7 @@ int main (int argc, char* argv[]) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
   
-  EndpointString = EndpointSpecification::getDefaultEndpoint();
+  EndpointString = Endpoint::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options
@@ -1213,17 +1213,17 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
-    Endpoint = EndpointSpecification::clientFactory(EndpointString);
+    _endpoint = Endpoint::clientFactory(EndpointString);
 
-    if (Endpoint == 0) {
+    if (_endpoint == 0) {
       printf("Invalid value for --server.endpoint ('%s')\n", EndpointString.c_str());
       exit(EXIT_FAILURE);
     }
 
-    assert(Endpoint);
+    assert(_endpoint);
     
     ClientConnection = new V8ClientConnection(
-      Endpoint,
+      _endpoint,
       (double) RequestTimeout,
       DEFAULT_RETRIES, 
       (double) ConnectTimeout,

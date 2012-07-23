@@ -34,7 +34,7 @@
 #include <netdb.h>
 
 #include "Basics/StringBuffer.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 
 namespace triagens {
   namespace httpclient {
@@ -88,7 +88,7 @@ namespace triagens {
       ///
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (triagens::rest::EndpointSpecification* endpoint, 
+      SimpleHttpClient (triagens::rest::Endpoint* endpoint, 
                         double requestTimeout,
                         double connectTimeout, 
                         size_t connectRetries,
@@ -294,7 +294,13 @@ namespace triagens {
       double now ();                  
       
     private:
-      triagens::rest::EndpointSpecification* _endpoint;
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief the endpoint to connect to
+      ////////////////////////////////////////////////////////////////////////////////
+
+      triagens::rest::Endpoint* _endpoint;
+
       double _requestTimeout;
       double _connectTimeout;
       size_t _connectRetries;

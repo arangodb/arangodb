@@ -53,7 +53,7 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (EndpointSpecification* endpoint, bool reuseAddress)
+ListenTask::ListenTask (Endpoint* endpoint, bool reuseAddress)
   : Task("ListenTask"),
     readWatcher(0),
     reuseAddress(reuseAddress),

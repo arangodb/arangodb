@@ -377,7 +377,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
-	lib/Rest/EndpointList.cpp lib/Rest/EndpointSpecification.cpp \
+	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
@@ -452,8 +452,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
 	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
 	lib/Rest/AnyServer.$(OBJEXT) lib/Rest/EndpointList.$(OBJEXT) \
-	lib/Rest/EndpointSpecification.$(OBJEXT) \
-	lib/Rest/Handler.$(OBJEXT) lib/Rest/HttpRequest.$(OBJEXT) \
+	lib/Rest/Endpoint.$(OBJEXT) lib/Rest/Handler.$(OBJEXT) \
+	lib/Rest/HttpRequest.$(OBJEXT) \
 	lib/Rest/HttpRequestPlain.$(OBJEXT) \
 	lib/Rest/HttpResponse.$(OBJEXT) lib/Rest/Initialise.$(OBJEXT) \
 	lib/Rest/JsonContainer.$(OBJEXT) \
@@ -1297,7 +1297,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
-	lib/Rest/EndpointList.cpp lib/Rest/EndpointSpecification.cpp \
+	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
@@ -1909,7 +1909,7 @@ lib/Rest/AnyServer.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/EndpointList.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
-lib/Rest/EndpointSpecification.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+lib/Rest/Endpoint.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/Handler.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
@@ -2969,8 +2969,8 @@ mostlyclean-compile:
 	-rm -f lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT)
 	-rm -f lib/Rest/AnyServer.$(OBJEXT)
+	-rm -f lib/Rest/Endpoint.$(OBJEXT)
 	-rm -f lib/Rest/EndpointList.$(OBJEXT)
-	-rm -f lib/Rest/EndpointSpecification.$(OBJEXT)
 	-rm -f lib/Rest/Handler.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequest.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequestPlain.$(OBJEXT)
@@ -3234,8 +3234,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/arangodb.pb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AnyServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Endpoint.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/EndpointList.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/EndpointSpecification.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Handler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequestPlain.Po@am__quote@

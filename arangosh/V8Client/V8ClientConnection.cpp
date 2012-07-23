@@ -41,7 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -69,7 +69,7 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection::V8ClientConnection (EndpointSpecification* endpoint,
+V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         double requestTimeout,
                                         size_t retries,
                                         double connectionTimeout,
