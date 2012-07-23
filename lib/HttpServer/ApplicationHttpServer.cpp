@@ -56,10 +56,7 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationS
   : ApplicationFeature("HttpServer"),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _showPort(true),
-    _httpServers(),
-    _httpPorts(),
-    _httpAddressPorts() {
+    _httpServers() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,63 +82,12 @@ ApplicationHttpServer::~ApplicationHttpServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shows the port options
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationHttpServer::showPortOptions (bool value) {
-  _showPort = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a http address:port
-////////////////////////////////////////////////////////////////////////////////
-
-AddressPort ApplicationHttpServer::addPort (string const& name) {
-  AddressPort ap;
-  
-  if (! ap.split(name)) {
-    LOGGER_ERROR << "unknown server:port definition '" << name << "'";
-  }
-  else {
-    _httpAddressPorts.push_back(ap);
-  }
-  
-  return ap;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the http server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpServer* ApplicationHttpServer::buildServer () {
-  return buildHttpServer(0, _httpAddressPorts);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the http server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpServer* ApplicationHttpServer::buildServer (vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    return 0;
-  }
-  else {
-    return buildHttpServer(0, ports);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildServer (HttpServer* httpServer,
-                                                vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    return 0;
-  }
-  else {
-    return buildHttpServer(httpServer, ports);
-  }
+                                                const EndpointList* endpointList) { 
+  return buildHttpServer(httpServer, endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,11 +108,6 @@ HttpServer* ApplicationHttpServer::buildServer (HttpServer* httpServer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  if (_showPort) {
-    options[ApplicationServer::OPTIONS_SERVER]
-      ("server.port", &_httpPorts, "listen port or address:port")
-    ;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,10 +115,6 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
-  for (vector<string>::const_iterator i = _httpPorts.begin();  i != _httpPorts.end();  ++i) {
-    addPort(*i);
-  }
-
   return true;
 }
 
@@ -246,7 +183,7 @@ void ApplicationHttpServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
-                                                    vector<AddressPort> const& ports) {
+                                                    const EndpointList* endpointList) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -266,13 +203,11 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
     httpServer = new HttpServer(scheduler, dispatcher);
   }
 
-  // keep a list of active server
+  // keep a list of active servers
   _httpServers.push_back(httpServer);
 
   // open http ports
-  for (vector<AddressPort>::const_iterator i = ports.begin();  i != ports.end();  ++i) {
-    httpServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
-  }
+  httpServer->addEndpointList(endpointList);
 
   return httpServer;
 }

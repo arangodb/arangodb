@@ -45,6 +45,7 @@
 #include "SimpleHttpResult.h"
 
 using namespace triagens::basics;
+using namespace triagens::rest;
 using namespace std;
 
 namespace triagens {
@@ -54,14 +55,12 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (string const& hostname,
-            int port,
-            double requestTimeout,
-            double connectTimeout,
-            size_t connectRetries,
-            bool warn = true) :
-    _hostname(hostname),
-    _port(port),
+    SimpleHttpClient::SimpleHttpClient (EndpointSpecification* endpoint,
+                                        double requestTimeout,
+                                        double connectTimeout,
+                                        size_t connectRetries,
+                                        bool warn = true) :
+    _endpoint(endpoint),
     _requestTimeout(requestTimeout),
     _connectTimeout(connectTimeout),
     _connectRetries(connectRetries),
@@ -69,13 +68,13 @@ namespace triagens {
     _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
     _readBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
+      assert(_endpoint);
+
       _lastConnectTime = 0.0;
       _numConnectRetries = 0;
       _result = 0;
       _errorMessage = "";
       _written = 0;
-      
-      // _writeBuffer.clear();
       
       reset();
 
@@ -83,7 +82,9 @@ namespace triagens {
 
     SimpleHttpClient::~SimpleHttpClient () {
       if (_isConnected) {
-        ::close(_socket);
+        if (_endpoint) {
+          _endpoint->disconnect();
+        }
       }
 
     }
@@ -158,55 +159,22 @@ namespace triagens {
       }
       else {
         if (_warn) {
-          LOGGER_WARNING << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+          LOGGER_WARNING << "Could not connect to '" << getEndpointSpecification() << "'! Connection is dead";
         }
         _state = DEAD;
         return;
       }
 
-      if (_hostname == "" || _port == 0) {
-        _errorMessage = "Could not connect to '" + _hostname + ":" + StringUtils::itoa(_port) + "'";
-        _state = DEAD;
-        return;
-      }
-    
       _lastConnectTime = now();
 
-      struct addrinfo *result, *aip;
-      struct addrinfo hints;
-      int error;
-
-      memset(&hints, 0, sizeof (struct addrinfo));
-      hints.ai_family = AF_INET; // Allow IPv4 or IPv6
-      hints.ai_flags = AI_NUMERICSERV | AI_ALL;
-      hints.ai_socktype = SOCK_STREAM;
-
-      string portString = StringUtils::itoa(_port);
-
-      error = getaddrinfo(_hostname.c_str(), portString.c_str(), &hints, &result);
-
-      if (error != 0) {
-        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
-        _errorMessage = "Could not connect to '" + _hostname + ":" + StringUtils::itoa(_port) +
-                "'! getaddrinfo() failed with: " + string(gai_strerror(error));
-        _state = DEAD;
-        return;
+      if (_endpoint != 0) {
+        connectSocket();
+        _isConnected = _endpoint->isConnected();
       }
 
-      // Try all returned addresses until one works
-      for (aip = result; aip != NULL; aip = aip->ai_next) {
-
-        // try to connect the address info pointer
-        if (connectSocket(aip)) {
-          // is connected
-          LOGGER_TRACE << "Connected to '" << _hostname << ":" << _port << "'!";
-          _isConnected = true;
-          break;
-        }
-
+      if (_endpoint && !_isConnected) {
+        LOGGER_ERROR << "Could not connect to '" << _endpoint->getSpecification() << "'! Connection is dead";
       }
-
-      freeaddrinfo(result);
 
       if (_isConnected) {
         // can write now
@@ -331,9 +299,7 @@ namespace triagens {
       _writeBuffer.appendText(" HTTP/1.1\r\n");
 
       _writeBuffer.appendText("Host: ");
-      _writeBuffer.appendText(_hostname);
-      _writeBuffer.appendText(":");
-      _writeBuffer.appendInteger(_port);
+      _writeBuffer.appendText(_endpoint->getHostString());
       _writeBuffer.appendText("\r\n");
       _writeBuffer.appendText("Connection: Keep-Alive\r\n");
       _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
@@ -406,7 +372,7 @@ namespace triagens {
 
     bool SimpleHttpClient::close () {
       if (_socket != -1) {
-        ::close(_socket);
+        _endpoint->disconnect();
       }
       _isConnected = false;
 
@@ -635,7 +601,6 @@ namespace triagens {
       }
 
       _errorMessage = "getsockopt() failed with: " + string(strerror(errno));
-      LOGGER_ERROR << "getsockopt() failed with: " << strerror(errno) << ". Closing connection.";
 
       //close and reset conection
       close();
@@ -645,34 +610,14 @@ namespace triagens {
       return false;
     }
 
-    bool SimpleHttpClient::connectSocket (struct addrinfo *aip) {
+    bool SimpleHttpClient::connectSocket () {
+      _socket = _endpoint->connect();
 
-      // create socket and connect socket here
-      
-      _socket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
+      if (_socket == 0) {
+        _errorMessage = "connect() failed with: " + string(strerror(errno));
 
-      // check socket and set the socket not blocking and close on exit 
-      
-      if (_socket == -1) {
-        //setErrorMessage("Socket not connected. socket() faild with: " + string(strerror(errno)), errno);
         return false;
       }
-
-      if (!setNonBlocking(_socket)) {
-        //setErrorMessage("Socket not connected. Set non blocking failed with: " + string(strerror(errno)), errno);
-        ::close(_socket);
-        _socket = -1;
-        return false;
-      }
-
-      if (!setCloseOnExec(_socket)) {
-        //setErrorMessage("Socket not connected. Set close on exec failed with: " + string(strerror(errno)), errno);
-        ::close(_socket);
-        _socket = -1;
-        return false;
-      }
-
-      ::connect(_socket, (const struct sockaddr *) aip->ai_addr, aip->ai_addrlen);
 
       struct timeval tv;
       fd_set fdset;
@@ -696,50 +641,9 @@ namespace triagens {
       _errorMessage = "Could not conect to server in " + StringUtils::ftoa(_connectTimeout) + " seconds.";
       LOGGER_WARNING << "Could not conect to server in " << _connectTimeout << " seconds.";
 
-      ::close(_socket);
+      _endpoint->disconnect();
       
       return false;
-    }
-
-    bool SimpleHttpClient::setNonBlocking (socket_t fd) {
-#ifdef TRI_HAVE_WIN32_NON_BLOCKING
-      DWORD ul = 1;
-
-      return ioctlsocket(fd, FIONBIO, &ul) == SOCKET_ERROR ? false : true;
-#else
-      long flags = fcntl(fd, F_GETFL, 0);
-
-      if (flags < 0) {
-        return false;
-      }
-
-      flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
-      if (flags < 0) {
-        return false;
-      }
-
-      return true;
-#endif
-    }
-
-    bool SimpleHttpClient::setCloseOnExec (socket_t fd) {
-#ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
-#else
-      long flags = fcntl(fd, F_GETFD, 0);
-
-      if (flags < 0) {
-        return false;
-      }
-
-      flags = fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-
-      if (flags < 0) {
-        return false;
-      }
-#endif
-
-      return true;
     }
 
     void SimpleHttpClient::reset () {

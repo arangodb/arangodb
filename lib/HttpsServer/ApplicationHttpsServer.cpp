@@ -96,7 +96,6 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicatio
   : ApplicationFeature("HttpsServer"),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _showPort(true),
     _sslProtocol(3),
     _sslCacheMode(0),
     _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
@@ -126,49 +125,11 @@ ApplicationHttpsServer::~ApplicationHttpsServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shows the port options
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationHttpsServer::showPortOptions (bool value) {
-  _showPort = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a https address:port
-////////////////////////////////////////////////////////////////////////////////
-
-AddressPort ApplicationHttpsServer::addPort (string const& name) {
-  AddressPort ap;
-
-  if (! ap.split(name)) {
-    LOGGER_ERROR << "unknown server:port definition '" << name << "'";
-  }
-  else {
-    _httpsAddressPorts.push_back(ap);
-  }
-
-  return ap;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the https server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildServer () {
-  return buildServer(_httpsAddressPorts);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the https server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpsServer* ApplicationHttpsServer::buildServer (vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    return 0;
-  }
-  else {
-    return buildHttpsServer(ports);
-  }
+HttpsServer* ApplicationHttpsServer::buildServer (const EndpointList* endpointList) {
+  return buildHttpsServer(endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,12 +150,6 @@ HttpsServer* ApplicationHttpsServer::buildServer (vector<AddressPort> const& por
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  if (_showPort) {
-    options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-      ("server.secure", &_httpsPorts, "listen port or address:port")
-    ;
-  }
-
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
@@ -209,13 +164,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
-
-  // add ports
-  for (vector<string>::const_iterator i = _httpsPorts.begin();  i != _httpsPorts.end();  ++i) {
-    addPort(*i);
-  }
-
-
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -287,7 +235,7 @@ void ApplicationHttpsServer::stop () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const& ports) {
+HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpointList) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -315,10 +263,7 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
   // keep a list of active server
   _httpsServers.push_back(httpsServer);
 
-  // open http ports
-  for (vector<AddressPort>::const_iterator i = ports.begin();  i != ports.end();  ++i) {
-    httpsServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
-  }
+  httpsServer->addEndpointList(endpointList);
 
   return httpsServer;
 }
