@@ -30,10 +30,11 @@
 #include <netinet/in.h>
 #include <sys/file.h>
 
+#include "BasicsC/socket-utils.h"
+
 #include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
-#include "BasicsC/socket-utils.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -217,6 +218,8 @@ bool EndpointSpecification::setSocketFlags (socket_t _socket) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         EndpointSpecificationUnix
 // -----------------------------------------------------------------------------
@@ -379,6 +382,8 @@ bool EndpointSpecificationUnix::initIncoming (socket_t incoming) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           EndpointSpecificationIp

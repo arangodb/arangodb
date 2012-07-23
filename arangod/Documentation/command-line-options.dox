@@ -45,8 +45,7 @@
 ///    </li>
 ///    <li>@ref CommandLineArango
 ///     <ul>
-///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
-///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
@@ -156,11 +155,8 @@
 /// @section CommandLineArango Command-Line Options for the ArangoDB
 ////////////////////////////////////////////////////////////////////
 ///
-/// @anchor CommandLineArangoHttpPort
-/// @copydetails triagens::arango::ArangoServer::_httpPort
-///
-/// @anchor CommandLineArangoAdminPort
-/// @copydetails triagens::arango::ArangoServer::_adminPort
+/// @anchor CommandLineArangoEndpoint
+/// @copydetails triagens::arango::ArangoServer::_endpoints
 ///
 /// @anchor CommandLineArangoDirectory
 /// @copydetails triagens::arango::ArangoServer::_databasePath
