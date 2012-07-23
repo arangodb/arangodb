@@ -4,6 +4,23 @@ v1.1.x (XXXX-XX-XX)
   multiple ports/endpoints anyway, and the distinction between admin and "other"
   ports/endpoints will be made using privileges
 
+* removed startup options "--server.port" and "--server.http-port" for arangod. 
+  These options have been replaced by the new "--server.endpoint" parameter.
+  
+* removed startup option "--server" for arangosh and arangoimp.
+  These options have been replaced by the new "--server.endpoint" parameter.
+
+* Added "--server.endpoint" option to arangod, arangosh, and arangoimp.
+  For arangod, this option allows specifying the bind endpoints for the server.
+  The server can be bound to one or multiple endpoints at once. For arangosh
+  and arangoimp, the option specifies the server endpoint to connect to.
+  The following endpoint syntax is currently supported:
+  - tcp://host:port (IPv4)
+  - tcp://host (IPv4 address, with default port 8529)
+  - tcp://[host]:port (IPv6)
+  - tcp://[host] (IPv6 address, with default port 8529)
+  - unix://path/to/socket (UNIX socket)
+
 * removed startup options "--server.require-keep-alive" and 
   "--server.secure-require-keep-alive". 
   The server will now behave as follows which should be more conforming to the 

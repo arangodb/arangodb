@@ -67,7 +67,6 @@ lib_libarango_a_SOURCES = \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp \
-	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/EndpointSpecification.cpp \
