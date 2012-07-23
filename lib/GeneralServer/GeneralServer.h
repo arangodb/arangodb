@@ -47,6 +47,7 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/SpecificCommTask.h"
 #include "Logger/Logger.h"
+#include "Rest/Endpoint.h"
 #include "Rest/EndpointList.h"
 #include "Rest/Handler.h"
 #include "Scheduler/ListenTask.h"
@@ -405,7 +406,7 @@ namespace triagens {
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool openEndpoint (EndpointSpecification* endpoint) {
+        bool openEndpoint (Endpoint* endpoint) {
           ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint, true);
 
           if (! task->isBound()) {

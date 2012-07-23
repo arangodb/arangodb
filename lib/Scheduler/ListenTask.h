@@ -35,7 +35,7 @@
 
 #include "Basics/Mutex.h"
 #include "Rest/ConnectionInfo.h"
-#include "Rest/EndpointSpecification.h"
+#include "Rest/Endpoint.h"
 
 namespace triagens {
   namespace rest {
@@ -60,7 +60,7 @@ namespace triagens {
 /// @brief listen to given endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListenTask (EndpointSpecification* endpoint, bool reuseAddress);
+        ListenTask (Endpoint*, bool);
 
       public:
 
@@ -123,7 +123,7 @@ namespace triagens {
 
       private:
         bool reuseAddress;
-        EndpointSpecification* _endpoint;
+        Endpoint* _endpoint;
         socket_t listenSocket;
 
         size_t acceptFailures;

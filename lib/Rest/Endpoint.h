@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint specification
+/// @brief connection endpoints
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_SPECIFICATION_H
-#define TRIAGENS_FYN_REST_ENDPOINT_SPECIFICATION_H 1
+#ifndef TRIAGENS_FYN_REST_ENDPOINT_H
+#define TRIAGENS_FYN_REST_ENDPOINT_H 1
 
 #include <Basics/Common.h>
 #include <Basics/StringUtils.h>
@@ -43,7 +43,7 @@
 #include <netdb.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             EndpointSpecification
+// --SECTION--                                                          Endpoint
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -75,7 +75,7 @@ namespace triagens {
 /// @brief endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EndpointSpecification {
+    class Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -92,7 +92,7 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointSpecification (EndpointType, EndpointDomainType, const string&);
+        Endpoint (EndpointType, EndpointDomainType, const string&);
 
       public:
 
@@ -100,7 +100,7 @@ namespace triagens {
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-        virtual ~EndpointSpecification ();
+        virtual ~Endpoint ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -121,26 +121,26 @@ namespace triagens {
 /// @brief creates a server endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static EndpointSpecification* serverFactory (const string&);
+        static Endpoint* serverFactory (const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a client endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static EndpointSpecification* clientFactory (const string&);
+        static Endpoint* clientFactory (const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static EndpointSpecification* factory (const EndpointType type, 
-                                               const string&);
+        static Endpoint* factory (const EndpointType type, 
+                                  const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool operator== (EndpointSpecification const &) const;
+        bool operator== (Endpoint const &) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the default endpoint
@@ -274,10 +274,10 @@ namespace triagens {
 #ifdef TRI_HAVE_LINUX_SOCKETS
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationUnix
+// --SECTION--                                                      EndpointUnix
 // -----------------------------------------------------------------------------
 
-    class EndpointSpecificationUnix : public EndpointSpecification {
+    class EndpointUnix : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -294,15 +294,15 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointSpecificationUnix (const EndpointType, 
-                                   string const&, 
-                                   string const&);
+        EndpointUnix (const EndpointType, 
+                            string const&, 
+                            string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-        virtual ~EndpointSpecificationUnix ();
+        virtual ~EndpointUnix ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -399,10 +399,10 @@ namespace triagens {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           EndpointSpecificationIp
+// --SECTION--                                                        EndpointIp
 // -----------------------------------------------------------------------------
 
-    class EndpointSpecificationIp : public EndpointSpecification {
+    class EndpointIp : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -419,11 +419,11 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointSpecificationIp (const EndpointType, 
-                                 const EndpointDomainType, 
-                                 string const&, 
-                                 string const&, 
-                                 const uint16_t);
+        EndpointIp (const EndpointType, 
+                    const EndpointDomainType, 
+                    string const&, 
+                    string const&, 
+                    const uint16_t);
 
       public:
 
@@ -431,7 +431,7 @@ namespace triagens {
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-        ~EndpointSpecificationIp ();
+        ~EndpointIp ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -573,10 +573,10 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationIpV4
+// --SECTION--                                                      EndpointIpV4
 // -----------------------------------------------------------------------------
 
-    class EndpointSpecificationIpV4 : public EndpointSpecificationIp {
+    class EndpointIpV4 : public EndpointIp {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -593,16 +593,16 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointSpecificationIpV4 (const EndpointType, 
-                                   string const&, 
-                                   string const&, 
-                                   const uint16_t);
+        EndpointIpV4 (const EndpointType, 
+                      string const&, 
+                      string const&, 
+                      const uint16_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-        ~EndpointSpecificationIpV4 ();
+        ~EndpointIpV4 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -634,10 +634,10 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         EndpointSpecificationIpV6
+// --SECTION--                                                      EndpointIpV6
 // -----------------------------------------------------------------------------
 
-    class EndpointSpecificationIpV6 : public EndpointSpecificationIp {
+    class EndpointIpV6 : public EndpointIp {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -654,16 +654,16 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointSpecificationIpV6 (const EndpointType, 
-                                   string const&, 
-                                   string const&, 
-                                   const uint16_t);
+        EndpointIpV6 (const EndpointType, 
+                      string const&, 
+                      string const&, 
+                      const uint16_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-        ~EndpointSpecificationIpV6 ();
+        ~EndpointIpV6 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

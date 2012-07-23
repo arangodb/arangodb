@@ -30,7 +30,7 @@
 
 #include <Basics/Common.h>
 
-#include <Rest/EndpointSpecification.h>
+#include <Rest/Endpoint.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      EndpointList
@@ -56,7 +56,7 @@ namespace triagens {
 /// @brief typedef for list contents
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef set<EndpointSpecification*> ListType;
+        typedef set<Endpoint*> ListType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

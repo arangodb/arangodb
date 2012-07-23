@@ -40,7 +40,7 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
-#include <Rest/EndpointSpecification.h>
+#include <Rest/Endpoint.h>
 
 #include <v8.h>
 
@@ -100,7 +100,7 @@ namespace triagens {
 /// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8ClientConnection (triagens::rest::EndpointSpecification*,
+        V8ClientConnection (triagens::rest::Endpoint*,
                             double,
                             size_t,
                             double,
@@ -278,7 +278,7 @@ namespace triagens {
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::rest::EndpointSpecification* _endpoint;
+      triagens::rest::Endpoint* _endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server version
