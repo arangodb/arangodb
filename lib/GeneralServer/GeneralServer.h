@@ -155,6 +155,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the protocol to be used 
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual Endpoint::Protocol getProtocol () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,7 +181,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void startListening () {
-          EndpointList::ListType endpoints = _endpointList->getEndpoints(Endpoint::PROTOCOL_HTTP);
+          EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol());
 
           for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
             LOGGER_TRACE << "trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests";
