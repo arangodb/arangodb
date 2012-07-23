@@ -197,7 +197,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _httpServer(0),
-    _adminHttpServer(0),
     _endpoints(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
