@@ -382,10 +382,145 @@ function geodesicSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Normalized Measurements on Graphs
+////////////////////////////////////////////////////////////////////////////////
+
+function normalizedSuite() {
+  var Graph = require("graph").Graph,
+    graph_name = "UnitTestsCollectionGraph",
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        try {
+          // Drop the graph if it exsits
+          graph = new Graph(graph_name);
+          print("FOUND: ");
+          PRINT_OBJECT(graph);
+          graph.drop();
+        } catch (err1) {
+        }
+
+        graph = new Graph(graph_name, vertex, edge);
+      } catch (err2) {
+        console.error("[FAILED] setup failed:" + err2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      try {
+        if (graph !== null) {
+          graph.drop();
+        }
+      } catch (err) {
+        console.error("[FAILED] tear-down failed:" + err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the normalized closeness of a graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testCloseness: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        closeness;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      closeness = graph.normalizedMeasurement("closeness");
+
+      assertEqual(closeness[v1.getId()].toPrecision(1), '0.6');
+      assertEqual(closeness[v2.getId()].toPrecision(1), '1');
+      assertEqual(closeness[v3.getId()].toPrecision(1), '1');
+      assertEqual(closeness[v4.getId()].toPrecision(1), '1');
+      assertEqual(closeness[v5.getId()].toPrecision(1), '0.7');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the normalized betweenness of a graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testBetweenness: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        betweenness;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      betweenness = graph.normalizedMeasurement("betweenness");
+
+      assertEqual(betweenness[v1.getId()].toPrecision(1), '0');
+      assertEqual(betweenness[v2.getId()].toPrecision(1), '1');
+      assertEqual(betweenness[v3.getId()].toPrecision(1), '0.3');
+      assertEqual(betweenness[v4.getId()].toPrecision(1), '0.3');
+      assertEqual(betweenness[v5.getId()].toPrecision(1), '0');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the normalized eccentricity of a graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testEccentricity: function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        v4 = graph.addVertex(4),
+        v5 = graph.addVertex(5),
+        eccentricity;
+
+      graph.addEdge(v1, v2);
+      graph.addEdge(v2, v3);
+      graph.addEdge(v2, v4);
+      graph.addEdge(v3, v4);
+      graph.addEdge(v3, v5);
+      graph.addEdge(v4, v5);
+
+      eccentricity = graph.normalizedMeasurement("eccentricity");
+
+      assertEqual(eccentricity[v1.getId()].toPrecision(1), '0.67');
+      assertEqual(eccentricity[v2.getId()].toPrecision(1), '1');
+      assertEqual(eccentricity[v3.getId()].toPrecision(1), '1');
+      assertEqual(eccentricity[v4.getId()].toPrecision(1), '1');
+      assertEqual(eccentricity[v5.getId()].toPrecision(1), '0.67');
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(measurementSuite);
 jsunity.run(geodesicSuite);
+jsunity.run(normalizedSuite);
 
 return jsunity.done();
