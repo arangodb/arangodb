@@ -29,6 +29,7 @@
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Rest/AnyServer.h"
+#include "Rest/EndpointList.h"
 
 #include "VocBase/vocbase.h"
 
@@ -278,6 +279,31 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::HttpServer* _adminHttpServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint list container
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::EndpointList _endpointList;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoints for client HTTP requests
+///
+/// @CMDOPT{--server.endpoint @CA{endpoint}}
+///
+/// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
+/// the following pattern:
+/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+/// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+/// - unix:///path/to/socket - Unix domain socket endpoint
+///
+/// If a TCP/IP endpoint is specified without a port number, then the default 
+/// port (8529) will be used.
+/// If multiple endpoints need to be used, the option can be repeated multiple
+/// times.
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<string> _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list port for client requests

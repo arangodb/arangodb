@@ -53,50 +53,18 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (string const& address, int port, bool reuseAddress)
+ListenTask::ListenTask (EndpointSpecification* endpoint, bool reuseAddress)
   : Task("ListenTask"),
     readWatcher(0),
     reuseAddress(reuseAddress),
-    address(address),
-    port(port),
+    _endpoint(endpoint),
     listenSocket(0),
-    bound(false),
     acceptFailures(0) {
   bindSocket();
-}
-
-
-
-ListenTask::ListenTask (int port, bool reuseAddress)
-  : Task("ListenTask"),
-    readWatcher(0),
-    reuseAddress(reuseAddress),
-    address(""),
-    port(port),
-    listenSocket(0),
-    bound(false),
-    acceptFailures(0) {
-  bindSocket();
-}
-
-ListenTask::ListenTask (struct addrinfo *aip, bool reuseAddress)
-  : Task("ListenTask"),
-    readWatcher(0),
-    reuseAddress(reuseAddress),
-    address(""),
-    port(0),
-    listenSocket(0),
-    bound(false),
-    acceptFailures(0) {
-  bindSocket(aip);
 }
 
 
 ListenTask::~ListenTask () {
-  if (listenSocket != -1) {
-    close(listenSocket);
-  }
-
   if (readWatcher != 0) {
     scheduler->uninstallEvent(readWatcher);
   }
@@ -109,7 +77,7 @@ ListenTask::~ListenTask () {
 bool ListenTask::isBound () const {
   MUTEX_LOCKER(changeLock);
   
-  return bound;
+  return _endpoint != 0 && _endpoint->isConnected();
 }
 
 
@@ -119,7 +87,7 @@ bool ListenTask::isBound () const {
 // -----------------------------------------------------------------------------
 
 void ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
-  if (! bound) {
+  if (! isBound()) {
     return;
   }
   
@@ -183,46 +151,18 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     }
 
     acceptFailures = 0;
-    
-    // disable nagle's algorithm
-    int n = 1;
-    res = setsockopt(connfd, IPPROTO_TCP, TCP_NODELAY, (char*)&n, sizeof(n));
-    
-    if (res != 0 ) {
+   
+ 
+    // disable nagle's algorithm, set to non-blocking and close-on-exec  
+    bool result = _endpoint->initIncoming(connfd); 
+    if (!result) {
       close(connfd);
-      
-      LOGGER_WARNING << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
-      return true;
-    }
-    
-    // set socket to non-blocking
-    bool ok = TRI_SetNonBlockingSocket(connfd);
-    
-    if (! ok) {
-      close(connfd);
-      
-      LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
 
-      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
       return true;
     }
-    
-    ok = TRI_SetCloseOnExecSocket(connfd);
-    
-    if (! ok) {
-      close(connfd);
-      
-      LOGGER_ERROR << "cannot set close-on-exec: " << errno << " (" << strerror(errno) << ")";
 
-      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
-      return true;
-    }
-    
     // set client address and port
     ConnectionInfo info;
 
@@ -239,8 +179,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       info.clientPort = addr.sin_port;
     }
     
-    info.serverAddress = address;
-    info.serverPort = port;
+    info.serverAddress = _endpoint->getHost();
+    info.serverPort = _endpoint->getPort();
     
     return handleConnected(connfd, info);
   }
@@ -253,126 +193,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::bindSocket () {
-  bound = false;
-  listenSocket = -1;
-  
-  struct addrinfo *result, *aip;
-  struct addrinfo hints;
-  int error;
-  
-  memset(&hints, 0, sizeof (struct addrinfo));
-  hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
-  hints.ai_socktype = SOCK_STREAM;
-  
-  string portString = StringUtils::itoa(port);
-  
-  if (address.empty()) {
-    LOGGER_ERROR << "get any address";
-    error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
-  }
-  else {
-    error = getaddrinfo(address.c_str(), portString.c_str(), &hints, &result);
-  }
-  
-  if (error != 0) {
-    LOGGER_ERROR << "getaddrinfo for host: " << address.c_str() << " => " << gai_strerror(error);
+  listenSocket = _endpoint->connect();
+  if (listenSocket == 0) {
     return false;
   }
-  
-  // Try all returned addresses until one works
-  for (aip = result; aip != NULL; aip = aip->ai_next) {
-    
-    // try to bind the address info pointer
-    if (bindSocket(aip)) {
-      // OK
-      break;
-    }
-    
-  }
-  
-  freeaddrinfo(result);
-  
-  return bound;
-}
-
-
-
-bool ListenTask::bindSocket (struct addrinfo *aip) {
-  bound = false;
-  listenSocket = -1;
-  
-  // set address and port
-  char host[NI_MAXHOST], serv[NI_MAXSERV];
-  if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
-                  host, sizeof(host),
-                  serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-    
-    address = string(host);
-    port = StringUtils::int32(string(serv));
-    
-    LOGGER_TRACE << "bind to address '" << address << "' port '" << string(serv) << "'";
-  }
-  
-  listenSocket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
-  if (listenSocket == -1) {
-    return false;
-  }
-  
-  // try to reuse address
-  if (reuseAddress) {
-    int opt = 1;
-    
-    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-      return false;
-    }
-    
-    LOGGER_TRACE << "reuse address flag set";
-  }
-  
-  int res = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
-  if (res < 0) {
-    LOGGER_ERROR << "bind failed with " << errno << " (" << strerror(errno) << ")";
-    (void) close(listenSocket);
-    listenSocket = -1;
-    return false;
-  }
-  
-  // listen for new connection
-  res = listen(listenSocket, 10);
-  
-  if (res < 0) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-  
-  // set socket to non-blocking
-  bool ok = TRI_SetNonBlockingSocket(listenSocket);
-
-  if (!ok) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-
-  // set close on exit
-  ok = TRI_SetCloseOnExecSocket(listenSocket);
-
-  if (!ok) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-  
-  bound = true;
   
   return true;
 }

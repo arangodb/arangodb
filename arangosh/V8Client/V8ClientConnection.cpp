@@ -41,6 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "Rest/EndpointSpecification.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -51,6 +52,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace triagens::v8client;
 using namespace std;
 
@@ -67,19 +69,21 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection::V8ClientConnection (const std::string& hostname,
-                                        int port,
+V8ClientConnection::V8ClientConnection (EndpointSpecification* endpoint,
                                         double requestTimeout,
                                         size_t retries,
                                         double connectionTimeout,
                                         bool warn)
-  : _connected(false),
+  : _endpoint(endpoint),
+    _connected(false),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-      
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+    
+  assert(endpoint);
+    
+  _client = new SimpleHttpClient(endpoint, requestTimeout, retries, connectionTimeout, warn);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -177,19 +181,15 @@ const std::string& V8ClientConnection::getErrorMessage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
+/// @brief get the endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string& V8ClientConnection::getHostname () {
-  return _client->getHostname();
-}
+const std::string V8ClientConnection::getEndpointSpecification () {
+  if (_endpoint == 0) {
+    return "-";
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int V8ClientConnection::getPort () {
-  return _client->getPort();
+  return _endpoint->getSpecification();
 }
     
 ////////////////////////////////////////////////////////////////////////////////

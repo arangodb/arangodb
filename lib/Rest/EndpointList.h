@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to establish connections
+/// @brief connection endpoint list 
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,86 +21,114 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_LISTEN_TASK_H
-#define TRIAGENS_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_ENDPOINT_LIST_H
+#define TRIAGENS_FYN_REST_ENDPOINT_LIST_H 1
 
-#include "Scheduler/ListenTask.h"
-#include "Rest/EndpointSpecification.h"
+#include <Basics/Common.h>
+
+#include <Rest/EndpointSpecification.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralListenTask
+// --SECTION--                                                      EndpointList
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace rest {
 
+    class EndpointList {
+
+      public:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task used to establish connections
+/// @addtogroup Rest
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S>
-    class GeneralListenTask : public ListenTask {
-      private:
-        GeneralListenTask (GeneralListenTask const&);
-        GeneralListenTask& operator= (GeneralListenTask const&);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for list contents
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef set<EndpointSpecification*> ListType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given port
+/// @brief creates an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralListenTask (S* server, EndpointSpecification* endpoint, bool reuseAddress)
-          : Task("GeneralListenTask"), ListenTask(endpoint, reuseAddress), server(server) {
-        }
+        EndpointList ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an endpoint list
+////////////////////////////////////////////////////////////////////////////////
+      
+        ~EndpointList ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                ListenTask methods
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-      protected:
+    
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief dump all used endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleConnected (socket_t socket, ConnectionInfo const& info) {
-          ConnectionInfo newInfo = info;
-          server->handleConnected(socket, newInfo);
-          return true;
-        }
+        void dump();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all endpoints for HTTP requests
+////////////////////////////////////////////////////////////////////////////////
+
+        ListType getHttpEndpoints () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all endpoints for binary requests
+////////////////////////////////////////////////////////////////////////////////
+
+        ListType getBinaryEndpoints () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an endpoint for HTTP requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool addHttpEndpoint (const string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an endpoint for binary requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool addBinaryEndpoint (const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -111,18 +139,30 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
+    
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief underlying general server
+/// @brief set of endpoints for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
-        S* server;
+        ListType _httpEndpoints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set of endpoints for binary requests
+////////////////////////////////////////////////////////////////////////////////
+
+        ListType _binaryEndpoints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
     };
+
   }
 }
 
@@ -132,11 +172,7 @@ namespace triagens {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

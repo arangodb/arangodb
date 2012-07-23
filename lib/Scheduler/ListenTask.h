@@ -35,6 +35,7 @@
 
 #include "Basics/Mutex.h"
 #include "Rest/ConnectionInfo.h"
+#include "Rest/EndpointSpecification.h"
 
 namespace triagens {
   namespace rest {
@@ -56,22 +57,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given address and port (deprecated)
+/// @brief listen to given endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListenTask (string const& address, int port, bool reuseAddress);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given port (deprecated)
-////////////////////////////////////////////////////////////////////////////////
-
-        ListenTask (int port, bool reuseAddress);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given adress info pointer
-////////////////////////////////////////////////////////////////////////////////
-
-        ListenTask (struct addrinfo *aip, bool reuseAddress);
+        ListenTask (EndpointSpecification* endpoint, bool reuseAddress);
 
       public:
 
@@ -131,14 +120,11 @@ namespace triagens {
 
       private:
         bool bindSocket ();
-        bool bindSocket (struct addrinfo *aip);
 
       private:
         bool reuseAddress;
-        string address;
-        int port;
+        EndpointSpecification* _endpoint;
         socket_t listenSocket;
-        bool bound;
 
         size_t acceptFailures;
 

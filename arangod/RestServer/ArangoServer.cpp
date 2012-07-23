@@ -198,7 +198,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationUserManager(0),
     _httpServer(0),
     _adminHttpServer(0),
-    _httpPort("127.0.0.1:8529"),
+    _endpoints(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
@@ -398,18 +398,8 @@ void ArangoServer::buildApplicationServer () {
     ("working directory", &_workingDirectory, "working directory in daemon mode")
   ;
 
-  // .............................................................................
-  // for this server we display our own options such as port to use
-  // .............................................................................
-
-  _applicationHttpServer->showPortOptions(false);
-
-  additional["PORT Options"]
-    ("server.http-port", &_httpPort, "port for client access")
-  ;
-
-  additional[ApplicationServer::OPTIONS_HIDDEN]
-    ("port", &_httpPort, "port for client access")
+  additional["ENDPOINT Options"]
+    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
   ;
 
   // .............................................................................
@@ -523,6 +513,13 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "please use the '--database.directory' option";
     exit(EXIT_FAILURE);
   }
+
+  if (0 == _endpoints.size()) {
+    LOGGER_FATAL << "no endpoint has been specified, giving up";
+    cerr << "no endpoint has been specified, giving up\n";
+    LOGGER_INFO << "please use the '--server.endpoint' option";
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,12 +572,22 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
-  // set up a port list
-  vector<AddressPort> ports;
-  ports.push_back(AddressPort(_httpPort));
+  // add & validate endpoints
+  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
+    bool ok = _endpointList.addHttpEndpoint(*i);
+    if (! ok) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+
+  }
+
+  // dump used endpoints
+  _endpointList.dump();
 
   // create the server
-  _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), ports);
+  _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), &_endpointList);
 
   // create the handlers
   httpOptions._contexts.insert("user");
@@ -637,8 +644,6 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // start the main event loop
   // .............................................................................
-
-  LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
 
   _applicationServer->start();
 

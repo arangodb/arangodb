@@ -34,6 +34,7 @@
 #include <netdb.h>
 
 #include "Basics/StringBuffer.h"
+#include "Rest/EndpointSpecification.h"
 
 namespace triagens {
   namespace httpclient {
@@ -46,7 +47,7 @@ namespace triagens {
 
     class SimpleHttpClient {
     private:
-      enum { READBUFFER_SIZE = 8096 };
+      enum { READBUFFER_SIZE = 8192 };
       
       SimpleHttpClient (SimpleHttpClient const&);
       SimpleHttpClient& operator= (SimpleHttpClient const&);
@@ -79,8 +80,7 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructs a new http client
       ///
-      /// @param hostname               server hostname
-      /// @param port                   server port
+      /// @param endpoint               endpoint to connect to 
       /// @param requestTimeout         timeout in seconds for the request
       /// @param connectTimeout         timeout in seconds for the tcp connect 
       /// @param connectRetries         maximum number of request retries
@@ -88,8 +88,7 @@ namespace triagens {
       ///
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (string const& hostname,
-                        int port,
+      SimpleHttpClient (triagens::rest::EndpointSpecification* endpoint, 
                         double requestTimeout,
                         double connectTimeout, 
                         size_t connectRetries,
@@ -115,10 +114,10 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (int method, 
-                           const string& location,
-                           const char* body, 
-                           size_t bodyLength,
-                           const map<string, string>& headerFields);
+                                 const string& location,
+                                 const char* body, 
+                                 size_t bodyLength,
+                                 const map<string, string>& headerFields);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns true if the socket is connected
@@ -129,21 +128,17 @@ namespace triagens {
       } 
       
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the hostname of the remote server
+      /// @brief returns the endpoint
       ////////////////////////////////////////////////////////////////////////////////      
 
-      const string& getHostname () {
-          return _hostname;
+      const string getEndpointSpecification () {
+        if (_endpoint == 0) {
+          return "-";
+        }
+
+        return _endpoint->getSpecification();
       }
       
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the port of the remote server
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      int getPort () {
-          return _port;
-      }
-
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns the port of the remote server
       ////////////////////////////////////////////////////////////////////////////////      
@@ -258,7 +253,7 @@ namespace triagens {
       /// @brief connect the socket
       ////////////////////////////////////////////////////////////////////////////////
 
-      bool connectSocket (struct addrinfo *aip);
+      bool connectSocket ();
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns true if the socket is readable
@@ -277,7 +272,6 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
 
       bool setCloseOnExec (socket_t fd);
-      
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief reset connection
@@ -300,8 +294,7 @@ namespace triagens {
       double now ();                  
       
     private:
-      string _hostname;          // the hostname
-      int _port;                 // the port     
+      triagens::rest::EndpointSpecification* _endpoint;
       double _requestTimeout;
       double _connectTimeout;
       size_t _connectRetries;

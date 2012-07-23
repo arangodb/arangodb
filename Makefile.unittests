@@ -65,7 +65,7 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	while [ ! -s "$(STARTFILE)" ]; do curl -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
 	@rm "$(STARTFILE)"
@@ -257,7 +257,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
