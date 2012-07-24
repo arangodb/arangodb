@@ -30,6 +30,7 @@
 #include <openssl/err.h>
 
 #include "Logger/Logger.h"
+#include "Basics/ssl-helper.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
@@ -56,16 +57,6 @@ using namespace std;
 
 namespace {
   Mutex SslLock;
-
-  string lastSSLError () {
-    char buf[122];
-    memset(buf, 0, sizeof(buf));
-
-    unsigned long err = ERR_get_error();
-    ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-    return string(buf);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +257,8 @@ void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
 
   // create a https task
   SocketTask* task = new HttpsAsyncCommTask(this, socket, info, sbio);
-          
+
+  // add the task, otherwise it will not be shut down properly          
   GENERAL_SERVER_LOCK(&this->_commTasksLock);
   this->_commTasks.insert(dynamic_cast<GeneralCommTask<HttpServer, HttpHandlerFactory>*>(task));
   GENERAL_SERVER_UNLOCK(&this->_commTasksLock);

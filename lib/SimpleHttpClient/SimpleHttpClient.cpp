@@ -638,8 +638,8 @@ namespace triagens {
       }
 
       // connect timeout reached
-      _errorMessage = "Could not conect to server in " + StringUtils::ftoa(_connectTimeout) + " seconds.";
-      LOGGER_WARNING << "Could not conect to server in " << _connectTimeout << " seconds.";
+      _errorMessage = "Could not connect to server in " + StringUtils::ftoa(_connectTimeout) + " seconds.";
+      LOGGER_WARNING << "Could not connect to server in " << _connectTimeout << " seconds.";
 
       _endpoint->disconnect();
       
@@ -648,6 +648,10 @@ namespace triagens {
 
     void SimpleHttpClient::reset () {
       _state = IN_CONNECT;
+
+      if (_endpoint) {
+        _endpoint->disconnect();
+      }
 
       _isConnected = false;
       _socket = -1;
