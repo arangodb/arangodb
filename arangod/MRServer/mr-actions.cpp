@@ -54,7 +54,7 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           MR_state_t* context,
+                                           mrb_state* mrb,
                                            TRI_action_t const* action,
                                            mrb_value callback,
                                            HttpRequest* request);
@@ -119,10 +119,10 @@ class mr_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    void createCallback (MR_state_t* context, mrb_value callback) {
+    void createCallback (mrb_state* mrb, mrb_value callback) {
       WRITE_LOCKER(_callbacksLock);
 
-      _callbacks[context] = callback;
+      _callbacks[mrb] = callback;
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,10 +131,11 @@ class mr_action_t : public TRI_action_t {
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
       ApplicationMR::MRContext* context = GlobalMRDealer->enterContext();
+      mrb_state* mrb = context->_mrb;
 
       READ_LOCKER(_callbacksLock);
 
-      map< MR_state_t*, mrb_value >::iterator i = _callbacks.find(context->_mrs);
+      map< mrb_state*, mrb_value >::iterator i = _callbacks.find(mrb);
 
       if (i == _callbacks.end()) {
         LOGGER_WARNING << "no callback function for Ruby action '" << _url.c_str() << "'";
@@ -143,7 +144,7 @@ class mr_action_t : public TRI_action_t {
 
       mrb_value callback = i->second;
 
-      HttpResponse* response = ExecuteActionVocbase(vocbase, context->_mrs, this, callback, request);
+      HttpResponse* response = ExecuteActionVocbase(vocbase, mrb, this, callback, request);
 
       GlobalMRDealer->exitContext(context);
 
@@ -156,7 +157,7 @@ class mr_action_t : public TRI_action_t {
 /// @brief callback dictionary
 ////////////////////////////////////////////////////////////////////////////////
 
-    map< MR_state_t*, mrb_value > _callbacks;
+    map< mrb_state*, mrb_value > _callbacks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for the callback dictionary
@@ -209,17 +210,17 @@ char const* MR_string (mrb_state* mrb, mrb_value val) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           MR_state_t* mrs,
+                                           mrb_state* mrb,
                                            TRI_action_t const* action,
                                            mrb_value callback,
                                            HttpRequest* request) {
+  MR_state_t* mrs;
   mrb_sym id;
   mrb_sym bodyId;
   mrb_value key;
   mrb_value val;
-  mrb_state* mrb;
 
-  mrb = &mrs->_mrb;
+  mrs = (MR_state_t*) mrb->ud;
 
   // setup the request
   mrb_value req = mrb_class_new_instance(mrb, 0, 0, mrs->_arangoRequest);
@@ -434,7 +435,7 @@ static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
     if (action != 0) {
       mrb_value callback = mrb_class_new_instance(mrb, 0, 0, rcl);
 
-      action->createCallback((MR_state_t*) mrb, callback);
+      action->createCallback(mrb, callback);
       return mrb_false_value();
     }
     else {
@@ -465,12 +466,12 @@ static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
 /// @brief init mruby utilities
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMRActions (MR_state_t* mrs, triagens::arango::ApplicationMR* applicationMR) {
-  mrb_state* mrb;
+void TRI_InitMRActions (mrb_state* mrb, triagens::arango::ApplicationMR* applicationMR) {
+  MR_state_t* mrs;
   struct RClass *rcl;
   struct RClass *arango;
 
-  mrb = &mrs->_mrb;
+  mrs = (MR_state_t*) mrb->ud;
   arango = mrb_define_module(mrb, "Arango");
 
   GlobalMRDealer = applicationMR;
@@ -479,7 +480,7 @@ void TRI_InitMRActions (MR_state_t* mrs, triagens::arango::ApplicationMR* applic
   // HttpServer
   // .............................................................................
 
-  rcl = mrb_define_class_under(mrb, arango, "HttpServer", mrs->_mrb.object_class);
+  rcl = mrb_define_class_under(mrb, arango, "HttpServer", mrb->object_class);
   
   mrb_define_class_method(mrb, rcl, "mount", MR_Mount, ARGS_REQ(2));
 
@@ -487,13 +488,13 @@ void TRI_InitMRActions (MR_state_t* mrs, triagens::arango::ApplicationMR* applic
   // HttpRequest
   // .............................................................................
 
-  rcl = mrs->_arangoRequest = mrb_define_class_under(mrb, arango, "HttpRequest", mrs->_mrb.object_class);
+  rcl = mrs->_arangoRequest = mrb_define_class_under(mrb, arango, "HttpRequest", mrb->object_class);
 
   // .............................................................................
   // HttpResponse
   // .............................................................................
 
-  rcl = mrs->_arangoResponse = mrb_define_class_under(mrb, arango, "HttpResponse", mrs->_mrb.object_class);
+  rcl = mrs->_arangoResponse = mrb_define_class_under(mrb, arango, "HttpResponse", mrb->object_class);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

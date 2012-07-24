@@ -28,9 +28,10 @@
 #ifndef TRIAGENS_FYN_REST_HTTP_HANDLER_FACTORY_H
 #define TRIAGENS_FYN_REST_HTTP_HANDLER_FACTORY_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/Mutex.h>
+#include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @defgroup HttpServer Http-Server
@@ -56,6 +57,7 @@ namespace triagens {
         typedef HttpResponse GeneralResponse;
 
         typedef HttpHandler* (*create_fptr) (HttpRequest*, void*);
+        typedef bool (*auth_fptr) (char const*, char const*);
 
       public:
 
@@ -63,7 +65,7 @@ namespace triagens {
         /// @brief constructs a new handler factory
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory ();
+        HttpHandlerFactory (std::string const& realm, auth_fptr checkAuthentication);
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief clones a handler factory
@@ -123,6 +125,18 @@ namespace triagens {
 
         size_t numberActiveHandlers ();
 
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief checks the authorisation
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool authenticateRequest (HttpRequest*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the authentication realm
+        ////////////////////////////////////////////////////////////////////////////////
+
+        std::string const& authenticationRealm (HttpRequest*);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +172,12 @@ namespace triagens {
         basics::Mutex _activeHandlersLock;
 
       private:
+        string _authenticationRealm;
+        auth_fptr _checkAuthentication;
+
+        basics::ReadWriteLock _authLock;
+        std::set<std::string> _authCache;
+
         map<string, create_fptr> _constructors;
         map<string, void*> _datas;
         vector<string> _prefixes;

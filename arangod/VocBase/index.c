@@ -37,6 +37,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             INDEX
@@ -489,47 +490,31 @@ static bool ExtractDoubleArray (TRI_shaper_t* shaper,
                                 TRI_shape_pid_t pid,
                                 double* result,
                                 bool* missing) {
-  TRI_shape_access_t* acc;
+  TRI_shape_t const* shape;
   TRI_shaped_json_t json;
-  TRI_shape_sid_t sid;
   bool ok;
 
-  sid = document->_sid;
-  acc = TRI_ShapeAccessor(shaper, sid, pid);
   *missing = false;
 
-  // attribute not known or an internal error
-  if (acc == NULL || acc->_shape == NULL) {
-    if (acc != NULL) {
-      TRI_FreeShapeAccessor(acc);
-      *missing = true;
-    }
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &json, &shape);
 
+  if (! ok) {
     return false;
   }
 
-  // number
-  if (acc->_shape->_sid == shaper->_sidNumber) {
-    ok = TRI_ExecuteShapeAccessor(acc, document, &json);
-
-    if (ok) {
-      *result = * (double*) json._data.data;
-      TRI_FreeShapeAccessor(acc);
-    }
-
-    return ok;
-  }
-
-  // null
-  else if (acc->_shape->_sid == shaper->_sidNull) {
+  if (shape == NULL) {
     *missing = true;
-    TRI_FreeShapeAccessor(acc);
     return false;
   }
-
-  // everyting else
+  else if (json._sid == shaper->_sidNumber) {
+    *result = * (double*) json._data.data;
+    return true;
+  }
+  else if (json._sid == shaper->_sidNull) {
+    *missing = true;
+    return false;
+  }
   else {
-    TRI_FreeShapeAccessor(acc);
     return false;
   }
 }
@@ -544,52 +529,46 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
                                double* latitude,
                                double* longitude,
                                bool* missing) {
-  TRI_shape_access_t* acc;
-  TRI_shaped_json_t list;
+  TRI_shape_t const* shape;
   TRI_shaped_json_t entry;
-  TRI_shape_sid_t sid;
-  size_t len;
+  TRI_shaped_json_t list;
   bool ok;
+  size_t len;
 
-  sid = document->_sid;
-  acc = TRI_ShapeAccessor(shaper, sid, pid);
   *missing = false;
 
-  // attribute not known or an internal error
-  if (acc == NULL || acc->_shape == NULL) {
-    if (acc != NULL) {
-      TRI_FreeShapeAccessor(acc);
-      *missing = true;
-    }
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &list, &shape);
 
+  if (! ok) {
+    return false;
+  }
+
+  if (shape == NULL) {
+    *missing = true;
     return false;
   }
 
   // in-homogenous list
-  if (acc->_shape->_type == TRI_SHAPE_LIST) {
-    ok = TRI_ExecuteShapeAccessor(acc, document, &list);
-    len = TRI_LengthListShapedJson((const TRI_list_shape_t*) acc->_shape, &list);
+  if (shape->_type == TRI_SHAPE_LIST) {
+    len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, &list);
 
     if (len < 2) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     // latitude
-    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 0, &entry);
 
     if (! ok || entry._sid != shaper->_sidNumber) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 1, &entry);
 
     if (!ok || entry._sid != shaper->_sidNumber) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -599,110 +578,85 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
   }
 
   // homogenous list
-  else if (acc->_shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
+  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
     const TRI_homogeneous_list_shape_t* hom;
 
-    hom = (const TRI_homogeneous_list_shape_t*) acc->_shape;
+    hom = (const TRI_homogeneous_list_shape_t*) shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
-    ok = TRI_ExecuteShapeAccessor(acc, document, &list);
-
-    if (! ok) {
-      TRI_FreeShapeAccessor(acc);
-      return false;
-    }
-
-    len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list);
+    len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &list);
 
     if (len < 2) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     // latitude
-    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &list, 0, &entry);
 
     if (! ok) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &list, 1, &entry);
 
     if (! ok) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *longitude = * (double*) entry._data.data;
 
-    TRI_FreeShapeAccessor(acc);
     return true;
   }
 
   // homogeneous list
-  else if (acc->_shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
     const TRI_homogeneous_sized_list_shape_t* hom;
 
-    hom = (const TRI_homogeneous_sized_list_shape_t*) acc->_shape;
+    hom = (const TRI_homogeneous_sized_list_shape_t*) shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
-    ok = TRI_ExecuteShapeAccessor(acc, document, &list);
-
-    if (! ok) {
-      TRI_FreeShapeAccessor(acc);
-      return false;
-    }
-
-    len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list);
+    len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &list);
 
     if (len < 2) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     // latitude
-    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &list, 0, &entry);
 
     if (! ok) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &list, 1, &entry);
 
     if (! ok) {
-      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *longitude = * (double*) entry._data.data;
 
-    TRI_FreeShapeAccessor(acc);
     return true;
   }
 
   // null
-  else if (acc->_shape->_type == TRI_SHAPE_NULL) {
+  else if (shape->_type == TRI_SHAPE_NULL) {
     *missing = true;
   }
 
   // ups
-  TRI_FreeShapeAccessor(acc);
   return false;
 }
 
@@ -1257,7 +1211,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
                             TRI_doc_mptr_t const* document,
                             TRI_shaped_json_t const* shapedDoc) {
   union { void* p; void const* c; } cnv;
-  TRI_shape_access_t* acc;
+  TRI_shape_access_t const* acc;
   TRI_shaped_json_t shapedObject;
   TRI_shaper_t* shaper;
   int res;
@@ -1301,13 +1255,9 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, j)));
       
     // determine if document has that particular shape 
-    acc = TRI_ShapeAccessor(shaper, shapedDoc->_sid, shape);
+    acc = TRI_FindAccessorVocShaper(shaper, shapedDoc->_sid, shape);
 
     if (acc == NULL || acc->_shape == NULL) {
-      if (acc != NULL) {
-        TRI_FreeShapeAccessor(acc);
-      }
-
       shapedObject._sid = shaper->_sidNull;
       shapedObject._data.length = 0;
       shapedObject._data.data = NULL;
@@ -1318,13 +1268,9 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
      
       // extract the field
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         // TRI_Free(hashElement->fields); memory deallocated in the calling procedure
-
         return TRI_ERROR_INTERNAL;
       }
-
-      TRI_FreeShapeAccessor(acc);
 
       if (shapedObject._sid == shaper->_sidNull) {
         res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
@@ -1966,7 +1912,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
                                      const TRI_shaped_json_t* shapedDoc) {
   union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
-  TRI_shape_access_t* acc;
+  TRI_shape_access_t const* acc;
   size_t j;
   
   // ............................................................................
@@ -1994,18 +1940,13 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // Determine if document has that particular shape 
       // ..........................................................................
 
-      acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+      acc = TRI_FindAccessorVocShaper(pqIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
+      // the attribute does not exist in the document
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
-
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
-        // the attribute does not exist in the document
         return -1;
       }  
-     
      
       // ..........................................................................
       // Determine if the attribute is of the type double -- if not for now
@@ -2013,20 +1954,16 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................
 
       if (acc->_shape->_type !=  TRI_SHAPE_NUMBER) {
-        TRI_FreeShapeAccessor(acc);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
         return -2;    
       }    
-    
     
       // ..........................................................................
       // Extract the field
       // ..........................................................................    
 
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
-
         return TRI_set_errno(TRI_ERROR_INTERNAL);
       }
       
@@ -2035,8 +1972,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................    
 
       pqElement->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
+    }
   }
   
   else if (document != NULL) {
@@ -2060,15 +1996,9 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, document->_document._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
-
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
-
         return -1;
       }  
-      
       
       // ..........................................................................
       // Determine if the attribute is of the type double -- if not for now
@@ -2076,20 +2006,16 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................
 
       if (acc->_shape->_type !=  TRI_SHAPE_NUMBER) {
-        TRI_FreeShapeAccessor(acc);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
         return -2;    
       }    
-    
       
       // ..........................................................................
       // Extract the field
       // ..........................................................................    
 
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
-
         return TRI_set_errno(TRI_ERROR_INTERNAL);
       }
       
@@ -2098,9 +2024,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................    
 
       pqElement->fields[j] = shapedObject;
-
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
+    }
   }
   
   else {
@@ -2792,7 +2716,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
                                 const TRI_shaped_json_t* shapedDoc) {
   union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
-  TRI_shape_access_t* acc;
+  TRI_shape_access_t const* acc;
   size_t j;
   
   if (shapedDoc != NULL) {
@@ -2812,11 +2736,10 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................
       // Determine if document has that particular shape 
       // ..........................................................................
-      acc = TRI_ShapeAccessor(skiplistIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+
+      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
         return TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
       }  
@@ -2825,24 +2748,19 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................
       // Extract the field
       // ..........................................................................    
+
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        
         return TRI_ERROR_INTERNAL;
       }
-      
       
       // ..........................................................................
       // Store the json shaped Object -- this is what will be hashed
       // ..........................................................................    
+
       skiplistElement->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
-      
+    }
   }
-  
-  
   
   else if (document != NULL) {
   
@@ -2860,11 +2778,10 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................
       // Determine if document has that particular shape 
       // ..........................................................................
-      acc = TRI_ShapeAccessor(skiplistIndex->base._collection->_shaper, document->_document._sid, shape);
+
+      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, document->_document._sid, shape);
+
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
         return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
       }  
@@ -2873,20 +2790,18 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // ..........................................................................
       // Extract the field
       // ..........................................................................    
+
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
         return TRI_ERROR_INTERNAL;
       }
-      
 
       // ..........................................................................
       // Store the field
       // ..........................................................................    
+
       skiplistElement->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-      
-    }  // end of for loop
+    }
   }
   
   else {
@@ -3583,7 +3498,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
   union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
-  TRI_shape_access_t* acc;
+  TRI_shape_access_t const* acc;
   size_t j;
 
   // ...........................................................................
@@ -3612,10 +3527,8 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // ..........................................................................
       
       acc = TRI_ShapeAccessor(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
         return TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }  
       
@@ -3625,10 +3538,8 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // ..........................................................................    
       
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         return TRI_ERROR_INTERNAL;
       }
-      
       
       // ..........................................................................
       // Store the json shaped Object -- this is what will be used by index to
@@ -3636,12 +3547,8 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // ..........................................................................    
       
       element->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-    }  // end of for loop
-      
+    }
   }
-  
-  
   
   else if (document != NULL) {
   
@@ -3661,32 +3568,26 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape 
       // ..........................................................................
       
-      acc = TRI_ShapeAccessor(baIndex->base._collection->_shaper, document->_document._sid, shape);      
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, document->_document._sid, shape);      
+
       if (acc == NULL || acc->_shape == NULL) {
-        if (acc != NULL) {
-          TRI_FreeShapeAccessor(acc);
-        }
         return TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING;
       }  
-      
       
       // ..........................................................................
       // Extract the field
       // ..........................................................................    
       
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
-        TRI_FreeShapeAccessor(acc);
         return TRI_ERROR_INTERNAL;
       }
-      
 
       // ..........................................................................
       // Store the field
       // ..........................................................................    
+
       element->fields[j] = shapedObject;
-      TRI_FreeShapeAccessor(acc);
-      
-    }  // end of for loop
+    }
   }
   
   else {
@@ -3694,9 +3595,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
   }
   
   return TRI_ERROR_NO_ERROR;
-} // end of static function BitarrayIndexHelper
-
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into a bitarray list index

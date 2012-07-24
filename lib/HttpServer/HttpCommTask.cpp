@@ -211,28 +211,46 @@ namespace triagens {
         bodyPosition = 0;
         bodyLength = 0;
 
-        _handler = server->createHandler(request);
-        bool ok = false;
+        bool auth = server->authenticateRequest(request);
 
-        if (_handler == 0) {
-          LOGGER_TRACE << "no handler is known, giving up";
+        // authenticated
+        if (auth) {
+          _handler = server->createHandler(request);
+          bool ok = false;
+
+          if (_handler == 0) {
+            LOGGER_TRACE << "no handler is known, giving up";
+            delete request;
+            request = 0;
+
+            HttpResponse response(HttpResponse::NOT_FOUND);
+            handleResponse(&response);
+          }
+          else {
+            // let the handler know the comm task
+            _handler->setTask(this);
+
+            request = 0;
+            ok = server->handleRequest(this, _handler);
+
+            if (! ok) {
+              HttpResponse response(HttpResponse::SERVER_ERROR);
+              handleResponse(&response);
+            }
+          }
+        }
+
+        // not authenticated
+        else {
+          string realm = "basic realm=\"" + server->authenticationRealm(request) + "\"";
+
           delete request;
           request = 0;
 
-          HttpResponse response(HttpResponse::NOT_FOUND);
+          HttpResponse response(HttpResponse::UNAUTHORIZED);
+          response.setHeader("www-authenticate", realm.c_str());
+
           handleResponse(&response);
-        }
-        else {
-          // let the handler know the comm task
-          _handler->setTask(this);
-
-          request = 0;
-          ok = server->handleRequest(this, _handler);
-
-          if (! ok) {
-            HttpResponse response(HttpResponse::SERVER_ERROR);
-            handleResponse(&response);
-          }
         }
 
         return processRead();

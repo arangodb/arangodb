@@ -193,15 +193,21 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
 /// @brief opens a new context
 ////////////////////////////////////////////////////////////////////////////////
 
-MR_state_t* MR_OpenShell () {
-  MR_state_t* mrs;
-
+mrb_state* MR_OpenShell () {
   mrb_state* mrb = mrb_open();
 
-  mrs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MR_state_t), true);
-  memcpy(mrs, mrb, sizeof(mrb_state));
+  mrb->ud = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MR_state_t), true);
 
-  return mrs;
+  return mrb;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes context
+////////////////////////////////////////////////////////////////////////////////
+
+void MR_CloseShell (mrb_state* mrb) {
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, mrb->ud);
+  mrb_close(mrb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,7 +220,7 @@ mrb_value MR_ArangoError (mrb_state* mrb, int errNum, char const* errMessage) {
   mrb_value val;
   mrb_sym id;
 
-  mrs = (MR_state_t*) mrb;
+  mrs = (MR_state_t*) mrb->ud;
   exc = mrb_exc_new(mrb, mrs->_arangoError, errMessage, strlen(errMessage));
 
   id = mrb_intern(mrb, "@error_num");
@@ -314,21 +320,27 @@ bool TRI_ExecuteRubyString (mrb_state* mrb,
                             char const* name,
                             bool printResult,
                             mrb_value* result) {
-  struct mrb_parser_state* p;
+  struct mrb_parser_state* parser;
   mrb_value r;
   int n;
 
-  p = mrb_parse_nstring(mrb, script, strlen(script));
+  parser = mrb_parse_nstring(mrb, script, strlen(script));
 
-  if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-    printf("failed to parse script\n");
+  if (parser == 0 || parser->tree == 0 || 0 < parser->nerr) {
+    LOG_DEBUG("failed to parse ruby script");
+
+    if (parser != 0 && parser->pool != 0) {
+      mrb_pool_close(parser->pool);
+    }
+
     return false;
   }
 
-  n = mrb_generate_code(mrb, p->tree);
+  n = mrb_generate_code(mrb, parser->tree);
+  mrb_pool_close(parser->pool);
 
   if (n < 0) {
-    printf("failed to generate code: %d\n", n);
+    LOG_DEBUG("failed to generate ruby code: %d", n);
     return false;
   }
 
@@ -369,30 +381,32 @@ bool TRI_ExecuteRubyString (mrb_state* mrb,
 /// @brief init mruby utilities
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMRUtils (MR_state_t* mrs) {
+void TRI_InitMRUtils (mrb_state* mrb) {
+  MR_state_t* mrs;
   struct RClass *rcl;
 
-  rcl = mrs->_mrb.kernel_module;
+  mrs = (MR_state_t*) mrb->ud;
+  rcl = mrb->kernel_module;
 
   // .............................................................................
   // timing function
   // .............................................................................
 
-  mrb_define_method(&mrs->_mrb, rcl, "time", MR_Time, ARGS_NONE());
+  mrb_define_method(mrb, rcl, "time", MR_Time, ARGS_NONE());
 
   // .............................................................................
   // arango exception
   // .............................................................................
 
-  mrs->_arangoError = mrb_define_class(&mrs->_mrb, "ArangoError", mrs->_mrb.eStandardError_class);
+  mrs->_arangoError = mrb_define_class(mrb, "ArangoError", mrb->eStandardError_class);
 
   // .............................................................................
   // json parser and generator
   // .............................................................................
 
-  rcl = mrb_define_class(&mrs->_mrb, "ArangoJson", mrs->_mrb.object_class);
+  rcl = mrb_define_class(mrb, "ArangoJson", mrb->object_class);
   
-  mrb_define_class_method(&mrs->_mrb, rcl, "parse", MR_JsonParse, ARGS_REQ(1));
+  mrb_define_class_method(mrb, rcl, "parse", MR_JsonParse, ARGS_REQ(1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

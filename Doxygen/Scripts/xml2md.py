@@ -176,6 +176,18 @@ replDict["e_latexonly"] = ""
 replDict["s_nonbreakablespace"] = " "
 replDict["e_nonbreakablespace"] = ""
 
+replDict["s_programlisting"] = "<pre>"
+replDict["e_programlisting"] = "</pre>"
+
+replDict["s_codeline"] = ""
+replDict["e_codeline"] = ""
+
+replDict["s_highlight"] = ""
+replDict["e_highlight"] = ""
+
+replDict["s_sp"] = " "
+replDict["e_sp"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -239,6 +251,14 @@ gencDict["latexonly"] = False
 gencDict["xmlonly"] = True
 
 gencDict["nonbreakablespace"] = True
+
+gencDict["programlisting"] = True
+
+gencDict["codeline"] = True
+
+gencDict["highlight"] = True
+
+gencDict["sp"] = False
 
 ################################################################################
 #### @brief table entry

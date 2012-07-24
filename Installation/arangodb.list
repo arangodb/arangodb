@@ -46,7 +46,7 @@ d 0755 ${susr} ${sgrp} ${static_dir}/html -
 d 0755 ${susr} ${sgrp} /var/run/arangodb -
 
 # logfile directory
-d 0755 ${rusr} ${rgrp} /var/log/arangodb -
+d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
 %include ${project_dir}/Installation/arangodb.sublist
 
@@ -62,7 +62,7 @@ EOF
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
 f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${project_dir}/Installation/org.arangodb.plist
 %postinstall <<EOF
-sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
+sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc/arangodb%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
 launchctl unload /Library/LaunchDaemons/org.arangodb.plist
 launchctl load /Library/LaunchDaemons/org.arangodb.plist
 # we do not need this: launchctl start de.triagens.arango

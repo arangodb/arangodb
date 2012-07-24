@@ -51,9 +51,11 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationScheduler,
+ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServer,
+                                              ApplicationScheduler* applicationScheduler,
                                               ApplicationDispatcher* applicationDispatcher)
   : ApplicationFeature("HttpServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _showPort(true),
@@ -253,6 +255,8 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   deque<AddressPort> addresses;
   addresses.insert(addresses.begin(), ports.begin(), ports.end());
 
+  _applicationServer->raisePrivileges();
+
   while (! addresses.empty()) {
     AddressPort ap = addresses[0];
     addresses.pop_front();
@@ -290,6 +294,8 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
       }
     }
   }
+
+  _applicationServer->dropPrivileges();
 
   return httpServer;
 }

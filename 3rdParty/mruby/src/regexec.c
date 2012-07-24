@@ -28,7 +28,7 @@
  */
 
 #include "mruby.h"
-#ifdef INCLUDE_REGEXP
+#ifdef ENABLE_REGEXP
 #include <string.h>
 #include "regint.h"
 
@@ -3754,4 +3754,4 @@ onig_copy_encoding(OnigEncoding to, OnigEncoding from)
 {
   *to = *from;
 }
-#endif //INCLUDE_REGEXP
+#endif //ENABLE_REGEXP

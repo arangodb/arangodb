@@ -141,6 +141,5 @@ namespace triagens {
 
       return job;
     }
-
   }
 }
