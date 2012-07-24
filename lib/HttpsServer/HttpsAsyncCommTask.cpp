@@ -125,7 +125,7 @@ namespace triagens {
       // is the handshake already done?
       if (! accepted) {
         if (! trySSLAccept()) {
-          LOGGER_DEBUG << "failed to established SSL connection";
+          LOGGER_DEBUG << "failed to establish SSL connection";
           return false;
         }
 
@@ -147,7 +147,7 @@ namespace triagens {
       // is the handshake already done?
       if (! accepted) {
         if (! trySSLAccept()) {
-          LOGGER_DEBUG << "failed to established SSL connection";
+          LOGGER_DEBUG << "failed to establish SSL connection";
           return false;
         }
 
@@ -195,8 +195,8 @@ namespace triagens {
           return true;
         }
         else {
-          LOGGER_INFO << "error in SSL handshake";
-          LOGGER_INFO << lastSSLError();
+          LOGGER_WARNING << "error in SSL handshake";
+          LOGGER_WARNING << lastSSLError();
           return false;
         }
       }
@@ -216,7 +216,7 @@ namespace triagens {
 
         switch (res) {
           case SSL_ERROR_NONE:
-            LOGGER_INFO << "unknown error in SSL_read";
+            LOGGER_WARNING << "unknown error in SSL_read";
             return false;
 
           case SSL_ERROR_ZERO_RETURN:
@@ -233,11 +233,11 @@ namespace triagens {
             break;
 
           case SSL_ERROR_WANT_CONNECT:
-            LOGGER_INFO << "received SSL_ERROR_WANT_CONNECT";
+            LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
             break;
 
           case SSL_ERROR_WANT_ACCEPT:
-            LOGGER_INFO << "received SSL_ERROR_WANT_ACCEPT";
+            LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
             break;
 
           case SSL_ERROR_SYSCALL: {
@@ -296,7 +296,7 @@ namespace triagens {
 
             switch (res) {
               case SSL_ERROR_NONE:
-                LOGGER_INFO << "unknown error in SSL_write";
+                LOGGER_WARNING << "unknown error in SSL_write";
                 break;
 
               case SSL_ERROR_ZERO_RETURN:
@@ -306,11 +306,11 @@ namespace triagens {
                 break;
 
               case SSL_ERROR_WANT_CONNECT:
-                LOGGER_INFO << "received SSL_ERROR_WANT_CONNECT";
+                LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
                 break;
 
               case SSL_ERROR_WANT_ACCEPT:
-                LOGGER_INFO << "received SSL_ERROR_WANT_ACCEPT";
+                LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
                 break;
 
               case SSL_ERROR_WANT_WRITE:
