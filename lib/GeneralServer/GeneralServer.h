@@ -47,6 +47,8 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/SpecificCommTask.h"
 #include "Logger/Logger.h"
+#include "Rest/Endpoint.h"
+#include "Rest/EndpointList.h"
 #include "Rest/Handler.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
@@ -113,7 +115,7 @@ namespace triagens {
         explicit
         GeneralServer (Scheduler* scheduler)
           : _scheduler(scheduler),
-            _ports(),
+            _endpointList(0),
             _listenTasks(),
             _commTasks(),
             _handlers(1024),
@@ -153,6 +155,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the protocol to be used 
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual Endpoint::Protocol getProtocol () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -161,24 +169,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds port for general connections
+/// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addPort (int port, bool reuseAddress)  {
-          return addPort("", port, reuseAddress);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds address and port for general connections
-////////////////////////////////////////////////////////////////////////////////
-
-        void addPort (string const& address, int port, bool reuseAddress) {
-          port_info_t pi;
-          pi._address = address;
-          pi._port = port;
-          pi._reuseAddress = reuseAddress;
-
-          _ports.push_back(pi);
+        void addEndpointList (const EndpointList* list) {
+          _endpointList = list;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,35 +181,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void startListening () {
-          deque<port_info_t> addresses;
-          addresses.insert(addresses.begin(), _ports.begin(), _ports.end());
+          EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol());
 
-          while (! addresses.empty()) {
-            port_info_t ap = addresses[0];
-            addresses.pop_front();
+          for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
+            LOGGER_TRACE << "trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests";
 
-            if (ap._address.empty()) {
-              LOGGER_TRACE << "trying to open port " << ap._port << " for requests";
-            }
-            else {
-              LOGGER_TRACE << "trying to open address " << ap._address << " on port " << ap._port << " for requests";
-            }
-
-            bool ok = openListenPort(ap);
-
+            bool ok = openEndpoint(*i);
             if (ok) {
-              LOGGER_DEBUG << "opened port " << ap._port << " for " << (ap._address.empty() ? "any" : ap._address);
+              LOGGER_DEBUG << "bound to endpoint '" << (*i)->getSpecification() << "'";
             }
             else {
-              LOGGER_TRACE << "failed to open port " << ap._port << " for " << (ap._address.empty() ? "any" : ap._address);
-              addresses.push_back(ap);
-
-              if (_scheduler->isShutdownInProgress()) {
-                break;
-              }
-              else {
-                sleep(1);
-              }
+              LOGGER_FATAL << "failed to bind to endpoint '" << (*i)->getSpecification() << "'";
+              cerr << "failed to bind to endpoint '" << (*i)->getSpecification() << "'\n";
+              exit(EXIT_FAILURE);
             }
           }
         }
@@ -343,16 +322,6 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief port and address
-////////////////////////////////////////////////////////////////////////////////
-
-        struct port_info_t {
-          string _address;
-          int _port;
-          bool _reuseAddress;
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Handler, Job, and Task tuple
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -443,51 +412,18 @@ namespace triagens {
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool openListenPort (port_info_t ap) {
-          struct addrinfo *result, *aip;
-          struct addrinfo hints;
-          int error;
+        bool openEndpoint (Endpoint* endpoint) {
+          ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint, true);
 
-          memset(&hints, 0, sizeof (struct addrinfo));
-          hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
-          hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
-          hints.ai_socktype = SOCK_STREAM;
-          hints.ai_protocol = 0;
-
-          string portString = basics::StringUtils::itoa(ap._port);
-
-          if (ap._address.empty()) {
-            error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
-          }
-          else {
-            error = getaddrinfo(ap._address.c_str(), portString.c_str(), &hints, &result);
-          }
-
-          if (error != 0) {
-            LOGGER_ERROR << "getaddrinfo for host: " << ap._address.c_str() << " => " << gai_strerror(error);
+          if (! task->isBound()) {
+            deleteTask(task);
             return false;
           }
 
-          bool gotTask = false;
+          _scheduler->registerTask(task);
+          _listenTasks.push_back(task);
 
-          // Try all returned addresses
-          for (aip = result; aip != NULL; aip = aip->ai_next) {
-            ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), aip, ap._reuseAddress);
-
-            if (! task->isBound()) {
-              deleteTask(task);
-            }
-            else {
-              _scheduler->registerTask(task);
-              _listenTasks.push_back(task);
-              gotTask = true;
-            }
-
-          }
-
-          freeaddrinfo(result);
-
-          return gotTask;
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -632,7 +568,7 @@ namespace triagens {
 /// @brief defined ports and addresses
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector< port_info_t > _ports;
+        const EndpointList* _endpointList;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active listen tasks

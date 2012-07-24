@@ -630,9 +630,9 @@ void printBitarray(TRI_bitarray_t* ba) {
   // ...........................................................................
 
   printf("\n");
-  printf("THERE ARE %lu COLUMNS\n",ba->_numColumns);
-  printf("THE NUMBER OF ALLOCATED BLOCKS IN EACH COLUMN IS %lu\n",ba->_numBlocksInColumn);
-  printf("THE NUMBER OF THE LAST BLOCK USED IS %lu\n",ba->_lastBlockUsed);
+  printf("THERE ARE %lu COLUMNS\n", (unsigned long) ba->_numColumns);
+  printf("THE NUMBER OF ALLOCATED BLOCKS IN EACH COLUMN IS %lu\n", (unsigned long) ba->_numBlocksInColumn);
+  printf("THE NUMBER OF THE LAST BLOCK USED IS %lu\n", (unsigned long) ba->_lastBlockUsed);
   printf("\n");
   
     
@@ -643,7 +643,7 @@ void printBitarray(TRI_bitarray_t* ba) {
     }  
     printf("==\n");
     for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
-      printf("ROW %lu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
+      printf("ROW %llu: ", (unsigned long long) ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
       for (j = 0; j < ba->_numColumns; ++j) {
         BitColumn_t* column;
         bit_column_int_t* bitInteger;

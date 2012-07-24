@@ -235,18 +235,22 @@ bool HttpCommTask::processRead () {
     _readBuffer->erase_front(_bodyPosition + _bodyLength);
 
     _requestPending = true;
-
-    string connectionType = StringUtils::tolower(StringUtils::trim(_request->header("connection")));
+    
+    string connectionType = StringUtils::tolower(_request->header("connection"));
 
     if (connectionType == "close") {
+      // client has sent an explicit "Connection: Close" header. we should close the connection
       LOGGER_DEBUG << "connection close requested by client";
       _closeRequested = true;
     }
-    else if (_server->getCloseWithoutKeepAlive() && connectionType != "keep-alive") {
+    else if (_request->isHttp10() && connectionType != "keep-alive") {
+      // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
+      // we should close the connection
       LOGGER_DEBUG << "no keep-alive, connection close requested by client";
       _closeRequested = true;
     }
-
+    // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive header sent)
+    
     _readPosition = 0;
     _bodyPosition = 0;
     _bodyLength = 0;
@@ -304,7 +308,15 @@ bool HttpCommTask::processRead () {
 
 void HttpCommTask::addResponse (HttpResponse* response) {
   StringBuffer * buffer;
-
+  
+  if (_closeRequested) {
+    response->setHeader("connection", 10, "Close");
+  }
+  else {
+    // keep-alive is the default
+    response->setHeader("connection", 10, "Keep-Alive");
+  }
+  
   // save header
   buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   response->writeHeader(buffer);

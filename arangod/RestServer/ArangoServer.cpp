@@ -54,6 +54,12 @@
 #include "HttpServer/ApplicationHttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
+
+#ifdef TRI_OPENSSL_VERSION
+#include "HttpsServer/ApplicationHttpsServer.h"
+#include "HttpsServer/HttpsServer.h"
+#endif
+
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
@@ -197,9 +203,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _httpServer(0),
-    _adminHttpServer(0),
-    _httpPort("127.0.0.1:8529"),
-    _adminPort(),
+    _httpsServer(0),
+    _endpoints(),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
@@ -379,6 +384,15 @@ void ArangoServer::buildApplicationServer () {
                                                      TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationHttpServer);
 
+#ifdef TRI_OPENSSL_VERSION
+  // .............................................................................
+  // an https server
+  // .............................................................................
+
+  _applicationHttpsServer = new ApplicationHttpsServer(_applicationScheduler, _applicationDispatcher);
+  _applicationServer->addFeature(_applicationHttpsServer);
+#endif
+
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
@@ -415,12 +429,8 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationHttpServer->showPortOptions(false);
 
-  additional["PORT Options"]
-    ("server.http-port", &_httpPort, "port for client access")
-  ;
-
-  additional[ApplicationServer::OPTIONS_HIDDEN]
-    ("port", &_httpPort, "port for client access")
+  additional["ENDPOINT Options"]
+    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
   ;
 
   // .............................................................................
@@ -446,7 +456,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["Server Options:help-admin"]
-    ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
     ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
 
@@ -540,6 +549,13 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "please use the '--database.directory' option";
     exit(EXIT_FAILURE);
   }
+
+  if (0 == _endpoints.size()) {
+    LOGGER_FATAL << "no endpoint has been specified, giving up";
+    cerr << "no endpoint has been specified, giving up\n";
+    LOGGER_INFO << "please use the '--server.endpoint' option";
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,10 +564,6 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
-
-  bool useHttpPort = ! _httpPort.empty();
-  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
-  bool shareAdminPort = useHttpPort && _adminPort.empty();
 
   // .............................................................................
   // open the database
@@ -567,20 +579,12 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
-  size_t actionConcurrency = _dispatcherThreads;
-
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      actionConcurrency += 2;
-    }
-  }
-
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setConcurrency(actionConcurrency);
+  _applicationV8->setConcurrency(_dispatcherThreads);
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
-  _applicationMR->setConcurrency(actionConcurrency);
+  _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
 
   _applicationServer->prepare();
@@ -593,81 +597,77 @@ int ArangoServer::startupServer () {
 
   Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
 
-  // use a separate queue for administrator requests
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      dispatcher->addQueue("SYSTEM", 2);
-    }
-  }
-
   // .............................................................................
   // create a client http server and http handler factory
   // .............................................................................
 
-  // we pass the options be reference, so keep them until shutdown
+  Scheduler* scheduler = _applicationScheduler->scheduler();
+
+  // add & validate endpoints
+  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
+    Endpoint* endpoint = Endpoint::serverFactory(*i);
+  
+    if (endpoint == 0) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+
+    assert(endpoint);
+
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint);
+    if (! ok) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+  }
+
+
+  // dump used endpoints for user information
+  _endpointList.dump();
+    
+  // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
-  // if we want a http port create the factory
-  if (useHttpPort) {
+  // create the handlers
+  httpOptions._contexts.insert("user");
+  httpOptions._contexts.insert("api");
+  httpOptions._contexts.insert("admin");
 
-    // set up a port list
-    vector<AddressPort> ports;
-    ports.push_back(AddressPort(_httpPort));
-
-    // create the server
-    _httpServer = _applicationHttpServer->buildServer(ports);
-
-    // create the handlers
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
+  // HTTP endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP) > 0) {
+    // create the http server
+    _httpServer = _applicationHttpServer->buildServer(new HttpServer(scheduler, dispatcher), &_endpointList);
 
     DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
 
-    if (shareAdminPort) {
-      DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
-      httpOptions._contexts.insert("admin");
-    }
+    DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
     _httpServer->addPrefixHandler("/",
                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                   (void*) &httpOptions);
-
   }
+  
+#ifdef TRI_OPENSSL_VERSION
+  // HTTPS endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTPS) > 0) {
 
-  // .............................................................................
-  // create a admin http server and http handler factory
-  // .............................................................................
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t adminOptions;
-  adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
-
-  // if we want a admin http port create the factory
-  if (useAdminPort) {
-
-    // set up a port list
-    vector<AddressPort> adminPorts;
-    adminPorts.push_back(AddressPort(_adminPort));
-
-    // create the server
-    _adminHttpServer = _applicationHttpServer->buildServer(adminPorts);
-
-    // create the handlers
-    adminOptions._contexts.insert("api");
-    adminOptions._contexts.insert("admin");
-
-    DefineApiHandlers(_adminHttpServer, _applicationAdminServer, _vocbase);
-    DefineAdminHandlers(_adminHttpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
+    // create the https server
+    _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
+    DefineApiHandlers(_httpsServer, _applicationAdminServer, _vocbase);
+    
+    DefineAdminHandlers(_httpsServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    _adminHttpServer->addPrefixHandler("/",
-                                       RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                       (void*) &adminOptions);
+    _httpsServer->addPrefixHandler("/",
+                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                   (void*) &httpOptions);
   }
+#endif
 
   // .............................................................................
   // create a http handler factory for zeromq
@@ -686,9 +686,7 @@ int ArangoServer::startupServer () {
 
     DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-    }
+    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
     factory->addPrefixHandler("/",
@@ -703,25 +701,6 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // start the main event loop
   // .............................................................................
-
-  if (useHttpPort) {
-    if (shareAdminPort) {
-      LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
-    }
-    else {
-      LOGGER_INFO << "HTTP client port: " << _httpPort;
-    }
-  }
-  else {
-    LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
-  }
-
-  if (useAdminPort) {
-    LOGGER_INFO << "HTTP admin port: " << _adminPort;
-  }
-  else if (! shareAdminPort) {
-    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
-  }
 
   _applicationServer->start();
 

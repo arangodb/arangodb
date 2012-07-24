@@ -51,8 +51,7 @@ HttpServer::HttpServer (Scheduler* scheduler,
                         std::string const authenticationRealm,
                         auth_fptr checkAuthentication)
   : GeneralServerDispatcher<HttpServer, HttpHandlerFactory, HttpCommTask>(scheduler, dispatcher),
-    HttpHandlerFactory(authenticationRealm, checkAuthentication),
-    _closeWithoutKeepAlive(false) {
+    HttpHandlerFactory(authenticationRealm, checkAuthentication) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,22 +81,6 @@ Scheduler* HttpServer::getScheduler () {
 
 Dispatcher* HttpServer::getDispatcher () {
   return _dispatcher;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if to close connection if keep-alive is missing
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpServer::getCloseWithoutKeepAlive () const {
-  return _closeWithoutKeepAlive;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief close connection if keep-alive is missing
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::setCloseWithoutKeepAlive (bool value) {
-  _closeWithoutKeepAlive = value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

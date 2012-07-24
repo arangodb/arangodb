@@ -50,7 +50,8 @@ using namespace triagens::rest;
 
 HttpHandler::HttpHandler (HttpRequest* request)
   : _request(request),
-    _response(0) {
+    _response(0),
+    _server(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

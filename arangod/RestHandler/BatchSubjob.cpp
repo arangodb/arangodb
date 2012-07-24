@@ -28,9 +28,8 @@
 
 #include "BatchSubjob.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -46,7 +45,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 BatchSubjob::BatchSubjob (BatchJob* parent, HttpServer* server, HttpHandler* handler)
-  : GeneralServer<HttpServer, HttpHandler>(server, handler),
+  : GeneralServerJob<HttpServer, HttpHandler>(server, handler),
     _parent(parent) {
 }
 
@@ -75,39 +74,20 @@ BatchSubjob::~BatchSubjob () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void BatchSubjob::cleanup () {
-  {
-    MUTEX_LOCKER(&_abandonLock);
 
-    if (! _abandon) {
-      _parent->jobDone(this);
-    }
+  bool abandon;
+
+  {
+    MUTEX_LOCKER(_abandonLock);
+    abandon = _abandon;
+  }
+
+  if (! abandon) {
+    // signal the parent (batch job) that a subjob is done
+    _parent->jobDone(this);
   }
 
   delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parent job
-////////////////////////////////////////////////////////////////////////////////
-
-        BatchJob* _parent;
-    };
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

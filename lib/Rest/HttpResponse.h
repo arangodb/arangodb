@@ -238,10 +238,31 @@ namespace triagens {
 ///
 /// Returns the value of a header field with given name. If no header field
 /// with the given name was specified by the client, the empty string is
-/// returned. found is try if the client specified the header field.
+/// returned.
+/// The header field name must already be trimmed and lower-cased
+////////////////////////////////////////////////////////////////////////////////
+
+        string header (const char*, const size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+///
+/// Returns the value of a header field with given name. If no header field
+/// with the given name was specified by the client, the empty string is
+/// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
         string header (string const& field, bool& found) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+///
+/// Returns the value of a header field with given name. If no header field
+/// with the given name was specified by the client, the empty string is
+/// returned. found is set if the client specified the header field.
+////////////////////////////////////////////////////////////////////////////////
+
+        string header (const char*, const size_t, bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all header fields
@@ -254,7 +275,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
 ///
-/// The key is automatically converted to lower case.
+/// The key must be lowercased and trimmed already
+/// The key string must remain valid until the response is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setHeader (const char*, const size_t, string const& value);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+///
+/// The key must be lowercased and trimmed already
+/// The key string must remain valid until the response is destroyed
+/// The value string must remain valid until the response is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setHeader (const char*, const size_t, const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+///
+/// The key is automatically converted to lower case and trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
         void setHeader (string const& key, string const& value);

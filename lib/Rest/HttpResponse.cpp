@@ -144,7 +144,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
 
 HttpResponse::HttpResponse ()
   : _code(NOT_IMPLEMENTED),
-    _headers(5),
+    _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _isHeadResponse(false),
     _bodySize(0),
@@ -157,7 +157,7 @@ HttpResponse::HttpResponse ()
 
 HttpResponse::HttpResponse (string const& header)
   : _code(NOT_IMPLEMENTED),
-    _headers(5),
+    _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _isHeadResponse(false),
     _bodySize(0),
@@ -171,38 +171,15 @@ HttpResponse::HttpResponse (string const& header)
 
 HttpResponse::HttpResponse (HttpResponseCode code)
   : _code(code),
-    _headers(5),
+    _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _isHeadResponse(false),
     _bodySize(0),
     _freeables() {
-  char* headerBuffer = StringUtils::duplicate("server\ntriagens GmbH High-Performance HTTP Server\n"
-                                              "connection\nKeep-Alive\n"
-                                              "content-type\ntext/plain;charset=utf-8\n");
-  _freeables.push_back(headerBuffer);
-  
-  bool key = true;
-  char* startKey = headerBuffer;
-  char* startValue = 0;
-  char* end = headerBuffer + strlen(headerBuffer);
 
-  for (char* ptr = headerBuffer;  ptr < end;  ++ptr) {
-    if (*ptr == '\n') {
-      *ptr = '\0';
-      
-      if (key) {
-        startValue = ptr + 1;
-        key = false;
-      }
-      else {
-        _headers.insert(startKey, startValue);
-        
-        startKey = ptr + 1;
-        startValue = 0;
-        key = true;
-      }
-    }
-  }
+  _headers.insert("server", 6, "triagens GmbH High-Performance HTTP Server");
+  _headers.insert("connection", 10, "Keep-Alive");
+  _headers.insert("content-type", 12, "text/plain; charset=utf-8");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +222,7 @@ size_t HttpResponse::contentLength () {
     return _bodySize;
   }
   else {
-    Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length");
+    Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
     
     if (kv == 0) {
       return 0;
@@ -260,7 +237,7 @@ size_t HttpResponse::contentLength () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponse::setContentType (string const& contentType) {
-  setHeader("content-type", contentType);
+  setHeader("content-type", 12, contentType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,9 +260,41 @@ string HttpResponse::header (string const& key) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
+string HttpResponse::header (const char* key, const size_t keyLength) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
+  
+  if (kv == 0) {
+    return "";
+  }
+  else {
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+////////////////////////////////////////////////////////////////////////////////
+
 string HttpResponse::header (string const& key, bool& found) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
+  
+  if (kv == 0) {
+    found = false;
+    return "";
+  }
+  else {
+    found = true;
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpResponse::header (const char* key, const size_t keyLength, bool& found) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
   
   if (kv == 0) {
     found = false;
@@ -318,6 +327,36 @@ map<string, string> HttpResponse::headers () const {
   }
   
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::setHeader (const char* key, const size_t keyLength, string const& value) {
+  if (value.empty()) {
+    _headers.erase(key);
+  }
+  else {
+    char const* v = StringUtils::duplicate(value);
+    
+    _headers.insert(key, keyLength, v);
+    
+    _freeables.push_back(v);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::setHeader (const char* key, const size_t keyLength, const char* value) {
+  if (*value == '\0') {
+    _headers.erase(key);
+  }
+  else {
+    _headers.insert(key, keyLength, value);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,11 +529,11 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     }
     
     // ignore content-length
-    if (strcmp(key, "content-length") == 0) {
+    if (*key == 'c' && (strcmp(key, "content-length") == 0)) {
       continue;
     }
     
-    if (strcmp(key, "transfer-encoding") == 0) {
+    if (*key == 't' && (strcmp(key, "transfer-encoding") == 0)) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -509,7 +548,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n");
+    output->appendText("transfer-encoding: chunked\r\n\r\n");
   }
   else {
     if (seenTransferEncoding) {
@@ -527,10 +566,9 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
     
-    output->appendText("\r\n");
+    output->appendText("\r\n\r\n");
   }
-  
-  output->appendText("\r\n");
+  // end of header, body to follow
 }
 
 ////////////////////////////////////////////////////////////////////////////////
