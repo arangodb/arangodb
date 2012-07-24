@@ -62,9 +62,9 @@ static void  BitarrayIndexResetIterator            (TRI_index_iterator_t*, bool)
 static int  BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
 static int  generateInsertBitMask    (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
 static int  generateEqualBitMask     (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
-static void debugPrintMaskFooter     (const char*); 
-static void debugPrintMaskHeader     (const char*);
-static void debugPrintMask           (BitarrayIndex*, uint64_t);
+//static void debugPrintMaskFooter     (const char*); 
+//static void debugPrintMaskHeader     (const char*);
+//static void debugPrintMask           (BitarrayIndex*, uint64_t);
 
 
 
@@ -523,14 +523,16 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
                               TRI_index_operator_t* indexOperator, 
                               TRI_index_iterator_t* iterator) {
 
-  BitarrayIndexElement element;
+  // BitarrayIndexElement element;
   TRI_bitarray_mask_t mask;
   int result;
   
+  /*
   element.fields      = NULL;
   element.numFields   = 0;
   element.collection  = NULL;
   element.data        = NULL;
+  */
   
   mask._mask       = 0;
   mask._ignoreMask = 0;
@@ -547,10 +549,12 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_LT_INDEX_OPERATOR: 
     case TRI_GE_INDEX_OPERATOR: 
     case TRI_GT_INDEX_OPERATOR: {
-      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+      /* TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) (indexOperator); */
+      /*
       element.fields     = relationOperator->_fields;
       element.numFields  = relationOperator->_numFields;
       element.collection = relationOperator->_collection;
+      */
       break;
     }
     
@@ -1009,6 +1013,10 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
   return TRI_ERROR_NO_ERROR;
 }
 
+
+
+
+/*
 void debugPrintMaskFooter(const char* footer) {
   printf("%s\n\n",footer);
 }
@@ -1016,6 +1024,7 @@ void debugPrintMaskFooter(const char* footer) {
 void debugPrintMaskHeader(const char* header) {
   printf("------------------- %s --------------------------\n",header);
 }
+
 
 void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
   int j;
@@ -1030,6 +1039,7 @@ void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
   }
   printf("\n");
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

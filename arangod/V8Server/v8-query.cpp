@@ -695,6 +695,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
+  bool error = false;
 
   while (true) {
     SkiplistIndexElement* indexElement = (SkiplistIndexElement*) skiplistIterator->_next(skiplistIterator);
@@ -710,8 +711,18 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
         barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
       }
       // TODO: barrier might be 0
-      documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier));
-      ++count;
+      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier);
+
+      if (document.IsEmpty()) {
+        // error
+        error = true;
+        break;
+      }
+      else {
+        documents->Set(count, document);
+        ++count;
+      }
+    
     }
   }
 
@@ -729,6 +740,10 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 
   TRI_ReleaseCollection(collection);
 
+  if (error) {
+    scope.Close(result);
+  }
+  
   return scope.Close(result);
 }
 
@@ -746,7 +761,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   BitarrayIndexElement* indexElement;
   TRI_bitarray_index_t* baIndex;
-  TRI_doc_mptr_t* doc;
+  // TRI_doc_mptr_t* doc;
     
     
   indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
@@ -761,7 +776,7 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
     return false;
   }
     
-  doc = (TRI_doc_mptr_t*) indexElement->data;
+  /* doc = (TRI_doc_mptr_t*) indexElement->data; */
     
   // ..........................................................................
   // Now perform any additional filter operations you require on the doc
@@ -910,6 +925,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
+  bool error = false;
 
   if (indexIterator != NULL) {
 
@@ -929,8 +945,17 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
           barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
         }
         // TODO: barrier might be 0
-        documents->Set(count, TRI_WrapShapedJson(collection, data, barrier));
-        ++count;
+        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, data, barrier);
+
+        if (document.IsEmpty()) {
+          // error
+          error = true;
+          break;
+        }
+        else {
+          documents->Set(count, document);
+          ++count;
+        }        
       }
     }
   
@@ -956,6 +981,10 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
 
   TRI_ReleaseCollection(collection);
 
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+  
   return scope.Close(result);
 }
 
@@ -1120,6 +1149,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
   TRI_barrier_t* barrier = 0;
   uint32_t count = 0;
+  bool error = false;
 
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
@@ -1153,8 +1183,19 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
           barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
         }
         // TODO: barrier might be 0
+        
+        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
-        documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
+        if (document.IsEmpty()) {
+          // error
+          error = true;
+          break;
+        }
+        else {
+          documents->Set(count, document);
+          ++count;
+        }
+        
       }
 
       TRI_DestroyVectorPointer(&edges);
@@ -1193,7 +1234,17 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       }
       // TODO: barrier might be 0
 
-      documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
+      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
+
+      if (document.IsEmpty()) {
+        // error
+        error = true;
+        break;
+      }
+      else {
+        documents->Set(count, document);
+        ++count;
+      }
     }
 
     TRI_DestroyVectorPointer(&edges);
@@ -1206,6 +1257,11 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // .............................................................................
 
   TRI_ReleaseCollection(collection);
+  
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+  
   return scope.Close(documents);
 }
 
@@ -1266,6 +1322,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   size_t total = sim->_primaryIndex._nrUsed;
   uint32_t count = 0;
+  bool error = false;
 
   if (0 < total && 0 < limit) {
     TRI_barrier_t* barrier = 0;
@@ -1291,7 +1348,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     else if (skip < 0) {
       ptr = end - 1;
 
-      for (;  beg <= ptr;  --ptr) {
+      for (; beg <= ptr; --ptr) {
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
@@ -1311,7 +1368,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     }
 
     // limit
-    for (;  ptr < end && count < limit;  ++ptr) {
+    for (; ptr < end && count < limit; ++ptr) {
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
@@ -1321,8 +1378,17 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
           }
           // TODO: barrier might be 0
 
-          documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
-          ++count;
+          v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, d, barrier);
+
+          if (document.IsEmpty()) {
+            // error
+            error = true;
+            break;
+          }
+          else {
+            documents->Set(count, document);
+            ++count;
+          }
         }
       }
     }
@@ -1338,6 +1404,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   TRI_ReleaseCollection(collection);
+  
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+  
   return scope.Close(result);
 }
 
@@ -1413,6 +1484,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // convert to list of shaped jsons
   size_t total = filtered._length;
   size_t count = 0;
+  bool error = false;
 
   if (0 < total) {
     size_t s;
@@ -1425,12 +1497,20 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
       // TODO: barrier might be 0
 
-      for (size_t j = s;  j < e;  ++j) {
+      for (size_t j = s; j < e; ++j) {
         TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
         v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
 
-        documents->Set(count, document);
-        ++count;
+        if (document.IsEmpty()) {
+          // error
+          error = true;
+          break;
+        }
+        else {
+          documents->Set(count, document);
+          ++count;
+        }
+
       }
     }
   }
@@ -1449,6 +1529,11 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   CleanupExampleObject(shaper, n, pids, values);
 
   TRI_ReleaseCollection(collection);
+
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+
   return scope.Close(result);
 }
 
@@ -1543,6 +1628,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // convert result
   size_t total = list->_numElements;
   size_t count = 0;
+  bool error = false;
 
   if (0 < total) {
     size_t s;
@@ -1555,8 +1641,18 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
       // TODO: barrier might be 0
 
       for (size_t i = s;  i < e;  ++i) {
-        documents->Set(count, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier));
-        ++count;
+        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
+
+        if (document.IsEmpty()) {
+          // error
+          error = true;
+          break;
+        }
+        else {
+          documents->Set(count, document);
+          ++count;
+        }
+        
       }
     }
   }
@@ -1577,6 +1673,10 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   TRI_ReleaseCollection(collection);
 
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+  
   return scope.Close(result);
 }
 

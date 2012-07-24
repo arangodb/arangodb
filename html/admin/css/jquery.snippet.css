@@ -15,7 +15,7 @@
 }
 
 .sh_number {
-  color: #8c5c39;  
+  color: #044;   
 }
 
 .sh_symbol {
@@ -27,11 +27,11 @@
 }
 
 .sh_keyword { 
-  color: #4E387E;  
+  color: #c12dad;  
 }
 
 .sh_string {
-  color: green;
+  color: #ce2f30;
 }
 
 .sh_object {

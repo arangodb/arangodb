@@ -27,10 +27,15 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
+#include "BasicsC/strings.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequestPlain.h"
 #include "Rest/MaintenanceCallback.h"
+#include "Rest/SslInterface.h"
 
 #include "HttpServer/HttpHandler.h"
 
@@ -43,8 +48,11 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    HttpHandlerFactory::HttpHandlerFactory ()
+    HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
+                                            auth_fptr checkAuthentication)
       : _numberActiveHandlers(0),
+        _authenticationRealm(authenticationRealm),
+        _checkAuthentication(checkAuthentication),
         _notFound(0) {
     }
 
@@ -52,6 +60,8 @@ namespace triagens {
 
     HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
       : _numberActiveHandlers(0),
+        _authenticationRealm(that._authenticationRealm),
+        _checkAuthentication(that._checkAuthentication),
         _constructors(that._constructors),
         _datas(that._datas),
         _prefixes(that._prefixes),
@@ -62,6 +72,8 @@ namespace triagens {
 
     HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
       if (this != &that) {
+        _authenticationRealm = that._authenticationRealm;
+        _checkAuthentication = that._checkAuthentication;
         _constructors = that._constructors;
         _datas = that._datas;
         _prefixes = that._prefixes;
@@ -276,6 +288,76 @@ namespace triagens {
     size_t HttpHandlerFactory::numberActiveHandlers () {
       MUTEX_LOCKER(_activeHandlersLock);
       return _numberActiveHandlers;
+    }
+
+
+
+    bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
+      if (_checkAuthentication == 0) {
+        return true;
+      }
+
+      bool found;
+      char const* auth = request->header("authorization", found);
+
+      if (found) {
+        if (! TRI_CaseEqualString2(auth, "basic ", 6)) {
+          return false;
+        }
+
+        auth += 6;
+
+        while (*auth == ' ') {
+          ++auth;
+        }
+
+        {
+          READ_LOCKER(_authLock);
+
+          if (_authCache.find(auth) != _authCache.end()) {
+            return true;
+          }
+        }
+
+        string up = StringUtils::decodeBase64(auth);
+        vector<string> split = StringUtils::split(up, ":");
+
+        if (split.size() != 2) {
+          return false;
+        }
+
+        char* sha265 = 0;
+        size_t sha265Len;
+
+        SslInterface::sslSHA256(split[1].c_str(), split[1].size(), sha265, sha265Len);
+
+        char* hex = 0;
+        size_t hexLen;
+
+        SslInterface::sslHEX(sha265, sha265Len, hex, hexLen);
+
+        delete[] sha265;
+        
+        bool res = _checkAuthentication(split[0].c_str(), hex);
+
+        delete[] hex;
+
+        if (res) {
+          WRITE_LOCKER(_authLock);
+
+          _authCache.insert(auth);
+        }
+
+        return res;
+      }
+
+      return false;
+    }
+
+
+
+    string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) {
+      return _authenticationRealm;
     }
   }
 }

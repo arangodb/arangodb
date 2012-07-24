@@ -56,7 +56,6 @@
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
-#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
@@ -67,6 +66,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
+#include "VocBase/auth.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -130,11 +130,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
-  
-  // add batch handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,13 +184,17 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpServer(0),
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
+    _httpAuth(false),
     _adminPort(),
     _dispatcherThreads(8),
-    _databasePath("/var/lib/arango"),
+    _databasePath("/var/lib/arangodb"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+    _defaultWaitForSync(false),
     _vocbase(0) {
+
+  // locate path to binary
   char* p;
 
   p = TRI_LocateBinaryPath(argv[0]);
@@ -203,15 +202,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
+  // set working directory and database directory
+  _workingDirectory = "/var/tmp";
+  
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
-    _workingDirectory = _binaryPath + "/../tmp";
-    _databasePath = _binaryPath + "/../var/arango";
+  _workingDirectory = _binaryPath + "/../tmp";
+  _databasePath = _binaryPath + "/../var/arangodb";
 #endif
 
-    _workingDirectory = "/var/tmp";
-
 #ifdef _DATABASEDIR_
-    _databasePath = _DATABASEDIR_;
+  _databasePath = _DATABASEDIR_;
 #endif
 }
 
@@ -328,7 +328,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
 
-  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc");
+  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc/arangodb");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
 
 #else
@@ -361,7 +361,7 @@ void ArangoServer::buildApplicationServer () {
   // a http server
   // .............................................................................
 
-  _applicationHttpServer = new ApplicationHttpServer(_applicationScheduler, _applicationDispatcher);
+  _applicationHttpServer = new ApplicationHttpServer(_applicationServer, _applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
@@ -372,8 +372,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -384,9 +382,14 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
-    ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
+    ("supervisor", "starts a supervisor and runs as daemon")
     ("working directory", &_workingDirectory, "working directory in daemon mode")
+  ;
+
+  additional["JAVASCRIPT Options:help-admin"]
+    ("javascript.script", &_scriptFile, "do not start as server, run script instead")
+    ("javascript.script-parameter", &_scriptParameters, "script parameter")
   ;
 
   // .............................................................................
@@ -397,6 +400,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional["PORT Options"]
     ("server.http-port", &_httpPort, "port for client access")
+    ("server.http-auth", &_httpAuth, "use basic authentication")
   ;
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
@@ -414,10 +418,16 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-admin"]
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
+    ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
   ;
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
+  ;
+   
+  additional["JAVASCRIPT Options:help-devel"]
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -471,12 +481,16 @@ void ArangoServer::buildApplicationServer () {
     int res = executeConsole(MODE_CONSOLE);
     exit(res);
   }
-  else if (! _unitTests.empty()) {
+  else if (_applicationServer->programOptions().has("javascript.unit-tests")) {
     int res = executeConsole(MODE_UNITTESTS);
     exit(res);
   }
   else if (_applicationServer->programOptions().has("jslint")) {
     int res = executeConsole(MODE_JSLINT);
+    exit(res);
+  }
+  else if (_applicationServer->programOptions().has("javascript.script")) {
+    int res = executeConsole(MODE_SCRIPT);
     exit(res);
   }
 
@@ -586,9 +600,15 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
+  HttpHandlerFactory::auth_fptr auth = 0;
+
+  if (_httpAuth) {
+    auth = TRI_CheckAuthenticationAuthInfo;
+  }
+
   // if we want a http port create the factory
   if (useHttpPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
 
     httpOptions._contexts.insert("user");
     httpOptions._contexts.insert("api");
@@ -622,7 +642,7 @@ int ArangoServer::startupServer () {
 
   // if we want a admin http port create the factory
   if (useAdminPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
 
     adminOptions._contexts.insert("api");
     adminOptions._contexts.insert("admin");
@@ -765,7 +785,12 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
     v8::HandleScope globalScope;
 
     // run the shell
-    printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    if (mode != MODE_SCRIPT) {
+      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    }
+    else {
+      LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
+    }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
@@ -843,8 +868,61 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
+      case MODE_SCRIPT: {
+        v8::TryCatch tryCatch;
+
+        for (size_t i = 0;  i < _scriptFile.size();  ++i) {
+          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+
+          if (! r) {
+            LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
+            ok = false;
+            break;
+          }
+        }
+
+        if (ok) {
+
+          // parameter array
+          v8::Handle<v8::Array> params = v8::Array::New();
+
+          params->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
+
+          for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+            params->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
+          }
+
+          // call main
+          v8::Handle<v8::String> mainFuncName = v8::String::New("main");
+          v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
+
+          if (main.IsEmpty() || main->IsUndefined()) {
+            LOGGER_FATAL << "no main function defined, giving up";
+            ok = false;
+          }
+          else {
+            v8::Handle<v8::Value> args[] = { params };
+
+            v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+            if (tryCatch.HasCaught()) {
+              TRI_LogV8Exception(&tryCatch);
+              ok = false;
+            }
+            else {
+              ok = TRI_ObjectToDouble(result) == 0;
+            }
+          }
+        }
+
+        break;
+      }
+
+      // .............................................................................
+      // run console
+      // .............................................................................
+
       case MODE_CONSOLE: {
-        // run a shell
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);
@@ -1015,11 +1093,12 @@ int ArangoServer::executeRubyConsole () {
 
   // enter MR context
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
+  mrb_state* mrb = context->_mrb;
 
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(context->_mrs, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
 
   console->open(false);
 
@@ -1038,7 +1117,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(&context->_mrs->_mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(mrb, input);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1046,24 +1125,24 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(&context->_mrs->_mrb, p->tree);
+    int n = mrb_generate_code(mrb, p->tree);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(&context->_mrs->_mrb,
-                               mrb_proc_new(&context->_mrs->_mrb, context->_mrs->_mrb.irep[n]),
-                               mrb_top_self(&context->_mrs->_mrb));
+    mrb_value result = mrb_run(mrb,
+                               mrb_proc_new(mrb, mrb->irep[n]),
+                               mrb_top_self(mrb));
 
-    if (context->_mrs->_mrb.exc) {
+    if (mrb->exc) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(&context->_mrs->_mrb, mrb_obj_value(context->_mrs->_mrb.exc));
-      context->_mrs->_mrb.exc = 0;
+      mrb_p(mrb, mrb_obj_value(mrb->exc));
+      mrb->exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(&context->_mrs->_mrb, result);
+      mrb_p(mrb, result);
     }
   }
 
@@ -1101,6 +1180,7 @@ void ArangoServer::openDatabase () {
   _vocbase->_removeOnDrop = _removeOnDrop;
   _vocbase->_removeOnCompacted = _removeOnCompacted;
   _vocbase->_defaultMaximalSize = _defaultMaximalSize;
+  _vocbase->_defaultWaitForSync = _defaultWaitForSync;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

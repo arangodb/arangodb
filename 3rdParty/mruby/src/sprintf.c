@@ -5,6 +5,9 @@
 */
 
 #include "mruby.h"
+
+#ifdef ENABLE_SPRINTF
+
 #include <stdio.h>
 #include <string.h>
 #include "encoding.h"
@@ -86,7 +89,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
     val &= 0x3ff;
 
   if (val == 0) {
-    return mrb_str_new2(mrb, "0");
+    return mrb_str_new(mrb, "0", 1);
   }
   *--b = '\0';
   do {
@@ -165,7 +168,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
   (mrb_raise(mrb, E_ARGUMENT_ERROR, "named%.*s after unnumbered(%d)", (len), (name), posarg), mrb_undef_value()) : \
   posarg == -1 ? \
   (mrb_raise(mrb, E_ARGUMENT_ERROR, "named%.*s after numbered", (len), (name)), mrb_undef_value()) :    \
-  (posarg = -2, mrb_hash_getWithDef(mrb, get_hash(mrb, &hash, argc, argv), id, mrb_undef_value())))
+  (posarg = -2, mrb_hash_fetch(mrb, get_hash(mrb, &hash, argc, argv), id, mrb_undef_value())))
 
 #define GETNUM(n, val) \
   for (; p < end && ISDIGIT(*p); p++) {\
@@ -493,7 +496,7 @@ mrb_str_format(mrb_state *mrb, int argc, const mrb_value *argv, mrb_value fmt)
   char *buf;
   long blen, bsiz;
   mrb_value result;
-
+  int n;
   int width, prec, flags = FNONE;
   int nextarg = 1;
   int posarg = 0;
@@ -530,7 +533,6 @@ mrb_str_format(mrb_state *mrb, int argc, const mrb_value *argv, mrb_value fmt)
 
   for (; p < end; p++) {
     const char *t;
-    int n;
     mrb_sym id = 0;
 
     for (t = p; t < end && *t != '%'; t++) ;
@@ -610,7 +612,7 @@ retry:
                (int)(p - start + 1), start, mrb_sym2name(mrb, id));
         }
         symname = mrb_str_new(mrb, start + 1, p - start - 1);
-        id = mrb_intern(mrb, RSTRING_PTR(symname));
+        id = mrb_intern_str(mrb, symname);
         nextvalue = GETNAMEARG(mrb_symbol_value(id), start, (int)(p - start + 1));
         if (UNDEF_P(nextvalue)) {
           mrb_raise(mrb, E_KEY_ERROR, "key%.*s not found", (int)(p - start + 1), start);
@@ -666,7 +668,6 @@ retry:
         mrb_value val = GETARG();
         mrb_value tmp;
         unsigned int c;
-        int n;
 
         tmp = mrb_check_string_type(mrb, val);
         if (!mrb_nil_p(tmp)) {
@@ -981,6 +982,7 @@ bin_retry:
         fval = mrb_float(mrb_Float(mrb, val));
         if (isnan(fval) || isinf(fval)) {
           const char *expr;
+	  const int elen = 3;
 
           if (isnan(fval)) {
             expr = "NaN";
@@ -988,14 +990,14 @@ bin_retry:
           else {
             expr = "Inf";
           }
-          need = (int)strlen(expr);
+          need = elen;
           if ((!isnan(fval) && fval < 0.0) || (flags & FPLUS))
             need++;
           if ((flags & FWIDTH) && need < width)
             need = width;
 
           CHECK(need + 1);
-          snprintf(&buf[blen], need + 1, "%*s", need, "");
+          n = snprintf(&buf[blen], need + 1, "%*s", need, "");
           if (flags & FMINUS) {
             if (!isnan(fval) && fval < 0.0)
               buf[blen++] = '-';
@@ -1003,17 +1005,16 @@ bin_retry:
               buf[blen++] = '+';
             else if (flags & FSPACE)
               blen++;
-            memcpy(&buf[blen], expr, strlen(expr));
+            memcpy(&buf[blen], expr, elen);
           }
           else {
             if (!isnan(fval) && fval < 0.0)
-              buf[blen + need - strlen(expr) - 1] = '-';
+              buf[blen + need - elen - 1] = '-';
             else if (flags & FPLUS)
-              buf[blen + need - strlen(expr) - 1] = '+';
+              buf[blen + need - elen - 1] = '+';
             else if ((flags & FSPACE) && need > width)
               blen++;
-            memcpy(&buf[blen + need - strlen(expr)], expr,
-            strlen(expr));
+            memcpy(&buf[blen + need - elen], expr, elen);
           }
           blen += strlen(&buf[blen]);
           break;
@@ -1033,8 +1034,8 @@ bin_retry:
         need += 20;
 
         CHECK(need);
-        snprintf(&buf[blen], need, fbuf, fval);
-        blen += strlen(&buf[blen]);
+        n = snprintf(&buf[blen], need, fbuf, fval);
+        blen += n;
       }
       break;
     }
@@ -1058,6 +1059,8 @@ static void
 fmt_setup(char *buf, size_t size, int c, int flags, int width, int prec)
 {
     char *end = buf + size;
+    int n;
+
     *buf++ = '%';
     if (flags & FSHARP) *buf++ = '#';
     if (flags & FPLUS)  *buf++ = '+';
@@ -1066,15 +1069,17 @@ fmt_setup(char *buf, size_t size, int c, int flags, int width, int prec)
     if (flags & FSPACE) *buf++ = ' ';
 
     if (flags & FWIDTH) {
-  snprintf(buf, end - buf, "%d", width);
-  buf += strlen(buf);
+      n = snprintf(buf, end - buf, "%d", width);
+      buf += n;
     }
 
     if (flags & FPREC) {
-  snprintf(buf, end - buf, ".%d", prec);
-  buf += strlen(buf);
+      n = snprintf(buf, end - buf, ".%d", prec);
+      buf += n;
     }
 
     *buf++ = c;
     *buf = '\0';
 }
+
+#endif	/* ENABLE_SPRINTF */

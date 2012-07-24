@@ -406,7 +406,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for a signal with a timeout in milli-seconds
+/// @brief waits for a signal with a timeout in micro-seconds
 ///
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +425,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   }
 
   // Convert from timeval to timespec
-  ts.tv_sec  = tp.tv_sec;
+  ts.tv_sec = tp.tv_sec;
   x = (tp.tv_usec * 1000) + (delay * 1000);
   y = (x % 1000000000);
   ts.tv_nsec = y;

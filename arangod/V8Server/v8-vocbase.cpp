@@ -46,6 +46,7 @@
 #include "V8Server/v8-objects.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/voc-shaper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -142,6 +143,12 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = classTempl->NewInstance();
 
+  if (result.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(result);
+  }
+  
   // set the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(type));
   result->SetInternalField(SLOT_CLASS, v8::External::New(y));
@@ -752,10 +759,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
                                                    "<properties>.journalSize too small")));
       }
 
-      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), (TRI_voc_size_t) s);
     }
     else {
-      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
     }
 
     if (p->Has(waitForSyncKey)) {
@@ -767,7 +774,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     }
   }
   else {
-    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
   }
 
   TRI_voc_cid_t cid = 0;
@@ -775,10 +782,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
   // extract collection id
   if (3 <= argv.Length()) {
     v8::Handle<v8::Value> val = argv[2];
-    if (!val->IsNull() && !val->IsUndefined()) {
-      // a pre-defined collection is passed when data is re-imported from a dump etc.
-      // this allows reproduction of data from different servers
+
+    // a pre-defined collection is passed when data is re-imported from a dump etc.
+    // this allows reproduction of data from different servers
+    if (! val->IsNull() && ! val->IsUndefined()) {
       cid = TRI_ObjectToUInt64(argv[2]);
+
       if (cid <= 0) {
         return scope.Close(v8::ThrowException(
                            TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -1147,6 +1156,13 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
+  
+  if (cursorObject.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(cursorObject);
+  }  
+  
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSGeneralCursors.find(cursor);
 
   if (i == v8g->JSGeneralCursors.end()) {
@@ -2302,7 +2318,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   v8::HandleScope scope;
   bool ok;
   string errorString;
-  int errorCode;
+  // int errorCode;
   TRI_index_t* bitarrayIndex = 0;
   bool indexCreated;
   v8::Handle<v8::Value> theIndex;
@@ -2374,7 +2390,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
       if (! argument->IsString() ) {
         errorString = "invalid parameter -- expected string parameter";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2393,7 +2409,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (! argument->IsArray() ) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2412,7 +2428,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (value == NULL) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2424,7 +2440,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2443,7 +2459,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
     if (attributes._length != values._length) {
       errorString = "invalid parameter -- expected an array (list)";
-      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
       ok = false;
     }
   }
@@ -2457,7 +2473,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if (ok) {
     bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
     if (bitarrayIndex == 0) {
-      errorCode = TRI_errno();
+      // errorCode = TRI_errno();
       errorString = "index could not be created from Simple Collection";
       ok = false;
     }
@@ -2488,7 +2504,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
 
     if (json == NULL) {
-      errorCode = TRI_errno();
+      // errorCode = TRI_errno();
       errorString = "out of memory";
       ok = false;
     }  
@@ -3045,7 +3061,12 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
 ///
-/// Note that it is not possible to change the journal size after creation.
+/// - @LIT{journalSize} : The size of the journal in bytes.
+///
+/// Note that it is not possible to change the journal size after the journal or
+/// datafile has been created. Changing this parameter will only effect newly
+/// created journals. Also note that you cannot lower the journal size to less
+/// then size of the largest document already stored in the collection.
 ///
 /// @EXAMPLES
 ///
@@ -3087,19 +3108,47 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     if (par->IsObject()) {
       v8::Handle<v8::Object> po = par->ToObject();
 
-      // holding a lock on the vocbase collection: if we ever want to
-      // change the maximal size a real lock is required.
-      bool waitForSync = sim->base.base._waitForSync;
+      // get the old values
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-      // extract sync after objects
+      bool waitForSync = sim->base.base._waitForSync;
+      size_t maximalSize = sim->base.base._maximalSize;
+      size_t maximumMarkerSize = sim->base.base._maximumMarkerSize;
+
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+
+      // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
         waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
-      sim->base.base._waitForSync = waitForSync;
+      // extract the journal size
+      if (po->Has(v8g->JournalSizeKey)) {
+        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+
+        if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+
+        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+      }
+
+      // update collection
+      TRI_col_parameter_t newParameter;
+
+      newParameter._maximalSize = maximalSize;
+      newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(&sim->base.base);
+      int res = TRI_UpdateParameterInfoCollection(&sim->base.base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);
@@ -4080,30 +4129,25 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
-
-  if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
-    return scope.Close(v8::Handle<v8::Value>());
-  }
-
-  // convert to v8 value
-  TRI_shape_t const* shape = acc->_shape;
-  TRI_shaped_json_t json;
-
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
 
-  if (TRI_ExecuteShapeAccessor(acc, &document, &json)) {
-    TRI_FreeShapeAccessor(acc);
-    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
-  }
+  TRI_shaped_json_t json;
+  TRI_shape_t const* shape;
 
-  TRI_FreeShapeAccessor(acc);
-  return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+
+  if (ok) {
+    if (shape == 0) {
+      return scope.Close(v8::Handle<v8::Value>());
+    }
+    else {
+      return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
+    }
+  }
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4226,18 +4270,13 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+  TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
   if (acc == 0 || acc->_shape == 0) {
-    if (acc != 0) {
-      TRI_FreeShapeAccessor(acc);
-    }
-
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  TRI_FreeShapeAccessor(acc);
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }
 
@@ -4319,7 +4358,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  errorObject->SetPrototype(proto);
+  if (!proto.IsEmpty()) {
+    errorObject->SetPrototype(proto);
+  }
 
   return errorObject;
 }
@@ -4603,6 +4644,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
+
+  if (result.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(result);
+  }  
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));

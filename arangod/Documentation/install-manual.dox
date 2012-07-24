@@ -45,6 +45,15 @@
 /// <ul>
 ///  <li>@ref Installing
 ///   <ul>
+///     <li>@ref BinaryPackages
+///     </li>
+///     <li>@ref PackagesManager
+///      <ul>
+///       <li>@ref OpenSUSE
+///       <li>@ref CentOS
+///       <li>@ref Debian
+///      </ul>
+///     </li>
 ///     <li>@ref MacOSX
 ///      <ul>
 ///       <li>@ref MacOSXHomebrew
@@ -60,8 +69,128 @@
 ///
 /// @EMBEDTOC{InstallingTOC}
 ///
+/// @section BinaryPackages Binary Packages
+///////////////////////////////////////////
+///
+/// You can find various binary packages here:
+///
+/// @LIT{http://www.arangodb.org/repositories/}
+///
+///
+/// @section PackagesManager Install ArangoDB by a package manager
+//////////////////////////////////////////////////////////////////
+///
+/// @subsection OpenSUSE
+////////////////////////
+///
+/// Add the repository as follows:
+///
+/// @code
+/// zypper addrepo -f -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
+/// @endcode
+///
+/// Update repository data:
+///
+/// @code
+/// zypper refresh
+/// @endcode
+///
+/// Search for arangodb:
+///
+/// @code
+/// zypper search arangodb
+/// @endcode
+///
+/// Install arangodb:
+///
+/// @code
+/// zypper install arangodb
+/// @endcode
+///
+/// @subsection CentOS
+//////////////////////
+///
+/// Download and import GPG-PublicKey
+///
+/// @code
+/// wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.org/repositories/PublicKey
+/// rpm --import RPM-GPG-KEY-www.arangodb.org
+/// @endcode
+///
+/// Add a repository file @LIT{/etc/yum.repos.d/arangodb.repo}
+/// @code
+/// [ArangoDB]
+/// name=ArangoDB Repository for CentOS
+/// failovermethod=priority
+/// baseurl=http://www.arangodb.org/repositories/CentOS-6.2
+/// enabled=1
+/// gpgcheck=1
+/// gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-www.arangodb.org
+/// @endcode
+///
+/// Update repository data:
+///
+/// @code
+/// yum clean metadata
+/// yum update
+/// @endcode
+///
+/// Search for arangodb:
+///
+/// @code
+/// yum search arangodb
+/// @endcode
+///
+/// Install arangodb:
+///
+/// @code
+/// yum install arangodb
+/// @endcode
+///
+///
+/// @subsection Debian Debian and Ubuntu
+////////////////////////////////////////
+///
+/// Download and import GPG-PublicKey
+///
+/// @code
+/// wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.org/repositories/PublicKey
+/// apt-key add RPM-GPG-KEY-www.arangodb.org
+/// @endcode
+///
+/// Add the repository in file  @LIT{/etc/apt/sources.list}
+/// @code
+/// deb http://www.arangodb.org/repositories Debian-6.0 main
+/// @endcode
+/// or
+/// @code
+/// deb http://www.arangodb.org/repositories Ubuntu-11.10 main
+/// @endcode
+///
+/// Update repository data:
+///
+/// @code
+/// aptitude update
+/// @endcode
+///
+/// Search for arangodb:
+///
+/// @code
+/// aptitude search arangodb
+/// @endcode
+///
+/// Install arangodb:
+///
+/// @code
+/// aptitude install arangodb
+/// @endcode
+///
 /// @section MacOSX
 ///////////////////
+///
+/// You can find MacOSX packages here:
+///
+/// @LIT{http://www.arangodb.org/repositories/MacOSX}
 ///
 /// @subsection MacOSXHomebrew
 //////////////////////////////
@@ -69,14 +198,18 @@
 /// If you are using <a href="http://mxcl.github.com/homebrew/">homebrew</a>,
 /// than you can install the ArangoDB using @CODE{brew} as follows:
 ///
-/// @LIT{brew install arangodb}
+/// @code
+/// brew install arangodb
+/// @endcode
 ///
 /// This will install the current stable version of ArangoDB within
 /// your Homebrew tree.
 ///
 /// If you want to install the latest version use:
 ///
-/// @LIT{brew install --HEAD arangodb}
+/// @code
+/// brew install --HEAD arangodb
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,14 +329,14 @@
 ///
 /// This will compile the ArangoDB and create a binary of the server in
 ///
-/// @LIT{./arangod}
+/// @LIT{./bin/arangod}
 ///
 /// @subsection CompilingAIOTest Test
 /////////////////////////////////////
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./arangod --server.http-port 12345 /tmp/vocbase}
+/// @LIT{./bin/arangod --server.http-port 12345 /tmp/vocbase}
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to any address. You should see the startup messages
@@ -220,6 +353,10 @@
 ///
 /// as result.
 ///
+/// Note that starting arangodb in this way will result in error messages being
+/// displayed, because the paths are not yet set up. This will be corrected in
+/// the next step.
+///
 /// @subsection CompilingAIOInstall Install
 ///////////////////////////////////////////
 ///
@@ -229,6 +366,22 @@
 ///
 /// You must be root to do this or at least have write permission to the
 /// corresponding directories.
+///
+/// The server will by default be installed in
+///
+/// @LIT{/usr/sbin/arangod}
+///
+/// The configuration file will be installed in
+///
+/// @LIT{/etc/arangodb/arangod.conf}
+///
+/// The database will be installed in
+///
+/// @LIT{/var/arangodb}
+///
+/// The arango shell will be installed in
+///
+/// @LIT{/usr/bin/arangosh}
 ///
 /// @section CompilingDevel Devel Version
 /////////////////////////////////////////

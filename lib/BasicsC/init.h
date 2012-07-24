@@ -47,7 +47,7 @@ extern "C" {
 /// @brief initialise function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseC (void);
+void TRI_InitialiseC (int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
@@ -59,9 +59,9 @@ void TRI_ShutdownC (void);
 /// @brief initialise
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_C_INITIALISE  \
-  do {                         \
-    TRI_InitialiseC();         \
+#define TRIAGENS_C_INITIALISE(a,b)              \
+  do {                                          \
+    TRI_InitialiseC((a), (b));                  \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////

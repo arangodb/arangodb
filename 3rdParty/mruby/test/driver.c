@@ -36,6 +36,11 @@ main(void)
 
   /* new interpreter instance */
   mrb = mrb_open();
+  if (mrb == NULL) {
+    fprintf(stderr, "Invalid mrb_state, exiting test driver");
+    return EXIT_FAILURE;
+  }
+
   mrb_init_mrbtest(mrb);
   parser = mrb_parse_nstring(mrb, prog, strlen(prog));
 

@@ -14,7 +14,7 @@ BUILT_SOURCES += $(PROTOBUF_FILES)
 ### @brief protocol buffers
 ################################################################################
 
-%.pb.cpp: %.proto
+%.pb.cpp: %.proto .protobuf-build-@TRI_BITS@
 	@top_srcdir@/3rdParty/protobuf-2.4.1/BUILD/bin/protoc --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 

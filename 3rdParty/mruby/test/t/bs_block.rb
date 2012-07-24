@@ -322,28 +322,28 @@ assert('BS Block [ruby-dev:31147]') do
   def m
     yield
   end
-  m{|&b| b}.inspect == 'nil'
+  m{|&b| b} == nil
 end
 
 assert('BS Block [ruby-dev:31160]') do
   def m()
     yield
   end
-  m {|(v,(*))|}.inspect == 'nil'
+  m {|(v,(*))|} == nil
 end
 
 assert('BS Block 31') do
   def m()
     yield
   end
-  m {|((*))|}.inspect == 'nil'
+  m {|((*))|} == nil
 end
 
 assert('BS Block [ruby-dev:31440]') do
   def m
     yield [0]
   end
-  m{|v, &b| v}.inspect == '[0]'
+  m{|v, &b| v} == [0]
 end
 
 assert('BS Block 32') do

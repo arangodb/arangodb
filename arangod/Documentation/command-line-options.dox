@@ -47,8 +47,11 @@
 ///     <ul>
 ///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
 ///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
+///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
+///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
 ///     </ul>
 ///    </li>
@@ -162,11 +165,23 @@
 /// @anchor CommandLineArangoAdminPort
 /// @copydetails triagens::arango::ArangoServer::_adminPort
 ///
+/// @anchor CommandLineArangoHttpAuth
+/// @copydetails triagens::arango::ArangoServer::_httpAuth
+///
+/// @anchor CommandLineArangoDisableAdminInterface
+/// @CMDOPT{--disable-admin-interface}
+///
+/// If this option is specified, then the HTML admininstration interface at 
+/// URL http://server:port/ will be disabled and cannot used by any user at all.
+///
 /// @anchor CommandLineArangoDirectory
 /// @copydetails triagens::arango::ArangoServer::_databasePath
 ///
 /// @anchor CommandLineArangoMaximalJournalSize
 /// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
+///
+/// @anchor CommandLineArangoWaitForSync
+/// @copydetails triagens::arango::ArangoServer::_defaultWaitForSync
 ///
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop

@@ -80,6 +80,62 @@ class Hash
     end
     h
   end
+
+  # 1.8/1.9 Hash#reject! returns Hash; ISO says nothing.
+  def reject!(&b)
+    keys = []
+    self.each_key{|k|
+      v = self[k]
+      if b.call(k, v)
+        keys.push(k)
+      end
+    }
+    return nil if keys.size == 0
+    keys.each{|k|
+      self.delete(k)
+    }
+    self
+  end
+
+  # 1.8/1.9 Hash#reject returns Hash; ISO says nothing.
+  def reject(&b)
+    h = {}
+    self.each_key{|k|
+      v = self[k]
+      unless b.call(k, v)
+        h[k] = v
+      end
+    }
+    h
+  end
+
+  # 1.9 Hash#select! returns Hash; ISO says nothing.
+  def select!(&b)
+    keys = []
+    self.each_key{|k|
+      v = self[k]
+      unless b.call(k, v)
+        keys.push(k)
+      end
+    }
+    return nil if keys.size == 0
+    keys.each{|k|
+      self.delete(k)
+    }
+    self
+  end
+
+  # 1.9 Hash#select returns Hash; ISO says nothing.
+  def select(&b)
+    h = {}
+    self.each_key{|k|
+      v = self[k]
+      if b.call(k, v)
+        h[k] = v
+      end
+    }
+    h
+  end
 end
 
 ##

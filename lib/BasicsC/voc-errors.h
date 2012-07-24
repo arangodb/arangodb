@@ -125,6 +125,9 @@ extern "C" {
 ///   Will be raised when a index handle is corrupt.
 /// - 1215: @CODE{cap constraint already defined}
 ///   Will be raised when a cap constraint was already defined.
+/// - 1216: @CODE{document too large}
+///   Will be raised when the document cannot fit into any datafile because of
+///   it is too large.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -856,6 +859,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                   (1215)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
+///
+/// document too large
+///
+/// Will be raised when the document cannot fit into any datafile because of it
+/// is too large.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE                               (1216)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

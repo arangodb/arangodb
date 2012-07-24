@@ -5,6 +5,10 @@ assert('Integer', '15.2.8') do
   Integer.class == Class
 end
 
+assert('Integer superclass', '15.2.8.2') do
+  Integer.superclass == Numeric
+end
+
 assert('Integer#+', '15.2.8.3.1') do
   a = 1+1
   b = 1+1.0

@@ -417,22 +417,19 @@ static const struct mrb_data_type MR_ArangoConnection_Type = {
   "ArangoConnection", MR_ArangoConnection_Free
 };
 
-static void InitMRClientConnection (MR_state_t* mrs, MRubyClientConnection* connection) {
+static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* connection) {
   struct RClass *rcl;
-  mrb_state* mrb;
-
-  mrb = &mrs->_mrb;
 
   // .............................................................................
   // arango client connection
   // .............................................................................
 
-  rcl = mrb_define_class(&mrs->_mrb, "ArangoConnection", mrs->_mrb.object_class);
+  rcl = mrb_define_class(mrb, "ArangoConnection", mrb->object_class);
   
-  mrb_define_method(&mrs->_mrb, rcl, "get", ClientConnection_httpGet, ARGS_REQ(1));
+  mrb_define_method(mrb, rcl, "get", ClientConnection_httpGet, ARGS_REQ(1));
 
   // create the connection variable
-  mrb_value arango = mrb_obj_value(Data_Wrap_Struct(&mrs->_mrb, rcl, &MR_ArangoConnection_Type, (void*) connection));
+  mrb_value arango = mrb_obj_value(Data_Wrap_Struct(mrb, rcl, &MR_ArangoConnection_Type, (void*) connection));
   mrb_gv_set(mrb, mrb_intern(mrb, "$arango"), arango);
 }
 
@@ -440,8 +437,8 @@ static void InitMRClientConnection (MR_state_t* mrs, MRubyClientConnection* conn
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (MR_state_t* mrs) {
-  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
+static void RunShell (mrb_state* mrb) {
+  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
 
   console->open(false /*! NoAutoComplete*/);
 
@@ -459,7 +456,7 @@ static void RunShell (MR_state_t* mrs) {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_nstring(&mrs->_mrb, input, strlen(input));
+    struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input));
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -467,24 +464,24 @@ static void RunShell (MR_state_t* mrs) {
       continue;
     }
 
-    int n = mrb_generate_code(&mrs->_mrb, p->tree);
+    int n = mrb_generate_code(mrb, p->tree);
 
     if (n < 0) {
       cout << "UPPS: " << n << " returned by mrb_generate_code\n";
       continue;
     }
 
-    mrb_value result = mrb_run(&mrs->_mrb,
-                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
-                               mrb_top_self(&mrs->_mrb));
+    mrb_value result = mrb_run(mrb,
+                               mrb_proc_new(mrb, mrb->irep[n]),
+                               mrb_top_self(mrb));
 
-    if (mrs->_mrb.exc) {
+    if (mrb->exc) {
       cout << "Caught exception:\n";
-      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
-      mrs->_mrb.exc = 0;
+      mrb_p(mrb, mrb_obj_value(mrb->exc));
+      mrb->exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(&mrs->_mrb, result);
+      mrb_p(mrb, result);
     }
   }
 
@@ -516,7 +513,7 @@ static void RunShell (MR_state_t* mrs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
@@ -588,9 +585,9 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   // create a new ruby shell
-  MR_state_t* mrs = MR_OpenShell();
+  mrb_state* mrb = MR_OpenShell();
 
-  TRI_InitMRUtils(mrs);
+  TRI_InitMRUtils(mrb);
 
   // .............................................................................
   // set-up client connection
@@ -616,7 +613,7 @@ int main (int argc, char* argv[]) {
     ServerPort = ap._port;
     
     ClientConnection = new MRubyClientConnection(
-      mrs,
+      mrb,
       ServerAddress, 
       ServerPort, 
       (double) RequestTimeout,
@@ -624,7 +621,7 @@ int main (int argc, char* argv[]) {
       (double) ConnectTimeout,
       false);
 
-    InitMRClientConnection(mrs, ClientConnection);
+    InitMRClientConnection(mrb, ClientConnection);
   }
   
   // .............................................................................
@@ -706,7 +703,7 @@ int main (int argc, char* argv[]) {
   };
   
   for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = StartupLoader.loadScript(&mrs->_mrb, files[i]);
+    bool ok = StartupLoader.loadScript(mrb, files[i]);
     
     if (ok) {
       LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
@@ -721,7 +718,7 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  RunShell(mrs);
+  RunShell(mrb);
 
   return ret;
 }

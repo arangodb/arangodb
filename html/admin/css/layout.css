@@ -1,3 +1,30 @@
+.jediTextarea textarea {
+  border: solid 1px #525252; 
+  background-color: #F3F1EE; 
+  resize: vertical;  
+  -webkit-border-radius: 2px !important;
+  -moz-border-radius: 2px !important;
+  border-radius: 2px !important;
+}
+
+.jediTextarea button {
+  color: red !important;  
+  background: #e3e3e3 !important;
+  border: 1px solid #bbb !important;
+  -webkit-border-radius: 3px !important;
+  -moz-border-radius: 3px !important;
+  border-radius: 3px !important;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+  box-shadow: inset 0 0 1px 1px #f6f6f6 !important; 
+  color: #333 !important;
+  font: 12px "helvetica neue", helvetica, arial, sans-serif !important;
+  text-align: center !important; 
+  text-shadow: 0 1px 0 #fff !important;
+  width: 50% !important; 
+  height: 20px !important; 
+}
+
 .cuttedContent, .prettify ul li, .writeable a {
   white-space: nowrap !important;
   overflow: hidden !important;

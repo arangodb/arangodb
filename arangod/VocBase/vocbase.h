@@ -28,13 +28,13 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
 #define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/associative.h>
-#include <BasicsC/locks.h>
-#include <BasicsC/threads.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/voc-errors.h>
+#include "BasicsC/associative.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/threads.h"
+#include "BasicsC/vector.h"
+#include "BasicsC/voc-errors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -114,6 +114,53 @@ struct TRI_shadow_store_s;
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the synchroniser waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+  TRI_LockCondition(&(a)->_syncWaitersCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the synchroniser waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for synchroniser waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(a, b) \
+  TRI_TimedWaitCondition(&(a)->_syncWaitersCondition, (b))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signals the synchroniser waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_BROADCAST_SYNCHRONISER_WAITER_VOC_BASE(a) \
+  TRI_BroadcastCondition(&(a)->_syncWaitersCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reduces the number of sync waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
+  --((a)->_syncWaiters);                                \
+  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reduces the number of sync waiters
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
+  ++((a)->_syncWaiters);                                \
+  TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
+  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,6 +196,12 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief journal overhead
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_JOURNAL_OVERHEAD (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as character
@@ -300,6 +353,7 @@ typedef struct TRI_vocbase_s {
 
   bool _removeOnDrop; // wipe collection from disk after dropping
   bool _removeOnCompacted; // wipe datafile from disk after compaction
+  bool _defaultWaitForSync;
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
@@ -310,12 +364,18 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
 
+  TRI_associative_pointer_t _authInfo;
+  TRI_read_write_lock_t _authInfoLock;
+
   sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions; 
+
+  TRI_condition_t _syncWaitersCondition;
+  int64_t _syncWaiters;  
 }
 TRI_vocbase_t;
 
@@ -525,6 +585,10 @@ void TRI_ShutdownVocBase (void);
 #ifdef __cplusplus
 }
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 #endif
 

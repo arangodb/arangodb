@@ -5,6 +5,10 @@ assert('Float', '15.2.9') do
   Float.class == Class
 end
 
+assert('Float superclass', '15.2.9.2') do
+  Float.superclass == Numeric
+end
+
 assert('Float#+', '15.2.9.3.1') do
   a = 3.123456788 + 0.000000001
   b = 3.123456789 + 1
