@@ -1,3 +1,7 @@
+#requestChoices label {
+  width: 100% !important; 
+} 
+
 .statDisabled {
   color: #C0C0C0;  
 }
@@ -45,14 +49,14 @@
   text-transform: none;
 }
 
-.resizable {
+.resizable, .draggable {
+  position:fixed !important; 
   box-shadow: 5px 5px 5px #888;
 }
 
 .placeholderBox {
   margin-top: 10px;   
   font-size: 0.8em; 
-  width: 98%;
   height: 150px; 
 }
 
@@ -96,8 +100,7 @@
   text-align: left; 
   width: 500px; 
   background-color: #F3F1EE;
-
-
+  border: solid 1px #525252; 
 }
 
 .statsBoxes {
@@ -113,7 +116,7 @@
   padding-top: 2px; 
   margin-left: -5px;  
   margin-right: -5px;  
-  height: 20px; 
+  height: 22px; 
   background-color: #525252; 
 }
 
@@ -131,16 +134,17 @@
   box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
-#statisticRadioDiv {
-  height:28px !important; 
+.radioFormat {
+  height:26px !important;
+  margin-top: -2px; 
 }
 
-#statisticRadioDiv .ui-state-active {
+.radioFormat .ui-state-active {
   background-color: #9EAF5A !important;
   font-weight: normal;
 }
 
-#statisticRadioDiv .ui-state-default {
+.radioFormat .ui-state-default {
   color: #555555;
   font-weight: normal;
 }
