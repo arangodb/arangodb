@@ -633,9 +633,12 @@ int ArangoServer::startupServer () {
 #ifdef TRI_OPENSSL_VERSION
   // HTTPS endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTPS) > 0) {
+
     // create the https server
     _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
     DefineApiHandlers(_httpsServer, _applicationAdminServer, _vocbase);
+    
+    DefineAdminHandlers(_httpsServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
     _httpsServer->addPrefixHandler("/",
