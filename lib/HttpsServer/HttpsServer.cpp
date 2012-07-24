@@ -216,7 +216,7 @@ void HttpsServer::setVerificationCallback (int (*func)(int, X509_STORE_CTX *)) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
-  LOGGER_INFO << "trying to establish secure connection";
+  LOGGER_DEBUG << "trying to establish secure connection";
 
   // convert in a SSL BIO structure
   BIO * sbio = BIO_new_socket((int) socket, BIO_NOCLOSE);
