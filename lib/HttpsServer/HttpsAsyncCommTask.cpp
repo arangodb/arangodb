@@ -30,6 +30,8 @@
 
 #include <openssl/err.h>
 
+#include <Basics/ssl-helper.h>
+
 #include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
 #include <Basics/StringBuffer.h>
@@ -43,22 +45,6 @@ using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
-
-    // -----------------------------------------------------------------------------
-    // SSL helper functions
-    // -----------------------------------------------------------------------------
-
-    namespace {
-      string lastSSLError () {
-        char buf[122];
-        memset(buf, 0, sizeof(buf));
-
-        unsigned long err = ERR_get_error();
-        ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-        return string(buf);
-      }
-    }
 
     // -----------------------------------------------------------------------------
     // constructors and destructors
