@@ -91,11 +91,18 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicationScheduler,
-                                                ApplicationDispatcher* applicationDispatcher)
+ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationServer,
+                                                ApplicationScheduler* applicationScheduler,
+                                                ApplicationDispatcher* applicationDispatcher,
+                                                std::string const& authenticationRealm,
+                                                HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpsServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
+    _httpsAuth(false),
     _showPort(true),
     _requireKeepAlive(false),
     _sslProtocol(3),
@@ -197,12 +204,15 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
   }
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-    ("server.secure-require-keep-alive", "close connection, if keep-alive is missing")
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
     ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
+  ;
+
+  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
+    ("server.https-auth", &_httpsAuth, "use basic authentication")
   ;
 }
 
@@ -213,7 +223,7 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
 bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 
   // check keep alive
-  if (options.has("server.secure-require-keep-alive")) {
+  if (options.has("server.require-keep-alive")) {
     _requireKeepAlive= true;
   }
 
@@ -305,9 +315,14 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
   }
 
   Dispatcher* dispatcher = 0;
+  HttpHandlerFactory::auth_fptr auth = 0;
 
   if (_applicationDispatcher != 0) {
     dispatcher = _applicationDispatcher->dispatcher();
+  }
+
+  if (_httpsAuth) {
+    auth = _checkAuthentication;
   }
 
   // check the ssl context
@@ -318,7 +333,7 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
   }
 
   // create new server
-  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _sslContext);
+  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _authenticationRealm, auth, _sslContext);
 
   // update close-without-keep-alive flag
   if (_requireKeepAlive) {

@@ -30,6 +30,7 @@
 #define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "GeneralServer/GeneralServerDispatcher.h"
+
 #include "HttpServer/HttpCommTask.h"
 
 // -----------------------------------------------------------------------------
@@ -76,7 +77,10 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer (Scheduler* scheduler, Dispatcher* dispatcher);
+        HttpServer (Scheduler* scheduler,
+                    Dispatcher* dispatcher,
+                    std::string const authenticationRealm,
+                    auth_fptr checkAuthentication);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

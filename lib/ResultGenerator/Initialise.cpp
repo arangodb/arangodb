@@ -37,8 +37,8 @@
 
 namespace triagens {
   namespace rest {
-    void InitialiseResultGenerator () {
-      TRIAGENS_REST_INITIALISE;
+    void InitialiseResultGenerator (int argc, char* argv[]) {
+      TRIAGENS_REST_INITIALISE(argc, argv);
 
       HtmlResultGenerator::initialise();
       JsonResultGenerator::initialise();

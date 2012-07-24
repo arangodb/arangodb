@@ -274,6 +274,7 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.read = SYS_READ;
   internal.sprintf = SYS_SPRINTF;
   internal.time = SYS_TIME;
+  internal.sha256 = SYS_SHA256;
 
 
   // command line parameter
@@ -408,6 +409,8 @@ ModuleCache["/console"] = new Module("/console");
 (function () {
   var internal = ModuleCache["/internal"].exports;
   var console = ModuleCache["/console"].exports;
+
+  console.getline = SYS_GETLINE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug message

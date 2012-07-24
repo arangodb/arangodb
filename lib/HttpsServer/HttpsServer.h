@@ -116,7 +116,11 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer (Scheduler*, Dispatcher*, SSL_CTX*);
+        HttpsServer (Scheduler*,
+                     Dispatcher*,
+                     std::string const authenticationRealm,
+                     auth_fptr checkAuthentication,
+                     SSL_CTX*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

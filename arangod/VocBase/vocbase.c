@@ -37,6 +37,7 @@
 #include "BasicsC/random.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/threads.h"
+#include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
@@ -93,6 +94,37 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs the auth info
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* key) {
+  char const* k = (char const*) key;
+
+  return TRI_FnvHashString(k);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs the auth info
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, void const* element) {
+  TRI_vocbase_auth_t const* e = element;
+
+  return TRI_FnvHashString(e->_username);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a auth info and a username
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, void const* key, void const* element) {
+  char const* k = (char const*) key;
+  TRI_vocbase_auth_t const* e = element;
+
+  return TRI_EqualString(k, e->_username);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,7 +166,7 @@ static uint64_t HashKeyCollectionName (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection id
+/// @brief hashs the collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementCollectionName (TRI_associative_pointer_t* array, void const* element) {
@@ -145,7 +177,7 @@ static uint64_t HashElementCollectionName (TRI_associative_pointer_t* array, voi
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a collection id and a collection
+/// @brief compares a collection name and a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const* key, void const* element) {
@@ -719,10 +751,9 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     TRI_sim_collection_t* sim;
     TRI_col_parameter_t parameter;
 
-    TRI_InitParameterCollection(&parameter, collection->_name, vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, collection->_name, vocbase->_defaultMaximalSize);
 
     parameter._type = type;
-    parameter._waitForSync = false;
 
     sim = TRI_CreateSimCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
@@ -1088,15 +1119,27 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                              EqualKeyCollectionName,
                              NULL);
 
+  TRI_InitAssociativePointer(&vocbase->_authInfo,
+                             TRI_CORE_MEM_ZONE, 
+                             HashKeyAuthInfo,
+                             HashElementAuthInfo,
+                             EqualKeyAuthInfo,
+                             NULL);
+
+  TRI_InitReadWriteLock(&vocbase->_authInfoLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
 
+  vocbase->_syncWaiters = 0;
+  TRI_InitCondition(&vocbase->_syncWaitersCondition);
+
   // .............................................................................
-  // scan directory for collections and start helper threads
+  // scan directory for collections
   // .............................................................................
 
   // defaults
   vocbase->_removeOnDrop = true;
   vocbase->_removeOnCompacted = true;
+  vocbase->_defaultWaitForSync = false;
   vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
 
   // scan the database path for collections
@@ -1111,13 +1154,21 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, vocbase->_lockFile);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
 
     return NULL;
   }
   
+  // .............................................................................
   // vocbase is now active
+  // .............................................................................
+
   vocbase->_active = 1;
+
+  // .............................................................................
+  // start helper threads
+  // .............................................................................
 
   // start synchroniser thread
   TRI_InitThread(&vocbase->_synchroniser);
@@ -1126,6 +1177,13 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
   TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
+
+  // .............................................................................
+  // load auth information
+  // .............................................................................
+
+  TRI_LoadAuthInfo(vocbase);
+  TRI_DefaultAuthInfo(vocbase);
 
   // we are done
   return vocbase;
@@ -1169,9 +1227,14 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     FreeCollection(vocbase, collection);
   }
   
+  // free the auth info
+  TRI_DestroyAuthInfo(vocbase);
+
   // clear the hashes and vectors
   TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
+  TRI_DestroyAssociativePointer(&vocbase->_authInfo);
+
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
@@ -1185,8 +1248,10 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, vocbase->_lockFile);
 
-  // destroy lock
+  // destroy locks
+  TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyReadWriteLock(&vocbase->_lock);
+  TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
 
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
@@ -1513,7 +1578,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->base._deleted = true;
 
-    res = TRI_UpdateParameterInfoCollection(&collection->_collection->base);
+
+    res = TRI_UpdateParameterInfoCollection(&collection->_collection->base, 0);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);

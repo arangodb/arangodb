@@ -46,6 +46,7 @@
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellIndexTOC
 /// @copydetails IndexesTOC
+/// @copydetails DbaManualAuthenticationTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,6 +94,59 @@
 ////////////////////////////////////////////////
 ///
 /// @copydetails JS_PropertiesVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualAuthenticationTOC
+///
+/// <ul>
+///  <li>@ref DbaManualAuthentication
+///   <ul>
+///    <li>@ref DbaManualAuthenticationCommandLine</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualAuthentication Authentication and Authorisation
+///
+/// @EMBEDTOC{DbaManualAuthenticationTOC}
+///
+/// ArangoDB only provides a very simple authentication interface and
+/// no authorisation. We plan to add authorisation features in later
+/// releases, which will allow the administrator to restrict access to
+/// collections and queries to certain users, given them either read
+/// or write access.
+///
+/// Currently, you can only secure the access to the HTTP client and
+/// admin port in a all-or-nothing fashion.
+/// The collection @LIT{_users} contains all user and the SHA256 of
+/// their passwords. A user can be active or inactive. A typical document
+/// of this collection is
+///
+/// @verbinclude user-document
+///
+/// If the server is started using the option 
+///
+/// @LIT{--server.http-auth yes}
+///
+/// then access via HTTP requires a user name and password using "basic
+/// authentication". The user must exists in the @LIT{_users}
+/// collection and must be active.
+///
+/// In order to generate an entry, you can use the supplied shell script
+///
+/// @LIT{/usr/sbin/arango-password \<username> [\<password>]}
+///
+/// Note that you must stop the @LIT{arangod} server before executing this
+/// script.
+///
+/// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// @anchor CommandLineArangoHttpAuth
+/// @copydetails triagens::arango::ArangoServer::_httpAuth
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

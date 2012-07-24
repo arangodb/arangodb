@@ -158,8 +158,12 @@ SSL_CTX* HttpsServer::sslContext (protocol_e protocol, string const& keyfile) {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer::HttpsServer (Scheduler* scheduler, Dispatcher* dispatcher, SSL_CTX* ctx)
-  : HttpServer(scheduler, dispatcher),
+HttpsServer::HttpsServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          std::string const authenticationRealm,
+                          auth_fptr checkAuthentication, 
+                          SSL_CTX* ctx)
+  : HttpServer(scheduler, dispatcher, authenticationRealm, checkAuthentication),
     ctx(ctx),
     verificationMode(SSL_VERIFY_NONE),
     verificationCallback(0) {
