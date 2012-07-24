@@ -294,6 +294,15 @@ bool ApplicationHttpsServer::createSslContext () {
     return true;
   }
 
+  // validate protocol
+  if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
+    LOGGER_ERROR << "invalid SSL protocol version specified.";
+    LOGGER_INFO << "please use a valid value for --server.ssl-protocol.";
+    return false;
+  }
+    
+  LOGGER_INFO << "using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'";
+  
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 

@@ -155,6 +155,8 @@ const string HttpsServer::protocolName (const protocol_e protocol) {
       return "SSLv3";
     case TLS_V1:
       return "TLSv1";
+    default:
+      return "unknown";
   }
 }
 
