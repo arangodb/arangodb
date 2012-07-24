@@ -45,10 +45,8 @@
 ///    </li>
 ///    <li>@ref CommandLineArango
 ///     <ul>
-///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
-///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
+///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
 ///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
-///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
@@ -159,11 +157,8 @@
 /// @section CommandLineArango Command-Line Options for the ArangoDB
 ////////////////////////////////////////////////////////////////////
 ///
-/// @anchor CommandLineArangoHttpPort
-/// @copydetails triagens::arango::ArangoServer::_httpPort
-///
-/// @anchor CommandLineArangoAdminPort
-/// @copydetails triagens::arango::ArangoServer::_adminPort
+/// @anchor CommandLineArangoEndpoint
+/// @copydetails triagens::arango::ArangoServer::_endpoints
 ///
 /// @anchor CommandLineArangoHttpAuth
 /// @copydetails triagens::arango::ArangoServer::_httpAuth

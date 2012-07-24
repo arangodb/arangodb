@@ -30,6 +30,7 @@
 #include <openssl/err.h>
 
 #include "Basics/delete_object.h"
+#include "Basics/ssl-helper.h"
 #include "Basics/Random.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -41,22 +42,6 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-namespace {
-  string lastSSLError () {
-    char buf[122];
-    memset(buf, 0, sizeof(buf));
-
-    unsigned long err = ERR_get_error();
-    ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-    return string(buf);
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
@@ -102,12 +87,10 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
-    _httpsAuth(false),
-    _showPort(true),
-    _requireKeepAlive(false),
-    _sslProtocol(3),
+    _sslProtocol(HttpsServer::TLS_V1),
     _sslCacheMode(0),
-    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
+    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
+    _sslCipherList(""),
     _sslContext(0) {
 }
 
@@ -134,49 +117,11 @@ ApplicationHttpsServer::~ApplicationHttpsServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shows the port options
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationHttpsServer::showPortOptions (bool value) {
-  _showPort = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a https address:port
-////////////////////////////////////////////////////////////////////////////////
-
-AddressPort ApplicationHttpsServer::addPort (string const& name) {
-  AddressPort ap;
-
-  if (! ap.split(name)) {
-    LOGGER_ERROR << "unknown server:port definition '" << name << "'";
-  }
-  else {
-    _httpsAddressPorts.push_back(ap);
-  }
-
-  return ap;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the https server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildServer () {
-  return buildServer(_httpsAddressPorts);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the https server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpsServer* ApplicationHttpsServer::buildServer (vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    return 0;
-  }
-  else {
-    return buildHttpsServer(ports);
-  }
+HttpsServer* ApplicationHttpsServer::buildServer (const EndpointList* endpointList) {
+  return buildHttpsServer(endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,18 +142,13 @@ HttpsServer* ApplicationHttpsServer::buildServer (vector<AddressPort> const& por
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  if (_showPort) {
-    options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-      ("server.secure", &_httpsPorts, "listen port or address:port")
-    ;
-  }
-
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
-    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
+    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
     ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
+    ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
@@ -221,19 +161,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
-
-  // check keep alive
-  if (options.has("server.require-keep-alive")) {
-    _requireKeepAlive= true;
-  }
-
-
-  // add ports
-  for (vector<string>::const_iterator i = _httpsPorts.begin();  i != _httpsPorts.end();  ++i) {
-    addPort(*i);
-  }
-
-
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -305,7 +232,7 @@ void ApplicationHttpsServer::stop () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const& ports) {
+HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpointList) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -335,18 +262,10 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (vector<AddressPort> const
   // create new server
   HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _authenticationRealm, auth, _sslContext);
 
-  // update close-without-keep-alive flag
-  if (_requireKeepAlive) {
-    httpsServer->setCloseWithoutKeepAlive(true);
-  }
-
   // keep a list of active server
   _httpsServers.push_back(httpsServer);
 
-  // open http ports
-  for (vector<AddressPort>::const_iterator i = ports.begin();  i != ports.end();  ++i) {
-    httpsServer->addPort(i->_address, i->_port, _applicationScheduler->addressReuseAllowed());
-  }
+  httpsServer->addEndpointList(endpointList);
 
   return httpsServer;
 }
@@ -375,7 +294,15 @@ bool ApplicationHttpsServer::createSslContext () {
     return true;
   }
 
-
+  // validate protocol
+  if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
+    LOGGER_ERROR << "invalid SSL protocol version specified.";
+    LOGGER_INFO << "please use a valid value for --server.ssl-protocol.";
+    return false;
+  }
+    
+  LOGGER_INFO << "using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'";
+  
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
@@ -392,6 +319,14 @@ bool ApplicationHttpsServer::createSslContext () {
   SSL_CTX_set_options(_sslContext, _sslOptions);
   LOGGER_INFO << "using SSL options: " << _sslOptions;
 
+  if (_sslCipherList.size() > 0) {
+    LOGGER_INFO << "using SSL cipher-list '" << _sslCipherList << "'";
+    if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
+      LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
+      LOGGER_ERROR << lastSSLError();
+      return false;
+    }
+  }
 
   // set ssl context
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");

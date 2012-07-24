@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief address and port
+/// @brief simple client connection
 ///
 /// @file
 ///
@@ -21,41 +21,49 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AddressPort.h"
-
-#include "Basics/StringUtils.h"
+#include "ClientConnection.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::httpclient;
+using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
+/// @addtogroup httpclient
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty address / port structure
+/// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-AddressPort::AddressPort ()
-  : _address("127.0.0.1"),
-    _port(0) {
+ClientConnection::ClientConnection (Endpoint* endpoint,
+                                    double requestTimeout,
+                                    double connectTimeout,
+                                    size_t connectRetries) :
+  _endpoint(endpoint),
+  _requestTimeout(requestTimeout),
+  _connectTimeout(connectTimeout),
+  _connectRetries(connectRetries),
+  _numConnectRetries(0),
+  _isConnected(false) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an IP4 or IP6 address / port structure
+/// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-AddressPort::AddressPort (string const& definition) {
-  split(definition);
+ClientConnection::~ClientConnection () {
+  disconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,60 +75,72 @@ AddressPort::AddressPort (string const& definition) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
+/// @addtogroup httpclient
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AddressPort::operator== (AddressPort const &that) {
-  return _address == that._address && _port == that._port;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits an address
-////////////////////////////////////////////////////////////////////////////////
+/// @brief connect
+////////////////////////////////////////////////////////////////////////////////      
 
-bool AddressPort::split (string const& definition) {
-  if (definition.empty()) {
-    return false;
-  }
-      
-  if (definition[0] == '[') {
+bool ClientConnection::connect () {
+  disconnect();
 
-    // ipv6 address
-    size_t find = definition.find("]:", 1);
-        
-    if (find != string::npos && find + 2 < definition.size()) {
-      _address = definition.substr(1, find-1);
-      _port = StringUtils::uint32(definition.substr(find+2));
-
-      return true;
-    }
-  }
-
-  int n = StringUtils::numEntries(definition, ":");
-
-  if (n == 1) {
-    _address = "";
-    _port = StringUtils::uint32(definition);
-
-    return true;
-  }
-  else if (n == 2) {
-    _address = StringUtils::entry(1, definition, ":");
-    _port = StringUtils::int32(StringUtils::entry(2, definition, ":"));
-
-    return true;
+  if (_numConnectRetries < _connectRetries + 1) {
+    _numConnectRetries++;
   }
   else {
     return false;
   }
+
+  connectSocket();
+  _isConnected = _endpoint->isConnected();
+
+  if (!_isConnected) {
+    return false;
+  }
+
+  return true;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnect
+////////////////////////////////////////////////////////////////////////////////      
+
+void ClientConnection::disconnect () {
+  if (isConnected()) {
+    _endpoint->disconnect();
+    _isConnected = false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send data to the endpoint
+////////////////////////////////////////////////////////////////////////////////      
+
+bool ClientConnection::handleWrite (const double timeout, void* buffer, size_t length, size_t* bytesWritten) {
+  *bytesWritten = 0;
+
+  if (prepare(timeout, true)) {
+    return write(buffer, length, bytesWritten);
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read data from endpoint
+////////////////////////////////////////////////////////////////////////////////      
+    
+bool ClientConnection::handleRead (double timeout, StringBuffer& buffer) {
+  if (prepare(timeout, false)) {
+    return read(buffer);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

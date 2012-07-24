@@ -1,28 +1,156 @@
-.jediTextarea textarea {
-  border: solid 1px #525252; 
-  background-color: #F3F1EE; 
-  resize: vertical;  
-  -webkit-border-radius: 2px !important;
-  -moz-border-radius: 2px !important;
-  border-radius: 2px !important;
+#requestChoices label {
+  width: 100% !important; 
+} 
+
+.statDisabled {
+  color: #C0C0C0;  
 }
 
-.jediTextarea button {
-  color: red !important;  
-  background: #e3e3e3 !important;
-  border: 1px solid #bbb !important;
-  -webkit-border-radius: 3px !important;
-  -moz-border-radius: 3px !important;
-  border-radius: 3px !important;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  box-shadow: inset 0 0 1px 1px #f6f6f6 !important; 
-  color: #333 !important;
-  font: 12px "helvetica neue", helvetica, arial, sans-serif !important;
-  text-align: center !important; 
-  text-shadow: 0 1px 0 #fff !important;
-  width: 50% !important; 
-  height: 20px !important; 
+.statEnabled {
+  color: black; 
+}
+
+#btnSaveExtraOptions {
+  margin-top: -84px;
+}
+
+#btnSave, #btnAddNewStat {
+  font-size: 1.1em; 
+  margin:0px; 
+  height: 25px !important; 
+}
+
+.ItemActionButtons{}
+
+.ItemActionButtons .SaveExtraOptions  {
+  display: none; 
+  list-style-type: none; 
+  padding: 5px; 
+  margin: 0; 
+  border: 1px solid #DCDCDC; 
+  background-color: #fff;  
+  z-index: 999; 
+  position: absolute;
+}
+
+.ItemActionButtons .SaveExtraOptions li {
+  padding: 5px 3px 5px 3px; 
+  margin: 0; 
+  width: 150px; 
+  border: 1px solid #fff;
+}
+
+.ItemActionButtons .SaveExtraOptions li:hover {
+  cursor: pointer;
+  background-color: #DCDCDC;
+}
+
+.ItemActionButtons .SaveExtraOptions li a {
+  text-transform: none;
+}
+
+.resizable, .draggable {
+  min-width: 200px; 
+  max-width: 100%; 
+  position:fixed !important; 
+  box-shadow: 5px 5px 5px #888;
+}
+
+.placeholderBox {
+  margin-left: 7px; 
+  margin-right: 7px; 
+  margin-top: 10px;   
+  font-size: 0.8em; 
+  height: 150px; 
+}
+
+.queryDiv {
+  height:20px; 
+  background-color: #525252;
+  color: white;
+  font-size: 0.8em;
+  padding-left: 5px; 
+  padding-top: 3px;    
+}
+
+.statsHeader {
+  font-size:0.8em; 
+  color: white;
+  padding-left: 5px;  
+}
+
+.statsClose {
+  font-size:0.8em; 
+  float: right; 
+  color: white;
+  padding-right: 5px;
+  cursor: pointer;
+}
+
+#sortable {   
+  list-style-type: none; 
+  margin: 0; 
+  padding: 0; 
+}
+
+#sortable li { 
+  float: left;
+  margin-top: 18px; 
+  margin-left: -7px;   
+  margin-right: 17px;
+  padding-bottom: 5px;  
+  padding-right: 5px;  
+  padding-left: 5px;  
+  text-align: left; 
+  width: 500px; 
+  background-color: #F3F1EE;
+  border: solid 1px #525252; 
+}
+
+.statsBoxes {
+  background-color: #F3F1EE;
+}
+
+.legend table {
+  top: 0px !important; 
+  bottom: 0px !important; 
+}
+
+.greydiv{
+  padding-top: 2px; 
+  margin-left: -5px;  
+  margin-right: -5px;  
+  height: 22px; 
+  background-color: #525252; 
+}
+
+#whitediv {
+  height: 10px; 
+  background-color: white; 
+}
+
+.ui-tooltip-content {
+  font-size: 0.7em !important;
+  font-weight:normal !important;
+  background-color: #525252; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+}
+
+.radioFormat {
+  height:26px !important;
+  margin-top: -2px; 
+}
+
+.radioFormat .ui-state-active {
+  background-color: #9EAF5A !important;
+  font-weight: normal;
+}
+
+.radioFormat .ui-state-default {
+  color: #555555;
+  font-weight: normal;
 }
 
 .cuttedContent, .prettify ul li, .writeable a {
@@ -422,6 +550,7 @@ form {
 
 
 #queryOutput {
+  margin-bottom: 5px; 
   height:35%; 
   overflow-y: auto; 
   border: 1px solid black;
@@ -525,9 +654,6 @@ form {
   height:75px;
   border:#999 1px solid;
   font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
-  transition: all 0.25s ease-in-out;
-  -webkit-transition: all 0.25s ease-in-out;
-  -moz-transition: all 0.25s ease-in-out;
   box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
@@ -757,7 +883,7 @@ form {
 }
 
 #queryForm {
-  margin-top: -3px;     
+  margin-top: -5px;     
 }
 
 #queryView {

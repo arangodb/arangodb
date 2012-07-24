@@ -203,16 +203,16 @@
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./bin/arangod --server.http-port 12345 /tmp/vocbase}
+/// @LIT{./arangod --server.endpoint tcp://127.0.0.1:12345 /tmp/vocbase}
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
-/// bound to any address. You should see the startup messages
+/// bound to IP address 127.0.0.1. You should see the startup messages
 ///
 /// @verbinclude startup1
 ///
 /// Use your favorite browser to access the URL
 ///
-/// @LIT{http://localhost:12345/version}
+/// @LIT{http://127.0.0.1:12345/version}
 ///
 /// This should produce a JSON object like
 ///

@@ -208,7 +208,8 @@ void DispatcherThread::run () {
 
       // detached jobs
       if (status == Job::JOB_DETACH) {
-        job->setDispatcherThread(0);
+        // we must do absolutely nothing with dispatched jobs here because they might be
+        // killed asynchronously and this is not under our control
       }
 
       // normal jobs

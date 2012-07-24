@@ -41,6 +41,8 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "Rest/Endpoint.h"
+#include "SimpleHttpClient/HttpClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -51,6 +53,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace triagens::v8client;
 using namespace std;
 
@@ -67,19 +70,19 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection::V8ClientConnection (const std::string& hostname,
-                                        int port,
+V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         double requestTimeout,
                                         size_t retries,
                                         double connectionTimeout,
                                         bool warn)
-  : _connected(false),
+  : _connection(new HttpClientConnection(endpoint, requestTimeout, connectionTimeout, retries)),
+    _connected(false),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-      
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+    
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -129,6 +132,10 @@ V8ClientConnection::~V8ClientConnection () {
   if (_client) {
     delete _client;
   }
+  
+  if (_connection) {
+    delete _connection;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,8 +156,9 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version and build number of the arango server
@@ -176,22 +184,6 @@ const std::string& V8ClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& V8ClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int V8ClientConnection::getPort () {
-  return _client->getPort();
-}
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////

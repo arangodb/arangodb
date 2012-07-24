@@ -42,7 +42,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
-#include "Rest/AddressPort.h"
+#include "Rest/Endpoint.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -83,8 +83,6 @@ using namespace triagens::arango;
 /// @brief connection default values
 ////////////////////////////////////////////////////////////////////////////////
 
-static string const  DEFAULT_SERVER_NAME = "127.0.0.1";
-static int const     DEFAULT_SERVER_PORT = 8529;
 static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
 static size_t const  DEFAULT_RETRIES = 5;
 static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
@@ -122,10 +120,16 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static Endpoint* _endpoint = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* ClientConnection = 0;
+V8ClientConnection* _clientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief object template for the initial connection
@@ -188,22 +192,10 @@ static bool Quiet = false;
 static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server address and port
+/// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ServerAddressPort = DEFAULT_SERVER_NAME + ":" + StringUtils::itoa(DEFAULT_SERVER_PORT);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server address
-////////////////////////////////////////////////////////////////////////////////
-
-static string ServerAddress = DEFAULT_SERVER_NAME;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server port
-////////////////////////////////////////////////////////////////////////////////
-
-static int ServerPort = DEFAULT_SERVER_PORT;
+static string EndpointString;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -400,7 +392,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -462,7 +454,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
   
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
   
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -550,8 +542,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("pretty-print", "pretty print values")          
     ("quiet,s", "no banner")
     ("request-timeout", &RequestTimeout, "request timeout in seconds")
-    ("server", &ServerAddressPort, "server address and port, use 'none' to start without a server")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("server.endpoint", &EndpointString, "endpoint to connect to, use 'none' to start without a server")
     ("use-pager", "use pager")
     (hidden, true)
   ;
@@ -639,7 +631,7 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 
 static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> , void* parameter) {
   V8ClientConnection* client = (V8ClientConnection*) parameter;
-  delete(client);
+  delete client;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,38 +655,37 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
 static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  string server = ServerAddress;
-  int port = ServerPort;
   size_t retries = DEFAULT_RETRIES;
   
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
-    
-    AddressPort ap;
-
-    if (! ap.split(definition)) {
-      string errorMessage = "error in '" + definition + "'";
-      return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
-    }    
-
-    if (! ap._address.empty()) {
-      server = ap._address;
+  
+    if (_endpoint != 0) {
+      // close previous endpoint
+      delete _endpoint;
     }
 
-    port = ap._port;
+    _endpoint = Endpoint::clientFactory(definition);
+    if (_endpoint == 0) { 
+      string errorMessage = "error in '" + definition + "'";
+      return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
+    }
   }
+
+  if (_endpoint == 0) { 
+    return v8::Undefined();
+  }   
   
-  V8ClientConnection* connection = new V8ClientConnection(server, port, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  assert(_endpoint); 
+
+  V8ClientConnection* connection = new V8ClientConnection(_endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
   
   if (connection->isConnected()) {
-    printf("Connected to Arango DB %s:%d Version %s\n", 
-            connection->getHostname().c_str(), 
-            connection->getPort(), 
-            connection->getVersion().c_str());    
+    cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << connection->getVersion() << endl; 
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
-    delete(connection);
+    delete connection;
     return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));
   }
 
@@ -907,10 +898,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object ArangoConnection:" 
-                + connection->getHostname()
-                + ":"
-                + triagens::basics::StringUtils::itoa(connection->getPort());
+  string result = "[object ArangoConnection:" + _endpoint->getSpecification();
           
   if (connection->isConnected()) {
     result += ","
@@ -1007,11 +995,11 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   console->close();
 
-  if (Quiet) {
-    printf("\n");
-  }
-  else {
-    printf("\nBye Bye! Auf Wiedersehen!\n");
+  delete console;
+
+  cout << endl;
+  if (! Quiet) {
+    cout << endl << "Bye Bye! Auf Wiedersehen!" << endl;
   }
 }
 
@@ -1190,6 +1178,8 @@ int main (int argc, char* argv[]) {
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
+  
+  EndpointString = Endpoint::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options
@@ -1213,7 +1203,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (ServerAddressPort != "none");
+  bool useServer = (EndpointString != "none");
 
   if (!JsLint.empty()) {
     // if we are in jslint mode, we will not need the server at all
@@ -1221,24 +1211,17 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
-    AddressPort ap;
+    _endpoint = Endpoint::clientFactory(EndpointString);
 
-    if (! ap.split(ServerAddressPort)) {
-      if (! ServerAddress.empty()) {
-        printf("Could not split %s.\n", ServerAddress.c_str());
-        exit(EXIT_FAILURE);
-      }
+    if (_endpoint == 0) {
+      printf("Invalid value for --server.endpoint ('%s')\n", EndpointString.c_str());
+      exit(EXIT_FAILURE);
     }
 
-    if (! ap._address.empty()) {
-      ServerAddress = ap._address;
-    }
-
-    ServerPort = ap._port;
+    assert(_endpoint);
     
-    ClientConnection = new V8ClientConnection(
-      ServerAddress, 
-      ServerPort, 
+    _clientConnection = new V8ClientConnection(
+      _endpoint,
       (double) RequestTimeout,
       DEFAULT_RETRIES, 
       (double) ConnectTimeout,
@@ -1309,7 +1292,7 @@ int main (int argc, char* argv[]) {
 
     // add the client connection to the context:
     context->Global()->Set(v8::String::New("arango"), 
-                           wrapV8ClientConnection(ClientConnection),
+                           wrapV8ClientConnection(_clientConnection),
                            v8::ReadOnly);
   }
     
@@ -1351,42 +1334,38 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
 
-    printf("\n");
-    printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
-    printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
+    cout << "Using Google V8 " << TRI_V8_VERSION << " JavaScript engine." << endl;
 #else
-    printf("Using Google V8 JavaScript engine.\n\n");
+    cout << "Using Google V8 JavaScript engine." << endl << endl;
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
 #endif
 
-    printf("\n");
+    cout << endl;
 
     // set up output
     if (UsePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+      cout << "Using pager '" << OutputPager << "' for output buffering." << endl;
     }
 
     if (PrettyPrint) {
-      printf("Pretty print values.\n");    
+      cout << "Pretty print values." << endl;    
     }
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
+      if (_clientConnection->isConnected()) {
         if (! Quiet) {
-          printf("Connected to Arango DB %s:%d Version %s\n", 
-                 ClientConnection->getHostname().c_str(), 
-                 ClientConnection->getPort(), 
-                 ClientConnection->getVersion().c_str());
+          cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << _clientConnection->getVersion() << endl; 
         }
       }
       else {
-        printf("Could not connect to server %s:%d\n", ServerAddress.c_str(), ServerPort);
-        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+        cerr << "Could not connect to endpoint '" << EndpointString << "'" << endl;
+        cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
       }
     }
   }

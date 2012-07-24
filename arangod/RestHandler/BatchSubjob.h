@@ -30,9 +30,12 @@
 #define TRIAGENS_REST_HANDLER_BATCH_SUBJOB_H 1
 
 #include "GeneralServer/GeneralServerJob.h"
+#include "RestHandler/BatchJob.h"
+#include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class GeneralServerJob
+// --SECTION--                                                 class BatchSubjob
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +50,6 @@ namespace triagens {
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename H>
     class BatchSubjob : public GeneralServerJob<HttpServer, HttpHandler> {
       private:
         BatchSubjob (BatchSubjob const&);
@@ -72,7 +74,7 @@ namespace triagens {
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        BatchSubjob (BatchJob*, HttpServer* server, HttpHandler* handler);
+        BatchSubjob (BatchJob*, HttpServer*, HttpHandler*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a server job

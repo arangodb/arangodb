@@ -27,6 +27,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
+	lib/Basics/ssl-helper.cpp \
 	lib/BasicsC/associative-multi.c \
 	lib/BasicsC/associative.c \
 	lib/BasicsC/conversions.c \
@@ -67,8 +68,9 @@ lib_libarango_a_SOURCES = \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp \
-	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
+	lib/Rest/EndpointList.cpp \
+	lib/Rest/Endpoint.cpp \
 	lib/Rest/Handler.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp \
@@ -120,6 +122,8 @@ endif
 ################################################################################
 
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/HttpClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 

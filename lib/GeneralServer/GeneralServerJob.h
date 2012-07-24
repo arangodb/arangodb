@@ -35,6 +35,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Rest/Handler.h"
 #include "Scheduler/AsyncTask.h"
 
@@ -199,12 +200,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void cleanup () {
+          bool abandon;
+
           {
             MUTEX_LOCKER(_abandonLock);
+            abandon = _abandon;
+          }
 
-            if (! _abandon) {
-              _server->jobDone(this);
-            }
+          if (! abandon) {
+            _server->jobDone(this);
           }
 
           delete this;
