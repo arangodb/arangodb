@@ -354,10 +354,10 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
-	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
+	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
+	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
+	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -418,6 +418,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/StringUtils.$(OBJEXT) lib/Basics/Thread.$(OBJEXT) \
 	lib/Basics/Timing.$(OBJEXT) lib/Basics/WriteLocker.$(OBJEXT) \
 	lib/Basics/WriteUnlocker.$(OBJEXT) \
+	lib/Basics/ssl-helper.$(OBJEXT) \
 	lib/BasicsC/associative-multi.$(OBJEXT) \
 	lib/BasicsC/associative.$(OBJEXT) \
 	lib/BasicsC/conversions.$(OBJEXT) lib/BasicsC/csv.$(OBJEXT) \
@@ -1272,10 +1273,10 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
-	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
+	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
+	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
+	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -1771,6 +1772,8 @@ lib/Basics/Timing.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 lib/Basics/WriteLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/WriteUnlocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/ssl-helper.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/$(am__dirstamp):
 	@$(MKDIR_P) lib/BasicsC
@@ -2901,6 +2904,7 @@ mostlyclean-compile:
 	-rm -f lib/Basics/Timing.$(OBJEXT)
 	-rm -f lib/Basics/WriteLocker.$(OBJEXT)
 	-rm -f lib/Basics/WriteUnlocker.$(OBJEXT)
+	-rm -f lib/Basics/ssl-helper.$(OBJEXT)
 	-rm -f lib/BasicsC/associative-multi.$(OBJEXT)
 	-rm -f lib/BasicsC/associative.$(OBJEXT)
 	-rm -f lib/BasicsC/conversions.$(OBJEXT)
@@ -3165,6 +3169,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Timing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteUnlocker.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ssl-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/associative-multi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/associative.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/conversions.Po@am__quote@

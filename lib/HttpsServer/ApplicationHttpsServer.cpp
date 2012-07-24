@@ -30,6 +30,7 @@
 #include <openssl/err.h>
 
 #include "Basics/delete_object.h"
+#include "Basics/ssl-helper.h"
 #include "Basics/Random.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -41,22 +42,6 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-namespace {
-  string lastSSLError () {
-    char buf[122];
-    memset(buf, 0, sizeof(buf));
-
-    unsigned long err = ERR_get_error();
-    ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-    return string(buf);
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
