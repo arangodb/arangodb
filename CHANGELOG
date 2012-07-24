@@ -1,25 +1,46 @@
 v1.1.x (XXXX-XX-XX)
 -------------------
-* removed startup option "--server.admin-port". We will soon allow opening
-  multiple ports/endpoints anyway, and the distinction between admin and "other"
-  ports/endpoints will be made using privileges
+* added startup option "--server.ssl-cipher-list" to determine which ciphers to
+  use in SSL context. also added SSL_OP_CIPHER_SERVER_PREFERENCE to SSL default 
+  options so ciphers are tried in server and not in client order
+
+* changed default SSL protocol to TLSv1 instead of SSLv2
+
+* changed log-level of SSL-related messages
+
+* added SSL connections if server is compiled with OpenSSL support. Use --help-ssl
+
+* removed startup option "--server.admin-port". The endpoints allow opening
+  multiple ports/connection endpoints anyway, and the distinction between admin 
+  and "other" endpoints can be emulated later using privileges
 
 * removed startup options "--server.port" and "--server.http-port" for arangod. 
-  These options have been replaced by the new "--server.endpoint" parameter.
+  These options have been replaced by the new "--server.endpoint" parameter
   
 * removed startup option "--server" for arangosh and arangoimp.
-  These options have been replaced by the new "--server.endpoint" parameter.
+  These options have been replaced by the new "--server.endpoint" parameter
 
 * Added "--server.endpoint" option to arangod, arangosh, and arangoimp.
-  For arangod, this option allows specifying the bind endpoints for the server.
+  For arangod, this option allows specifying the bind endpoints for the server
   The server can be bound to one or multiple endpoints at once. For arangosh
   and arangoimp, the option specifies the server endpoint to connect to.
   The following endpoint syntax is currently supported:
-  - tcp://host:port (IPv4)
-  - tcp://host (IPv4 address, with default port 8529)
-  - tcp://[host]:port (IPv6)
-  - tcp://[host] (IPv6 address, with default port 8529)
-  - unix://path/to/socket (UNIX socket)
+  - tcp://host:port (HTTP over IPv4)
+  - http@tcp://host:port (HTTP over IPv4)
+  - tcp://host (HTTP over IPv4, using default port 8529)
+  - http@tcp://host (HTTP over IPv4, using default port 8529)
+  - tcp://[host]:port (HTTP over IPv6)
+  - http@tcp://[host]:port (HTTP over IPv6)
+  - tcp://[host] (IPv6 address, using default port 8529)
+  - http@tcp://[host] (IPv6 address, using default port 8529)
+  - unix://path/to/socket (HTTP over UNIX socket)
+  - http@unix://path/to/socket (HTTP over UNIX socket)
+  The server (arangod) additionally supports the following endpoint types:
+  - https@tcp://host:port (HTTPS over IPv4)
+  - https@tcp://host (HTTP over IPv4, using default port 8529)
+  - https@tcp://[host]:port (HTTPS over IPv6)
+  - https@tcp://[host] (IPv6 address, using default port 8529)
+  - https@unix://path/to/socket (HTTPS over UNIX socket)
 
 * removed startup options "--server.require-keep-alive" and 
   "--server.secure-require-keep-alive". 
