@@ -266,6 +266,10 @@ void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
 
   // create a https task
   SocketTask* task = new HttpsAsyncCommTask(this, socket, info, sbio);
+          
+  GENERAL_SERVER_LOCK(&this->_commTasksLock);
+  this->_commTasks.insert(dynamic_cast<GeneralCommTask<HttpServer, HttpHandlerFactory>*>(task));
+  GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
 
   // and register it
   _scheduler->registerTask(task);
