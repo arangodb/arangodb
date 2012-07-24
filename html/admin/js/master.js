@@ -92,10 +92,36 @@ $("#documents_last").live('click', function () {
   createLastPagination("#documentsTable"); 
 });
 
+///////////////////////////////////////////////////////////////////////////////
+//statistics live click buttons close 
+///////////////////////////////////////////////////////////////////////////////
 
 $(".statsClose").live('click', function () {
   var id = $(this).closest("li").attr("id"); 
-  $("#"+id).hide();  
+  $("#"+id).fadeOut();  
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistic settings 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsSettings").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  $(chartID).hide(); 
+  $(settingsID).fadeIn(); 
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistics charts
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsCharts").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  updateGraphs(false); 
+  $(settingsID).hide(); 
+  $(chartID).fadeIn(); 
 });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -579,17 +605,49 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
+      var connectionsPos = localStorage.getItem("#connectionsLi");
+      var requestsPos = localStorage.getItem("#requestsLi");
+      var parsedConPos = JSON.parse(connectionsPos); 
+      var parsedReqPos = JSON.parse(requestsPos); 
+      if ( parsedConPos != null && parsedReqPos != null ) {
+        $('#connectionsLi').css('top', parsedConPos[0]);
+        $('#connectionsLi').css('left', parsedConPos[1]);
+        $('#connectionsLi').css('width', parsedConPos[2]);
+        $('#requestsLi').css('top', parsedReqPos[0]);
+        $('#requestsLi').css('left', parsedReqPos[1]);
+        $('#requestsLi').css('width', parsedReqPos[2]);
+      }
+
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
       createnav ("Statistics"); 
-      $( "#sortable" ).sortable();
-      $( "#sortable" ).disableSelection();
-      $( ".resizable" ).resizable({handles: 'e'}); 
+      $( ".resizable" ).resizable({
+        handles: 'e, w',
+        stop: function (event, ui) {
+          var connectionspos = $("#connectionsLi").position();  
+          var conwidth = $("#connectionsLi").width();  
+          var requestspos = $("#requestsLi").position(); 
+          var reqwidth = $("#requestsLi").width(); 
+          localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth]));
+          localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth]));
+        } 
+      }); 
+      $( ".draggable" ).draggable({
+        containment: "#centerView",  
+        stop: function (event, ui) {
+          var connectionspos = $("#connectionsLi").position();  
+          var conwidth = $("#connectionsLi").width();  
+          var requestspos = $("#requestsLi").position(); 
+          var reqwidth = $("#requestsLi").width(); 
+          localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth]));
+          localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth]));
+        }
+      }); 
       //TODO
       $( "#statisticRadioDiv" ).buttonset();
-      var name = $('input[name=statsRadio]:checked', '#statsRadio').val();
-      drawStatistics(name); 
+      $( "#connectionsGranularityDiv" ).buttonset();
+      $( "#requestsGranularityDiv" ).buttonset();
       updateGraphs(); 
     }
 
@@ -2450,26 +2508,34 @@ function validate(evt) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// live click statistic radio buttons 
+/// live click connections radio buttons 
 ///////////////////////////////////////////////////////////////////////////////
-
-$('#radio1').live('click', function () {
-  drawStatistics("minutes");  
+$('#connectionsMinutes').live('click', function () {
+  drawConnections("minutes");  
 });
-
-$('#radio2').live('click', function () {
-  drawStatistics("hours");  
+$('#connectionsHours').live('click', function () {
+  drawConnections("hours");  
 });
-
-$('#radio3').live('click', function () {
-  drawStatistics("days");  
+$('#connectionsDays').live('click', function () {
+  drawConnections("days");  
 });
-
+///////////////////////////////////////////////////////////////////////////////
+/// live click requests radio buttons 
+///////////////////////////////////////////////////////////////////////////////
+$('#requestsMinutes').live('click', function () {
+  drawRequests("minutes");  
+});
+$('#requestsHours').live('click', function () {
+  drawRequests("hours");  
+});
+$('#requestsDays').live('click', function () {
+  drawRequests("days");  
+});
 ///////////////////////////////////////////////////////////////////////////////
 /// draw hours statistics 
 ///////////////////////////////////////////////////////////////////////////////
 
-function drawStatistics (granularity) {
+function drawConnections (granularity) {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// draw connections (granularity) 
@@ -2568,11 +2634,13 @@ function drawStatistics (granularity) {
     error: function(data) {
     }
   });
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// draw requests (granularity) 
 ///////////////////////////////////////////////////////////////////////////////
 
+function drawRequests (granularity) {
   var arraySent = [];
   var arrayReceived = [];
   $.ajax({
@@ -2619,8 +2687,21 @@ function drawStatistics (granularity) {
           }
         };
 
-        $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+        var sent = $('input:checkbox[name=bytessent]:checked').val(); 
+        var received = $('input:checkbox[name=bytesreceived]:checked').val(); 
 
+        if ( sent == "on" && received == "on" ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+        }
+        else if ( sent == "on" && received == undefined ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}], options);
+        }   
+        else if ( sent == undefined && received == "on" ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes received", data: arrayReceived}], options);
+        }
+        else if ( sent == undefined && received == undefined ) {
+          $.plot($("#placeholderBytesSent"), [], options);
+        }
 
         $("#placeholderBytesSent").qtip({
           prerender: true,
@@ -2676,13 +2757,17 @@ function drawStatistics (granularity) {
   });
 }
 
-function updateGraphs() {
-  var name = $('input[name=statsRadio]:checked', '#statsRadio').val();
-  drawStatistics(name); 
-  setTimeout(updateGraphs, 60000);
+function updateGraphs(timeout) {
+  var connections = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
+  var requests = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
+  drawConnections(connections); 
+  drawRequests(requests); 
+  if (timeout == true) {
+    setTimeout(updateGraphs, 60000);
+  }
+  else {
+  }
 }
-
-
 
 $(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
 $(document).delegate('#btnSaveExtraOptions', 'mouseenter', function () { ItemActionButtons.isHoverMenu = true; });
@@ -2735,10 +2820,10 @@ var ItemActionButtons = {
     $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
   },
   ShowConnectionsStats: function () {
-    $("#connectionsLi").show();  
+    $("#connectionsLi").fadeIn();  
   },
   ShowRequestsStats: function () { 
-    $("#requestsLi").show();  
+    $("#requestsLi").fadeIn();  
   }
 }
 
