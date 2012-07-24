@@ -295,7 +295,7 @@ void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("ruby.gc-interval", &_gcInterval, "Ruby garbage collection interval (each x requests)")
   ;
 
-  options["DIRECTORY Options:help-admin"]
+  options["RUBY Options:help-admin"]
     ("ruby.action-directory", &_actionPath, "path to the Ruby action directory")
     ("ruby.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &_startupPath, "path to the directory containing alternate Ruby startup scripts")

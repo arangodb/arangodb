@@ -62,13 +62,13 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/ArangoHttpServer.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
+#include "VocBase/auth.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -205,6 +205,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+    _defaultWaitForSync(false),
     _vocbase(0) {
   char* p;
 
@@ -371,7 +372,11 @@ void ArangoServer::buildApplicationServer () {
   // a http server
   // .............................................................................
 
-  _applicationHttpServer = new ApplicationHttpServer(_applicationScheduler, _applicationDispatcher);
+  _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
+                                                     _applicationScheduler,
+                                                     _applicationDispatcher,
+                                                     "arangodb",
+                                                     TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
@@ -382,8 +387,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -394,9 +397,16 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
-    ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
+    ("supervisor", "starts a supervisor and runs as daemon")
     ("working directory", &_workingDirectory, "working directory in daemon mode")
+  ;
+
+  additional["JAVASCRIPT Options:help-admin"]
+    ("javascript.script", &_scriptFile, "do not start as server, run script instead")
+    ("javascript.script-parameter", &_scriptParameters, "script parameter")
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -424,6 +434,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-admin"]
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
+    ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
   ;
 
   additional["DATABASE Options:help-devel"]
@@ -481,12 +492,16 @@ void ArangoServer::buildApplicationServer () {
     int res = executeConsole(MODE_CONSOLE);
     exit(res);
   }
-  else if (! _unitTests.empty()) {
+  else if (_applicationServer->programOptions().has("javascript.unit-tests")) {
     int res = executeConsole(MODE_UNITTESTS);
     exit(res);
   }
   else if (_applicationServer->programOptions().has("jslint")) {
     int res = executeConsole(MODE_JSLINT);
+    exit(res);
+  }
+  else if (_applicationServer->programOptions().has("javascript.script")) {
+    int res = executeConsole(MODE_SCRIPT);
     exit(res);
   }
 
@@ -589,8 +604,6 @@ int ArangoServer::startupServer () {
   // create a client http server and http handler factory
   // .............................................................................
 
-  Scheduler* scheduler = _applicationScheduler->scheduler();
-
   // we pass the options be reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
@@ -604,7 +617,7 @@ int ArangoServer::startupServer () {
     ports.push_back(AddressPort(_httpPort));
 
     // create the server
-    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), ports);
+    _httpServer = _applicationHttpServer->buildServer(ports);
 
     // create the handlers
     httpOptions._contexts.insert("user");
@@ -641,7 +654,7 @@ int ArangoServer::startupServer () {
     adminPorts.push_back(AddressPort(_adminPort));
 
     // create the server
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(adminPorts);
 
     // create the handlers
     adminOptions._contexts.insert("api");
@@ -780,7 +793,12 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
     v8::HandleScope globalScope;
 
     // run the shell
-    printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    if (mode != MODE_SCRIPT) {
+      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+    }
+    else {
+      LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
+    }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
@@ -858,8 +876,61 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
+      case MODE_SCRIPT: {
+        v8::TryCatch tryCatch;
+
+        for (size_t i = 0;  i < _scriptFile.size();  ++i) {
+          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+
+          if (! r) {
+            LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
+            ok = false;
+            break;
+          }
+        }
+
+        if (ok) {
+
+          // parameter array
+          v8::Handle<v8::Array> params = v8::Array::New();
+
+          params->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
+
+          for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+            params->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
+          }
+
+          // call main
+          v8::Handle<v8::String> mainFuncName = v8::String::New("main");
+          v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
+
+          if (main.IsEmpty() || main->IsUndefined()) {
+            LOGGER_FATAL << "no main function defined, giving up";
+            ok = false;
+          }
+          else {
+            v8::Handle<v8::Value> args[] = { params };
+
+            v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+            if (tryCatch.HasCaught()) {
+              TRI_LogV8Exception(&tryCatch);
+              ok = false;
+            }
+            else {
+              ok = TRI_ObjectToDouble(result) == 0;
+            }
+          }
+        }
+
+        break;
+      }
+
+      // .............................................................................
+      // run console
+      // .............................................................................
+
       case MODE_CONSOLE: {
-        // run a shell
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);
@@ -1116,6 +1187,7 @@ void ArangoServer::openDatabase () {
   _vocbase->_removeOnDrop = _removeOnDrop;
   _vocbase->_removeOnCompacted = _removeOnCompacted;
   _vocbase->_defaultMaximalSize = _defaultMaximalSize;
+  _vocbase->_defaultWaitForSync = _defaultWaitForSync;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

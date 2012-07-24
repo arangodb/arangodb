@@ -51,11 +51,18 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationScheduler,
-                                              ApplicationDispatcher* applicationDispatcher)
+ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServer,
+                                              ApplicationScheduler* applicationScheduler,
+                                              ApplicationDispatcher* applicationDispatcher,
+                                              std::string const& authenticationRealm,
+                                              HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
+    _httpAuth(false),
     _showPort(true),
     _requireKeepAlive(false),
     _httpServers(),
@@ -171,6 +178,7 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
     ("server.require-keep-alive", "close connection, if keep-alive is missing")
+    ("server.http-auth", &_httpAuth, "use basic authentication")
   ;
 }
 
@@ -267,12 +275,17 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   // create new server
   if (httpServer == 0) {
     Dispatcher* dispatcher = 0;
+    HttpHandlerFactory::auth_fptr auth = 0;
 
     if (_applicationDispatcher != 0) {
       dispatcher = _applicationDispatcher->dispatcher();
     }
 
-    httpServer = new HttpServer(scheduler, dispatcher);
+    if (_httpAuth) {
+      auth = _checkAuthentication;
+    }
+
+    httpServer = new HttpServer(scheduler, dispatcher, _authenticationRealm, auth);
   }
 
   // update close-without-keep-alive flag

@@ -46,8 +46,12 @@ using namespace triagens::rest;
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
+HttpServer::HttpServer (Scheduler* scheduler,
+                        Dispatcher* dispatcher,
+                        std::string const authenticationRealm,
+                        auth_fptr checkAuthentication)
   : GeneralServerDispatcher<HttpServer, HttpHandlerFactory, HttpCommTask>(scheduler, dispatcher),
+    HttpHandlerFactory(authenticationRealm, checkAuthentication),
     _closeWithoutKeepAlive(false) {
 }
 

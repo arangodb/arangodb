@@ -251,27 +251,45 @@ bool HttpCommTask::processRead () {
     _bodyPosition = 0;
     _bodyLength = 0;
 
-    HttpHandler* handler = _server->createHandler(_request);
-    bool ok = false;
+    bool auth = _server->authenticateRequest(_request);
 
-    if (handler == 0) {
-      LOGGER_TRACE << "no handler is known, giving up";
+    // authenticated
+    if (auth) {
+      HttpHandler* handler = _server->createHandler(_request);
+      bool ok = false;
+
+      if (handler == 0) {
+        LOGGER_TRACE << "no handler is known, giving up";
+        delete _request;
+        _request = 0;
+
+        HttpResponse response(HttpResponse::NOT_FOUND);
+        handleResponse(&response);
+      }
+      else {
+        this->RequestStatisticsAgent::transfer(handler);
+
+        _request = 0;
+        ok = _server->handleRequest(this, handler);
+
+        if (! ok) {
+          HttpResponse response(HttpResponse::SERVER_ERROR);
+          handleResponse(&response);
+        }
+      }
+    }
+
+    // not authenticated
+    else {
+      string realm = "basic realm=\"" + _server->authenticationRealm(_request) + "\"";
+
       delete _request;
       _request = 0;
 
-      HttpResponse response(HttpResponse::NOT_FOUND);
+      HttpResponse response(HttpResponse::UNAUTHORIZED);
+      response.setHeader("www-authenticate", realm.c_str());
+
       handleResponse(&response);
-    }
-    else {
-      this->RequestStatisticsAgent::transfer(handler);
-
-      _request = 0;
-      ok = _server->handleRequest(this, handler);
-
-      if (! ok) {
-        HttpResponse response(HttpResponse::SERVER_ERROR);
-        handleResponse(&response);
-      }
     }
 
     return processRead();

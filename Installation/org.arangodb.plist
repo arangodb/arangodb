@@ -12,14 +12,8 @@
 	<array>
 		<string>@BINARY@</string>
 		<string>-c</string>
-		<string>@CONFIGDIR@/arangdb/arangod.conf</string>
+		<string>@CONFIGDIR@/arangod.conf</string>
 	</array>
-
-        <key>UserName</key>
-        <string>arango</string>
-
-        <key>GroupName</key>
-        <string>arango</string>
 
 	<key>RunAtLoad</key>
 	<true/>

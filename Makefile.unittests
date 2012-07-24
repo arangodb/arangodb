@@ -155,7 +155,7 @@ SHELL_SERVER = $(SHELL_COMMON)
 
 .PHONY: unittests-shell-server
 
-UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
 
 unittests-shell-server:
@@ -218,8 +218,8 @@ SHELL_SERVER_AHUACATL_EXTENDED = \
 
 .PHONY: unittests-shell-server-ahuacatl
 
-UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
-UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
+UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL))
+UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
 
 unittests-shell-server-ahuacatl:
 	@echo
@@ -246,7 +246,7 @@ SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 
-UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
 	$(MAKE) start-server PID=$(PID)
@@ -301,7 +301,7 @@ BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
 
 .PHONY:	unittests-bitarray-index
 
-UNITTESTS_SERVER_BITARRAY = $(addprefix --unit-tests ,$(BITARRAY_COMMON))
+UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
 
 unittests-bitarray-index:
 	@echo

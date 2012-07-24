@@ -32,6 +32,7 @@
 
 #include <openssl/ssl.h>
 
+#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/AddressPort.h"
 
 // -----------------------------------------------------------------------------
@@ -42,7 +43,6 @@ namespace triagens {
   namespace rest {
     class ApplicationScheduler;
     class ApplicationDispatcher;
-    class HttpHandlerFactory;
     class HttpsServer;
 
 // -----------------------------------------------------------------------------
@@ -82,7 +82,11 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationHttpsServer (ApplicationScheduler*, ApplicationDispatcher*);
+        ApplicationHttpsServer (ApplicationServer*,
+                                ApplicationScheduler*, 
+                                ApplicationDispatcher*,
+                                std::string const& authenticationRealm,
+                                HttpHandlerFactory::auth_fptr checkAuthentication);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -213,6 +217,12 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief application server
+////////////////////////////////////////////////////////////////////////////////
+
+        ApplicationServer* _applicationServer;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief application scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,6 +233,30 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ApplicationDispatcher* _applicationDispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authentication realm
+////////////////////////////////////////////////////////////////////////////////
+
+        string _authenticationRealm;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authentication callback
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpHandlerFactory::auth_fptr _checkAuthentication;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use basic http authentication
+///
+/// @CMDOPT{--server.https-auth @CA{flag}}
+///
+/// If @CA{flag} is @LIT{yes}, then the HTTP access is secured with "HTTP Basic
+/// Authentication". The user and sha256 of the password are stored in a
+/// collection @LIT{_users}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _httpsAuth;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief show port options

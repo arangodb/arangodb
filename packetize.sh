@@ -16,7 +16,7 @@ package_type=""
 product_name="arangodb"
 project_name="arangodb"
 runlevels="runlevel(035)"
-
+curl_version="curl -s -o - http://localhost:8529/_api/version"
 
 # name of the epm configuration file
 LIST="Installation/${project_name}.list"
@@ -36,7 +36,7 @@ prefix=/usr
 exec_prefix=${prefix}
 sbindir=${exec_prefix}/sbin
 bindir=${exec_prefix}/bin
-data_dir=${prefix}/var
+data_dir=/var
 static_dir=${prefix}/share
 vers_dir=arango-${arangodb_version}
 docdir=${prefix}/share/doc/voc/${vers_dir}
@@ -161,7 +161,6 @@ echo "Call mkepmlist to create a sublist"
       mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
 
-echo "Call mkepmlist to create a sublist"
   for dir in . css css/images media media/icons media/images js js/modules; do
     for typ in css html js png gif ico;  do
       FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
@@ -249,7 +248,156 @@ rm -f ${hudson_base}/${package_name} > /dev/null
 echo 
 echo "########################################################"
 echo "Copy package '${product_name}*.${package_type}' to '${package_name}'."
-echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}"
-cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${hudson_base}/${package_name}
+echo "    cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${sfolder_name}/${package_name}"
+cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${sfolder_name}/${package_name}
 echo "########################################################"
 echo 
+
+
+start_server=
+stop_server=
+install_package=
+remove_package=
+mount_install_package=
+unmount_install_package=
+
+case $TRI_OS_LONG in
+
+  Linux-openSUSE*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo rpm -i ${sfolder_name}/${package_name}"
+    remove_package="sudo rpm -e $product_name"
+
+    ;;
+
+  Linux-Debian*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
+    remove_package="sudo dpkg --purge $product_name"
+    ;;
+
+  Linux-CentOS-*)
+    start_server=""
+    stop_server=""
+
+    install_package="sudo rpm -i ${sfolder_name}/${package_name}"
+    remove_package="sudo rpm -e $product_name"
+    ;;
+
+  Linux-Ubuntu-*)
+    start_server="sudo /etc/init.d/arango start"
+    stop_server="sudo /etc/init.d/arango stop"
+
+    install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
+    remove_package="sudo dpkg --purge $product_name"
+    ;;
+
+  Darwin*)
+    start_server=""
+    stop_server="sudo launchctl unload /Library/LaunchDaemons/org.arangodb.plist"
+
+    install_package="sudo installer -pkg /Volumes/${product_name}/${product_name}.pkg -target / "
+    remove_package=""
+
+    mount_install_package="hdiutil attach ${sfolder_name}/${package_name}"
+    unmount_install_package="hdiutil detach /Volumes/${product_name}"
+    ;;
+
+  *)
+    ;;
+
+esac
+
+
+echo 
+echo "########################################################"
+echo "                     INSTALL TEST "
+echo "########################################################"
+echo "Stop and uninstall server"
+
+# stop and uninstall server
+if [ "${stop_server}x" != "x" ]; then 
+  echo "     $stop_server"
+  $stop_server
+fi
+
+if [ "${remove_package}x" != "x" ]; then 
+  echo "     $remove_package"
+  $remove_package
+fi
+
+if [ "${unmount_install_package}x" != "x" ]; then 
+  echo "     $unmount_install_package"
+  $unmount_install_package
+fi
+
+if [ "${mount_install_package}x" != "x" ]; then 
+  echo "     $mount_install_package"
+  $mount_install_package
+fi
+
+echo 
+echo "########################################################"
+echo "Install"
+echo "    ${install_package}"
+${install_package} || exit 1
+echo "########################################################"
+
+if [ "${start_server}x" != "x" ]; then 
+echo "Start"
+echo "    ${start_server}"
+${start_server} || exit 1
+echo "########################################################"
+fi
+
+echo "Successfully installed ${package_name}."
+echo "########################################################"
+
+echo "Check process"
+process=$(ps aux | grep arangod | grep -v grep)
+echo "$process"
+
+echo "Wait for server..."
+echo "    sleep 10"
+sleep 10
+
+echo 
+echo "########################################################"
+echo "Request version number "
+echo "   $curl_version"
+answer=$( $curl_version )
+expect='{"server":"arango","version":"'$arangodb_version.$arangodb_release'"}'
+if [ "x$answer" == "x$expect" ]; then 
+  echo "ok: $answer"
+else
+  echo "error: $answer != $expect"
+  exit 1
+fi
+echo "########################################################"
+echo 
+
+echo 
+echo "########################################################"
+if [ "${stop_server}x" != "x" ]; then 
+echo "Stop"
+echo "    $stop_server"
+$stop_server || exit 1
+echo "########################################################"
+fi
+if [ "${remove_package}x" != "x" ]; then 
+echo "Uninstall"
+echo "    $remove_package"
+$remove_package || exit 1
+echo "########################################################"
+echo "Successfully uninstalled ${product_name}."
+echo "########################################################"
+fi
+echo 
+
+if [ "${unmount_install_package}x" != "x" ]; then 
+  $unmount_install_package > /dev/null 2>&1 
+fi

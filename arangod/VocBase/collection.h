@@ -202,6 +202,8 @@ typedef struct TRI_collection_s {
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
   bool _waitForSync;                 // if true, wait for msync
 
+  TRI_voc_size_t _maximumMarkerSize; // largest marker
+
   bool _deleted;                     // if true, collections has been deleted
 
   char* _directory;                  // directory of the collection
@@ -230,7 +232,8 @@ TRI_collection_t;
 /// @brief initializes a collection parameter block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitParameterCollection (TRI_col_parameter_t*,
+void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
+                                  TRI_col_parameter_t*,
                                   char const* name,
                                   TRI_voc_size_t maximalSize);
 
@@ -286,7 +289,7 @@ int TRI_SaveParameterInfoCollection (char const* filename, TRI_col_info_t*);
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t*);
+int TRI_UpdateParameterInfoCollection (TRI_collection_t*, TRI_col_parameter_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection

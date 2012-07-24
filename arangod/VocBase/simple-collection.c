@@ -143,6 +143,10 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
 
   TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
+  if (sim->base.base._maximumMarkerSize < size) {
+    sim->base.base._maximumMarkerSize = size;
+  }
+
   while (sim->base.base._state == TRI_COL_STATE_WRITE) {
     n = sim->base.base._journals._length;
 
@@ -165,7 +169,9 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
       }
     }
 
+    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
@@ -1322,6 +1328,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       exit(EXIT_FAILURE);
     }
 
+    if (collection->base.base._maximumMarkerSize < markerSize) {
+      collection->base.base._maximumMarkerSize = markerSize;
+    }
+
     found = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
 
     // it is a new entry
@@ -1930,6 +1940,18 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
+
+  if (collection->_maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+    LOG_WARNING("maximal size is %lu, but maximal marker size is %lu plus overhead %lu: adjusting maximal size to %lu",
+                (unsigned long) collection->_maximalSize,
+                (unsigned long) collection->_maximumMarkerSize,
+                (unsigned long) TRI_JOURNAL_OVERHEAD,
+                (unsigned long) (collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD));
+
+    collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
+  }
+
+
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
   // output infomations about datafiles and journals
@@ -2624,7 +2646,7 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   TRI_json_t* keyValues;
   TRI_vector_pointer_t attributes;
   TRI_vector_pointer_t values;
-  bool unique;
+  // bool unique;
   bool supportUndef;
   bool created;
   size_t fieldCount;
@@ -2658,13 +2680,13 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   // the bitarray index.
   // ...........................................................................
   
-  unique = false;
+  // unique = false;
   uniqueIndex = TRI_LookupArrayJson(definition, "unique");
   if (uniqueIndex == NULL || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }  
-  unique = uniqueIndex->_value._boolean;
+  // unique = uniqueIndex->_value._boolean;
    
 
   // ...........................................................................
