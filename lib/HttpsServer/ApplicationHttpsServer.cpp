@@ -96,9 +96,10 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicatio
   : ApplicationFeature("HttpsServer"),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _sslProtocol(3),
+    _sslProtocol(HttpsServer::TLS_V1),
     _sslCacheMode(0),
-    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
+    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
+    _sslCipherList(""),
     _sslContext(0) {
 }
 
@@ -153,9 +154,10 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
-    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
+    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
     ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
+    ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
   ;
 }
 
@@ -292,7 +294,6 @@ bool ApplicationHttpsServer::createSslContext () {
     return true;
   }
 
-
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
@@ -309,6 +310,14 @@ bool ApplicationHttpsServer::createSslContext () {
   SSL_CTX_set_options(_sslContext, _sslOptions);
   LOGGER_INFO << "using SSL options: " << _sslOptions;
 
+  if (_sslCipherList.size() > 0) {
+    LOGGER_INFO << "using SSL cipher-list '" << _sslCipherList << "'";
+    if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
+      LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
+      LOGGER_ERROR << lastSSLError();
+      return false;
+    }
+  }
 
   // set ssl context
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
