@@ -129,7 +129,7 @@ static Endpoint* _endpoint = 0;
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* ClientConnection = 0;
+V8ClientConnection* _clientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief object template for the initial connection
@@ -392,7 +392,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -454,7 +454,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
   
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
   
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -681,9 +681,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   V8ClientConnection* connection = new V8ClientConnection(_endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
   
   if (connection->isConnected()) {
-    printf("Connected to ArangoDB '%s' Version %s\n", 
-            connection->getEndpointSpecification().c_str(), 
-            connection->getVersion().c_str());    
+    cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << connection->getVersion() << endl; 
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -900,7 +898,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object ArangoConnection:" + connection->getEndpointSpecification();
+  string result = "[object ArangoConnection:" + _endpoint->getSpecification();
           
   if (connection->isConnected()) {
     result += ","
@@ -997,11 +995,11 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   console->close();
 
-  if (Quiet) {
-    printf("\n");
-  }
-  else {
-    printf("\nBye Bye! Auf Wiedersehen!\n");
+  delete console;
+
+  cout << endl;
+  if (! Quiet) {
+    cout << endl << "Bye Bye! Auf Wiedersehen!" << endl;
   }
 }
 
@@ -1222,7 +1220,7 @@ int main (int argc, char* argv[]) {
 
     assert(_endpoint);
     
-    ClientConnection = new V8ClientConnection(
+    _clientConnection = new V8ClientConnection(
       _endpoint,
       (double) RequestTimeout,
       DEFAULT_RETRIES, 
@@ -1294,7 +1292,7 @@ int main (int argc, char* argv[]) {
 
     // add the client connection to the context:
     context->Global()->Set(v8::String::New("arango"), 
-                           wrapV8ClientConnection(ClientConnection),
+                           wrapV8ClientConnection(_clientConnection),
                            v8::ReadOnly);
   }
     
@@ -1336,41 +1334,38 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
 
-    printf("\n");
-    printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
-    printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
+    cout << "Using Google V8 " << TRI_V8_VERSION << " JavaScript engine." << endl;
 #else
-    printf("Using Google V8 JavaScript engine.\n\n");
+    cout << "Using Google V8 JavaScript engine." << endl << endl;
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
 #endif
 
-    printf("\n");
+    cout << endl;
 
     // set up output
     if (UsePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+      cout << "Using pager '" << OutputPager << "' for output buffering." << endl;
     }
 
     if (PrettyPrint) {
-      printf("Pretty print values.\n");    
+      cout << "Pretty print values." << endl;    
     }
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
+      if (_clientConnection->isConnected()) {
         if (! Quiet) {
-          printf("Connected to ArangoDB %s Version %s\n", 
-                 ClientConnection->getEndpointSpecification().c_str(), 
-                 ClientConnection->getVersion().c_str());
+          cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << _clientConnection->getVersion() << endl; 
         }
       }
       else {
-        printf("Could not connect to endpoint '%s'\n", EndpointString.c_str());
-        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+        cerr << "Could not connect to endpoint '" << EndpointString << "'" << endl;
+        cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
       }
     }
   }
