@@ -190,7 +190,7 @@
 /// following values: fatal, error, warning, info, debug, trace.  For more
 /// information see @ref CommandLineLogging "here".
 ///
-/// @copydetails triagens::arango::ArangoServer::_httpPort
+/// @copydetails triagens::arango::ArangoServer::_endpoints
 //////////////////////////////////////////////////////////
 ///
 /// @CMDOPT{--daemon}

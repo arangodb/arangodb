@@ -1,5 +1,4 @@
-> ./arangod --server.http-port 12345 /tmp/vocbase
+> ./arangod --server.endpoint tcp://127.0.0.1:12345 /tmp/vocbase
 2012-02-05T13:23:52Z  [455] INFO ArangoDB (version 0.0.8 [exported]) is ready for business
 2012-02-05T13:23:52Z  [455] INFO HTTP client port: 12345
-2012-02-05T13:23:52Z  [455] INFO HTTP admin port: localhost:8530
 2012-02-05T13:23:52Z  [455] INFO Have Fun!
