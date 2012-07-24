@@ -67,10 +67,12 @@ typedef struct BitColumn_s {
 // --SECTION--                                       STATIC FORWARD DECLARATIONS
 // -----------------------------------------------------------------------------
 
-static int  extendColumns   (TRI_bitarray_t*, size_t); 
-static void printBitarray   (TRI_bitarray_t*); 
-static void setBitarrayMask (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_master_table_position_t*); 
-static void debugPrintMask  (TRI_bitarray_t*, uint64_t);
+static int  extendColumns         (TRI_bitarray_t*, size_t); 
+static void printBitarray         (TRI_bitarray_t*); 
+static void setBitarrayMask       (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_master_table_position_t*); 
+static void debugPrintMaskFooter  (const char*); 
+static void debugPrintMaskHeader  (const char*);
+static void debugPrintMask        (TRI_bitarray_t*, uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup bitarray
@@ -349,6 +351,7 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
   uint8_t numBits;
   int i_blockNum,j_bitNum,k_colNum;
   TRI_master_table_position_t position;
+  uint64_t compareMask = mask->_mask | mask->_ignoreMask;
   
   // ...........................................................................
   // TODO: we need to add an 'undefined' special column. If this column is NOT 
@@ -406,22 +409,21 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
       // when we have AND/OR operators.
       // ..........................................................................
 
-      bitValues = bitValues & ~(mask->_ignoreMask);
-
-      /*
-      if (j_bitNum == 0) {
-        debugPrintMask(ba,mask->_ignoreMask);
-        debugPrintMask(ba,mask->_mask);
-        debugPrintMask(ba,bitValues);
-      }
-      */
+      bitValues = bitValues | mask->_ignoreMask;
       
       if (mask->_mask == 0 && bitValues != 0) {
         continue;
       }
       
-      if ((bitValues & mask->_mask) == mask->_mask) { // add to the list of things
-        //debugPrintMask(ba,mask->_ignoreMask);
+      if (mask->_mask != 0 && bitValues == 0) {
+        continue;  
+      }
+      
+      if (bitValues == compareMask) { // add to the list of things
+        //debugPrintMaskHeader("bitValues/mask");
+        //debugPrintMask(ba,bitValues);
+        //debugPrintMask(ba,mask->_mask);
+        //debugPrintMaskFooter("");
         position._blockNum = i_blockNum;
         position._bitNum   = j_bitNum;
         result = storeElementMasterTable(ba->_masterTable, resultStorage, &position);
@@ -716,11 +718,17 @@ static void setBitarrayMask(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, TRI_m
 }
   
   
+void debugPrintMaskFooter(const char* footer) {
+  printf("%s\n\n",footer);
+}
+
+void debugPrintMaskHeader(const char* header) {
+  printf("------------------- %s --------------------------\n",header);
+}
   
 void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
   int j;
     
-  printf("------------------- Bitarray mask --------------------------\n");
   for (j = 0; j < ba->_numColumns; ++j) {
     if ((mask & ((uint64_t)(1) << j)) == 0) {
       printf("0");
@@ -729,7 +737,7 @@ void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
       printf("1");
     }
   }
-  printf("\n\n");
+  printf("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

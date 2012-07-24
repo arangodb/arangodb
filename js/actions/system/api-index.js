@@ -73,7 +73,7 @@ function GET_api_indexes (req, res) {
   var name = req.parameters.collection;
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
-
+  
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
@@ -477,6 +477,73 @@ function POST_api_index_skiplist (req, res, collection, body) {
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a bitarray
+///
+/// @RESTHEADER{POST /_api/index,creates a bitarray index}
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a bitarray index for the collection @FA{collection-identifier}, if
+/// it does not already exist. The call expects an object containing the index
+/// details.
+///
+/// - @LIT{type}: must be equal to @LIT{"bitarray"}.
+///
+/// - @LIT{fields}: A list of pairs. A pair consists of an attribute path followed by a list of values.
+///
+/// - @LIT{unique}: Must always be set to @LIT{false}.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// If the collection already contains documents and you try to create a unique
+/// skip-list index in such a way that there are documents violating the
+/// uniqueness, then a @LIT{HTTP 400} is returned.
+///
+/// @EXAMPLES
+///
+/// Creating a skiplist:
+///
+/// @verbinclude api-index-create-new-bitarray
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_bitarray (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths: " + fields);
+  }
+
+  try {
+    var index;
+
+    if (body.unique) {
+      throw "Bitarray indexes can not be unique";
+    }
+    else {
+      index = collection.ensureBitarray.apply(collection, fields);
+    }
+
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
@@ -517,6 +584,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
+
   if (req.suffix.length !== 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect POST /" + API + "?collection=<collection-identifer>");
@@ -537,7 +605,7 @@ function POST_api_index (req, res) {
   if (body === undefined) {
     return;
   }
-
+  
   if (body.type === "cap") {
     POST_api_index_cap(req, res, collection, body);
   }
@@ -549,6 +617,9 @@ function POST_api_index (req, res) {
   }
   else if (body.type === "skiplist") {
     POST_api_index_skiplist(req, res, collection, body);
+  }
+  else if (body.type === "bitarray") {
+    POST_api_index_bitarray(req, res, collection, body);
   }
   else {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,

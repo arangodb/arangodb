@@ -1940,17 +1940,6 @@ int TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* element
     tempRightNode = tempLeftNode->_column[j]._next;
     JoinNodes(tempLeftNode, newNode, j, j);
     JoinNodes(newNode, tempRightNode, j, j);
-    /*
-    printf("%s:%u:%u:%u:%u:%u:%u:%u:%u\n",__FILE__,__LINE__,
-      (uint64_t)(tempLeftNode),
-      (uint64_t)(&(skiplist->_base._startNode)),
-      (uint64_t)(newNode->_column[j]._prev),
-      (uint64_t)(tempRightNode),
-      (uint64_t)(&(skiplist->_base._endNode)),
-      (uint64_t)(newNode->_column[j]._next),
-      (uint64_t)(newNode)
-      );
-      */
   }  
 
   

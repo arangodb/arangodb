@@ -250,13 +250,6 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
   const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
   const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
 
-  /* start oreste debug
-  name = l->_shaper->lookupAttributeId(l->_shaper, l->_aid);
-  printf("%s:%u::%ld::%ld::%s\n",__FILE__,__LINE__,l->_aid,l->_weight,name);
-  name = r->_shaper->lookupAttributeId(r->_shaper, r->_aid);
-  printf("%s:%u::%ld::%ld::%s\n",__FILE__,__LINE__,r->_aid,r->_weight,name);
-  end oreste debug */
-  
   if (l->_weight < r->_weight) { return -1; }
   if (l->_weight > r->_weight) { return  1; }
   return 0;
@@ -376,11 +369,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         case TRI_SHAPE_NUMBER: {
           // compare the numbers
-          /*
-          printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
-                 *((TRI_shape_number_t*)(left->_data.data)),
-                 *((TRI_shape_number_t*)(right->_data.data))                 );
-          */       
           if ( *((TRI_shape_number_t*)(left->_data.data)) == *((TRI_shape_number_t*)(right->_data.data)) ) {          
             return 0;          
           }  
@@ -919,14 +907,6 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
   rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
-  /*
-  printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-    *((double*)((j + hLeftElement->fields)->_data.data)),
-    *((double*)((j + hRightElement->fields)->_data.data)),
-    (uint64_t)(hLeftElement->data),
-    (uint64_t)(hRightElement->data)
-  );
-  */
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), 
                                                 (j + hRightElement->fields),
                                                 leftShaper,
@@ -1097,14 +1077,6 @@ static bool IndexStaticMultiEqualElementElement (TRI_skiplist_multi_t* multiSkip
     return true;
   }    
 
-  /*
-  printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-    *((double*)((hLeftElement->fields)->_data.data)),
-    *((double*)((hRightElement->fields)->_data.data)),
-    (uint64_t)(hLeftElement->data),
-    (uint64_t)(hRightElement->data)
-  );
-  */
   return (hLeftElement->data == hRightElement->data);
 }
 

@@ -276,15 +276,6 @@ static bool IndexStaticIsEqualKeyElement (TRI_hasharray_t* array, void* leftElem
   }
 
   for (j = 0; j < hLeftElement->numFields; j++) {
-
-  /*  
-    printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-      *((double*)((j + hLeftElement->fields)->_data.data)),
-      *((double*)((j + hRightElement->fields)->_data.data)),
-      (uint64_t)(hLeftElement->data),
-      (uint64_t)(hRightElement->data)
-    );
-  */  
     if (!IndexStaticIsEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }

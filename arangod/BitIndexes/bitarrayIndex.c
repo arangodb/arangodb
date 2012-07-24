@@ -43,7 +43,6 @@
 #include "BasicsC/logging.h"
 
 
-
 // .............................................................................
 // forward declaration of static functions used for iterator callbacks
 // .............................................................................
@@ -61,8 +60,10 @@ static void  BitarrayIndexResetIterator            (TRI_index_iterator_t*, bool)
 // .............................................................................
 
 static int  BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
-static int  generateBitMask          (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
+static int  generateInsertBitMask    (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
 static int  generateEqualBitMask     (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
+static void debugPrintMaskFooter     (const char*); 
+static void debugPrintMaskHeader     (const char*);
 static void debugPrintMask           (BitarrayIndex*, uint64_t);
 
 
@@ -233,8 +234,11 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   // ..........................................................................
   // generate bit mask
   // ..........................................................................
-  
-  result = generateBitMask (baIndex, element, &mask);
+  mask._mask = 0;
+  mask._ignoreMask = 0;
+  result = generateInsertBitMask(baIndex, element, &mask);
+  //debugPrintMask(baIndex, mask._mask); 
+ 
   if (result != TRI_ERROR_NO_ERROR) {
     return result;
   }  
@@ -261,6 +265,7 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
                                          bool (*filter) (TRI_index_iterator_t*) ) {
 
   TRI_index_iterator_t* iterator;
+  int result;
   
   // ...........................................................................  
   // Attempt to allocate memory for the index iterator which stores the results
@@ -277,8 +282,9 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   // ...........................................................................  
   // We now initialise the index iterator with all the call back functions.
   // ...........................................................................  
-  
+
   TRI_InitVector(&(iterator->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_interval_t));
+  
   iterator->_index           = collectionIndex;  
   iterator->_currentInterval = 0;  
   iterator->_cursor          = NULL;
@@ -293,8 +299,8 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   iterator->_destroyIterator = BitarrayIndexDestroyIterator;
   iterator->_reset           = BitarrayIndexResetIterator;
   
-  BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator);
-  
+  result = BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator);
+
   return iterator;
 }
 
@@ -733,8 +739,66 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
     }  
   }        
 }
+
+
+static void generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_json_t* value, uint64_t* mask) {
+  int i;
+  uint64_t other = 0;
+  uint64_t tempMask = 0;
+  
+  for (i = 0; i < valueList->_value._objects._length; ++i) {    
+    int k;
+    TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
+        
+    // ...........................................................................
+    // if the ith possible set of values is not a list, do comparison 
+    // ...........................................................................
+        
+    if (listEntry->_type != TRI_JSON_LIST) {
+      if (isEqualJson(value, listEntry)) {
+        tempMask = tempMask | (1 << i);
+      }  
+      continue; // there may be further matches!
+    }
+        
+        
+    // ...........................................................................
+    // ith entry in the set of possible values is a list
+    // ...........................................................................
+        
+    // ...........................................................................
+    // Special case of an empty list -- this means all other values
+    // ...........................................................................
+        
+    if (listEntry->_value._objects._length == 0) { // special case determine what the bit position of other is
+      other = (1 << i);
+      continue; // there may be further matches!
+    }
+        
+        
+    for (k = 0; k < listEntry->_value._objects._length; k++) {
+      TRI_json_t* subListEntry;
+      subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), k));            
+      if (isEqualJson(value, subListEntry)) {
+        tempMask = tempMask | (1 << i);
+        break;
+      }  
+    }      
+        
+  }
+  
+  if (tempMask != 0) {
+    *mask = *mask | tempMask;
+    return;
+  }
+  
+  if (other != 0) {
+    *mask = *mask | other;
+  }  
+}  
+
             
-int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
+int generateInsertBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
 
   TRI_shaper_t* shaper;
   int j;
@@ -786,7 +850,6 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
     TRI_json_t* valueList;
     TRI_json_t* value;
     uint64_t    other;    
-    int         i;
     uint64_t    tempMask;
     
     value      = TRI_JsonShapedJson(shaper, &(element->fields[j])); // from shaped json to simple json   
@@ -794,58 +857,19 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
     other      = 0;
     tempMask   = 0;
     
-    for (i = 0; i < valueList->_value._objects._length; ++i) {
-      TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
-      // .......................................................................
-      // We need to take special care if the json object is a list
-      // .......................................................................
-      
-      if (listEntry->_type == TRI_JSON_LIST) {
-        // an empty list
-        if (listEntry->_value._objects._length == 0) {
-          other = (1 << i);
-        }
-        else {
-          int k;
-          for (k = 0; k < listEntry->_value._objects._length; k++) {
-            TRI_json_t* subListEntry;
-            subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
-            if (isEqualJson(value, subListEntry)) {
-              tempMask = tempMask | (1 << i);
-            }  
-          }          
-        }
-      }      
-      
-      else {
-        if (isEqualJson(value, listEntry)) {
-          tempMask = tempMask | (1 << i);
-        }  
-      }
-  
-  
-    }
-     
+    
+    // .........................................................................
+    // value is now the shaped json converted into plain json for comparison
+    // ........................................................................
+
+    generateEqualBitMaskHelper(valueList, value, &tempMask);       
+         
     // ............................................................................
     // remove the json entry created from the shaped json
     // ............................................................................
     
     TRI_FreeJson(shaper->_memoryZone, value);
-      
-     
-    // ............................................................................
-    // When we create a bitarray index, for example: ensureBitarray("x",[0,[],1,2,3])
-    // and we insert doc with {"x" : "hello world"}, then, since the value of "x"
-    // does not match 0,1,2 or 3 and [] appears as a valid list item, the doc is
-    // inserted with a mask of 01000
-    // This is what other means below
-    // ............................................................................
-    
-    if (tempMask == 0) {
-      tempMask = other;
-    }
-    
-    
+           
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
     
     shiftLeft += valueList->_value._objects._length;
@@ -855,6 +879,7 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
 }
 
 
+      
 int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
   int j;
   int shiftLeft;
@@ -897,8 +922,6 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
   for (j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
     TRI_json_t* valueList;
     TRI_json_t* value;
-    uint64_t    other;    
-    int         i;
     uint64_t    tempMask;
     
     
@@ -914,58 +937,47 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     // .........................................................................
     
     if (value->_type == TRI_JSON_UNUSED) {    
+      uint64_t tempInt;
       tempMask = ~((~(uint64_t)(0)) << ignoreShiftLeft);
-      other    = (~(uint64_t)(0)) << (ignoreShiftLeft - valueList->_value._objects._length);
-      mask->_ignoreMask = mask->_ignoreMask | (tempMask & other);      
-      other    = 0;
+      tempInt  = (~(uint64_t)(0)) << (ignoreShiftLeft - valueList->_value._objects._length);
+      mask->_ignoreMask = mask->_ignoreMask | (tempMask & tempInt);      
       tempMask = 0;
     }
         
     
+    // .........................................................................
+    // the client sent us one or more values for the attribute. If client sent
+    // us [a_1,a_2,...,a_n] as a value, then this is interpretated as turning 
+    // on those bits. Note that if the value is itself a json list, then
+    // this must be sent as [[l_1,l_2,...,l_m]]
+    // .........................................................................
+    
     else {
-      other    = 0;
       tempMask = 0;
+
       
-      for (i = 0; i < valueList->_value._objects._length; ++i) {    
-        TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
-        int k;
-        
-        // .......................................................................
-        // if the ith possible set of values is not a list, do comparison 
-        // .......................................................................
-        
-        if (listEntry->_type != TRI_JSON_LIST) {
-          if (isEqualJson(value, listEntry)) {
-            tempMask = tempMask | (1 << i);
-          }  
-          continue;
-        }
-        
-        
-        // .......................................................................
-        // ith entry in the set of possible values is a list
-        // .......................................................................
-        
-        // .......................................................................
-        // Special case of an empty list -- this means all other values
-        // .......................................................................
-        
-        if (listEntry->_value._objects._length == 0) { // special case 
-          other = (1 << i);
-          continue;
-        }
-        
-        
-        for (k = 0; k < listEntry->_value._objects._length; k++) {
-          TRI_json_t* subListEntry;
-          subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
-          if (isEqualJson(value, subListEntry)) {
-            tempMask = tempMask | (1 << i);
-            break;
-          }  
-        }      
-        
+      // ........................................................................
+      // the value (for this jth attribute) sent by the client is NOT a list
+      // ........................................................................
+
+      if (value->_type != TRI_JSON_LIST) {
+        generateEqualBitMaskHelper(valueList, value, &tempMask);       
       }
+      
+      
+      // ........................................................................
+      // the value (for this jth attribute) sent by the client IS  a list
+      // we now have to loop through all the entries in this list
+      // ........................................................................
+      
+      else {
+        int i;
+        for (i = 0; i < value->_value._objects._length; ++i) {
+          TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(value->_value._objects), i));                         
+          generateEqualBitMaskHelper(valueList, listEntry, &tempMask);       
+        }
+      }
+      
     }     
      
     // ............................................................................
@@ -975,11 +987,6 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     // inserted with a mask of 01000
     // This is what other means below
     // ............................................................................
-    
-    if (tempMask == 0) {
-      tempMask = other;
-    }
-    
     
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
     
@@ -994,14 +1001,25 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     return TRI_ERROR_INTERNAL;
   }    
   
+  //debugPrintMaskHeader("lookup mask/ignore mask");
+  //debugPrintMask(baIndex,mask->_mask);
+  //debugPrintMask(baIndex,mask->_ignoreMask);
+  //debugPrintMaskFooter("");
+  
   return TRI_ERROR_NO_ERROR;
 }
 
+void debugPrintMaskFooter(const char* footer) {
+  printf("%s\n\n",footer);
+}
+
+void debugPrintMaskHeader(const char* header) {
+  printf("------------------- %s --------------------------\n",header);
+}
 
 void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
   int j;
   
-  printf("------------------- mask --------------------------\n");
   for (j = 0; j < baIndex->_bitarray->_numColumns; ++j) {
     if ((mask & ((uint64_t)(1) << j)) == 0) {
       printf("0");
@@ -1010,7 +1028,7 @@ void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
       printf("1");
     }
   }
-  printf("\n\n");
+  printf("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

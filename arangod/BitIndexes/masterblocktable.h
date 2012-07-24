@@ -400,7 +400,6 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
   }  
   
   
-  //printf("%s:%d:@:%d:%d:%d:%lu \n",__FILE__,__LINE__,  block->_free,*freeBlock,blockEntryNum,  (uint64_t)(tableEntry->_docPointer) );
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -449,6 +448,29 @@ int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* pos
 }
 
 
+static int localPushBackVector(TRI_vector_t* vector, void const* element) {
+  //return TRI_ERROR_NO_ERROR;
+  if (vector->_length == vector->_capacity) {
+    char* newBuffer;
+    size_t newSize = (size_t) (1 + (vector->_growthFactor * vector->_capacity));
+
+    newBuffer = (char*) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * vector->_elementSize);
+
+    if (newBuffer == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    vector->_capacity = newSize;
+    vector->_buffer = newBuffer;
+  }
+
+  //return TRI_ERROR_NO_ERROR;
+  memcpy(vector->_buffer + (vector->_length * vector->_elementSize), element, vector->_elementSize);
+
+  vector->_length++;
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_position_t* position) {
   // should we store doc pointers directly or indirectly via BitarrayIndexElement
@@ -483,14 +505,7 @@ int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_p
   // ...........................................................................
   
   interval._leftEndPoint = (tableBlock->_tablePointers[position->_bitNum])._tablePointer;
-  
-  /*
-  printf("%s:%d:@:%lu:%d:%d:%d:%lu \n",__FILE__,__LINE__,
-  tableBlock->_free, (tableBlock->_free >> position->_bitNum),
-  position->_blockNum,position->_bitNum,
-  (uint64_t)(interval._leftEndPoint)
-  );
-  */
+    
   TRI_PushBackVector(&(iterator->_intervals), &interval);
   return TRI_ERROR_NO_ERROR;
 }
