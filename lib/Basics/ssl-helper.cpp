@@ -29,24 +29,27 @@
 
 using namespace std;
 
+namespace triagens {
+  namespace basics {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
+    string lastSSLError () {
 #ifdef TRI_OPENSSL_VERSION
-string triagens::basics::lastSSLError () {
-  char buf[122];
-  memset(buf, 0, sizeof(buf));
+      char buf[122];
+      memset(buf, 0, sizeof(buf));
 
-  unsigned long err = ERR_get_error();
-  ERR_error_string_n(err, buf, sizeof(buf) - 1);
+      unsigned long err = ERR_get_error();
+      ERR_error_string_n(err, buf, sizeof(buf) - 1);
 
-  return string(buf);
-}
+      return string(buf);
 #else
-string triagens::basics::lastSSLError () {
-  return "not implemented";
-};
-
+      return "not implemented";
 #endif
+    }
+
+  }
+}
 

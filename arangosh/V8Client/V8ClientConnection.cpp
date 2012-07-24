@@ -42,6 +42,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Rest/Endpoint.h"
+#include "SimpleHttpClient/HttpClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -74,16 +75,14 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         size_t retries,
                                         double connectionTimeout,
                                         bool warn)
-  : _endpoint(endpoint),
+  : _connection(new HttpClientConnection(endpoint, requestTimeout, connectionTimeout, retries)),
     _connected(false),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
     
-  assert(endpoint);
-    
-  _client = new SimpleHttpClient(endpoint, requestTimeout, retries, connectionTimeout, warn);
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -133,6 +132,10 @@ V8ClientConnection::~V8ClientConnection () {
   if (_client) {
     delete _client;
   }
+  
+  if (_connection) {
+    delete _connection;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,8 +156,9 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version and build number of the arango server
@@ -180,18 +184,6 @@ const std::string& V8ClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the endpoint specification
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string V8ClientConnection::getEndpointSpecification () {
-  if (_endpoint == 0) {
-    return "-";
-  }
-
-  return _endpoint->getSpecification();
-}
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////

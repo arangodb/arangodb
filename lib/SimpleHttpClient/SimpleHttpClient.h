@@ -31,24 +31,22 @@
 
 #include <Basics/Common.h>
 
-#include <netdb.h>
-
 #include "Basics/StringBuffer.h"
-#include "Rest/Endpoint.h"
+#include "Logger/Logger.h"
+#include "SimpleHttpClient/ClientConnection.h"
 
 namespace triagens {
   namespace httpclient {
       
-      class SimpleHttpResult;
+    class SimpleHttpResult;
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief simple http client
     ////////////////////////////////////////////////////////////////////////////////
 
     class SimpleHttpClient {
+
     private:
-      enum { READBUFFER_SIZE = 8192 };
-      
       SimpleHttpClient (SimpleHttpClient const&);
       SimpleHttpClient& operator= (SimpleHttpClient const&);
 
@@ -79,20 +77,11 @@ namespace triagens {
       
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructs a new http client
-      ///
-      /// @param endpoint               endpoint to connect to 
-      /// @param requestTimeout         timeout in seconds for the request
-      /// @param connectTimeout         timeout in seconds for the tcp connect 
-      /// @param connectRetries         maximum number of request retries
-      /// @param warn                   enable warnings
-      ///
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (triagens::rest::Endpoint* endpoint, 
-                        double requestTimeout,
-                        double connectTimeout, 
-                        size_t connectRetries,
-                        bool warn);
+      SimpleHttpClient (ClientConnection*, 
+                        double, 
+                        bool);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructs a http client
@@ -102,15 +91,8 @@ namespace triagens {
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief make a http request
-      ///        The caller has to delete the result object
       ///
-      /// @param method                         http method
-      /// @param location                       request location
-      /// @param body                           request body
-      /// @param bodyLength                     body length
-      /// @param headerFields                   header fields
-      ///
-      /// @return SimpleHttpResult              the request result
+      /// The caller has to delete the result object
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (int method, 
@@ -119,25 +101,6 @@ namespace triagens {
                                  size_t bodyLength,
                                  const map<string, string>& headerFields);
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is connected
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      bool isConnected () {
-          return _isConnected;
-      } 
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the endpoint
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      const string getEndpointSpecification () {
-        if (_endpoint == 0) {
-          return "-";
-        }
-
-        return _endpoint->getSpecification();
-      }
       
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns the port of the remote server
@@ -164,6 +127,31 @@ namespace triagens {
     private:
       
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief register and dump an error message
+      ////////////////////////////////////////////////////////////////////////////////
+      
+      void setErrorMessage (const string& message) {
+        _errorMessage = message;
+       
+        if (_warn) { 
+          LOGGER_WARNING << _errorMessage;
+        }
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief register an error message
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setErrorMessage (const string& message, int error) {
+        if (error != 0) {
+          _errorMessage = message + ": " + strerror(error);
+        }
+        else {
+          setErrorMessage(message);
+        }
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the Result
       ///        The caller has to delete the result object
       ///
@@ -188,43 +176,26 @@ namespace triagens {
                        size_t bodyLength,
                        const map<string, string>& headerFields);
       
-      void handleConnect ();
-      void handleWrite (double timeout);
-      void handleRead (double timeout);
-      
-      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns true if the request is in progress
       ////////////////////////////////////////////////////////////////////////////////      
 
       bool isWorking () {
-        return  _state < FINISHED;
+        return _state < FINISHED;
       }   
       
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is connected
+      /// @brief initialise the connection
       ////////////////////////////////////////////////////////////////////////////////
-
-      bool checkConnect ();
-
+    
+      void handleConnect ();
+      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief close connection
       ////////////////////////////////////////////////////////////////////////////////
 
       bool close ();
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief write data to socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool write ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read th answer
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool read ();
-      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief read the http header
       ////////////////////////////////////////////////////////////////////////////////
@@ -250,55 +221,33 @@ namespace triagens {
       bool readChunkedBody ();
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief connect the socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool connectSocket ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is readable
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool readable ();
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief reset connection
+      /// @brief reset state
       ////////////////////////////////////////////////////////////////////////////////
 
       void reset ();
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief ckeck socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool checkSocket ();
-      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief get timestamp
       ///
       /// @return double          time in seconds
       ////////////////////////////////////////////////////////////////////////////////
       
-      double now ();                  
+      static double now ();                  
       
     private:
-
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief the endpoint to connect to
+      /// @brief connection used (TCP or SSL connection)
       ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::rest::Endpoint* _endpoint;
-
-      double _requestTimeout;
-      double _connectTimeout;
-      size_t _connectRetries;
-      bool _warn;
-
-      socket_t _socket;         
+      ClientConnection* _connection;
 
       // read and write buffer
       triagens::basics::StringBuffer _writeBuffer;
       triagens::basics::StringBuffer _readBuffer;
+      
+      double _requestTimeout;
+
+      bool _warn;
                   
       request_state _state;
       
@@ -306,12 +255,7 @@ namespace triagens {
       
       uint32_t _nextChunkedSize;
 
-      bool _isConnected;
-            
       SimpleHttpResult* _result;
-      
-      double _lastConnectTime;
-      size_t _numConnectRetries;
       
       string _errorMessage;
       

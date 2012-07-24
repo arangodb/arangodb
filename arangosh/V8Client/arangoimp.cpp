@@ -238,9 +238,7 @@ int main (int argc, char* argv[]) {
 
   // successfully connected
 
-  printf("Connected to ArangoDB %s Version %s\n", 
-      clientConnection->getEndpointSpecification().c_str(), 
-      clientConnection->getVersion().c_str());
+  cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << clientConnection->getVersion() << endl; 
 
   cout << "----------------------------------------" << endl;
   cout << "collection      : " << CollectionName << endl;
