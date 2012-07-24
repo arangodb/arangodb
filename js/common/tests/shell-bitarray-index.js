@@ -76,10 +76,153 @@ function BitarrayIndexSuite() {
     collection.drop();
   },
 
+  
+  testLookupBitarrayIndex_3 : function () {
+    var idx;
+    var n = 2000; 
+    var bitarrayValues = [ [0,1,2,[]], ["a","b",[], "c"] ];
+    var maxValues      = [2,2];
+    var otherPosition  = [3,2];
+    var shelves = new Array(bitarrayValues[0].length + 1);
+    var docs = new Array();
+    var result;
+
+    
+    // .........................................................................
+    // initialise our counters to 0
+    // .........................................................................
+    
+    for (var i = 0; i < shelves.length; ++i) {
+      shelves[i] = new Array(bitarrayValues[1].length + 1);
+      for (var j = 0; j < shelves[i].length; ++j) {
+        shelves[i][j] = 0;
+      }
+    }
+    
+    // .........................................................................
+    // Create a bit array index with two attributes
+    // .........................................................................
+    
+    idx = collection.ensureBitarray("x", bitarrayValues[0], "y", bitarrayValues[1]);
+        
+
+    // .........................................................................
+    // Save n random records
+    // .........................................................................
+    
+    print("Start writing",n," documents into index");
+        
+    for (var j = 0; j < n; ++j) {
+      var value = Math.floor(Math.random()*(bitarrayValues.length + 5));
+      var alpha = Math.floor(Math.random()*(bitarrayValues.length + 5));
+      var doc;
+      var subArray;
+      
+      doc = collection.save({"x":value, "y": String.fromCharCode(97 + alpha), "z": {"xx":value,"yy":alpha} });      
+      docs.push(doc._id);
+      print("j=",j,"value=",value,"alpha=",alpha);
+      //var bitarrayValues = [ [0,1,2,[]], ["a","b",[], "c"] ];
+      
+      if (value > maxValues[0]) {
+        subArray = shelves[otherPosition[0]];
+      }
+      else {
+        if (value < otherPosition[0]) {
+          subArray = shelves[value];
+        }
+        else {
+          subArray = shelves[value + 1];
+        }        
+      }        
+      
+      if (alpha > maxValues[1]) {
+        subArray[otherPosition[1]] += 1;
+      }
+      else {
+        if (alpha < otherPosition[1]) {
+          subArray[alpha] += 1;
+        }
+        else {
+          subArray[alpha + 1] += 1;
+        }
+      }
+      subArray[subArray.length - 1] += 1;
+      
+      //print("j=",j,"value=",value,"alpha=",alpha,subArray);
+    }
+        
+    print("End writing",n," documents into index");
+
+    for (var j = 0; j < (shelves[shelves.length - 1].length) ; ++j) {
+      for (var i = 0; i < (shelves.length - 1) ; ++i) {
+        shelves[shelves.length - 1][j] += shelves[i][j];
+      }  
+    }
+
+
+    for (var i = 0; i < shelves.length ; ++i) {
+      for (var j = 0; j < shelves[i].length; ++j) {
+        //print(shelves[i][j]);
+      }      
+    }
+
+    // .........................................................................
+    // Ensure that we have the total number of written documents stored in the
+    // last position
+    // .........................................................................
+    
+    assertEqual(shelves[shelves.length - 1][shelves[shelves.length - 1].length - 1], n);        
+    
+    
+    
+    print("Start Lookup");
+    print(shelves);
+    for (var i = 0; i < bitarrayValues[0].length; ++i) {
+      for (var j = 0; j < bitarrayValues[1].length; ++j) {
+        var subArray;
+        var subSubArray;
+        
+        result = collection.BY_EXAMPLE_BITARRAY(idx.id,{"x":i,"y":String.fromCharCode(97 + j)}, null, null);
+        
+        
+        if (i > maxValues[0]) {
+          subArray = shelves[otherPosition[0]];
+        }
+        else{
+          if (i < otherPosition[0]) {
+            subArray = shelves[i];
+          }
+          else {
+            subArray = shelves[i + 1];
+          }
+        }
+        
+        
+        if (j > maxValues[1]) {
+          subSubArray = subArray[otherPosition[1]];
+        }
+        else {        
+          if (j < otherPosition[1]) {
+            subSubArray = subArray[j];
+          }
+          else {
+            subSubArray = subArray[j + 1];
+          }
+        }  
+        print(result['total'],subSubArray,i,j);
+        assertEqual(result['total'],subSubArray);
+      }
+    }
+    print("End Lookup");
+    return;
+    
+  },
+  
+  
   // ...........................................................................
   // simple bitarray index creation and lookup
   // ...........................................................................
-
+  
   testLookupBitarrayIndex_1 : function () {
     var idx;
     var n = 1000; 
@@ -143,6 +286,7 @@ function BitarrayIndexSuite() {
     print(shelves);
     for (var j = 0; j < bitarrayValues.length; ++j) {
       result = collection.BY_EXAMPLE_BITARRAY(idx.id,{"x":j,"y":6,"z":-1}, null, null);
+      print(result['total'],shelves[j],j);
       assertEqual(result['total'],shelves[j]);
     }
     
@@ -151,6 +295,8 @@ function BitarrayIndexSuite() {
     
   },
   
+  
+  
   // ...........................................................................
   // In this test we have not specified a bitarray column for values outside
   // the range 0-9.
@@ -158,7 +304,7 @@ function BitarrayIndexSuite() {
   
   testLookupBitarrayIndex_2 : function () {
     var idx;
-    var n = 1000; 
+    var n = 100; 
     var bitarrayValues = [0,1,2,3,4,5,6,7,8,9];
     var shelves = new Array(bitarrayValues.length + 2);
     var docs = new Array();
@@ -219,6 +365,7 @@ function BitarrayIndexSuite() {
     print(shelves);
     for (var j = 0; j < bitarrayValues.length; ++j) {
       result = collection.BY_EXAMPLE_BITARRAY(idx.id,{"x":j,"y":6,"z":-1}, null, null);
+      print(result['total'],shelves[j]);
       assertEqual(result['total'],shelves[j]);
     }
 
@@ -515,7 +662,6 @@ function BitarrayIndexSuite() {
 print("Starting the bitarray index suite of tests");
 jsunity.run(BitarrayIndexSuite);
 print("ending the bitarray index suite of tests");
-//print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 return jsunity.done();
 
 // Local Variables:

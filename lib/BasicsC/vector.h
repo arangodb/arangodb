@@ -57,6 +57,8 @@ typedef struct TRI_vector_s {
   char * _buffer;
   size_t _length;
   size_t _capacity;
+  size_t _initialCapacity;
+  double _growthFactor;
 }
 TRI_vector_t;
 
@@ -78,6 +80,9 @@ TRI_vector_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize);
+
+int TRI_InitVector2 (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize,
+                     size_t initialCapacity, double growthFactor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer

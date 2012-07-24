@@ -484,14 +484,31 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
     
 
     if (example->HasOwnProperty(key)) {
+    
       // ....................................................................
       // for this index attribute, there is such an attribute given as a 
       // as a parameter by the client -- determine the value (or values)
       // of this attribute parameter and store it for later use in the 
       // lookup
       // ....................................................................
+      
       v8::Handle<v8::Value> value = example->Get(key);
       json = TRI_JsonObject(value);
+
+      
+      // ....................................................................
+      // special case: if client sent {"x":[],...}, then we wrap this up 
+      // as {"x":[ [] ],...}.
+      // ....................................................................
+
+      if (json->_type == TRI_JSON_LIST) {
+        if (json->_value._objects._length == 0) {
+          TRI_json_t emptyList;
+          emptyList._type = TRI_JSON_LIST;
+          TRI_InitVector(&(emptyList._value._objects), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));          
+          TRI_PushBack2ListJson(json, &emptyList);
+        }
+      }      
     }
     
     else {
@@ -759,7 +776,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   v8::Handle<v8::Object> err;
   const TRI_vocbase_col_t* collection;
   TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
+  TRI_voc_size_t limit; 
 
   // ...........................................................................
   // extract and use the simple collection
@@ -895,6 +912,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   TRI_voc_size_t count = 0;
 
   if (indexIterator != NULL) {
+
   
     while (true) {
       TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
@@ -915,9 +933,11 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
         ++count;
       }
     }
-    
+  
+  
     // free data allocated by index result
     TRI_FreeIndexIterator(indexIterator);
+        
   }
   
   else {
