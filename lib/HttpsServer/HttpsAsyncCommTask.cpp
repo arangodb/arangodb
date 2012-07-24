@@ -36,6 +36,7 @@
 #include <Rest/HttpRequest.h>
 
 #include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 
 using namespace triagens::basics;
