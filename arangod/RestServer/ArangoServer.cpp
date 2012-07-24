@@ -68,7 +68,6 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/ArangoHttpServer.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/V8LineEditor.h"
@@ -380,14 +379,12 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationHttpServer);
 
 #ifdef TRI_OPENSSL_VERSION
-
   // .............................................................................
   // an https server
   // .............................................................................
 
   _applicationHttpsServer = new ApplicationHttpsServer(_applicationScheduler, _applicationDispatcher);
   _applicationServer->addFeature(_applicationHttpsServer);
-
 #endif
 
   // .............................................................................
@@ -584,11 +581,6 @@ int ArangoServer::startupServer () {
 
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
-  // we pass the options by reference, so keep them until shutdown
-  RestActionHandler::action_options_t httpOptions;
-  httpOptions._vocbase = _vocbase;
-  httpOptions._queue = "STANDARD";
-
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
     Endpoint* endpoint = Endpoint::serverFactory(*i);
@@ -607,31 +599,39 @@ int ArangoServer::startupServer () {
       cerr << "invalid endpoint '" << *i << "'\n";
       exit(EXIT_FAILURE);
     }
-
   }
 
-  // dump used endpoints
-  _endpointList.dump();
 
-  // create the server
-  _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), &_endpointList);
+  // dump used endpoints for user information
+  _endpointList.dump();
+    
+  // we pass the options by reference, so keep them until shutdown
+  RestActionHandler::action_options_t httpOptions;
+  httpOptions._vocbase = _vocbase;
+  httpOptions._queue = "STANDARD";
 
   // create the handlers
   httpOptions._contexts.insert("user");
   httpOptions._contexts.insert("api");
-
-  DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
-
-  DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
   httpOptions._contexts.insert("admin");
 
-  // add action handler
-  _httpServer->addPrefixHandler("/",
-                                RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                (void*) &httpOptions);
+  // HTTP endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP) > 0) {
+    // create the http server
+    _httpServer = _applicationHttpServer->buildServer(new HttpServer(scheduler, dispatcher), &_endpointList);
+
+    DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
+
+    DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
+
+    // add action handler
+    _httpServer->addPrefixHandler("/",
+                                  RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                  (void*) &httpOptions);
+  }
   
 #ifdef TRI_OPENSSL_VERSION
-
+  // HTTPS endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTPS) > 0) {
     // create the https server
     _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
@@ -643,15 +643,6 @@ int ArangoServer::startupServer () {
                                    (void*) &httpOptions);
   }
 #endif
-
-  // .............................................................................
-  // create a admin http server and http handler factory
-  // .............................................................................
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t adminOptions;
-  adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
 
   // .............................................................................
   // create a http handler factory for zeromq

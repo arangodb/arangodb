@@ -647,7 +647,6 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestHandler/BatchJob.cpp \
 	arangod/RestHandler/BatchSubjob.cpp \
-	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
@@ -712,7 +711,6 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT) \
-	arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT) \
@@ -1454,7 +1452,6 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestHandler/BatchJob.cpp \
 	arangod/RestHandler/BatchSubjob.cpp \
-	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
@@ -2611,9 +2608,6 @@ arangod/RestServer/$(am__dirstamp):
 arangod/RestServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestServer/$(DEPDIR)
 	@: > arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT):  \
-	arangod/RestServer/$(am__dirstamp) \
-	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -2850,7 +2844,6 @@ mostlyclean-compile:
 	-rm -f arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT)
-	-rm -f arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-arango.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT)
@@ -3115,7 +3108,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
@@ -4372,22 +4364,6 @@ arangod/RestHandler/bin_arangod-BatchSubjob.obj: arangod/RestHandler/BatchSubjob
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchSubjob.cpp' object='arangod/RestHandler/bin_arangod-BatchSubjob.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchSubjob.obj `if test -f 'arangod/RestHandler/BatchSubjob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchSubjob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchSubjob.cpp'; fi`
-
-arangod/RestServer/bin_arangod-ArangoHttpServer.o: arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoHttpServer.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.o `test -f 'arangod/RestServer/ArangoHttpServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/ArangoHttpServer.cpp' object='arangod/RestServer/bin_arangod-ArangoHttpServer.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.o `test -f 'arangod/RestServer/ArangoHttpServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoHttpServer.cpp
-
-arangod/RestServer/bin_arangod-ArangoHttpServer.obj: arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoHttpServer.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.obj `if test -f 'arangod/RestServer/ArangoHttpServer.cpp'; then $(CYGPATH_W) 'arangod/RestServer/ArangoHttpServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/ArangoHttpServer.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/ArangoHttpServer.cpp' object='arangod/RestServer/bin_arangod-ArangoHttpServer.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.obj `if test -f 'arangod/RestServer/ArangoHttpServer.cpp'; then $(CYGPATH_W) 'arangod/RestServer/ArangoHttpServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/ArangoHttpServer.cpp'; fi`
 
 arangod/RestServer/bin_arangod-ArangoServer.o: arangod/RestServer/ArangoServer.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoServer.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoServer.o `test -f 'arangod/RestServer/ArangoServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoServer.cpp

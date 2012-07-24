@@ -47,7 +47,9 @@ namespace triagens {
     class ApplicationZeroMQ;
 #endif 
     class HttpServer;
+#ifdef TRI_OPENSSL_VERSION
     class HttpsServer;
+#endif
   }
 
   namespace admin {
@@ -233,7 +235,9 @@ namespace triagens {
 /// @brief application https server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_OPENSSL_VERSION
         rest::ApplicationHttpsServer* _applicationHttpsServer;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed admin server application
@@ -279,7 +283,9 @@ namespace triagens {
 /// @brief constructed https server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_OPENSSL_VERSION
         rest::HttpsServer* _httpsServer;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint list container
@@ -305,30 +311,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for client requests
-///
-/// @CMDOPT{--server.http-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available. If you do not specify an admin port, then the http port
-/// will serve both client and administration request. If you have
-/// higher security requirements, you can use a special administration
-/// port.
-///
-/// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{address} and @CA{port} for HTTP requests by clients. This
-/// will bind to the given @CA{address}, which can be a numeric value like
-/// @CODE{192.168.1.1} or a name.
-///
-/// @CMDOPT{--port @CA{port}}
-///
-/// This variant can be used as command line option.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _httpPort;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
