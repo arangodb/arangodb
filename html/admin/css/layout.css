@@ -50,11 +50,15 @@
 }
 
 .resizable, .draggable {
+  min-width: 200px; 
+  max-width: 100%; 
   position:fixed !important; 
   box-shadow: 5px 5px 5px #888;
 }
 
 .placeholderBox {
+  margin-left: 7px; 
+  margin-right: 7px; 
   margin-top: 10px;   
   font-size: 0.8em; 
   height: 150px; 

@@ -605,19 +605,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
-      var connectionsPos = localStorage.getItem("#connectionsLi");
-      var requestsPos = localStorage.getItem("#requestsLi");
-      var parsedConPos = JSON.parse(connectionsPos); 
-      var parsedReqPos = JSON.parse(requestsPos); 
-      if ( parsedConPos != null && parsedReqPos != null ) {
-        $('#connectionsLi').css('top', parsedConPos[0]);
-        $('#connectionsLi').css('left', parsedConPos[1]);
-        $('#connectionsLi').css('width', parsedConPos[2]);
-        $('#requestsLi').css('top', parsedReqPos[0]);
-        $('#requestsLi').css('left', parsedReqPos[1]);
-        $('#requestsLi').css('width', parsedReqPos[2]);
-      }
-
+      stateReading(); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
@@ -625,30 +613,21 @@ var logTable = $('#logTableID').dataTable({
       $( ".resizable" ).resizable({
         handles: 'e, w',
         stop: function (event, ui) {
-          var connectionspos = $("#connectionsLi").position();  
-          var conwidth = $("#connectionsLi").width();  
-          var requestspos = $("#requestsLi").position(); 
-          var reqwidth = $("#requestsLi").width(); 
-          localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth]));
-          localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth]));
+          stateSaving(); 
         } 
       }); 
       $( ".draggable" ).draggable({
         containment: "#centerView",  
         stop: function (event, ui) {
-          var connectionspos = $("#connectionsLi").position();  
-          var conwidth = $("#connectionsLi").width();  
-          var requestspos = $("#requestsLi").position(); 
-          var reqwidth = $("#requestsLi").width(); 
-          localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth]));
-          localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth]));
+          stateSaving(); 
         }
       }); 
       //TODO
       $( "#statisticRadioDiv" ).buttonset();
       $( "#connectionsGranularityDiv" ).buttonset();
       $( "#requestsGranularityDiv" ).buttonset();
-      updateGraphs(); 
+      updateGraphs(true); 
+      stateSaving(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2510,26 +2489,43 @@ function validate(evt) {
 ///////////////////////////////////////////////////////////////////////////////
 /// live click connections radio buttons 
 ///////////////////////////////////////////////////////////////////////////////
+
+$('#idsent').live('click', function () {
+  stateSaving(); 
+}); 
+$('#idreceived').live('click', function () {
+  stateSaving(); 
+}); 
+
+///////////////////////////////////////////////////////////////////////////////
+/// live click connections radio buttons 
+///////////////////////////////////////////////////////////////////////////////
 $('#connectionsMinutes').live('click', function () {
   drawConnections("minutes");  
+  stateSaving(); 
 });
 $('#connectionsHours').live('click', function () {
   drawConnections("hours");  
+  stateSaving(); 
 });
 $('#connectionsDays').live('click', function () {
   drawConnections("days");  
+  stateSaving(); 
 });
 ///////////////////////////////////////////////////////////////////////////////
 /// live click requests radio buttons 
 ///////////////////////////////////////////////////////////////////////////////
 $('#requestsMinutes').live('click', function () {
   drawRequests("minutes");  
+  stateSaving(); 
 });
 $('#requestsHours').live('click', function () {
   drawRequests("hours");  
+  stateSaving(); 
 });
 $('#requestsDays').live('click', function () {
   drawRequests("days");  
+  stateSaving(); 
 });
 ///////////////////////////////////////////////////////////////////////////////
 /// draw hours statistics 
@@ -2849,3 +2845,50 @@ $('#btnAddNewStat').live('click', function () {
 $.fn.isVisible = function() {
   return $.expr.filters.visible(this[0]);
 };
+
+function stateSaving () {
+  //connections
+  var connectionspos = $("#connectionsLi").position();  
+  var conwidth = $("#connectionsLi").width();  
+  var congran = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
+  localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth, congran]));
+  //requests
+  var requestspos = $("#requestsLi").position(); 
+  var reqwidth = $("#requestsLi").width(); 
+  var reqgran = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
+  var sent = $('input:checkbox[name=bytessent]:checked').val(); 
+  var received = $('input:checkbox[name=bytesreceived]:checked').val();
+  localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth, reqgran, sent, received]));
+}
+
+function stateReading () {
+  try {
+    //connections
+    var connectionsPos = localStorage.getItem("#connectionsLi");
+    var parsedConPos = JSON.parse(connectionsPos); 
+    //requests
+    var requestsPos = localStorage.getItem("#requestsLi");
+    var parsedReqPos = JSON.parse(requestsPos); 
+    if ( parsedConPos != null && parsedReqPos != null ) {
+      //connections
+      $('#connectionsLi').css('top', parsedConPos[0]);
+      $('#connectionsLi').css('left', parsedConPos[1]);
+      $('#connectionsLi').css('width', parsedConPos[2]); 
+      $('input:radio[name=connectionsGranularity][value='+parsedConPos[3]+']').click();
+      //requests
+      $('#requestsLi').css('top', parsedReqPos[0]);
+      $('#requestsLi').css('left', parsedReqPos[1]);
+      $('#requestsLi').css('width', parsedReqPos[2]);
+      $('input:radio[name=requestsGranularity][value='+parsedReqPos[3]+']').click();
+      if (parsedReqPos[4] == null ) {
+        $('#idsent').click();  
+      }
+      if (parsedReqPos[5] == null ) {
+        $('#idreceived').click();  
+      }
+    }
+  }
+  catch (e) {
+    console.log(e); 
+  }
+}
