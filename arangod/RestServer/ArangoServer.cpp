@@ -389,7 +389,11 @@ void ArangoServer::buildApplicationServer () {
   // an https server
   // .............................................................................
 
-  _applicationHttpsServer = new ApplicationHttpsServer(_applicationScheduler, _applicationDispatcher);
+  _applicationHttpsServer = new ApplicationHttpsServer(_applicationServer,
+                                                       _applicationScheduler, 
+                                                       _applicationDispatcher,
+                                                       "arangodb",
+                                                       TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationHttpsServer);
 #endif
 
@@ -426,8 +430,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // for this server we display our own options such as port to use
   // .............................................................................
-
-  _applicationHttpServer->showPortOptions(false);
 
   additional["ENDPOINT Options"]
     ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
@@ -595,13 +597,9 @@ int ArangoServer::startupServer () {
 
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
 
-  Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
-
   // .............................................................................
   // create a client http server and http handler factory
   // .............................................................................
-
-  Scheduler* scheduler = _applicationScheduler->scheduler();
 
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
@@ -640,7 +638,7 @@ int ArangoServer::startupServer () {
   // HTTP endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP) > 0) {
     // create the http server
-    _httpServer = _applicationHttpServer->buildServer(new HttpServer(scheduler, dispatcher), &_endpointList);
+    _httpServer = _applicationHttpServer->buildServer(&_endpointList);
 
     DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
 

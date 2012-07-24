@@ -31,8 +31,6 @@
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Admin/RestVersionHandler.h"
 
-#include "Rest/AddressPort.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
