@@ -150,10 +150,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
     ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
   ;
-
-  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
-    ("server.https-auth", &_httpsAuth, "use basic authentication")
-  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,9 +244,11 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpo
     dispatcher = _applicationDispatcher->dispatcher();
   }
 
+#if 0
   if (_httpsAuth) {
     auth = _checkAuthentication;
   }
+#endif
 
   // check the ssl context
   if (_sslContext == 0) {

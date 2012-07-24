@@ -31,6 +31,7 @@
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/EndpointList.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -105,6 +106,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the http server
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpServer* buildServer (const EndpointList*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server

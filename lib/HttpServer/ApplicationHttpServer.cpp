@@ -62,7 +62,6 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServ
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
-    _httpAuth(false),
     _httpServers() {
 }
 
@@ -87,6 +86,14 @@ ApplicationHttpServer::~ApplicationHttpServer () {
 /// @addtogroup Scheduler
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the http server
+////////////////////////////////////////////////////////////////////////////////
+
+HttpServer* ApplicationHttpServer::buildServer (const EndpointList* endpointList) { 
+  return buildHttpServer(0, endpointList);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server
@@ -208,9 +215,11 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
       dispatcher = _applicationDispatcher->dispatcher();
     }
 
+#if 0
     if (_httpAuth) {
       auth = _checkAuthentication;
     }
+#endif
 
     httpServer = new HttpServer(scheduler, dispatcher, _authenticationRealm, auth);
   }
