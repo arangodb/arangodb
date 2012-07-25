@@ -2902,40 +2902,6 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a description of anindex
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
-  TRI_index_t* idx = NULL;
-  size_t n;
-  size_t i;
-
-  // .............................................................................
-  // inside read-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-
-  n = sim->_indexes._length;
-
-  for (i = 0;  i < n;  ++i) {
-    idx = sim->_indexes._buffer[i];
-    
-    if (idx->_iid == iid) {
-      break;
-    }
-  }
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-
-  // .............................................................................
-  // outside read-lock
-  // .............................................................................
-
-  return i < n ? idx : NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4407,10 +4373,7 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  // ............................................................................. 
   // Given the list of attributes (as strings) 
-  // .............................................................................
-
   idx = CreatePriorityQueueIndexSimCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
