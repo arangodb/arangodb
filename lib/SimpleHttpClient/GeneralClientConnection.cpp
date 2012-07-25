@@ -26,6 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralClientConnection.h"
+#include "SimpleHttpClient/ClientConnection.h"
+
+#ifdef TRI_OPENSSL_VERSION
+#include "SimpleHttpClient/SslClientConnection.h"
+#endif
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -78,6 +83,27 @@ GeneralClientConnection::~GeneralClientConnection () {
 /// @addtogroup httpclient
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new connection from an endpoint
+////////////////////////////////////////////////////////////////////////////////      
+
+GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint, 
+                                                           double requestTimeout, 
+                                                           double connectTimeout,
+                                                           size_t numRetries) {
+  if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries); 
+  }
+#ifdef TRI_OPENSSL_VERSION
+  else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
+    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries); 
+  }
+#endif  
+  else {
+    return 0;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect

@@ -41,9 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
-#include "Rest/Endpoint.h"
-#include "SimpleHttpClient/ClientConnection.h"
-#include "SimpleHttpClient/SslClientConnection.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -73,15 +71,20 @@ using namespace std;
 
 V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         double requestTimeout,
-                                        size_t retries,
-                                        double connectionTimeout,
+                                        double connectTimeout,
+                                        size_t numRetries,
                                         bool warn)
-  : _connection(new ClientConnection(endpoint, requestTimeout, connectionTimeout, retries)),
+  : _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-    
+  
+  _connection = GeneralClientConnection::factory(endpoint, 3.0, 3.0, 3);
+  if (_connection == 0) {
+    throw "out of memory";
+  }
+
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   // connect to server and get version number
@@ -157,7 +160,6 @@ V8ClientConnection::~V8ClientConnection () {
 bool V8ClientConnection::isConnected () {
   return _connection->isConnected();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version and build number of the arango server

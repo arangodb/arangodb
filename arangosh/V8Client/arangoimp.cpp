@@ -38,11 +38,12 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "ImportHelper.h"
 #include "Logger/Logger.h"
+#include "Rest/Endpoint.h"
+#include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "ImportHelper.h"
-#include "Rest/Endpoint.h"
 #include "V8ClientConnection.h"
 
 using namespace std;
@@ -65,8 +66,8 @@ using namespace triagens::v8client;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t  DEFAULT_RETRIES = 5;
-static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
+static size_t  DEFAULT_RETRIES = 2;
+static int64_t DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
@@ -196,6 +197,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+
   TRI_InitialiseLogging(false);
 
   EndpointString = Endpoint::getDefaultEndpoint();
@@ -221,13 +224,8 @@ int main (int argc, char* argv[]) {
   }
 
   assert(_endpoint);
-
-  clientConnection = new V8ClientConnection(
-      _endpoint,
-      (double) requestTimeout,
-      DEFAULT_RETRIES, 
-      (double) connectTimeout, 
-      true);
+  
+  clientConnection = new V8ClientConnection(_endpoint, (double) requestTimeout, (double) connectTimeout, DEFAULT_RETRIES, false);
 
   if (!clientConnection->isConnected()) {
     cerr << "Could not connect to endpoint " << _endpoint->getSpecification() << endl;
@@ -319,6 +317,8 @@ int main (int argc, char* argv[]) {
   else {
     cerr << "error message : " << ih.getErrorMessage() << endl;      
   }
+
+  TRIAGENS_REST_SHUTDOWN;
 
   return EXIT_SUCCESS;
 }

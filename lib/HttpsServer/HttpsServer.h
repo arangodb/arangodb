@@ -153,11 +153,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return protocol to be used
+/// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        virtual Endpoint::Protocol getProtocol () {
-          return Endpoint::PROTOCOL_HTTPS;
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_SSL;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

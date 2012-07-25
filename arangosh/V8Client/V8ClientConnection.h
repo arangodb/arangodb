@@ -40,7 +40,6 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
-#include <Rest/Endpoint.h>
 
 #include <v8.h>
 
@@ -53,6 +52,10 @@ namespace triagens {
     class GeneralClientConnection;
     class SimpleHttpClient;
     class SimpleHttpResult;
+  }
+
+  namespace rest {
+    class Endpoint;
   }
 }
 
@@ -94,17 +97,12 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
-///
-/// @param Endpoint endpoint          Endpoint to connect to
-/// @param double requestTimeout      timeout in seconds for one request
-/// @param size_t retries             maximum number of request retries
-/// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
         V8ClientConnection (triagens::rest::Endpoint*,
                             double,
+                            double, 
                             size_t,
-                            double,
                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
