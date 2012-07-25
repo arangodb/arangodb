@@ -70,6 +70,8 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
+                                        const string& username,
+                                        const string& password,
                                         double requestTimeout,
                                         double connectTimeout,
                                         size_t numRetries,
@@ -86,6 +88,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   }
 
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -341,7 +344,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
     }
     else {
       // no body 
-      // this should not happen
+      v8::HandleScope scope;
+
       v8::Handle<v8::Object> result = v8::Object::New();        
       
       result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
@@ -357,7 +361,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
         result->Set(v8::String::New("error"), v8::Boolean::New(false));
       }
 
-      return result;
+      return scope.Close(result);
     }        
   }      
 }

@@ -229,6 +229,7 @@
 #define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
+#define TRI_HAVE_TERMIOS                    1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8

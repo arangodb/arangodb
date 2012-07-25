@@ -209,17 +209,11 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   // create new server
   if (httpServer == 0) {
     Dispatcher* dispatcher = 0;
-    HttpHandlerFactory::auth_fptr auth = 0;
+    HttpHandlerFactory::auth_fptr auth = _checkAuthentication;
 
     if (_applicationDispatcher != 0) {
       dispatcher = _applicationDispatcher->dispatcher();
     }
-
-#if 0
-    if (_httpAuth) {
-      auth = _checkAuthentication;
-    }
-#endif
 
     httpServer = new HttpServer(scheduler, dispatcher, _authenticationRealm, auth);
   }
