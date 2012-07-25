@@ -116,34 +116,22 @@ bool ClientConnection::checkSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::connectSocket () {
-  _socket = _endpoint->connect();
+  if (_endpoint->isConnected()) {
+    _endpoint->disconnect();
+  }
+  _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (_socket == 0) {
     return false;
   }
 
-  struct timeval tv;
-  fd_set fdset;
-
-  tv.tv_sec = (uint64_t) _connectTimeout;
-  tv.tv_usec = ((uint64_t) (_connectTimeout * 1000000.0)) % 1000000;
-
-  FD_ZERO(&fdset);
-  FD_SET(_socket, &fdset);
-
-  if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
-    if (checkSocket()) {
-      return _endpoint->isConnected();
-    }
-
-    return false;
+  if (checkSocket()) {
+    return _endpoint->isConnected();
   }
-
-  // connect timeout reached
-  disconnect();
 
   return false;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect
 ////////////////////////////////////////////////////////////////////////////////

@@ -193,7 +193,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::bindSocket () {
-  listenSocket = _endpoint->connect();
+  listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
   if (listenSocket == 0) {
     return false;
   }

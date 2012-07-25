@@ -613,7 +613,7 @@ int ArangoServer::startupServer () {
 
     assert(endpoint);
 
-    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint);
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
     if (! ok) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
@@ -635,8 +635,8 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
 
-  // HTTP endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP) > 0) {
+  // unencrypted endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
     // create the http server
     _httpServer = _applicationHttpServer->buildServer(&_endpointList);
 
@@ -651,8 +651,8 @@ int ArangoServer::startupServer () {
   }
   
 #ifdef TRI_OPENSSL_VERSION
-  // HTTPS endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTPS) > 0) {
+  // SSL endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
 
     // create the https server
     _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);

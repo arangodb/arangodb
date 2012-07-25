@@ -102,14 +102,17 @@ SslClientConnection::~SslClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::connectSocket () {
-  _socket = _endpoint->connect();
-  if (_socket <= 0) {
+  _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
+
+  if (_socket <= 0 || _ctx == 0) {
     return false;
   }
+
   _ssl = SSL_new(_ctx);
   if (_ssl == 0) {
     _endpoint->disconnect();
     _socket = 0;
+
     return false;
   }
 
@@ -118,6 +121,7 @@ bool SslClientConnection::connectSocket () {
     SSL_free(_ssl);
     _ssl = 0;
     _socket = 0;
+
     return false;
   }
 
@@ -131,11 +135,7 @@ bool SslClientConnection::connectSocket () {
     _socket = 0;
     return false;
   }
-       /* 
-  _writeBlockedOnRead = false;
-  _readBlockedOnWrite = false;
-  _readBlocked = false;
-*/
+  
   return true;
 }
 
@@ -194,13 +194,7 @@ bool SslClientConnection::write (void* buffer, size_t length, size_t* bytesWritt
   if (_ssl == 0) {
     return false;
   }
-/*
-  if (! (_canWrite || _writeBlockedOnRead && _canRead)) {
-    return false;
-  }
- 
-  _writeBlockedOnRead = false;
-*/
+  
   int written = SSL_write(_ssl, buffer, length);
   switch (SSL_get_error(_ssl, written)) {
     case SSL_ERROR_NONE:
@@ -232,14 +226,7 @@ bool SslClientConnection::read (StringBuffer& stringBuffer) {
   if (_ssl == 0) {
     return false;
   }
-/*
-  if (! ((_canRead && !_writeBlockedOnRead) || (_readBlockedOnWrite && _canWrite))) {
-    return false;
-  }
-
-  _readBlocked = false;
-  _readBlockedOnWrite = false;
-*/
+  
   do {
     char buffer[READBUFFER_SIZE];
 

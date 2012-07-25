@@ -85,8 +85,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t const  DEFAULT_RETRIES = 5;
-static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
+static size_t const  DEFAULT_RETRIES = 2;
+static int64_t const DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief colors for output
@@ -513,6 +513,18 @@ static void StopPager ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a new client connection instance
+////////////////////////////////////////////////////////////////////////////////
+  
+static V8ClientConnection* createConnection () {
+  return new V8ClientConnection(_endpoint, 
+                                (double) RequestTimeout, 
+                                (double) ConnectTimeout, 
+                                DEFAULT_RETRIES,
+                                false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -656,8 +668,6 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
 static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  size_t retries = DEFAULT_RETRIES;
-  
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
   
@@ -679,7 +689,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   
   assert(_endpoint); 
 
-  V8ClientConnection* connection = new V8ClientConnection(_endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  V8ClientConnection* connection = createConnection();
   
   if (connection->isConnected()) {
     cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << connection->getVersion() << endl; 
@@ -1223,12 +1233,7 @@ int main (int argc, char* argv[]) {
 
     assert(_endpoint);
     
-    _clientConnection = new V8ClientConnection(
-      _endpoint,
-      (double) RequestTimeout,
-      DEFAULT_RETRIES, 
-      (double) ConnectTimeout,
-      false);
+    _clientConnection = createConnection();
   }
   
   // .............................................................................
@@ -1410,7 +1415,7 @@ int main (int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
-  
+
   // .............................................................................
   // run normal shell
   // .............................................................................
