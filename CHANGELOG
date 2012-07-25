@@ -25,22 +25,13 @@ v1.1.x (XXXX-XX-XX)
   The server can be bound to one or multiple endpoints at once. For arangosh
   and arangoimp, the option specifies the server endpoint to connect to.
   The following endpoint syntax is currently supported:
-  - tcp://host:port (HTTP over IPv4)
-  - http@tcp://host:port (HTTP over IPv4)
-  - tcp://host (HTTP over IPv4, using default port 8529)
-  - http@tcp://host (HTTP over IPv4, using default port 8529)
-  - tcp://[host]:port (HTTP over IPv6)
-  - http@tcp://[host]:port (HTTP over IPv6)
-  - tcp://[host] (IPv6 address, using default port 8529)
-  - http@tcp://[host] (IPv6 address, using default port 8529)
-  - unix://path/to/socket (HTTP over UNIX socket)
-  - http@unix://path/to/socket (HTTP over UNIX socket)
-  The server (arangod) additionally supports the following endpoint types:
-  - https@tcp://host:port (HTTPS over IPv4)
-  - https@tcp://host (HTTP over IPv4, using default port 8529)
-  - https@tcp://[host]:port (HTTPS over IPv6)
-  - https@tcp://[host] (IPv6 address, using default port 8529)
-  - https@unix://path/to/socket (HTTPS over UNIX socket)
+  - tcp://host:port or http@tcp://host:port (HTTP over IPv4)
+  - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
+  - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
+  - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
+  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
+
+  If no port is specified, the default port of 8529 will be used.
 
 * removed startup options "--server.require-keep-alive" and 
   "--server.secure-require-keep-alive". 
