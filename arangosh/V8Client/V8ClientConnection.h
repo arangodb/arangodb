@@ -100,6 +100,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8ClientConnection (triagens::rest::Endpoint*,
+                            const string&,
+                            const string&,
                             double,
                             double, 
                             size_t,

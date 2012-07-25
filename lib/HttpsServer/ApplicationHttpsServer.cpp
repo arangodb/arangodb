@@ -245,15 +245,12 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpo
     dispatcher = _applicationDispatcher->dispatcher();
   }
 
-#if 0
-  if (_httpsAuth) {
-    auth = _checkAuthentication;
-  }
-#endif
+  auth = _checkAuthentication;
 
   // check the ssl context
   if (_sslContext == 0) {
     LOGGER_FATAL << "no ssl context is known, cannot create https server";
+    LOGGER_INFO << "please use the --server.keyfile option";
     TRI_ShutdownLogging();
     exit(EXIT_FAILURE);
   }

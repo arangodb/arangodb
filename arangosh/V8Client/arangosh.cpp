@@ -41,6 +41,7 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "Rest/Endpoint.h"
@@ -142,13 +143,13 @@ v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 /// @brief connect timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+static int64_t _connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t MaxUploadSize = 500000;
+static uint64_t _maxUploadSize = 500000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable auto completion
@@ -190,13 +191,25 @@ static bool Quiet = false;
 /// @brief request timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static int64_t _requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string EndpointString;
+static string _endpointString;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _username = "root";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief password to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -393,7 +406,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), _maxUploadSize);
   
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -455,7 +468,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
   
-  ImportHelper ih(_clientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), _maxUploadSize);
   
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -517,9 +530,11 @@ static void StopPager ()
 ////////////////////////////////////////////////////////////////////////////////
   
 static V8ClientConnection* createConnection () {
-  return new V8ClientConnection(_endpoint, 
-                                (double) RequestTimeout, 
-                                (double) ConnectTimeout, 
+  return new V8ClientConnection(_endpoint,
+                                _username,
+                                _password, 
+                                (double) _requestTimeout, 
+                                (double) _connectTimeout, 
                                 DEFAULT_RETRIES,
                                 false);
 }
@@ -542,21 +557,23 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ;
 
   description
-    ("connect-timeout", &ConnectTimeout, "connect timeout in seconds")
     ("help,h", "help message")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
     ("log.level,l", &level,  "log level")
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
+    ("max-upload-size", &_maxUploadSize, "maximum size of import chunks (in bytes)")
     ("no-auto-complete", "disable auto completion")
     ("no-colors", "deactivate color support")
     ("pager", &OutputPager, "output pager")
     ("pretty-print", "pretty print values")          
     ("quiet,s", "no banner")
-    ("request-timeout", &RequestTimeout, "request timeout in seconds")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
-    ("server.endpoint", &EndpointString, "endpoint to connect to, use 'none' to start without a server")
+    ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
+    ("server.username", &_username, "username to use when connecting")
+    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
+    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
+    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
     ("use-pager", "use pager")
     (hidden, true)
   ;
@@ -1192,7 +1209,7 @@ int main (int argc, char* argv[]) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
   
-  EndpointString = Endpoint::getDefaultEndpoint();
+  _endpointString = Endpoint::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options
@@ -1201,22 +1218,48 @@ int main (int argc, char* argv[]) {
   ParseProgramOptions(argc, argv);
   
   // check connection args
-  if (ConnectTimeout <= 0) {
-    cerr << "invalid value for connect-timeout." << endl;
+  if (_connectTimeout <= 0) {
+    cerr << "invalid value for --server.connect-timeout" << endl;
     exit(EXIT_FAILURE);
   }
 
-  if (RequestTimeout <= 0) {
-    cerr << "invalid value for request-timeout." << endl;
+  if (_requestTimeout <= 0) {
+    cerr << "invalid value for --server.request-timeout" << endl;
     exit(EXIT_FAILURE);
   }
+  
+  if (_username.size() == 0) {
+    // must specify a user name
+    cerr << "no value specified for --server.username" << endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (_password.size() == 0) {
+    // no password given on command-line
+    cout << "Please specify a password:" << endl;
+    // now prompt for it
+#ifdef TRI_HAVE_TERMIOS
+    TRI_SetStdinVisibility(false);
+    getline(cin, _password);
+
+    TRI_SetStdinVisibility(true);
+#else
+    getline(cin, _password);
+#endif
+  }
+
+  if (_password.size() == 0) {
+    cerr << "no value specified for --server.password" << endl;
+    exit(EXIT_FAILURE);
+  }
+
 
   // .............................................................................
   // set-up client connection
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (EndpointString != "none");
+  bool useServer = (_endpointString != "none");
 
   if (!JsLint.empty()) {
     // if we are in jslint mode, we will not need the server at all
@@ -1224,10 +1267,10 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
-    _endpoint = Endpoint::clientFactory(EndpointString);
+    _endpoint = Endpoint::clientFactory(_endpointString);
 
     if (_endpoint == 0) {
-      cerr << "invalid value for --server.endpoint ('" << EndpointString.c_str() << "')" << endl;
+      cerr << "invalid value for --server.endpoint ('" << _endpointString.c_str() << "')" << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -1372,7 +1415,7 @@ int main (int argc, char* argv[]) {
         }
       }
       else {
-        cerr << "Could not connect to endpoint '" << EndpointString << "'" << endl;
+        cerr << "Could not connect to endpoint '" << _endpointString << "'" << endl;
         cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
       }
     }

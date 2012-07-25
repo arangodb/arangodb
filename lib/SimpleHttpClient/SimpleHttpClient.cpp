@@ -265,11 +265,6 @@ namespace triagens {
       _writeBuffer.appendText("Connection: Keep-Alive\r\n");
       _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
 
-      //requestBuffer << "Accept: application/json\r\n";      
-      //if (bodyLength > 0) {
-      //  requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
-      //}
-
       // do basic authorization
       if (_pathToBasicAuth.size() > 0) {
         string foundPrefix;
