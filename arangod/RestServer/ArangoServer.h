@@ -300,8 +300,10 @@ namespace triagens {
 ///
 /// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
 /// the following pattern:
-/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
 /// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+/// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+/// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 /// - unix:///path/to/socket - Unix domain socket endpoint
 ///
 /// If a TCP/IP endpoint is specified without a port number, then the default 
