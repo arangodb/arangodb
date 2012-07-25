@@ -15,8 +15,8 @@
 [ -f /etc/default/rcS ] && . /etc/default/rcS
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
-DESC="session voc server"
-NAME="arangos"
+DESC="ArangoDB"
+NAME="arangod"
 PIDDIR=/var/run/arangodb
 PIDFILE=${PIDDIR}/arangod.pid
 CONF=/etc/arangodb/arangod.conf
