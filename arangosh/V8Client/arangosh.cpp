@@ -42,6 +42,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
+#include "Rest/Initialise.h"
 #include "Rest/Endpoint.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -1130,6 +1131,8 @@ static void addColors (v8::Handle<v8::Context> context) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+  
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
@@ -1189,12 +1192,12 @@ int main (int argc, char* argv[]) {
   
   // check connection args
   if (ConnectTimeout <= 0) {
-    cout << "invalid value for connect-timeout." << endl;
+    cerr << "invalid value for connect-timeout." << endl;
     exit(EXIT_FAILURE);
   }
 
   if (RequestTimeout <= 0) {
-    cout << "invalid value for request-timeout." << endl;
+    cerr << "invalid value for request-timeout." << endl;
     exit(EXIT_FAILURE);
   }
 
@@ -1214,7 +1217,7 @@ int main (int argc, char* argv[]) {
     _endpoint = Endpoint::clientFactory(EndpointString);
 
     if (_endpoint == 0) {
-      printf("Invalid value for --server.endpoint ('%s')\n", EndpointString.c_str());
+      cerr << "invalid value for --server.endpoint ('" << EndpointString.c_str() << "')" << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -1241,7 +1244,7 @@ int main (int argc, char* argv[]) {
   v8::Persistent<v8::Context> context = v8::Context::New(0, global);
 
   if (context.IsEmpty()) {
-    printf("cannot initialize V8 engine\n");
+    cerr << "cannot initialize V8 engine" << endl;
     exit(EXIT_FAILURE);
   }
 
@@ -1448,6 +1451,8 @@ int main (int argc, char* argv[]) {
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();
+
+  TRIAGENS_REST_SHUTDOWN;
 
   return ret;
 }

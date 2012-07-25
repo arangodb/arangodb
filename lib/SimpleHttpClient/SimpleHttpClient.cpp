@@ -35,7 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
-#include "ClientConnection.h"
+#include "GeneralClientConnection.h"
 #include "SimpleHttpResult.h"
 
 using namespace triagens::basics;
@@ -49,7 +49,7 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (ClientConnection* connection, double requestTimeout, bool warn) :
+    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
       _connection(connection),
       _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),

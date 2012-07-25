@@ -240,6 +240,11 @@ const std::string Endpoint::getDefaultEndpoint () {
 ////////////////////////////////////////////////////////////////////////////////
   
 bool Endpoint::setSocketFlags (socket_t _socket) {
+  if (_protocol == PROTOCOL_HTTPS && _type == ENDPOINT_CLIENT) {
+    // SSL client endpoints are not set to non-blocking
+    return true;
+  }
+
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(_socket);
   if (!ok) {
@@ -499,7 +504,6 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
   
   // try to reuse address
   int opt = 1;
-    
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 

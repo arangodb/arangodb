@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple client connection
+/// @brief client connection
 ///
 /// @file
 ///
@@ -27,9 +27,16 @@
 
 #include "ClientConnection.h"
 
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
+
 using namespace triagens::basics;
-using namespace triagens::rest;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -49,13 +56,7 @@ ClientConnection::ClientConnection (Endpoint* endpoint,
                                     double requestTimeout,
                                     double connectTimeout,
                                     size_t connectRetries) :
-  _endpoint(endpoint),
-  _requestTimeout(requestTimeout),
-  _connectTimeout(connectTimeout),
-  _connectRetries(connectRetries),
-  _numConnectRetries(0),
-  _isConnected(false) {
-
+  GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +64,6 @@ ClientConnection::ClientConnection (Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClientConnection::~ClientConnection () {
-  disconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,39 @@ ClientConnection::~ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup httpclient
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the socket is still alive
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClientConnection::checkSocket () {
+  int so_error = -1;
+  socklen_t len = sizeof so_error;
+
+  assert(_socket > 0);
+
+  getsockopt(_socket, SOL_SOCKET, SO_ERROR, &so_error, &len);
+
+  if (so_error == 0) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         protected virtual methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,60 +113,134 @@ ClientConnection::~ClientConnection () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::connect () {
+bool ClientConnection::connectSocket () {
+  _socket = _endpoint->connect();
+
+  if (_socket == 0) {
+    return false;
+  }
+
+  struct timeval tv;
+  fd_set fdset;
+
+  tv.tv_sec = (uint64_t) _connectTimeout;
+  tv.tv_usec = ((uint64_t) (_connectTimeout * 1000000.0)) % 1000000;
+
+  FD_ZERO(&fdset);
+  FD_SET(_socket, &fdset);
+
+  if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
+    if (checkSocket()) {
+      return _endpoint->isConnected();
+    }
+
+    return false;
+  }
+
+  // connect timeout reached
   disconnect();
 
-  if (_numConnectRetries < _connectRetries + 1) {
-    _numConnectRetries++;
-  }
-  else {
-    return false;
-  }
-
-  connectSocket();
-  _isConnected = _endpoint->isConnected();
-
-  if (!_isConnected) {
-    return false;
-  }
-
-  return true;
+  return false;
 }
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
-void ClientConnection::disconnect () {
-  if (isConnected()) {
-    _endpoint->disconnect();
-    _isConnected = false;
-  }
+void ClientConnection::disconnectSocket () {
+  _endpoint->disconnect();
+  _socket = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send data to the endpoint
-////////////////////////////////////////////////////////////////////////////////      
+/// @brief prepare connection for read/write I/O
+////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::handleWrite (const double timeout, void* buffer, size_t length, size_t* bytesWritten) {
-  *bytesWritten = 0;
+bool ClientConnection::prepare (const double timeout, const bool isWrite) const {
+  struct timeval tv;
+  fd_set fdset;
 
-  if (prepare(timeout, true)) {
-    return write(buffer, length, bytesWritten);
+  assert(_socket > 0);
+
+  tv.tv_sec = (uint64_t) timeout;
+  tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+
+  FD_ZERO(&fdset);
+  FD_SET(_socket, &fdset);
+
+  fd_set* readFds = NULL;
+  fd_set* writeFds = NULL;
+
+  if (isWrite) {
+    writeFds = &fdset;
+  }
+  else {
+    readFds = &fdset;
+  }
+
+  if (select(_socket + 1, readFds, writeFds, NULL, &tv) > 0) {
+    return true;
   }
 
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read data from endpoint
-////////////////////////////////////////////////////////////////////////////////      
+/// @brief write data to the connection
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten) {
+  if (!checkSocket()) {
+    return false;
+  }
+
+#ifdef __APPLE__
+  int status = ::send(_socket, buffer, length, 0);
+#else
+  int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
+#endif
+
+  *bytesWritten = status;
+
+  return (status >= 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read data from the connection
+////////////////////////////////////////////////////////////////////////////////
     
-bool ClientConnection::handleRead (double timeout, StringBuffer& buffer) {
-  if (prepare(timeout, false)) {
-    return read(buffer);
+bool ClientConnection::read (StringBuffer& stringBuffer) {
+  if (!checkSocket()) {
+    return false;
+  }
+  
+  assert(_socket > 0);
+
+  do {
+    char buffer[READBUFFER_SIZE];
+
+    int lenRead = ::read(_socket, buffer, READBUFFER_SIZE - 1);
+
+    if (lenRead <= 0) {
+      // error: stop reading
+      break;
+    }
+
+    stringBuffer.appendText(buffer, lenRead);
+  }
+  while (readable());
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the connection is readable
+////////////////////////////////////////////////////////////////////////////////
+    
+bool ClientConnection::readable () {
+  if (prepare(0.0, false)) {
+    return checkSocket();
   }
 
   return false;

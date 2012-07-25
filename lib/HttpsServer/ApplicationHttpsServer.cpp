@@ -91,7 +91,8 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
     _sslCacheMode(0),
     _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
     _sslCipherList(""),
-    _sslContext(0) {
+    _sslContext(0),
+    _rctx() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,12 +329,12 @@ bool ApplicationHttpsServer::createSslContext () {
 
   // set ssl context
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  string rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
+  _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) StringUtils::duplicate(rctx), rctx.size());
+  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), _rctx.size());
 
   if (res != 1) {
-    LOGGER_FATAL << "cannot set SSL session id context '" << rctx << "'";
+    LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
     LOGGER_ERROR << lastSSLError();
     return false;
   }
