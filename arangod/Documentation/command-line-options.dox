@@ -46,7 +46,6 @@
 ///    <li>@ref CommandLineArango
 ///     <ul>
 ///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
-///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
@@ -159,9 +158,6 @@
 ///
 /// @anchor CommandLineArangoEndpoint
 /// @copydetails triagens::arango::ArangoServer::_endpoints
-///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
 /// @CMDOPT{--disable-admin-interface}
