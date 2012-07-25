@@ -1992,46 +1992,66 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document
+/// @brief returns information about the datafiles
 ///
-/// @FUN{@FA{collection}.remove(@FA{document})}
+/// @FUN{@FA{collection}.datafiles()}
 ///
-/// Deletes a document. If there is revision mismatch, then an error is thrown.
-///
-/// @FUN{@FA{collection}.remove(@FA{document}, true)}
-///
-/// Deletes a document. If there is revision mismatch, then mismatch
-/// is ignored and document is deleted. The function returns
-/// @LIT{true} if the document existed and was deleted. It returns
-/// @LIT{false}, if the document was already deleted.
-///
-/// @FUN{@FA{collection}.remove(@FA{document-handle}, @FA{data})}
-///
-/// As before. Instead of document a @FA{document-handle} can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Delete a document:
-///
-/// @TINYEXAMPLE{shell_remove-document,delete a document}
-///
-/// Delete a document with a conflict:
-///
-/// @TINYEXAMPLE{shell_remove-document-conflict,delete a document}
+/// Returns information about the datafiles. The collection must be unloaded.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  return DeleteVocbaseCol(collection->_vocbase, collection, argv);
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
+                                                                "collection must be unloaded")));
+  }
+
+  TRI_col_file_structure_t structure = TRI_FileStructureCollectionDirectory(collection->_path);
+
+  // release lock
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  // build result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  // journals
+  v8::Handle<v8::Array> journals = v8::Array::New();
+  result->Set(v8::String::New("journals"), journals);
+
+  for (size_t i = 0;  i < structure._journals._length;  ++i) {
+    journals->Set(i, v8::String::New(structure._journals._buffer[i]));
+  }
+
+  // compactors
+  v8::Handle<v8::Array> compactors = v8::Array::New();
+  result->Set(v8::String::New("compactors"), compactors);
+
+  for (size_t i = 0;  i < structure._compactors._length;  ++i) {
+    compactors->Set(i, v8::String::New(structure._compactors._buffer[i]));
+  }
+  
+  // datafiles
+  v8::Handle<v8::Array> datafiles = v8::Array::New();
+  result->Set(v8::String::New("datafiles"), datafiles);
+
+  for (size_t i = 0;  i < structure._datafiles._length;  ++i) {
+    datafiles->Set(i, v8::String::New(structure._datafiles._buffer[i]));
+  }
+
+  // free result
+  TRI_DestroyFileStructureCollection(&structure);
+  
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3160,6 +3180,49 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document
+///
+/// @FUN{@FA{collection}.remove(@FA{document})}
+///
+/// Deletes a document. If there is revision mismatch, then an error is thrown.
+///
+/// @FUN{@FA{collection}.remove(@FA{document}, true)}
+///
+/// Deletes a document. If there is revision mismatch, then mismatch
+/// is ignored and document is deleted. The function returns
+/// @LIT{true} if the document existed and was deleted. It returns
+/// @LIT{false}, if the document was already deleted.
+///
+/// @FUN{@FA{collection}.remove(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Delete a document:
+///
+/// @TINYEXAMPLE{shell_remove-document,delete a document}
+///
+/// Delete a document with a conflict:
+///
+/// @TINYEXAMPLE{shell_remove-document-conflict,delete a document}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return DeleteVocbaseCol(collection->_vocbase, collection, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
 /// @FUN{@FA{collection}.rename(@FA{new-name})}
@@ -4113,8 +4176,8 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
 
-  TRI_shape_sid_t sid;
-  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+  // TRI_shape_sid_t sid;
+  // TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
@@ -4713,22 +4776,21 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
+  v8::Handle<v8::String> DatafilesFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafiles"));
   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
-  
   v8::Handle<v8::String> EnsureBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureBitarray"));
-  v8::Handle<v8::String> EnsureUndefBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUndefBitarray"));
   v8::Handle<v8::String> EnsureCapConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureCapConstraint"));
   v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> EnsurePriorityQueueIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensurePQIndex"));
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
+  v8::Handle<v8::String> EnsureUndefBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUndefBitarray"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
-  
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
@@ -4904,6 +4966,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   
+  rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -4953,6 +5016,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   
+  rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));

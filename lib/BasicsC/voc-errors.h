@@ -128,6 +128,9 @@ extern "C" {
 /// - 1216: @CODE{document too large}
 ///   Will be raised when the document cannot fit into any datafile because of
 ///   it is too large.
+/// - 1217: @CODE{collection must be unloaded}
+///   Will be raised when a collection should be unloaded, but has a different
+///   status.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -870,6 +873,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE                               (1216)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1217: ERROR_ARANGO_COLLECTION_NOT_UNLOADED
+///
+/// collection must be unloaded
+///
+/// Will be raised when a collection should be unloaded, but has a different
+/// status.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          (1217)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
