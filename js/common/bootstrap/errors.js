@@ -68,6 +68,7 @@
     "ERROR_ARANGO_INDEX_HANDLE_BAD" : { "code" : 1214, "message" : "illegal index handle" }, 
     "ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED" : { "code" : 1215, "message" : "cap constraint already defined" }, 
     "ERROR_ARANGO_DOCUMENT_TOO_LARGE" : { "code" : 1216, "message" : "document too large" }, 
+    "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 

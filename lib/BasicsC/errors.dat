@@ -86,6 +86,7 @@ ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
 ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined","Will be raised when a cap constraint was already defined."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
+ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 
 ################################################################################
 ## ArangoDB storage errors

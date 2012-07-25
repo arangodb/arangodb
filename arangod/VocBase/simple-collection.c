@@ -1346,6 +1346,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
         dfi->_sizeAlive += header->_document._data.length;
@@ -1369,6 +1370,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+
       if (dfi != NULL) {
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= found->_document._data.length;
@@ -1378,6 +1380,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       }
 
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
         dfi->_sizeAlive += update._document._data.length;
@@ -1390,6 +1393,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is a stale update
     else {
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
       if (dfi != NULL) {
         dfi->_numberDead += 1;
         dfi->_sizeDead += found->_document._data.length;
@@ -1430,6 +1434,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
       if (dfi != NULL) {
         dfi->_numberDeletion += 1;
       }
@@ -1445,6 +1450,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+
       if (dfi != NULL) {
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= found->_document._data.length;
@@ -1453,6 +1459,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_sizeDead += found->_document._data.length;
       }
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
       if (dfi != NULL) {
         dfi->_numberDeletion += 1;
       }

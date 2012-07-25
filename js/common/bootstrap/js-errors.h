@@ -69,6 +69,7 @@ static string JS_common_bootstrap_errors =
   "    \"ERROR_ARANGO_INDEX_HANDLE_BAD\" : { \"code\" : 1214, \"message\" : \"illegal index handle\" }, \n"
   "    \"ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED\" : { \"code\" : 1215, \"message\" : \"cap constraint already defined\" }, \n"
   "    \"ERROR_ARANGO_DOCUMENT_TOO_LARGE\" : { \"code\" : 1216, \"message\" : \"document too large\" }, \n"
+  "    \"ERROR_ARANGO_COLLECTION_NOT_UNLOADED\" : { \"code\" : 1217, \"message\" : \"collection must be unloaded\" }, \n"
   "    \"ERROR_ARANGO_DATAFILE_FULL\"   : { \"code\" : 1300, \"message\" : \"datafile full\" }, \n"
   "    \"ERROR_QUERY_KILLED\"           : { \"code\" : 1500, \"message\" : \"query killed\" }, \n"
   "    \"ERROR_QUERY_PARSE\"            : { \"code\" : 1501, \"message\" : \"%s\" }, \n"
