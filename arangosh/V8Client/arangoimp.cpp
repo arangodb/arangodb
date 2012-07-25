@@ -71,6 +71,12 @@ static size_t  DEFAULT_RETRIES = 2;
 static int64_t DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a password was specified
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _hasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,6 +181,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     cerr << options.lastError() << "\n";
     exit(EXIT_FAILURE);
   }
+  
+  _hasPassword = options.has("server.password");
 
   if (FileName == "" && myargs.size() > 0) {
     FileName = myargs[0];
@@ -238,7 +246,7 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
   
-  if (_password.size() == 0) {
+  if (! _hasPassword) {
     // no password given on command-line
     cout << "Please specify a password:" << endl;
     // now prompt for it
@@ -250,11 +258,6 @@ int main (int argc, char* argv[]) {
 #else
     getline(cin, _password);
 #endif
-  }
-
-  if (_password.size() == 0) {
-    cerr << "no value specified for --server.password" << endl;
-    exit(EXIT_FAILURE);
   }
 
 

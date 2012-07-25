@@ -122,6 +122,12 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a password was specified on the command line
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _hasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -596,6 +602,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+
+  _hasPassword =  options.has("server.password");
 
   // set colors
   if (options.has("colors")) {
@@ -1234,7 +1242,7 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  if (_password.size() == 0) {
+  if (! _hasPassword) {
     // no password given on command-line
     cout << "Please specify a password:" << endl;
     // now prompt for it
@@ -1247,12 +1255,6 @@ int main (int argc, char* argv[]) {
     getline(cin, _password);
 #endif
   }
-
-  if (_password.size() == 0) {
-    cerr << "no value specified for --server.password" << endl;
-    exit(EXIT_FAILURE);
-  }
-
 
   // .............................................................................
   // set-up client connection

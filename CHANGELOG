@@ -1,5 +1,8 @@
 v1.1.x (XXXX-XX-XX)
 -------------------
+* INCOMPATIBLE CHANGE: renamed parameters "connect-timeout" and "request-timeout" 
+  for arangosh and arangoimp to "--server.connect-timeout" and "--server.request-timeout"
+
 * INCOMPATIBLE CHANGE: authorization is now required when using the server
   Clients sending requests without HTTP autorization will be rejected with HTTP 401
 
