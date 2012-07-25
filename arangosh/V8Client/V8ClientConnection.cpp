@@ -274,7 +274,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
   else {
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
   }
-                  
+
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
@@ -342,10 +342,20 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
     else {
       // no body 
       // this should not happen
-      v8::Handle<v8::Object> result;        
+      v8::Handle<v8::Object> result = v8::Object::New();        
+      
+      result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
 
-      result->Set(v8::String::New("error"), v8::Boolean::New(false));
-      result->Set(v8::String::New("code"), v8::Integer::New(_httpResult->getHttpReturnCode()));
+      if (_lastHttpReturnCode >= 400) {
+        string returnMessage(_httpResult->getHttpReturnMessage());
+
+        result->Set(v8::String::New("error"), v8::Boolean::New(true));
+        result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
+        result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+      }
+      else {
+        result->Set(v8::String::New("error"), v8::Boolean::New(false));
+      }
 
       return result;
     }        
