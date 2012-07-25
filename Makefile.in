@@ -5113,7 +5113,7 @@ Installation/arangod.conf: Installation/arangod.conf.in Makefile
 ################################################################################
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
-@ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+@ENABLE_INSTALL_DBDIR_TRUE@	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
 
 ################################################################################
 ################################################################################

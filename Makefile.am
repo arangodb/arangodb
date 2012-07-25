@@ -257,7 +257,7 @@ endif
 if ENABLE_INSTALL_DBDIR
 
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
 
 endif
 
