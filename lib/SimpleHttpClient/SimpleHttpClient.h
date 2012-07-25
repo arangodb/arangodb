@@ -33,7 +33,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
-#include "SimpleHttpClient/ClientConnection.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace triagens {
   namespace httpclient {
@@ -79,7 +79,7 @@ namespace triagens {
       /// @brief constructs a new http client
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (ClientConnection*, 
+      SimpleHttpClient (GeneralClientConnection*, 
                         double, 
                         bool);
 
@@ -239,7 +239,7 @@ namespace triagens {
       /// @brief connection used (TCP or SSL connection)
       ////////////////////////////////////////////////////////////////////////////////
 
-      ClientConnection* _connection;
+      GeneralClientConnection* _connection;
 
       // read and write buffer
       triagens::basics::StringBuffer _writeBuffer;

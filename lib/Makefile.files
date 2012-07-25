@@ -122,8 +122,9 @@ endif
 ################################################################################
 
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
-	lib/SimpleHttpClient/HttpClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 

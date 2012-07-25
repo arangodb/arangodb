@@ -42,7 +42,8 @@
 
 #include "Basics/StringUtils.h"
 #include "Rest/Endpoint.h"
-#include "SimpleHttpClient/HttpClientConnection.h"
+#include "SimpleHttpClient/ClientConnection.h"
+#include "SimpleHttpClient/SslClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -75,8 +76,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         size_t retries,
                                         double connectionTimeout,
                                         bool warn)
-  : _connection(new HttpClientConnection(endpoint, requestTimeout, connectionTimeout, retries)),
-    _connected(false),
+  : _connection(new ClientConnection(endpoint, requestTimeout, connectionTimeout, retries)),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
@@ -104,7 +104,6 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
         if (vs && vs->getValue() == "arango") {
           // connected to arango server
-          _connected = true;
           vs = json->lookupString("version");
 
           if (vs) {

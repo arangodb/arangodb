@@ -489,8 +489,9 @@ lib_libarango_a_OBJECTS = $(am_lib_libarango_a_OBJECTS)
 lib_libarango_client_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_client_a_LIBADD =
 am_lib_libarango_client_a_OBJECTS =  \
+	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
-	lib/SimpleHttpClient/HttpClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_client_a_OBJECTS = $(am_lib_libarango_client_a_OBJECTS)
@@ -1328,8 +1329,9 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 ### @brief library "libarango.a", client part
 ################################################################################
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
-	lib/SimpleHttpClient/HttpClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -2044,10 +2046,13 @@ lib/SimpleHttpClient/$(am__dirstamp):
 lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/SimpleHttpClient/$(DEPDIR)
 	@: > lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/ClientConnection.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
-lib/SimpleHttpClient/HttpClientConnection.$(OBJEXT):  \
+lib/SimpleHttpClient/SslClientConnection.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
@@ -3028,9 +3033,10 @@ mostlyclean-compile:
 	-rm -f lib/ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f lib/ShapedJson/shaped-json.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/ClientConnection.$(OBJEXT)
-	-rm -f lib/SimpleHttpClient/HttpClientConnection.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
 	-rm -f lib/Statistics/statistics.$(OBJEXT)
 	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
 	-rm -f lib/UserManager/Role.$(OBJEXT)
@@ -3297,9 +3303,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/HttpClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@

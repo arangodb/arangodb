@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http client connection
+/// @brief ssl client connection
 ///
 /// @file
 ///
@@ -25,13 +25,17 @@
 /// @author Copyright 2009-2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_HTTP_CLIENT_CONNECTION_H
-#define TRIAGENS_SIMPLE_HTTP_CLIENT_HTTP_CLIENT_CONNECTION_H 1
+#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
+#define TRIAGENS_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
 
-#include "SimpleHttpClient/ClientConnection.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+
+#include "openssl/bio.h"
+#include "openssl/ssl.h"
+#include "openssl/err.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              HttpClientConnection
+// --SECTION--                                               SslClientConnection
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -41,7 +45,7 @@ namespace triagens {
 /// @brief client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpClientConnection : public ClientConnection {
+    class SslClientConnection : public GeneralClientConnection {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -54,25 +58,25 @@ namespace triagens {
 
       private:
 
-        HttpClientConnection (HttpClientConnection const&);
-        HttpClientConnection& operator= (HttpClientConnection const&);
+        SslClientConnection (SslClientConnection const&);
+        SslClientConnection& operator= (SslClientConnection const&);
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new HTTP client connection
+/// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpClientConnection (triagens::rest::Endpoint* endpoint,
-                              double,
-                              double,
-                              size_t);
+        SslClientConnection (triagens::rest::Endpoint* endpoint,
+                             double,
+                             double,
+                             size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an HTTP client connection
+/// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~HttpClientConnection ();
+        virtual ~SslClientConnection ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -94,6 +98,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
         bool connectSocket ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnect
+////////////////////////////////////////////////////////////////////////////////
+    
+        void disconnectSocket ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare connection for read/write I/O
@@ -120,12 +130,6 @@ namespace triagens {
         bool readable ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the socket is still alive
-////////////////////////////////////////////////////////////////////////////////
-    
-        bool checkSocket ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -139,13 +143,30 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the underlying socket
 ////////////////////////////////////////////////////////////////////////////////
       
-        socket_t _socket;         
+        socket_t _socket;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying session
+////////////////////////////////////////////////////////////////////////////////
+      
+        SSL* _ssl;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SSL context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _ctx;
+
+/*
+        bool _writeBlockedOnRead;
+        bool _readBlockedOnWrite;
+        bool _readBlocked;
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

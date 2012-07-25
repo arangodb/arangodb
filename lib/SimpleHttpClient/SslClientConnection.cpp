@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple http client connection
+/// @brief ssl client connection
 ///
 /// @file
 ///
@@ -25,7 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpClientConnection.h"
+#include "SslClientConnection.h"
+
+#include "Basics/ssl-helper.h"
+#include "BasicsC/socket-utils.h"
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -52,18 +55,33 @@ using namespace std;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpClientConnection::HttpClientConnection (Endpoint* endpoint,
-                                            double requestTimeout,
-                                            double connectTimeout,
-                                            size_t connectRetries) :
-  ClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {
+SslClientConnection::SslClientConnection (Endpoint* endpoint,
+                                          double requestTimeout,
+                                          double connectTimeout,
+                                          size_t connectRetries) :
+  GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries), 
+  _socket(0),
+  _ssl(0),
+  _ctx(0) {
+
+  _ctx = SSL_CTX_new(TLSv1_method());
+  if (_ctx) {
+    SSL_CTX_set_cipher_list(_ctx, "ALL");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpClientConnection::~HttpClientConnection () {
+SslClientConnection::~SslClientConnection () {
+  if (_ssl) {
+    SSL_free(_ssl);
+  }
+
+  if (_ctx) {
+    SSL_CTX_free(_ctx);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,41 +101,63 @@ HttpClientConnection::~HttpClientConnection () {
 /// @brief connect
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpClientConnection::connectSocket () {
+bool SslClientConnection::connectSocket () {
   _socket = _endpoint->connect();
-
-  if (_socket == 0) {
+  if (_socket <= 0) {
+    return false;
+  }
+  _ssl = SSL_new(_ctx);
+  if (_ssl == 0) {
+    _endpoint->disconnect();
+    _socket = 0;
     return false;
   }
 
-  struct timeval tv;
-  fd_set fdset;
-
-  tv.tv_sec = (uint64_t) _connectTimeout;
-  tv.tv_usec = ((uint64_t) (_connectTimeout * 1000000.0)) % 1000000;
-
-  FD_ZERO(&fdset);
-  FD_SET(_socket, &fdset);
-
-  if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
-    if (checkSocket()) {
-      return true;
-    }
-
+  if (SSL_set_fd(_ssl, (int) _socket) != 1) {
+    _endpoint->disconnect();
+    SSL_free(_ssl);
+    _ssl = 0;
+    _socket = 0;
     return false;
   }
 
-  // connect timeout reached
-  disconnect();
+  SSL_set_verify(_ssl, SSL_VERIFY_NONE, NULL);
 
-  return false;
+  int ret = SSL_connect(_ssl);
+  if (ret != 1) {
+    _endpoint->disconnect();
+    SSL_free(_ssl);
+    _ssl = 0;
+    _socket = 0;
+    return false;
+  }
+       /* 
+  _writeBlockedOnRead = false;
+  _readBlockedOnWrite = false;
+  _readBlocked = false;
+*/
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnect
+////////////////////////////////////////////////////////////////////////////////
+
+void SslClientConnection::disconnectSocket () {
+  _endpoint->disconnect();
+  _socket = 0;
+
+  if (_ssl) {
+    SSL_free(_ssl);
+    _ssl = 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpClientConnection::prepare (const double timeout, const bool isWrite) const {
+bool SslClientConnection::prepare (const double timeout, const bool isWrite) const {
   struct timeval tv;
   fd_set fdset;
 
@@ -148,45 +188,83 @@ bool HttpClientConnection::prepare (const double timeout, const bool isWrite) co
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpClientConnection::write (void* buffer, size_t length, size_t* bytesWritten) {
-  if (!checkSocket()) {
+bool SslClientConnection::write (void* buffer, size_t length, size_t* bytesWritten) {
+  *bytesWritten = 0;
+
+  if (_ssl == 0) {
     return false;
   }
+/*
+  if (! (_canWrite || _writeBlockedOnRead && _canRead)) {
+    return false;
+  }
+ 
+  _writeBlockedOnRead = false;
+*/
+  int written = SSL_write(_ssl, buffer, length);
+  switch (SSL_get_error(_ssl, written)) {
+    case SSL_ERROR_NONE:
+      *bytesWritten = written;
 
-#ifdef __APPLE__
-  int status = ::send(_socket, buffer, length, 0);
-#else
-  int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
-#endif
+      return true;
 
-  *bytesWritten = status;
+    case SSL_ERROR_ZERO_RETURN:
+      SSL_shutdown(_ssl);
+      break;
 
-  return (status >= 0);
+    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_WRITE:
+    case SSL_ERROR_WANT_CONNECT:
+    case SSL_ERROR_SYSCALL:
+    default: {
+      /* fallthrough */
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
     
-bool HttpClientConnection::read (StringBuffer& stringBuffer) {
-  if (!checkSocket()) {
+bool SslClientConnection::read (StringBuffer& stringBuffer) {
+  if (_ssl == 0) {
+    return false;
+  }
+/*
+  if (! ((_canRead && !_writeBlockedOnRead) || (_readBlockedOnWrite && _canWrite))) {
     return false;
   }
 
+  _readBlocked = false;
+  _readBlockedOnWrite = false;
+*/
   do {
     char buffer[READBUFFER_SIZE];
 
-    int lenRead = ::read(_socket, buffer, READBUFFER_SIZE - 1);
+    int lenRead = SSL_read(_ssl, buffer, READBUFFER_SIZE - 1);
 
-    if (lenRead <= 0) {
-      // error: stop reading
-      break;
+    switch (SSL_get_error(_ssl, lenRead)) {
+      case SSL_ERROR_NONE:
+        stringBuffer.appendText(buffer, lenRead);
+        break;
+
+      case SSL_ERROR_ZERO_RETURN:
+        SSL_shutdown(_ssl);
+        return true;
+
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+      case SSL_ERROR_WANT_CONNECT:
+      case SSL_ERROR_SYSCALL:
+      default:
+        /* unexpected */
+        return false;
     }
-
-    stringBuffer.appendText(buffer, lenRead);
   }
   while (readable());
-
+  
   return true;
 }
 
@@ -194,37 +272,13 @@ bool HttpClientConnection::read (StringBuffer& stringBuffer) {
 /// @brief return whether the connection is readable
 ////////////////////////////////////////////////////////////////////////////////
     
-bool HttpClientConnection::readable () {
-  fd_set fdset;
-  FD_ZERO(&fdset);
-  FD_SET(_socket, &fdset);
-
-  struct timeval tv;
-  tv.tv_sec = 0;
-  tv.tv_usec = 0;
-
-  if (select(_socket + 1, &fdset, NULL, NULL, &tv) == 1) {        
-    return checkSocket();
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the socket is still alive
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpClientConnection::checkSocket () {
-  int so_error = -1;
-  socklen_t len = sizeof so_error;
-
-  getsockopt(_socket, SOL_SOCKET, SO_ERROR, &so_error, &len);
-
-  if (so_error == 0) {
-    return true;
-  }
-
-  return false;
+bool SslClientConnection::readable () {
+  // must use SSL_pending() and not select() as SSL_read() might read more
+  // bytes from the socket into the _ssl structure than we actually requested
+  // via SSL_read().
+  // if we used select() to check whether there is more data available, select()
+  // might return 0 already but we might not have consumed all bytes yet 
+  return SSL_pending(_ssl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
