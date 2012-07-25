@@ -64,6 +64,7 @@ namespace triagens {
 
     void SimpleHttpResult::clear () {
       _returnCode = 0;
+      _returnMessage = "";
       _contentLength = 0;
       _chunked = false;
       _requestResultType = UNKNOWN;            
@@ -116,10 +117,12 @@ namespace triagens {
     void SimpleHttpResult::addHeaderField (std::string const& key, std::string const& value) {
       string k = StringUtils::trim(StringUtils::tolower(key));
 
-      if (k == "http/1.1") {
+      if (k == "http/1.1" || k == "http/1.0") {
         if (value.length() > 2) {
+          // we assume the status code is 3 chars long
           string code = value.substr(0, 3);
           setHttpReturnCode(atoi(code.c_str()));
+          setHttpReturnMessage(value.substr(3 + 1));
         }
       }
       else if (k == "content-length") {
