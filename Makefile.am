@@ -307,12 +307,21 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ################################################################################
 
 bin/arango-password: bin/arango-password.in
+if ENABLE_RELATIVE_DEVEL
+	sed \
+		-e 's%@SBINDIR@%bin%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
+	chmod 755 $@
+else   
 	sed \
 		-e 's%@SBINDIR@%${DESTDIR}${sbindir}%g' \
 		-e 's%@DATABASE@%${databasedir}%g' \
 		-e 's%@STATICFILES@%${pkgdatadir}%g' \
 		$< > $@
 	chmod 755 $@
+endif
 
 CLEANUP += bin/arango-password
 
