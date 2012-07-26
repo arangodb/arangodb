@@ -30,7 +30,7 @@
 
 #include "BasicsC/common.h"
 
-#ifdef TRI_HAVE_TERMIOS
+#ifdef TRI_HAVE_TERMIOS_H
 #include <termios.h>
 #endif
 

@@ -70,7 +70,7 @@ int TRI_ColumnsWidth (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetStdinVisibility (bool visible) {
-#ifdef TRI_HAVE_TERMIOS
+#ifdef TRI_HAVE_TERMIOS_H
   struct termios tty;
   
   tcgetattr(STDIN_FILENO, &tty);

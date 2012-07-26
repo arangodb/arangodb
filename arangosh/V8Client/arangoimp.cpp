@@ -250,7 +250,7 @@ int main (int argc, char* argv[]) {
     // no password given on command-line
     cout << "Please specify a password:" << endl;
     // now prompt for it
-#ifdef TRI_HAVE_TERMIOS
+#ifdef TRI_HAVE_TERMIOS_H
     TRI_SetStdinVisibility(false);
     getline(cin, _password);
 
