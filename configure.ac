@@ -130,6 +130,7 @@ else
 fi
 fi
 
+AM_CONDITIONAL(ENABLE_RELATIVE_SYSTEM, test "x$tr_RELATIVE" = xyes)
 AM_CONDITIONAL(ENABLE_RELATIVE_DEVEL, test "x$tr_RELATIVE" = xdevel)
 
 dnl ============================================================================
