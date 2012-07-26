@@ -316,7 +316,7 @@ namespace triagens {
 /// @verbinclude option-server-endpoint
 ///
 /// Note that if you are using SSL-encrypted endpoints, you must also supply
-/// the path to a server certificate using the --ssl.keyfile optionn.
+/// the path to a server certificate using the --server.keyfile optionn.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;
