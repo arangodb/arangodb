@@ -18,6 +18,7 @@ arangod/Ahuacatl/ahuacatl-grammar.output
 ARCH.*
 autom4te.cache
 bin
+!bin/*.in
 build.h
 build.info
 commit.sh
