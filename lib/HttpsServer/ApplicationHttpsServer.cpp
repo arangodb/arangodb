@@ -88,8 +88,8 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
     _sslProtocol(HttpsServer::TLS_V1),
-    _sslCacheMode(0),
-    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
+    _sslCache(false),
+    _sslOptions((uint64_t) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
     _sslCipherList(""),
     _sslContext(0),
     _rctx() {
@@ -147,7 +147,7 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
-    ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
+    ("server.ssl-cache", &_sslCache, "use SSL session caching")
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
     ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
   ;
@@ -308,8 +308,10 @@ bool ApplicationHttpsServer::createSslContext () {
   }
 
   // set cache mode
-  SSL_CTX_set_session_cache_mode(_sslContext, _sslCacheMode);
-  LOGGER_INFO << "using SSL session cache mode: " << _sslCacheMode;
+  SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+  if (_sslCache) {
+    LOGGER_INFO << "using SSL session caching"; 
+  }
 
   // set options
   SSL_CTX_set_options(_sslContext, _sslOptions);

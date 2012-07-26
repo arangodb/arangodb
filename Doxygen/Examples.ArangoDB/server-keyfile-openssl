@@ -10,8 +10,8 @@ cp server.key server.key.org
 # remove passphrase from the private key
 openssl rsa -in server.key.org -out server.key
 
-# sign the csr with the key, creates certificate file "server.crt"
+# sign the csr with the key, creates certificate PEM file "server.crt"
 openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 
-# combine certificate and key into single file "ssl.keyfile"
-cat server.crt server.key > ssl.keyfile
+# combine certificate and key into single PEM file "server.pem"
+cat server.crt server.key > server.pem
