@@ -5291,6 +5291,7 @@ build.h: configure.ac
 unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
+	unittests-make \
 	unittests-boost \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
@@ -5336,6 +5337,14 @@ start-server:
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 30; else sleep 2; fi
 	@echo
+
+################################################################################
+################################################################################
+
+.PHONY: unittests-make
+
+unittests-make:
+	make tags > /dev/null || test "x$(FORCE)" == "x1" 
 
 ################################################################################
 ################################################################################
