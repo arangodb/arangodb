@@ -73,11 +73,7 @@ DispatcherThread* Dispatcher::defaultDispatcherThread (DispatcherQueue* queue) {
 Dispatcher::Dispatcher ()
   : _accessDispatcher(),
     _stopping(0),
-    _queues()
-#ifdef TRI_ENABLE_ZEROMQ
-  , _zeroMQContext(0)
-#endif
-    {
+    _queues() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,6 +136,7 @@ void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Dispatcher::addJob (Job* job) {
+  RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
   if (_stopping != 0) {
@@ -161,7 +158,7 @@ bool Dispatcher::addJob (Job* job) {
   // add the job to the list of ready jobs
   queue->addJob(job);
 
-  // indicate sucess, BUT never access job after it has been added to the queue
+  // indicate success, BUT never access job after it has been added to the queue
   return true;
 }
 
@@ -294,30 +291,6 @@ void Dispatcher::reportStatus () {
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the ZeroMQ context
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-void* Dispatcher::zeroMQContext () {
-  return _zeroMQContext;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the ZeroMQ context
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-void Dispatcher::setZeroMQContext (void* context) {
-  _zeroMQContext = context;
-}
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

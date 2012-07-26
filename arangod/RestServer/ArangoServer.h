@@ -29,6 +29,7 @@
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Rest/AnyServer.h"
+#include "Rest/EndpointList.h"
 
 #include "VocBase/vocbase.h"
 
@@ -42,8 +43,13 @@ namespace triagens {
     class ApplicationHttpServer;
     class ApplicationHttpsServer;
     class ApplicationScheduler;
+#ifdef TRI_ENABLE_ZEROMQ
     class ApplicationZeroMQ;
+#endif 
     class HttpServer;
+#ifdef TRI_OPENSSL_VERSION
+    class HttpsServer;
+#endif
   }
 
   namespace admin {
@@ -229,7 +235,9 @@ namespace triagens {
 /// @brief application https server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_OPENSSL_VERSION
         rest::ApplicationHttpsServer* _applicationHttpsServer;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed admin server application
@@ -261,7 +269,9 @@ namespace triagens {
 /// @brief ZeroMQ server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZEROMQ
         rest::ApplicationZeroMQ* _applicationZeroMQ;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed http server
@@ -270,63 +280,60 @@ namespace triagens {
         rest::HttpServer* _httpServer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed admin http server
+/// @brief constructed https server
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::HttpServer* _adminHttpServer;
+#ifdef TRI_OPENSSL_VERSION
+        rest::HttpsServer* _httpsServer;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for client requests
-///
-/// @CMDOPT{--server.http-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available. If you do not specify an admin port, then the http port
-/// will serve both client and administration request. If you have
-/// higher security requirements, you can use a special administration
-/// port.
-///
-/// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{address} and @CA{port} for HTTP requests by clients. This
-/// will bind to the given @CA{address}, which can be a numeric value like
-/// @CODE{192.168.1.1} or a name.
-///
-/// @CMDOPT{--port @CA{port}}
-///
-/// This variant can be used as command line option.
+/// @brief endpoint list container
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _httpPort;
+        rest::EndpointList _endpointList;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use basic http authentication
+/// @brief endpoints for client HTTP requests
 ///
-/// @CMDOPT{--server.http-auth @CA{flag}}
+/// @CMDOPT{--server.endpoint @CA{endpoint}}
 ///
-/// If @CA{flag} is @LIT{yes}, then the HTTP access is secured with "HTTP Basic
-/// Authentication". The user and sha256 of the password are stored in a
-/// collection @LIT{_users}.
+/// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
+/// the following pattern:
+/// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+/// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+/// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
+/// - unix:///path/to/socket - Unix domain socket endpoint
+///
+/// If a TCP/IP endpoint is specified without a port number, then the default 
+/// port (8529) will be used.
+/// If multiple endpoints need to be used, the option can be repeated multiple
+/// times.
+///
+/// @EXAMPLES
+///
+/// @verbinclude option-server-endpoint
+///
+/// Note that if you are using SSL-encrypted endpoints, you must also supply
+/// the path to a server certificate using the --ssl.keyfile optionn.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _httpAuth;
+        vector<string> _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for admin requests
+/// @brief disable authentication for ALL client requests
 ///
-/// @CMDOPT{--server.admin-port @CA{port}}
+/// @CMDOPT{--server.disable-authentication @CA{value}}
 ///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to any address available.
+/// Settings @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
 ///
-/// @CMDOPT{--server.admin-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to the given @CA{address}, which can be a numeric value like
-/// 192.168.1.1 or a name.
+/// The default value is @LIT{false}.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _adminPort;
+        bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker

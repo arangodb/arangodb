@@ -240,7 +240,7 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   collection = TRI_LookupCollectionByNameVocBase(vocbase, "_users");
 
   if (collection == NULL) {
-    LOG_INFO("collection '_users' does not exists, no authentication available");
+    LOG_INFO("collection '_users' does not exist, no authentication available");
     return;
   }
 

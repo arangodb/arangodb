@@ -217,6 +217,8 @@ void Scheduler::shutdown () {
   for (set<Task*>::iterator i = taskRegistered.begin();
        i != taskRegistered.end();
        ++i) {
+    LOGGER_WARNING << "forcefully removing task '" << (*i)->getName() << "'";
+
     deleteTask(*i);
   }
 
@@ -235,7 +237,7 @@ void Scheduler::registerTask (Task* task) {
   {
     MUTEX_LOCKER(schedulerLock);
 
-    LOGGER_TRACE << "registerTask for task " << task;
+    LOGGER_TRACE << "registerTask for task " << task << " (" << task->getName() << ")";
 
     size_t n = 0;
 
@@ -266,12 +268,12 @@ void Scheduler::unregisterTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "unregisterTask called for a unknown task " << task;
+      LOGGER_WARNING << "unregisterTask called for a unknown task " << task << " (" << task->getName() << ")";
 
       return;
     }
     else {
-      LOGGER_TRACE << "unregisterTask for task " << task;
+      LOGGER_TRACE << "unregisterTask for task " << task << " (" << task->getName() << ")";
 
       thread = i->second;
 
@@ -300,12 +302,12 @@ void Scheduler::destroyTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "destroyTask called for a unknown task " << task;
+      LOGGER_WARNING << "destroyTask called for a unknown task " << task << " (" << task->getName() << ")";
 
       return;
     }
     else {
-      LOGGER_TRACE << "destroyTask for task " << task;
+      LOGGER_TRACE << "destroyTask for task " << task << " (" << task->getName() << ")";
 
       thread = i->second;
 

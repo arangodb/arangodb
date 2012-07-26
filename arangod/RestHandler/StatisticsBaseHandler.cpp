@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics
+/// @brief statistics handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,80 +22,119 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_STATISTICS_REQUEST_STATISTICS_H
-#define TRIAGENS_STATISTICS_REQUEST_STATISTICS_H 1
+#include "StatisticsBaseHandler.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/StringUtils.h"
+#include "Rest/HttpRequest.h"
+
+using namespace triagens::arango;
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics
+/// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_request_statistics_s {
-  double _readStart;
-  double _readEnd;
-  double _queueStart;
-  double _queueEnd;
-  double _requestStart;
-  double _requestEnd;
-  double _writeStart;
-  double _writeEnd;
-
-  double _receivedBytes;
-  double _sendBytes;
-
-  bool _tooLarge;
+StatisticsBaseHandler::StatisticsBaseHandler (triagens::rest::HttpRequest* request) 
+  : RestBaseHandler(request) {
 }
-TRI_request_statistics_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets a new statistics block
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_request_statistics_t* TRI_AquireRequestStatistics ();
+bool StatisticsBaseHandler::isDirect () {
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a statistics block
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseRequestStatistics (TRI_request_statistics_t*);
+Handler::status_e StatisticsBaseHandler::execute () {
+  TRI_statistics_granularity_e granularity = TRI_STATISTICS_MINUTES;
+
+  int length = -1;
+
+  // .............................................................................
+  // extract the granularity to show
+  // .............................................................................
+
+  bool found;
+  string gran = StringUtils::tolower(_request->value("granularity", found));
+
+  if (found) {
+    if (gran == "minute" || gran == "minutes") {
+      granularity = TRI_STATISTICS_MINUTES;
+    }
+    else if (gran == "hour" || gran == "hours") {
+      granularity = TRI_STATISTICS_HOURS;
+    }
+    else if (gran == "day" || gran == "days") {
+      granularity = TRI_STATISTICS_DAYS;
+    }
+  }
+  else {
+    granularity = TRI_STATISTICS_MINUTES;
+  }
+
+  // .............................................................................
+  // extract the length
+  // .............................................................................
+
+  string l = StringUtils::tolower(_request->value("length", found));
+
+  if (found) {
+    if (l == "current") {
+      length = 0;
+    }
+    else if (l == "all" || l == "*") {
+      length = -1;
+    }
+    else {
+      length = StringUtils::int32(l);
+    }
+  }
+  else {
+    length = -1;
+  }
+
+  // .............................................................................
+  // compute the statistics
+  // .............................................................................
+
+  compute(granularity, length);
+  return HANDLER_DONE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -105,3 +144,5 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t*);
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+
+

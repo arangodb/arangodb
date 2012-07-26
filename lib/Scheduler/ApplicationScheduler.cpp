@@ -67,10 +67,6 @@ namespace {
           LOGGER_INFO << "control-c received, beginning shut down sequence";
           _server->beginShutdown();
         }
-        else if (_seen == 1) {
-          LOGGER_INFO << "control-c received, shutting down";
-          _server->shutdown();
-        }
         else {
           LOGGER_INFO << "control-c received, terminating";
           exit(EXIT_FAILURE);
@@ -166,6 +162,9 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler () {
+  if (_scheduler != 0) {
+    delete _scheduler;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,17 +310,7 @@ bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
 
 bool ApplicationScheduler::prepare () {
   buildScheduler();
-  buildSchedulerReporter();
-  buildControlCHandler();
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::isStartable () {
   return true;
 }
 
@@ -330,6 +319,9 @@ bool ApplicationScheduler::isStartable () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::start () {
+  buildSchedulerReporter();
+  buildControlCHandler();
+
   bool ok = _scheduler->start(0);
 
   if (! ok) {
@@ -341,19 +333,12 @@ bool ApplicationScheduler::start () {
     return false;
   }
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::isStarted () {
-  if (_scheduler != 0) {
-    return _scheduler->isStarted();
+  while (! _scheduler->isStarted()) {
+    LOGGER_DEBUG << "waiting for scheduler to start";
+    usleep(500 * 1000);
   }
 
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,33 +357,24 @@ bool ApplicationScheduler::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::isRunning () {
+void ApplicationScheduler::stop () {
+  size_t const MAX_TRIES = 10;
+
   if (_scheduler != 0) {
-    return _scheduler->isRunning();
-  }
 
-  return false;
-}
+    // remove all helper tasks
+    for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {
+      Task* task = *i;
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+      _scheduler->destroyTask(task);
+    }
 
-void ApplicationScheduler::beginShutdown () {
-  if (_scheduler != 0) {
+    _tasks.clear();
+
+    // shutdown the scheduler
     _scheduler->beginShutdown();
-  }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::shutdown () {
-  if (_scheduler != 0) {
-    int count = 0;
-
-    while (++count < 6 && _scheduler->isRunning()) {
+    for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
       LOGGER_TRACE << "waiting for scheduler to stop";
       sleep(1);
     }
@@ -448,7 +424,10 @@ void ApplicationScheduler::buildSchedulerReporter () {
   }
 
   if (0.0 < _reportIntervall) {
-    _scheduler->registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
+    Task* reporter = new SchedulerReporterTask(_scheduler, _reportIntervall);
+
+    _scheduler->registerTask(reporter);
+    _tasks.push_back(reporter);
   }
 }
 
@@ -462,8 +441,17 @@ void ApplicationScheduler::buildControlCHandler () {
     exit(EXIT_FAILURE);
   }
 
-  _scheduler->registerTask(new ControlCTask(_applicationServer));
-  _scheduler->registerTask(new HangupTask());
+  // control C handler
+  Task* controlC = new ControlCTask(_applicationServer);
+
+  _scheduler->registerTask(controlC);
+  _tasks.push_back(controlC);
+
+  // hangup handler
+  Task* hangup = new HangupTask();
+
+  _scheduler->registerTask(hangup);
+  _tasks.push_back(hangup);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

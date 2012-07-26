@@ -32,10 +32,8 @@
 
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "Basics/MutexLocker.h"
-
-#include "Scheduler/Task.h"
 #include "Scheduler/SchedulerThread.h"
+#include "Scheduler/Task.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

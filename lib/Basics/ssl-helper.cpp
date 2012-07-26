@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server figures
+/// @brief ssl helper functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,20 +21,35 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralFigures.h"
+#include "ssl-helper.h"
+
+using namespace std;
 
 namespace triagens {
-  namespace rest {
-    namespace GeneralFigures {
-      basics::RoundRobinFigures<1, 61, GeneralServerStatistics> FiguresSecond;
-      basics::RoundRobinFigures<60, 61, GeneralServerStatistics> FiguresMinute;
-      basics::RoundRobinFigures<60 * 60, 25, GeneralServerStatistics> FiguresHour;
-      basics::RoundRobinFigures<24 * 60 * 60, 31, GeneralServerStatistics> FiguresDay;
+  namespace basics {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get last SSL error
+////////////////////////////////////////////////////////////////////////////////
+
+    string lastSSLError () {
+#ifdef TRI_OPENSSL_VERSION
+      char buf[122];
+      memset(buf, 0, sizeof(buf));
+
+      unsigned long err = ERR_get_error();
+      ERR_error_string_n(err, buf, sizeof(buf) - 1);
+
+      return string(buf);
+#else
+      return "not implemented";
+#endif
     }
+
   }
 }
+

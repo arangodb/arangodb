@@ -181,10 +181,10 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // .............................................................................
 
   bool found1;
-  string upto = StringUtils::tolower(request->value("upto", found1));
+  string upto = StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  string lvl = StringUtils::tolower(request->value("level", found2));
+  string lvl = StringUtils::tolower(_request->value("level", found2));
 
   TRI_log_level_e ul = TRI_LOG_LEVEL_INFO;
   bool useUpto = true;
@@ -234,7 +234,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   uint64_t start = 0;
   
   bool found;
-  string s = request->value("start", found);
+  string s = _request->value("start", found);
   
   if (found) {
     start = StringUtils::uint64(s);
@@ -246,7 +246,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   
   uint64_t offset = 0;
   
-  s = request->value("offset", found);
+  s = _request->value("offset", found);
   
   if (found) {
     offset = StringUtils::uint64(s);
@@ -258,7 +258,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   
   uint64_t size = (uint64_t) -1;
   
-  s = request->value("size", found);
+  s = _request->value("size", found);
   
   if (found) {
     size = StringUtils::uint64(s);
@@ -271,7 +271,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   bool sortAscending = false;
   bool sortDescending = false;
   
-  string sortdir = StringUtils::tolower(request->value("sort", found));
+  string sortdir = StringUtils::tolower(_request->value("sort", found));
   
   if (found) {
     if (sortdir == "asc") {
@@ -290,7 +290,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // .............................................................................
   
   bool search = false;
-  string searchString = StringUtils::tolower(request->value("search", search));
+  string searchString = StringUtils::tolower(_request->value("search", search));
   
   // .............................................................................
   // generate result

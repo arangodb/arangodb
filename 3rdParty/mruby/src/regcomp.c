@@ -30,7 +30,7 @@
 #include "mruby.h"
 #include <string.h>
 #include "regparse.h"
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 
 OnigCaseFoldType OnigDefaultCaseFoldFlag = ONIGENC_CASE_FOLD_MIN;
 
@@ -5628,7 +5628,7 @@ onig_end(void)
   THREAD_SYSTEM_END;
   return 0;
 }
-#endif //ENABLE_REGEXP
+#endif //INCLUDE_REGEXP
 
 #ifdef INCLUDE_ENCODING
 extern int
@@ -5653,7 +5653,7 @@ onig_is_in_code_range(const UChar* p, OnigCodePoint code)
 }
 #endif //INCLUDE_ENCODING
 
-#ifdef ENABLE_REGEXP
+#ifdef INCLUDE_REGEXP
 extern int
 onig_is_code_in_cc_len(int elen, OnigCodePoint code, CClassNode* cc)
 {
@@ -6285,4 +6285,4 @@ print_tree(FILE* f, Node* node)
   print_indent_tree(f, node, 0);
 }
 #endif
-#endif //ENABLE_REGEXP
+#endif //INCLUDE_REGEXP

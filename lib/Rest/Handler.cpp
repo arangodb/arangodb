@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief address and port
+/// @brief abstract class for handlers
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,40 +22,35 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AddressPort.h"
+#include "Handler.h"
 
-#include "Basics/StringUtils.h"
-
-using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty address / port structure
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AddressPort::AddressPort ()
-  : _address("127.0.0.1"),
-    _port(0) {
+Handler::Handler () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an IP4 or IP6 address / port structure
+/// @brief destructs a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-AddressPort::AddressPort (string const& definition) {
-  split(definition);
+Handler::~Handler () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,60 +62,43 @@ AddressPort::AddressPort (string const& definition) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AddressPort::operator== (AddressPort const &that) {
-  return _address == that._address && _port == that._port;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the job type
+////////////////////////////////////////////////////////////////////////////////
+
+Job::JobType Handler::type () {
+  return Job::READ_JOB;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits an address
+/// @brief returns the queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AddressPort::split (string const& definition) {
-  if (definition.empty()) {
-    return false;
-  }
-      
-  if (definition[0] == '[') {
+string const& Handler::queue () {
+  static string standard = "STANDARD";
+  return standard;
+}
 
-    // ipv6 address
-    size_t find = definition.find("]:", 1);
-        
-    if (find != string::npos && find + 2 < definition.size()) {
-      _address = definition.substr(1, find-1);
-      _port = StringUtils::uint32(definition.substr(find+2));
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the thread which currently dealing with the job
+////////////////////////////////////////////////////////////////////////////////
 
-      return true;
-    }
-  }
-
-  int n = StringUtils::numEntries(definition, ":");
-
-  if (n == 1) {
-    _address = "";
-    _port = StringUtils::uint32(definition);
-
-    return true;
-  }
-  else if (n == 2) {
-    _address = StringUtils::entry(1, definition, ":");
-    _port = StringUtils::int32(StringUtils::entry(2, definition, ":"));
-
-    return true;
-  }
-  else {
-    return false;
-  }
+void Handler::setDispatcherThread (DispatcherThread*) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

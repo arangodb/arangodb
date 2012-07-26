@@ -30,8 +30,7 @@
 
 #include "ApplicationServer/ApplicationFeature.h"
 
-#include <UserManager/Right.h>
-#include "Rest/AddressPort.h"
+#include "UserManager/Right.h"
 
 namespace triagens {
   namespace rest {
@@ -150,7 +149,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ApplicationServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

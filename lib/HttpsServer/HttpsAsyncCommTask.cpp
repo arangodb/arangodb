@@ -30,34 +30,21 @@
 
 #include <openssl/err.h>
 
+#include <Basics/ssl-helper.h>
+
 #include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
 #include <Basics/StringBuffer.h>
 #include <Rest/HttpRequest.h>
 
 #include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 
 using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
-
-    // -----------------------------------------------------------------------------
-    // SSL helper functions
-    // -----------------------------------------------------------------------------
-
-    namespace {
-      string lastSSLError () {
-        char buf[122];
-        memset(buf, 0, sizeof(buf));
-
-        unsigned long err = ERR_get_error();
-        ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-        return string(buf);
-      }
-    }
 
     // -----------------------------------------------------------------------------
     // constructors and destructors
@@ -125,7 +112,7 @@ namespace triagens {
       // is the handshake already done?
       if (! accepted) {
         if (! trySSLAccept()) {
-          LOGGER_DEBUG << "failed to established SSL connection";
+          LOGGER_DEBUG << "failed to establish SSL connection";
           return false;
         }
 
@@ -147,7 +134,7 @@ namespace triagens {
       // is the handshake already done?
       if (! accepted) {
         if (! trySSLAccept()) {
-          LOGGER_DEBUG << "failed to established SSL connection";
+          LOGGER_DEBUG << "failed to establish SSL connection";
           return false;
         }
 
@@ -195,8 +182,8 @@ namespace triagens {
           return true;
         }
         else {
-          LOGGER_INFO << "error in SSL handshake";
-          LOGGER_INFO << lastSSLError();
+          LOGGER_WARNING << "error in SSL handshake";
+          LOGGER_WARNING << lastSSLError();
           return false;
         }
       }
@@ -216,7 +203,7 @@ namespace triagens {
 
         switch (res) {
           case SSL_ERROR_NONE:
-            LOGGER_INFO << "unknown error in SSL_read";
+            LOGGER_WARNING << "unknown error in SSL_read";
             return false;
 
           case SSL_ERROR_ZERO_RETURN:
@@ -233,11 +220,11 @@ namespace triagens {
             break;
 
           case SSL_ERROR_WANT_CONNECT:
-            LOGGER_INFO << "received SSL_ERROR_WANT_CONNECT";
+            LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
             break;
 
           case SSL_ERROR_WANT_ACCEPT:
-            LOGGER_INFO << "received SSL_ERROR_WANT_ACCEPT";
+            LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
             break;
 
           case SSL_ERROR_SYSCALL: {
@@ -262,7 +249,7 @@ namespace triagens {
         }
       }
       else {
-        readBuffer->appendText(tmpReadBuffer, nr);
+        _readBuffer->appendText(tmpReadBuffer, nr);
       }
 
       return true;
@@ -284,19 +271,19 @@ namespace triagens {
         MUTEX_LOCKER(writeBufferLock);
 
         // write buffer to SSL connection
-        size_t len = writeBuffer->length() - writeLength;
+        size_t len = _writeBuffer->length() - writeLength;
         int nr = 0;
 
         if (0 < len) {
           writeBlockedOnRead = false;
-          nr = SSL_write(ssl, writeBuffer->begin() + writeLength, (int) len);
+          nr = SSL_write(ssl, _writeBuffer->begin() + writeLength, (int) len);
 
           if (nr <= 0) {
             int res = SSL_get_error(ssl, nr);
 
             switch (res) {
               case SSL_ERROR_NONE:
-                LOGGER_INFO << "unknown error in SSL_write";
+                LOGGER_WARNING << "unknown error in SSL_write";
                 break;
 
               case SSL_ERROR_ZERO_RETURN:
@@ -306,11 +293,11 @@ namespace triagens {
                 break;
 
               case SSL_ERROR_WANT_CONNECT:
-                LOGGER_INFO << "received SSL_ERROR_WANT_CONNECT";
+                LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
                 break;
 
               case SSL_ERROR_WANT_ACCEPT:
-                LOGGER_INFO << "received SSL_ERROR_WANT_ACCEPT";
+                LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
                 break;
 
               case SSL_ERROR_WANT_WRITE:
@@ -348,10 +335,9 @@ namespace triagens {
 
         if (len == 0) {
           if (ownBuffer) {
-            delete writeBuffer;
+            delete _writeBuffer;
           }
 
-          writeBuffer = 0;
           callCompletedWriteBuffer = true;
         }
         else {

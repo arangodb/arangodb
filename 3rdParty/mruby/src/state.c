@@ -16,7 +16,6 @@ mrb_state*
 mrb_open_allocf(mrb_allocf f)
 {
   mrb_state *mrb = (f)(NULL, NULL, sizeof(mrb_state));
-  if (mrb == NULL) return NULL;
 
   memset(mrb, 0, sizeof(mrb_state));
   mrb->allocf = f;
@@ -77,7 +76,6 @@ mrb_add_irep(mrb_state *mrb, int idx)
 
     if (idx > max) max = idx+1;
     mrb->irep = mrb_malloc(mrb, sizeof(mrb_irep*)*max);
-    memset(mrb->irep, 0, sizeof(mrb_irep*)*max);
     mrb->irep_capa = max;
   }
   else if (mrb->irep_capa <= idx) {

@@ -63,11 +63,25 @@
 /// @section FirstStepsArangoDBFirstSteps First Steps using arangosh
 ////////////////////////////////////////////////////////////////////
 ///
+/// @subsection FirstStepsArangoDBConnecting Connecting to the server
+/////////////////////////////////////////////////////////////////////
+///
 /// Start the ArangoDB JavaScript shell.
 ///
 /// @TINYEXAMPLE{arangosh-start,starting the shell}
 ///
 /// This gives you a prompt, where you can issue JavaScript commands.
+///
+/// You might need to specify the endpoint, username and password in order
+/// to run the shell on your system. You can use the options --server.endpoint,
+/// --server.username and --server.password for this. If you do not specify
+/// a password, arangosh will prompt for one.
+///
+/// @verbinclude arangosh-start-full
+///
+/// @subsection FirstStepsArangoDBQuerying Querying
+///////////////////////////////////////////////////
+///
 /// All documents are stored in collections. All collections are stored in a
 /// database.
 ///

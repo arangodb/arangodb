@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief arango http server
+/// @brief ssl helper functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,43 +21,48 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangoHttpServer.h"
+#ifndef TRIAGENS_BASICS_SSL_HELPER_H
+#define TRIAGENS_BASICS_SSL_HELPER_H 1
 
-#include "HttpServer/HttpHandler.h"
+#ifdef TRI_OPENSSL_VERSION
 
-using namespace triagens::rest;
-using namespace triagens::arango;
+#include "Basics/Common.h"
+
+#include <openssl/err.h>
+
+namespace triagens {
+  namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class ArangoHttpServer
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup Utilities
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http server
+/// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoHttpServer::ArangoHttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
-  : HttpServer(scheduler, dispatcher) {
+    string lastSSLError ();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+#endif
+
+#endif
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

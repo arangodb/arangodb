@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief arango http server
+/// @brief async server for jobs
 ///
 /// @file
 ///
@@ -22,52 +22,58 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Martin Schoenert
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H
-#define TRIAGENS_REST_SERVER_ARANGO_HTTP_SERVER_H 1
+#ifndef TRIAGENS_REST_ASYNC_JOB_SERVER_H
+#define TRIAGENS_REST_ASYNC_JOB_SERVER_H 1
 
-#include "HttpServer/HttpServer.h"
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class ArangoHttpServer
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace rest {
+    class Job;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class AsyncJobServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  namespace arango {
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief specialized http server
+/// @brief async server for jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ArangoHttpServer : public rest::HttpServer {
+    class AsyncJobServer {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http server
+/// @brief notify the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        ArangoHttpServer (rest::Scheduler* scheduler, rest::Dispatcher* dispatcher);
+        virtual void jobDone (Job*) = 0;
     };
   }
 }
@@ -77,6 +83,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
