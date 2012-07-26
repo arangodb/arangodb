@@ -752,6 +752,8 @@ build_os
 build_vendor
 build_cpu
 build
+ENABLE_RELATIVE_DEVEL_FALSE
+ENABLE_RELATIVE_DEVEL_TRUE
 ENABLE_INSTALL_DBDIR_FALSE
 ENABLE_INSTALL_DBDIR_TRUE
 ENABLE_BOOST_TEST_FALSE
@@ -2642,6 +2644,15 @@ else
   tr_RELATIVE=no
 fi
 fi
+
+ if test "x$tr_RELATIVE" = xdevel; then
+  ENABLE_RELATIVE_DEVEL_TRUE=
+  ENABLE_RELATIVE_DEVEL_FALSE='#'
+else
+  ENABLE_RELATIVE_DEVEL_TRUE='#'
+  ENABLE_RELATIVE_DEVEL_FALSE=
+fi
+
 
 
 
@@ -9723,6 +9734,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_RELATIVE_DEVEL_TRUE}" && test -z "${ENABLE_RELATIVE_DEVEL_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_RELATIVE_DEVEL\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_DARWIN_TRUE}" && test -z "${ENABLE_DARWIN_FALSE}"; then
