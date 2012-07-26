@@ -1,6 +1,7 @@
 # -*- mode: Makefile; -*-
 
 MANUAL_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals"
+IMAGES_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images"
 
 ################################################################################
 ## publish
@@ -18,6 +19,7 @@ publish-wiki:
 publish-html:
 	$(MAKE) doxygen
 	@for w in $(WIKI); do scp Doxygen/html/$$w.html $(MANUAL_DST); done
+	@for i in `ls Doxygen/web/images/*.png`; do scp $$i $(IMAGES_DST); done
 
 publish-pdf:
 	$(MAKE) latex
