@@ -149,10 +149,10 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   // read protocol from string
   size_t found = copy.find('@');
   if (found != string::npos) {
-    string protoString = copy.substr(0, found);
-    if (protoString == "pb") {
+    string protoString = StringUtils::tolower(copy.substr(0, found));
+    if (protoString == "binary") {
       protocol = PROTOCOL_BINARY;
-      copy = copy.substr(strlen("pb@"));
+      copy = copy.substr(strlen("binary@"));
     }
     else if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
@@ -188,14 +188,14 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification

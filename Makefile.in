@@ -594,6 +594,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \
 	UnitTests/Philadelphia/vector-test.cpp \
+	UnitTests/Jutland/EndpointTest.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
@@ -607,6 +608,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/EndpointTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_basics_suite_OBJECTS = $(am_UnitTests_basics_suite_OBJECTS)
@@ -1611,6 +1613,7 @@ CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/EndpointTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
@@ -2438,6 +2441,9 @@ UnitTests/Jutland/$(am__dirstamp):
 UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Jutland/$(DEPDIR)
 	@: > UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Jutland/EndpointTest.$(OBJEXT):  \
+	UnitTests/Jutland/$(am__dirstamp) \
+	UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Jutland/StringBufferTest.$(OBJEXT):  \
 	UnitTests/Jutland/$(am__dirstamp) \
 	UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
@@ -2839,6 +2845,7 @@ mostlyclean-compile:
 	-rm -f PerfTests/bin_zserver-zserver.$(OBJEXT)
 	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT)
 	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT)
+	-rm -f UnitTests/Jutland/EndpointTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
@@ -3109,6 +3116,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/EndpointTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
