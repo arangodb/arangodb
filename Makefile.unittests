@@ -128,6 +128,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \
 	UnitTests/Philadelphia/vector-test.cpp \
+	UnitTests/Jutland/EndpointTest.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
