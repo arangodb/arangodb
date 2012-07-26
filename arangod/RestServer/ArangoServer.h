@@ -315,6 +315,18 @@ namespace triagens {
         vector<string> _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable authentication for ALL client requests
+///
+/// @CMDOPT{--server.disable-authentication @CA{value}}
+///
+/// Settings @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableAuthentication;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
 /// @CMDOPT{--server.threads @CA{number}}

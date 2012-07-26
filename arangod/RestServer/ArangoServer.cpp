@@ -205,6 +205,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _httpServer(0),
     _httpsServer(0),
     _endpoints(),
+    _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arango"),
     _removeOnDrop(true),
@@ -372,30 +373,10 @@ void ArangoServer::buildApplicationServer () {
 
 #endif
 #endif
-
+  
   // .............................................................................
-  // a http server
+  // define server options
   // .............................................................................
-
-  _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
-                                                     _applicationScheduler,
-                                                     _applicationDispatcher,
-                                                     "arangodb",
-                                                     TRI_CheckAuthenticationAuthInfo);
-  _applicationServer->addFeature(_applicationHttpServer);
-
-#ifdef TRI_OPENSSL_VERSION
-  // .............................................................................
-  // an https server
-  // .............................................................................
-
-  _applicationHttpsServer = new ApplicationHttpsServer(_applicationServer,
-                                                       _applicationScheduler, 
-                                                       _applicationDispatcher,
-                                                       "arangodb",
-                                                       TRI_CheckAuthenticationAuthInfo);
-  _applicationServer->addFeature(_applicationHttpsServer);
-#endif
 
   // .............................................................................
   // daemon and supervisor mode
@@ -419,20 +400,16 @@ void ArangoServer::buildApplicationServer () {
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working directory", &_workingDirectory, "working directory in daemon mode")
   ;
+  
+  // .............................................................................
+  // javascript options
+  // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
     ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-  ;
-
-  // .............................................................................
-  // for this server we display our own options such as port to use
-  // .............................................................................
-
-  additional["ENDPOINT Options"]
-    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
   ;
 
   // .............................................................................
@@ -454,9 +431,18 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   // .............................................................................
-  // database options
+  // server options
+  // .............................................................................
+  
+  // .............................................................................
+  // for this server we display our own options such as port to use
   // .............................................................................
 
+  additional["ENDPOINT Options"]
+    ("server.disable-auth", &_disableAuthentication, "disable authentication for ALL client requests")
+    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
+  ;
+  
   additional["Server Options:help-admin"]
     ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
@@ -464,6 +450,33 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  
+  // .............................................................................
+  // a http server
+  // .............................................................................
+
+  _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
+                                                     _applicationScheduler,
+                                                     _applicationDispatcher,
+                                                     "arangodb",
+                                                     TRI_CheckAuthenticationAuthInfo);
+  _applicationServer->addFeature(_applicationHttpServer);
+
+#ifdef TRI_OPENSSL_VERSION
+  // .............................................................................
+  // an https server
+  // .............................................................................
+
+  _applicationHttpsServer = new ApplicationHttpsServer(_applicationServer,
+                                                       _applicationScheduler, 
+                                                       _applicationDispatcher,
+                                                       "arangodb",
+                                                       TRI_CheckAuthenticationAuthInfo);
+  // this will add options --ssl.*
+  _applicationServer->addFeature(_applicationHttpsServer);
+#endif
+
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
@@ -480,6 +493,7 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("server.disable-admin-interface")) {
     _applicationAdminServer->allowAdminDirectory(false);
   }
+  
 
   // .............................................................................
   // set directories and scripts
@@ -648,8 +662,13 @@ int ArangoServer::startupServer () {
     _httpServer->addPrefixHandler("/",
                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                   (void*) &httpOptions);
-  }
   
+    if (_disableAuthentication) {
+      // turn off authentication
+      _httpServer->setAuthenticationCallback(0);
+    }
+  }
+
 #ifdef TRI_OPENSSL_VERSION
   // SSL endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
@@ -664,6 +683,11 @@ int ArangoServer::startupServer () {
     _httpsServer->addPrefixHandler("/",
                                    RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                    (void*) &httpOptions);
+    
+    if (_disableAuthentication) {
+      // turn off authentication
+      _httpsServer->setAuthenticationCallback(0);
+    }
   }
 #endif
 
@@ -695,6 +719,10 @@ int ArangoServer::startupServer () {
   }
 
 #endif
+  
+  if (_disableAuthentication) {
+    LOGGER_INFO << "Authentication is turned off";
+  }
 
   // .............................................................................
   // start the main event loop
