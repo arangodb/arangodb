@@ -326,7 +326,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--server.disable-authentication @CA{value}}
 ///
-/// Settings @CA{value} to true will turn off authentication on the server side
+/// Setting @CA{value} to true will turn off authentication on the server side
 /// so all clients can execute any action without authorisation and privilege
 /// checks.
 ///

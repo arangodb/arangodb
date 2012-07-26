@@ -233,37 +233,120 @@ namespace triagens {
         vector<HttpsServer*> _httpsServers;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief keyfile
+/// @brief keyfile containing server certificate
+///
+/// @CMDOPT{--server.keyfile @CA{filename}}
+///
+/// If SSL encryption is used, this option must be used to specify the filename
+/// of the server private key. The file must contain both an X509 certificate and
+/// the server's private key.
+///
+/// The file specified by @CA{filename} should have the following structure:
+///
+/// @verbinclude server-keyfile
+///
+/// You may use certificates issued by a Certificate Authority or self-signed
+/// certificates. Self-signed certificates can be created by a tool of your 
+/// choice. When using OpenSSL for creating the self-signed certificate, the 
+/// following commands should create a keyfile:
+/// 
+/// @verbinclude server-keyfile-openssl
+///
+/// For further information please check the manuals of the tools you use to
+/// create the certificate.
+///
+/// Note: the --server.keyfile option must be set if the server is started with 
+/// at least one SSL endpoint.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _httpsKeyfile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CA file
+///
+/// @CMDOPT{--server.cafile @CA{filename}}
+///
+/// This option can be used to specify the file which contains the CA certificates
+/// of clients.
+///
+/// TODO
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _cafile;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl protocol to use
+/// @brief SSL protocol type to use
+///
+/// @CMDOPT{--server.ssl-protocol @CA{value}}
+///
+/// Use this option to specify the default encryption protocol to be used. 
+/// The following variants are available:
+/// - 1: SSLv2
+/// - 2: SSLv23
+/// - 3: SSLv3
+/// - 4: TLSv1
+///
+/// The default @CA{value} is 4 (i.e. TLSv1).
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _sslProtocol;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl cache mode to use
+///
+/// @CMDOPT{--server.ssl-cache-mode @CA{value}}
+///
+/// TODO
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _sslCacheMode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl options to use
+///
+/// @CMDOPT{--server.ssl-options @CA{value}}
+///
+/// This option can be used to set various SSL-related options. Individual 
+/// option values must be combined using bitwise OR.
+///
+/// Which options are available on your platform is determined by the OpenSSL
+/// version you use. The list of options available on your platform might be
+/// retrieved by the following shell command:
+///
+/// @verbinclude openssl-options
+///
+/// A description of the options can be found online in the OpenSSL documentation 
+/// at: http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
+/// 
+/// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _sslOptions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl cipher list to use
+/// 
+/// @CMDOPT{--server.ssl-cipher-list @CA{cipher-list}}
+///
+/// This option can be used to restrict the server to certain SSL ciphers only,
+/// and to define the relative usage preference of SSL ciphers.
+///
+/// The format of @CA{cipher-list} is documented in the OpenSSL documentation.
+///  
+/// To check which ciphers are available on your platform, you may use the 
+/// following shell command:
+/// 
+/// @verbinclude openssl-ciphers
+///
+/// The default value for @CA{cipher-list} is "ALL".
+/// 
+/// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _sslCipherList;
