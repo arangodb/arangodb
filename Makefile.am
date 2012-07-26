@@ -149,6 +149,9 @@ sbin_PROGRAMS = \
 	bin/arangod \
         bin/arango-password
 
+# exclude arango-password from sources list
+bin_arango_password_SOURCES =
+
 ################################################################################
 ### @brief /bin programs
 ################################################################################
