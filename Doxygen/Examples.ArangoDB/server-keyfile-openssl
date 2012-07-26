@@ -1,0 +1,17 @@
+# create private key in file "server.key"
+openssl genrsa -des3 -out server.key 1024
+
+# create certificate signing request (csr) in file "server.csr"
+openssl req -new -key server.key -out server.csr
+
+# copy away original private key to "server.key.org"
+cp server.key server.key.org
+
+# remove passphrase from the private key
+openssl rsa -in server.key.org -out server.key
+
+# sign the csr with the key, creates certificate file "server.crt"
+openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+
+# combine certificate and key into single file "ssl.keyfile"
+cat server.crt server.key > ssl.keyfile
