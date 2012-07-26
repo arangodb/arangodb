@@ -127,27 +127,8 @@
 ///
 /// @verbinclude user-document
 ///
-/// If the server is started using the option 
-///
-/// @LIT{--server.http-auth yes}
-///
-/// then access via HTTP requires a user name and password using "basic
-/// authentication". The user must exists in the @LIT{_users}
-/// collection and must be active.
-///
-/// In order to generate an entry, you can use the supplied shell script
-///
-/// @LIT{/usr/sbin/arango-password \<username> [\<password>]}
-///
-/// Note that you must stop the @LIT{arangod} server before executing this
-/// script.
-///
 /// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: c++

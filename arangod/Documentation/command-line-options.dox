@@ -45,10 +45,8 @@
 ///    </li>
 ///    <li>@ref CommandLineArango
 ///     <ul>
-///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
-///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
-///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
-///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
+///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
+///      <li>@ref CommandLineArangoDisableAuthentication "server.disable-authentication"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
@@ -159,14 +157,11 @@
 /// @section CommandLineArango Command-Line Options for the ArangoDB
 ////////////////////////////////////////////////////////////////////
 ///
-/// @anchor CommandLineArangoHttpPort
-/// @copydetails triagens::arango::ArangoServer::_httpPort
+/// @anchor CommandLineArangoEndpoint
+/// @copydetails triagens::arango::ArangoServer::_endpoints
 ///
-/// @anchor CommandLineArangoAdminPort
-/// @copydetails triagens::arango::ArangoServer::_adminPort
-///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
+/// @anchor CommandLineArangoDisableAuthentication
+/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
 /// @CMDOPT{--disable-admin-interface}

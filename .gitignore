@@ -18,6 +18,7 @@ arangod/Ahuacatl/ahuacatl-grammar.output
 ARCH.*
 autom4te.cache
 bin
+!bin/*.in
 build.h
 build.info
 commit.sh
@@ -159,3 +160,4 @@ VC++
 .protobuf-build-64
 3rdParty/protobuf-2.4.1/BUILD/
 Installation/arangod.conf
+lib/Documentation/*.pdf

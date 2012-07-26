@@ -27,6 +27,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
+	lib/Basics/ssl-helper.cpp \
 	lib/BasicsC/associative-multi.c \
 	lib/BasicsC/associative.c \
 	lib/BasicsC/conversions.c \
@@ -67,8 +68,10 @@ lib_libarango_a_SOURCES = \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp \
-	lib/Rest/AddressPort.cpp \
 	lib/Rest/AnyServer.cpp \
+	lib/Rest/EndpointList.cpp \
+	lib/Rest/Endpoint.cpp \
+	lib/Rest/Handler.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp \
 	lib/Rest/HttpResponse.cpp \
@@ -79,6 +82,7 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c \
 	lib/ShapedJson/shaped-json.c \
+	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Variant/VariantArray.cpp \
@@ -118,6 +122,9 @@ endif
 ################################################################################
 
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -139,7 +146,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
-	lib/GeneralServer/GeneralFigures.cpp \
 	lib/HttpServer/ApplicationHttpServer.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \

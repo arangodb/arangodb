@@ -41,6 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -51,6 +52,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace triagens::v8client;
 using namespace std;
 
@@ -67,19 +69,26 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection::V8ClientConnection (const std::string& hostname,
-                                        int port,
+V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
+                                        const string& username,
+                                        const string& password,
                                         double requestTimeout,
-                                        size_t retries,
-                                        double connectionTimeout,
+                                        double connectTimeout,
+                                        size_t numRetries,
                                         bool warn)
-  : _connected(false),
+  : _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-      
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  
+  _connection = GeneralClientConnection::factory(endpoint, 3.0, 3.0, 3);
+  if (_connection == 0) {
+    throw "out of memory";
+  }
+
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -101,7 +110,6 @@ V8ClientConnection::V8ClientConnection (const std::string& hostname,
 
         if (vs && vs->getValue() == "arango") {
           // connected to arango server
-          _connected = true;
           vs = json->lookupString("version");
 
           if (vs) {
@@ -129,6 +137,10 @@ V8ClientConnection::~V8ClientConnection () {
   if (_client) {
     delete _client;
   }
+  
+  if (_connection) {
+    delete _connection;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +161,7 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,22 +188,6 @@ const std::string& V8ClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& V8ClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int V8ClientConnection::getPort () {
-  return _client->getPort();
-}
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +277,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
   else {
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
   }
-                  
+
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
@@ -348,13 +344,24 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
     }
     else {
       // no body 
-      // this should not happen
-      v8::Handle<v8::Object> result;        
+      v8::HandleScope scope;
 
-      result->Set(v8::String::New("error"), v8::Boolean::New(false));
-      result->Set(v8::String::New("code"), v8::Integer::New(_httpResult->getHttpReturnCode()));
+      v8::Handle<v8::Object> result = v8::Object::New();        
+      
+      result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
 
-      return result;
+      if (_lastHttpReturnCode >= 400) {
+        string returnMessage(_httpResult->getHttpReturnMessage());
+
+        result->Set(v8::String::New("error"), v8::Boolean::New(true));
+        result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
+        result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+      }
+      else {
+        result->Set(v8::String::New("error"), v8::Boolean::New(false));
+      }
+
+      return scope.Close(result);
     }        
   }      
 }

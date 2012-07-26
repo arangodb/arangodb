@@ -100,7 +100,7 @@ bool RestAdminFeConfigurationHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
-  switch (request->requestType()) {
+  switch (_request->requestType()) {
     case HttpRequest::HTTP_REQUEST_GET:
       return executeRead();
 
@@ -153,9 +153,9 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
     result = "{}";
   }
   
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
-  response->body().appendText(result);
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText(result);
   
   return HANDLER_DONE;
 }
@@ -166,11 +166,11 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
 
 HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
   if (_filename.empty()) {
-    transientResult = request->body();
+    transientResult = _request->body();
   }
   else {
     try {
-      FileUtils::spit(_filename, request->body());
+      FileUtils::spit(_filename, _request->body());
     }
     catch (...) {
       generateError(HttpResponse::SERVER_ERROR,
@@ -180,7 +180,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
     }
   }
   
-  response = new HttpResponse(HttpResponse::OK);
+  _response = new HttpResponse(HttpResponse::OK);
   return HANDLER_DONE;
 }
 

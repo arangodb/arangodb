@@ -53,16 +53,16 @@ using namespace std;
 
 ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServer,
                                               ApplicationScheduler* applicationScheduler,
-                                              ApplicationDispatcher* applicationDispatcher)
+                                              ApplicationDispatcher* applicationDispatcher,
+                                              std::string const& authenticationRealm,
+                                              HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _showPort(true),
-    _requireKeepAlive(false),
-    _httpServers(),
-    _httpPorts(),
-    _httpAddressPorts() {
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
+    _httpServers() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +70,8 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServ
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationHttpServer::~ApplicationHttpServer () {
+  for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
+  _httpServers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,51 +88,11 @@ ApplicationHttpServer::~ApplicationHttpServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shows the port options
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationHttpServer::showPortOptions (bool value) {
-  _showPort = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a http address:port
-////////////////////////////////////////////////////////////////////////////////
-
-AddressPort ApplicationHttpServer::addPort (string const& name) {
-  AddressPort ap;
-  
-  if (! ap.split(name)) {
-    LOGGER_ERROR << "unknown server:port definition '" << name << "'";
-  }
-  else {
-    _httpAddressPorts.push_back(ap);
-  }
-  
-  return ap;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-  return buildHttpServer(0, httpHandlerFactory, _httpAddressPorts);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the http server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerFactory,
-                                                vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    delete httpHandlerFactory;
-    return 0;
-  }
-  else {
-    return buildHttpServer(0, httpHandlerFactory, ports);
-  }
+HttpServer* ApplicationHttpServer::buildServer (const EndpointList* endpointList) { 
+  return buildHttpServer(0, endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,15 +100,8 @@ HttpServer* ApplicationHttpServer::buildServer (HttpHandlerFactory* httpHandlerF
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildServer (HttpServer* httpServer,
-                                                HttpHandlerFactory* httpHandlerFactory,
-                                                vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    delete httpHandlerFactory;
-    return 0;
-  }
-  else {
-    return buildHttpServer(httpServer, httpHandlerFactory, ports);
-  }
+                                                const EndpointList* endpointList) { 
+  return buildHttpServer(httpServer, endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,15 +122,6 @@ HttpServer* ApplicationHttpServer::buildServer (HttpServer* httpServer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  if (_showPort) {
-    options[ApplicationServer::OPTIONS_SERVER]
-      ("server.port", &_httpPorts, "listen port or address:port")
-    ;
-  }
-
-  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
-    ("server.require-keep-alive", "close connection, if keep-alive is missing")
-  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,12 +129,18 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
-  if (options.has("server.require-keep-alive")) {
-    _requireKeepAlive= true;
-  }
+  return true;
+}
 
-  for (vector<string>::const_iterator i = _httpPorts.begin();  i != _httpPorts.end();  ++i) {
-    addPort(*i);
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationHttpServer::open () {
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->startListening();
   }
 
   return true;
@@ -198,9 +150,33 @@ bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationHttpServer::shutdown () {
-  for_each(_httpServers.begin(), _httpServers.end(), DeleteObject());
-  _httpServers.clear();
+void ApplicationHttpServer::close () {
+
+  // close all open connections
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->shutdownHandlers();
+  }
+
+  // close all listen sockets
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->stopListening();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpServer::stop () {
+  for (vector<HttpServer*>::iterator i = _httpServers.begin();  i != _httpServers.end();  ++i) {
+    HttpServer* server = *i;
+
+    server->stop();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,8 +197,7 @@ void ApplicationHttpServer::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
-                                                    HttpHandlerFactory* httpHandlerFactory,
-                                                    vector<AddressPort> const& ports) {
+                                                    const EndpointList* endpointList) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -234,68 +209,20 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   // create new server
   if (httpServer == 0) {
     Dispatcher* dispatcher = 0;
+    HttpHandlerFactory::auth_fptr auth = _checkAuthentication;
 
     if (_applicationDispatcher != 0) {
       dispatcher = _applicationDispatcher->dispatcher();
     }
 
-    httpServer = new HttpServer(scheduler, dispatcher);
+    httpServer = new HttpServer(scheduler, dispatcher, _authenticationRealm, auth);
   }
 
-  httpServer->setHandlerFactory(httpHandlerFactory);
-
-  if (_requireKeepAlive) {
-    httpServer->setCloseWithoutKeepAlive(true);
-  }
-
-  // keep a list of active server
+  // keep a list of active servers
   _httpServers.push_back(httpServer);
 
   // open http ports
-  deque<AddressPort> addresses;
-  addresses.insert(addresses.begin(), ports.begin(), ports.end());
-
-  _applicationServer->raisePrivileges();
-
-  while (! addresses.empty()) {
-    AddressPort ap = addresses[0];
-    addresses.pop_front();
-
-    string bindAddress = ap._address;
-    int port = ap._port;
-
-    bool result;
-
-    if (bindAddress.empty()) {
-      LOGGER_TRACE << "trying to open port " << port << " for http requests";
-
-      result = httpServer->addPort(port, _applicationScheduler->addressReuseAllowed());
-    }
-    else {
-      LOGGER_TRACE << "trying to open address " << bindAddress
-                   << " on port " << port
-                   << " for http requests";
-
-      result = httpServer->addPort(bindAddress, port, _applicationScheduler->addressReuseAllowed());
-    }
-
-    if (result) {
-      LOGGER_DEBUG << "opened port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-    }
-    else {
-      LOGGER_TRACE << "failed to open port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-      addresses.push_back(ap);
-
-      if (scheduler->isShutdownInProgress()) {
-        addresses.clear();
-      }
-      else {
-        sleep(1);
-      }
-    }
-  }
-
-  _applicationServer->dropPrivileges();
+  httpServer->addEndpointList(endpointList);
 
   return httpServer;
 }

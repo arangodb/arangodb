@@ -30,6 +30,7 @@
 #include <openssl/err.h>
 
 #include "Basics/delete_object.h"
+#include "Basics/ssl-helper.h"
 #include "Basics/Random.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -41,22 +42,6 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-namespace {
-  string lastSSLError () {
-    char buf[122];
-    memset(buf, 0, sizeof(buf));
-
-    unsigned long err = ERR_get_error();
-    ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-    return string(buf);
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
@@ -93,17 +78,21 @@ namespace {
 
 ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationServer,
                                                 ApplicationScheduler* applicationScheduler,
-                                                ApplicationDispatcher* applicationDispatcher)
+                                                ApplicationDispatcher* applicationDispatcher,
+                                                std::string const& authenticationRealm,
+                                                HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpsServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _showPort(true),
-    _requireKeepAlive(false),
-    _sslProtocol(3),
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
+    _sslProtocol(HttpsServer::TLS_V1),
     _sslCacheMode(0),
-    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG),
-    _sslContext(0) {
+    _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
+    _sslCipherList(""),
+    _sslContext(0),
+    _rctx() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +101,7 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
 
 ApplicationHttpsServer::~ApplicationHttpsServer () {
   for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
+  _httpsServers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,50 +118,11 @@ ApplicationHttpsServer::~ApplicationHttpsServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shows the port options
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationHttpsServer::showPortOptions (bool value) {
-  _showPort = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a https address:port
-////////////////////////////////////////////////////////////////////////////////
-
-AddressPort ApplicationHttpsServer::addPort (string const& name) {
-  AddressPort ap;
-
-  if (! ap.split(name)) {
-    LOGGER_ERROR << "unknown server:port definition '" << name << "'";
-  }
-  else {
-    _httpsAddressPorts.push_back(ap);
-  }
-
-  return ap;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the https server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-  return buildServer(httpHandlerFactory, _httpsAddressPorts);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the https server
-////////////////////////////////////////////////////////////////////////////////
-
-HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandlerFactory, vector<AddressPort> const& ports) {
-  if (ports.empty()) {
-    delete httpHandlerFactory;
-    return 0;
-  }
-  else {
-    return buildHttpsServer(httpHandlerFactory, ports);
-  }
+HttpsServer* ApplicationHttpsServer::buildServer (const EndpointList* endpointList) {
+  return buildHttpsServer(endpointList);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,19 +143,13 @@ HttpsServer* ApplicationHttpsServer::buildServer (HttpHandlerFactory* httpHandle
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  if (_showPort) {
-    options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-      ("server.secure", &_httpsPorts, "listen port or address:port")
-    ;
-  }
-
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
-    ("server.secure-require-keep-alive", "close connection, if keep-alive is missing")
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
-    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv3, 3 = SSLv23, 4 = TLSv1")
+    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
     ("server.ssl-cache-mode", &_sslCacheMode, "0 = off, 1 = client, 2 = server")
     ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
+    ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
   ;
 }
 
@@ -213,19 +158,6 @@ void ApplicationHttpsServer::setupOptions (map<string, ProgramOptionsDescription
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
-
-  // check keep alive
-  if (options.has("server.secure-require-keep-alive")) {
-    _requireKeepAlive= true;
-  }
-
-
-  // add ports
-  for (vector<string>::const_iterator i = _httpsPorts.begin();  i != _httpsPorts.end();  ++i) {
-    addPort(*i);
-  }
-
-
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -235,6 +167,53 @@ bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 
   // and return
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationHttpsServer::open () {
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->startListening();
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpsServer::close () {
+
+  // close all open connections
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->shutdownHandlers();
+  }
+
+  // close all listen sockets
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->stopListening();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationHttpsServer::stop () {
+  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+    HttpsServer* server = *i;
+
+    server->stop();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,8 +229,7 @@ bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpHandlerFactory,
-                                                       vector<AddressPort> const& ports) {
+HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpointList) {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
@@ -261,75 +239,29 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (HttpHandlerFactory* httpH
   }
 
   Dispatcher* dispatcher = 0;
+  HttpHandlerFactory::auth_fptr auth = 0;
 
   if (_applicationDispatcher != 0) {
     dispatcher = _applicationDispatcher->dispatcher();
   }
 
+  auth = _checkAuthentication;
+
   // check the ssl context
   if (_sslContext == 0) {
     LOGGER_FATAL << "no ssl context is known, cannot create https server";
+    LOGGER_INFO << "please use the --server.keyfile option";
     TRI_ShutdownLogging();
     exit(EXIT_FAILURE);
   }
 
   // create new server
-  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _sslContext);
-
-  httpsServer->setHandlerFactory(httpHandlerFactory);
-
-  if (_requireKeepAlive) {
-    httpsServer->setCloseWithoutKeepAlive(true);
-  }
+  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _authenticationRealm, auth, _sslContext);
 
   // keep a list of active server
   _httpsServers.push_back(httpsServer);
 
-  // open http ports
-  deque<AddressPort> addresses;
-  addresses.insert(addresses.begin(), ports.begin(), ports.end());
-
-  _applicationServer->raisePrivileges();
-
-  while (! addresses.empty()) {
-    AddressPort ap = addresses[0];
-    addresses.pop_front();
-
-    string bindAddress = ap._address;
-    int port = ap._port;
-
-    bool result;
-
-    if (bindAddress.empty()) {
-      LOGGER_TRACE << "trying to open port " << port << " for https requests";
-
-      result = httpsServer->addPort(port, _applicationScheduler->addressReuseAllowed());
-    }
-    else {
-      LOGGER_TRACE << "trying to open address " << bindAddress
-                   << " on port " << port
-                   << " for https requests";
-
-      result = httpsServer->addPort(bindAddress, port, _applicationScheduler->addressReuseAllowed());
-    }
-
-    if (result) {
-      LOGGER_DEBUG << "opened port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-    }
-    else {
-      LOGGER_TRACE << "failed to open port " << port << " for " << (bindAddress.empty() ? "any" : bindAddress);
-      addresses.push_back(ap);
-
-      if (scheduler->isShutdownInProgress()) {
-        addresses.clear();
-      }
-      else {
-        sleep(1);
-      }
-    }
-  }
-
-  _applicationServer->dropPrivileges();
+  httpsServer->addEndpointList(endpointList);
 
   return httpsServer;
 }
@@ -358,7 +290,15 @@ bool ApplicationHttpsServer::createSslContext () {
     return true;
   }
 
-
+  // validate protocol
+  if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
+    LOGGER_ERROR << "invalid SSL protocol version specified.";
+    LOGGER_INFO << "please use a valid value for --server.ssl-protocol.";
+    return false;
+  }
+    
+  LOGGER_INFO << "using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'";
+  
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
@@ -375,15 +315,23 @@ bool ApplicationHttpsServer::createSslContext () {
   SSL_CTX_set_options(_sslContext, _sslOptions);
   LOGGER_INFO << "using SSL options: " << _sslOptions;
 
+  if (_sslCipherList.size() > 0) {
+    LOGGER_INFO << "using SSL cipher-list '" << _sslCipherList << "'";
+    if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
+      LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
+      LOGGER_ERROR << lastSSLError();
+      return false;
+    }
+  }
 
   // set ssl context
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  string rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
+  _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) StringUtils::duplicate(rctx), rctx.size());
+  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), _rctx.size());
 
   if (res != 1) {
-    LOGGER_FATAL << "cannot set SSL session id context '" << rctx << "'";
+    LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
     LOGGER_ERROR << lastSSLError();
     return false;
   }

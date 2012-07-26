@@ -34,6 +34,11 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantDouble.h"
+#include "Variant/VariantUInt32.h"
+#include "Variant/VariantUInt64.h"
+#include "Variant/VariantVector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -53,6 +58,9 @@
     static triagens::basics::RrfCounter& access (S& s) {                \
       return s.n;                                                       \
     }                                                                   \
+    static triagens::basics::RrfCounter const& access (S const& s) {    \
+      return s.n;                                                       \
+    }                                                                   \
   };                                                                    \
                                                                         \
   triagens::basics::RrfCounter n
@@ -64,6 +72,9 @@
 #define RRF_CONTINUOUS(S, n)                                            \
   struct n ## Accessor {                                                \
     static triagens::basics::RrfContinuous& access (S& s) {             \
+      return s.n;                                                       \
+    }                                                                   \
+    static triagens::basics::RrfContinuous const& access (S const& s) { \
       return s.n;                                                       \
     }                                                                   \
   };                                                                    \
@@ -81,6 +92,9 @@
     static triagens::basics::RrfFigure& access (S& s) {                 \
       return s.n;                                                       \
     }                                                                   \
+    static triagens::basics::RrfFigure const& access (S const& s) {     \
+      return s.n;                                                       \
+    }                                                                   \
   };                                                                    \
                                                                         \
   triagens::basics::RrfFigure n
@@ -96,6 +110,9 @@
     static triagens::basics::RrfFigures<N>& access (S& s) {             \
       return s.n;                                                       \
     }                                                                   \
+    static triagens::basics::RrfFigures<N> const& access (S const& s) { \
+      return s.n;                                                       \
+    }                                                                   \
   };                                                                    \
                                                                         \
   triagens::basics::RrfFigures<N> n
@@ -107,19 +124,22 @@
 /// squares, the count, and minimum and maximum.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define RRF_DISTRIBUTION(S, n, a)                                           \
-  struct n ## Cuts_s {                                                      \
-    static vector<double> cuts () {                                         \
-      triagens::basics::RrfVector g; g << a; return g._value;               \
-    }                                                                       \
-  };                                                                        \
-                                                                            \
-  struct n ## Accessor {                                                    \
-    static triagens::basics::RrfDistribution<n ## Cuts_s>& access (S& s) {  \
-      return s.n;                                                           \
-    }                                                                       \
-  };                                                                        \
-                                                                            \
+#define RRF_DISTRIBUTION(S, n, a)                                                       \
+  struct n ## Cuts_s {                                                                  \
+    static std::vector<double> cuts () {                                                \
+      triagens::basics::RrfVector g; g << a; return g._value;                           \
+    }                                                                                   \
+  };                                                                                    \
+                                                                                        \
+  struct n ## Accessor {                                                                \
+    static triagens::basics::RrfDistribution<n ## Cuts_s>& access (S& s) {              \
+      return s.n;                                                                       \
+    }                                                                                   \
+    static triagens::basics::RrfDistribution<n ## Cuts_s> const& access (S const& s) {  \
+      return s.n;                                                                       \
+    }                                                                                   \
+  };                                                                                    \
+                                                                                        \
   triagens::basics::RrfDistribution<n ## Cuts_s> n
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +151,7 @@
 
 #define RRF_DISTRIBUTIONS(S, N, n, a)                                              \
   struct n ## Cuts_s {                                                             \
-    static vector<double> cuts () {                                                \
+    static std::vector<double> cuts () {                                           \
       triagens::basics::RrfVector g; g << a; return g._value;                      \
     }                                                                              \
   };                                                                               \
@@ -173,7 +193,7 @@ namespace triagens {
         return *this;
       }
 
-      vector<double> _value;
+      std::vector<double> _value;
     };
 
 
@@ -289,8 +309,8 @@ namespace triagens {
       double _squares;
       double _minimum;
       double _maximum;
-      vector<double> _cuts;
-      vector<uint32_t> _counts;
+      std::vector<double> _cuts;
+      std::vector<uint32_t> _counts;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,9 +346,288 @@ namespace triagens {
       double _squares[N];
       double _minimum[N];
       double _maximum[N];
-      vector<double> _cuts;
-      vector<uint32_t> _counts[N];
+      std::vector<double> _cuts;
+      std::vector<uint32_t> _counts[N];
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the distribution
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantDistribution (VariantArray* result,
+                                          STAT const& s, 
+                                          std::string const& name,
+                                          bool showMinimum,
+                                          bool showMaximum,
+                                          bool showDeviation) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      VariantVector* cuts = new VariantVector();
+      values->add("cuts", cuts);
+
+      // generate the cuts
+      std::vector<double> const& vv = ACC::access(s)._cuts;
+
+      for (std::vector<double>::const_iterator k = vv.begin();  k != vv.end();  ++k) {
+        cuts->add(new VariantDouble(*k));
+      }
+
+      // generate the distribution values
+      uint32_t count = ACC::access(s)._count;
+      double sum = ACC::access(s)._sum;
+      double squares = ACC::access(s)._squares;
+
+      VariantUInt32* valCount = new VariantUInt32(count);
+      values->add("count", valCount);
+
+      VariantDouble* valMean = new VariantDouble(count == 0 ? 0.0 : (sum / count));
+      values->add("mean", valMean);
+
+      double w = 0;
+
+      if (1 < count) {
+        try {
+          w = sqrt(squares - sum * sum / count) / (count - 1);
+        }
+        catch (...) {
+        }
+      }
+
+      if (showDeviation) {
+        VariantDouble* valDeviation = new VariantDouble(w);
+        values->add("deviation", valDeviation);
+      }
+
+      if (showMinimum) {
+        VariantDouble* valMin = new VariantDouble(ACC::access(s)._minimum);
+        values->add("min", valMin);
+      }
+
+      if (showMaximum) {
+        VariantDouble* valMax = new VariantDouble(ACC::access(s)._maximum);
+        values->add("max", valMax);
+      }
+
+      VariantVector* dists = new VariantVector();
+      values->add("distribution", dists);
+
+      for (vector<uint32_t>::const_iterator m = ACC::access(s)._counts.begin();  m != ACC::access(s)._counts.end();  ++m) {
+        dists->add(new VariantUInt32(*m));
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the distributions
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantDistribution (VariantArray* result,
+                                          typename std::vector<STAT> const& v, 
+                                          std::string const& name,
+                                          bool showMinimum,
+                                          bool showMaximum,
+                                          bool showDeviation) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      VariantVector* cuts = new VariantVector();
+      values->add("cuts", cuts);
+
+      if (! v.empty()) {
+
+        // generate the cuts
+        {
+          STAT const& s = *(v.begin());
+          std::vector<double> const& vv = ACC::access(s)._cuts;
+
+          for (std::vector<double>::const_iterator k = vv.begin();  k != vv.end();  ++k) {
+            cuts->add(new VariantDouble(*k));
+          }
+        }
+
+        // generate the distribution values
+        VariantVector* vecCount = new VariantVector();
+        values->add("count", vecCount);
+
+        VariantVector* vecMean = new VariantVector();
+        values->add("mean", vecMean);
+
+        VariantVector* vecMin = 0;
+
+        if (showMinimum) {
+          vecMin = new VariantVector();
+          values->add("min", vecMin);
+        }
+
+        VariantVector* vecMax = 0;
+
+        if (showMaximum) {
+          vecMax = new VariantVector();
+          values->add("max", vecMax);
+        }
+
+        VariantVector* vecDeviation = 0;
+
+        if (showDeviation) {
+          vecDeviation = new VariantVector();
+          values->add("deviation", vecDeviation);
+        }
+
+        VariantVector* vecDistribution = new VariantVector();
+        values->add("distribution", vecDistribution);
+
+        for (typename std::vector<STAT>::const_iterator j = v.begin();  j != v.end();  ++j) {
+          STAT const& s = *j;
+
+          uint32_t count = ACC::access(s)._count;
+          double sum = ACC::access(s)._sum;
+          double squares = ACC::access(s)._squares;
+
+          vecCount->add(new VariantUInt32(count));
+          vecMean->add(new VariantDouble(count == 0 ? 0.0 : (sum / count)));
+
+          if (showDeviation) {
+            double w = 0;
+
+            if (1 < count) {
+              try {
+                w = sqrt(squares - sum * sum / count) / (count - 1);
+              }
+              catch (...) {
+              }
+            }
+
+            vecDeviation->add(new VariantDouble(w));
+          }
+
+          if (showMinimum) {
+            vecMin->add(new VariantDouble(ACC::access(s)._minimum));
+          }
+
+          if (showMaximum) {
+            vecMax->add(new VariantDouble(ACC::access(s)._maximum));
+          }
+
+          VariantVector* dists = new VariantVector();
+          vecDistribution->add(dists);
+
+          for (vector<uint32_t>::const_iterator m = ACC::access(s)._counts.begin();  m != ACC::access(s)._counts.end();  ++m) {
+            dists->add(new VariantUInt32(*m));
+          }
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the counter
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantCounter (VariantArray* result,
+                                     STAT const& s, 
+                                     std::string const& name,
+                                     double resolution) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      // generate the continuous figure
+      uint32_t count = ACC::access(s)._count;
+
+      values->add("count", new VariantUInt32(count));
+      values->add("perSecond", new VariantDouble(count / resolution));
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the counter
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantCounter (VariantArray* result,
+                                     typename std::vector<STAT> const& v, 
+                                     std::string const& name,
+                                     double resolution) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      if (! v.empty()) {
+
+        // generate the continuous figures
+        VariantVector* vecCount = new VariantVector();
+        values->add("count", vecCount);
+
+        VariantVector* vecSecond = new VariantVector();
+        values->add("perSecond", vecSecond);
+
+        for (typename std::vector<STAT>::const_iterator j = v.begin();  j != v.end();  ++j) {
+          STAT const& s = *j;
+
+          uint32_t count = ACC::access(s)._count;
+
+          vecCount->add(new VariantUInt32(count));
+          vecSecond->add(new VariantDouble(count / resolution));
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the continuous figures
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantContinuous (VariantArray* result,
+                                        STAT const& s, 
+                                        std::string const& name) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      // generate the continuous figure
+      uint32_t count = ACC::access(s)._count;
+
+      VariantUInt32* valCount = new VariantUInt32(count);
+      values->add("count", valCount);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a variant representation for the continuous figures
+////////////////////////////////////////////////////////////////////////////////
+
+    template<typename ACC, typename STAT>
+    void RRF_GenerateVariantContinuous (VariantArray* result,
+                                        typename std::vector<STAT> const& v, 
+                                        std::string const& name) {
+      VariantArray* values = new VariantArray();
+      result->add(name, values);
+
+      if (! v.empty()) {
+
+        // generate the continuous figures
+        VariantVector* vecCount = new VariantVector();
+        values->add("count", vecCount);
+
+        for (typename std::vector<STAT>::const_iterator j = v.begin();  j != v.end();  ++j) {
+          STAT const& s = *j;
+
+          uint32_t count = ACC::access(s)._count;
+
+          vecCount->add(new VariantUInt32(count));
+        }
+      }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -349,7 +648,6 @@ namespace triagens {
 
     template<size_t P, size_t N, typename S>
     class RoundRobinFigures {
-      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -364,11 +662,11 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
         RoundRobinFigures ()
           : _current(0), _accessLock() {
@@ -382,13 +680,6 @@ namespace triagens {
 
           _start[_current] = (now / P) * P;
         }
-
-#else
-
-        RoundRobinFigures () {
-        }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -411,7 +702,6 @@ namespace triagens {
 
         template<typename C>
         void incCounter () {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -419,7 +709,6 @@ namespace triagens {
           S& s = _buffer[_current];
 
           C::access(s)._count += 1;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,7 +717,6 @@ namespace triagens {
 
         template<typename C>
         void decCounter () {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -436,7 +724,6 @@ namespace triagens {
           S& s = _buffer[_current];
 
           C::access(s)._count -= 1;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,7 +732,6 @@ namespace triagens {
 
         template<typename F>
         void addFigure (double value) {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -454,7 +740,6 @@ namespace triagens {
 
           F::access(s)._count += 1;
           F::access(s)._sum += value;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,7 +748,6 @@ namespace triagens {
 
         template<typename F>
         void addFigure (size_t pos, double value) {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -472,7 +756,6 @@ namespace triagens {
 
           F::access(s)._count[pos] += 1;
           F::access(s)._sum[pos] += value;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +764,6 @@ namespace triagens {
 
         template<typename F>
         void addDistribution (double value) {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -500,8 +782,8 @@ namespace triagens {
             F::access(s)._maximum = value;
           }
 
-          typename vector<double>::const_iterator i = F::access(s)._cuts.begin();
-          vector<uint32_t>::iterator j = F::access(s)._counts.begin();
+          typename std::vector<double>::const_iterator i = F::access(s)._cuts.begin();
+          std::vector<uint32_t>::iterator j = F::access(s)._counts.begin();
 
           for(;  i != F::access(s)._cuts.end();  ++i, ++j) {
             if (value < *i) {
@@ -511,7 +793,6 @@ namespace triagens {
           }
 
           (*j)++;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,7 +801,6 @@ namespace triagens {
 
         template<typename F>
         void addDistribution (size_t pos, double value) {
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -539,8 +819,8 @@ namespace triagens {
             F::access(s)._maximum[pos] = value;
           }
 
-          typename vector<double>::const_iterator i = F::access(s)._cuts.begin();
-          vector<uint32_t>::iterator j = F::access(s)._counts[pos].begin();
+          typename std::vector<double>::const_iterator i = F::access(s)._cuts.begin();
+          std::vector<uint32_t>::iterator j = F::access(s)._counts[pos].begin();
 
           for(;  i != F::access(s)._cuts.end();  ++i, ++j) {
             if (value < *i) {
@@ -550,17 +830,15 @@ namespace triagens {
           }
 
           (*j)++;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the list of distributions
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<S> values (size_t n = N) {
-          vector<S> result;
+        std::vector<S> values (size_t n = N) {
+          std::vector<S> result;
 
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -576,8 +854,6 @@ namespace triagens {
             j = (j + 1) % N;
           }
 
-#endif
-
           return result;
         }
 
@@ -585,10 +861,9 @@ namespace triagens {
 /// @brief returns the list of distributions and times
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<S> values (vector<time_t>& times, size_t n = N) {
-          vector<S> result;
+        std::vector<S> values (vector<time_t>& times, size_t n = N) {
+          std::vector<S> result;
 
-#ifdef TRI_ENABLE_FIGURES
           MUTEX_LOCKER(_accessLock);
 
           checkTime();
@@ -606,10 +881,38 @@ namespace triagens {
             times.push_back(_start[j]);
             j = (j + 1) % N;
           }
-#endif
 
           return result;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the resolution
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getResolution () const {
+          return P;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the length
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getLength () const {
+          return N;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -618,7 +921,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void checkTime () {
-#ifdef TRI_ENABLE_FIGURES
           time_t now = time(0);
 
           size_t p1 = now / P;
@@ -636,7 +938,6 @@ namespace triagens {
             _buffer[_current] = save;
             _start[_current] = p * P;
           }
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -658,33 +959,25 @@ namespace triagens {
 /// @brief staticstics ring-buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
         S _buffer[N];
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
         time_t _start[N];
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
         size_t _current;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief access lock
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
         Mutex _accessLock;
-#endif
     };
   }
 }

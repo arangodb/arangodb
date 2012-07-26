@@ -165,7 +165,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateOk () {
-  response = new HttpResponse(HttpResponse::NO_CONTENT);
+  _response = new HttpResponse(HttpResponse::NO_CONTENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,13 +178,13 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::CREATED);
+  _response = new HttpResponse(HttpResponse::CREATED);
 
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + ridStr + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + ridStr + "\"");
+  _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -202,13 +202,13 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::ACCEPTED);
+  _response = new HttpResponse(HttpResponse::ACCEPTED);
 
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + ridStr + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + ridStr + "\"");
+  _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -226,11 +226,11 @@ void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::OK);
+  _response = new HttpResponse(HttpResponse::OK);
 
-  response->setContentType("application/json; charset=utf-8");
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -248,11 +248,11 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::OK);
+  _response = new HttpResponse(HttpResponse::OK);
 
-  response->setContentType("application/json; charset=utf-8");
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -317,7 +317,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
-  response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
+  _response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
@@ -328,13 +328,13 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
   result->add("_rev", new VariantUInt64(rid));
 
   string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
 
   if (ok) {
-    response->setContentType(contentType);
+    _response->setContentType(contentType);
   }
   else {
-    delete response;
+    delete _response;
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
   }
 
@@ -346,9 +346,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
-  response = new HttpResponse(HttpResponse::NOT_MODIFIED);
+  _response = new HttpResponse(HttpResponse::NOT_MODIFIED);
 
-  response->setHeader("ETag", "\"" + etag + "\"");
+  _response->setHeader("ETag", "\"" + etag + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,15 +411,15 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   }
 
   // and generate a response
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
 
   if (generateDocument) {
-    response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+    _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
   }
   else {
-    response->headResponse(TRI_LengthStringBuffer(&buffer));
+    _response->headResponse(TRI_LengthStringBuffer(&buffer));
   }
 
   TRI_AnnihilateStringBuffer(&buffer);
@@ -431,7 +431,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
 TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char const* parameter) {
   bool found;
-  char const* etag = request->header(header, found);
+  char const* etag = _request->header(header, found);
 
   if (found) {
     char const* s = etag;
@@ -457,7 +457,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char 
     return 0;
   }
   else {
-    etag = request->value(parameter, found);
+    etag = _request->value(parameter, found);
 
     if (found) {
       return TRI_UInt64String(etag);
@@ -474,7 +474,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char 
 
 TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
   bool found;
-  char const* policy = request->value("policy", found);
+  char const* policy = _request->value("policy", found);
 
   if (found) {
     if (TRI_CaseEqualString(policy, "error")) {
@@ -552,7 +552,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body(), &errmsg);
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {

@@ -46,7 +46,7 @@ namespace triagens {
 
     ServiceUnavailableHandler::ServiceUnavailableHandler ()
       : HttpHandler(0) {
-      response = new HttpResponse(HttpResponse::SERVICE_UNAVAILABLE);
+      _response = new HttpResponse(HttpResponse::SERVICE_UNAVAILABLE);
     }
 
     // -----------------------------------------------------------------------------

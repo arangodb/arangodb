@@ -12,7 +12,6 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
 
-
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -92,6 +91,39 @@ $("#documents_first").live('click', function () {
 $("#documents_last").live('click', function () {
   createLastPagination("#documentsTable"); 
 });
+
+///////////////////////////////////////////////////////////////////////////////
+//statistics live click buttons close 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsClose").live('click', function () {
+  var id = $(this).closest("li").attr("id"); 
+  $("#"+id).fadeOut();  
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistic settings 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsSettings").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  $(chartID).hide(); 
+  $(settingsID).fadeIn(); 
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistics charts
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsCharts").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  updateGraphs(false); 
+  $(settingsID).hide(); 
+  $(chartID).fadeIn(); 
+});
+
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -574,10 +606,29 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
+      stateReading(); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
-      createnav ("Status"); 
+      createnav ("Statistics"); 
+      $( ".resizable" ).resizable({
+        handles: 'e, w',
+        stop: function (event, ui) {
+          stateSaving(); 
+        } 
+      }); 
+      $( ".draggable" ).draggable({
+        containment: "#centerView",  
+        stop: function (event, ui) {
+          stateSaving(); 
+        }
+      }); 
+      //TODO
+      $( "#statisticRadioDiv" ).buttonset();
+      $( "#connectionsGranularityDiv" ).buttonset();
+      $( "#requestsGranularityDiv" ).buttonset();
+      updateGraphs(true); 
+      stateSaving(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2433,5 +2484,412 @@ function validate(evt) {
   if( !regex.test(key) ) {
     theEvent.returnValue = false;
     if(theEvent.preventDefault) theEvent.preventDefault();
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// live click connections radio buttons 
+///////////////////////////////////////////////////////////////////////////////
+
+$('#idsent').live('click', function () {
+  stateSaving(); 
+}); 
+$('#idreceived').live('click', function () {
+  stateSaving(); 
+}); 
+
+///////////////////////////////////////////////////////////////////////////////
+/// live click connections radio buttons 
+///////////////////////////////////////////////////////////////////////////////
+$('#connectionsMinutes').live('click', function () {
+  drawConnections("minutes");  
+  stateSaving(); 
+});
+$('#connectionsHours').live('click', function () {
+  drawConnections("hours");  
+  stateSaving(); 
+});
+$('#connectionsDays').live('click', function () {
+  drawConnections("days");  
+  stateSaving(); 
+});
+///////////////////////////////////////////////////////////////////////////////
+/// live click requests radio buttons 
+///////////////////////////////////////////////////////////////////////////////
+$('#requestsMinutes').live('click', function () {
+  drawRequests("minutes");  
+  stateSaving(); 
+});
+$('#requestsHours').live('click', function () {
+  drawRequests("hours");  
+  stateSaving(); 
+});
+$('#requestsDays').live('click', function () {
+  drawRequests("days");  
+  stateSaving(); 
+});
+///////////////////////////////////////////////////////////////////////////////
+/// draw hours statistics 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawConnections (granularity) {
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw connections (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+  var array = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/connection-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+      if (data.start.length == data.httpDuration.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          array.push([data.start[i]*1000,data.httpDuration.count[i]]);
+        }
+
+        var options = {
+          legend: {
+            margin: 0,  
+            show: true,
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            lines: { show: true, 
+                     steps: true, 
+                     fill: true, 
+                     lineWidth: 0.5, 
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.6 } ] } 
+            },
+            points: { show: false },
+            label: "Connections"
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          grid: { hoverable: true, autoHighlight: false },
+          colors: ["#9EAF5A"],
+          grid: {
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true, 
+          }
+        };
+
+        $.plot($("#placeholderConnection"), [array], options);
+
+        $("#placeholderConnection").qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$("#placeholderConnection").bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw requests (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawRequests (granularity) {
+  var arraySent = [];
+  var arrayReceived = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/request-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+ 
+      if (data.start.length == data.bytesSent.count.length && data.start.length == data.bytesReceived.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          arraySent.push([data.start[i]*1000,data.bytesSent.count[i]/1000]);
+          arrayReceived.push([data.start[i]*1000,data.bytesReceived.count[i]/1000]);
+        }
+        var stack = 0, bars = true, lines = true, steps = true;
+        var options = {
+          legend: {
+            show: true,
+            margin: 0,  
+            noColumns: 0, 
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            stack: stack,
+            lines: { show: true, 
+                     steps: false,  
+                     fill: true, 
+                     lineWidth: 0.5,
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
+            },
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          colors: ["#9EAF5A", "#5C3317"],
+          grid: {
+            mouseActiveRadius: 5, 
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true 
+          }
+        };
+
+        var sent = $('input:checkbox[name=bytessent]:checked').val(); 
+        var received = $('input:checkbox[name=bytesreceived]:checked').val(); 
+
+        if ( sent == "on" && received == "on" ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+        }
+        else if ( sent == "on" && received == undefined ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}], options);
+        }   
+        else if ( sent == undefined && received == "on" ) {
+          $.plot($("#placeholderBytesSent"), [{ label: "Bytes received", data: arrayReceived}], options);
+        }
+        else if ( sent == undefined && received == undefined ) {
+          $.plot($("#placeholderBytesSent"), [], options);
+        }
+
+        $("#placeholderBytesSent").qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$("#placeholderBytesSent").bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            if (item.series.label == "Bytes received") {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[2];
+            }
+            else {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            } 
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+function updateGraphs(timeout) {
+  var connections = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
+  var requests = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
+  drawConnections(connections); 
+  drawRequests(requests); 
+  if (timeout == true) {
+    setTimeout(updateGraphs, 60000);
+  }
+  else {
+  }
+}
+
+$(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
+$(document).delegate('#btnSaveExtraOptions', 'mouseenter', function () { ItemActionButtons.isHoverMenu = true; });
+$(document).delegate('#btnSaveExtraOptions', 'mouseleave', function () { $('#btnSaveExtraOptions').hide(); ItemActionButtons.isHoverMenu = false; });
+ 
+var $IsHoverExtraOptionsFlag = 0;
+ 
+$(document).ready(function () {
+  $(".button").button();
+  $(".buttonset").buttonset();
+ 
+  $('#btnAddNewStat').button({ icons: { primary: "ui-icon-plusthick" } });
+  $('#btnSaveExtraOptions li').addClass('ui-corner-all ui-widget');
+  $('#btnSaveExtraOptions li').hover(
+    function () {
+      $(this).addClass('ui-state-default'); 
+    },
+    function () {  
+      $(this).removeClass('ui-state-default'); 
+    }
+  );
+  $('#btnSaveExtraOptions li').mousedown(function () { 
+    $(this).addClass('ui-state-active'); 
+  });
+  $('#btnSaveExtraOptions li').mouseup(function () { 
+    $(this).removeClass('ui-state-active'); 
+  });
+});
+ 
+var ItemActionButtons = {
+
+  isHoverMenu: false,
+ 
+  AllowDelete: function (value) { value ? $("#btnDelete").show() : $("#btnDelete").hide() },
+  AllowCancel: function (value) { value ? $("#btnCancel").show() : $("#btnCancel").hide() },
+  AllowSave: function (value) { value ? $("#btnSave").show() : $("#btnSave").hide() },
+  AllowSaveExtra: function (value) { value ? $("#btnAddNewStat").show() : $("#btnAddNewStat").hide() },
+ 
+  onDeleteClick: function () { },
+  onCancelClick: function () { },
+  onSaveClick: function () { },
+  onSaveExtraClick: function () {
+
+ 
+    $('#btnSaveExtraOptions').toggle();
+ 
+    var btnLeft = $('#divSaveButton').offset().left;
+    var btnTop = $('#divSaveButton').offset().top + $('#divSaveButton').outerHeight(); // +$('#divSaveButton').css('padding');
+    var btnWidth = $('#divSaveButton').outerWidth();
+    $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
+  },
+  ShowConnectionsStats: function () {
+    $("#connectionsLi").fadeIn();  
+  },
+  ShowRequestsStats: function () { 
+    $("#requestsLi").fadeIn();  
+  }
+}
+
+$('#btnAddNewStat').live('click', function () { 
+  //Check which divs are already shown 
+    var statsArray = ["connectionsLi", "requestsLi"]; 
+
+    for (var i = 0; i < statsArray.length; ++i) {
+      if ($("#"+statsArray[i]).isVisible() == true) { 
+        $("add"+statsArray[i]+"Btn").addClass("statDisabled"); 
+        var id = "#add" + statsArray[i] + "Btn"; 
+        $(id).removeClass("statEnabled");  
+        $(id).addClass("statDisabled");  
+      }
+      else {
+        var id = "#add" + statsArray[i] + "Btn"; 
+        $(id).removeClass("statDisabled");  
+        $(id).addClass("statEnabled");  
+      }
+    }
+});
+
+$.fn.isVisible = function() {
+  return $.expr.filters.visible(this[0]);
+};
+
+function stateSaving () {
+  //connections
+  var connectionspos = $("#connectionsLi").position();  
+  var conwidth = $("#connectionsLi").width();  
+  var congran = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
+  localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth, congran]));
+  //requests
+  var requestspos = $("#requestsLi").position(); 
+  var reqwidth = $("#requestsLi").width(); 
+  var reqgran = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
+  var sent = $('input:checkbox[name=bytessent]:checked').val(); 
+  var received = $('input:checkbox[name=bytesreceived]:checked').val();
+  localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth, reqgran, sent, received]));
+}
+
+function stateReading () {
+  try {
+    //connections
+    var connectionsPos = localStorage.getItem("#connectionsLi");
+    var parsedConPos = JSON.parse(connectionsPos); 
+    //requests
+    var requestsPos = localStorage.getItem("#requestsLi");
+    var parsedReqPos = JSON.parse(requestsPos); 
+    if ( parsedConPos != null && parsedReqPos != null ) {
+      //connections
+      $('#connectionsLi').css('top', parsedConPos[0]);
+      $('#connectionsLi').css('left', parsedConPos[1]);
+      $('#connectionsLi').css('width', parsedConPos[2]); 
+      $('input:radio[name=connectionsGranularity][value='+parsedConPos[3]+']').click();
+      //requests
+      $('#requestsLi').css('top', parsedReqPos[0]);
+      $('#requestsLi').css('left', parsedReqPos[1]);
+      $('#requestsLi').css('width', parsedReqPos[2]);
+      $('input:radio[name=requestsGranularity][value='+parsedReqPos[3]+']').click();
+      if (parsedReqPos[4] == null ) {
+        $('#idsent').click();  
+      }
+      if (parsedReqPos[5] == null ) {
+        $('#idreceived').click();  
+      }
+    }
+  }
+  catch (e) {
+    console.log(e); 
   }
 }

@@ -54,12 +54,20 @@
 #include "HttpServer/ApplicationHttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
+
+#ifdef TRI_OPENSSL_VERSION
+#include "HttpsServer/ApplicationHttpsServer.h"
+#include "HttpsServer/HttpsServer.h"
+#endif
+
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
+#include "RestHandler/ConnectionStatisticsHandler.h"
+#include "RestHandler/RequestStatisticsHandler.h"
+#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/ArangoHttpServer.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/V8LineEditor.h"
@@ -148,6 +156,14 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
   admin->addHandlers(factory, "/_admin");
   user->addHandlers(factory, "/_admin");
 
+  // add statistics
+  factory->addHandler("/_admin/connection-statistics",
+                      RestHandlerCreator<ConnectionStatisticsHandler>::createNoData,
+                      0);
+
+  factory->addHandler("/_admin/request-statistics",
+                      RestHandlerCreator<RequestStatisticsHandler>::createNoData,
+                      0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,10 +198,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _httpServer(0),
-    _adminHttpServer(0),
-    _httpPort("127.0.0.1:8529"),
-    _httpAuth(false),
-    _adminPort(),
+    _httpsServer(0),
+    _endpoints(),
+    _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arangodb"),
     _removeOnDrop(true),
@@ -356,13 +371,10 @@ void ArangoServer::buildApplicationServer () {
 
 #endif
 #endif
-
+  
   // .............................................................................
-  // a http server
+  // define server options
   // .............................................................................
-
-  _applicationHttpServer = new ApplicationHttpServer(_applicationServer, _applicationScheduler, _applicationDispatcher);
-  _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
   // daemon and supervisor mode
@@ -386,25 +398,14 @@ void ArangoServer::buildApplicationServer () {
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working directory", &_workingDirectory, "working directory in daemon mode")
   ;
+  
+  // .............................................................................
+  // javascript options
+  // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
-  ;
-
-  // .............................................................................
-  // for this server we display our own options such as port to use
-  // .............................................................................
-
-  _applicationHttpServer->showPortOptions(false);
-
-  additional["PORT Options"]
-    ("server.http-port", &_httpPort, "port for client access")
-    ("server.http-auth", &_httpAuth, "use basic authentication")
-  ;
-
-  additional[ApplicationServer::OPTIONS_HIDDEN]
-    ("port", &_httpPort, "port for client access")
   ;
 
   // .............................................................................
@@ -431,17 +432,52 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   // .............................................................................
-  // database options
+  // server options
+  // .............................................................................
+  
+  // .............................................................................
+  // for this server we display our own options such as port to use
   // .............................................................................
 
+  additional["ENDPOINT Options"]
+    ("server.disable-auth", &_disableAuthentication, "disable authentication for ALL client requests")
+    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
+  ;
+  
   additional["Server Options:help-admin"]
-    ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
     ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
 
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  
+  // .............................................................................
+  // a http server
+  // .............................................................................
+
+  _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
+                                                     _applicationScheduler,
+                                                     _applicationDispatcher,
+                                                     "arangodb",
+                                                     TRI_CheckAuthenticationAuthInfo);
+  _applicationServer->addFeature(_applicationHttpServer);
+
+#ifdef TRI_OPENSSL_VERSION
+  // .............................................................................
+  // an https server
+  // .............................................................................
+
+  _applicationHttpsServer = new ApplicationHttpsServer(_applicationServer,
+                                                       _applicationScheduler, 
+                                                       _applicationDispatcher,
+                                                       "arangodb",
+                                                       TRI_CheckAuthenticationAuthInfo);
+  // this will add options --ssl.*
+  _applicationServer->addFeature(_applicationHttpsServer);
+#endif
+
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
@@ -458,6 +494,7 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("server.disable-admin-interface")) {
     _applicationAdminServer->allowAdminDirectory(false);
   }
+  
 
   // .............................................................................
   // set directories and scripts
@@ -529,6 +566,13 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "please use the '--database.directory' option";
     exit(EXIT_FAILURE);
   }
+
+  if (0 == _endpoints.size()) {
+    LOGGER_FATAL << "no endpoint has been specified, giving up";
+    cerr << "no endpoint has been specified, giving up\n";
+    LOGGER_INFO << "please use the '--server.endpoint' option";
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,10 +581,6 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
-
-  bool useHttpPort = ! _httpPort.empty();
-  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
-  bool shareAdminPort = useHttpPort && _adminPort.empty();
 
   // .............................................................................
   // open the database
@@ -556,20 +596,12 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
-  size_t actionConcurrency = _dispatcherThreads;
-
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      actionConcurrency += 2;
-    }
-  }
-
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setConcurrency(actionConcurrency);
+  _applicationV8->setConcurrency(_dispatcherThreads);
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
-  _applicationMR->setConcurrency(actionConcurrency);
+  _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
 
   _applicationServer->prepare();
@@ -580,86 +612,85 @@ int ArangoServer::startupServer () {
 
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
 
-  Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
-
-  // use a separate queue for administrator requests
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      dispatcher->addQueue("SYSTEM", 2);
-    }
-  }
-
   // .............................................................................
   // create a client http server and http handler factory
   // .............................................................................
 
-  Scheduler* scheduler = _applicationScheduler->scheduler();
+  // add & validate endpoints
+  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
+    Endpoint* endpoint = Endpoint::serverFactory(*i);
+  
+    if (endpoint == 0) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
 
-  // we pass the options be reference, so keep them until shutdown
+    assert(endpoint);
+
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
+    if (! ok) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+  }
+
+
+  // dump used endpoints for user information
+  _endpointList.dump();
+    
+  // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
-  HttpHandlerFactory::auth_fptr auth = 0;
+  // create the handlers
+  httpOptions._contexts.insert("user");
+  httpOptions._contexts.insert("api");
+  httpOptions._contexts.insert("admin");
 
-  if (_httpAuth) {
-    auth = TRI_CheckAuthenticationAuthInfo;
-  }
+  // unencrypted endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
+    // create the http server
+    _httpServer = _applicationHttpServer->buildServer(&_endpointList);
 
-  // if we want a http port create the factory
-  if (useHttpPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
+    DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
 
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
+    DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
-    vector<AddressPort> ports;
-    ports.push_back(AddressPort(_httpPort));
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-      httpOptions._contexts.insert("admin");
+    // add action handler
+    _httpServer->addPrefixHandler("/",
+                                  RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                  (void*) &httpOptions);
+  
+    if (_disableAuthentication) {
+      // turn off authentication
+      _httpServer->setAuthenticationCallback(0);
     }
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
-
-    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, ports);
   }
 
-  // .............................................................................
-  // create a admin http server and http handler factory
-  // .............................................................................
+#ifdef TRI_OPENSSL_VERSION
+  // SSL endpoints
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
 
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t adminOptions;
-  adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
-
-  // if we want a admin http port create the factory
-  if (useAdminPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
-
-    adminOptions._contexts.insert("api");
-    adminOptions._contexts.insert("admin");
-
-    vector<AddressPort> adminPorts;
-    adminPorts.push_back(AddressPort(_adminPort));
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+    // create the https server
+    _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
+    DefineApiHandlers(_httpsServer, _applicationAdminServer, _vocbase);
+    
+    DefineAdminHandlers(_httpsServer, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &adminOptions);
-
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, adminPorts);
+    _httpsServer->addPrefixHandler("/",
+                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                   (void*) &httpOptions);
+    
+    if (_disableAuthentication) {
+      // turn off authentication
+      _httpsServer->setAuthenticationCallback(0);
+    }
   }
+#endif
 
   // .............................................................................
   // create a http handler factory for zeromq
@@ -678,9 +709,7 @@ int ArangoServer::startupServer () {
 
     DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-    }
+    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
     factory->addPrefixHandler("/",
@@ -691,29 +720,14 @@ int ArangoServer::startupServer () {
   }
 
 #endif
+  
+  if (_disableAuthentication) {
+    LOGGER_INFO << "Authentication is turned off";
+  }
 
   // .............................................................................
   // start the main event loop
   // .............................................................................
-
-  if (useHttpPort) {
-    if (shareAdminPort) {
-      LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
-    }
-    else {
-      LOGGER_INFO << "HTTP client port: " << _httpPort;
-    }
-  }
-  else {
-    LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
-  }
-
-  if (useAdminPort) {
-    LOGGER_INFO << "HTTP admin port: " << _adminPort;
-  }
-  else if (! shareAdminPort) {
-    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
-  }
 
   _applicationServer->start();
 
@@ -726,7 +740,7 @@ int ArangoServer::startupServer () {
   // and cleanup
   // .............................................................................
 
-  _applicationServer->shutdown();
+  _applicationServer->stop();
   closeDatabase();
 
   return 0;
@@ -971,8 +985,8 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 
   _applicationV8->exitContext(context);
 
-  _applicationV8->beginShutdown();
-  _applicationV8->shutdown();
+  _applicationV8->close();
+  _applicationV8->stop();
 
   
   closeDatabase();
@@ -1093,12 +1107,11 @@ int ArangoServer::executeRubyConsole () {
 
   // enter MR context
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
-  mrb_state* mrb = context->_mrb;
 
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(context->_mrs, ".arango-mrb");
 
   console->open(false);
 
@@ -1117,7 +1130,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(&context->_mrs->_mrb, input);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1125,24 +1138,24 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(&context->_mrs->_mrb, p->tree);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb,
-                               mrb_proc_new(mrb, mrb->irep[n]),
-                               mrb_top_self(mrb));
+    mrb_value result = mrb_run(&context->_mrs->_mrb,
+                               mrb_proc_new(&context->_mrs->_mrb, context->_mrs->_mrb.irep[n]),
+                               mrb_top_self(&context->_mrs->_mrb));
 
-    if (mrb->exc) {
+    if (context->_mrs->_mrb.exc) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(mrb, mrb_obj_value(mrb->exc));
-      mrb->exc = 0;
+      mrb_p(&context->_mrs->_mrb, mrb_obj_value(context->_mrs->_mrb.exc));
+      context->_mrs->_mrb.exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(mrb, result);
+      mrb_p(&context->_mrs->_mrb, result);
     }
   }
 

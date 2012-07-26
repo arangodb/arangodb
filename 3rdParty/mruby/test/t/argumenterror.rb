@@ -13,8 +13,3 @@ assert('ArgumentError', '15.2.24') do
 
   ArgumentError.class == Class and e2.class == ArgumentError
 end
-
-assert('ArgumentError superclass', '15.2.24.2') do
-  ArgumentError.superclass == StandardError
-end
-

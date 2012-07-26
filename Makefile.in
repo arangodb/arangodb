@@ -362,10 +362,10 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
-	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
+	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
+	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
+	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -384,26 +384,27 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AddressPort.cpp \
-	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
+	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
+	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp lib/Rest/Url.cpp \
 	lib/ShapedJson/json-shaper.c lib/ShapedJson/shape-accessor.c \
-	lib/ShapedJson/shaped-json.c lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
-	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
-	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
-	lib/Variant/VariantDouble.cpp lib/Variant/VariantFloat.cpp \
-	lib/Variant/VariantInt16.cpp lib/Variant/VariantInt32.cpp \
-	lib/Variant/VariantInt64.cpp lib/Variant/VariantInt8.cpp \
-	lib/Variant/VariantMatrix2.cpp lib/Variant/VariantNull.cpp \
-	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
-	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
-	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp lib/ZeroMQ/ApplicationZeroMQ.cpp \
-	lib/ZeroMQ/ZeroMQBatchJob.cpp lib/ZeroMQ/ZeroMQThread.cpp \
-	lib/ZeroMQ/ZeroMQQueueThread.cpp \
+	lib/ShapedJson/shaped-json.c lib/Statistics/statistics.cpp \
+	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
+	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
+	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
+	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
+	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
+	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
+	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
+	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
+	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
+	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
+	lib/ZeroMQ/ApplicationZeroMQ.cpp lib/ZeroMQ/ZeroMQBatchJob.cpp \
+	lib/ZeroMQ/ZeroMQThread.cpp lib/ZeroMQ/ZeroMQQueueThread.cpp \
 	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@am__objects_1 =  \
@@ -425,6 +426,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/StringUtils.$(OBJEXT) lib/Basics/Thread.$(OBJEXT) \
 	lib/Basics/Timing.$(OBJEXT) lib/Basics/WriteLocker.$(OBJEXT) \
 	lib/Basics/WriteUnlocker.$(OBJEXT) \
+	lib/Basics/ssl-helper.$(OBJEXT) \
 	lib/BasicsC/associative-multi.$(OBJEXT) \
 	lib/BasicsC/associative.$(OBJEXT) \
 	lib/BasicsC/conversions.$(OBJEXT) lib/BasicsC/csv.$(OBJEXT) \
@@ -458,7 +460,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/ProgramOptions/program-options.$(OBJEXT) \
 	lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT) \
 	lib/ProtocolBuffers/arangodb.pb.$(OBJEXT) \
-	lib/Rest/AddressPort.$(OBJEXT) lib/Rest/AnyServer.$(OBJEXT) \
+	lib/Rest/AnyServer.$(OBJEXT) lib/Rest/EndpointList.$(OBJEXT) \
+	lib/Rest/Endpoint.$(OBJEXT) lib/Rest/Handler.$(OBJEXT) \
 	lib/Rest/HttpRequest.$(OBJEXT) \
 	lib/Rest/HttpRequestPlain.$(OBJEXT) \
 	lib/Rest/HttpResponse.$(OBJEXT) lib/Rest/Initialise.$(OBJEXT) \
@@ -467,6 +470,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/ShapedJson/json-shaper.$(OBJEXT) \
 	lib/ShapedJson/shape-accessor.$(OBJEXT) \
 	lib/ShapedJson/shaped-json.$(OBJEXT) \
+	lib/Statistics/statistics.$(OBJEXT) \
 	lib/Utilities/LineEditor.$(OBJEXT) \
 	lib/Utilities/ScriptLoader.$(OBJEXT) \
 	lib/Variant/VariantArray.$(OBJEXT) \
@@ -493,6 +497,9 @@ lib_libarango_a_OBJECTS = $(am_lib_libarango_a_OBJECTS)
 lib_libarango_client_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_client_a_LIBADD =
 am_lib_libarango_client_a_OBJECTS =  \
+	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_client_a_OBJECTS = $(am_lib_libarango_client_a_OBJECTS)
@@ -512,7 +519,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Dispatcher/DispatcherQueue.$(OBJEXT) \
 	lib/Dispatcher/DispatcherThread.$(OBJEXT) \
 	lib/Dispatcher/Job.$(OBJEXT) \
-	lib/GeneralServer/GeneralFigures.$(OBJEXT) \
 	lib/HttpServer/ApplicationHttpServer.$(OBJEXT) \
 	lib/HttpServer/HttpCommTask.$(OBJEXT) \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
@@ -610,8 +616,8 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
-bin_arango_password_SOURCES = bin/arango-password.c
-bin_arango_password_OBJECTS = bin/arango-password.$(OBJEXT)
+am_bin_arango_password_OBJECTS =
+bin_arango_password_OBJECTS = $(am_bin_arango_password_OBJECTS)
 bin_arango_password_LDADD = $(LDADD)
 am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
@@ -646,11 +652,16 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
+	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
+	arangod/RestHandler/RequestStatisticsHandler.cpp \
+	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
-	arangod/RestServer/ArangoHttpServer.cpp \
+	arangod/RestHandler/BatchJob.cpp \
+	arangod/RestHandler/BatchSubjob.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
@@ -706,11 +717,16 @@ am_bin_arangod_OBJECTS =  \
 	arangod/IndexOperators/bin_arangod-index-operator.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
-	arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT) \
@@ -808,7 +824,7 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) $(lib_libarango_mruby_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(UnitTests_basics_suite_SOURCES) \
-	$(UnitTests_geo_suite_SOURCES) bin/arango-password.c \
+	$(UnitTests_geo_suite_SOURCES) $(bin_arango_password_SOURCES) \
 	$(bin_arangod_SOURCES) $(bin_arangoimp_SOURCES) \
 	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES) \
 	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
@@ -818,10 +834,11 @@ DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(am__lib_libarango_mruby_a_SOURCES_DIST) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
-	$(am__UnitTests_geo_suite_SOURCES_DIST) bin/arango-password.c \
-	$(am__bin_arangod_SOURCES_DIST) $(bin_arangoimp_SOURCES) \
-	$(am__bin_arangoirb_SOURCES_DIST) $(bin_arangosh_SOURCES) \
-	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
+	$(am__UnitTests_geo_suite_SOURCES_DIST) \
+	$(bin_arango_password_SOURCES) $(am__bin_arangod_SOURCES_DIST) \
+	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
+	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
+	$(bin_zserver_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -1143,6 +1160,9 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 	lib/libarango_fe.a lib/libarango_client.a $(am__append_8)
 
+# exclude arango-password from sources list
+bin_arango_password_SOURCES = 
+
 ################################################################################
 ### @brief /etc data
 ################################################################################
@@ -1283,10 +1303,10 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
 	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
-	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
+	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
+	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
+	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -1305,29 +1325,34 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AddressPort.cpp \
-	lib/Rest/AnyServer.cpp lib/Rest/HttpRequest.cpp \
+	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
+	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
+	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp lib/Rest/HttpResponse.cpp \
 	lib/Rest/Initialise.cpp lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp lib/Rest/Url.cpp \
 	lib/ShapedJson/json-shaper.c lib/ShapedJson/shape-accessor.c \
-	lib/ShapedJson/shaped-json.c lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp lib/Variant/VariantArray.cpp \
-	lib/Variant/VariantBlob.cpp lib/Variant/VariantBoolean.cpp \
-	lib/Variant/VariantDate.cpp lib/Variant/VariantDatetime.cpp \
-	lib/Variant/VariantDouble.cpp lib/Variant/VariantFloat.cpp \
-	lib/Variant/VariantInt16.cpp lib/Variant/VariantInt32.cpp \
-	lib/Variant/VariantInt64.cpp lib/Variant/VariantInt8.cpp \
-	lib/Variant/VariantMatrix2.cpp lib/Variant/VariantNull.cpp \
-	lib/Variant/VariantObject.cpp lib/Variant/VariantString.cpp \
-	lib/Variant/VariantUInt16.cpp lib/Variant/VariantUInt32.cpp \
-	lib/Variant/VariantUInt64.cpp lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp $(am__append_11)
+	lib/ShapedJson/shaped-json.c lib/Statistics/statistics.cpp \
+	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Variant/VariantArray.cpp lib/Variant/VariantBlob.cpp \
+	lib/Variant/VariantBoolean.cpp lib/Variant/VariantDate.cpp \
+	lib/Variant/VariantDatetime.cpp lib/Variant/VariantDouble.cpp \
+	lib/Variant/VariantFloat.cpp lib/Variant/VariantInt16.cpp \
+	lib/Variant/VariantInt32.cpp lib/Variant/VariantInt64.cpp \
+	lib/Variant/VariantInt8.cpp lib/Variant/VariantMatrix2.cpp \
+	lib/Variant/VariantNull.cpp lib/Variant/VariantObject.cpp \
+	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
+	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
+	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
+	$(am__append_11)
 
 ################################################################################
 ### @brief library "libarango.a", client part
 ################################################################################
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -1349,7 +1374,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
-	lib/GeneralServer/GeneralFigures.cpp \
 	lib/HttpServer/ApplicationHttpServer.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
@@ -1452,11 +1476,16 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
+	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
+	arangod/RestHandler/RequestStatisticsHandler.cpp \
+	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
-	arangod/RestServer/ArangoHttpServer.cpp \
+	arangod/RestHandler/BatchJob.cpp \
+	arangod/RestHandler/BatchSubjob.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
@@ -1551,7 +1580,11 @@ bin_zserver_SOURCES = \
 
 FORCE = 0
 SKIP_BOOST = 0
+SKIP_GEO = 0
+SKIP_RANGES = 0
 VALGRIND = 
+USERNAME = root
+PASSWORD = 
 
 ################################################################################
 ################################################################################
@@ -1563,6 +1596,8 @@ VOCHOST := 127.0.0.1
 SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
+CURL := curl
+CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
@@ -1778,6 +1813,8 @@ lib/Basics/WriteLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/WriteUnlocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/ssl-helper.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/$(am__dirstamp):
 	@$(MKDIR_P) lib/BasicsC
 	@: > lib/BasicsC/$(am__dirstamp)
@@ -1908,9 +1945,13 @@ lib/Rest/$(am__dirstamp):
 lib/Rest/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/Rest/$(DEPDIR)
 	@: > lib/Rest/$(DEPDIR)/$(am__dirstamp)
-lib/Rest/AddressPort.$(OBJEXT): lib/Rest/$(am__dirstamp) \
-	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/AnyServer.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+	lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/EndpointList.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+	lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/Endpoint.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+	lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/Handler.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/HttpRequest.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
@@ -1939,6 +1980,14 @@ lib/ShapedJson/shape-accessor.$(OBJEXT):  \
 	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
 lib/ShapedJson/shaped-json.$(OBJEXT): lib/ShapedJson/$(am__dirstamp) \
 	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
+lib/Statistics/$(am__dirstamp):
+	@$(MKDIR_P) lib/Statistics
+	@: > lib/Statistics/$(am__dirstamp)
+lib/Statistics/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib/Statistics/$(DEPDIR)
+	@: > lib/Statistics/$(DEPDIR)/$(am__dirstamp)
+lib/Statistics/statistics.$(OBJEXT): lib/Statistics/$(am__dirstamp) \
+	lib/Statistics/$(DEPDIR)/$(am__dirstamp)
 lib/Utilities/$(am__dirstamp):
 	@$(MKDIR_P) lib/Utilities
 	@: > lib/Utilities/$(am__dirstamp)
@@ -2024,6 +2073,15 @@ lib/SimpleHttpClient/$(am__dirstamp):
 lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/SimpleHttpClient/$(DEPDIR)
 	@: > lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/ClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/SslClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -2083,15 +2141,6 @@ lib/Dispatcher/DispatcherThread.$(OBJEXT):  \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
 lib/Dispatcher/Job.$(OBJEXT): lib/Dispatcher/$(am__dirstamp) \
 	lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
-lib/GeneralServer/$(am__dirstamp):
-	@$(MKDIR_P) lib/GeneralServer
-	@: > lib/GeneralServer/$(am__dirstamp)
-lib/GeneralServer/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/GeneralServer/$(DEPDIR)
-	@: > lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
-lib/GeneralServer/GeneralFigures.$(OBJEXT):  \
-	lib/GeneralServer/$(am__dirstamp) \
-	lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/$(am__dirstamp):
 	@$(MKDIR_P) lib/HttpServer
 	@: > lib/HttpServer/$(am__dirstamp)
@@ -2425,11 +2474,6 @@ UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_sui
 bin/$(am__dirstamp):
 	@$(MKDIR_P) bin
 	@: > bin/$(am__dirstamp)
-bin/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) bin/$(DEPDIR)
-	@: > bin/$(DEPDIR)/$(am__dirstamp)
-bin/arango-password.$(OBJEXT): bin/$(am__dirstamp) \
-	bin/$(DEPDIR)/$(am__dirstamp)
 arangod/Actions/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Actions
 	@: > arangod/Actions/$(am__dirstamp)
@@ -2583,6 +2627,18 @@ arangod/RestHandler/$(am__dirstamp):
 arangod/RestHandler/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestHandler/$(DEPDIR)
 	@: > arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -2595,15 +2651,18 @@ arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT):  \
 arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestServer
 	@: > arangod/RestServer/$(am__dirstamp)
 arangod/RestServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/RestServer/$(DEPDIR)
 	@: > arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT):  \
-	arangod/RestServer/$(am__dirstamp) \
-	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -2830,11 +2889,16 @@ mostlyclean-compile:
 	-rm -f arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT)
 	-rm -f arangod/PriorityQueue/bin_arangod-priorityqueue.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-BatchJob.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-BatchSubjob.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-RequestStatisticsHandler.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-RestBatchHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT)
 	-rm -f arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT)
-	-rm -f arangod/RestServer/bin_arangod-ArangoHttpServer.$(OBJEXT)
+	-rm -f arangod/RestHandler/bin_arangod-StatisticsBaseHandler.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT)
 	-rm -f arangod/RestServer/bin_arangod-arango.$(OBJEXT)
 	-rm -f arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT)
@@ -2867,7 +2931,6 @@ mostlyclean-compile:
 	-rm -f arangosh/V8Client/bin_arangosh-ImportHelper.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangosh-V8ClientConnection.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangosh-arangosh.$(OBJEXT)
-	-rm -f bin/arango-password.$(OBJEXT)
 	-rm -f lib/Admin/ApplicationAdminServer.$(OBJEXT)
 	-rm -f lib/Admin/RestAdminBaseHandler.$(OBJEXT)
 	-rm -f lib/Admin/RestAdminFeConfigurationHandler.$(OBJEXT)
@@ -2894,6 +2957,7 @@ mostlyclean-compile:
 	-rm -f lib/Basics/Timing.$(OBJEXT)
 	-rm -f lib/Basics/WriteLocker.$(OBJEXT)
 	-rm -f lib/Basics/WriteUnlocker.$(OBJEXT)
+	-rm -f lib/Basics/ssl-helper.$(OBJEXT)
 	-rm -f lib/BasicsC/associative-multi.$(OBJEXT)
 	-rm -f lib/BasicsC/associative.$(OBJEXT)
 	-rm -f lib/BasicsC/conversions.$(OBJEXT)
@@ -2926,7 +2990,6 @@ mostlyclean-compile:
 	-rm -f lib/Dispatcher/DispatcherQueue.$(OBJEXT)
 	-rm -f lib/Dispatcher/DispatcherThread.$(OBJEXT)
 	-rm -f lib/Dispatcher/Job.$(OBJEXT)
-	-rm -f lib/GeneralServer/GeneralFigures.$(OBJEXT)
 	-rm -f lib/HttpServer/ApplicationHttpServer.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpCommTask.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandler.$(OBJEXT)
@@ -2955,8 +3018,10 @@ mostlyclean-compile:
 	-rm -f lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT)
-	-rm -f lib/Rest/AddressPort.$(OBJEXT)
 	-rm -f lib/Rest/AnyServer.$(OBJEXT)
+	-rm -f lib/Rest/Endpoint.$(OBJEXT)
+	-rm -f lib/Rest/EndpointList.$(OBJEXT)
+	-rm -f lib/Rest/Handler.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequest.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequestPlain.$(OBJEXT)
 	-rm -f lib/Rest/HttpResponse.$(OBJEXT)
@@ -2988,8 +3053,12 @@ mostlyclean-compile:
 	-rm -f lib/ShapedJson/json-shaper.$(OBJEXT)
 	-rm -f lib/ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f lib/ShapedJson/shaped-json.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/ClientConnection.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
+	-rm -f lib/Statistics/statistics.$(OBJEXT)
 	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
 	-rm -f lib/UserManager/Role.$(OBJEXT)
 	-rm -f lib/UserManager/Session.$(OBJEXT)
@@ -3089,11 +3158,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-mr-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/PriorityQueue/$(DEPDIR)/bin_arangod-priorityqueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
@@ -3126,7 +3200,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-arangosh.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@bin/$(DEPDIR)/arango-password.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/ApplicationAdminServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminFeConfigurationHandler.Po@am__quote@
@@ -3153,6 +3226,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Timing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteUnlocker.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ssl-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/associative-multi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/associative.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/conversions.Po@am__quote@
@@ -3185,7 +3259,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherQueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Job.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/GeneralServer/$(DEPDIR)/GeneralFigures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ApplicationHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
@@ -3214,8 +3287,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/HttpRequestProtobuf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/arangodb.pb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AddressPort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AnyServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Endpoint.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/EndpointList.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Handler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequestPlain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpResponse.Po@am__quote@
@@ -3247,8 +3322,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/json-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Session.Po@am__quote@
@@ -4207,6 +4286,70 @@ arangod/Actions/bin_arangod-RestActionHandler.obj: arangod/Actions/RestActionHan
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Actions/bin_arangod-RestActionHandler.obj `if test -f 'arangod/Actions/RestActionHandler.cpp'; then $(CYGPATH_W) 'arangod/Actions/RestActionHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Actions/RestActionHandler.cpp'; fi`
 
+arangod/RestHandler/bin_arangod-StatisticsBaseHandler.o: arangod/RestHandler/StatisticsBaseHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-StatisticsBaseHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Tpo -c -o arangod/RestHandler/bin_arangod-StatisticsBaseHandler.o `test -f 'arangod/RestHandler/StatisticsBaseHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/StatisticsBaseHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/StatisticsBaseHandler.cpp' object='arangod/RestHandler/bin_arangod-StatisticsBaseHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-StatisticsBaseHandler.o `test -f 'arangod/RestHandler/StatisticsBaseHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/StatisticsBaseHandler.cpp
+
+arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj: arangod/RestHandler/StatisticsBaseHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Tpo -c -o arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj `if test -f 'arangod/RestHandler/StatisticsBaseHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/StatisticsBaseHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/StatisticsBaseHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-StatisticsBaseHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/StatisticsBaseHandler.cpp' object='arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-StatisticsBaseHandler.obj `if test -f 'arangod/RestHandler/StatisticsBaseHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/StatisticsBaseHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/StatisticsBaseHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o: arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o `test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/ConnectionStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.o `test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/ConnectionStatisticsHandler.cpp
+
+arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj: arangod/RestHandler/ConnectionStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj `if test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/ConnectionStatisticsHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-ConnectionStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/ConnectionStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-ConnectionStatisticsHandler.obj `if test -f 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/ConnectionStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/ConnectionStatisticsHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o: arangod/RestHandler/RequestStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o `test -f 'arangod/RestHandler/RequestStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RequestStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RequestStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RequestStatisticsHandler.o `test -f 'arangod/RestHandler/RequestStatisticsHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RequestStatisticsHandler.cpp
+
+arangod/RestHandler/bin_arangod-RequestStatisticsHandler.obj: arangod/RestHandler/RequestStatisticsHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RequestStatisticsHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RequestStatisticsHandler.obj `if test -f 'arangod/RestHandler/RequestStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RequestStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RequestStatisticsHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RequestStatisticsHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RequestStatisticsHandler.cpp' object='arangod/RestHandler/bin_arangod-RequestStatisticsHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RequestStatisticsHandler.obj `if test -f 'arangod/RestHandler/RequestStatisticsHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RequestStatisticsHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RequestStatisticsHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-RestBatchHandler.o: arangod/RestHandler/RestBatchHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestBatchHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.o `test -f 'arangod/RestHandler/RestBatchHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestBatchHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RestBatchHandler.cpp' object='arangod/RestHandler/bin_arangod-RestBatchHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.o `test -f 'arangod/RestHandler/RestBatchHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestBatchHandler.cpp
+
+arangod/RestHandler/bin_arangod-RestBatchHandler.obj: arangod/RestHandler/RestBatchHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestBatchHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.obj `if test -f 'arangod/RestHandler/RestBatchHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestBatchHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestBatchHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestBatchHandler.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/RestBatchHandler.cpp' object='arangod/RestHandler/bin_arangod-RestBatchHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestBatchHandler.obj `if test -f 'arangod/RestHandler/RestBatchHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestBatchHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestBatchHandler.cpp'; fi`
+
 arangod/RestHandler/bin_arangod-RestDocumentHandler.o: arangod/RestHandler/RestDocumentHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestDocumentHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestDocumentHandler.o `test -f 'arangod/RestHandler/RestDocumentHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestDocumentHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po
@@ -4271,21 +4414,37 @@ arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.obj: arangod/RestHandler/
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.obj `if test -f 'arangod/RestHandler/RestVocbaseBaseHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestVocbaseBaseHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestVocbaseBaseHandler.cpp'; fi`
 
-arangod/RestServer/bin_arangod-ArangoHttpServer.o: arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoHttpServer.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.o `test -f 'arangod/RestServer/ArangoHttpServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po
+arangod/RestHandler/bin_arangod-BatchJob.o: arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchJob.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchJob.o `test -f 'arangod/RestHandler/BatchJob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/ArangoHttpServer.cpp' object='arangod/RestServer/bin_arangod-ArangoHttpServer.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchJob.cpp' object='arangod/RestHandler/bin_arangod-BatchJob.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.o `test -f 'arangod/RestServer/ArangoHttpServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoHttpServer.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchJob.o `test -f 'arangod/RestHandler/BatchJob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchJob.cpp
 
-arangod/RestServer/bin_arangod-ArangoHttpServer.obj: arangod/RestServer/ArangoHttpServer.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoHttpServer.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.obj `if test -f 'arangod/RestServer/ArangoHttpServer.cpp'; then $(CYGPATH_W) 'arangod/RestServer/ArangoHttpServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/ArangoHttpServer.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoHttpServer.Po
+arangod/RestHandler/bin_arangod-BatchJob.obj: arangod/RestHandler/BatchJob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchJob.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchJob.obj `if test -f 'arangod/RestHandler/BatchJob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchJob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchJob.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchJob.Po
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestServer/ArangoHttpServer.cpp' object='arangod/RestServer/bin_arangod-ArangoHttpServer.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchJob.cpp' object='arangod/RestHandler/bin_arangod-BatchJob.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-ArangoHttpServer.obj `if test -f 'arangod/RestServer/ArangoHttpServer.cpp'; then $(CYGPATH_W) 'arangod/RestServer/ArangoHttpServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/ArangoHttpServer.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchJob.obj `if test -f 'arangod/RestHandler/BatchJob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchJob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchJob.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-BatchSubjob.o: arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchSubjob.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchSubjob.o `test -f 'arangod/RestHandler/BatchSubjob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchSubjob.cpp' object='arangod/RestHandler/bin_arangod-BatchSubjob.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchSubjob.o `test -f 'arangod/RestHandler/BatchSubjob.cpp' || echo '$(srcdir)/'`arangod/RestHandler/BatchSubjob.cpp
+
+arangod/RestHandler/bin_arangod-BatchSubjob.obj: arangod/RestHandler/BatchSubjob.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-BatchSubjob.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo -c -o arangod/RestHandler/bin_arangod-BatchSubjob.obj `if test -f 'arangod/RestHandler/BatchSubjob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchSubjob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchSubjob.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-BatchSubjob.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/RestHandler/BatchSubjob.cpp' object='arangod/RestHandler/bin_arangod-BatchSubjob.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-BatchSubjob.obj `if test -f 'arangod/RestHandler/BatchSubjob.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/BatchSubjob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/BatchSubjob.cpp'; fi`
 
 arangod/RestServer/bin_arangod-ArangoServer.o: arangod/RestServer/ArangoServer.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-ArangoServer.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Tpo -c -o arangod/RestServer/bin_arangod-ArangoServer.o `test -f 'arangod/RestServer/ArangoServer.cpp' || echo '$(srcdir)/'`arangod/RestServer/ArangoServer.cpp
@@ -4921,7 +5080,6 @@ distclean-generic:
 	-rm -f arangoirb/MRClient/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(am__dirstamp)
-	-rm -f bin/$(DEPDIR)/$(am__dirstamp)
 	-rm -f bin/$(am__dirstamp)
 	-rm -f lib/$(am__dirstamp)
 	-rm -f lib/Admin/$(DEPDIR)/$(am__dirstamp)
@@ -4934,8 +5092,6 @@ distclean-generic:
 	-rm -f lib/BasicsC/$(am__dirstamp)
 	-rm -f lib/Dispatcher/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Dispatcher/$(am__dirstamp)
-	-rm -f lib/GeneralServer/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/GeneralServer/$(am__dirstamp)
 	-rm -f lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/HttpServer/$(am__dirstamp)
 	-rm -f lib/HttpsServer/$(DEPDIR)/$(am__dirstamp)
@@ -4962,6 +5118,8 @@ distclean-generic:
 	-rm -f lib/ShapedJson/$(am__dirstamp)
 	-rm -f lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/SimpleHttpClient/$(am__dirstamp)
+	-rm -f lib/Statistics/$(DEPDIR)/$(am__dirstamp)
+	-rm -f lib/Statistics/$(am__dirstamp)
 	-rm -f lib/UserManager/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/UserManager/$(am__dirstamp)
 	-rm -f lib/Utilities/$(DEPDIR)/$(am__dirstamp)
@@ -4986,7 +5144,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) bin/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5035,7 +5193,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) bin/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/GeneralServer/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/HttpsServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5171,9 +5329,9 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true && rm -rf "$(VOCDIR)") &
 
-	while [ ! -s "$(STARTFILE)" ]; do curl -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
+	while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) -X GET -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
 	@rm "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 30; else sleep 2; fi
@@ -5256,7 +5414,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -5345,12 +5503,18 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ################################################################################
 
 bin/arango-password: bin/arango-password.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
+@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${databasedir}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
 
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
@@ -5562,7 +5726,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ### @brief protocol buffers
 ################################################################################
 
-%.pb.cpp: %.proto .protobuf-build-@TRI_BITS@
+%.pb.cpp: %.proto
 	@top_srcdir@/3rdParty/protobuf-2.4.1/BUILD/bin/protoc --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 
@@ -5620,7 +5784,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@.mruby-build-@TRI_BITS@:
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo "BUILDING mruby"
+@ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 

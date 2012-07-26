@@ -201,7 +201,7 @@ TRI_doc_collection_info_t;
 //////////////////////////////////////////////////////////////////////////
 ///
 /// Returns the master pointer of the document with the given identifier. If the
-/// document does not exists or is deleted, then the identifier @LIT{_did} of
+/// document does not exist or is deleted, then the identifier @LIT{_did} of
 /// the result is @LIT{0}. The function DOES NOT acquire or release a read
 /// lock. This must be done by the caller.
 ///

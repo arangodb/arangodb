@@ -1517,7 +1517,8 @@ Optional Features:
   --enable-zone-debug     enables memory zone debugging (default: no)
   --enable-logger         enable logging and timing (default: yes)
   --enable-timing         enable timing (default: yes)
-  --enable-figures        enable figures (default: yes)
+  --enable-figures        enable figures, use 'yes', 'no', or 'hires'(default:
+                          yes)
   --disable-largefile     omit support for large files
   --enable-gcov           enables gnu coverage (default: no)
   --enable-curses         enable ncurses support (default:
@@ -5882,6 +5883,17 @@ cat >>confdefs.h <<_ACEOF
 #define TRI_ENABLE_FIGURES 1
 _ACEOF
 
+elif test "x$tr_FIGURES" = xhires;  then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_FIGURES 1
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_HIRES_FIGURES 1
+_ACEOF
+
 fi
 
  if test "x$tr_FIGURES" = xyes; then
@@ -9090,7 +9102,7 @@ if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-07-02 (ac5838ac67d489c5321ac9cb0e8d6e50c6c4fd6f)"
+  TRI_MRUBY_VERSION="2012-06-02 (92f192521865137c7e457b4a54c5df4ad2fbb049)"
 
 
 cat >>confdefs.h <<_ACEOF

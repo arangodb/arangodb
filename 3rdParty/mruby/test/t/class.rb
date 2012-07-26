@@ -5,45 +5,6 @@ assert('Class', '15.2.3') do
   Class.class == Class
 end
 
-assert('Class superclass', '15.2.3.2') do
-  Class.superclass == Module
-end
-
-assert('Class#new', '15.2.3.3.3') do
-  # at the moment no exception on singleton class
-  #e1 = nil
-  #begin
-  #  class1 = e1.singleton_class.new
-  #rescue => e1
-  #  e2 = e1
-  #end
-
-  class TestClass
-    def initialize args, &block
-      @result = if not args.nil? and block.nil?
-        # only arguments
-        :only_args
-      elsif not args.nil? and not block.nil?
-        # args and block is given
-        :args_and_block
-      else
-        # this should never happen
-        :broken
-      end
-    end
-
-    def result; @result; end
-  end
-
-  TestClass.new(:arg).result == :only_args
-  # with block doesn't work yet
-end
-
-assert('Class#superclass', '15.2.3.3.4') do
-  class SubClass < String; end
-  SubClass.superclass == String
-end
-
 # Not ISO specified
 
 assert('Class 1') do

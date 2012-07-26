@@ -30,6 +30,7 @@
 #include <openssl/err.h>
 
 #include "Logger/Logger.h"
+#include "Basics/ssl-helper.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
@@ -56,16 +57,6 @@ using namespace std;
 
 namespace {
   Mutex SslLock;
-
-  string lastSSLError () {
-    char buf[122];
-    memset(buf, 0, sizeof(buf));
-
-    unsigned long err = ERR_get_error();
-    ERR_error_string_n(err, buf, sizeof(buf) - 1);
-
-    return string(buf);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +73,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a SSL context
+/// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
 #if (OPENSSL_VERSION_NUMBER < 0x00999999L)
@@ -142,6 +133,25 @@ SSL_CTX* HttpsServer::sslContext (protocol_e protocol, string const& keyfile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of an SSL protocol version
+////////////////////////////////////////////////////////////////////////////////
+
+const string HttpsServer::protocolName (const protocol_e protocol) {
+  switch (protocol) {
+    case SSL_V2:
+      return "SSLv2";
+    case SSL_V23:
+      return "SSLv23";
+    case SSL_V3:
+      return "SSLv3";
+    case TLS_V1:
+      return "TLSv1";
+    default:
+      return "unknown";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,8 +168,12 @@ SSL_CTX* HttpsServer::sslContext (protocol_e protocol, string const& keyfile) {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer::HttpsServer (Scheduler* scheduler, Dispatcher* dispatcher, SSL_CTX* ctx)
-  : HttpServer(scheduler, dispatcher),
+HttpsServer::HttpsServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          std::string const authenticationRealm,
+                          auth_fptr checkAuthentication, 
+                          SSL_CTX* ctx)
+  : HttpServer(scheduler, dispatcher, authenticationRealm, checkAuthentication),
     ctx(ctx),
     verificationMode(SSL_VERIFY_NONE),
     verificationCallback(0) {
@@ -216,7 +230,7 @@ void HttpsServer::setVerificationCallback (int (*func)(int, X509_STORE_CTX *)) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
-  LOGGER_INFO << "trying to establish secure connection";
+  LOGGER_DEBUG << "trying to establish secure connection";
 
   // convert in a SSL BIO structure
   BIO * sbio = BIO_new_socket((int) socket, BIO_NOCLOSE);
@@ -247,6 +261,11 @@ void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
 
   // create a https task
   SocketTask* task = new HttpsAsyncCommTask(this, socket, info, sbio);
+
+  // add the task, otherwise it will not be shut down properly          
+  GENERAL_SERVER_LOCK(&this->_commTasksLock);
+  this->_commTasks.insert(dynamic_cast<GeneralCommTask<HttpServer, HttpHandlerFactory>*>(task));
+  GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
 
   // and register it
   _scheduler->registerTask(task);

@@ -31,7 +31,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             RestDocumentHandler
+// --SECTION--                                         class RestDocumentHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ namespace triagens {
   namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection request handler
+/// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
     class RestDocumentHandler : public RestVocbaseBaseHandler {
