@@ -5369,12 +5369,18 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ################################################################################
 
 bin/arango-password: bin/arango-password.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
+@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
 
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
