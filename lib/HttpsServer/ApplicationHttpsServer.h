@@ -238,8 +238,8 @@ namespace triagens {
 /// @CMDOPT{--server.keyfile @CA{filename}}
 ///
 /// If SSL encryption is used, this option must be used to specify the filename
-/// of the server private key. The file must contain both an X509 certificate and
-/// the server's private key.
+/// of the server private key. The file must be PEM formatted and contain both 
+/// the certificate and the server's private key.
 ///
 /// The file specified by @CA{filename} should have the following structure:
 ///
@@ -248,7 +248,7 @@ namespace triagens {
 /// You may use certificates issued by a Certificate Authority or self-signed
 /// certificates. Self-signed certificates can be created by a tool of your 
 /// choice. When using OpenSSL for creating the self-signed certificate, the 
-/// following commands should create a keyfile:
+/// following commands should create a valid keyfile:
 /// 
 /// @verbinclude server-keyfile-openssl
 ///
@@ -266,10 +266,13 @@ namespace triagens {
 ///
 /// @CMDOPT{--server.cafile @CA{filename}}
 ///
-/// This option can be used to specify the file which contains the CA certificates
-/// of clients.
+/// This option can be used to specify a file with CA certificates that are sent
+/// to the client whenever the server requests a client certificate. If the
+/// file is specified, The server will only accept client requests with 
+/// certificates issued by these CAs. Do not specify this option if you want
+/// clients to be able to connect without specific certificates.
 ///
-/// TODO
+/// The certificates in @CA{filename} must be PEM formatted.
 ///
 /// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,16 +299,19 @@ namespace triagens {
         uint32_t _sslProtocol;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl cache mode to use
+/// @brief whether or not to use SSL session caching
 ///
-/// @CMDOPT{--server.ssl-cache-mode @CA{value}}
+/// @CMDOPT{--server.ssl-cache @CA{value}}
 ///
-/// TODO
+/// Set to true if SSL session caching should be used.
 ///
-/// Note: this option is only relevant if at least one SSL endpoint is used.
+/// @CA{value} has a default value of @LIT{false} (i.e. no caching).
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used, and
+/// only if the client supports sending the session id.
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t _sslCacheMode;
+        bool _sslCache;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl options to use
