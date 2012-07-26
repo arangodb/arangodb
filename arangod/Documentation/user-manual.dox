@@ -231,6 +231,11 @@
 ///
 /// @TINYEXAMPLE{arangosh-start,starting the shell}
 ///
+/// You might need to set additional options (endpoint, username, and password)
+/// when connecting:
+///
+/// @verbinclude arangosh-start-full
+///
 /// The shell will print its own version number and, if successfully connected
 /// to a server, the version number of the ArangoDB server.
 ///
