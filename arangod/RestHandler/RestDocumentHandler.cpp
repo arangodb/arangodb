@@ -631,7 +631,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
 /// contains the new document revision.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
 /// If an etag is supplied in the "If-Match" header field, then the ArangoDB
@@ -784,7 +784,7 @@ bool RestDocumentHandler::updateDocument () {
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
 /// contains the known document revision.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
 /// If an etag is supplied in the "If-Match" field, then the ArangoDB checks

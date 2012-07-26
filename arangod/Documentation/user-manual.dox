@@ -191,6 +191,8 @@
 /// information see @ref CommandLineLogging "here".
 ///
 /// @copydetails triagens::arango::ArangoServer::_endpoints
+///
+/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 //////////////////////////////////////////////////////////
 ///
 /// @CMDOPT{--daemon}

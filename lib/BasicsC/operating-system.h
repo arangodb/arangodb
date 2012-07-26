@@ -82,6 +82,7 @@
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_TERMIOS_H                  1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
@@ -215,6 +216,7 @@
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_TERMIOS_H                  1
 
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
@@ -229,7 +231,6 @@
 #define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
-#define TRI_HAVE_TERMIOS                    1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8

@@ -310,6 +310,13 @@ namespace triagens {
 /// port (8529) will be used.
 /// If multiple endpoints need to be used, the option can be repeated multiple
 /// times.
+///
+/// @EXAMPLES
+///
+/// @verbinclude option-server-endpoint
+///
+/// Note that if you are using SSL-encrypted endpoints, you must also supply
+/// the path to a server certificate using the --ssl.keyfile optionn.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;
