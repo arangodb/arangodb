@@ -52,6 +52,20 @@ echo
 
 case $TRI_OS_LONG in
 
+  Linux-ArchLinux*)
+    echo "Using configuration for Arch Linux"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
+    ;;
+
+  Linux-LinuxMint-13*)
+    echo "Using configuration for LinuxMint 13"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    LDD_INFO="yes"
+    RESULTS="$RESULTS arangoirb"
+    ;;
+
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12"
     OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
