@@ -103,7 +103,14 @@ $(".statsClose").live('click', function () {
   var chartID = chart.charAt(chart.length-1);
   existingCharts.splice(chartID, 1); 
   $('#graphBox').empty();  
-  createChartBoxes(); 
+  createChartBoxes();  
+  stateSaving(); 
+  
+  if (temptop > 150 && templeft > 20) {
+    templeft = templeft - 10; 
+    temptop = temptop - 10;
+  }
+
 });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,7 +133,7 @@ $(".statsCharts").live('click', function () {
   var settingsID = $(this).parent().next("div").next("div");
   var graphID = chartID.attr('id').charAt(chartID.attr('id').length-1);
   var test = existingCharts[graphID]; 
-
+  stateSaving(); 
   updateChartBoxes(); 
  
   $(settingsID).hide(); 
@@ -2780,23 +2787,30 @@ function stateSaving () {
 
     // position statesaving 
     var tempcss = $("#chartBox"+i).position(); 
+    // size statesaving 
+    var tempheight = $("#chartBox"+i).height();
+    var tempwidth = $("#chartBox"+i).width();
+    // granularity statesaving 
+    var grantouse = $('input[name=boxGranularity'+i+']:checked').val(); 
+    // edit obj
     existingCharts[i].top = tempcss.top;
     existingCharts[i].left = tempcss.left;
-    // data statesaving
-
-    // granularity statesaving 
+    existingCharts[i].width = tempwidth; 
+    existingCharts[i].height = tempheight; 
+    existingCharts[i].granularity = grantouse;  
   }
+  //write obj into local storage
   localStorage.setItem("statobj", JSON.stringify(existingCharts)); 
 }
 
 function stateReading () {
 
   try { 
+    existingCharts = JSON.parse(localStorage.getItem("statobj"));   
     if (existingCharts != null) {
-      existingCharts = JSON.parse(localStorage.getItem("statobj"));   
     }
     else {
-      existingCharts = [{type:"connection", granularity:"days", top:140, left:10}, {type:"request", granularity:"hours", sent:true, received:true, top:140, left:420}]; 
+      existingCharts = [{type:"connection", granularity:"minutes", top:140, left:10}, {type:"request", granularity:"minutes", sent:true, received:true, top:140, left:420}]; 
     }
   }
 
@@ -2804,17 +2818,13 @@ function stateReading () {
     alert("no data:" +e); 
   }
 }
-
-$('#testbutton').live('click', function () {
-  stateSaving();   
-});
-
  
 function createChartBoxes () {
   var boxCount = 0;  
   $.each(existingCharts, function(v, i ) {
     $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>');
     $("#chartBox"+boxCount).css({top: i.top, left: i.left}); 
+    $("#chartBox"+boxCount).css({width: i.width, height: i.height}); 
     $("#chartBox"+boxCount).append('<div class="greydiv"/>');
     $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
     $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
@@ -2837,11 +2847,11 @@ function createChartBoxes () {
       if ( key == "type" ) {
           switch (val) {
             case "connection":
-              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a>');
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
               drawConnections('#placeholderBox'+boxCount, grantouse); 
               break; 
             case "request":
-              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a>');
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
               $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
                 '<input id="sent'+boxCount+'" type="checkbox" name="bytessent'+boxCount+'">'+
                 '<label for="sent'+boxCount+'">Bytes sent</label>'+
@@ -2876,12 +2886,14 @@ function updateChartBoxes () {
       var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
       if ( key == "type" ) {
         switch(val) { 
-          case "connection": 
+          case "connection":
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
             drawConnections('#placeholderBox'+boxCount, grantouse); 
             break; 
           case "request": 
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
             drawRequests('#placeholderBox'+boxCount, grantouse); 
-            break; 
+            break;
         }
       }
     });
@@ -2905,11 +2917,15 @@ function makeDraggableAndResizable () {
       }); 
 }
 
+var temptop = 150; 
+var templeft = 20; 
+
 function createSingleBox (id) {
   var boxCount = id;  
   var val = existingCharts[id].type; 
  
   $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
+  $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
   $("#chartBox"+boxCount).append('<div class="greydiv"/>');
   $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
   $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
@@ -2928,11 +2944,11 @@ function createSingleBox (id) {
 
     switch (val) {
       case "connection":
-        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a>');
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
         drawConnections('#placeholderBox'+boxCount, "minutes"); 
         break; 
       case "request":
-        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a>');
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
         $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
           '<input id="sent'+boxCount+'" type="checkbox" checked="checked" name="bytessent'+boxCount+'">'+
           '<label for="sent'+boxCount+'">Bytes sent</label>'+
@@ -2951,6 +2967,10 @@ function createSingleBox (id) {
         drawRequests('#placeholderBox'+boxCount, "minutes"); 
         break; 
     }
+  $('#placeholderBoxSettings'+boxCount).append('<button id="saveChanges'+boxCount+'" class="saveChanges"></button>');
   makeDraggableAndResizable(); 
   $(".radioFormat").buttonset();
+  templeft = templeft + 10; 
+  temptop = temptop + 10;
+  stateSaving();  
 }
