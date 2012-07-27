@@ -168,8 +168,12 @@ const string HttpsServer::protocolName (const protocol_e protocol) {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer::HttpsServer (Scheduler* scheduler, Dispatcher* dispatcher, SSL_CTX* ctx)
-  : HttpServer(scheduler, dispatcher),
+HttpsServer::HttpsServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          std::string const authenticationRealm,
+                          auth_fptr checkAuthentication, 
+                          SSL_CTX* ctx)
+  : HttpServer(scheduler, dispatcher, authenticationRealm, checkAuthentication),
     ctx(ctx),
     verificationMode(SSL_VERIFY_NONE),
     verificationCallback(0) {

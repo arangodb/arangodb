@@ -57,7 +57,7 @@ EndpointList::EndpointList () :
 ////////////////////////////////////////////////////////////////////////////////
       
 EndpointList::~EndpointList () {
-  for (map<Endpoint::Protocol, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
+  for (map<string, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
       delete *i2;
     }
@@ -80,24 +80,37 @@ EndpointList::~EndpointList () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of elements in a sub-list
+////////////////////////////////////////////////////////////////////////////////
+
+size_t EndpointList::count (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption) const {
+   map<string, ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
+
+   if (i == _lists.end()) {
+     return 0;
+   }
+
+   return i->second.size();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all endpoints used
 ////////////////////////////////////////////////////////////////////////////////
     
-void EndpointList::dump () {
-  for (map<Endpoint::Protocol, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
+void EndpointList::dump () const {
+  for (map<string, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      LOGGER_INFO << "using endpoint '" << (*i2)->getSpecification() << "' for " << getName((*i).first) << " requests";
+      LOGGER_INFO << "using endpoint '" << (*i2)->getSpecification() << "' for " << (*i).first << " requests";
     }
   }
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol protocol) const {
+EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption) const {
   EndpointList::ListType result;
-  map<Endpoint::Protocol, EndpointList::ListType>::const_iterator i = _lists.find(protocol);
+  map<string, EndpointList::ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
 
   if (i != _lists.end()) {
     for (ListType::const_iterator i2 = i->second.begin(); i2 != i->second.end(); ++i2) {
@@ -112,8 +125,8 @@ EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol prot
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::addEndpoint (const Endpoint::Protocol protocol, Endpoint* endpoint) {
-  _lists[protocol].insert(endpoint);
+bool EndpointList::addEndpoint (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption, Endpoint* endpoint) {
+  _lists[getKey(protocol, encryption)].insert(endpoint);
 
   return true;
 }

@@ -75,10 +75,24 @@
 /// To import these records, all you need to do is to put them into a file (with
 /// one line for each record to import) and run the following command:
 ///
-/// @LIT{arangoimp --file "data.json" --type json --collection "users"}
+/// @LIT{./arangoimp --file "data.json" --type json --collection "users"}
 ///
 /// This will transfer the data to the server, import the records, and print a
-/// status summary.
+/// status summary. 
+///
+/// By default, the endpoint @LIT{tcp://127.0.0.1:8529} will be used. 
+/// If you want to specify a different endpoint, you can use the --server.endpoint
+/// option. You probably want to specify a database user and password as well.
+/// You can do so by using the options --server.username and --server.password.
+/// If you do not specify a password, you will be prompted for one.
+///
+/// @LIT{./arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"}
+///
+/// Note that the collection (@LIT{users} in this case) must already exist or
+/// the import will fail. If you want to create a new collection with the import
+/// data, you need to specify the --create-collection option.
+///
+/// @LIT{./arangoimp --file "data.json" --type json --collection "users" --create-collection true}
 ///
 /// As the import file already contains the data in JSON format, attribute names
 /// and data types are fully preserved. As can be seen in the example data,

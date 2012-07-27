@@ -477,7 +477,9 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
     // The client may have sent values for all of the Attributes or for 
     // a subset of them. If the value for an Attribute is missing, then we
     // assume that the client wishes to IGNORE the value of that Attribute.
-    // In the later case, we add the json object '{}' to indicate that 
+    // In the later case, we add the json object 'TRI_JSON_UNUSED' to 
+    // indicate that this attribute is to be ignored. Notice that it is
+    // possible to ignore all the attributes defined as part of the index.
     // ......................................................................
     
 
@@ -727,7 +729,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   BitarrayIndexElement* indexElement;
   TRI_bitarray_index_t* baIndex;
-  TRI_doc_mptr_t* doc;
+  // TRI_doc_mptr_t* doc;
     
     
   indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
@@ -742,7 +744,7 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
     return false;
   }
     
-  doc = (TRI_doc_mptr_t*) indexElement->data;
+  /* doc = (TRI_doc_mptr_t*) indexElement->data; */
     
   // ..........................................................................
   // Now perform any additional filter operations you require on the doc

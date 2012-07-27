@@ -41,7 +41,9 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
+#include "Rest/Initialise.h"
 #include "Rest/Endpoint.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -84,8 +86,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t const  DEFAULT_RETRIES = 5;
-static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
+static size_t const  DEFAULT_RETRIES = 2;
+static int64_t const DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief colors for output
@@ -120,6 +122,12 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a password was specified on the command line
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _hasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,7 +137,7 @@ static Endpoint* _endpoint = 0;
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* ClientConnection = 0;
+V8ClientConnection* _clientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief object template for the initial connection
@@ -141,13 +149,13 @@ v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 /// @brief connect timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+static int64_t _connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t MaxUploadSize = 500000;
+static uint64_t _maxUploadSize = 500000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable auto completion
@@ -189,13 +197,25 @@ static bool Quiet = false;
 /// @brief request timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static int64_t _requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string EndpointString;
+static string _endpointString;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _username = "root";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief password to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -392,7 +412,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), _maxUploadSize);
   
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -454,7 +474,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
   
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(_clientConnection->getHttpClient(), _maxUploadSize);
   
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -512,6 +532,20 @@ static void StopPager ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a new client connection instance
+////////////////////////////////////////////////////////////////////////////////
+  
+static V8ClientConnection* createConnection () {
+  return new V8ClientConnection(_endpoint,
+                                _username,
+                                _password, 
+                                (double) _requestTimeout, 
+                                (double) _connectTimeout, 
+                                DEFAULT_RETRIES,
+                                false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -529,21 +563,23 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ;
 
   description
-    ("connect-timeout", &ConnectTimeout, "connect timeout in seconds")
     ("help,h", "help message")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
     ("log.level,l", &level,  "log level")
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
+    ("max-upload-size", &_maxUploadSize, "maximum size of import chunks (in bytes)")
     ("no-auto-complete", "disable auto completion")
     ("no-colors", "deactivate color support")
     ("pager", &OutputPager, "output pager")
     ("pretty-print", "pretty print values")          
     ("quiet,s", "no banner")
-    ("request-timeout", &RequestTimeout, "request timeout in seconds")
-    ("server.endpoint", &EndpointString, "endpoint to connect to, use 'none' to start without a server")
-    ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
+    ("server.username", &_username, "username to use when connecting")
+    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
+    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
+    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
     ("use-pager", "use pager")
     (hidden, true)
   ;
@@ -566,6 +602,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+
+  _hasPassword =  options.has("server.password");
 
   // set colors
   if (options.has("colors")) {
@@ -655,8 +693,6 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
 static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  size_t retries = DEFAULT_RETRIES;
-  
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
   
@@ -678,12 +714,10 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   
   assert(_endpoint); 
 
-  V8ClientConnection* connection = new V8ClientConnection(_endpoint, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  V8ClientConnection* connection = createConnection();
   
   if (connection->isConnected()) {
-    printf("Connected to ArangoDB '%s' Version %s\n", 
-            connection->getEndpointSpecification().c_str(), 
-            connection->getVersion().c_str());    
+    cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << connection->getVersion() << endl; 
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -900,7 +934,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object ArangoConnection:" + connection->getEndpointSpecification();
+  string result = "[object ArangoConnection:" + _endpoint->getSpecification();
           
   if (connection->isConnected()) {
     result += ","
@@ -997,11 +1031,11 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   console->close();
 
-  if (Quiet) {
-    printf("\n");
-  }
-  else {
-    printf("\nBye Bye! Auf Wiedersehen!\n");
+  delete console;
+
+  cout << endl;
+  if (! Quiet) {
+    cout << endl << "Bye Bye! Auf Wiedersehen!" << endl;
   }
 }
 
@@ -1131,7 +1165,9 @@ static void addColors (v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+  
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
@@ -1181,7 +1217,7 @@ int main (int argc, char* argv[]) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
   
-  EndpointString = Endpoint::getDefaultEndpoint();
+  _endpointString = Endpoint::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options
@@ -1190,14 +1226,34 @@ int main (int argc, char* argv[]) {
   ParseProgramOptions(argc, argv);
   
   // check connection args
-  if (ConnectTimeout <= 0) {
-    cout << "invalid value for connect-timeout." << endl;
+  if (_connectTimeout <= 0) {
+    cerr << "invalid value for --server.connect-timeout" << endl;
     exit(EXIT_FAILURE);
   }
 
-  if (RequestTimeout <= 0) {
-    cout << "invalid value for request-timeout." << endl;
+  if (_requestTimeout <= 0) {
+    cerr << "invalid value for --server.request-timeout" << endl;
     exit(EXIT_FAILURE);
+  }
+  
+  if (_username.size() == 0) {
+    // must specify a user name
+    cerr << "no value specified for --server.username" << endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (! _hasPassword) {
+    // no password given on command-line
+    cout << "Please specify a password:" << endl;
+    // now prompt for it
+#ifdef TRI_HAVE_TERMIOS_H
+    TRI_SetStdinVisibility(false);
+    getline(cin, _password);
+
+    TRI_SetStdinVisibility(true);
+#else
+    getline(cin, _password);
+#endif
   }
 
   // .............................................................................
@@ -1205,7 +1261,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (EndpointString != "none");
+  bool useServer = (_endpointString != "none");
 
   if (!JsLint.empty()) {
     // if we are in jslint mode, we will not need the server at all
@@ -1213,21 +1269,16 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
-    _endpoint = Endpoint::clientFactory(EndpointString);
+    _endpoint = Endpoint::clientFactory(_endpointString);
 
     if (_endpoint == 0) {
-      printf("Invalid value for --server.endpoint ('%s')\n", EndpointString.c_str());
+      cerr << "invalid value for --server.endpoint ('" << _endpointString.c_str() << "')" << endl;
       exit(EXIT_FAILURE);
     }
 
     assert(_endpoint);
     
-    ClientConnection = new V8ClientConnection(
-      _endpoint,
-      (double) RequestTimeout,
-      DEFAULT_RETRIES, 
-      (double) ConnectTimeout,
-      false);
+    _clientConnection = createConnection();
   }
   
   // .............................................................................
@@ -1243,7 +1294,7 @@ int main (int argc, char* argv[]) {
   v8::Persistent<v8::Context> context = v8::Context::New(0, global);
 
   if (context.IsEmpty()) {
-    printf("cannot initialize V8 engine\n");
+    cerr << "cannot initialize V8 engine" << endl;
     exit(EXIT_FAILURE);
   }
 
@@ -1294,7 +1345,7 @@ int main (int argc, char* argv[]) {
 
     // add the client connection to the context:
     context->Global()->Set(v8::String::New("arango"), 
-                           wrapV8ClientConnection(ClientConnection),
+                           wrapV8ClientConnection(_clientConnection),
                            v8::ReadOnly);
   }
     
@@ -1336,41 +1387,38 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
 
-    printf("\n");
-    printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
-    printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
+    cout << "Using Google V8 " << TRI_V8_VERSION << " JavaScript engine." << endl;
 #else
-    printf("Using Google V8 JavaScript engine.\n\n");
+    cout << "Using Google V8 JavaScript engine." << endl << endl;
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
 #endif
 
-    printf("\n");
+    cout << endl;
 
     // set up output
     if (UsePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+      cout << "Using pager '" << OutputPager << "' for output buffering." << endl;
     }
 
     if (PrettyPrint) {
-      printf("Pretty print values.\n");    
+      cout << "Pretty print values." << endl;    
     }
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
+      if (_clientConnection->isConnected()) {
         if (! Quiet) {
-          printf("Connected to ArangoDB %s Version %s\n", 
-                 ClientConnection->getEndpointSpecification().c_str(), 
-                 ClientConnection->getVersion().c_str());
+          cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << _clientConnection->getVersion() << endl; 
         }
       }
       else {
-        printf("Could not connect to endpoint '%s'\n", EndpointString.c_str());
-        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+        cerr << "Could not connect to endpoint '" << _endpointString << "'" << endl;
+        cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
       }
     }
   }
@@ -1412,7 +1460,7 @@ int main (int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
-  
+
   // .............................................................................
   // run normal shell
   // .............................................................................
@@ -1453,6 +1501,8 @@ int main (int argc, char* argv[]) {
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();
+
+  TRIAGENS_REST_SHUTDOWN;
 
   return ret;
 }

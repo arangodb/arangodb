@@ -910,7 +910,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   TRI_col_parameter_t parameter;
   bool ok;
 
-  TRI_InitParameterCollection(&parameter, name, SHAPER_DATAFILE_SIZE);
+  TRI_InitParameterCollection(vocbase, &parameter, name, SHAPER_DATAFILE_SIZE);
 
   collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
 

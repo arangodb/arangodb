@@ -191,6 +191,8 @@
 /// information see @ref CommandLineLogging "here".
 ///
 /// @copydetails triagens::arango::ArangoServer::_endpoints
+///
+/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 //////////////////////////////////////////////////////////
 ///
 /// @CMDOPT{--daemon}
@@ -223,11 +225,16 @@
 /////////////////////////////////////////////////////////////////
 ///
 /// After the server has been @ref UserManualServerStartStop "started",
-/// you can use the ArangoDB shell to administrate the server. Without
+/// you can use the ArangoDB shell (arangosh) to administrate the server. Without
 /// any arguments, the ArangoDB shell will try to contact the server
 /// on port 8529 on the localhost.
 ///
 /// @TINYEXAMPLE{arangosh-start,starting the shell}
+///
+/// You might need to set additional options (endpoint, username, and password)
+/// when connecting:
+///
+/// @verbinclude arangosh-start-full
 ///
 /// The shell will print its own version number and, if successfully connected
 /// to a server, the version number of the ArangoDB server.

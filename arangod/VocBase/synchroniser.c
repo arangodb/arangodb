@@ -44,7 +44,7 @@
 /// @brief synchroniser interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const SYNCHRONISER_INTERVAL = 1 * 1000 * 1000;
+static int const SYNCHRONISER_INTERVAL = 50 * 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -178,7 +178,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
 
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-    journal = TRI_CreateJournalDocCollection(&sim->base);
+    journal = TRI_CreateJournalSimCollection(sim);
 
     if (journal != NULL) {
       LOG_DEBUG("created new journal '%s'", journal->_filename);
@@ -345,18 +345,18 @@ void TRI_SynchroniserVocBase (void* data) {
     size_t n;
     size_t i;
     bool worked;
+
     // keep initial _active value as vocbase->_active might change during compaction loop
     int active = vocbase->_active; 
 
     worked = false;
 
-    // copy all collections
+    // copy all collections and release the lock
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
     TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-
     TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+    // loop over all copied collections
     n = collections._length;
 
     for (i = 0;  i < n;  ++i) {
@@ -395,13 +395,19 @@ void TRI_SynchroniserVocBase (void* data) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     }
 
+    // only sleep while server is still running and no-one is waiting
     if (! worked && vocbase->_active == 1) {
-      // only sleep while server is still running
-      usleep(SYNCHRONISER_INTERVAL);
+      TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
+
+      if (vocbase->_syncWaiters == 0) {
+        TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(vocbase, SYNCHRONISER_INTERVAL);
+      }
+
+      TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
     }
 
+    // server shutdown
     if (active == 2) {
-      // server shutdown
       break;
     }
   }

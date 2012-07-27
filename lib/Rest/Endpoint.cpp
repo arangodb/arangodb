@@ -80,12 +80,14 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 Endpoint::Endpoint (const Endpoint::Type type, 
                     const Endpoint::DomainType domainType, 
                     const Endpoint::Protocol protocol,
+                    const Endpoint::Encryption encryption,
                     const string& specification) :
   _connected(false),
   _socket(0),
   _type(type),
   _domainType(domainType),
   _protocol(protocol),
+  _encryption(encryption),
   _specification(specification) {
 }
 
@@ -141,7 +143,8 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
     copy = copy.substr(0, copy.size() - 1);
   }
 
-  Endpoint::Protocol protocol = PROTOCOL_UNKNOWN;
+  // default protocol is HTTP
+  Endpoint::Protocol protocol = PROTOCOL_HTTP;
 
   // read protocol from string
   size_t found = copy.find('@');
@@ -151,14 +154,7 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       protocol = PROTOCOL_BINARY;
       copy = copy.substr(strlen("pb@"));
     }
-#ifdef TRI_OPENSSL_VERSION
-    else if (protoString == "https") {
-      protocol = PROTOCOL_HTTPS;
-      copy = copy.substr(strlen("https@"));
-    }
-#endif    
     else if (protoString == "http") {
-      protocol = PROTOCOL_HTTP;
       copy = copy.substr(strlen("http@"));
     }
     else {
@@ -166,22 +162,23 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       return 0;
     }
   }
-  else {
-    // no protocol specified, use HTTP
-    protocol = PROTOCOL_HTTP;
-  }
   
+  Encryption encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
   if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
     return new EndpointUnix(type, protocol, specification, copy.substr(strlen("unix://")));
+  }
+  else if (StringUtils::isPrefix(domainType, "ssl://")) {
+    // ssl 
+    encryption = ENCRYPTION_SSL;
   }
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return 0;
   }
 
-  // tcp/ip
+  // tcp/ip or ssl
   copy = copy.substr(strlen("tcp://"), copy.length());
   
   if (copy[0] == '[') {
@@ -191,14 +188,14 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, specification, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(1, found - 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -212,11 +209,11 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, protocol, specification, copy.substr(0, found), port);
+    return new EndpointIpV4(type, protocol, encryption, specification, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, protocol, specification, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, protocol, encryption, specification, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,10 +233,28 @@ const std::string Endpoint::getDefaultEndpoint () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set socket timeout
+////////////////////////////////////////////////////////////////////////////////
+  
+void Endpoint::setTimeout (socket_t s, double timeout) {
+  struct timeval tv;
+  tv.tv_sec = (uint64_t) timeout;
+  tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set common socket flags
 ////////////////////////////////////////////////////////////////////////////////
   
 bool Endpoint::setSocketFlags (socket_t _socket) {
+  if (_encryption == ENCRYPTION_SSL && _type == ENDPOINT_CLIENT) {
+    // SSL client endpoints are not set to non-blocking
+    return true;
+  }
+
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(_socket);
   if (!ok) {
@@ -286,7 +301,7 @@ EndpointUnix::EndpointUnix (const Endpoint::Type type,
                             const Endpoint::Protocol protocol,
                             string const& specification, 
                             string const& path) :
-    Endpoint(type, ENDPOINT_UNIX, protocol, specification),
+    Endpoint(type, ENDPOINT_UNIX, protocol, ENCRYPTION_NONE, specification),
     _path(path) {
 }
 
@@ -317,7 +332,7 @@ EndpointUnix::~EndpointUnix () {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-socket_t EndpointUnix::connect () {
+socket_t EndpointUnix::connect (double connectTimeout, double requestTimeout) {
   assert(_socket == 0);
   assert(!_connected);
 
@@ -382,13 +397,25 @@ socket_t EndpointUnix::connect () {
   }
   else if (_type == ENDPOINT_CLIENT) {
     // connect to endpoint, executed for client endpoints only
-    ::connect(listenSocket, (const struct sockaddr*) &address, SUN_LEN(&address));
+
+    // set timeout
+    setTimeout(listenSocket, connectTimeout);
+
+    if (::connect(listenSocket, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
+      close(listenSocket);
+
+      return 0;
+    }
   }
     
   if (!setSocketFlags(listenSocket)) {
     close(listenSocket);
 
     return 0;
+  }
+  
+  if (_type == ENDPOINT_CLIENT) {
+    setTimeout(listenSocket, requestTimeout);
   }
   
   _connected = true;
@@ -451,10 +478,11 @@ bool EndpointUnix::initIncoming (socket_t incoming) {
 EndpointIp::EndpointIp (const Endpoint::Type type, 
                         const Endpoint::DomainType domainType, 
                         const Endpoint::Protocol protocol,
+                        const Endpoint::Encryption encryption,
                         string const& specification, 
                         string const& host, 
                         const uint16_t port) :
-    Endpoint(type, domainType, protocol, specification), _host(host), _port(port) {
+    Endpoint(type, domainType, protocol, encryption, specification), _host(host), _port(port) {
   
   assert(domainType == ENDPOINT_IPV4 || domainType == ENDPOINT_IPV6);
 }
@@ -482,7 +510,7 @@ EndpointIp::~EndpointIp () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
+socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTimeout, double requestTimeout) {
   // set address and port
   char host[NI_MAXHOST], serv[NI_MAXSERV];
   if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
@@ -499,7 +527,6 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
   
   // try to reuse address
   int opt = 1;
-    
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -530,13 +557,25 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
   }
   else if (_type == ENDPOINT_CLIENT) {
     // connect to endpoint, executed for client endpoints only
-    ::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen);
+    
+    // set timeout
+    setTimeout(listenSocket, connectTimeout);
+
+    if (::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen) != 0) {
+      close(listenSocket);
+
+      return 0;
+    }
   }
     
   if (!setSocketFlags(listenSocket)) {
     close(listenSocket);
 
     return 0;
+  }
+    
+  if (_type == ENDPOINT_CLIENT) {
+    setTimeout(listenSocket, requestTimeout);
   }
   
   _connected = true;
@@ -562,7 +601,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip) {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-socket_t EndpointIp::connect () {
+socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
   struct addrinfo* result = 0;
   struct addrinfo* aip;
   struct addrinfo hints;
@@ -595,7 +634,7 @@ socket_t EndpointIp::connect () {
   // Try all returned addresses until one works
   for (aip = result; aip != NULL; aip = aip->ai_next) {
     // try to bind the address info pointer
-    listenSocket = connectSocket(aip);
+    listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
     if (listenSocket != 0) {
       // OK
       break;
@@ -663,10 +702,11 @@ bool EndpointIp::initIncoming (socket_t incoming) {
 
 EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol,
+                            const Endpoint::Encryption encryption,
                             string const& specification, 
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV4, protocol, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -699,10 +739,11 @@ EndpointIpV4::~EndpointIpV4 () {
 
 EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol, 
+                            const Endpoint::Encryption encryption,
                             string const& specification, 
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV6, protocol, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

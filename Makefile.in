@@ -213,7 +213,7 @@ target_triplet = @target@
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
-sbin_PROGRAMS = bin/arangod$(EXEEXT)
+sbin_PROGRAMS = bin/arangod$(EXEEXT) bin/arango-password$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
 noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
@@ -489,6 +489,9 @@ lib_libarango_a_OBJECTS = $(am_lib_libarango_a_OBJECTS)
 lib_libarango_client_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_client_a_LIBADD =
 am_lib_libarango_client_a_OBJECTS =  \
+	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_client_a_OBJECTS = $(am_lib_libarango_client_a_OBJECTS)
@@ -605,6 +608,9 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
+am_bin_arango_password_OBJECTS =
+bin_arango_password_OBJECTS = $(am_bin_arango_password_OBJECTS)
+bin_arango_password_LDADD = $(LDADD)
 am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -654,9 +660,10 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
-	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/barrier.c \
-	arangod/VocBase/blob-collection.c arangod/VocBase/collection.c \
-	arangod/VocBase/compactor.c arangod/VocBase/datafile.c \
+	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
+	arangod/VocBase/barrier.c arangod/VocBase/blob-collection.c \
+	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
+	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
@@ -721,6 +728,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/V8Server/bin_arangod-v8-objects.$(OBJEXT) \
 	arangod/V8Server/bin_arangod-v8-query.$(OBJEXT) \
 	arangod/V8Server/bin_arangod-v8-vocbase.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-auth.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-barrier.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-blob-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-collection.$(OBJEXT) \
@@ -808,10 +816,10 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) $(lib_libarango_mruby_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(UnitTests_basics_suite_SOURCES) \
-	$(UnitTests_geo_suite_SOURCES) $(bin_arangod_SOURCES) \
-	$(bin_arangoimp_SOURCES) $(bin_arangoirb_SOURCES) \
-	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
-	$(bin_zserver_SOURCES)
+	$(UnitTests_geo_suite_SOURCES) $(bin_arango_password_SOURCES) \
+	$(bin_arangod_SOURCES) $(bin_arangoimp_SOURCES) \
+	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES) \
+	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
 DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) \
@@ -819,9 +827,10 @@ DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
 	$(am__UnitTests_geo_suite_SOURCES_DIST) \
-	$(am__bin_arangod_SOURCES_DIST) $(bin_arangoimp_SOURCES) \
-	$(am__bin_arangoirb_SOURCES_DIST) $(bin_arangosh_SOURCES) \
-	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
+	$(bin_arango_password_SOURCES) $(am__bin_arangod_SOURCES_DIST) \
+	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
+	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
+	$(bin_zserver_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -1043,9 +1052,9 @@ BUILT_SOURCES = build.h Installation/arangod.conf $(JAVASCRIPT_HEADER) \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_16) $(DOXYGEN) $(addsuffix .md,$(addprefix \
-	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
-	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
+CLEANUP = bin/arango-password $(am__append_16) $(DOXYGEN) $(addsuffix \
+	.md,$(addprefix Doxygen/xml/,$(WIKI))) $(addsuffix \
+	.md,$(addprefix Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
 	.setup-js-directories $(am__append_18) $(am__append_20) \
 	$(PROTOBUF_FILES)
 
@@ -1135,6 +1144,9 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 	lib/libarango_fe.a lib/libarango_client.a $(am__append_6)
 
+# exclude arango-password from sources list
+bin_arango_password_SOURCES = 
+
 ################################################################################
 ### @brief /etc data
 ################################################################################
@@ -1143,16 +1155,16 @@ arangosysconf_DATA = Installation/arangod.conf
 ################################################################################
 ### @brief /share data
 ################################################################################
-nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions/system -name \
-	"*.js" -print) $(shell find @srcdir@/js/common/modules -name \
-	"*.js" -print) $(shell find @srcdir@/js/server/modules -name \
-	"*.js" -print) $(shell find @srcdir@/js/client/modules -name \
-	"*.js" -print) $(shell find @srcdir@/html -name "*.css" \
-	-print) $(shell find @srcdir@/html -name "*.gif" -print) \
-	$(shell find @srcdir@/html -name "*.html" -print) $(shell find \
-	@srcdir@/html -name "*.ico" -print) $(shell find @srcdir@/html \
-	-name "*.js" -print) $(shell find @srcdir@/html -name "*.png" \
-	-print) $(am__append_8)
+nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
+	-print) $(shell find @srcdir@/js/common -name "*.js" -print) \
+	$(shell find @srcdir@/js/server -name "*.js" -print) $(shell \
+	find @srcdir@/js/client -name "*.js" -print) $(shell find \
+	@srcdir@/html -name "*.css" -print) $(shell find @srcdir@/html \
+	-name "*.gif" -print) $(shell find @srcdir@/html -name \
+	"*.html" -print) $(shell find @srcdir@/html -name "*.ico" \
+	-print) $(shell find @srcdir@/html -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.png" -print) \
+	$(am__append_8)
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -1215,6 +1227,7 @@ WIKI = \
 	Compiling \
 	DbaManual \
 	DbaManualBasics \
+	DbaManualAuthentication \
 	DefineAction \
 	ExamplesSetup \
 	FirstStepsArangoDB \
@@ -1320,6 +1333,9 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 ### @brief library "libarango.a", client part
 ################################################################################
 lib_libarango_client_a_SOURCES = \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -1459,9 +1475,10 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
-	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/barrier.c \
-	arangod/VocBase/blob-collection.c arangod/VocBase/collection.c \
-	arangod/VocBase/compactor.c arangod/VocBase/datafile.c \
+	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
+	arangod/VocBase/barrier.c arangod/VocBase/blob-collection.c \
+	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
+	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
@@ -1546,7 +1563,11 @@ bin_zserver_SOURCES = \
 
 FORCE = 0
 SKIP_BOOST = 0
+SKIP_GEO = 0
+SKIP_RANGES = 0
 VALGRIND = 
+USERNAME = root
+PASSWORD = 
 
 ################################################################################
 ################################################################################
@@ -1558,6 +1579,8 @@ VOCHOST := 127.0.0.1
 SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
+CURL := curl
+CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
@@ -1596,7 +1619,7 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
-UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
@@ -1639,18 +1662,18 @@ SHELL_SERVER_AHUACATL_EXTENDED = \
 			@srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
 			@srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
 
-UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
-UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
+UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL))
+UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
 
 ################################################################################
 ################################################################################
 SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
-UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 ################################################################################
 ################################################################################
 BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
-UNITTESTS_SERVER_BITARRAY = $(addprefix --unit-tests ,$(BITARRAY_COMMON))
+UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
 PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
@@ -2033,6 +2056,15 @@ lib/SimpleHttpClient/$(am__dirstamp):
 lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/SimpleHttpClient/$(DEPDIR)
 	@: > lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/ClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/SslClientConnection.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -2422,6 +2454,9 @@ arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT):  \
 UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
 	@rm -f UnitTests/geo_suite$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_suite_LDADD) $(LIBS)
+bin/$(am__dirstamp):
+	@$(MKDIR_P) bin
+	@: > bin/$(am__dirstamp)
 arangod/Actions/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Actions
 	@: > arangod/Actions/$(am__dirstamp)
@@ -2656,6 +2691,9 @@ arangod/VocBase/$(am__dirstamp):
 arangod/VocBase/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/VocBase/$(DEPDIR)
 	@: > arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-auth.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-barrier.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2710,9 +2748,6 @@ arangod/MRServer/bin_arangod-ApplicationMR.$(OBJEXT):  \
 arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT):  \
 	arangod/MRServer/$(am__dirstamp) \
 	arangod/MRServer/$(DEPDIR)/$(am__dirstamp)
-bin/$(am__dirstamp):
-	@$(MKDIR_P) bin
-	@: > bin/$(am__dirstamp)
 bin/arangod$(EXEEXT): $(bin_arangod_OBJECTS) $(bin_arangod_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangod$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangod_OBJECTS) $(bin_arangod_LDADD) $(LIBS)
@@ -2856,6 +2891,7 @@ mostlyclean-compile:
 	-rm -f arangod/V8Server/bin_arangod-v8-objects.$(OBJEXT)
 	-rm -f arangod/V8Server/bin_arangod-v8-query.$(OBJEXT)
 	-rm -f arangod/V8Server/bin_arangod-v8-vocbase.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-auth.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-barrier.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-blob-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-collection.$(OBJEXT)
@@ -3000,8 +3036,11 @@ mostlyclean-compile:
 	-rm -f lib/ShapedJson/json-shaper.$(OBJEXT)
 	-rm -f lib/ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f lib/ShapedJson/shaped-json.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/ClientConnection.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
 	-rm -f lib/Statistics/statistics.$(OBJEXT)
 	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
 	-rm -f lib/UserManager/Role.$(OBJEXT)
@@ -3121,6 +3160,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-objects.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-vocbase.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Po@am__quote@
@@ -3265,8 +3305,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/json-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
@@ -3887,6 +3930,22 @@ arangod/SkipLists/bin_arangod-skiplistIndex.obj: arangod/SkipLists/skiplistIndex
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/SkipLists/skiplistIndex.c' object='arangod/SkipLists/bin_arangod-skiplistIndex.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/SkipLists/bin_arangod-skiplistIndex.obj `if test -f 'arangod/SkipLists/skiplistIndex.c'; then $(CYGPATH_W) 'arangod/SkipLists/skiplistIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/SkipLists/skiplistIndex.c'; fi`
+
+arangod/VocBase/bin_arangod-auth.o: arangod/VocBase/auth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-auth.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Tpo -c -o arangod/VocBase/bin_arangod-auth.o `test -f 'arangod/VocBase/auth.c' || echo '$(srcdir)/'`arangod/VocBase/auth.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/auth.c' object='arangod/VocBase/bin_arangod-auth.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-auth.o `test -f 'arangod/VocBase/auth.c' || echo '$(srcdir)/'`arangod/VocBase/auth.c
+
+arangod/VocBase/bin_arangod-auth.obj: arangod/VocBase/auth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-auth.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Tpo -c -o arangod/VocBase/bin_arangod-auth.obj `if test -f 'arangod/VocBase/auth.c'; then $(CYGPATH_W) 'arangod/VocBase/auth.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/auth.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/auth.c' object='arangod/VocBase/bin_arangod-auth.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-auth.obj `if test -f 'arangod/VocBase/auth.c'; then $(CYGPATH_W) 'arangod/VocBase/auth.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/auth.c'; fi`
 
 arangod/VocBase/bin_arangod-barrier.o: arangod/VocBase/barrier.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-barrier.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-barrier.Tpo -c -o arangod/VocBase/bin_arangod-barrier.o `test -f 'arangod/VocBase/barrier.c' || echo '$(srcdir)/'`arangod/VocBase/barrier.c
@@ -5159,7 +5218,7 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
-Installation/arangod.conf: Installation/arangod.conf.in
+Installation/arangod.conf: Installation/arangod.conf.in Makefile
 	sed \
 		-e 's%@LOGDIR@%${logdir}%g' \
 		-e 's%@DATABASE@%${databasedir}%g' \
@@ -5253,9 +5312,9 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true && rm -rf "$(VOCDIR)") &
 
-	while [ ! -s "$(STARTFILE)" ]; do curl -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
+	while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) -X GET -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
 	@rm "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 30; else sleep 2; fi
@@ -5338,7 +5397,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -5421,6 +5480,24 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+################################################################################
+### @brief arango password
+################################################################################
+
+bin/arango-password: bin/arango-password.in
+@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${databasedir}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${DESTDIR}${sbindir}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${databasedir}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
+@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
 
 @ENABLE_MRUBY_TRUE@.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr

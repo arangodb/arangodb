@@ -219,6 +219,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
 
 var documentEditTable = $('#documentEditTableID').dataTable({
     "aaSorting": [[ 1, "desc" ]],
+    "bAutoWidth": false, 
     "bFilter": false,
     "bPaginate":false,
     "bSortable": false,
@@ -226,8 +227,8 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bDeferRender": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
-                  {"sClass":"writeable", "bSortable": false, "sWidth":"300px" }, 
+    "aoColumns": [{"sClass":"read_only", "bSortable": false, "sWidth": "30px"}, 
+                  {"sClass":"writeable", "bSortable": false, "sWidth":"400px" }, 
                   {"sClass":"writeable", "bSortable": false},
                   {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
@@ -480,7 +481,7 @@ var logTable = $('#logTableID').dataTable({
               documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
             }
             else if (key == '_rev') {
-              documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
+              documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
             }
             else if (key != '_rev' && key != '_id') {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
@@ -1793,7 +1794,7 @@ function documentTableMakeEditable (tableID) {
     cancel: 'Cancel', 
     onblur: 'cancel',
     //style: 'display: inline',
-    autogrow: {lineHeight: 20, minHeight: 40}
+    autogrow: {lineHeight: 16, minHeight: 30}
   });
 }
 

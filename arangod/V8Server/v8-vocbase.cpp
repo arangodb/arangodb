@@ -752,10 +752,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
                                                    "<properties>.journalSize too small")));
       }
 
-      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), (TRI_voc_size_t) s);
     }
     else {
-      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+      TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
     }
 
     if (p->Has(waitForSyncKey)) {
@@ -767,7 +767,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     }
   }
   else {
-    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), vocbase->_defaultMaximalSize);
   }
 
   TRI_voc_cid_t cid = 0;
@@ -775,10 +775,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
   // extract collection id
   if (3 <= argv.Length()) {
     v8::Handle<v8::Value> val = argv[2];
-    if (!val->IsNull() && !val->IsUndefined()) {
-      // a pre-defined collection is passed when data is re-imported from a dump etc.
-      // this allows reproduction of data from different servers
+
+    // a pre-defined collection is passed when data is re-imported from a dump etc.
+    // this allows reproduction of data from different servers
+    if (! val->IsNull() && ! val->IsUndefined()) {
       cid = TRI_ObjectToUInt64(argv[2]);
+
       if (cid <= 0) {
         return scope.Close(v8::ThrowException(
                            TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -2044,7 +2046,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
-/// An error is thrown if the document does not exists.
+/// An error is thrown if the document does not exist.
 ///
 /// The document must be part of the @FA{collection}; otherwise, an error
 /// is thrown.
@@ -2124,7 +2126,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.dropIndex(@FA{index})}
 ///
-/// Drops the index. If the index does not exists, then @LIT{false} is
+/// Drops the index. If the index does not exist, then @LIT{false} is
 /// returned. If the index existed and was dropped, then @LIT{true} is
 /// returned. Note that you cannot drop the primary index.
 ///
@@ -2302,7 +2304,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   v8::HandleScope scope;
   bool ok;
   string errorString;
-  int errorCode;
+  // int errorCode;
   TRI_index_t* bitarrayIndex = 0;
   bool indexCreated;
   v8::Handle<v8::Value> theIndex;
@@ -2374,7 +2376,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
       if (! argument->IsString() ) {
         errorString = "invalid parameter -- expected string parameter";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2393,7 +2395,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (! argument->IsArray() ) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2412,7 +2414,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (value == NULL) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2424,7 +2426,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2443,7 +2445,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
     if (attributes._length != values._length) {
       errorString = "invalid parameter -- expected an array (list)";
-      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
       ok = false;
     }
   }
@@ -2457,7 +2459,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if (ok) {
     bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
     if (bitarrayIndex == 0) {
-      errorCode = TRI_errno();
+      // errorCode = TRI_errno();
       errorString = "index could not be created from Simple Collection";
       ok = false;
     }
@@ -2488,7 +2490,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
 
     if (json == NULL) {
-      errorCode = TRI_errno();
+      // errorCode = TRI_errno();
       errorString = "out of memory";
       ok = false;
     }  
@@ -3045,7 +3047,12 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
 ///
-/// Note that it is not possible to change the journal size after creation.
+/// - @LIT{journalSize} : The size of the journal in bytes.
+///
+/// Note that it is not possible to change the journal size after the journal or
+/// datafile has been created. Changing this parameter will only effect newly
+/// created journals. Also note that you cannot lower the journal size to less
+/// then size of the largest document already stored in the collection.
 ///
 /// @EXAMPLES
 ///
@@ -3087,19 +3094,47 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     if (par->IsObject()) {
       v8::Handle<v8::Object> po = par->ToObject();
 
-      // holding a lock on the vocbase collection: if we ever want to
-      // change the maximal size a real lock is required.
-      bool waitForSync = sim->base.base._waitForSync;
+      // get the old values
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-      // extract sync after objects
+      bool waitForSync = sim->base.base._waitForSync;
+      size_t maximalSize = sim->base.base._maximalSize;
+      size_t maximumMarkerSize = sim->base.base._maximumMarkerSize;
+
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+
+      // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
         waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
-      sim->base.base._waitForSync = waitForSync;
+      // extract the journal size
+      if (po->Has(v8g->JournalSizeKey)) {
+        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+
+        if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+
+        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(
+                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                     "<properties>.journalSize too small")));
+        }
+      }
+
+      // update collection
+      TRI_col_parameter_t newParameter;
+
+      newParameter._maximalSize = maximalSize;
+      newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(&sim->base.base);
+      int res = TRI_UpdateParameterInfoCollection(&sim->base.base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);

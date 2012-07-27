@@ -1,5 +1,20 @@
 v1.1.x (XXXX-XX-XX)
 -------------------
+* INCOMPATIBLE CHANGE: renamed parameters "connect-timeout" and "request-timeout" 
+  for arangosh and arangoimp to "--server.connect-timeout" and "--server.request-timeout"
+
+* INCOMPATIBLE CHANGE: authorization is now required on the server side
+  Clients sending requests without HTTP autorization will be rejected with HTTP 401
+  To allow backwards compatibility, the server can be started with the option
+  "--server.disable-authentication"
+
+* added options "--server.username" and "--server.password" for arangosh and arangoimp
+  These parameters must be used to specify the user and password to be used when
+  connecting to the server. If no password is given on the command line, arangosh/
+  arangoimp will interactively prompt for a password.
+  If no user name is specified on the command line, the default user "root" will be
+  used.
+
 * added startup option "--server.ssl-cipher-list" to determine which ciphers to
   use in SSL context. also added SSL_OP_CIPHER_SERVER_PREFERENCE to SSL default 
   options so ciphers are tried in server and not in client order
@@ -10,14 +25,16 @@ v1.1.x (XXXX-XX-XX)
 
 * added SSL connections if server is compiled with OpenSSL support. Use --help-ssl
 
-* removed startup option "--server.admin-port". The endpoints allow opening
-  multiple ports/connection endpoints anyway, and the distinction between admin 
-  and "other" endpoints can be emulated later using privileges
+* INCOMPATIBLE CHANGE: removed startup option "--server.admin-port". 
+  The new endpoints feature (see --server.endpoint) allows opening multiple endpoints 
+  anyway, and the distinction between admin and "other" endpoints can be emulated 
+  later using privileges
 
-* removed startup options "--server.port" and "--server.http-port" for arangod. 
+* INCOMPATIBLE CHANGE: removed startup options "--port", "--server.port", and 
+  "--server.http-port" for arangod. 
   These options have been replaced by the new "--server.endpoint" parameter
   
-* removed startup option "--server" for arangosh and arangoimp.
+* INCOMPATIBLE CHANGE: removed startup option "--server" for arangosh and arangoimp.
   These options have been replaced by the new "--server.endpoint" parameter
 
 * Added "--server.endpoint" option to arangod, arangosh, and arangoimp.
@@ -25,24 +42,15 @@ v1.1.x (XXXX-XX-XX)
   The server can be bound to one or multiple endpoints at once. For arangosh
   and arangoimp, the option specifies the server endpoint to connect to.
   The following endpoint syntax is currently supported:
-  - tcp://host:port (HTTP over IPv4)
-  - http@tcp://host:port (HTTP over IPv4)
-  - tcp://host (HTTP over IPv4, using default port 8529)
-  - http@tcp://host (HTTP over IPv4, using default port 8529)
-  - tcp://[host]:port (HTTP over IPv6)
-  - http@tcp://[host]:port (HTTP over IPv6)
-  - tcp://[host] (IPv6 address, using default port 8529)
-  - http@tcp://[host] (IPv6 address, using default port 8529)
-  - unix://path/to/socket (HTTP over UNIX socket)
-  - http@unix://path/to/socket (HTTP over UNIX socket)
-  The server (arangod) additionally supports the following endpoint types:
-  - https@tcp://host:port (HTTPS over IPv4)
-  - https@tcp://host (HTTP over IPv4, using default port 8529)
-  - https@tcp://[host]:port (HTTPS over IPv6)
-  - https@tcp://[host] (IPv6 address, using default port 8529)
-  - https@unix://path/to/socket (HTTPS over UNIX socket)
+  - tcp://host:port or http@tcp://host:port (HTTP over IPv4)
+  - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
+  - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
+  - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
+  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
 
-* removed startup options "--server.require-keep-alive" and 
+  If no port is specified, the default port of 8529 will be used.
+
+* INCOMPATIBLE CHANGE: removed startup options "--server.require-keep-alive" and 
   "--server.secure-require-keep-alive". 
   The server will now behave as follows which should be more conforming to the 
   HTTP standard:
@@ -57,9 +65,6 @@ v1.1.x (XXXX-XX-XX)
 * (minimal) internal optimisations for HTTP request parsing and response header 
   handling
 
-
-v1.x.x (2012-XX-XX)
--------------------
 * changed implementation of TRI_BlockCrc32 algorithm to use 8 bytes at a time
 
 * fixed Unicode unescaping bugs for \f and surrogate pairs in BasicsC/strings.c
@@ -74,7 +79,7 @@ v1.x.x (2012-XX-XX)
 
 * fixed escaping of document data in HTML admin front end
 
-* added HTTP basic authentication, use "--server.http-auth yes" to enable
+* added HTTP basic authentication, this is always turned on
 
 * added server startup option --server.disable-admin-interface to turn off the
   HTML admin interface

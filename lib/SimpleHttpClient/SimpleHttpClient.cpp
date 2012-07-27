@@ -32,16 +32,10 @@
 #include <string>
 #include <errno.h>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netdb.h>
-
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
+#include "GeneralClientConnection.h"
 #include "SimpleHttpResult.h"
 
 using namespace triagens::basics;
@@ -55,38 +49,23 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (Endpoint* endpoint,
-                                        double requestTimeout,
-                                        double connectTimeout,
-                                        size_t connectRetries,
-                                        bool warn = true) :
-    _endpoint(endpoint),
-    _requestTimeout(requestTimeout),
-    _connectTimeout(connectTimeout),
-    _connectRetries(connectRetries),
-    _warn(warn),
-    _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
-    _readBuffer(TRI_UNKNOWN_MEM_ZONE) {
+    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
+      _connection(connection),
+      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _requestTimeout(requestTimeout),
+      _warn(warn) {
 
-      assert(_endpoint);
-
-      _lastConnectTime = 0.0;
-      _numConnectRetries = 0;
       _result = 0;
       _errorMessage = "";
       _written = 0;
+      _state = IN_CONNECT;
       
       reset();
-
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      if (_isConnected) {
-        if (_endpoint) {
-          _endpoint->disconnect();
-        }
-      }
-
+      _connection->disconnect();
     }
 
     // -----------------------------------------------------------------------------
@@ -98,7 +77,9 @@ namespace triagens {
             const char* body,
             size_t bodyLength,
             const map<string, string>& headerFields) {
-      
+     
+      assert(_result == 0);
+       
       _result = new SimpleHttpResult;
       _errorMessage = "";
 
@@ -110,20 +91,55 @@ namespace triagens {
 
       while (isWorking() && remainingTime > 0.0) {
         switch (_state) {
-          case (IN_CONNECT):
+          case (IN_CONNECT): {
             handleConnect();
             break;
+          }
 
-          case (IN_WRITE):
-            handleWrite(remainingTime);
+          case (IN_WRITE): {
+            size_t bytesWritten = 0;
+
+            if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
+              setErrorMessage("::send() failed", errno);
+              close();
+            }
+            else {
+              _written += bytesWritten;
+              if (_written == _writeBuffer.length())  {
+                _state = IN_READ_HEADER;        
+              }
+            }
             break;
+          }
 
           case (IN_READ_HEADER):
           case (IN_READ_BODY):
           case (IN_READ_CHUNKED_HEADER):
-          case (IN_READ_CHUNKED_BODY):
-            handleRead(remainingTime);
+          case (IN_READ_CHUNKED_BODY): {
+            if (_connection->handleRead(remainingTime, _readBuffer)) {
+              switch (_state) {
+                case (IN_READ_HEADER):
+                  readHeader();
+                  break;
+                case (IN_READ_BODY):
+                  readBody();
+                  break;
+                case (IN_READ_CHUNKED_HEADER):
+                  readChunkedHeader();
+                  break;
+                case (IN_READ_CHUNKED_BODY):
+                  readChunkedBody();
+                  break;
+                default:
+                  break;
+              }
+            }
+            else {
+              setErrorMessage("gesockopt() failed", errno);
+              close();
+            }
             break;
+          }
           default:
             break;
         }
@@ -131,11 +147,8 @@ namespace triagens {
         remainingTime = endTime - now();
       }
       
-      if (isWorking() && _errorMessage=="" ) {
-        if (_warn) {
-          LOGGER_WARNING << "Request timeout reached.";
-        }
-        _errorMessage = "Request timeout reached.";
+      if (isWorking() && _errorMessage == "" ) {
+        setErrorMessage("Request timeout reached");
       }
       
       // set result type in getResult()
@@ -151,68 +164,17 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void SimpleHttpClient::handleConnect () {
-      _isConnected = false;
-      _socket = -1;
-
-      if (_numConnectRetries < _connectRetries + 1) {
-        _numConnectRetries++;
+      if (! _connection->connect()) {
+        setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
+        _state = DEAD;
       }
       else {
-        if (_warn) {
-          LOGGER_WARNING << "Could not connect to '" << getEndpointSpecification() << "'! Connection is dead";
-        }
-        _state = DEAD;
-        return;
-      }
-
-      _lastConnectTime = now();
-
-      if (_endpoint != 0) {
-        connectSocket();
-        _isConnected = _endpoint->isConnected();
-      }
-
-      if (_endpoint && !_isConnected) {
-        LOGGER_ERROR << "Could not connect to '" << getEndpointSpecification() << "'! Connection is dead";
-      }
-
-      if (_isConnected) {
         // can write now
         _state = IN_WRITE;
         _written = 0;
       }
     }
-
-    void SimpleHttpClient::handleWrite (double timeout) {
-      struct timeval tv;
-      fd_set fdset;
-
-      tv.tv_sec = (uint64_t) timeout;
-      tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
-
-      FD_ZERO(&fdset);
-      FD_SET(_socket, &fdset);
-
-      if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
-        write();
-      }
-    }
-
-    void SimpleHttpClient::handleRead (double timeout) {
-      struct timeval tv;
-      fd_set fdset;
-
-      tv.tv_sec = (uint64_t) timeout;
-      tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
-
-      FD_ZERO(&fdset);
-      FD_SET(_socket, &fdset);
-
-      if (select(_socket + 1, &fdset, NULL, NULL, &tv) > 0) {
-        read();
-      }
-    }
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief sets username and password 
     ////////////////////////////////////////////////////////////////////////////////
@@ -262,8 +224,7 @@ namespace triagens {
             const map<string, string>& headerFields) {
 
       if (_state == DEAD) {
-        _numConnectRetries = 0;
-        _lastConnectTime = 0.0;
+        _connection->resetNumConnectRetries();
       }
 
       ///////////////////// fill the write buffer //////////////////////////////      
@@ -299,15 +260,10 @@ namespace triagens {
       _writeBuffer.appendText(" HTTP/1.1\r\n");
 
       _writeBuffer.appendText("Host: ");
-      _writeBuffer.appendText(_endpoint->getHostString());
+      _writeBuffer.appendText(_connection->getEndpoint()->getHostString());
       _writeBuffer.appendText("\r\n");
       _writeBuffer.appendText("Connection: Keep-Alive\r\n");
       _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
-
-      //requestBuffer << "Accept: application/json\r\n";      
-      //if (bodyLength > 0) {
-      //  requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
-      //}
 
       // do basic authorization
       if (_pathToBasicAuth.size() > 0) {
@@ -354,8 +310,8 @@ namespace triagens {
         close();
       }
 
-      if (_isConnected) {
-        // we are connected start with writing
+      if (_connection->isConnected()) {
+        // we are connected, start with writing
         _state = IN_WRITE;
         _written = 0;
       }
@@ -371,85 +327,11 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     bool SimpleHttpClient::close () {
-      if (_socket != -1) {
-        _endpoint->disconnect();
-      }
-      _isConnected = false;
+      _connection->disconnect();
+      _state = IN_CONNECT;
 
       reset();
 
-      return true;
-    }
-
-    bool SimpleHttpClient::write () {
-      if (!checkSocket()) {
-        return false;
-      }
-      
-      //printf("write():\n%s\n", (_writeBuffer.c_str() + _written));
-
-#ifdef __APPLE__
-      int status = ::send(_socket, _writeBuffer.c_str() + _written, _writeBuffer.length() - _written, 0);
-#else
-      int status = ::send(_socket, _writeBuffer.c_str() + _written, _writeBuffer.length() - _written, MSG_NOSIGNAL);
-#endif
-
-      if (status == -1) {
-        _errorMessage = "::send() failed with: " + string(strerror(errno));
-        //LOGGER_ERROR << "::send() failed with " << strerror(errno);
-        
-        close();
-        
-        return false;
-      }
-      
-      _written += status;
-      
-      if (_written == _writeBuffer.length())  {
-        _state = IN_READ_HEADER;        
-      }
-      return true;
-    }
-
-    bool SimpleHttpClient::read () {
-      if (!checkSocket()) {
-        return false;
-      }
-
-     do {
-        char buffer[READBUFFER_SIZE];
-
-        int len_read = ::read(_socket, buffer, READBUFFER_SIZE - 1);
-
-        if (len_read <= 0) {
-          // error: stop reading
-          break;
-        }
-
-        _readBuffer.appendText(buffer, len_read);
-      }
-      while(readable());
-
-      switch (_state) {
-        case (IN_READ_HEADER):
-          readHeader();
-          break;
-
-        case (IN_READ_BODY):
-          readBody();
-          break;
-
-        case (IN_READ_CHUNKED_HEADER):
-          readChunkedHeader();
-          break;
-
-        case (IN_READ_CHUNKED_BODY):
-          readChunkedBody();
-          break;
-
-        default:
-          break;
-      }
       return true;
     }
 
@@ -472,8 +354,7 @@ namespace triagens {
           else if (_result->getContentLength()) {
             
             if (_result->getContentLength() > 5000000) {
-              _errorMessage = "Content length > 5000000 bytes found!";
-              LOGGER_ERROR << "Content length > 5000000 bytes found! Closing connection.";
+              setErrorMessage("Content-Length > 5000000 bytes found!");
               
               // reset connection 
               close();
@@ -519,20 +400,19 @@ namespace triagens {
         string line(_readBuffer.c_str(), len);
         _readBuffer.erase_front(len + 1);
 
-        string trimed = StringUtils::trim(line);
+        string trimmed = StringUtils::trim(line);
 
-        if (trimed == "\r" || trimed == "") {
+        if (trimmed == "\r" || trimmed == "") {
           // ignore empty lines
           pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
           continue;
         }
 
         uint32_t contentLength;
-        sscanf(trimed.c_str(), "%x", &contentLength);
+        sscanf(trimmed.c_str(), "%x", &contentLength);
 
         if (contentLength == 0) {
           // OK: last content length found
-          //printf("Last length found\n");
 
           _result->setResultType(SimpleHttpResult::COMPLETE);
           
@@ -544,8 +424,7 @@ namespace triagens {
         if (contentLength > 5000000) {
           // failed: too many bytes
           
-          _errorMessage = "Content length > 5000000 bytes found!";
-          LOGGER_ERROR << "Content length > 5000000 bytes found! Closing connection.";
+          setErrorMessage("Content-Length > 5000000 bytes found!");
  
           // reset connection 
           close();
@@ -555,6 +434,7 @@ namespace triagens {
 
         _state = IN_READ_CHUNKED_BODY;
         _nextChunkedSize = contentLength;
+
         return readChunkedBody();
       }
 
@@ -574,88 +454,8 @@ namespace triagens {
       return true;
     }
 
-    bool SimpleHttpClient::readable () {
-      fd_set fdset;
-      FD_ZERO(&fdset);
-      FD_SET(_socket, &fdset);
-
-      struct timeval tv;
-      tv.tv_sec = 0;
-      tv.tv_usec = 0;
-
-      if (select(_socket + 1, &fdset, NULL, NULL, &tv) == 1) {        
-        return checkSocket();
-      }
-      
-      return false;
-    }
-
-    bool SimpleHttpClient::checkSocket () {
-      int so_error = -1;
-      socklen_t len = sizeof so_error;
-
-      getsockopt(_socket, SOL_SOCKET, SO_ERROR, &so_error, &len);
-
-      if (so_error == 0) {
-        return true;
-      }
-
-      _errorMessage = "getsockopt() failed with: " + string(strerror(errno));
-
-      //close and reset conection
-      close();
-
-      _state = IN_CONNECT;
-
-      return false;
-    }
-
-    bool SimpleHttpClient::connectSocket () {
-      _socket = _endpoint->connect();
-
-      if (_socket == 0) {
-        _errorMessage = "connect() failed with: " + string(strerror(errno));
-
-        return false;
-      }
-
-      struct timeval tv;
-      fd_set fdset;
-
-      tv.tv_sec = (uint64_t) _connectTimeout;
-      tv.tv_usec = ((uint64_t) (_connectTimeout * 1000000.0)) % 1000000;
-
-      FD_ZERO(&fdset);
-      FD_SET(_socket, &fdset);
-
-      if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
-
-        if (checkSocket()) {
-          return true;
-        }
-
-        return false;
-      }
-
-      // connect timeout reached
-      _errorMessage = "Could not connect to server in " + StringUtils::ftoa(_connectTimeout) + " seconds.";
-      LOGGER_WARNING << "Could not connect to server in " << _connectTimeout << " seconds.";
-
-      _endpoint->disconnect();
-      
-      return false;
-    }
 
     void SimpleHttpClient::reset () {
-      _state = IN_CONNECT;
-
-      if (_endpoint) {
-        _endpoint->disconnect();
-      }
-
-      _isConnected = false;
-      _socket = -1;
-
       if (_result) {
         _result->clear();
       }
