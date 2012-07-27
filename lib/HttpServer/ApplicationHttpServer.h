@@ -30,6 +30,8 @@
 
 #include "ApplicationServer/ApplicationFeature.h"
 
+#include <openssl/ssl.h>
+
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/EndpointList.h"
 
@@ -108,10 +110,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the http server
+/// @brief builds the servers
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer* buildServer (const EndpointList*);
+        bool buildServers (const EndpointList*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the handler factory
@@ -150,6 +152,12 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+        bool prepare ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
         bool prepare2 ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +177,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stop ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an ssl context
+////////////////////////////////////////////////////////////////////////////////
+
+        bool createSslContext ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -204,12 +233,6 @@ namespace triagens {
         ApplicationDispatcher* _applicationDispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpHandlerFactory* _handlerFactory;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -222,10 +245,154 @@ namespace triagens {
         HttpHandlerFactory::auth_fptr _checkAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the handler factory
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpHandlerFactory* _handlerFactory;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief all constructed servers
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<HttpServer*> _servers;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keyfile containing server certificate
+///
+/// @CMDOPT{--server.keyfile @CA{filename}}
+///
+/// If SSL encryption is used, this option must be used to specify the filename
+/// of the server private key. The file must be PEM formatted and contain both 
+/// the certificate and the server's private key.
+///
+/// The file specified by @CA{filename} should have the following structure:
+///
+/// @verbinclude server-keyfile
+///
+/// You may use certificates issued by a Certificate Authority or self-signed
+/// certificates. Self-signed certificates can be created by a tool of your 
+/// choice. When using OpenSSL for creating the self-signed certificate, the 
+/// following commands should create a valid keyfile:
+/// 
+/// @verbinclude server-keyfile-openssl
+///
+/// For further information please check the manuals of the tools you use to
+/// create the certificate.
+///
+/// Note: the --server.keyfile option must be set if the server is started with 
+/// at least one SSL endpoint.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _httpsKeyfile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief CA file
+///
+/// @CMDOPT{--server.cafile @CA{filename}}
+///
+/// This option can be used to specify a file with CA certificates that are sent
+/// to the client whenever the server requests a client certificate. If the
+/// file is specified, The server will only accept client requests with 
+/// certificates issued by these CAs. Do not specify this option if you want
+/// clients to be able to connect without specific certificates.
+///
+/// The certificates in @CA{filename} must be PEM formatted.
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _cafile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SSL protocol type to use
+///
+/// @CMDOPT{--server.ssl-protocol @CA{value}}
+///
+/// Use this option to specify the default encryption protocol to be used. 
+/// The following variants are available:
+/// - 1: SSLv2
+/// - 2: SSLv23
+/// - 3: SSLv3
+/// - 4: TLSv1
+///
+/// The default @CA{value} is 4 (i.e. TLSv1).
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used.
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t _sslProtocol;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to use SSL session caching
+///
+/// @CMDOPT{--server.ssl-cache @CA{value}}
+///
+/// Set to true if SSL session caching should be used.
+///
+/// @CA{value} has a default value of @LIT{false} (i.e. no caching).
+///
+/// Note: this option is only relevant if at least one SSL endpoint is used, and
+/// only if the client supports sending the session id.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _sslCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl options to use
+///
+/// @CMDOPT{--server.ssl-options @CA{value}}
+///
+/// This option can be used to set various SSL-related options. Individual 
+/// option values must be combined using bitwise OR.
+///
+/// Which options are available on your platform is determined by the OpenSSL
+/// version you use. The list of options available on your platform might be
+/// retrieved by the following shell command:
+///
+/// @verbinclude openssl-options
+///
+/// A description of the options can be found online in the OpenSSL documentation 
+/// at: http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
+/// 
+/// Note: this option is only relevant if at least one SSL endpoint is used.
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _sslOptions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl cipher list to use
+/// 
+/// @CMDOPT{--server.ssl-cipher-list @CA{cipher-list}}
+///
+/// This option can be used to restrict the server to certain SSL ciphers only,
+/// and to define the relative usage preference of SSL ciphers.
+///
+/// The format of @CA{cipher-list} is documented in the OpenSSL documentation.
+///  
+/// To check which ciphers are available on your platform, you may use the 
+/// following shell command:
+/// 
+/// @verbinclude openssl-ciphers
+///
+/// The default value for @CA{cipher-list} is "ALL".
+/// 
+/// Note: this option is only relevant if at least one SSL endpoint is used.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _sslCipherList;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _sslContext;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random string used for initialisation
+////////////////////////////////////////////////////////////////////////////////
+
+        string _rctx;
+
 
     };
   }

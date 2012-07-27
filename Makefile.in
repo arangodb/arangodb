@@ -527,7 +527,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/HttpServer/PathHandler.$(OBJEXT) \
 	lib/HttpServer/RedirectHandler.$(OBJEXT) \
 	lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT) \
-	lib/HttpsServer/ApplicationHttpsServer.$(OBJEXT) \
 	lib/HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	lib/HttpsServer/HttpsServer.$(OBJEXT) \
 	lib/ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
@@ -1384,7 +1383,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
-	lib/HttpsServer/ApplicationHttpsServer.cpp \
 	lib/HttpsServer/HttpsAsyncCommTask.cpp \
 	lib/HttpsServer/HttpsServer.cpp \
 	lib/ResultGenerator/HtmlResultGenerator.cpp \
@@ -2182,9 +2180,6 @@ lib/HttpsServer/$(am__dirstamp):
 lib/HttpsServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/HttpsServer/$(DEPDIR)
 	@: > lib/HttpsServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpsServer/ApplicationHttpsServer.$(OBJEXT):  \
-	lib/HttpsServer/$(am__dirstamp) \
-	lib/HttpsServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpsServer/HttpsAsyncCommTask.$(OBJEXT):  \
 	lib/HttpsServer/$(am__dirstamp) \
 	lib/HttpsServer/$(DEPDIR)/$(am__dirstamp)
@@ -3011,7 +3006,6 @@ mostlyclean-compile:
 	-rm -f lib/HttpServer/PathHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/RedirectHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT)
-	-rm -f lib/HttpsServer/ApplicationHttpsServer.$(OBJEXT)
 	-rm -f lib/HttpsServer/HttpsAsyncCommTask.$(OBJEXT)
 	-rm -f lib/HttpsServer/HttpsServer.$(OBJEXT)
 	-rm -f lib/JsonParser/json-parser.$(OBJEXT)
@@ -3281,7 +3275,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/PathHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpsServer/$(DEPDIR)/ApplicationHttpsServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpsServer/$(DEPDIR)/HttpsAsyncCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpsServer/$(DEPDIR)/HttpsServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/json-parser.Po@am__quote@
