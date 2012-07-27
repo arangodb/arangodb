@@ -333,6 +333,8 @@ EndpointUnix::~EndpointUnix () {
 ////////////////////////////////////////////////////////////////////////////////
 
 socket_t EndpointUnix::connect (double connectTimeout, double requestTimeout) {
+  LOGGER_DEBUG << "connecting to unix endpoint " << _specification;
+
   assert(_socket == 0);
   assert(!_connected);
 
@@ -606,6 +608,8 @@ socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
   struct addrinfo* aip;
   struct addrinfo hints;
   int error;
+  
+  LOGGER_DEBUG << "connecting to ip endpoint " << _specification;
   
   assert(_socket == 0);
   assert(!_connected);
