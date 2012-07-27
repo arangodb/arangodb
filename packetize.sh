@@ -51,6 +51,11 @@ echo
 
 case $TRI_OS_LONG in
 
+  Linux-ArchLinux-*)
+    echo "Packetize for ArchLinux is not not supported."
+    exit 0
+    ;;
+
   Linux-openSUSE*)
     echo "Using configuration for openSuSE"
     package_type="rpm"
