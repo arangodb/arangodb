@@ -7,6 +7,8 @@ SKIP_RANGES = 0
 VALGRIND = 
 USERNAME = root
 PASSWORD =
+PROTO = http
+
 
 ################################################################################
 ## unittests target
@@ -22,6 +24,7 @@ unittests-brief: \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
 	unittests-http-server \
+	unittests-ssl-server \
 	unittests-shell-client 
 
 
@@ -52,10 +55,12 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
+SERVER_OPT += $(shell echo $$SERVER_OPT)
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
 CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
+CERT_FILE := @srcdir@/UnitTests/server.pem
 
 
 .PHONY: start-server
@@ -63,7 +68,9 @@ CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "<< STARTING SERVER                                                            >>"
+	@(test "$(PROTO)" == "http"  && echo "<< STARTING SERVER ON TCP ENDPOINT                                            >>") || true 
+	@(test "$(PROTO)" == "https" && echo "<< STARTING SERVER ON SSL ENDPOINT                                            >>") || true
+	@(test "$(PROTO)" == "unix"  && echo "<< STARTING SERVER ON UNIX SOCKET ENDPOINT                                    >>") || true
 	@echo "================================================================================"
 	@echo
 
@@ -73,10 +80,11 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true && rm -rf "$(VOCDIR)") &
+	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
 
-	while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) -X GET -s "http://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done
-	@rm "$(STARTFILE)"
+	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
+	@test "$(PROTO)" == "unix" && sleep 2;
+	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 30; else sleep 2; fi
 	@echo
@@ -267,7 +275,7 @@ SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID)
+	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
 	@echo
 	@echo "================================================================================"
@@ -275,7 +283,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -292,7 +300,7 @@ unittests-shell-client:
 .PHONY: unittests-http-server
 
 unittests-http-server:
-	$(MAKE) start-server PID=$(PID)
+	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
@@ -300,7 +308,33 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+
+################################################################################
+## SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
+################################################################################
+
+.PHONY: unittests-ssl-server
+
+unittests-ssl-server:
+	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)                 >>"
+	@echo "================================================================================"
+	@echo
+
+	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=1 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
