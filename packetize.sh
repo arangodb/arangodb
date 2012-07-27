@@ -90,7 +90,7 @@ case $TRI_OS_LONG in
     echo "Using configuration for Ubuntu"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Ubuntu"
-    runlevels="runlevel(0235)"
+    runlevels="runlevel(02345)"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
