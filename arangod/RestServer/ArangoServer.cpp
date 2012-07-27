@@ -55,11 +55,6 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 
-#ifdef TRI_OPENSSL_VERSION
-#include "HttpsServer/ApplicationHttpsServer.h"
-#include "HttpsServer/HttpsServer.h"
-#endif
-
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
@@ -194,7 +189,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationHttpServer(0),
-    _applicationHttpsServer(0),
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _endpoints(),
@@ -452,7 +446,7 @@ void ArangoServer::buildApplicationServer () {
   
   
   // .............................................................................
-  // a http server
+  // endpoint server
   // .............................................................................
 
   _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
@@ -461,21 +455,6 @@ void ArangoServer::buildApplicationServer () {
                                                      "arangodb",
                                                      TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationHttpServer);
-
-#ifdef TRI_OPENSSL_VERSION
-  // .............................................................................
-  // an https server
-  // .............................................................................
-
-  _applicationHttpsServer = new ApplicationHttpsServer(_applicationServer,
-                                                       _applicationScheduler, 
-                                                       _applicationDispatcher,
-                                                       "arangodb",
-                                                       TRI_CheckAuthenticationAuthInfo);
-  // this will add options --ssl.*
-  _applicationServer->addFeature(_applicationHttpsServer);
-#endif
-
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
@@ -646,51 +625,25 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
 
-  // unencrypted endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
-    // create the http server
-    _applicationHttpServer->buildServer(&_endpointList);
+  // create the servers
+  _applicationHttpServer->buildServers(&_endpointList);
     
-    HttpHandlerFactory* handlerFactory = _applicationHttpServer->getHandlerFactory();
+  HttpHandlerFactory* handlerFactory = _applicationHttpServer->getHandlerFactory();
 
-    DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
-    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
-    // add action handler
-    handlerFactory->addPrefixHandler("/",
-                                     RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                     (void*) &httpOptions);
+  // add action handler
+  handlerFactory->addPrefixHandler("/",
+                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                   (void*) &httpOptions);
   
-    if (_disableAuthentication) {
-      // turn off authentication
-      handlerFactory->setAuthenticationCallback(0);
-    }
+  if (_disableAuthentication) {
+    // turn off authentication
+    handlerFactory->setAuthenticationCallback(0);
   }
 
-#ifdef TRI_OPENSSL_VERSION
-  // SSL endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
-    // create the https server
-    _applicationHttpsServer->buildServer(&_endpointList);
-
-    HttpHandlerFactory* handlerFactory = _applicationHttpsServer->getHandlerFactory();
-
-    DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
-    
-    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
-
-    // add action handler
-    handlerFactory->addPrefixHandler("/",
-                                     RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                     (void*) &httpOptions);
-
-    if (_disableAuthentication) {
-      // turn off authentication
-      handlerFactory->setAuthenticationCallback(0);
-    }
-  }
-#endif
 
   // .............................................................................
   // create a http handler factory for zeromq

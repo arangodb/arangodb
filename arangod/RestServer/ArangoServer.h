@@ -41,7 +41,6 @@ namespace triagens {
   namespace rest {
     class ApplicationDispatcher;
     class ApplicationHttpServer;
-    class ApplicationHttpsServer;
     class ApplicationScheduler;
 #ifdef TRI_ENABLE_ZEROMQ
     class ApplicationZeroMQ;
@@ -230,14 +229,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::ApplicationHttpServer* _applicationHttpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application https server
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_OPENSSL_VERSION
-        rest::ApplicationHttpsServer* _applicationHttpsServer;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed admin server application
