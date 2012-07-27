@@ -43,6 +43,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "GeneralServer/EndpointServer.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/SpecificCommTask.h"
@@ -85,7 +86,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
-    class GeneralServer : protected TaskManager {
+    class GeneralServer : public EndpointServer, protected TaskManager {
       private:
         GeneralServer (GeneralServer const&);
         GeneralServer const& operator= (GeneralServer const&);
@@ -114,8 +115,8 @@ namespace triagens {
 
         explicit
         GeneralServer (Scheduler* scheduler)
-          : _scheduler(scheduler),
-            _endpointList(0),
+          : EndpointServer(),
+            _scheduler(scheduler), 
             _listenTasks(),
             _commTasks(),
             _handlers(1024),
@@ -155,25 +156,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the encryption to be used 
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual Endpoint::Encryption getEncryption () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-        Scheduler* getScheduler () {
+        Scheduler* getScheduler () const {
           return _scheduler;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-        void addEndpointList (const EndpointList* list) {
-          _endpointList = list;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,12 +550,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Scheduler* _scheduler;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defined ports and addresses
-////////////////////////////////////////////////////////////////////////////////
-
-        const EndpointList* _endpointList;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active listen tasks

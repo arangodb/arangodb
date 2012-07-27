@@ -419,6 +419,29 @@ void ApplicationServer::prepare () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the server
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::prepare2 () {
+
+  // prepare all features
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+
+    bool ok = feature->prepare2();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the server
 ////////////////////////////////////////////////////////////////////////////////
 
