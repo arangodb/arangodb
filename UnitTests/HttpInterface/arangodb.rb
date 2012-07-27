@@ -9,7 +9,13 @@ $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 class ArangoDB
   include HTTParty
 
-  base_uri "http://#{$address}"
+  if ENV['ARANGO_SSL'] == '1'
+    base_uri "https://#{$address}"
+  else
+    base_uri "http://#{$address}"
+  end 
+
+  basic_auth ENV['ARANGO_USER'], ENV['ARANGO_PASSWORD']
   format :json
 
 ################################################################################

@@ -396,7 +396,7 @@ void ArangoServer::buildApplicationServer () {
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
-    ("working directory", &_workingDirectory, "working directory in daemon mode")
+    ("working-directory", &_workingDirectory, "working directory in daemon mode")
   ;
   
   // .............................................................................
@@ -440,7 +440,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["ENDPOINT Options"]
-    ("server.disable-auth", &_disableAuthentication, "disable authentication for ALL client requests")
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
   ;
   
