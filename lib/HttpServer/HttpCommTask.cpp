@@ -291,7 +291,7 @@ bool HttpCommTask::processRead () {
       _request = 0;
 
       HttpResponse response(HttpResponse::UNAUTHORIZED);
-      response.setHeader("www-authenticate", realm.c_str());
+      response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
 
       handleResponse(&response);
     }
@@ -310,11 +310,11 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   StringBuffer * buffer;
   
   if (_closeRequested) {
-    response->setHeader("connection", 10, "Close");
+    response->setHeader("connection", strlen("connection"), "Close");
   }
   else {
     // keep-alive is the default
-    response->setHeader("connection", 10, "Keep-Alive");
+    response->setHeader("connection", strlen("connection"), "Keep-Alive");
   }
   
   // save header
