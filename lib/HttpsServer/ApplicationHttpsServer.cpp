@@ -85,8 +85,7 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
-    _authenticationRealm(authenticationRealm),
-    _checkAuthentication(checkAuthentication),
+    _handlerFactory(0),
     _sslProtocol(HttpsServer::TLS_V1),
     _sslCache(false),
     _sslOptions((uint64_t) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
@@ -100,8 +99,8 @@ ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationSe
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationHttpsServer::~ApplicationHttpsServer () {
-  for_each(_httpsServers.begin(), _httpsServers.end(), DeleteObject());
-  _httpsServers.clear();
+  for_each(_servers.begin(), _servers.end(), DeleteObject());
+  _servers.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +121,29 @@ ApplicationHttpsServer::~ApplicationHttpsServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsServer* ApplicationHttpsServer::buildServer (const EndpointList* endpointList) {
-  return buildHttpsServer(endpointList);
+  assert(_handlerFactory != 0);
+  assert(_applicationScheduler->scheduler() != 0);
+
+  // check the ssl context
+  if (_sslContext == 0) {
+    LOGGER_FATAL << "no ssl context is known, cannot create https server";
+    LOGGER_INFO << "please use the --server.keyfile option";
+    TRI_ShutdownLogging();
+    exit(EXIT_FAILURE);
+  }
+
+  // create new server
+  HttpsServer* server = new HttpsServer(_applicationScheduler->scheduler(),
+                                        _applicationDispatcher->dispatcher(),
+                                        _handlerFactory,
+                                        _sslContext);
+
+  // keep a list of active server
+  _servers.push_back(server);
+
+  server->setEndpointList(endpointList);
+
+  return server;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,8 +194,26 @@ bool ApplicationHttpsServer::parsePhase2 (ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+bool ApplicationHttpsServer::prepare2 () {
+  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
+  
+  Scheduler* scheduler = _applicationScheduler->scheduler();
+
+  if (scheduler == 0) {
+    LOGGER_FATAL << "no scheduler is known, cannot create http server";
+
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 bool ApplicationHttpsServer::open () {
-  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+  for (vector<HttpsServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpsServer* server = *i;
 
     server->startListening();
@@ -190,14 +229,14 @@ bool ApplicationHttpsServer::open () {
 void ApplicationHttpsServer::close () {
 
   // close all open connections
-  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+  for (vector<HttpsServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpsServer* server = *i;
 
     server->shutdownHandlers();
   }
 
   // close all listen sockets
-  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+  for (vector<HttpsServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpsServer* server = *i;
 
     server->stopListening();
@@ -209,61 +248,11 @@ void ApplicationHttpsServer::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationHttpsServer::stop () {
-  for (vector<HttpsServer*>::iterator i = _httpsServers.begin();  i != _httpsServers.end();  ++i) {
+  for (vector<HttpsServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpsServer* server = *i;
 
     server->stop();
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpointList) {
-  Scheduler* scheduler = _applicationScheduler->scheduler();
-
-  if (scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create https server";
-    TRI_ShutdownLogging();
-    exit(EXIT_FAILURE);
-  }
-
-  Dispatcher* dispatcher = 0;
-  HttpHandlerFactory::auth_fptr auth = 0;
-
-  if (_applicationDispatcher != 0) {
-    dispatcher = _applicationDispatcher->dispatcher();
-  }
-
-  auth = _checkAuthentication;
-
-  // check the ssl context
-  if (_sslContext == 0) {
-    LOGGER_FATAL << "no ssl context is known, cannot create https server";
-    LOGGER_INFO << "please use the --server.keyfile option";
-    TRI_ShutdownLogging();
-    exit(EXIT_FAILURE);
-  }
-
-  // create new server
-  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _authenticationRealm, auth, _sslContext);
-
-  // keep a list of active server
-  _httpsServers.push_back(httpsServer);
-
-  httpsServer->addEndpointList(endpointList);
-
-  return httpsServer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

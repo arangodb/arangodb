@@ -170,10 +170,9 @@ const string HttpsServer::protocolName (const protocol_e protocol) {
 
 HttpsServer::HttpsServer (Scheduler* scheduler,
                           Dispatcher* dispatcher,
-                          std::string const authenticationRealm,
-                          auth_fptr checkAuthentication, 
+                          HttpHandlerFactory* handlerFactory,
                           SSL_CTX* ctx)
-  : HttpServer(scheduler, dispatcher, authenticationRealm, checkAuthentication),
+  : HttpServer(scheduler, dispatcher, handlerFactory),
     ctx(ctx),
     verificationMode(SSL_VERIFY_NONE),
     verificationCallback(0) {

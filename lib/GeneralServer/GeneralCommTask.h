@@ -101,7 +101,7 @@ namespace triagens {
                        << ", client ip " <<  _connectionInfo.clientAddress
                        << ", client port " <<  _connectionInfo.clientPort;
 
-          pair<size_t, size_t> p = server->sizeRestrictions();
+          pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
 
           _maximalHeaderSize = p.first;
           _maximalBodySize = p.second;

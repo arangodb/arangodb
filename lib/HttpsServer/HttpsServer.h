@@ -127,8 +127,7 @@ namespace triagens {
 
         HttpsServer (Scheduler*,
                      Dispatcher*,
-                     std::string const authenticationRealm,
-                     auth_fptr checkAuthentication,
+                     HttpHandlerFactory*,
                      SSL_CTX*);
 
 ////////////////////////////////////////////////////////////////////////////////

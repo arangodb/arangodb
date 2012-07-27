@@ -197,8 +197,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationHttpsServer(0),
     _applicationAdminServer(0),
     _applicationUserManager(0),
-    _httpServer(0),
-    _httpsServer(0),
     _endpoints(),
     _disableAuthentication(false),
     _dispatcherThreads(8),
@@ -611,11 +609,9 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
-
-  // .............................................................................
-  // create a client http server and http handler factory
-  // .............................................................................
-
+  
+  _applicationServer->prepare2();
+  
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
     Endpoint* endpoint = Endpoint::serverFactory(*i);
@@ -653,41 +649,45 @@ int ArangoServer::startupServer () {
   // unencrypted endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
     // create the http server
-    _httpServer = _applicationHttpServer->buildServer(&_endpointList);
+    _applicationHttpServer->buildServer(&_endpointList);
+    
+    HttpHandlerFactory* handlerFactory = _applicationHttpServer->getHandlerFactory();
 
-    DefineApiHandlers(_httpServer, _applicationAdminServer, _vocbase);
+    DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
-    DefineAdminHandlers(_httpServer, _applicationAdminServer, _applicationUserManager, _vocbase);
+    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    _httpServer->addPrefixHandler("/",
-                                  RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                  (void*) &httpOptions);
+    handlerFactory->addPrefixHandler("/",
+                                     RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                     (void*) &httpOptions);
   
     if (_disableAuthentication) {
       // turn off authentication
-      _httpServer->setAuthenticationCallback(0);
+      handlerFactory->setAuthenticationCallback(0);
     }
   }
 
 #ifdef TRI_OPENSSL_VERSION
   // SSL endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
-
     // create the https server
-    _httpsServer = _applicationHttpsServer->buildServer(&_endpointList);
-    DefineApiHandlers(_httpsServer, _applicationAdminServer, _vocbase);
+    _applicationHttpsServer->buildServer(&_endpointList);
+
+    HttpHandlerFactory* handlerFactory = _applicationHttpsServer->getHandlerFactory();
+
+    DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
     
-    DefineAdminHandlers(_httpsServer, _applicationAdminServer, _applicationUserManager, _vocbase);
+    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
 
     // add action handler
-    _httpsServer->addPrefixHandler("/",
-                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                   (void*) &httpOptions);
-    
+    handlerFactory->addPrefixHandler("/",
+                                     RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                     (void*) &httpOptions);
+
     if (_disableAuthentication) {
       // turn off authentication
-      _httpsServer->setAuthenticationCallback(0);
+      handlerFactory->setAuthenticationCallback(0);
     }
   }
 #endif

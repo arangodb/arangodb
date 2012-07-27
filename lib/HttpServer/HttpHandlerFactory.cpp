@@ -182,7 +182,7 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) {
+string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
   return _authenticationRealm;
 }
 
@@ -190,7 +190,7 @@ string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () {
+pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
   static size_t m = (size_t) -1;
 
   return make_pair(m, m);

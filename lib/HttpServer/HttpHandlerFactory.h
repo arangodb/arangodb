@@ -171,7 +171,7 @@ namespace triagens {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual pair<size_t, size_t> sizeRestrictions ();
+        virtual pair<size_t, size_t> sizeRestrictions () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
@@ -183,7 +183,7 @@ namespace triagens {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string const& authenticationRealm (HttpRequest * request);
+        virtual std::string const& authenticationRealm (HttpRequest * request) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new request

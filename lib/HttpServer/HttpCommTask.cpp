@@ -128,7 +128,7 @@ bool HttpCommTask::processRead () {
                    << string(_readBuffer->c_str(), _readPosition);
 
       // check that we know, how to serve this request
-      _request = _server->createRequest(_readBuffer->c_str(), _readPosition);
+      _request = _server->getHandlerFactory()->createRequest(_readBuffer->c_str(), _readPosition);
 
       if (_request == 0) {
         LOGGER_ERROR << "cannot generate request";
@@ -255,11 +255,11 @@ bool HttpCommTask::processRead () {
     _bodyPosition = 0;
     _bodyLength = 0;
 
-    bool auth = _server->authenticateRequest(_request);
+    bool auth = _server->getHandlerFactory()->authenticateRequest(_request);
 
     // authenticated
     if (auth) {
-      HttpHandler* handler = _server->createHandler(_request);
+      HttpHandler* handler = _server->getHandlerFactory()->createHandler(_request);
       bool ok = false;
 
       if (handler == 0) {
@@ -285,7 +285,7 @@ bool HttpCommTask::processRead () {
 
     // not authenticated
     else {
-      string realm = "basic realm=\"" + _server->authenticationRealm(_request) + "\"";
+      string realm = "basic realm=\"" + _server->getHandlerFactory()->authenticationRealm(_request) + "\"";
 
       delete _request;
       _request = 0;
