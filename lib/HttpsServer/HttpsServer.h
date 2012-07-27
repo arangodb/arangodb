@@ -125,7 +125,11 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer (Scheduler*, Dispatcher*, SSL_CTX*);
+        HttpsServer (Scheduler*,
+                     Dispatcher*,
+                     std::string const authenticationRealm,
+                     auth_fptr checkAuthentication,
+                     SSL_CTX*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -149,11 +153,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return protocol to be used
+/// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        virtual Endpoint::Protocol getProtocol () {
-          return Endpoint::PROTOCOL_HTTPS;
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_SSL;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

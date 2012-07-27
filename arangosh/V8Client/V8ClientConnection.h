@@ -40,7 +40,6 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
-#include <Rest/Endpoint.h>
 
 #include <v8.h>
 
@@ -50,8 +49,13 @@
 
 namespace triagens {
   namespace httpclient {
+    class GeneralClientConnection;
     class SimpleHttpClient;
     class SimpleHttpResult;
+  }
+
+  namespace rest {
+    class Endpoint;
   }
 }
 
@@ -93,17 +97,14 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
-///
-/// @param Endpoint endpoint          Endpoint to connect to
-/// @param double requestTimeout      timeout in seconds for one request
-/// @param size_t retries             maximum number of request retries
-/// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
         V8ClientConnection (triagens::rest::Endpoint*,
+                            const string&,
+                            const string&,
                             double,
+                            double, 
                             size_t,
-                            double,
                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,22 +276,16 @@ namespace triagens {
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint to connect to
+/// @brief connection
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::rest::Endpoint* _endpoint;
+      triagens::httpclient::GeneralClientConnection* _connection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server version
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string _version;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection status
-////////////////////////////////////////////////////////////////////////////////
-
-      bool _connected;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief last http return code

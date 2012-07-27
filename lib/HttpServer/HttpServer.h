@@ -30,6 +30,7 @@
 #define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "GeneralServer/GeneralServerDispatcher.h"
+
 #include "HttpServer/HttpCommTask.h"
 
 // -----------------------------------------------------------------------------
@@ -75,7 +76,10 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer (Scheduler* scheduler, Dispatcher* dispatcher);
+        HttpServer (Scheduler* scheduler,
+                    Dispatcher* dispatcher,
+                    std::string const authenticationRealm,
+                    auth_fptr checkAuthentication);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -93,11 +97,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return protocol to be used
+/// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        virtual Endpoint::Protocol getProtocol () {
-          return Endpoint::PROTOCOL_HTTP;
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_NONE;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -95,10 +95,16 @@ namespace triagens {
         enum Protocol {
           PROTOCOL_UNKNOWN,
           PROTOCOL_BINARY,
-#ifdef TRI_OPENSSL_VERSION
-          PROTOCOL_HTTPS,
-#endif
           PROTOCOL_HTTP
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief encryption used when talking to endpoint
+////////////////////////////////////////////////////////////////////////////////
+        
+        enum Encryption {
+          ENCRYPTION_NONE = 0, 
+          ENCRYPTION_SSL
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,6 +129,7 @@ namespace triagens {
         Endpoint (const Type, 
                   const DomainType, 
                   const Protocol, 
+                  const Encryption,
                   const string&);
 
       public:
@@ -183,7 +190,7 @@ namespace triagens {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual int connect () = 0; 
+        virtual int connect (double, double) = 0; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
@@ -196,6 +203,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool initIncoming (socket_t) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set socket timeout
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual void setTimeout (socket_t, double); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise socket flags
@@ -225,6 +238,14 @@ namespace triagens {
 
         Protocol getProtocol () const {
           return _protocol;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the encryption used
+////////////////////////////////////////////////////////////////////////////////
+
+        Encryption getEncryption () const {
+          return _encryption;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,6 +326,12 @@ namespace triagens {
         Protocol _protocol;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief encryption used
+////////////////////////////////////////////////////////////////////////////////
+
+        Encryption _encryption;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief original endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,7 +396,7 @@ namespace triagens {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        socket_t connect ();
+        socket_t connect (double, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
@@ -468,6 +495,7 @@ namespace triagens {
         EndpointIp (const Type, 
                     const DomainType, 
                     const Protocol,
+                    const Encryption,
                     string const&, 
                     string const&, 
                     const uint16_t);
@@ -527,7 +555,7 @@ namespace triagens {
 /// @brief connect the socket
 ////////////////////////////////////////////////////////////////////////////////
         
-        socket_t connectSocket (const struct addrinfo*);
+        socket_t connectSocket (const struct addrinfo*, double, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -548,7 +576,7 @@ namespace triagens {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        socket_t connect ();
+        socket_t connect (double, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
@@ -642,6 +670,7 @@ namespace triagens {
 
         EndpointIpV4 (const Type, 
                       const Protocol,
+                      const Encryption,
                       string const&, 
                       string const&, 
                       const uint16_t);
@@ -704,6 +733,7 @@ namespace triagens {
 
         EndpointIpV6 (const Type,
                       const Protocol, 
+                      const Encryption,
                       string const&, 
                       string const&, 
                       const uint16_t);

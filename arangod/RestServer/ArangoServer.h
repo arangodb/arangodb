@@ -78,9 +78,9 @@ namespace triagens {
       MODE_CONSOLE,
       MODE_UNITTESTS,
       MODE_JSLINT,
+      MODE_SCRIPT
     }
     server_operation_mode_e;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -300,17 +300,40 @@ namespace triagens {
 ///
 /// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
 /// the following pattern:
-/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
 /// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+/// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+/// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 /// - unix:///path/to/socket - Unix domain socket endpoint
 ///
 /// If a TCP/IP endpoint is specified without a port number, then the default 
 /// port (8529) will be used.
 /// If multiple endpoints need to be used, the option can be repeated multiple
 /// times.
+///
+/// @EXAMPLES
+///
+/// @verbinclude option-server-endpoint
+///
+/// Note that if you are using SSL-encrypted endpoints, you must also supply
+/// the path to a server certificate using the --ssl.keyfile optionn.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable authentication for ALL client requests
+///
+/// @CMDOPT{--server.disable-authentication @CA{value}}
+///
+/// Settings @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
+///
+/// The default value is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
@@ -389,9 +412,22 @@ namespace triagens {
         uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default journal size
+///
+/// @CMDOPT{--database.wait-for-size @CA{boolean}}
+///
+/// Default wait-for-sync value. Can be overwritten when creating a new
+/// collection.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _defaultWaitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
-/// @CMDOPT{--unit-tests @CA{test-file}}
+/// @CMDOPT{--javascript.unit-tests @CA{test-file}}
 ///
 /// Runs one or more unit tests.
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,6 +443,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _jslint;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run script file
+///
+/// @CMDOPT{--javascript.script @CA{script-file}}
+///
+/// Runs the script file.
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<string> _scriptFile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameters to script file
+///
+/// @CMDOPT{--javascript.script-parameter @CA{script-parameter}}
+///
+/// Parameter to script.
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<string> _scriptParameters;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

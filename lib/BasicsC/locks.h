@@ -325,7 +325,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond);
 void TRI_WaitCondition (TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for a signal with a timeout in milli-seconds
+/// @brief waits for a signal with a timeout in micro-seconds
 ///
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////

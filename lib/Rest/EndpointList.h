@@ -97,6 +97,25 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+        
+        static const string getKey (const Endpoint::Protocol protocol, 
+                                    const Endpoint::Encryption encryption) {
+          return string(getProtocolName(protocol) + " " + getEncryptionName(encryption));
+        }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
     
       public:
 
@@ -104,12 +123,10 @@ namespace triagens {
 /// @brief return a protocol name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string getName (const Endpoint::Protocol protocol) {
+        static const string getProtocolName (const Endpoint::Protocol protocol) {
           switch (protocol) {
             case Endpoint::PROTOCOL_BINARY:
               return "binary";
-            case Endpoint::PROTOCOL_HTTPS:
-              return "https";
             case Endpoint::PROTOCOL_HTTP:
               return "http";
             default:
@@ -118,36 +135,42 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a encryption name
+////////////////////////////////////////////////////////////////////////////////
+
+        static const string getEncryptionName (const Endpoint::Encryption encryption) {
+          switch (encryption) {
+            case Endpoint::ENCRYPTION_SSL:
+              return "ssl";
+            case Endpoint::ENCRYPTION_NONE:
+            default:
+              return "tcp";
+          } 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of elements in a sub-list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t count (const Endpoint::Protocol protocol) {
-          map<Endpoint::Protocol, ListType>::const_iterator i = _lists.find(protocol);
-
-          if (i == _lists.end()) {
-            return 0;
-          }
-
-          return i->second.size();
-        }
+        size_t count (const Endpoint::Protocol, const Endpoint::Encryption) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all used endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        void dump();
+        void dump() const ;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListType getEndpoints (const Endpoint::Protocol) const;
+        ListType getEndpoints (const Endpoint::Protocol, const Endpoint::Encryption) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addEndpoint (const Endpoint::Protocol, Endpoint*);
+        bool addEndpoint (const Endpoint::Protocol, const Endpoint::Encryption, Endpoint*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -168,7 +191,7 @@ namespace triagens {
 /// @brief lists of endpoints
 ////////////////////////////////////////////////////////////////////////////////
         
-        map<Endpoint::Protocol, ListType> _lists;
+        map<string, ListType> _lists;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

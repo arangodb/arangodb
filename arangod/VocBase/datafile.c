@@ -593,6 +593,11 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
 
+  // check the maximal size
+  if (size + TRI_JOURNAL_OVERHEAD > datafile->_maximalSize) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+  }
+
   // add the marker, leave enough room for the footer
   if (datafile->_currentSize + size + datafile->_footerSize > datafile->_maximalSize) {
     datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);

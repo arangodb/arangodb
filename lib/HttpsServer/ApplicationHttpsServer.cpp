@@ -76,16 +76,23 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpsServer::ApplicationHttpsServer (ApplicationScheduler* applicationScheduler,
-                                                ApplicationDispatcher* applicationDispatcher)
+ApplicationHttpsServer::ApplicationHttpsServer (ApplicationServer* applicationServer,
+                                                ApplicationScheduler* applicationScheduler,
+                                                ApplicationDispatcher* applicationDispatcher,
+                                                std::string const& authenticationRealm,
+                                                HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpsServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
     _sslProtocol(HttpsServer::TLS_V1),
     _sslCacheMode(0),
     _sslOptions(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE),
     _sslCipherList(""),
-    _sslContext(0) {
+    _sslContext(0),
+    _rctx() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,20 +239,24 @@ HttpsServer* ApplicationHttpsServer::buildHttpsServer (const EndpointList* endpo
   }
 
   Dispatcher* dispatcher = 0;
+  HttpHandlerFactory::auth_fptr auth = 0;
 
   if (_applicationDispatcher != 0) {
     dispatcher = _applicationDispatcher->dispatcher();
   }
 
+  auth = _checkAuthentication;
+
   // check the ssl context
   if (_sslContext == 0) {
     LOGGER_FATAL << "no ssl context is known, cannot create https server";
+    LOGGER_INFO << "please use the --server.keyfile option";
     TRI_ShutdownLogging();
     exit(EXIT_FAILURE);
   }
 
   // create new server
-  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _sslContext);
+  HttpsServer* httpsServer = new HttpsServer(scheduler, dispatcher, _authenticationRealm, auth, _sslContext);
 
   // keep a list of active server
   _httpsServers.push_back(httpsServer);
@@ -315,12 +326,12 @@ bool ApplicationHttpsServer::createSslContext () {
 
   // set ssl context
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  string rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
+  _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) StringUtils::duplicate(rctx), rctx.size());
+  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), _rctx.size());
 
   if (res != 1) {
-    LOGGER_FATAL << "cannot set SSL session id context '" << rctx << "'";
+    LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
     LOGGER_ERROR << lastSSLError();
     return false;
   }

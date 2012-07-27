@@ -417,22 +417,19 @@ static const struct mrb_data_type MR_ArangoConnection_Type = {
   "ArangoConnection", MR_ArangoConnection_Free
 };
 
-static void InitMRClientConnection (MR_state_t* mrs, MRubyClientConnection* connection) {
+static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* connection) {
   struct RClass *rcl;
-  mrb_state* mrb;
-
-  mrb = &mrs->_mrb;
 
   // .............................................................................
   // arango client connection
   // .............................................................................
 
-  rcl = mrb_define_class(&mrs->_mrb, "ArangoConnection", mrs->_mrb.object_class);
+  rcl = mrb_define_class(mrb, "ArangoConnection", mrb.object_class);
   
-  mrb_define_method(&mrs->_mrb, rcl, "get", ClientConnection_httpGet, ARGS_REQ(1));
+  mrb_define_method(mrb, rcl, "get", ClientConnection_httpGet, ARGS_REQ(1));
 
   // create the connection variable
-  mrb_value arango = mrb_obj_value(Data_Wrap_Struct(&mrs->_mrb, rcl, &MR_ArangoConnection_Type, (void*) connection));
+  mrb_value arango = mrb_obj_value(Data_Wrap_Struct(mrb, rcl, &MR_ArangoConnection_Type, (void*) connection));
   mrb_gv_set(mrb, mrb_intern(mrb, "$arango"), arango);
 }
 
@@ -516,7 +513,7 @@ static void RunShell (MR_state_t* mrs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
+  TRIAGENS_C_INITIALISE(argc, argv);
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 

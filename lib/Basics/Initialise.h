@@ -42,7 +42,7 @@ namespace triagens {
 /// @brief initialise function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseBasics ();
+    extern void InitialiseBasics (int argv, char* argc[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
@@ -56,9 +56,9 @@ namespace triagens {
 /// @brief initialise
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_INITIALISE              \
-  do {                                          \
-    triagens::basics::InitialiseBasics();       \
+#define TRIAGENS_BASICS_INITIALISE(a,b)                 \
+  do {                                                  \
+    triagens::basics::InitialiseBasics((a), (b));       \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////

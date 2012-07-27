@@ -51,11 +51,17 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpServer::ApplicationHttpServer (ApplicationScheduler* applicationScheduler,
-                                              ApplicationDispatcher* applicationDispatcher)
+ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServer,
+                                              ApplicationScheduler* applicationScheduler,
+                                              ApplicationDispatcher* applicationDispatcher,
+                                              std::string const& authenticationRealm,
+                                              HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpServer"),
+    _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _authenticationRealm(authenticationRealm),
+    _checkAuthentication(checkAuthentication),
     _httpServers() {
 }
 
@@ -80,6 +86,14 @@ ApplicationHttpServer::~ApplicationHttpServer () {
 /// @addtogroup Scheduler
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the http server
+////////////////////////////////////////////////////////////////////////////////
+
+HttpServer* ApplicationHttpServer::buildServer (const EndpointList* endpointList) { 
+  return buildHttpServer(0, endpointList);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the http server
@@ -195,12 +209,13 @@ HttpServer* ApplicationHttpServer::buildHttpServer (HttpServer* httpServer,
   // create new server
   if (httpServer == 0) {
     Dispatcher* dispatcher = 0;
+    HttpHandlerFactory::auth_fptr auth = _checkAuthentication;
 
     if (_applicationDispatcher != 0) {
       dispatcher = _applicationDispatcher->dispatcher();
     }
 
-    httpServer = new HttpServer(scheduler, dispatcher);
+    httpServer = new HttpServer(scheduler, dispatcher, _authenticationRealm, auth);
   }
 
   // keep a list of active servers
