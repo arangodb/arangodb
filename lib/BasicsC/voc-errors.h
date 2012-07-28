@@ -69,6 +69,8 @@ extern "C" {
 /// - 1005: @CODE{duplicate identifier}
 ///   Internal error that will be raised when a identifier duplicate is
 ///   detected.
+/// - 1006: @CODE{datafile unreadable}
+///   Internal error that will be raised when the datafile is unreadable.
 /// - 1100: @CODE{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @CODE{illegal parameter file}
@@ -608,6 +610,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER                             (1005)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1006: ERROR_ARANGO_DATAFILE_UNREADABLE
+///
+/// datafile unreadable
+///
+/// Internal error that will be raised when the datafile is unreadable.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATAFILE_UNREADABLE                              (1006)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE

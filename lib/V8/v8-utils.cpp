@@ -581,6 +581,28 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+///
+/// @FUN{fs.exists(@FA{filename})}
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: exists(<filename>)")));
+  }
+
+  string filename = TRI_ObjectToString(argv[0]);
+
+  return scope.Close(TRI_ExistsFile(filename.c_str()) ? v8::True() : v8::False());;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a line from stdin
 ///
 /// @FUN{console.getline()}
@@ -728,6 +750,36 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a file
+///
+/// @FUN{fs.move(@FA{source}, @FA{destination})}
+///
+/// Moves @FA{source} to @FA{destination}. Failure to move the file, or
+/// specifying a directory for target when source is a file will throw an
+/// exception.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract two arguments
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: move(<source>, <destination>)")));
+  }
+
+  string source = TRI_ObjectToString(argv[0]);
+  string destination = TRI_ObjectToString(argv[1]);
+
+  int res = TRI_RenameFile(source.c_str(), destination.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot move file")));
+  }
+
+  return scope.Close(v8::Undefined());;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
 /// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
@@ -851,6 +903,35 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a file
+///
+/// @FUN{fs.remove(@FA{filename})}
+///
+/// Removes the file @FA{filename} at the given path. Throws an exception if the
+/// path corresponds to anything that is not a file or a symbolic link. If
+/// "path" refers to a symbolic link, removes the symbolic link.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract two arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: remove(<filename>)")));
+  }
+
+  string filename = TRI_ObjectToString(argv[1]);
+
+  int res = TRI_UnlinkFile(filename.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot remove file")));
+  }
+
+  return scope.Close(v8::Undefined());;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,38 +1101,6 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   return scope.Close(v8::Number::New(TRI_microtime()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file of any type or directory exists
-///
-/// @FUN{fs.exists(@FA{filename})}
-///
-/// Returns true if a file (of any type) or a directory exists at a given
-/// path. If the file is a broken symbolic link, returns false.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract arguments
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("exists: execute(<filename>)")));
-  }
-
-  v8::Handle<v8::Value> filename = argv[0];
-
-  if (! filename->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
-  }
-
-  v8::String::Utf8Value name(filename);
-
-  if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 string")));
-  }
-
-  return scope.Close(TRI_ExistsFile(*name) ? v8::True() : v8::False());;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1326,6 +1375,36 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  string msg;
+  if (message.size()) {
+    msg = message;
+  }
+  else {
+    msg = TRI_errno_string(errorNumber) + string(": ") + message;
+  }
+  v8::Handle<v8::String> errorMessage = v8::String::New(msg.c_str());
+
+  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
+  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+
+  errorObject->SetPrototype(proto);
+
+  return errorObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1375,6 +1454,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("FS_EXISTS"),
+                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("SYS_GETLINE"),
                          v8::FunctionTemplate::New(JS_Getline)->GetFunction(),
                          v8::ReadOnly);
@@ -1389,6 +1472,14 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_LOG_LEVEL"),
                          v8::FunctionTemplate::New(JS_LogLevel)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_MOVE"),
+                         v8::FunctionTemplate::New(JS_Move)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_REMOVE"),
+                         v8::FunctionTemplate::New(JS_Remove)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_OUTPUT"),
@@ -1413,10 +1504,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_TIME"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_EXISTS"),
-                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................

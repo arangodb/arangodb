@@ -43,6 +43,7 @@ static string JS_common_bootstrap_errors =
   "    \"ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE\" : { \"code\" : 1003, \"message\" : \"unknown type\" }, \n"
   "    \"ERROR_ARANGO_READ_ONLY\"       : { \"code\" : 1004, \"message\" : \"ready only\" }, \n"
   "    \"ERROR_ARANGO_DUPLICATE_IDENTIFIER\" : { \"code\" : 1005, \"message\" : \"duplicate identifier\" }, \n"
+  "    \"ERROR_ARANGO_DATAFILE_UNREADABLE\" : { \"code\" : 1006, \"message\" : \"datafile unreadable\" }, \n"
   "    \"ERROR_ARANGO_CORRUPTED_DATAFILE\" : { \"code\" : 1100, \"message\" : \"corrupted datafile\" }, \n"
   "    \"ERROR_ARANGO_ILLEGAL_PARAMETER_FILE\" : { \"code\" : 1101, \"message\" : \"illegal parameter file\" }, \n"
   "    \"ERROR_ARANGO_CORRUPTED_COLLECTION\" : { \"code\" : 1102, \"message\" : \"corrupted collection\" }, \n"
