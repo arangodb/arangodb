@@ -176,7 +176,8 @@ noinst_LIBRARIES = \
 
 sbin_PROGRAMS = \
 	bin/arangod \
-        bin/arango-password
+        bin/arango-password \
+	bin/arango-dfdb
 
 ################################################################################
 ### @brief /bin programs
@@ -354,6 +355,29 @@ else
 endif
 
 CLEANUP += bin/arango-password
+
+################################################################################
+### @brief arango datafile debugger
+################################################################################
+
+bin/arango-dfdb: bin/arango-dfdb.in
+if ENABLE_RELATIVE_DEVEL
+	sed \
+		-e 's%@SBINDIR@%bin%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+else   
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+endif
+
+CLEANUP += bin/arango-dfdb
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES

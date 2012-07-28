@@ -38,6 +38,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "ready only");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_IDENTIFIER, "duplicate identifier");
+  REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE, "illegal parameter file");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_COLLECTION, "corrupted collection");

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Placeholders starting with @ will be replaced by make
+
+ARANGOD="@SBINDIR@/arangod"
+DATABASE="@DATABASE@"
+SCRIPT="@STATICFILES@/js/server/arango-dfdb.js"
+
+if [ "$1" == "--database" ] || [ "$1" == "--database.directory" ] ;  then
+  shift
+  DATABASE="$1"
+  shift
+fi
+
+if test ! -d "$DATABASE";  then
+  echo "$0: database directory '$DATABASE' does not exist"
+  exit 1
+fi
+
+$ARANGOD -c none --database.directory "$DATABASE" --javascript.script "$SCRIPT"

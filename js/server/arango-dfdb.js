@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var console = require("console");
+var fs = require("fs");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -44,6 +45,110 @@ function printf () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove datafile
+////////////////////////////////////////////////////////////////////////////////
+
+function RemoveDatafile (collection, type, datafile) {
+  var backup = datafile + ".corrupt";
+
+  fs.move(datafile, backup);
+
+  printf("Removed %s at %s\n", type, datafile);
+  printf("Backup is in %s\n", backup);
+  printf("\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wipe entries
+////////////////////////////////////////////////////////////////////////////////
+
+function WipeDatafile (collection, type, datafile, lastGoodPos) {
+  collection.truncateDatafile(datafile, lastGoodPos);
+
+  printf("Truncated and sealed datafile\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a journal
+////////////////////////////////////////////////////////////////////////////////
+
+function DeepCheckJournal (collection, type, datafile, scan, lastGoodPos) {
+  var entries = scan.entries;
+
+  if (entries.length == 0) {
+    printf("WARNING: The journal is empty. Even the header is missing. Going\n");
+    printf("         to remove the datafile.\n");
+    printf("\n");
+
+    RemoveDatafile(collection, type, datafile);
+
+    return;
+  }
+
+  if (entries.length === lastGoodPos + 3 && entries[lastGoodPos + 2].status === 2) {
+    printf("WARNING: The journal was not closed properly, the last entry is corrupted.\n");
+    printf("         This might happen ArangoDB was killed and the last entry was not\n");
+    printf("         fully written to disk. Going to remove the last entry.\n");
+    printf("\n");
+  }
+  else {
+    printf("WARNING: The journal was not closed properly, the last entries is corrupted.\n");
+    printf("         This might happen ArangoDB was killed and the last entries were not\n");
+    printf("         fully written to disk.\n");
+    printf("\n");
+
+    printf("Wipe the last entries (Y/N)? ");
+    var line = console.getline();
+
+    if (line !== "yes" && line !== "YES" && line !== "y" && line !== "Y") {
+      printf("ABORTING\n");
+      return;
+    }
+  }
+
+  var entry = entries[lastGoodPos];
+
+  WipeDatafile(collection, type, datafile, entry.position + entry.size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+function DeepCheckDatafile (collection, type, datafile, scan, lastGoodPos) {
+  var entries = scan.entries;
+
+  if (entries.length == 0) {
+    printf("WARNING: The datafile is empty. Even the header is missing. Going\n");
+    printf("         to remove the datafile. This should never happen. Datafiles\n");
+    printf("         are append-only. Make sure your hard disk does not contain\n");
+    printf("         any hardware errors.\n");
+    printf("\n");
+
+    RemoveDatafile(collection, type, datafile);
+
+    return;
+  }
+
+  printf("WARNING: The datafile contains corrupt entries. This should never happen.\n");
+  printf("         Datafiles are append-only. Make sure your hard disk does not contain\n");
+  printf("         any hardware errors.\n");
+  printf("\n");
+
+  printf("Wipe the last entries (Y/N)? ");
+  var line = console.getline();
+
+  if (line !== "yes" && line !== "YES" && line !== "y" && line !== "Y") {
+    printf("ABORTING\n");
+    return;
+  }
+
+  var entry = entries[lastGoodPos];
+
+  WipeDatafile(collection, type, datafile, entry.position + entry.size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a datafile deeply
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,6 +158,7 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
   printf("Entries\n");
 
   var lastGood = 0;
+  var lastGoodPos = 0;
   var stillGood = true;
 
   for (var i = 0;  i < entries.length;  ++i) {
@@ -69,9 +175,10 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
 
     printf("  %d: status %s type %d size %d\n", i, s, entry.type, entry.size);
 
-    if (entry.status === 1 || entry.status == 2) {
+    if (entry.status === 1 || entry.status === 2) {
       if (stillGood) {
         lastGood = entry;
+        lastGoodPos = i;
       }
     }
     else {
@@ -79,7 +186,17 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
     }
   }
 
-  printf("Last good position: %d\n", lastGood.position + lastGood.size);
+  if (! stillGood) {
+    printf("  Last good position: %d\n", lastGood.position + lastGood.size);
+    printf("\n");
+
+    if (type === "journal" || type === "compactor") {
+      DeepCheckJournal(collection, type, datafile, scan, lastGoodPos);
+    }
+    else {
+      DeepCheckDatafile(collection, type, datafile, scan, lastGoodPos);
+    }
+  }
 
   printf("\n");
 }
@@ -115,6 +232,10 @@ function CheckDatafile (collection, type, datafile) {
 
     case 4:
       printf("  status: FATAL (crc failed)\n");
+      break;
+
+    case 5:
+      printf("  status: FATAL (cannot open datafile or too small)\n");
       break;
 
     default:
@@ -185,6 +306,7 @@ function CheckCollection (collection) {
 function main (argv) {
   var argc = argv.length;
   var collections = internal.db._collections();
+  var i;
 
   printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
   printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
@@ -195,29 +317,62 @@ function main (argv) {
 
   printf("Available collections:\n");
 
-  for (var i = 0;  i < collections.length;  ++i) {
+  for (i = 0;  i < collections.length;  ++i) {
     printf("  %d: %s\n", i, collections[i].name());
   }
+
+  printf("  *: all\n");
 
   printf("\n");
 
   printf("Collection to check: ");
-  var a = 0;
+  var a = [];
   
   while (true) {
-    var a = parseInt(console.getline());
+    var line = console.getline();
 
-    if (a < 0 || a >= collections.length) {
-      printf("Please select a number between 0 and %d: ", collections.length - 1);
+    if (line === "*") {
+      for (i = 0;  i < collections.length;  ++i) {
+        a.push(i);
+      }
+
+      break;
     }
     else {
-      break;
+      var l = parseInt(line);
+
+      if (l < 0 || l >= collections.length) {
+        printf("Please select a number between 0 and %d: ", collections.length - 1);
+      }
+      else {
+        a.push(l);
+        break;
+      }
     }
   }
 
-  printf("Checking collection #%d: %s\n\n", a, collections[a].name());
+  for (i = 0;  i < a.length;  ++i) {
+    var collection = collections[a[i]];
 
-  CheckCollection(collections[a]);
+    printf("Checking collection #%d: %s\n", a[i], collection.name());
+
+    var last = Math.round(internal.time());
+
+    while (collection.status() !== 2) {
+      collection.unload();
+
+      var next = Math.round(internal.time());
+
+      if (next != last) {
+        printf("Trying to unload collection '%s'\n", collection.name());
+        last = next;
+      }
+    }
+
+    printf("\n");
+
+    CheckCollection(collection);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
