@@ -84,6 +84,99 @@ static void InitDatafile (TRI_datafile_t* datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief scans a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
+  TRI_df_scan_t scan;
+  TRI_df_scan_entry_t entry;
+
+  TRI_voc_size_t currentSize;
+  char* end;
+  char* ptr;
+
+  ptr = datafile->_data;
+  end = datafile->_data + datafile->_currentSize;
+  currentSize = 0;
+
+  TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
+
+  scan._currentSize = datafile->_currentSize;
+  scan._maximalSize = datafile->_maximalSize;
+  scan._numberMarkers = 0;
+  scan._status = 1;
+
+  if (datafile->_currentSize == 0) {
+    end = datafile->_data + datafile->_maximalSize;
+  }
+
+  while (ptr < end) {
+    TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+    bool ok;
+    size_t size;
+
+    memset(&entry, 0, sizeof(entry));
+
+    entry._position = ptr - datafile->_data;
+    entry._size = marker->_size;
+    entry._tick = marker->_tick;
+    entry._type = marker->_type;
+    entry._status = 1;
+
+    if (marker->_size == 0 && marker->_crc == 0 && marker->_type == 0 && marker->_tick == 0) {
+      entry._status = 2;
+
+      scan._endPosition = currentSize;
+
+      return scan;
+    }
+
+    ++scan._numberMarkers;
+
+    if (marker->_size == 0) {
+      entry._status = 3;
+
+      scan._status = 2;
+      scan._endPosition = currentSize;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
+
+    if (marker->_size < sizeof(TRI_df_marker_t)) {
+      entry._status = 4;
+
+      scan._endPosition = currentSize;
+      scan._status = 3;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
+
+    ok = TRI_CheckCrcMarkerDatafile(marker);
+
+    if (! ok) {
+      entry._status = 5;
+      scan._status = 4;
+    }
+
+    TRI_PushBackVector(&scan._entries, &entry);
+
+    size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    currentSize += size;
+
+    if (marker->_type == TRI_DF_MARKER_FOOTER) {
+      scan._endPosition = currentSize;
+      return scan;
+    }
+
+    ptr += size;
+  }
+
+  return scan;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -947,6 +1040,32 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   return ok ? TRI_ERROR_NO_ERROR : datafile->_lastError;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_df_scan_t TRI_ScanDatafile (char const* path) {
+  TRI_df_scan_t scan;
+  TRI_datafile_t* datafile;
+
+  datafile = OpenDatafile(path, true);  
+
+  if (datafile != 0) {
+    scan = ScanDatafile(datafile);
+    TRI_CloseDatafile(datafile);
+  }
+
+  return scan;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys information about the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyDatafileScan (TRI_df_scan_t* scan) {
+  TRI_DestroyVector(&scan->_entries);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

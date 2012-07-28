@@ -44,6 +44,7 @@
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-objects.h"
+#include "VocBase/datafile.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/voc-shaper.h"
@@ -1942,6 +1943,89 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(errorObject));
   }
 
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          TRI_DATAFILE_T FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the datafiles
+///
+/// @FUN{@FA{collection}.datafileScan(@FA{path})}
+///
+/// Returns information about the datafiles. The collection must be unloaded.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  if (argv.Length() != 1) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: dropIndex(<index-handle>)")));
+  }
+
+  string path = TRI_ObjectToString(argv[0]);
+
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
+                                                                "collection must be unloaded")));
+  }
+
+  TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
+
+  // build result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  result->Set(v8::String::New("currentSize"), v8::Number::New(scan._currentSize));
+  result->Set(v8::String::New("maximalSize"), v8::Number::New(scan._maximalSize));
+  result->Set(v8::String::New("endPosition"), v8::Number::New(scan._endPosition));
+  result->Set(v8::String::New("numberMarkers"), v8::Number::New(scan._numberMarkers));
+  result->Set(v8::String::New("status"), v8::Number::New(scan._status));
+
+  v8::Handle<v8::Array> entries = v8::Array::New();
+  result->Set(v8::String::New("entries"), entries);
+  
+  for (size_t i = 0;  i < scan._entries._length;  ++i) {
+    TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
+
+    v8::Handle<v8::Object> o = v8::Object::New();
+
+    o->Set(v8::String::New("position"), v8::Number::New(entry->_position));
+    o->Set(v8::String::New("size"), v8::Number::New(entry->_size));
+    o->Set(v8::String::New("tick"), v8::Number::New(entry->_tick));
+    o->Set(v8::String::New("type"), v8::Number::New((int) entry->_type));
+    o->Set(v8::String::New("status"), v8::Number::New((int) entry->_status));
+
+    entries->Set(i, o);
+  }
+
+  TRI_DestroyDatafileScan(&scan);
+
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   return scope.Close(result);
 }
 
@@ -4776,6 +4860,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
+  v8::Handle<v8::String> DatafileScanFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafileScan"));
   v8::Handle<v8::String> DatafilesFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafiles"));
   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
@@ -4954,7 +5039,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
-  
   rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
   rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
@@ -4965,7 +5049,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
-  
+  rt->Set(DatafileScanFuncName, v8::FunctionTemplate::New(JS_DatafileScanVocbaseCol));
   rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
@@ -5004,7 +5088,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
-  
   rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
   rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
   rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
@@ -5015,7 +5098,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
-  
+  rt->Set(DatafileScanFuncName, v8::FunctionTemplate::New(JS_DatafileScanVocbaseCol));
   rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
