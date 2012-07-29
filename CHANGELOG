@@ -1,5 +1,7 @@
-v1.x.x (2012-XX-XX)
--------------------
+v1.0.beta1 (2012-07-29)
+-----------------------
+
+* fixed issue #118: We need a collection "debugger"
 
 * fixed issue #126: Access-Shaper must be cached
 
