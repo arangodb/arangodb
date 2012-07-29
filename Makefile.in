@@ -1233,6 +1233,7 @@ WIKI = \
 	DbaManual \
 	DbaManualBasics \
 	DbaManualAuthentication \
+	DbaManualDatafileDebugger \
 	DefineAction \
 	ExamplesSetup \
 	FirstStepsArangoDB \
