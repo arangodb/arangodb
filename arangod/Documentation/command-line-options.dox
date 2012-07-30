@@ -170,22 +170,22 @@
 /// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 ///
 /// @anchor CommandLineArangoKeyFile
-/// @copydetails triagens::rest::ApplicationHttpsServer::_httpsKeyfile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile
 ///
 /// @anchor CommandLineArangoCaFile
-/// @copydetails triagens::rest::ApplicationHttpsServer::_cafile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_cafile
 ///
 /// @anchor CommandLineArangoSslProtocol
-/// @copydetails triagens::rest::ApplicationHttpsServer::_sslProtocol
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslProtocol
 ///
 /// @anchor CommandLineArangoSslCacheMode
-/// @copydetails triagens::rest::ApplicationHttpsServer::_sslCacheMode
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCacheMode
 ///
 /// @anchor CommandLineArangoSslOptions
-/// @copydetails triagens::rest::ApplicationHttpsServer::_sslOptions
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslOptions
 ///
 /// @anchor CommandLineArangoSslCipherList
-/// @copydetails triagens::rest::ApplicationHttpsServer::_sslCipherList
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
 /// @CMDOPT{--server.disable-admin-interface}
