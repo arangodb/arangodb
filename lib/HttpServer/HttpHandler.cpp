@@ -29,6 +29,7 @@
 
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpsServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "GeneralServer/GeneralServerJob.h"
@@ -109,12 +110,17 @@ HttpResponse* HttpHandler::getResponse () {
 Job* HttpHandler::createJob (AsyncJobServer* server) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
-  if (httpServer == 0) {
-    LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
-    return 0;
+  if (httpServer != 0) {
+    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
   }
 
-  return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
+  HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
+  if (httpsServer != 0) {
+    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
+  }
+
+  LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

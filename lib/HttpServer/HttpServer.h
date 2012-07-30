@@ -54,7 +54,7 @@ namespace triagens {
 /// @brief http server implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpServer : public GeneralHttpServer<HttpServer, HttpCommTask> {
+    class HttpServer : public GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -78,7 +78,30 @@ namespace triagens {
         HttpServer (Scheduler* scheduler,
                     Dispatcher* dispatcher,
                     HttpHandlerFactory* handlerFactory) 
-        : GeneralHttpServer<HttpServer, HttpCommTask>(scheduler, dispatcher, handlerFactory) {
+        : GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> >(scheduler, dispatcher, handlerFactory) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return encryption to be used
+////////////////////////////////////////////////////////////////////////////////
+          
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_NONE;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

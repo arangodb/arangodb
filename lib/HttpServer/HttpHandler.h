@@ -41,6 +41,7 @@ namespace triagens {
     class HttpRequest;
     class HttpResponse;
     class HttpServer;
+    class HttpsServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpHandler
@@ -136,7 +137,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual Job* createJob (AsyncJobServer*);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a list of sub handlers
 ////////////////////////////////////////////////////////////////////////////////
