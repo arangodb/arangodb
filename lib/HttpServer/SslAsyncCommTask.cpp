@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for https communication
+/// @brief task for ssl communication
 ///
 /// @file
 ///
@@ -26,7 +26,7 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpsAsyncCommTask.h"
+#include "SslAsyncCommTask.h"
 
 #include <openssl/err.h>
 
@@ -50,11 +50,11 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    HttpsAsyncCommTask::HttpsAsyncCommTask (HttpServer* server,
+    SslAsyncCommTask::SslAsyncCommTask (HttpServer* server,
                                             socket_t fd,
                                             ConnectionInfo const& info,
                                             BIO* bio)
-      : Task("HttpsAsyncCommTask"),
+      : Task("SslAsyncCommTask"),
         GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>(server, fd, info),
         accepted(false),
         readBlocked(false),
@@ -67,7 +67,7 @@ namespace triagens {
 
 
 
-    HttpsAsyncCommTask::~HttpsAsyncCommTask () {
+    SslAsyncCommTask::~SslAsyncCommTask () {
       static int const SHUTDOWN_ITERATIONS = 10;
       bool ok = false;
 
@@ -90,7 +90,7 @@ namespace triagens {
     // Task methods
     // -----------------------------------------------------------------------------
 
-    bool HttpsAsyncCommTask::handleEvent (EventToken token, EventType revents) {
+    bool SslAsyncCommTask::handleEvent (EventToken token, EventType revents) {
       bool result = GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>::handleEvent(token, revents);
 
       if (result) {
@@ -106,7 +106,7 @@ namespace triagens {
     // SocketTask methods
     // -----------------------------------------------------------------------------
 
-    bool HttpsAsyncCommTask::fillReadBuffer (bool& closed) {
+    bool SslAsyncCommTask::fillReadBuffer (bool& closed) {
       closed = false;
 
       // is the handshake already done?
@@ -129,7 +129,7 @@ namespace triagens {
 
 
 
-    bool HttpsAsyncCommTask::handleWrite (bool& closed, bool noWrite) {
+    bool SslAsyncCommTask::handleWrite (bool& closed, bool noWrite) {
 
       // is the handshake already done?
       if (! accepted) {
@@ -157,7 +157,7 @@ namespace triagens {
     // private methods
     // -----------------------------------------------------------------------------
 
-    bool HttpsAsyncCommTask::trySSLAccept () {
+    bool SslAsyncCommTask::trySSLAccept () {
       int res = SSL_accept(ssl);
 
       // accept successful
@@ -191,7 +191,7 @@ namespace triagens {
 
 
 
-    bool HttpsAsyncCommTask::trySSLRead (bool& closed) {
+    bool SslAsyncCommTask::trySSLRead (bool& closed) {
       closed = false;
       readBlocked = false;
       readBlockedOnWrite = false;
@@ -257,7 +257,7 @@ namespace triagens {
 
 
 
-    bool HttpsAsyncCommTask::trySSLWrite (bool& closed, bool noWrite) {
+    bool SslAsyncCommTask::trySSLWrite (bool& closed, bool noWrite) {
       closed = false;
 
       // if no write buffer is left, return

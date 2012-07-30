@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for https communication
+/// @brief task for ssl communication
 ///
 /// @file
 ///
@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H
-#define TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H 1
+#ifndef TRIAGENS_FYN_HTTP_SERVER_SSL_ASYNC_COMM_TASK_H
+#define TRIAGENS_FYN_HTTP_SERVER_SSL_ASYNC_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralAsyncCommTask.h"
 
@@ -45,7 +45,7 @@ namespace triagens {
     /// @brief task for https communication
     ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsAsyncCommTask : public GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask> {
+    class SslAsyncCommTask : public GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask> {
       private:
         static size_t const READ_BLOCK_SIZE = 10000;
 
@@ -55,7 +55,7 @@ namespace triagens {
         /// @brief constructs a new task with a given socket
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsAsyncCommTask (HttpServer*, socket_t, ConnectionInfo const&, BIO*);
+        SslAsyncCommTask (HttpServer*, socket_t, ConnectionInfo const&, BIO*);
 
       protected:
 
@@ -63,7 +63,7 @@ namespace triagens {
         /// @brief destructs a task
         ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpsAsyncCommTask ();
+        ~SslAsyncCommTask ();
 
         ////////////////////////////////////////////////////////////////////////////////
         /// {@inheritDoc}

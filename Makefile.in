@@ -524,11 +524,11 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
 	lib/HttpServer/HttpHandlerFactory.$(OBJEXT) \
 	lib/HttpServer/HttpServer.$(OBJEXT) \
+	lib/HttpServer/HttpsServer.$(OBJEXT) \
 	lib/HttpServer/PathHandler.$(OBJEXT) \
 	lib/HttpServer/RedirectHandler.$(OBJEXT) \
 	lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT) \
-	lib/HttpServer/HttpsAsyncCommTask.$(OBJEXT) \
-	lib/HttpServer/HttpsServer.$(OBJEXT) \
+	lib/HttpServer/SslAsyncCommTask.$(OBJEXT) \
 	lib/ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	lib/ResultGenerator/Initialise.$(OBJEXT) \
 	lib/ResultGenerator/JsonResultGenerator.$(OBJEXT) \
@@ -1380,11 +1380,11 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
 	lib/HttpServer/HttpServer.cpp \
+	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
-	lib/HttpServer/HttpsAsyncCommTask.cpp \
-	lib/HttpServer/HttpsServer.cpp \
+	lib/HttpServer/SslAsyncCommTask.cpp \
 	lib/ResultGenerator/HtmlResultGenerator.cpp \
 	lib/ResultGenerator/Initialise.cpp \
 	lib/ResultGenerator/JsonResultGenerator.cpp \
@@ -2166,6 +2166,8 @@ lib/HttpServer/HttpHandlerFactory.$(OBJEXT):  \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/HttpServer.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
+lib/HttpServer/HttpsServer.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
+	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/PathHandler.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/RedirectHandler.$(OBJEXT):  \
@@ -2174,10 +2176,8 @@ lib/HttpServer/RedirectHandler.$(OBJEXT):  \
 lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/HttpsAsyncCommTask.$(OBJEXT):  \
+lib/HttpServer/SslAsyncCommTask.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
-	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/HttpsServer.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/ResultGenerator/$(am__dirstamp):
 	@$(MKDIR_P) lib/ResultGenerator
@@ -2996,11 +2996,11 @@ mostlyclean-compile:
 	-rm -f lib/HttpServer/HttpHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandlerFactory.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpServer.$(OBJEXT)
-	-rm -f lib/HttpServer/HttpsAsyncCommTask.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpsServer.$(OBJEXT)
 	-rm -f lib/HttpServer/PathHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/RedirectHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT)
+	-rm -f lib/HttpServer/SslAsyncCommTask.$(OBJEXT)
 	-rm -f lib/JsonParser/json-parser.$(OBJEXT)
 	-rm -f lib/JsonParserX/InputParser.$(OBJEXT)
 	-rm -f lib/JsonParserX/JsonParserX.$(OBJEXT)
@@ -3265,11 +3265,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandlerFactory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpsAsyncCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpsServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/PathHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/SslAsyncCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/json-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/InputParser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonParserX.Po@am__quote@

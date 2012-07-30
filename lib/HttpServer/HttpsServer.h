@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTPS_SERVER_HTTPS_SERVER_H
-#define TRIAGENS_HTTPS_SERVER_HTTPS_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H
+#define TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H 1
 
 #include "HttpServer/HttpServer.h"
 
