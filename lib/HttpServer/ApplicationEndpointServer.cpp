@@ -34,7 +34,6 @@
 #include "Basics/Random.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Logger/Logger.h"

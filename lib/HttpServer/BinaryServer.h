@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general http server
+/// @brief binary server
 ///
 /// @file
 ///
@@ -26,10 +26,13 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H
-#define TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_BINARY_SERVER_H
+#define TRIAGENS_HTTP_SERVER_BINARY_SERVER_H 1
 
 #include "GeneralServer/GeneralServerDispatcher.h"
+
+#include "HttpServer/GeneralBinaryServer.h"
+#include "HttpServer/BinaryCommTask.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -37,9 +40,10 @@
 
 namespace triagens {
   namespace rest {
+    class HttpHandlerFactory;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralHttpServer
+// --SECTION--                                                class BinaryServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,11 +52,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server implementation
+/// @brief binary server implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename HF, typename CT>
-    class GeneralHttpServer : public GeneralServerDispatcher<S, HF, CT> {
+    class BinaryServer : public GeneralBinaryServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -70,15 +73,15 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general http server
+/// @brief constructs a new binary server
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralHttpServer (Scheduler* scheduler,
-                           Dispatcher* dispatcher,
-                           HF* handlerFactory)
-        : GeneralServer<S, HF, CT>(scheduler),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher),
-          _handlerFactory(handlerFactory) {
+        BinaryServer (Scheduler* scheduler,
+                    Dispatcher* dispatcher,
+                    HttpHandlerFactory* handlerFactory) 
+        : GeneralServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler),
+          GeneralServerDispatcher<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher),
+          GeneralBinaryServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +89,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,27 +100,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the handler factory
+/// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        HF* getHandlerFactory () const {
-          return _handlerFactory;
-        } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-        HF* _handlerFactory;
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_NONE;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -126,6 +114,10 @@ namespace triagens {
     };
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

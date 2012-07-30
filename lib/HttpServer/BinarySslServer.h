@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general http server
+/// @brief binary ssl server
 ///
 /// @file
 ///
@@ -22,24 +22,27 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H
-#define TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_BINARY_SSL_SERVER_H
+#define TRIAGENS_HTTP_SERVER_BINARY_SSL_SERVER_H 1
 
-#include "GeneralServer/GeneralServerDispatcher.h"
+#include "GeneralServer/GeneralSslServer.h"
+#include "HttpServer/GeneralBinaryServer.h"
+
+#include <openssl/ssl.h>
+
+#include "Basics/ssl-helper.h"
+#include "Logger/Logger.h"
+
+#include "HttpServer/BinaryCommTask.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/SslAsyncCommTask.h"
+#include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralHttpServer
+// --SECTION--                                             class BinarySslServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,12 +50,15 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace triagens {
+  namespace rest {
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server implementation
+/// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename HF, typename CT>
-    class GeneralHttpServer : public GeneralServerDispatcher<S, HF, CT> {
+    class BinarySslServer : public GeneralSslServer<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> >,
+                            public GeneralBinaryServer<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -70,15 +76,24 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general http server
+/// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralHttpServer (Scheduler* scheduler,
-                           Dispatcher* dispatcher,
-                           HF* handlerFactory)
-        : GeneralServer<S, HF, CT>(scheduler),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher),
-          _handlerFactory(handlerFactory) {
+        BinarySslServer (Scheduler* scheduler,
+                         Dispatcher* dispatcher,
+                         HttpHandlerFactory* handlerFactory,
+                         SSL_CTX* ctx) 
+        : GeneralServer<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> >(scheduler),
+          GeneralServerDispatcher<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> >(scheduler, dispatcher),
+          GeneralSslServer<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> >(scheduler, dispatcher, handlerFactory, ctx), 
+          GeneralBinaryServer<BinarySslServer, HttpHandlerFactory, BinaryCommTask<BinarySslServer> >(scheduler, dispatcher, handlerFactory) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~BinarySslServer () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,27 +112,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the handler factory
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
-          
-        HF* getHandlerFactory () const {
-          return _handlerFactory;
-        } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-        HF* _handlerFactory;
+        
+        void handleConnected (socket_t socket, ConnectionInfo& info) {
+          GeneralSslServer::handleConnected(socket, info);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -126,6 +126,10 @@ namespace triagens {
     };
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
