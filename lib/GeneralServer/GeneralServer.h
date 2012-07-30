@@ -168,7 +168,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void startListening () {
-          EndpointList::ListType endpoints = _endpointList->getEndpoints(Endpoint::PROTOCOL_HTTP, this->getEncryption());
+          EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol(), this->getEncryption());
 
           for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
             LOGGER_TRACE << "trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests";
