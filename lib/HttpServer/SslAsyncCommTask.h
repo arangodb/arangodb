@@ -41,10 +41,8 @@
 #include <Basics/StringBuffer.h>
 #include <Rest/HttpRequest.h>
 
-#include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
 
 
 namespace triagens {

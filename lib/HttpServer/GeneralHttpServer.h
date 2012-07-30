@@ -31,15 +31,12 @@
 
 #include "GeneralServer/GeneralServerDispatcher.h"
 
-#include "HttpServer/HttpCommTask.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
-    class HttpHandlerFactory;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class HttpServer
@@ -54,8 +51,8 @@ namespace triagens {
 /// @brief http server implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename CT>
-    class GeneralHttpServer : public GeneralServerDispatcher<S, HttpHandlerFactory, CT> {
+    template<typename S, typename HF, typename CT>
+    class GeneralHttpServer : public GeneralServerDispatcher<S, HF, CT> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -78,9 +75,9 @@ namespace triagens {
 
         GeneralHttpServer (Scheduler* scheduler,
                            Dispatcher* dispatcher,
-                           HttpHandlerFactory* handlerFactory)
-        : GeneralServer<S, HttpHandlerFactory, CT>(scheduler),
-          GeneralServerDispatcher<S, HttpHandlerFactory, CT>(scheduler, dispatcher),
+                           HF* handlerFactory)
+        : GeneralServer<S, HF, CT>(scheduler),
+          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher),
           _handlerFactory(handlerFactory) {
         }
 
@@ -103,7 +100,7 @@ namespace triagens {
 /// @brief return the handler factory
 ////////////////////////////////////////////////////////////////////////////////
           
-        HttpHandlerFactory* getHandlerFactory () const {
+        HF* getHandlerFactory () const {
           return _handlerFactory;
         } 
 
@@ -120,7 +117,7 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory* _handlerFactory;
+        HF* _handlerFactory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
