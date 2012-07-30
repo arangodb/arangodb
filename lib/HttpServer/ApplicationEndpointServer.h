@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application http server feature
+/// @brief application endpoint server feature
 ///
 /// @file
 ///
@@ -46,7 +46,7 @@ namespace triagens {
     class HttpServer;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       class ApplicationHttpServer
+// --SECTION--                                   class ApplicationEndpointServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,10 +58,10 @@ namespace triagens {
 /// @brief application http server feature
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationHttpServer : public ApplicationFeature {
+    class ApplicationEndpointServer : public ApplicationFeature {
       private:
-        ApplicationHttpServer (ApplicationHttpServer const&);
-        ApplicationHttpServer& operator= (ApplicationHttpServer const&);
+        ApplicationEndpointServer (ApplicationEndpointServer const&);
+        ApplicationEndpointServer& operator= (ApplicationEndpointServer const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -82,17 +82,17 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationHttpServer (ApplicationServer*,
-                               ApplicationScheduler*,
-                               ApplicationDispatcher*,
-                               std::string const& authenticationRealm,
-                               HttpHandlerFactory::auth_fptr checkAuthentication);
+        ApplicationEndpointServer (ApplicationServer*,
+                                   ApplicationScheduler*,
+                                   ApplicationDispatcher*,
+                                   std::string const& authenticationRealm,
+                                   HttpHandlerFactory::auth_fptr checkAuthentication);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ApplicationHttpServer ();
+        ~ApplicationEndpointServer ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

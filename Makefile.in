@@ -519,7 +519,7 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Dispatcher/DispatcherQueue.$(OBJEXT) \
 	lib/Dispatcher/DispatcherThread.$(OBJEXT) \
 	lib/Dispatcher/Job.$(OBJEXT) \
-	lib/HttpServer/ApplicationHttpServer.$(OBJEXT) \
+	lib/HttpServer/ApplicationEndpointServer.$(OBJEXT) \
 	lib/HttpServer/HttpCommTask.$(OBJEXT) \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
 	lib/HttpServer/HttpHandlerFactory.$(OBJEXT) \
@@ -1375,7 +1375,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
-	lib/HttpServer/ApplicationHttpServer.cpp \
+	lib/HttpServer/ApplicationEndpointServer.cpp \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
@@ -2154,7 +2154,7 @@ lib/HttpServer/$(am__dirstamp):
 lib/HttpServer/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/HttpServer/$(DEPDIR)
 	@: > lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/ApplicationHttpServer.$(OBJEXT):  \
+lib/HttpServer/ApplicationEndpointServer.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/HttpCommTask.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
@@ -2998,7 +2998,7 @@ mostlyclean-compile:
 	-rm -f lib/Dispatcher/DispatcherQueue.$(OBJEXT)
 	-rm -f lib/Dispatcher/DispatcherThread.$(OBJEXT)
 	-rm -f lib/Dispatcher/Job.$(OBJEXT)
-	-rm -f lib/HttpServer/ApplicationHttpServer.$(OBJEXT)
+	-rm -f lib/HttpServer/ApplicationEndpointServer.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpCommTask.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandlerFactory.$(OBJEXT)
@@ -3267,7 +3267,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherQueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Job.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ApplicationHttpServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ApplicationEndpointServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandlerFactory.Po@am__quote@
