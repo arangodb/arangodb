@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general http server
+/// @brief task for binary communication
 ///
 /// @file
 ///
@@ -21,15 +21,24 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H
-#define TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_BINARY_COMM_TASK_H
+#define TRIAGENS_HTTP_SERVER_BINARY_COMM_TASK_H 1
 
-#include "GeneralServer/GeneralServerDispatcher.h"
+#include "GeneralServer/GeneralCommTask.h"
+
+#include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
+
+#include "Scheduler/ListenTask.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -39,7 +48,7 @@ namespace triagens {
   namespace rest {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralHttpServer
+// --SECTION--                                              class BinaryCommTask
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,11 +57,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server implementation
+/// @brief task for binary communication
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename HF, typename CT>
-    class GeneralHttpServer : public GeneralServerDispatcher<S, HF, CT> {
+    template<typename S>
+    class BinaryCommTask : public GeneralCommTask<S, HttpHandlerFactory>,
+                           public RequestStatisticsAgent {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -70,15 +80,27 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general http server
+/// @brief constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralHttpServer (Scheduler* scheduler,
-                           Dispatcher* dispatcher,
-                           HF* handlerFactory)
-        : GeneralServer<S, HF, CT>(scheduler),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher),
-          _handlerFactory(handlerFactory) {
+        BinaryCommTask (S* server, 
+                        socket_t fd, 
+                        ConnectionInfo const& info) 
+        : Task("BinaryCommTask"),
+          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info) {
+          ConnectionStatisticsAgentSetHttp(this);
+          ConnectionStatisticsAgent::release();
+
+          ConnectionStatisticsAgent::acquire();
+          ConnectionStatisticsAgentSetStart(this);
+          ConnectionStatisticsAgentSetHttp(this);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructors
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~BinaryCommTask () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +108,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                           GeneralCommTask methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,38 +116,34 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the handler factory
-////////////////////////////////////////////////////////////////////////////////
-          
-        HF* getHandlerFactory () const {
-          return _handlerFactory;
-        } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
+        bool processRead () {
+          LOGGER_ERROR << "not implemented";
+
+          return true;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        HF* _handlerFactory;
+        void addResponse (HttpResponse* response) {
+          LOGGER_ERROR << "not implemented";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
+          return 0;
+        }
     };
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
@@ -135,5 +153,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -85,7 +85,7 @@ namespace triagens {
                      SSL_CTX* ctx) 
         : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler),
           GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
-          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask< HttpsServer> >(scheduler, dispatcher, handlerFactory) {
+          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
