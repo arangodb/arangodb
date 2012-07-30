@@ -59,7 +59,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
-    class GeneralServerDispatcher : public GeneralServer<S, HF, CT>, public AsyncJobServer {
+    class GeneralServerDispatcher : virtual public GeneralServer<S, HF, CT>, public AsyncJobServer {
       private:
         GeneralServerDispatcher (GeneralServerDispatcher const&);
         GeneralServerDispatcher& operator= (GeneralServerDispatcher const&);

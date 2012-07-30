@@ -78,7 +78,8 @@ namespace triagens {
         HttpServer (Scheduler* scheduler,
                     Dispatcher* dispatcher,
                     HttpHandlerFactory* handlerFactory) 
-        : GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> >(scheduler, dispatcher, handlerFactory) {
+        : GeneralServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler),
+          GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> >(scheduler, dispatcher, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

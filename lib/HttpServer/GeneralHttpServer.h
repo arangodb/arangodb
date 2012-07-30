@@ -79,7 +79,8 @@ namespace triagens {
         GeneralHttpServer (Scheduler* scheduler,
                            Dispatcher* dispatcher,
                            HttpHandlerFactory* handlerFactory)
-        : GeneralServerDispatcher<S, HttpHandlerFactory, CT>(scheduler, dispatcher),
+        : GeneralServer<S, HttpHandlerFactory, CT>(scheduler),
+          GeneralServerDispatcher<S, HttpHandlerFactory, CT>(scheduler, dispatcher),
           _handlerFactory(handlerFactory) {
         }
 
@@ -107,12 +108,8 @@ namespace triagens {
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return encryption to be used
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
-          
-        virtual Endpoint::Encryption getEncryption () const {
-          return Endpoint::ENCRYPTION_NONE;
-        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -132,10 +129,6 @@ namespace triagens {
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

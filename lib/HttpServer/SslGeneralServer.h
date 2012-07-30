@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief https server
+/// @brief ssl general server
 ///
 /// @file
 ///
@@ -25,24 +25,19 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H
-#define TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_SSL_GENERAL_SERVER_H
+#define TRIAGENS_HTTP_SERVER_SSL_GENERAL_SERVER_H 1
 
-#include "HttpServer/GeneralHttpServer.h"
+#include "GeneralServer/GeneralServer.h"
 
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
-
-#include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/SslAsyncCommTask.h"
-#include "HttpServer/SslGeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpsServer
+// --SECTION--                                            class SslGeneralServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +52,8 @@ namespace triagens {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsServer : public SslGeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
-                        public GeneralHttpServer<HttpsServer, HttpCommTask<HttpsServer> > {
+    template<typename S, typename HF, typename CT>
+    class SslGeneralServer : virtual public GeneralServer<S, HF, CT> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -74,7 +69,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL protocol methods
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +83,7 @@ namespace triagens {
 
           SSL_LAST
         };
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +108,7 @@ namespace triagens {
 #else
 #define SSL_CONST const
 #endif
-/*
+
         static SSL_CTX* sslContext (protocol_e protocol, string const& keyfile) {
           // create our context
           SSL_METHOD SSL_CONST* meth = 0;
@@ -162,11 +157,11 @@ namespace triagens {
 
           return sslctx;
         }
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
         static const string protocolName (const protocol_e protocol) {
           switch (protocol) {
             case SSL_V2:
@@ -181,7 +176,7 @@ namespace triagens {
               return "unknown";
           }
         }
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,25 +196,22 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer (Scheduler* scheduler,
-                     Dispatcher* dispatcher,
-                     HttpHandlerFactory* handlerFactory,
-                     SSL_CTX* ctx) 
-        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler),
-          SslGeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
-          GeneralHttpServer<HttpsServer, HttpCommTask< HttpsServer> >(scheduler, dispatcher, handlerFactory) {
-//        : GeneralHttpServer<HttpsServer, HttpCommTask< HttpsServer> >(scheduler, dispatcher, handlerFactory),
-//          ctx(ctx),
-//          verificationMode(SSL_VERIFY_NONE),
-//          verificationCallback(0) {
+        SslGeneralServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          HttpHandlerFactory* handlerFactory,
+                          SSL_CTX* ctx)
+        : GeneralServer<S, HF, CT>(scheduler),
+          ctx(ctx),
+          verificationMode(SSL_VERIFY_NONE),
+          verificationCallback(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpsServer () {
-//          SSL_CTX_free(ctx);
+        virtual ~SslGeneralServer () {
+          SSL_CTX_free(ctx);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,11 +228,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-        
-        void handleConnected (socket_t socket, ConnectionInfo& info) {
-          SslGeneralServer::handleConnected(socket, info);
-        }
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,15 +303,15 @@ namespace triagens {
           SSL_set_bio(ssl, sbio, sbio);
 
           // create a https task
-          SocketTask* task = new SslAsyncCommTask<HttpsServer, HttpCommTask<HttpsServer> >(this, socket, info, sbio);
+          SocketTask* task = new SslAsyncCommTask<S, CT>(dynamic_cast<S*>(this), socket, info, sbio);
 
           // add the task, otherwise it will not be shut down properly          
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
-          this->_commTasks.insert(dynamic_cast<GeneralCommTask<HttpsServer, HttpHandlerFactory>*>(task));
+          this->_commTasks.insert(dynamic_cast<GeneralCommTask<S, HF>*>(task));
           GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
 
           // and register it
-          _scheduler->registerTask(task);
+          this->_scheduler->registerTask(task);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,7 +346,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int (*verificationCallback)(int, X509_STORE_CTX *);
-        */
     };
   }
 }
