@@ -54,7 +54,7 @@ namespace triagens {
 /// @brief http server implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpServer : public GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> > {
+    class HttpServer : public GeneralHttpServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -79,7 +79,7 @@ namespace triagens {
                     Dispatcher* dispatcher,
                     HttpHandlerFactory* handlerFactory) 
         : GeneralServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler),
-          GeneralHttpServer<HttpServer, HttpCommTask<HttpServer> >(scheduler, dispatcher, handlerFactory) {
+          GeneralHttpServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler, dispatcher, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
