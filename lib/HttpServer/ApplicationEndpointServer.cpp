@@ -89,6 +89,8 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _checkAuthentication(checkAuthentication),
     _handlerFactory(0), 
     _servers(),
+    _endpointList(),
+    _endpoints(),
     _httpsKeyfile(),
     _cafile(),
     _sslProtocol(HttpsServer::TLS_V1),
@@ -126,29 +128,29 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the endpoint server
+/// @brief builds the endpoint servers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) {
+bool ApplicationEndpointServer::buildServers () {
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
   
   EndpointServer* server;
   
   // unencrypted endpoints
-  if (endpointList->count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
     // http 
     server = new HttpServer(_applicationScheduler->scheduler(), 
                             _applicationDispatcher->dispatcher(), 
                             _handlerFactory); 
  
-    server->setEndpointList(endpointList);
+    server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
 
 
   // ssl endpoints
-  if (endpointList->count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
+  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
     // check the ssl context
     if (_sslContext == 0) {
       LOGGER_FATAL << "no ssl context is known, cannot create https server";
@@ -163,7 +165,7 @@ bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) 
                              _handlerFactory,
                              _sslContext);
 
-    server->setEndpointList(endpointList);
+    server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
 
@@ -188,6 +190,10 @@ bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) 
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
+  options[ApplicationServer::OPTIONS_SERVER]
+    ("server.endpoint", &_endpoints, "endpoint for client requests")
+  ;
+
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
@@ -209,6 +215,36 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   if (! ok) {
     return false;
   }
+  
+  if (0 == _endpoints.size()) {
+    LOGGER_FATAL << "no endpoint has been specified, giving up";
+    cerr << "no endpoint has been specified, giving up\n";
+    LOGGER_INFO << "please use the '--server.endpoint' option";
+    exit(EXIT_FAILURE);
+  }
+  
+  // add & validate endpoints
+  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
+    Endpoint* endpoint = Endpoint::serverFactory(*i);
+  
+    if (endpoint == 0) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+
+    assert(endpoint);
+
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
+    if (! ok) {
+      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
+      cerr << "invalid endpoint '" << *i << "'\n";
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  // dump used endpoints for user information
+  _endpointList.dump();
 
   // and return
   return true;
@@ -229,7 +265,7 @@ bool ApplicationEndpointServer::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare2 () {
-  // scheduler might be created after prepare()!!
+  // scheduler might be created after prepare(), so we need to use prepare2()!!
   Scheduler* scheduler = _applicationScheduler->scheduler();
  
   if (scheduler == 0) {
@@ -260,7 +296,6 @@ bool ApplicationEndpointServer::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::close () {
-
   // close all open connections
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;

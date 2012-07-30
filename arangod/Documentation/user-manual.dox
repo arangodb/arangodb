@@ -190,7 +190,7 @@
 /// following values: fatal, error, warning, info, debug, trace.  For more
 /// information see @ref CommandLineLogging "here".
 ///
-/// @copydetails triagens::arango::ArangoServer::_endpoints
+/// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
 /// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 //////////////////////////////////////////////////////////
