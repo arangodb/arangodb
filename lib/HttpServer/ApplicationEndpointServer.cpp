@@ -150,6 +150,14 @@ bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) 
 
   // ssl endpoints
   if (endpointList->count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
+    // check the ssl context
+    if (_sslContext == 0) {
+      LOGGER_FATAL << "no ssl context is known, cannot create https server";
+      LOGGER_INFO << "please use the --server.keyfile option";
+
+      return false;
+    }
+
     // https 
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
@@ -213,14 +221,6 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
 bool ApplicationEndpointServer::prepare () {
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
-
-  // check the ssl context
-  if (_sslContext == 0) {
-    LOGGER_FATAL << "no ssl context is known, cannot create https server";
-    LOGGER_INFO << "please use the --server.keyfile option";
-
-    return false;
-  }
 
   return true;
 }
