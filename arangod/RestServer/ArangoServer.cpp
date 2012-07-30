@@ -51,7 +51,7 @@
 #include "BasicsC/strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/ApplicationHttpServer.h"
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 
@@ -188,7 +188,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _binaryPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
-    _applicationHttpServer(0),
+    _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _endpoints(),
@@ -449,12 +449,12 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-  _applicationHttpServer = new ApplicationHttpServer(_applicationServer,
-                                                     _applicationScheduler,
-                                                     _applicationDispatcher,
-                                                     "arangodb",
-                                                     TRI_CheckAuthenticationAuthInfo);
-  _applicationServer->addFeature(_applicationHttpServer);
+  _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
+                                                             _applicationScheduler,
+                                                             _applicationDispatcher,
+                                                             "arangodb",
+                                                             TRI_CheckAuthenticationAuthInfo);
+  _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
@@ -625,10 +625,10 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
 
-  // create the servers
-  _applicationHttpServer->buildServers(&_endpointList);
+  // create the server
+  _applicationEndpointServer->buildServers(&_endpointList);
     
-  HttpHandlerFactory* handlerFactory = _applicationHttpServer->getHandlerFactory();
+  HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
   DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application http server feature
+/// @brief application endpoint server feature
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationHttpServer.h"
+#include "ApplicationEndpointServer.h"
 
 #include <openssl/err.h>
 
@@ -77,11 +77,11 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServer,
-                                              ApplicationScheduler* applicationScheduler,
-                                              ApplicationDispatcher* applicationDispatcher,
-                                              std::string const& authenticationRealm,
-                                              HttpHandlerFactory::auth_fptr checkAuthentication)
+ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applicationServer,
+                                                      ApplicationScheduler* applicationScheduler,
+                                                      ApplicationDispatcher* applicationDispatcher,
+                                                      std::string const& authenticationRealm,
+                                                      HttpHandlerFactory::auth_fptr checkAuthentication)
   : ApplicationFeature("HttpServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
@@ -104,7 +104,7 @@ ApplicationHttpServer::ApplicationHttpServer (ApplicationServer* applicationServ
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationHttpServer::~ApplicationHttpServer () {
+ApplicationEndpointServer::~ApplicationEndpointServer () {
   for_each(_servers.begin(), _servers.end(), DeleteObject());
   _servers.clear();
 
@@ -127,10 +127,10 @@ ApplicationHttpServer::~ApplicationHttpServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the http server
+/// @brief builds the endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::buildServers (const EndpointList* endpointList) {
+bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) {
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
   
@@ -180,7 +180,7 @@ bool ApplicationHttpServer::buildServers (const EndpointList* endpointList) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
+void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
@@ -195,7 +195,7 @@ void ApplicationHttpServer::setupOptions (map<string, ProgramOptionsDescription>
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
+bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -211,7 +211,7 @@ bool ApplicationHttpServer::parsePhase2 (ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::prepare () {
+bool ApplicationEndpointServer::prepare () {
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
 
   // check the ssl context
@@ -229,7 +229,7 @@ bool ApplicationHttpServer::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::prepare2 () {
+bool ApplicationEndpointServer::prepare2 () {
   // scheduler might be created after prepare()!!
   Scheduler* scheduler = _applicationScheduler->scheduler();
  
@@ -246,7 +246,7 @@ bool ApplicationHttpServer::prepare2 () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::open () {
+bool ApplicationEndpointServer::open () {
   for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpServer* server = *i;
 
@@ -260,7 +260,7 @@ bool ApplicationHttpServer::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationHttpServer::close () {
+void ApplicationEndpointServer::close () {
 
   // close all open connections
   for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
@@ -281,7 +281,7 @@ void ApplicationHttpServer::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationHttpServer::stop () {
+void ApplicationEndpointServer::stop () {
   for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     HttpServer* server = *i;
 
@@ -306,7 +306,7 @@ void ApplicationHttpServer::stop () {
 /// @brief creates an ssl context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationHttpServer::createSslContext () {
+bool ApplicationEndpointServer::createSslContext () {
 
   // check keyfile
   if (_httpsKeyfile.empty()) {
