@@ -32,8 +32,9 @@
 
 #include <openssl/ssl.h>
 
-#include "HttpServer/HttpHandlerFactory.h"
+#include "GeneralServer/EndpointServer.h"
 #include "Rest/EndpointList.h"
+#include "HttpServer/HttpHandlerFactory.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -43,7 +44,6 @@ namespace triagens {
   namespace rest {
     class ApplicationDispatcher;
     class ApplicationScheduler;
-    class HttpServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   class ApplicationEndpointServer
@@ -254,7 +254,7 @@ namespace triagens {
 /// @brief all constructed servers
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<HttpServer*> _servers;
+        vector<EndpointServer*> _servers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keyfile containing server certificate

@@ -82,7 +82,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
                                                       HttpHandlerFactory::auth_fptr checkAuthentication)
-  : ApplicationFeature("HttpServer"),
+  : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
@@ -134,7 +134,7 @@ bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) 
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
   
-  HttpServer* server;
+  EndpointServer* server;
   
   // unencrypted endpoints
   if (endpointList->count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
@@ -150,6 +150,14 @@ bool ApplicationEndpointServer::buildServers (const EndpointList* endpointList) 
 
   // ssl endpoints
   if (endpointList->count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
+    // check the ssl context
+    if (_sslContext == 0) {
+      LOGGER_FATAL << "no ssl context is known, cannot create https server";
+      LOGGER_INFO << "please use the --server.keyfile option";
+
+      exit(EXIT_FAILURE);
+    }
+
     // https 
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
@@ -214,14 +222,6 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 bool ApplicationEndpointServer::prepare () {
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
 
-  // check the ssl context
-  if (_sslContext == 0) {
-    LOGGER_FATAL << "no ssl context is known, cannot create https server";
-    LOGGER_INFO << "please use the --server.keyfile option";
-
-    return false;
-  }
-
   return true;
 }
 
@@ -247,8 +247,8 @@ bool ApplicationEndpointServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::open () {
-  for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    HttpServer* server = *i;
+  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
+    EndpointServer* server = *i;
 
     server->startListening();
   }
@@ -263,15 +263,15 @@ bool ApplicationEndpointServer::open () {
 void ApplicationEndpointServer::close () {
 
   // close all open connections
-  for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    HttpServer* server = *i;
+  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
+    EndpointServer* server = *i;
 
     server->shutdownHandlers();
   }
 
   // close all listen sockets
-  for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    HttpServer* server = *i;
+  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
+    EndpointServer* server = *i;
 
     server->stopListening();
   }
@@ -282,8 +282,8 @@ void ApplicationEndpointServer::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::stop () {
-  for (vector<HttpServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    HttpServer* server = *i;
+  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
+    EndpointServer* server = *i;
 
     server->stop();
   }
@@ -345,7 +345,8 @@ bool ApplicationEndpointServer::createSslContext () {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
       LOGGER_ERROR << lastSSLError();
-      return false;
+      
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -358,7 +359,8 @@ bool ApplicationEndpointServer::createSslContext () {
   if (res != 1) {
     LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
     LOGGER_ERROR << lastSSLError();
-    return false;
+    
+    exit(EXIT_FAILURE);
   }
 
   // check CA
@@ -370,7 +372,8 @@ bool ApplicationEndpointServer::createSslContext () {
     if (res == 0) {
       LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
       LOGGER_ERROR << lastSSLError();
-      return false;
+    
+      exit(EXIT_FAILURE);
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -380,7 +383,8 @@ bool ApplicationEndpointServer::createSslContext () {
     if (certNames == 0) {
       LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
       LOGGER_ERROR << lastSSLError();
-      return false;
+      
+      exit(EXIT_FAILURE);
     }
 
     if (TRI_IsTraceLogging(__FILE__)) {

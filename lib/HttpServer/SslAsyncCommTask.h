@@ -32,20 +32,30 @@
 #include "GeneralServer/GeneralAsyncCommTask.h"
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#include <Basics/ssl-helper.h>
+
+#include <Logger/Logger.h>
+#include <Basics/MutexLocker.h>
+#include <Basics/StringBuffer.h>
+#include <Rest/HttpRequest.h>
 
 #include "HttpServer/HttpCommTask.h"
+#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/HttpServer.h"
+
 
 namespace triagens {
   namespace rest {
-    class HttpServer;
-    class HttpCommTask;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief task for https communication
+    /// @brief task for ssl communication
     ////////////////////////////////////////////////////////////////////////////////
 
-    class SslAsyncCommTask : public GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask> {
+    template<typename S, typename CT>
+    class SslAsyncCommTask : public GeneralAsyncCommTask<S, HttpHandlerFactory, CT> {
       private:
         static size_t const READ_BLOCK_SIZE = 10000;
 
@@ -55,7 +65,20 @@ namespace triagens {
         /// @brief constructs a new task with a given socket
         ////////////////////////////////////////////////////////////////////////////////
 
-        SslAsyncCommTask (HttpServer*, socket_t, ConnectionInfo const&, BIO*);
+        SslAsyncCommTask (S* server, 
+                          socket_t fd, 
+                          ConnectionInfo const& info, 
+                          BIO* bio) 
+        : Task("SslAsyncCommTask"),
+          GeneralAsyncCommTask<S, HttpHandlerFactory, CT>(server, fd, info),
+          accepted(false),
+          readBlocked(false),
+          readBlockedOnWrite(false),
+          writeBlockedOnRead(false),
+          ssl((SSL*) info.sslContext),
+          bio(bio) {
+          tmpReadBuffer = new char[READ_BLOCK_SIZE];
+        }
 
       protected:
 
@@ -63,30 +86,296 @@ namespace triagens {
         /// @brief destructs a task
         ////////////////////////////////////////////////////////////////////////////////
 
-        ~SslAsyncCommTask ();
+        ~SslAsyncCommTask () {
+          static int const SHUTDOWN_ITERATIONS = 10;
+          bool ok = false;
+
+          for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
+            if (SSL_shutdown(ssl) != 0) {
+              ok = true;
+              break;
+            }
+          }
+
+          if (! ok) {
+            LOGGER_WARNING << "cannot complete SSL shutdown";
+          }
+
+          SSL_free(ssl); // this will free bio as well
+          delete[] tmpReadBuffer;
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleEvent (EventToken token, EventType event);
+        bool handleEvent (EventToken token, EventType revents) {
+          bool result = GeneralAsyncCommTask<S, HttpHandlerFactory, CT>::handleEvent(token, revents);
+
+          if (result) {
+            if (readBlockedOnWrite) {
+              this->scheduler->startSocketEvents(this->writeWatcher);
+            }
+          }
+
+          return result;
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool fillReadBuffer (bool& closed);
+        bool fillReadBuffer (bool& closed) {
+          closed = false;
+
+          // is the handshake already done?
+          if (! accepted) {
+            if (! trySSLAccept()) {
+              LOGGER_DEBUG << "failed to establish SSL connection";
+              return false;
+            }
+
+            return true;
+          }
+
+          // check if read is blocked by write
+          if (writeBlockedOnRead) {
+            return trySSLWrite(closed, ! this->hasWriteBuffer());
+          }
+
+          return trySSLRead(closed);
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// {@inheritDoc}
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleWrite (bool& closed, bool noWrite);
+        bool handleWrite (bool& closed, bool noWrite) {
+
+          // is the handshake already done?
+          if (! accepted) {
+            if (! trySSLAccept()) {
+              LOGGER_DEBUG << "failed to establish SSL connection";
+              return false;
+            }
+
+            return true;
+          }
+
+          // check if write is blocked by read
+          if (readBlockedOnWrite) {
+            if (! trySSLRead(closed)) {
+              return false;
+            }
+
+            return this->handleRead(closed);
+          }
+
+          return trySSLWrite(closed, noWrite);
+        }
 
       private:
-        bool trySSLAccept ();
-        bool trySSLRead (bool& closed);
-        bool trySSLWrite (bool& closed, bool noWrite);
+
+        bool trySSLAccept () {
+          int res = SSL_accept(ssl);
+
+          // accept successful
+          if (res == 1) {
+            LOGGER_DEBUG << "established SSL connection";
+            accepted = true;
+            return true;
+          }
+
+          // shutdown of connection
+          else if (res == 0) {
+            LOGGER_DEBUG << "SSL_accept failed";
+            LOGGER_DEBUG << triagens::basics::lastSSLError();
+            return false;
+          }
+
+          // maybe we need more data
+          else {
+            int err = SSL_get_error(ssl, res);
+
+            if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
+              return true;
+            }
+            else {
+              LOGGER_WARNING << "error in SSL handshake";
+              LOGGER_WARNING << triagens::basics::lastSSLError();
+              return false;
+            }
+          }
+        }
+
+        bool trySSLRead (bool& closed) {
+          closed = false;
+          readBlocked = false;
+          readBlockedOnWrite = false;
+
+          int nr = SSL_read(ssl, tmpReadBuffer, READ_BLOCK_SIZE);
+
+          if (nr <= 0) {
+            int res = SSL_get_error(ssl, nr);
+
+            switch (res) {
+              case SSL_ERROR_NONE:
+                LOGGER_WARNING << "unknown error in SSL_read";
+                return false;
+
+              case SSL_ERROR_ZERO_RETURN:
+                closed = true;
+                SSL_shutdown(ssl);
+                return false;
+
+              case SSL_ERROR_WANT_READ:
+                readBlocked = true;
+                break;
+
+              case SSL_ERROR_WANT_WRITE:
+                readBlockedOnWrite = true;
+                break;
+
+              case SSL_ERROR_WANT_CONNECT:
+                LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
+                break;
+
+              case SSL_ERROR_WANT_ACCEPT:
+                LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
+                break;
+
+              case SSL_ERROR_SYSCALL: 
+                {
+                  unsigned long err = ERR_peek_error();
+
+                  if (err != 0) {
+                    LOGGER_DEBUG << "SSL_read returned syscall error with: " << triagens::basics::lastSSLError();
+                  }
+                  else if (nr == 0) {
+                    LOGGER_DEBUG << "SSL_read returned syscall error because an EOF was received";
+                  }
+                  else {
+                    LOGGER_DEBUG << "SSL_read return syscall error: " << errno << ", " << strerror(errno);
+                  }
+
+                  return false;
+                }
+
+              default:
+                LOGGER_DEBUG << "received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError();
+                return false;
+            }
+          }
+          else {
+            this->_readBuffer->appendText(tmpReadBuffer, nr);
+          }
+
+          return true;
+        }
+
+        bool trySSLWrite (bool& closed, bool noWrite) {
+          closed = false;
+
+          // if no write buffer is left, return
+          if (noWrite) {
+            return true;
+          }
+
+          bool callCompletedWriteBuffer = false;
+
+          {
+            MUTEX_LOCKER(this->writeBufferLock);
+
+            // write buffer to SSL connection
+            size_t len = this->_writeBuffer->length() - this->writeLength;
+            int nr = 0;
+
+            if (0 < len) {
+              writeBlockedOnRead = false;
+              nr = SSL_write(ssl, this->_writeBuffer->begin() + this->writeLength, (int) len);
+
+              if (nr <= 0) {
+                int res = SSL_get_error(ssl, nr);
+
+                switch (res) {
+                  case SSL_ERROR_NONE:
+                    LOGGER_WARNING << "unknown error in SSL_write";
+                    break;
+
+                  case SSL_ERROR_ZERO_RETURN:
+                    closed = true;
+                    SSL_shutdown(ssl);
+                    return false;
+                    break;
+
+                  case SSL_ERROR_WANT_CONNECT:
+                    LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
+                    break;
+
+                  case SSL_ERROR_WANT_ACCEPT:
+                    LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
+                    break;
+
+                  case SSL_ERROR_WANT_WRITE:
+                    return false;
+
+                  case SSL_ERROR_WANT_READ:
+                    writeBlockedOnRead = true;
+                    return true;
+
+                  case SSL_ERROR_SYSCALL: 
+                    {
+                      unsigned long err = ERR_peek_error();
+
+                      if (err != 0) {
+                        LOGGER_DEBUG << "SSL_read returned syscall error with: " << triagens::basics::lastSSLError();
+                      }
+                      else if (nr == 0) {
+                        LOGGER_DEBUG << "SSL_read returned syscall error because an EOF was received";
+                      }
+                      else {
+                        LOGGER_DEBUG << "SSL_read return syscall error: " << errno << ", " << strerror(errno);
+                      }
+
+                      return false;
+                    }
+
+                  default:
+                    LOGGER_DEBUG << "received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError();
+                    return false;
+                }
+              }
+              else {
+                len -= nr;
+              }
+            }
+
+            if (len == 0) {
+              if (this->ownBuffer) {
+                delete this->_writeBuffer;
+              }
+
+              callCompletedWriteBuffer = true;
+            }
+            else {
+              this->writeLength += nr;
+            }
+          }
+
+          // we have to release the lock, before calling completedWriteBuffer
+          if (callCompletedWriteBuffer) {
+            this->completedWriteBuffer(closed);
+
+            if (closed) {
+              return false;
+            }
+          }
+
+          // we might have a new write buffer
+          this->scheduler->sendAsync(SocketTask::watcher);
+
+          return true;
+        }
 
       private:
         bool accepted;
