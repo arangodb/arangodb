@@ -33,7 +33,6 @@
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Scheduler/SocketTask.h"
 
 // -----------------------------------------------------------------------------
@@ -133,7 +132,7 @@ namespace triagens {
 
 #endif
 
-          // free http request
+          // free request
           if (_request != 0) {
             delete _request;
           }
