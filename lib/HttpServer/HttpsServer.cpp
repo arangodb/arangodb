@@ -35,7 +35,7 @@
 #include "Basics/MutexLocker.h"
 
 #include "HttpServer/HttpHandler.h"
-#include "HttpsServer/HttpsAsyncCommTask.h"
+#include "HttpServer/HttpsAsyncCommTask.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
