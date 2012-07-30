@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server
+/// @brief general http server
 ///
 /// @file
 ///
@@ -26,10 +26,10 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_HTTP_SERVER_H
-#define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H
+#define TRIAGENS_HTTP_SERVER_GENERAL_HTTP_SERVER_H 1
 
-#include "HttpServer/GeneralHttpServer.h"
+#include "GeneralServer/GeneralServerDispatcher.h"
 
 #include "HttpServer/HttpCommTask.h"
 
@@ -54,7 +54,8 @@ namespace triagens {
 /// @brief http server implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpServer : public GeneralHttpServer<HttpServer, HttpCommTask> {
+    template<typename S, typename CT>
+    class GeneralHttpServer : public GeneralServerDispatcher<S, HttpHandlerFactory, CT> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -72,14 +73,57 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http server
+/// @brief constructs a new general http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer (Scheduler* scheduler,
-                    Dispatcher* dispatcher,
-                    HttpHandlerFactory* handlerFactory) 
-        : GeneralHttpServer<HttpServer, HttpCommTask>(scheduler, dispatcher, handlerFactory) {
+        GeneralHttpServer (Scheduler* scheduler,
+                           Dispatcher* dispatcher,
+                           HttpHandlerFactory* handlerFactory)
+        : GeneralServerDispatcher<S, HttpHandlerFactory, CT>(scheduler, dispatcher),
+          _handlerFactory(handlerFactory) {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the handler factory
+////////////////////////////////////////////////////////////////////////////////
+          
+        HttpHandlerFactory* getHandlerFactory () const {
+          return _handlerFactory;
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return encryption to be used
+////////////////////////////////////////////////////////////////////////////////
+          
+        virtual Endpoint::Encryption getEncryption () const {
+          return Endpoint::ENCRYPTION_NONE;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpHandlerFactory* _handlerFactory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
