@@ -12,6 +12,7 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
 
+var existingCharts; 
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -97,8 +98,19 @@ $("#documents_last").live('click', function () {
 ///////////////////////////////////////////////////////////////////////////////
 
 $(".statsClose").live('click', function () {
-  var id = $(this).closest("li").attr("id"); 
-  $("#"+id).fadeOut();  
+  var divID = $(this).parent().parent();
+  var chart = $(this).parent().parent().attr('id');
+  var chartID = chart.charAt(chart.length-1);
+  existingCharts.splice(chartID, 1); 
+  $('#graphBox').empty();  
+  createChartBoxes();  
+  stateSaving(); 
+  
+  if (temptop > 150 && templeft > 20) {
+    templeft = templeft - 10; 
+    temptop = temptop - 10;
+  }
+
 });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -119,7 +131,11 @@ $(".statsSettings").live('click', function () {
 $(".statsCharts").live('click', function () {
   var chartID = $(this).parent().next("div");
   var settingsID = $(this).parent().next("div").next("div");
-  updateGraphs(false); 
+  var graphID = chartID.attr('id').charAt(chartID.attr('id').length-1);
+  var test = existingCharts[graphID]; 
+  stateSaving(); 
+  updateChartBoxes(); 
+ 
   $(settingsID).hide(); 
   $(chartID).fadeIn(); 
 });
@@ -606,29 +622,16 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
+      $('#graphBox').empty(); 
       stateReading(); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
       createnav ("Statistics"); 
-      $( ".resizable" ).resizable({
-        handles: 'e, w',
-        stop: function (event, ui) {
-          stateSaving(); 
-        } 
-      }); 
-      $( ".draggable" ).draggable({
-        containment: "#centerView",  
-        stop: function (event, ui) {
-          stateSaving(); 
-        }
-      }); 
+      makeDraggableAndResizable(); 
       //TODO
-      $( "#statisticRadioDiv" ).buttonset();
-      $( "#connectionsGranularityDiv" ).buttonset();
-      $( "#requestsGranularityDiv" ).buttonset();
-      updateGraphs(true); 
-      stateSaving(); 
+      createChartBoxes(); 
+      updateGraphs(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2488,56 +2491,10 @@ function validate(evt) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// live click connections radio buttons 
-///////////////////////////////////////////////////////////////////////////////
-
-$('#idsent').live('click', function () {
-  stateSaving(); 
-}); 
-$('#idreceived').live('click', function () {
-  stateSaving(); 
-}); 
-
-///////////////////////////////////////////////////////////////////////////////
-/// live click connections radio buttons 
-///////////////////////////////////////////////////////////////////////////////
-$('#connectionsMinutes').live('click', function () {
-  drawConnections("minutes");  
-  stateSaving(); 
-});
-$('#connectionsHours').live('click', function () {
-  drawConnections("hours");  
-  stateSaving(); 
-});
-$('#connectionsDays').live('click', function () {
-  drawConnections("days");  
-  stateSaving(); 
-});
-///////////////////////////////////////////////////////////////////////////////
-/// live click requests radio buttons 
-///////////////////////////////////////////////////////////////////////////////
-$('#requestsMinutes').live('click', function () {
-  drawRequests("minutes");  
-  stateSaving(); 
-});
-$('#requestsHours').live('click', function () {
-  drawRequests("hours");  
-  stateSaving(); 
-});
-$('#requestsDays').live('click', function () {
-  drawRequests("days");  
-  stateSaving(); 
-});
-///////////////////////////////////////////////////////////////////////////////
 /// draw hours statistics 
 ///////////////////////////////////////////////////////////////////////////////
 
-function drawConnections (granularity) {
-
-///////////////////////////////////////////////////////////////////////////////
-/// draw connections (granularity) 
-///////////////////////////////////////////////////////////////////////////////
-
+function drawConnections (placeholder, granularity) {
   var array = [];
   $.ajax({
     type: "GET",
@@ -2559,7 +2516,7 @@ function drawConnections (granularity) {
           }, 
           series: {
             lines: { show: true, 
-                     steps: true, 
+                     steps: false, 
                      fill: true, 
                      lineWidth: 0.5, 
                      fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.6 } ] } 
@@ -2581,9 +2538,9 @@ function drawConnections (granularity) {
           }
         };
 
-        $.plot($("#placeholderConnection"), [array], options);
+        $.plot($(placeholder), [array], options);
 
-        $("#placeholderConnection").qtip({
+        $(placeholder).qtip({
           prerender: true,
           content: 'Loading...', // Use a loading message primarily
           position: {
@@ -2598,7 +2555,7 @@ function drawConnections (granularity) {
           }
         });
 
-  	$("#placeholderConnection").bind('plothover', function(event, coords, item) {
+  	$(placeholder).bind('plothover', function(event, coords, item) {
           var self = $(this),
           api = $(this).qtip(), previousPoint, content; 
 
@@ -2637,9 +2594,11 @@ function drawConnections (granularity) {
 /// draw requests (granularity) 
 ///////////////////////////////////////////////////////////////////////////////
 
-function drawRequests (granularity) {
+function drawRequests (placeholder, granularity) {
   var arraySent = [];
   var arrayReceived = [];
+  var boxCount = placeholder.charAt(placeholder.length-1); 
+ 
   $.ajax({
     type: "GET",
     url: "/_admin/request-statistics?granularity=" + granularity,
@@ -2684,23 +2643,23 @@ function drawRequests (granularity) {
           }
         };
 
-        var sent = $('input:checkbox[name=bytessent]:checked').val(); 
-        var received = $('input:checkbox[name=bytesreceived]:checked').val(); 
+        var sent = $('input:checkbox[name=bytessent'+boxCount+']:checked').val(); 
+        var received = $('input:checkbox[name=bytesreceived'+boxCount+']:checked').val(); 
 
         if ( sent == "on" && received == "on" ) {
-          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
         }
         else if ( sent == "on" && received == undefined ) {
-          $.plot($("#placeholderBytesSent"), [{ label: "Bytes sent", data: arraySent}], options);
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}], options);
         }   
         else if ( sent == undefined && received == "on" ) {
-          $.plot($("#placeholderBytesSent"), [{ label: "Bytes received", data: arrayReceived}], options);
+          $.plot($(placeholder), [{ label: "Bytes received", data: arrayReceived}], options);
         }
         else if ( sent == undefined && received == undefined ) {
-          $.plot($("#placeholderBytesSent"), [], options);
+          $.plot($(placeholder), [], options);
         }
 
-        $("#placeholderBytesSent").qtip({
+        $(placeholder).qtip({
           prerender: true,
           content: 'Loading...', // Use a loading message primarily
           position: {
@@ -2715,7 +2674,7 @@ function drawRequests (granularity) {
           }
         });
 
-  	$("#placeholderBytesSent").bind('plothover', function(event, coords, item) {
+  	$(placeholder).bind('plothover', function(event, coords, item) {
           var self = $(this),
           api = $(this).qtip(), previousPoint, content; 
 
@@ -2754,16 +2713,9 @@ function drawRequests (granularity) {
   });
 }
 
-function updateGraphs(timeout) {
-  var connections = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
-  var requests = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
-  drawConnections(connections); 
-  drawRequests(requests); 
-  if (timeout == true) {
+function updateGraphs() {
+    updateChartBoxes(); 
     setTimeout(updateGraphs, 60000);
-  }
-  else {
-  }
 }
 
 $(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
@@ -2807,89 +2759,218 @@ var ItemActionButtons = {
   onCancelClick: function () { },
   onSaveClick: function () { },
   onSaveExtraClick: function () {
-
- 
     $('#btnSaveExtraOptions').toggle();
- 
     var btnLeft = $('#divSaveButton').offset().left;
     var btnTop = $('#divSaveButton').offset().top + $('#divSaveButton').outerHeight(); // +$('#divSaveButton').css('padding');
     var btnWidth = $('#divSaveButton').outerWidth();
     $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
   },
   ShowConnectionsStats: function () {
-    $("#connectionsLi").fadeIn();  
+    var chartcount = $("#graphBox").children().size();
+    existingCharts[chartcount]= {type:"connection", granularity:"minutes", top:50, left:50};
+    createSingleBox (chartcount); 
   },
   ShowRequestsStats: function () { 
-    $("#requestsLi").fadeIn();  
+    var chartcount = $("#graphBox").children().size();
+    existingCharts[chartcount]= {type:"request", granularity:"minutes", sent:true, received:true, top:50, left: 50};
+    createSingleBox (chartcount); 
   }
 }
-
-$('#btnAddNewStat').live('click', function () { 
-  //Check which divs are already shown 
-    var statsArray = ["connectionsLi", "requestsLi"]; 
-
-    for (var i = 0; i < statsArray.length; ++i) {
-      if ($("#"+statsArray[i]).isVisible() == true) { 
-        $("add"+statsArray[i]+"Btn").addClass("statDisabled"); 
-        var id = "#add" + statsArray[i] + "Btn"; 
-        $(id).removeClass("statEnabled");  
-        $(id).addClass("statDisabled");  
-      }
-      else {
-        var id = "#add" + statsArray[i] + "Btn"; 
-        $(id).removeClass("statDisabled");  
-        $(id).addClass("statEnabled");  
-      }
-    }
-});
 
 $.fn.isVisible = function() {
   return $.expr.filters.visible(this[0]);
 };
 
 function stateSaving () {
-  //connections
-  var connectionspos = $("#connectionsLi").position();  
-  var conwidth = $("#connectionsLi").width();  
-  var congran = $('input[name=connectionsGranularity]:checked', '#connectionsGranularity').val();
-  localStorage.setItem("#connectionsLi", JSON.stringify([connectionspos.top, connectionspos.left, conwidth, congran]));
-  //requests
-  var requestspos = $("#requestsLi").position(); 
-  var reqwidth = $("#requestsLi").width(); 
-  var reqgran = $('input[name=requestsGranularity]:checked', '#requestsGranularity').val();
-  var sent = $('input:checkbox[name=bytessent]:checked').val(); 
-  var received = $('input:checkbox[name=bytesreceived]:checked').val();
-  localStorage.setItem("#requestsLi", JSON.stringify([requestspos.top, requestspos.left, reqwidth, reqgran, sent, received]));
+  divCount = Object.keys(existingCharts).length;
+  for ( i = 0; i < divCount; i++) {
+
+    // position statesaving 
+    var tempcss = $("#chartBox"+i).position(); 
+    // size statesaving 
+    var tempheight = $("#chartBox"+i).height();
+    var tempwidth = $("#chartBox"+i).width();
+    // granularity statesaving 
+    var grantouse = $('input[name=boxGranularity'+i+']:checked').val(); 
+    // edit obj
+    existingCharts[i].top = tempcss.top;
+    existingCharts[i].left = tempcss.left;
+    existingCharts[i].width = tempwidth; 
+    existingCharts[i].height = tempheight; 
+    existingCharts[i].granularity = grantouse;  
+  }
+  //write obj into local storage
+  localStorage.setItem("statobj", JSON.stringify(existingCharts)); 
 }
 
 function stateReading () {
-  try {
-    //connections
-    var connectionsPos = localStorage.getItem("#connectionsLi");
-    var parsedConPos = JSON.parse(connectionsPos); 
-    //requests
-    var requestsPos = localStorage.getItem("#requestsLi");
-    var parsedReqPos = JSON.parse(requestsPos); 
-    if ( parsedConPos != null && parsedReqPos != null ) {
-      //connections
-      $('#connectionsLi').css('top', parsedConPos[0]);
-      $('#connectionsLi').css('left', parsedConPos[1]);
-      $('#connectionsLi').css('width', parsedConPos[2]); 
-      $('input:radio[name=connectionsGranularity][value='+parsedConPos[3]+']').click();
-      //requests
-      $('#requestsLi').css('top', parsedReqPos[0]);
-      $('#requestsLi').css('left', parsedReqPos[1]);
-      $('#requestsLi').css('width', parsedReqPos[2]);
-      $('input:radio[name=requestsGranularity][value='+parsedReqPos[3]+']').click();
-      if (parsedReqPos[4] == null ) {
-        $('#idsent').click();  
-      }
-      if (parsedReqPos[5] == null ) {
-        $('#idreceived').click();  
-      }
+
+  try { 
+    existingCharts = JSON.parse(localStorage.getItem("statobj"));   
+    if (existingCharts != null) {
+    }
+    else {
+      existingCharts = [{type:"connection", granularity:"minutes", top:140, left:10}, {type:"request", granularity:"minutes", sent:true, received:true, top:140, left:420}]; 
     }
   }
+
   catch (e) {
-    console.log(e); 
+    alert("no data:" +e); 
   }
+}
+ 
+function createChartBoxes () {
+  var boxCount = 0;  
+  $.each(existingCharts, function(v, i ) {
+    $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>');
+    $("#chartBox"+boxCount).css({top: i.top, left: i.left}); 
+    $("#chartBox"+boxCount).css({width: i.width, height: i.height}); 
+    $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+    $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+      '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+      '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+      '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+      '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    $.each(i, function(key, val ) {
+      $('#chartBox'+boxCount+i.granularity).click();
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+          switch (val) {
+            case "connection":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              drawConnections('#placeholderBox'+boxCount, grantouse); 
+              break; 
+            case "request":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+                '<input id="sent'+boxCount+'" type="checkbox" name="bytessent'+boxCount+'">'+
+                '<label for="sent'+boxCount+'">Bytes sent</label>'+
+                '<br>'+
+                '<input id="received'+boxCount+'" type="checkbox" name="bytesreceived'+boxCount+'">'+
+                '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+              '</p>');
+
+              if (i.sent == true) {
+                $('#sent'+boxCount).click(); 
+              }
+              if (i.received == true) {
+                $('#received'+boxCount).click(); 
+              } 
+
+              drawRequests('#placeholderBox'+boxCount, grantouse); 
+              break; 
+          }
+      } 
+    });
+    boxCount++; 
+  });
+  makeDraggableAndResizable (); 
+  $(".radioFormat").buttonset();
+}
+
+function updateChartBoxes () {
+  var boxCount; 
+  $.each(existingCharts, function(v, i ) {
+    boxCount = v;  
+    $.each(i, function(key, val ) {
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+        switch(val) { 
+          case "connection":
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawConnections('#placeholderBox'+boxCount, grantouse); 
+            break; 
+          case "request": 
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawRequests('#placeholderBox'+boxCount, grantouse); 
+            break;
+        }
+      }
+    });
+  });
+}
+
+function makeDraggableAndResizable () {
+      $( ".resizable" ).resizable({
+        handles: 'e, w',
+        grid: 10, 
+        stop: function (event, ui) {
+          stateSaving(); 
+        } 
+      }); 
+      $( ".draggable" ).draggable({
+        grid: [ 10,10 ],  
+        containment: "#centerView",  
+        stop: function (event, ui) {
+          stateSaving(); 
+        }
+      }); 
+}
+
+var temptop = 150; 
+var templeft = 20; 
+
+function createSingleBox (id) {
+  var boxCount = id;  
+  var val = existingCharts[id].type; 
+ 
+  $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
+  $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
+  $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+  $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+    '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+    '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+    '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+    '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    switch (val) {
+      case "connection":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        drawConnections('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+      case "request":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+          '<input id="sent'+boxCount+'" type="checkbox" checked="checked" name="bytessent'+boxCount+'">'+
+          '<label for="sent'+boxCount+'">Bytes sent</label>'+
+          '<br>'+
+          '<input id="received'+boxCount+'" checked="checked" type="checkbox" name="bytesreceived'+boxCount+'">'+
+          '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+        '</p>');
+
+        if (i.sent == true) {
+          $('#sent'+boxCount).click(); 
+        }
+        if (i.received == true) {
+          $('#received'+boxCount).click(); 
+        } 
+
+        drawRequests('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+    }
+  $('#placeholderBoxSettings'+boxCount).append('<button id="saveChanges'+boxCount+'" class="saveChanges"></button>');
+  makeDraggableAndResizable(); 
+  $(".radioFormat").buttonset();
+  templeft = templeft + 10; 
+  temptop = temptop + 10;
+  stateSaving();  
 }
