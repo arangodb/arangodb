@@ -134,8 +134,6 @@ namespace triagens {
 
         void addResponse (HttpResponse* response) {
           LOGGER_ERROR << "not implemented";
-
-          return 0;
         }
     };
   }

@@ -31,8 +31,8 @@
 
 #include "GeneralServer/GeneralServerDispatcher.h"
 
-#include "HttpServer/GeneralBinaryServer.h"
-#include "HttpServer/BinaryCommTask.h"
+#include "BinaryServer/GeneralBinaryServer.h"
+#include "BinaryServer/BinaryCommTask.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
