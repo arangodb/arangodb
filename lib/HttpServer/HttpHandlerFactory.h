@@ -43,7 +43,6 @@ namespace triagens {
     class HttpRequest;
     class HttpResponse;
     class MaintenanceCallback;
-    class Scheduler;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class HttpHandlerFactory
