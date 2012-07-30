@@ -400,7 +400,6 @@
       </div>
  
       <div id="statusView" style="display: none">
-      
         <div id="statisticRadioDiv" class="radioFormat">
           <div class="ItemActionButtons">
             <div id="divSaveButton" class="buttonset" style="float: left; font-size:0.6em; ">
@@ -411,84 +410,9 @@
               </ul>
             </div>
           </div>
-
         </div>
-        
-        <ul id="sortable">
-          <li id="connectionsLi" class="resizable draggable">
-            <div id="connectionsDiv" class="statsBoxes">
-              <div class="greydiv">
-                <a class="statsHeader">Connections</a>
-               
-                <button id="connectionsClose" class="statsClose" style="float:right; padding-right: 0 ">
-                  <img src="/_admin/html/media/icons/whitedelete_icon16.png" width="16" height="16">
-                </button>
-                <button id="connectionsSettings" class="statsSettings" style="float:right;">
-                  <img src="/_admin/html/media/icons/settings_icon16.png" width="16" height="16">
-                </button>
-                <button id="connectionsChart" class="statsCharts" style="float:right;">
-                  <img src="/_admin/html/media/icons/whitechart_icon16.png" width="16" height="16">
-                </button>
-              </div>
-              <div id="placeholderConnection" class="placeholderBox"></div>
-              <div id="placeholderConnectionSettings" class="placeholderBox" style="display:none;">
-
-              <div id="connectionsGranularityDiv" class="radioFormat" style="width:100%;">
-                <form action="#" id="connectionsGranularity" class="radioFormat" style="float: left; font-size:0.8em;">
-                  <input type="radio" id="connectionsMinutes" name="connectionsGranularity" value="minutes" checked/>
-                  <label for="connectionsMinutes" class="cb-enable selected">Minutes</label>
-                  <input type="radio" id="connectionsHours" name="connectionsGranularity" value="hours"/>
-                  <label for="connectionsHours" class="cb-disable">Hours</label>
-                  <input type="radio" id="connectionsDays" name="connectionsGranularity" value="days"/>
-                  <label for="connectionsDays" class="cb-disable">Days</label>
-                </form>
-              </div>
-
-              </div>
-            </div>
-          </li>
-        
-          <li id="requestsLi" class="resizable draggable" style="left:540">
-            <div id="requestsDiv" class="statsBoxes">
-              <div class="greydiv">
-                <a class="statsHeader">Requests</a>
-                <button id="requestsClose" class="statsClose" style="float:right; padding-right: 0; ">
-                  <img src="/_admin/html/media/icons/whitedelete_icon16.png" width="16" height="16">
-                </button>
-                <button id="requestsSettings" class="statsSettings" style="float:right;">
-                  <img src="/_admin/html/media/icons/settings_icon16.png" width="16" height="16">
-                </button>
-                <button id="requestsChart" class="statsCharts" style="float:right;">
-                  <img src="/_admin/html/media/icons/whitechart_icon16.png" width="16" height="16">
-                </button>
-              </div>
-              <div id="placeholderBytesSent" class="placeholderBox"></div>
-              <div id="placeholderBytesSentSettings" class="placeholderBox" style="display:none;">
-                <div id="requestsGranularityDiv" class="radioFormat">
-                  <form action="#" id="requestsGranularity" class="radioFormat" style="float: left; font-size:0.8em;">
-                    <input type="radio" id="requestsMinutes" name="requestsGranularity" value="minutes" checked/>
-                    <label for="requestsMinutes" class="cb-enable selected">Minutes</label>
-                    <input type="radio" id="requestsHours" name="requestsGranularity" value="hours"/>
-                    <label for="requestsHours" class="cb-disable">Hours</label>
-                    <input type="radio" id="requestsDays" name="requestsGranularity" value="days"/>
-                    <label for="requestsDays" class="cb-disable">Days</label>
-                  </form>
-                    <br>
-                  <p id="requestChoices" >
-                    <br>
-                    <input id="idsent" type="checkbox" checked="checked" name="bytessent">
-                    <label for="idsent">Bytes sent</label>
-                    <br>
-                    <input id="idreceived" type="checkbox" checked="checked" name="bytesreceived">
-                    <label for="idreceived">Bytes received</label>                   
-                  </p>
-                </div>
-              </div>
-            </div>
-          </li>
-
-        </ul>         
-
+        <div id="graphBox"> 
+        </div>
       </div>
 
       <div id="configView" style="display: none">
