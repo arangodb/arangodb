@@ -35,7 +35,7 @@
 #include "Basics/MutexLocker.h"
 
 #include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpsAsyncCommTask.h"
+#include "HttpServer/SslAsyncCommTask.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -259,7 +259,7 @@ void HttpsServer::handleConnected (socket_t socket, ConnectionInfo& info) {
   SSL_set_bio(ssl, sbio, sbio);
 
   // create a https task
-  SocketTask* task = new HttpsAsyncCommTask(this, socket, info, sbio);
+  SocketTask* task = new SslAsyncCommTask(this, socket, info, sbio);
 
   // add the task, otherwise it will not be shut down properly          
   GENERAL_SERVER_LOCK(&this->_commTasksLock);
