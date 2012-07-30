@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl general server
+/// @brief general ssl server
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_SSL_GENERAL_SERVER_H
-#define TRIAGENS_HTTP_SERVER_SSL_GENERAL_SERVER_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H
+#define TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H 1
 
 #include "GeneralServer/GeneralServer.h"
 
@@ -34,14 +34,15 @@
 
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
+#include "HttpServer/SslAsyncCommTask.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class SslGeneralServer
+// --SECTION--                                            class GeneralSslServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,11 +50,11 @@ namespace triagens {
   namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server
+/// @brief ssl general server
 ////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
-    class SslGeneralServer : virtual public GeneralServer<S, HF, CT> {
+    class GeneralSslServer : virtual public GeneralServer<S, HF, CT> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -64,7 +65,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +94,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -186,19 +187,19 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http server
+/// @brief constructs a new general ssl server
 ////////////////////////////////////////////////////////////////////////////////
 
-        SslGeneralServer (Scheduler* scheduler,
+        GeneralSslServer (Scheduler* scheduler,
                           Dispatcher* dispatcher,
-                          HttpHandlerFactory* handlerFactory,
+                          HF* handlerFactory,
                           SSL_CTX* ctx)
         : GeneralServer<S, HF, CT>(scheduler),
           ctx(ctx),
@@ -210,7 +211,7 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~SslGeneralServer () {
+        virtual ~GeneralSslServer () {
           SSL_CTX_free(ctx);
         }
 
@@ -223,7 +224,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -262,7 +263,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -302,7 +303,7 @@ namespace triagens {
           // with the above bio
           SSL_set_bio(ssl, sbio, sbio);
 
-          // create a https task
+          // create an ssl task
           SocketTask* task = new SslAsyncCommTask<S, CT>(dynamic_cast<S*>(this), socket, info, sbio);
 
           // add the task, otherwise it will not be shut down properly          
@@ -323,7 +324,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
+/// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

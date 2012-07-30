@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H
 #define TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H 1
 
+#include "GeneralServer/GeneralSslServer.h"
 #include "HttpServer/GeneralHttpServer.h"
 
 #include <openssl/ssl.h>
@@ -38,7 +39,6 @@
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/SslAsyncCommTask.h"
-#include "HttpServer/SslGeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
@@ -57,7 +57,7 @@ namespace triagens {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsServer : public SslGeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
+    class HttpsServer : public GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
                         public GeneralHttpServer<HttpsServer, HttpCommTask<HttpsServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,12 +206,8 @@ namespace triagens {
                      HttpHandlerFactory* handlerFactory,
                      SSL_CTX* ctx) 
         : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler),
-          SslGeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
+          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
           GeneralHttpServer<HttpsServer, HttpCommTask< HttpsServer> >(scheduler, dispatcher, handlerFactory) {
-//        : GeneralHttpServer<HttpsServer, HttpCommTask< HttpsServer> >(scheduler, dispatcher, handlerFactory),
-//          ctx(ctx),
-//          verificationMode(SSL_VERIFY_NONE),
-//          verificationCallback(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +215,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~HttpsServer () {
-//          SSL_CTX_free(ctx);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,129 +231,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-        
-        void handleConnected (socket_t socket, ConnectionInfo& info) {
-          SslGeneralServer::handleConnected(socket, info);
-        }
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return encryption to be used
-////////////////////////////////////////////////////////////////////////////////
-          
-        virtual Endpoint::Encryption getEncryption () const {
-          return Endpoint::ENCRYPTION_SSL;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the verification mode
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVerificationMode (int mode) {
-          verificationMode = mode;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the verification callback
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVerificationCallback (int (*func)(int, X509_STORE_CTX *)) {
-          verificationCallback = func;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             GeneralServer methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
-
+        
         void handleConnected (socket_t socket, ConnectionInfo& info) {
-          LOGGER_DEBUG << "trying to establish secure connection";
-
-          // convert in a SSL BIO structure
-          BIO * sbio = BIO_new_socket((int) socket, BIO_NOCLOSE);
-
-          if (sbio == 0) {
-            LOGGER_WARNING << "cannot build new SSL BIO: " << triagens::basics::lastSSLError();
-            ::close(socket);
-            return;
-          }
-
-          // build a new connection
-          SSL * ssl = SSL_new(ctx);
-
-          info.sslContext = ssl;
-
-          if (ssl == 0) {
-            BIO_free_all(sbio);
-            LOGGER_WARNING << "cannot build new SSL connection: " << triagens::basics::lastSSLError();
-            ::close(socket);
-            return;
-          }
-
-          // enforce verification
-          SSL_set_verify(ssl, verificationMode, verificationCallback);
-
-          // with the above bio
-          SSL_set_bio(ssl, sbio, sbio);
-
-          // create a https task
-          SocketTask* task = new SslAsyncCommTask<HttpsServer, HttpCommTask<HttpsServer> >(this, socket, info, sbio);
-
-          // add the task, otherwise it will not be shut down properly          
-          GENERAL_SERVER_LOCK(&this->_commTasksLock);
-          this->_commTasks.insert(dynamic_cast<GeneralCommTask<HttpsServer, HttpHandlerFactory>*>(task));
-          GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
-
-          // and register it
-          _scheduler->registerTask(task);
+          GeneralSslServer::handleConnected(socket, info);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl context
-////////////////////////////////////////////////////////////////////////////////
-
-        SSL_CTX* ctx;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief verification mode
-////////////////////////////////////////////////////////////////////////////////
-
-        int verificationMode;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief verification callback
-////////////////////////////////////////////////////////////////////////////////
-
-        int (*verificationCallback)(int, X509_STORE_CTX *);
-        */
     };
   }
 }
