@@ -29,12 +29,12 @@
 #define TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H 1
 
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/SslAsyncCommTask.h"
 
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
-#include "HttpServer/SslAsyncCommTask.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
@@ -304,7 +304,7 @@ namespace triagens {
           SSL_set_bio(ssl, sbio, sbio);
 
           // create an ssl task
-          SocketTask* task = new SslAsyncCommTask<S, CT>(dynamic_cast<S*>(this), socket, info, sbio);
+          SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, sbio);
 
           // add the task, otherwise it will not be shut down properly          
           GENERAL_SERVER_LOCK(&this->_commTasksLock);

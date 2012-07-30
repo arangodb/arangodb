@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_HTTP_SERVER_SSL_ASYNC_COMM_TASK_H
-#define TRIAGENS_FYN_HTTP_SERVER_SSL_ASYNC_COMM_TASK_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H
+#define TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralAsyncCommTask.h"
 
@@ -39,10 +39,6 @@
 #include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
 #include <Basics/StringBuffer.h>
-#include <Rest/HttpRequest.h>
-
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpHandlerFactory.h"
 
 
 namespace triagens {
@@ -52,8 +48,8 @@ namespace triagens {
     /// @brief task for ssl communication
     ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename CT>
-    class SslAsyncCommTask : public GeneralAsyncCommTask<S, HttpHandlerFactory, CT> {
+    template<typename S, typename HF, typename CT>
+    class SslAsyncCommTask : public GeneralAsyncCommTask<S, HF, CT> {
       private:
         static size_t const READ_BLOCK_SIZE = 10000;
 
@@ -68,7 +64,7 @@ namespace triagens {
                           ConnectionInfo const& info, 
                           BIO* bio) 
         : Task("SslAsyncCommTask"),
-          GeneralAsyncCommTask<S, HttpHandlerFactory, CT>(server, fd, info),
+          GeneralAsyncCommTask<S, HF, CT>(server, fd, info),
           accepted(false),
           readBlocked(false),
           readBlockedOnWrite(false),
@@ -108,7 +104,7 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         bool handleEvent (EventToken token, EventType revents) {
-          bool result = GeneralAsyncCommTask<S, HttpHandlerFactory, CT>::handleEvent(token, revents);
+          bool result = GeneralAsyncCommTask<S, HF, CT>::handleEvent(token, revents);
 
           if (result) {
             if (readBlockedOnWrite) {

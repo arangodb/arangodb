@@ -29,16 +29,15 @@
 #define TRIAGENS_HTTP_SERVER_HTTPS_SERVER_H 1
 
 #include "GeneralServer/GeneralSslServer.h"
-#include "HttpServer/GeneralHttpServer.h"
 
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
 
+#include "HttpServer/GeneralHttpServer.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
-#include "HttpServer/SslAsyncCommTask.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
