@@ -113,7 +113,7 @@ namespace triagens {
 /// @brief builds the servers
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool buildServers (const EndpointList*);
+        bool buildServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the handler factory
@@ -255,6 +255,40 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<EndpointServer*> _servers;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint list container
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::EndpointList _endpointList;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoints for client HTTP requests
+///
+/// @CMDOPT{--server.endpoint @CA{endpoint}}
+///
+/// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
+/// the following pattern:
+/// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+/// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+/// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+/// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
+/// - unix:///path/to/socket - Unix domain socket endpoint
+///
+/// If a TCP/IP endpoint is specified without a port number, then the default 
+/// port (8529) will be used.
+/// If multiple endpoints need to be used, the option can be repeated multiple
+/// times.
+///
+/// @EXAMPLES
+///
+/// @verbinclude option-server-endpoint
+///
+/// Note that if you are using SSL-encrypted endpoints, you must also supply
+/// the path to a server certificate using the --server.keyfile optionn.
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<string> _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keyfile containing server certificate

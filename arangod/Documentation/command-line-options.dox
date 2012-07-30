@@ -164,7 +164,7 @@
 ////////////////////////////////////////////////////////////////////
 ///
 /// @anchor CommandLineArangoEndpoint
-/// @copydetails triagens::arango::ArangoServer::_endpoints
+/// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
 /// @anchor CommandLineArangoDisableAuthentication
 /// @copydetails triagens::arango::ArangoServer::_disableAuthentication
@@ -179,7 +179,7 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_sslProtocol
 ///
 /// @anchor CommandLineArangoSslCacheMode
-/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCacheMode
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCache
 ///
 /// @anchor CommandLineArangoSslOptions
 /// @copydetails triagens::rest::ApplicationEndpointServer::_sslOptions

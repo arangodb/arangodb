@@ -191,7 +191,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _applicationUserManager(0),
-    _endpoints(),
     _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arangodb"),
@@ -431,12 +430,8 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  additional["ENDPOINT Options"]
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
-    ("server.endpoint", &_endpoints, "endpoint for client HTTP requests")
-  ;
-  
   additional["Server Options:help-admin"]
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.disable-admin-interface", "turn off the HTML admin interface")
   ;
 
@@ -543,13 +538,6 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "please use the '--database.directory' option";
     exit(EXIT_FAILURE);
   }
-
-  if (0 == _endpoints.size()) {
-    LOGGER_FATAL << "no endpoint has been specified, giving up";
-    cerr << "no endpoint has been specified, giving up\n";
-    LOGGER_INFO << "please use the '--server.endpoint' option";
-    exit(EXIT_FAILURE);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,29 +579,6 @@ int ArangoServer::startupServer () {
   
   _applicationServer->prepare2();
   
-  // add & validate endpoints
-  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    Endpoint* endpoint = Endpoint::serverFactory(*i);
-  
-    if (endpoint == 0) {
-      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
-      cerr << "invalid endpoint '" << *i << "'\n";
-      exit(EXIT_FAILURE);
-    }
-
-    assert(endpoint);
-
-    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
-    if (! ok) {
-      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
-      cerr << "invalid endpoint '" << *i << "'\n";
-      exit(EXIT_FAILURE);
-    }
-  }
-
-
-  // dump used endpoints for user information
-  _endpointList.dump();
     
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -626,7 +591,7 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("admin");
 
   // create the server
-  _applicationEndpointServer->buildServers(&_endpointList);
+  _applicationEndpointServer->buildServers();
     
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
