@@ -150,7 +150,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
-	lib/HttpServer/HttpServer.cpp \
 	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \

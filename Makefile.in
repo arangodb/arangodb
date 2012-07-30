@@ -523,7 +523,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/HttpServer/HttpCommTask.$(OBJEXT) \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
 	lib/HttpServer/HttpHandlerFactory.$(OBJEXT) \
-	lib/HttpServer/HttpServer.$(OBJEXT) \
 	lib/HttpServer/HttpsServer.$(OBJEXT) \
 	lib/HttpServer/PathHandler.$(OBJEXT) \
 	lib/HttpServer/RedirectHandler.$(OBJEXT) \
@@ -1379,7 +1378,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
-	lib/HttpServer/HttpServer.cpp \
 	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \
@@ -2163,8 +2161,6 @@ lib/HttpServer/HttpHandler.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/HttpHandlerFactory.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
-	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/HttpServer.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/HttpsServer.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
@@ -2995,7 +2991,6 @@ mostlyclean-compile:
 	-rm -f lib/HttpServer/HttpCommTask.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpHandlerFactory.$(OBJEXT)
-	-rm -f lib/HttpServer/HttpServer.$(OBJEXT)
 	-rm -f lib/HttpServer/HttpsServer.$(OBJEXT)
 	-rm -f lib/HttpServer/PathHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/RedirectHandler.$(OBJEXT)
@@ -3264,7 +3259,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpCommTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandlerFactory.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpsServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/PathHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
