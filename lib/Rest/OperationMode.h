@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief batch job
+/// @brief server operation mode
 ///
 /// @file
 ///
@@ -21,78 +21,111 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BatchSubjob.h"
+#ifndef TRIAGENS_REST_SERVER_OPERATION_MODE_H
+#define TRIAGENS_REST_SERVER_OPERATION_MODE_H 1
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+#include "Basics/ProgramOptions.h"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace rest {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                               class OperationMode
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new server job
+/// @brief ArangoDB server operation modes
 ////////////////////////////////////////////////////////////////////////////////
 
-BatchSubjob::BatchSubjob (BatchJob* parent, HttpServer* server, HttpHandler* handler)
-  : GeneralServerJob<HttpServer, HttpHandler>(server, handler),
-    _parent(parent) {
-}
+    class OperationMode {
+      public:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a server job
-////////////////////////////////////////////////////////////////////////////////
-
-BatchSubjob::~BatchSubjob () {
-}
+        typedef enum {
+          MODE_CONSOLE,
+          MODE_UNITTESTS,
+          MODE_JSLINT,
+          MODE_SCRIPT,
+#ifdef TRI_ENABLE_MRUBY
+          MODE_RUBY_CONSOLE,
+#endif
+          MODE_SERVER,
+        }
+        server_operation_mode_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Job methods
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief return the server operation mode
 ////////////////////////////////////////////////////////////////////////////////
 
-void BatchSubjob::cleanup () {
+        static server_operation_mode_e determineMode (const triagens::basics::ProgramOptions& options) {
+          if (options.has("console")) {
+            return MODE_CONSOLE;
+          }
+          else if (options.has("javascript.unit-tests")) {
+            return MODE_UNITTESTS;
+          }
+          else if (options.has("jslint")) {
+            return MODE_JSLINT;
+          }
+          else if (options.has("javascript.script")) {
+            return MODE_SCRIPT;
+          }
+#ifdef TRI_ENABLE_MRUBY
+          else if (options.has("ruby-console")) {
+            return MODE_RUBY_CONSOLE;
+          }
+#endif
+          else {
+            return MODE_SERVER;
+          }
+        }
 
-  bool abandon;
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-  {
-    MUTEX_LOCKER(_abandonLock);
-    abandon = _abandon;
+    };
+
   }
-
-  if (! abandon) {
-    // signal the parent (batch job) that a subjob is done
-    _parent->jobDone(this);
-  }
-
-  delete this;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

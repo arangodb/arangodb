@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief batch job
+/// @brief batch sub job
 ///
 /// @file
 ///
@@ -30,8 +30,6 @@
 #define TRIAGENS_REST_HANDLER_BATCH_SUBJOB_H 1
 
 #include "GeneralServer/GeneralServerJob.h"
-#include "RestHandler/BatchJob.h"
-#include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandler.h"
 
 // -----------------------------------------------------------------------------
@@ -45,12 +43,14 @@
 
 namespace triagens {
   namespace rest {
+    template<typename S> class BatchJob;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-    class BatchSubjob : public GeneralServerJob<HttpServer, HttpHandler> {
+    template<typename S>
+    class BatchSubjob : public GeneralServerJob<S, HttpHandler> {
       private:
         BatchSubjob (BatchSubjob const&);
         BatchSubjob& operator= (BatchSubjob const&);
@@ -74,13 +74,17 @@ namespace triagens {
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        BatchSubjob (BatchJob*, HttpServer*, HttpHandler*);
+        BatchSubjob (BatchJob<S>* parent, S* server, HttpHandler* handler)
+        : GeneralServerJob<S, HttpHandler>(server, handler),
+          _parent(parent) {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~BatchSubjob ();
+        ~BatchSubjob () {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -101,7 +105,21 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup ();
+        void cleanup () {
+          bool abandon;
+
+          {
+            MUTEX_LOCKER(this->_abandonLock);
+            abandon = this->_abandon;
+          }
+
+          if (! abandon) {
+            // signal the parent (batch job) that a subjob is done
+            _parent->jobDone(this);
+          }
+
+          delete this;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -122,7 +140,7 @@ namespace triagens {
 /// @brief parent job
 ////////////////////////////////////////////////////////////////////////////////
 
-        BatchJob* _parent;
+        BatchJob<S>* _parent;
     };
   }
 }

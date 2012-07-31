@@ -57,6 +57,7 @@
 
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
+#include "Rest/OperationMode.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
 #include "RestHandler/RequestStatisticsHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -133,6 +134,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
+  
+  // add batch handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,7 +172,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class ArangoServer
+// --SECTION--                                                class ArangoServer
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -482,34 +488,21 @@ void ArangoServer::buildApplicationServer () {
     _databasePath = arguments[0];
   }
 
-  // .............................................................................
-  // in shell mode ignore the rest
-  // .............................................................................
-
-  if (_applicationServer->programOptions().has("console")) {
-    int res = executeConsole(MODE_CONSOLE);
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+  if (mode == OperationMode::MODE_CONSOLE || 
+      mode == OperationMode::MODE_UNITTESTS ||
+      mode == OperationMode::MODE_JSLINT ||
+      mode == OperationMode::MODE_SCRIPT) {
+    int res = executeConsole(mode);
     exit(res);
   }
-  else if (_applicationServer->programOptions().has("javascript.unit-tests")) {
-    int res = executeConsole(MODE_UNITTESTS);
-    exit(res);
-  }
-  else if (_applicationServer->programOptions().has("jslint")) {
-    int res = executeConsole(MODE_JSLINT);
-    exit(res);
-  }
-  else if (_applicationServer->programOptions().has("javascript.script")) {
-    int res = executeConsole(MODE_SCRIPT);
-    exit(res);
-  }
-
-
 #ifdef TRI_ENABLE_MRUBY
-  if (_applicationServer->programOptions().has("ruby-console")) {
+  else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
     exit(res);
   }
 #endif
+
 
   // .............................................................................
   // sanity checks
@@ -681,7 +674,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeConsole (server_operation_mode_e mode) {
+int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok;
 
   // only simple logging
@@ -717,7 +710,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
     v8::HandleScope globalScope;
 
     // run the shell
-    if (mode != MODE_SCRIPT) {
+    if (mode != OperationMode::MODE_SCRIPT) {
       printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
@@ -735,7 +728,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run all unit tests
       // .............................................................................
 
-      case MODE_UNITTESTS: {
+      case OperationMode::MODE_UNITTESTS: {
         v8::HandleScope scope;
         v8::TryCatch tryCatch;
 
@@ -768,7 +761,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run jslint
       // .............................................................................
 
-      case MODE_JSLINT: {
+      case OperationMode::MODE_JSLINT: {
         v8::HandleScope scope;
         v8::TryCatch tryCatch;
 
@@ -800,7 +793,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
-      case MODE_SCRIPT: {
+      case OperationMode::MODE_SCRIPT: {
         v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
@@ -854,7 +847,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
-      case MODE_CONSOLE: {
+      case OperationMode::MODE_CONSOLE: {
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);
@@ -893,6 +886,10 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
         delete console;
 
         break;
+      }
+
+      default: {
+        assert(false);
       }
     }
   }

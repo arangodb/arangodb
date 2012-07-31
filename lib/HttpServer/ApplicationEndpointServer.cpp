@@ -38,6 +38,7 @@
 #include "HttpServer/HttpsServer.h"
 #include "BinaryServer/BinaryServer.h"
 #include "Logger/Logger.h"
+#include "Rest/OperationMode.h"
 #include "Scheduler/ApplicationScheduler.h"
 
 using namespace triagens::basics;
@@ -226,8 +227,9 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   if (! ok) {
     return false;
   }
-  
-  if (0 == _endpoints.size()) {
+
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
+  if (0 == _endpoints.size() && mode == OperationMode::MODE_SERVER) {
     LOGGER_FATAL << "no endpoint has been specified, giving up";
     cerr << "no endpoint has been specified, giving up\n";
     LOGGER_INFO << "please use the '--server.endpoint' option";

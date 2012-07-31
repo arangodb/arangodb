@@ -29,6 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/MutexLocker.h"
+#include "HttpServer/HttpServer.h"
 #include "ProtocolBuffers/HttpRequestProtobuf.h"
 
 using namespace std;
@@ -111,7 +112,7 @@ Job* RestBatchHandler::createJob (AsyncJobServer* server) {
     return 0;
   }
 
-  BatchJob* batchJob = new BatchJob(httpServer, this);
+  BatchJob<HttpServer>* batchJob = new BatchJob<HttpServer>(httpServer, this);
 
   return batchJob;
 }

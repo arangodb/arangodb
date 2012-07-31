@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
+#include "BinaryServer/BinaryServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "GeneralServer/GeneralServerJob.h"
@@ -110,6 +111,7 @@ HttpResponse* HttpHandler::getResponse () {
 Job* HttpHandler::createJob (AsyncJobServer* server) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
+  // stj: TODO: ugly temporary hack, must be fixed
   if (httpServer != 0) {
     return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
   }
@@ -118,6 +120,12 @@ Job* HttpHandler::createJob (AsyncJobServer* server) {
   if (httpsServer != 0) {
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
   }
+  
+  BinaryServer* binaryServer = dynamic_cast<BinaryServer*>(server);
+  if (binaryServer != 0) {
+    return new GeneralServerJob<BinaryServer, HttpHandlerFactory::GeneralHandler>(binaryServer, this);
+  }
+  // stj: end of hack
 
   LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
   return 0;
