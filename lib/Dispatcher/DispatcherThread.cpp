@@ -197,12 +197,6 @@ void DispatcherThread::run () {
       // trigger GC
       tick(false);
 
-      // require the lock
-      _queue->_accessQueue.lock();
-
-      // cleanup
-      _queue->_monopolizer = 0;
-
       // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
       // it is not safe to use detached jobs after job->work()
 
@@ -233,7 +227,6 @@ void DispatcherThread::run () {
 #ifdef TRI_HAVE_POSIX_THREADS
           if (_queue->_stopping != 0) {
             LOGGER_WARNING << "caught cancellation exception during cleanup";
-            _queue->_accessQueue.unlock();
             throw;
           }
 #endif
@@ -241,6 +234,12 @@ void DispatcherThread::run () {
           LOGGER_WARNING << "caught error while cleaning up!";
         }
       }
+
+      // require the lock
+      _queue->_accessQueue.lock();
+
+      // cleanup
+      _queue->_monopolizer = 0;
 
       if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {
         _queue->_accessQueue.broadcast();
