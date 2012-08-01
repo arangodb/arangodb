@@ -82,7 +82,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _client(0),
     _httpResult(0) {
   
-  _connection = GeneralClientConnection::factory(endpoint, 3.0, 3.0, 3);
+  _connection = GeneralClientConnection::factory(endpoint, connectTimeout, requestTimeout, numRetries);
   if (_connection == 0) {
     throw "out of memory";
   }

@@ -1035,7 +1035,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   cout << endl;
   if (! Quiet) {
-    cout << endl << "Bye Bye! Auf Wiedersehen!" << endl;
+    cout << endl << "Bye Bye! Auf Wiedersehen! さようなら" << endl;
   }
 }
 
