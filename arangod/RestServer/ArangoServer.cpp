@@ -616,7 +616,7 @@ int ArangoServer::startupServer () {
 
   // only construct factory if ZeroMQ is active
   if (_applicationZeroMQ->isActive()) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
+    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", TRI_CheckAuthenticationAuthInfo);
 
     DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
