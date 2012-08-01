@@ -10,9 +10,10 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh 1.0.beta Copyright (c) 2012 triAGENS GmbH."
 
 var existingCharts; 
+var statDivCount;  
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -28,7 +29,6 @@ var shArray = [];
 
 $(document).ready(function() {       
 showCursor();
-
 //hide incomplete functions 
 $("#uploadFile").attr("disabled", "disabled");
 $("#uploadFileImport").attr("disabled", "disabled");
@@ -100,10 +100,19 @@ $("#documents_last").live('click', function () {
 $(".statsClose").live('click', function () {
   var divID = $(this).parent().parent();
   var chart = $(this).parent().parent().attr('id');
-  var chartID = chart.charAt(chart.length-1);
-  existingCharts.splice(chartID, 1); 
-  $('#graphBox').empty();  
-  createChartBoxes();  
+  var chartID = JSON.parse(chart.replace(/\D/g, '' ));
+  var todelete; 
+
+  $.each(existingCharts, function(x, i ) {
+    var tempid = i.id; 
+    if (tempid == chartID) {
+      todelete = x; 
+    } 
+  });  
+  
+  existingCharts.splice(todelete, 1);  
+  $("#chartBox"+chartID).remove();   
+
   stateSaving(); 
   
   if (temptop > 150 && templeft > 20) {
@@ -131,11 +140,8 @@ $(".statsSettings").live('click', function () {
 $(".statsCharts").live('click', function () {
   var chartID = $(this).parent().next("div");
   var settingsID = $(this).parent().next("div").next("div");
-  var graphID = chartID.attr('id').charAt(chartID.attr('id').length-1);
-  var test = existingCharts[graphID]; 
   stateSaving(); 
   updateChartBoxes(); 
- 
   $(settingsID).hide(); 
   $(chartID).fadeIn(); 
 });
@@ -1689,7 +1695,7 @@ function drawCollectionsTable () {
         tempStatus = "new born collection";
       }
       else if (tempStatus == 2) {
-        tempStatus = "<font color=orange>unloaded</font>";
+        tempStatus = "unloaded";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
@@ -2597,7 +2603,7 @@ function drawConnections (placeholder, granularity) {
 function drawRequests (placeholder, granularity) {
   var arraySent = [];
   var arrayReceived = [];
-  var boxCount = placeholder.charAt(placeholder.length-1); 
+  var boxCount = placeholder.replace(/\D/g, '' );  
  
   $.ajax({
     type: "GET",
@@ -2766,14 +2772,16 @@ var ItemActionButtons = {
     $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
   },
   ShowConnectionsStats: function () {
-    var chartcount = $("#graphBox").children().size();
-    existingCharts[chartcount]= {type:"connection", granularity:"minutes", top:50, left:50};
-    createSingleBox (chartcount); 
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"connection", granularity:"minutes", top:50, left:50, id:JSON.parse(chartcount)});
+    statDivCount = chartcount; 
+    createSingleBox (chartcount, "connection"); 
   },
   ShowRequestsStats: function () { 
-    var chartcount = $("#graphBox").children().size();
-    existingCharts[chartcount]= {type:"request", granularity:"minutes", sent:true, received:true, top:50, left: 50};
-    createSingleBox (chartcount); 
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"request", granularity:"minutes", sent:true, received:true, top:50, left: 50, id:chartcount});
+    statDivCount = chartcount;
+    createSingleBox (chartcount, "request", true);
   }
 }
 
@@ -2782,35 +2790,55 @@ $.fn.isVisible = function() {
 };
 
 function stateSaving () {
-  divCount = Object.keys(existingCharts).length;
-  for ( i = 0; i < divCount; i++) {
-
+  
+  $.each(existingCharts, function(v, i ) {
     // position statesaving 
-    var tempcss = $("#chartBox"+i).position(); 
+    var tempcss = $("#chartBox"+this.id).position();  
     // size statesaving 
-    var tempheight = $("#chartBox"+i).height();
-    var tempwidth = $("#chartBox"+i).width();
+    var tempheight = $("#chartBox"+this.id).height();
+    var tempwidth = $("#chartBox"+this.id).width();
     // granularity statesaving 
-    var grantouse = $('input[name=boxGranularity'+i+']:checked').val(); 
+    var grantouse = $('input[name=boxGranularity'+this.id+']:checked').val();
+
+    if (i.type == "request") {
+      var sent = $('input:checkbox[name=bytessent'+this.id+']:checked').val(); 
+      var received = $('input:checkbox[name=bytesreceived'+this.id+']:checked').val(); 
+      if ( sent == "on" ) {
+        this.sent = true; 
+      } 
+      else {
+        this.sent = false; 
+      }
+      if ( received = "on" ) {
+        this.received = true;  
+      }
+      else {
+        this.received = false; 
+      }
+    }
+ 
     // edit obj
-    existingCharts[i].top = tempcss.top;
-    existingCharts[i].left = tempcss.left;
-    existingCharts[i].width = tempwidth; 
-    existingCharts[i].height = tempheight; 
-    existingCharts[i].granularity = grantouse;  
-  }
+    this.top = tempcss.top;
+    this.left = tempcss.left;
+    this.width = tempwidth; 
+    this.height = tempheight; 
+    this.granularity = grantouse;  
+  });
   //write obj into local storage
   localStorage.setItem("statobj", JSON.stringify(existingCharts)); 
+  localStorage.setItem("statDivCount", statDivCount); 
 }
 
 function stateReading () {
 
   try { 
-    existingCharts = JSON.parse(localStorage.getItem("statobj"));   
+    existingCharts = JSON.parse(localStorage.getItem("statobj"));  
+    statDivCount = localStorage.getItem("statDivCount");  
     if (existingCharts != null) {
     }
     else {
-      existingCharts = [{type:"connection", granularity:"minutes", top:140, left:10}, {type:"request", granularity:"minutes", sent:true, received:true, top:140, left:420}]; 
+      existingCharts = [];
+      statDivCount = 0;  
     }
   }
 
@@ -2820,8 +2848,8 @@ function stateReading () {
 }
  
 function createChartBoxes () {
-  var boxCount = 0;  
   $.each(existingCharts, function(v, i ) {
+    var boxCount = i.id; 
     $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>');
     $("#chartBox"+boxCount).css({top: i.top, left: i.left}); 
     $("#chartBox"+boxCount).css({width: i.width, height: i.height}); 
@@ -2872,7 +2900,6 @@ function createChartBoxes () {
           }
       } 
     });
-    boxCount++; 
   });
   makeDraggableAndResizable (); 
   $(".radioFormat").buttonset();
@@ -2881,7 +2908,7 @@ function createChartBoxes () {
 function updateChartBoxes () {
   var boxCount; 
   $.each(existingCharts, function(v, i ) {
-    boxCount = v;  
+    boxCount = i.id;  
     $.each(i, function(key, val ) {
       var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
       if ( key == "type" ) {
@@ -2902,7 +2929,6 @@ function updateChartBoxes () {
 
 function makeDraggableAndResizable () {
       $( ".resizable" ).resizable({
-        handles: 'e, w',
         grid: 10, 
         stop: function (event, ui) {
           stateSaving(); 
@@ -2920,10 +2946,10 @@ function makeDraggableAndResizable () {
 var temptop = 150; 
 var templeft = 20; 
 
-function createSingleBox (id) {
+function createSingleBox (id, val, question) {
   var boxCount = id;  
-  var val = existingCharts[id].type; 
  
+
   $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
   $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
   $("#chartBox"+boxCount).append('<div class="greydiv"/>');
@@ -2957,13 +2983,13 @@ function createSingleBox (id) {
           '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
         '</p>');
 
-        if (i.sent == true) {
-          $('#sent'+boxCount).click(); 
-        }
-        if (i.received == true) {
-          $('#received'+boxCount).click(); 
-        } 
+        if (question == true) {
 
+        }
+        else {
+          $('#sent'+boxCount).click(); 
+          $('#received'+boxCount).click(); 
+        }
         drawRequests('#placeholderBox'+boxCount, "minutes"); 
         break; 
     }
