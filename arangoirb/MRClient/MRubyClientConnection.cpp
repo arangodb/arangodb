@@ -41,6 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -56,6 +57,7 @@ extern "C" {
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::mrclient;
+using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -72,20 +74,27 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
-                                              const std::string& hostname,
-                                              int port,
+                                              Endpoint* endpoint,
+                                              const string& username,
+                                              const string& password,
                                               double requestTimeout,
-                                              size_t retries,
                                               double connectionTimeout,
+                                              size_t numRetries,
                                               bool warn)
   : _mrs(mrs),
-    _connected(false),
+    _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
       
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  _connection = GeneralClientConnection::factory(endpoint, connectionTimeout, requestTimeout, numRetries);
+  if (_connection == 0) {
+    throw "out of memory";
+  }
+
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -107,7 +116,6 @@ MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
 
         if (vs && vs->getValue() == "arango") {
           // connected to arango server
-          _connected = true;
           vs = json->lookupString("version");
 
           if (vs) {
@@ -155,7 +163,7 @@ MRubyClientConnection::~MRubyClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MRubyClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,22 +190,6 @@ const std::string& MRubyClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& MRubyClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int MRubyClientConnection::getPort () {
-  return _client->getPort();
-}
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
