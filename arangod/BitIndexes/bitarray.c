@@ -68,11 +68,14 @@ typedef struct BitColumn_s {
 // -----------------------------------------------------------------------------
 
 static int  extendColumns         (TRI_bitarray_t*, size_t); 
-//static void printBitarray         (TRI_bitarray_t*); 
 static void setBitarrayMask       (TRI_bitarray_t*, TRI_bitarray_mask_t*, TRI_master_table_position_t*); 
-//static void debugPrintMaskFooter  (const char*); 
-//static void debugPrintMaskHeader  (const char*);
-//static void debugPrintMask        (TRI_bitarray_t*, uint64_t);
+
+/*
+static void debugPrintBitarray    (TRI_bitarray_t*); 
+static void debugPrintMaskFooter  (const char*); 
+static void debugPrintMaskHeader  (const char*);
+static void debugPrintMask        (TRI_bitarray_t*, uint64_t);
+*/
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +339,7 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
     ba->_lastBlockUsed = position._blockNum;
   }  
   
-  //printBitarray(ba);
+  //debugPrintBitarray(ba);
   
   return TRI_ERROR_NO_ERROR;
 }  
@@ -433,7 +436,105 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
     }
   }
 
-  //printBitarray(ba);
+  // debugPrintBitarray(ba);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Given a bit mask set returns a list of document pointers
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LookupBitMaskSetBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_set_t* maskSet, void* resultStorage ) {
+  // int result;
+  uint8_t numBits;
+  int i_blockNum,j_bitNum,k_colNum,m_mask;
+  TRI_master_table_position_t position;
+  
+  // ...........................................................................
+  // TODO: we need to add an 'undefined' special column. If this column is NOT 
+  // set, then we do not bother checking the rest of columns.
+  // ...........................................................................
+   
+  numBits = BITARRAY_MASTER_TABLE_BLOCKSIZE;
+
+
+  // ...........................................................................
+  // scan down the blocks 
+  // ...........................................................................
+  
+  for (i_blockNum = 0; i_blockNum < (ba->_lastBlockUsed + 1); ++i_blockNum) {  
+
+    // .........................................................................
+    // within each block scan down the bit integer
+    // .........................................................................
+    
+    for (j_bitNum = 0; j_bitNum < numBits; ++j_bitNum) {
+      uint64_t bitValues = 0;
+      
+      // .......................................................................
+      // Within each bit in the integer scan across the columns, this will
+      // generate a 64 bit integer. Use this integer to compare to the bit
+      // mask (eventually masks) sent here. 
+      // .......................................................................
+              
+      for (k_colNum = 0; k_colNum < ba->_numColumns; ++k_colNum) {
+      
+        BitColumn_t*     column;
+        bit_column_int_t bitInteger;
+        uint64_t         tempInteger;
+        // .......................................................................
+        // Extract the particular column
+        // .......................................................................
+    
+        column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * k_colNum));
+      
+      
+        // .......................................................................
+        // Obtain the integer representation of this block
+        // .......................................................................
+        
+        bitInteger  = *(column->_column + i_blockNum);      
+        
+        tempInteger = (uint64_t)((bitInteger >> j_bitNum) & (1)) << k_colNum;
+
+        bitValues  = bitValues | tempInteger;
+        
+      }
+
+      // ..........................................................................
+      // Iterate over all the masks in the mask set
+      // ..........................................................................
+
+      for (m_mask = 0; m_mask < maskSet->_setSize; ++m_mask) {      
+        TRI_bitarray_mask_t* mask = maskSet->_maskArray + m_mask;
+        uint64_t compareMask      = mask->_mask | mask->_ignoreMask;
+        
+        bitValues = bitValues | mask->_ignoreMask;
+        
+        if (mask->_mask == 0 && bitValues != 0) {
+          continue;
+        }
+        
+        if (mask->_mask != 0 && bitValues == 0) {
+          continue;  
+        }
+        
+        if (bitValues == compareMask) { // add to the list of things
+          //debugPrintMaskHeader("bitValues/mask");
+          //debugPrintMask(ba,bitValues);
+          //debugPrintMask(ba,mask->_mask);
+          //debugPrintMaskFooter("");
+          position._blockNum = i_blockNum;
+          position._bitNum   = j_bitNum;
+          /* result = */ storeElementMasterTable(ba->_masterTable, resultStorage, &position);
+        }
+      }      
+    }
+  }
+
+  // debugPrintBitarray(ba);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -501,7 +602,7 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   }
   
   
-  //printBitarray(ba); 
+  // debugPrintBitarray(ba); 
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -616,56 +717,6 @@ int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugging purposes only -- prints a visual representation of the bitarrays
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-void printBitarray(TRI_bitarray_t* ba) {
-  int j;
-  uint64_t bb;
-  bit_column_int_t oo;  
-  
-  
-  // ...........................................................................
-  // Determine the number of blocks -- remember to add one more if there is 
-  // an started and unfinished block.
-  // ...........................................................................
-
-  printf("\n");
-  printf("THERE ARE %lu COLUMNS\n",ba->_numColumns);
-  printf("THE NUMBER OF ALLOCATED BLOCKS IN EACH COLUMN IS %lu\n",ba->_numBlocksInColumn);
-  printf("THE NUMBER OF THE LAST BLOCK USED IS %lu\n",ba->_lastBlockUsed);
-  printf("\n");
-  
-    
-  printf("-------------------------------------------------------------------------------------------------\n");
-  for (bb = 0; bb <= ba->_lastBlockUsed ; ++bb) {
-    if (bb != ba->_lastBlockUsed) {
-      //continue;
-    }  
-    printf("==\n");
-    for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
-      printf("ROW %lu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
-      for (j = 0; j < ba->_numColumns; ++j) {
-        BitColumn_t* column;
-        bit_column_int_t* bitInteger;
-        
-        column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));      
-        bitInteger = column->_column + bb;
-        
-        if ( (*bitInteger & ((bit_column_int_t)(1) << oo)) == 0) {
-          printf(" 0 ");  
-        }
-        else {
-          printf(" 1 ");  
-        }  
-      }
-      printf("\n");      
-    }  
-  }
-} 
-*/ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a bitmask into a bit array
@@ -720,6 +771,11 @@ static void setBitarrayMask(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, TRI_m
   }
 }
   
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared debug functions
+////////////////////////////////////////////////////////////////////////////////
+
 /*  
 void debugPrintMaskFooter(const char* footer) {
   printf("%s\n\n",footer);
@@ -743,6 +799,53 @@ void debugPrintMask(TRI_bitarray_t* ba, uint64_t mask) {
   }
   printf("\n");
 }
+
+
+void debugPrintBitarray(TRI_bitarray_t* ba) {
+  int j;
+  uint64_t bb;
+  bit_column_int_t oo;  
+  
+  
+  // ...........................................................................
+  // Determine the number of blocks -- remember to add one more if there is 
+  // an started and unfinished block.
+  // ...........................................................................
+
+  printf("\n");
+  printf("THERE ARE %lu COLUMNS\n",ba->_numColumns);
+  printf("THE NUMBER OF ALLOCATED BLOCKS IN EACH COLUMN IS %lu\n",ba->_numBlocksInColumn);
+  printf("THE NUMBER OF THE LAST BLOCK USED IS %lu\n",ba->_lastBlockUsed);
+  printf("\n");
+  
+    
+  printf("-------------------------------------------------------------------------------------------------\n");
+  for (bb = 0; bb <= ba->_lastBlockUsed ; ++bb) {
+    if (bb != ba->_lastBlockUsed) {
+      //continue;
+    }  
+    printf("==\n");
+    for (oo = 0; oo < BITARRAY_MASTER_TABLE_BLOCKSIZE; ++oo) {
+      printf("ROW %lu: ", ((bb * BITARRAY_MASTER_TABLE_BLOCKSIZE) + oo) );
+      for (j = 0; j < ba->_numColumns; ++j) {
+        BitColumn_t* column;
+        bit_column_int_t* bitInteger;
+        
+        column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));      
+        bitInteger = column->_column + bb;
+        
+        if ( (*bitInteger & ((bit_column_int_t)(1) << oo)) == 0) {
+          printf(" 0 ");  
+        }
+        else {
+          printf(" 1 ");  
+        }  
+      }
+      printf("\n");      
+    }  
+  }
+} 
+ 
 */
 
 ////////////////////////////////////////////////////////////////////////////////

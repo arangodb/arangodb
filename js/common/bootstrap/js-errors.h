@@ -144,6 +144,7 @@ static string JS_common_bootstrap_errors =
   "    \"WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING\" : { \"code\" : 3400, \"message\" : \"bitarray index insertion warning - attribute missing in document\" }, \n"
   "    \"WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING\" : { \"code\" : 3402, \"message\" : \"bitarray index update warning - attribute missing in revised document\" }, \n"
   "    \"WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING\" : { \"code\" : 3411, \"message\" : \"bitarray index remove failure - item missing in index\" }, \n"
+  "    \"ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE\" : { \"code\" : 3313, \"message\" : \"bitarray index insert failure - document attribute value unsupported in index\" }, \n"
   "};\n"
   "}());\n"
   "\n"

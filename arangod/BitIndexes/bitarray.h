@@ -101,6 +101,11 @@ typedef struct TRI_bitarray_mask_s {
   uint64_t _mask;
 } TRI_bitarray_mask_t;
 
+typedef struct TRI_bitarray_mask_set_s {
+  TRI_bitarray_mask_t* _maskArray;
+  size_t               _arraySize;
+  size_t               _setSize;  
+} TRI_bitarray_mask_set_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // A set of options (parameters) which are required when defining a group
@@ -133,7 +138,8 @@ int TRI_FreeBitarray (TRI_bitarray_t*);
 
 int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);  
 
-int TRI_LookupBitMaskBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);  
+int TRI_LookupBitMaskBitarray    (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);  
+int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, TRI_bitarray_mask_set_t*, void*); 
 
 int TRI_RemoveElementBitarray (TRI_bitarray_t*, void*);
 
