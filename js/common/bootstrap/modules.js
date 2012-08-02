@@ -6,7 +6,8 @@
          white: true,
          plusplus: true */
 /*global require, module, ModuleCache, SYS_EXECUTE, CONSOLE_ERROR,
- FS_EXISTS, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
+ FS_MOVE, FS_REMOVE, FS_EXISTS, 
+ SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
  SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
  SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUIET, MODULES_PATH,
  COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT */
@@ -239,6 +240,8 @@ ModuleCache["/fs"] = new Module("/fs");
   var fs = ModuleCache["/fs"].exports;
 
   fs.exists = FS_EXISTS;
+  fs.move = FS_MOVE;
+  fs.remove = FS_REMOVE;
 }());
 
 ////////////////////////////////////////////////////////////////////////////////

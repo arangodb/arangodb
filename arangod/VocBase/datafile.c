@@ -84,6 +84,225 @@ static void InitDatafile (TRI_datafile_t* datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a datafile
+///
+/// Create a truncated datafile, seal it and rename the old.
+////////////////////////////////////////////////////////////////////////////////
+
+static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t size) {
+  char* filename;
+  char* oldname;
+  char zero;
+  int fd;
+  int res;
+  size_t maximalSize;
+  size_t offset;
+  void* data;
+
+  // use multiples of page-size
+  maximalSize = ((size + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
+
+  // sanity check
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {
+    LOG_ERROR("cannot create datafile '%s', maximal size '%u' is too small", datafile->_filename, (unsigned int) maximalSize);
+    return TRI_set_errno(TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL);
+  }
+
+  // open the file
+  filename = TRI_Concatenate2String(datafile->_filename, ".new");
+
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+  if (fd < 0) {
+    LOG_ERROR("cannot create datafile '%s': '%s'", filename, TRI_last_error());
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  // create sparse file
+  offset = lseek(fd, maximalSize - 1, SEEK_SET);
+
+  if (offset == (off_t) -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    close(fd);
+
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
+    LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_last_error());
+    return TRI_ERROR_SYS_ERROR;
+  }
+
+  zero = 0;
+  res = write(fd, &zero, 1);
+
+  if (res < 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    close(fd);
+    
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
+    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
+    return TRI_ERROR_SYS_ERROR;
+  }
+
+  // memory map the data
+  data = mmap(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+
+  if (data == MAP_FAILED) {
+    if (errno == ENOMEM) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    }
+
+    close(fd);
+
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
+    LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
+    return TRI_errno();
+  }
+
+  // copy the data
+  memcpy(data, datafile->_data, size);
+
+  // patch the datafile structure
+  res = munmap(datafile->_data, datafile->_maximalSize);
+
+  if (res < 0) {
+    LOG_ERROR("munmap failed with: %s", TRI_last_error());
+    return res;
+  }
+
+  close(datafile->_fd);
+
+  datafile->_data = data;
+  datafile->_next = data + size;
+  datafile->_maximalSize = maximalSize;
+
+  // rename files
+  oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
+
+  res = TRI_RenameFile(datafile->_filename, oldname);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
+
+    return res;
+  }
+
+  res = TRI_RenameFile(filename, datafile->_filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
+
+    return res;
+  }
+
+  TRI_SealDatafile(datafile);
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scans a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
+  TRI_df_scan_t scan;
+  TRI_df_scan_entry_t entry;
+
+  TRI_voc_size_t currentSize;
+  char* end;
+  char* ptr;
+
+  ptr = datafile->_data;
+  end = datafile->_data + datafile->_currentSize;
+  currentSize = 0;
+
+  TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
+
+  scan._currentSize = datafile->_currentSize;
+  scan._maximalSize = datafile->_maximalSize;
+  scan._numberMarkers = 0;
+  scan._status = 1;
+
+  if (datafile->_currentSize == 0) {
+    end = datafile->_data + datafile->_maximalSize;
+  }
+
+  while (ptr < end) {
+    TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+    bool ok;
+    size_t size;
+
+    memset(&entry, 0, sizeof(entry));
+
+    entry._position = ptr - datafile->_data;
+    entry._size = marker->_size;
+    entry._tick = marker->_tick;
+    entry._type = marker->_type;
+    entry._status = 1;
+
+    if (marker->_size == 0 && marker->_crc == 0 && marker->_type == 0 && marker->_tick == 0) {
+      entry._status = 2;
+
+      scan._endPosition = currentSize;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
+
+    ++scan._numberMarkers;
+
+    if (marker->_size == 0) {
+      entry._status = 3;
+
+      scan._status = 2;
+      scan._endPosition = currentSize;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
+
+    if (marker->_size < sizeof(TRI_df_marker_t)) {
+      entry._status = 4;
+
+      scan._endPosition = currentSize;
+      scan._status = 3;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
+
+    ok = TRI_CheckCrcMarkerDatafile(marker);
+
+    if (! ok) {
+      entry._status = 5;
+      scan._status = 4;
+    }
+
+    TRI_PushBackVector(&scan._entries, &entry);
+
+    size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    currentSize += size;
+
+    if (marker->_type == TRI_DF_MARKER_FOOTER) {
+      scan._endPosition = currentSize;
+      return scan;
+    }
+
+    ptr += size;
+  }
+
+  return scan;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -947,6 +1166,62 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   return ok ? TRI_ERROR_NO_ERROR : datafile->_lastError;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a datafile and seals it
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
+  TRI_datafile_t* datafile;
+  int res;
+
+  datafile = OpenDatafile(path, true);  
+
+  if (datafile == NULL) {
+    return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
+  }
+
+  res = TruncateDatafile(datafile, position);
+  TRI_CloseDatafile(datafile);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_df_scan_t TRI_ScanDatafile (char const* path) {
+  TRI_df_scan_t scan;
+  TRI_datafile_t* datafile;
+
+  datafile = OpenDatafile(path, true);  
+
+  if (datafile != 0) {
+    scan = ScanDatafile(datafile);
+    TRI_CloseDatafile(datafile);
+  }
+  else {
+    scan._currentSize = 0;
+    scan._maximalSize = 0;
+    scan._endPosition = 0;
+    scan._numberMarkers = 0;
+
+    TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
+
+    scan._status = 5;
+  }
+
+  return scan;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys information about the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyDatafileScan (TRI_df_scan_t* scan) {
+  TRI_DestroyVector(&scan->_entries);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -69,6 +69,8 @@ extern "C" {
 /// - 1005: @CODE{duplicate identifier}
 ///   Internal error that will be raised when a identifier duplicate is
 ///   detected.
+/// - 1006: @CODE{datafile unreadable}
+///   Internal error that will be raised when the datafile is unreadable.
 /// - 1100: @CODE{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @CODE{illegal parameter file}
@@ -128,6 +130,9 @@ extern "C" {
 /// - 1216: @CODE{document too large}
 ///   Will be raised when the document cannot fit into any datafile because of
 ///   it is too large.
+/// - 1217: @CODE{collection must be unloaded}
+///   Will be raised when a collection should be unloaded, but has a different
+///   status.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -611,6 +616,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER                             (1005)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1006: ERROR_ARANGO_DATAFILE_UNREADABLE
+///
+/// datafile unreadable
+///
+/// Internal error that will be raised when the datafile is unreadable.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATAFILE_UNREADABLE                              (1006)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
 ///
 /// corrupted datafile
@@ -874,6 +889,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE                               (1216)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1217: ERROR_ARANGO_COLLECTION_NOT_UNLOADED
+///
+/// collection must be unloaded
+///
+/// Will be raised when a collection should be unloaded, but has a different
+/// status.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          (1217)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
