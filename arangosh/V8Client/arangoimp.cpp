@@ -38,15 +38,19 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/terminal-utils.h"
+#include "ImportHelper.h"
 #include "Logger/Logger.h"
+#include "Rest/Endpoint.h"
+#include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "ImportHelper.h"
 #include "V8ClientConnection.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace triagens::v8client;
 
 // -----------------------------------------------------------------------------
@@ -62,17 +66,51 @@ using namespace triagens::v8client;
 /// @brief connection default values
 ////////////////////////////////////////////////////////////////////////////////
 
-static string DEFAULT_SERVER_NAME = "localhost";
-static int    DEFAULT_SERVER_PORT = 8529;
 static int64_t DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t DEFAULT_RETRIES = 5;
-static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
+static size_t  DEFAULT_RETRIES = 2;
+static int64_t DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server address
+/// @brief whether or not a password was specified
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ServerAddress = "127.0.0.1:8529";
+static bool _hasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint to connect to
+////////////////////////////////////////////////////////////////////////////////
+
+static Endpoint* _endpoint = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connect timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t _connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request timeout (in s) 
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t _requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint to connect to
+////////////////////////////////////////////////////////////////////////////////
+
+static string _endpointString;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _username = "root";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief password to send to endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static string _password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -84,19 +122,7 @@ V8ClientConnection* clientConnection = 0;
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t maxUploadSize = 500000;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connect timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static uint64_t _maxUploadSize = 500000;
 
 static string QuoteChar = "\"";
 static string SeparatorChar = ",";
@@ -120,44 +146,6 @@ static bool UseIds = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits the address
-////////////////////////////////////////////////////////////////////////////////
-
-static bool splitServerAdress (string const& definition, string& address, int& port) {
-  if (definition.empty()) {
-    return false;
-  }
-
-  if (definition[0] == '[') {
-    // ipv6 address
-    size_t find = definition.find("]:", 1);
-
-    if (find != string::npos && find + 2 < definition.size()) {
-      address = definition.substr(1, find - 1);
-      port = triagens::basics::StringUtils::uint32(definition.substr(find + 2));
-      return true;
-    }
-
-  }
-
-  int n = triagens::basics::StringUtils::numEntries(definition, ":");
-
-  if (n == 1) {
-    address = "";
-    port = triagens::basics::StringUtils::uint32(definition);
-    return true;
-  }
-  else if (n == 2) {
-    address = triagens::basics::StringUtils::entry(1, definition, ":");
-    port = triagens::basics::StringUtils::int32(triagens::basics::StringUtils::entry(2, definition, ":"));
-    return true;
-  }
-  else {
-    return false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,17 +157,19 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
-    ("server", &ServerAddress, "server address and port")
     ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("use-ids", &UseIds, "re-use _id and _rev values found in document data")
+    ("max-upload-size", &_maxUploadSize, "maximum size of import chunks (in bytes)")
     ("type", &TypeImport, "type of file (\"csv\" or \"json\")")
     ("quote", &QuoteChar, "quote character")
     ("separator", &SeparatorChar, "separator character")
-    ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
-    ("connect-timeout", &connectTimeout, "connect timeout in seconds")
-    ("request-timeout", &requestTimeout, "request timeout in seconds")
+    ("server.endpoint", &_endpointString, "endpoint to connect to")
+    ("server.username", &_username, "username to use when connecting")
+    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
+    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
+    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
   ;
 
   vector<string> myargs;
@@ -191,6 +181,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     cerr << options.lastError() << "\n";
     exit(EXIT_FAILURE);
   }
+  
+  _hasPassword = options.has("server.password");
 
   if (FileName == "" && myargs.size() > 0) {
     FileName = myargs[0];
@@ -228,131 +220,157 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+
   TRI_InitialiseLogging(false);
-  int ret = EXIT_SUCCESS;
+
+  _endpointString = Endpoint::getDefaultEndpoint();
 
   // parse the program options
   ParseProgramOptions(argc, argv);
-  
+
   // check connection args
-  if (connectTimeout <= 0) {
-    cout << "invalid value for connect-timeout." << endl;
+  if (_connectTimeout <= 0) {
+    cerr << "invalid value for --server.connect-timeout" << endl;
     return EXIT_FAILURE;
   }
 
-  if (requestTimeout <= 0) {
-    cout << "invalid value for request-timeout." << endl;
+  if (_requestTimeout <= 0) {
+    cerr << "invalid value for --server.request-timeout" << endl;
     return EXIT_FAILURE;
   }
-    
-  // processComandLineArguments(argc, argv);
-  if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-    if (ServerAddress.length()) {
-      printf("Could not split %s.\n", ServerAddress.c_str());                  
-    }
-  }
-          
-  clientConnection = new V8ClientConnection(
-          DEFAULT_SERVER_NAME, 
-          DEFAULT_SERVER_PORT, 
-          (double) requestTimeout,
-          DEFAULT_RETRIES, 
-          (double) connectTimeout, 
-          true);
-
-  if (clientConnection->isConnected()) {
-    printf("Connected to Arango DB %s:%d Version %s\n", 
-            clientConnection->getHostname().c_str(), 
-            clientConnection->getPort(), 
-            clientConnection->getVersion().c_str());
-
-    cout << "----------------------------------------" << endl;
-    cout << "collection      : " << CollectionName << endl;
-    cout << "create          : " << (CreateCollection ? "yes" : "no") << endl;
-    cout << "reusing ids     : " << (UseIds ? "yes" : "no") << endl;
-    cout << "file            : " << FileName << endl;
-    cout << "type            : " << TypeImport << endl;
-    cout << "quote           : " << QuoteChar << endl;
-    cout << "separator       : " << SeparatorChar << endl;
-    cout << "connect timeout : " << connectTimeout << endl;
-    cout << "request timeout : " << requestTimeout << endl;
-    cout << "----------------------------------------" << endl;
-    
-    ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
-
-    if (CreateCollection) {
-      ih.setCreateCollection(true);
-    }
-    
-    if (UseIds) {
-      ih.setUseIds(true);
-    }
   
-    if (QuoteChar.length() == 1) {
-      ih.setQuote(QuoteChar[0]);      
-    }
-    else {
-      cout << "Wrong length of quote character." << endl;
-      return EXIT_FAILURE;
-    }
+  if (_username.size() == 0) {
+    // must specify a user name
+    cerr << "no value specified for --server.username" << endl;
+    exit(EXIT_FAILURE);
+  }
+  
+  if (! _hasPassword) {
+    // no password given on command-line
+    cout << "Please specify a password:" << endl;
+    // now prompt for it
+#ifdef TRI_HAVE_TERMIOS_H
+    TRI_SetStdinVisibility(false);
+    getline(cin, _password);
 
-    if (SeparatorChar.length() == 1) {
-      ih.setSeparator(SeparatorChar[0]);      
-    }
-    else {
-      cout << "Wrong length of separator character." << endl;
-      return EXIT_FAILURE;
-    }
-    
-    if (CollectionName == "") {
-      cout << "collection name is missing." << endl;
-      return EXIT_FAILURE;
-    }
-    
-    if (FileName == "") {
-      cout << "file name is missing." << endl;
-      return EXIT_FAILURE;
-    }
+    TRI_SetStdinVisibility(true);
+#else
+    getline(cin, _password);
+#endif
+  }
 
-    if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
-      cout << "file '" << FileName << "' is not a regular file." << endl;
-      return EXIT_FAILURE;      
-    }
-    
-    bool ok;
-    if (TypeImport == "csv") {
-      cout << "Starting CSV import..." << endl;
-      ok = ih.importCsv(CollectionName, FileName);
-    }
-    
-    else if (TypeImport == "json") {
-      cout << "Starting JSON import..." << endl;
-      ok = ih.importJson(CollectionName, FileName);
-    }
-    
-    else {
-      cout << "Wrong type." << endl;
-      return EXIT_FAILURE;      
-    }
 
-    cout << endl;
-    
-    if (ok) {
-      cout << "created    : " << ih.getImportedLines() << endl;
-      cout << "errors     : " << ih.getErrorLines() << endl;
-      cout << "total      : " << ih.getReadLines() << endl;
-    }
-    else {
-      cout << "error mesg : " << ih.getErrorMessage() << endl;      
-    }
-      
+  _endpoint = Endpoint::clientFactory(_endpointString); 
+  if (_endpoint == 0) {
+    cerr << "invalid --server.endpoint specification." << endl;
+    return EXIT_FAILURE;
+  }
+
+  assert(_endpoint);
+  
+  clientConnection = new V8ClientConnection(_endpoint, 
+                                            _username, 
+                                            _password,
+                                            (double) _requestTimeout, 
+                                            (double) _connectTimeout, 
+                                            DEFAULT_RETRIES, 
+                                            false);
+
+  if (!clientConnection->isConnected()) {
+    cerr << "Could not connect to endpoint " << _endpoint->getSpecification() << endl;
+    cerr << "Error message: '" << clientConnection->getErrorMessage() << "'" << endl;
+
+    return EXIT_FAILURE;
+  }
+
+  // successfully connected
+
+  cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << clientConnection->getVersion() << endl; 
+
+  cout << "----------------------------------------" << endl;
+  cout << "collection      : " << CollectionName << endl;
+  cout << "create          : " << (CreateCollection ? "yes" : "no") << endl;
+  cout << "reusing ids     : " << (UseIds ? "yes" : "no") << endl;
+  cout << "file            : " << FileName << endl;
+  cout << "type            : " << TypeImport << endl;
+  cout << "quote           : " << QuoteChar << endl;
+  cout << "separator       : " << SeparatorChar << endl;
+  cout << "connect timeout : " << _connectTimeout << endl;
+  cout << "request timeout : " << _requestTimeout << endl;
+  cout << "----------------------------------------" << endl;
+
+  ImportHelper ih(clientConnection->getHttpClient(), _maxUploadSize);
+
+  if (CreateCollection) {
+    ih.setCreateCollection(true);
+  }
+
+  if (UseIds) {
+    ih.setUseIds(true);
+  }
+
+  if (QuoteChar.length() == 1) {
+    ih.setQuote(QuoteChar[0]);      
   }
   else {
-    printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);
-    printf("Error message '%s'\n", clientConnection->getErrorMessage().c_str());
+    cerr << "Wrong length of quote character." << endl;
+    return EXIT_FAILURE;
   }
 
-  return ret;
+  if (SeparatorChar.length() == 1) {
+    ih.setSeparator(SeparatorChar[0]);      
+  }
+  else {
+    cerr << "Wrong length of separator character." << endl;
+    return EXIT_FAILURE;
+  }
+
+  if (CollectionName == "") {
+    cerr << "collection name is missing." << endl;
+    return EXIT_FAILURE;
+  }
+
+  if (FileName == "") {
+    cerr << "file name is missing." << endl;
+    return EXIT_FAILURE;
+  }
+
+  if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
+    cerr << "file '" << FileName << "' is not a regular file." << endl;
+    return EXIT_FAILURE;      
+  }
+
+  bool ok;
+  if (TypeImport == "csv") {
+    cout << "Starting CSV import..." << endl;
+    ok = ih.importCsv(CollectionName, FileName);
+  }
+
+  else if (TypeImport == "json") {
+    cout << "Starting JSON import..." << endl;
+    ok = ih.importJson(CollectionName, FileName);
+  }
+
+  else {
+    cerr << "Wrong type." << endl;
+    return EXIT_FAILURE;      
+  }
+
+  cout << endl;
+
+  if (ok) {
+    cout << "created       : " << ih.getImportedLines() << endl;
+    cout << "errors        : " << ih.getErrorLines() << endl;
+    cout << "total         : " << ih.getReadLines() << endl;
+  }
+  else {
+    cerr << "error message : " << ih.getErrorMessage() << endl;      
+  }
+
+  TRIAGENS_REST_SHUTDOWN;
+
+  return EXIT_SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

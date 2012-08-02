@@ -66,14 +66,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpHandler::status_e UsersHandler::execute () {
-      vector<string> const& suffix = request->suffix();
+      vector<string> const& suffix = _request->suffix();
 
       if (suffix.size() != 0) {
         generateError(HttpResponse::BAD, TRI_ERROR_SESSION_USERSHANDLER_INVALID_URL);
         return HANDLER_DONE;
       }
 
-      if (request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+      if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
         generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
         return HANDLER_DONE;
       }

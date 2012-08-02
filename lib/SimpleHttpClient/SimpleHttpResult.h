@@ -136,6 +136,22 @@ namespace triagens {
       void setHttpReturnCode (int returnCode) {
         this->_returnCode = returnCode;
       }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the http return message
+      ////////////////////////////////////////////////////////////////////////////////
+
+      string getHttpReturnMessage () {
+        return _returnMessage;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the http return message
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setHttpReturnMessage (const string& message) {
+        this->_returnMessage = message;
+      }
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns the content length
@@ -244,6 +260,7 @@ namespace triagens {
 
       // header informtion
       int _returnCode;
+      string _returnMessage;
       size_t _contentLength;
       bool _chunked;
 

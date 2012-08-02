@@ -5,10 +5,6 @@ assert('Proc', '15.2.17') do
   Proc.class == Class
 end
 
-assert('Proc superclass', '15.2.17.2') do
-  Proc.superclass == Object
-end
-
 assert('Proc.new', '15.2.17.3.1') do
   a = nil
 

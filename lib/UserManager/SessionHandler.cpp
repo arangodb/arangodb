@@ -105,7 +105,7 @@ bool SessionHandler::isDirect () {
 HttpHandler::status_e SessionHandler::execute () {
 
   // execute the request
-  switch (request->requestType()) {
+  switch (_request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST: return executePost();
     case HttpRequest::HTTP_REQUEST_GET: return executeGet();
     case HttpRequest::HTTP_REQUEST_PUT: return executePut();
@@ -145,7 +145,7 @@ HttpHandler::status_e SessionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executePost () {
-  if (request->suffix().size() != 0) {
+  if (_request->suffix().size() != 0) {
     generateError(HttpResponse::BAD, TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID1);
     return HANDLER_DONE;
   }
@@ -177,7 +177,7 @@ HttpHandler::status_e SessionHandler::executePost () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executeGet () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
   
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID2);
@@ -206,7 +206,7 @@ HttpHandler::status_e SessionHandler::executeGet () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executePut () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
   
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID3);
@@ -247,7 +247,7 @@ HttpHandler::status_e SessionHandler::executePut () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e SessionHandler::executeDelete () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
   
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID4);

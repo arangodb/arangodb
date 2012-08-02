@@ -41,12 +41,14 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
+#include "Rest/Initialise.h"
+#include "Rest/Endpoint.h"
 #include "MRClient/MRubyClientConnection.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
 #include "MRuby/mr-utils.h"
-#include "Rest/AddressPort.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -78,11 +80,9 @@ using namespace triagens::mrclient;
 /// @brief connection default values
 ////////////////////////////////////////////////////////////////////////////////
 
-static string const  DEFAULT_SERVER_NAME = "127.0.0.1";
-static int const     DEFAULT_SERVER_PORT = 8529;
 static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t const  DEFAULT_RETRIES = 5;
-static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
+static size_t const  DEFAULT_RETRIES = 2;
+static int64_t const DEFAULT_CONNECTION_TIMEOUT = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief colors for output
@@ -117,16 +117,28 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a password was specified on the command line
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _hasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static Endpoint* _endpoint = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-MRubyClientConnection* ClientConnection = 0;
+MRubyClientConnection* _clientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+static int64_t _connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable auto completion
@@ -159,37 +171,37 @@ static string OutputPager = "less -X -R -F -L";
 static bool PrettyPrint = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief quite start
+/// @brief quiet start
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Quite = false;
+static bool Quiet = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static int64_t _requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server address and port
+/// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ServerAddressPort = DEFAULT_SERVER_NAME + ":" + StringUtils::itoa(DEFAULT_SERVER_PORT);
+static string _endpointString;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server address
+/// @brief user to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ServerAddress = DEFAULT_SERVER_NAME;
+static string _username = "root";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server port
+/// @brief password to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ServerPort = DEFAULT_SERVER_PORT;
+static string _password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief startup JavaScript files
+/// @brief startup MR files
 ////////////////////////////////////////////////////////////////////////////////
 
 static MRLoader StartupLoader;
@@ -255,7 +267,7 @@ static mrb_value ClientConnection_httpGet (mrb_state* mrb, mrb_value self) {
   map<string, string> headerFields;
 
   // and execute
-  return ClientConnection->getData(url, headerFields);
+  return connection->getData(url, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +332,21 @@ static void StopPager () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a new client connection instance
+////////////////////////////////////////////////////////////////////////////////
+  
+static MRubyClientConnection* createConnection (MR_state_t* mrs) {
+  return new MRubyClientConnection(mrs,
+                                   _endpoint,
+                                   _username,
+                                   _password, 
+                                   (double) _requestTimeout, 
+                                   (double) _connectTimeout, 
+                                   DEFAULT_RETRIES,
+                                   false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -338,12 +365,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("help,h", "help message")
-    ("quite,s", "no banner")
+    ("quiet,s", "no banner")
     ("log.level,l", &level,  "log level")
-    ("server", &ServerAddressPort, "server address and port")
     ("startup.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
     ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
     ("pager", &OutputPager, "output pager")
+    ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
+    ("server.username", &_username, "username to use when connecting")
+    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
+    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
+    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
     ("use-pager", "use pager")
     ("pretty-print", "pretty print values")          
     ("no-colors", "deactivate color support")
@@ -370,6 +401,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+  
+  _hasPassword =  options.has("server.password");
 
   // set colors
   if (options.has("colors")) {
@@ -400,8 +433,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     UsePager = true;
   }
 
-  if (options.has("quite")) {
-    Quite = true;
+  if (options.has("quiet")) {
+    Quiet = true;
   }
 }
     
@@ -437,8 +470,8 @@ static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* conne
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+static void RunShell (MR_state_t* mrs) {
+  MRLineEditor* console = new MRLineEditor(mrs, ".arango-mrb");
 
   console->open(false /*! NoAutoComplete*/);
 
@@ -456,7 +489,7 @@ static void RunShell (mrb_state* mrb) {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input));
+    struct mrb_parser_state* p = mrb_parse_nstring(&mrs->_mrb, input, strlen(input));
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -464,34 +497,32 @@ static void RunShell (mrb_state* mrb) {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(&mrs->_mrb, p->tree);
 
     if (n < 0) {
       cout << "UPPS: " << n << " returned by mrb_generate_code\n";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb,
-                               mrb_proc_new(mrb, mrb->irep[n]),
-                               mrb_top_self(mrb));
+    mrb_value result = mrb_run(&mrs->_mrb,
+                               mrb_proc_new(&mrs->_mrb, mrs->_mrb.irep[n]),
+                               mrb_top_self(&mrs->_mrb));
 
-    if (mrb->exc) {
+    if (mrs->_mrb.exc) {
       cout << "Caught exception:\n";
-      mrb_p(mrb, mrb_obj_value(mrb->exc));
-      mrb->exc = 0;
+      mrb_p(&mrs->_mrb, mrb_obj_value(mrs->_mrb.exc));
+      mrs->_mrb.exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(mrb, result);
+      mrb_p(&mrs->_mrb, result);
     }
   }
 
   console->close();
 
-  if (Quite) {
-    printf("\n");
-  }
-  else {
-    printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
+  cout << endl;
+  if (! Quiet) {
+    cout << endl << "Bye Bye! Auf Wiedersehen! さようなら" << endl;
   }
 }
 
@@ -514,6 +545,8 @@ static void RunShell (mrb_state* mrb) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
@@ -566,70 +599,79 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // parse the program options
   // .............................................................................
+  
+  _endpointString = Endpoint::getDefaultEndpoint();
 
   ParseProgramOptions(argc, argv);
-
+  
   // check connection args
-  if (ConnectTimeout <= 0) {
-    cout << "invalid value for connect-timeout." << endl;
+  if (_connectTimeout <= 0) {
+    cerr << "invalid value for --server.connect-timeout" << endl;
     exit(EXIT_FAILURE);
   }
 
-  if (RequestTimeout <= 0) {
-    cout << "invalid value for request-timeout." << endl;
+  if (_requestTimeout <= 0) {
+    cerr << "invalid value for --server.request-timeout" << endl;
+    exit(EXIT_FAILURE);
+  }
+  
+  if (_username.size() == 0) {
+    // must specify a user name
+    cerr << "no value specified for --server.username" << endl;
     exit(EXIT_FAILURE);
   }
 
+  if (! _hasPassword) {
+    // no password given on command-line
+    cout << "Please specify a password:" << endl;
+    // now prompt for it
+#ifdef TRI_HAVE_TERMIOS_H
+    TRI_SetStdinVisibility(false);
+    getline(cin, _password);
+
+    TRI_SetStdinVisibility(true);
+#else
+    getline(cin, _password);
+#endif
+  }
+  
   // .............................................................................
   // set-up MRuby objects
   // .............................................................................
 
   // create a new ruby shell
-  mrb_state* mrb = MR_OpenShell();
+  MR_state_t* mrs = MR_OpenShell();
 
-  TRI_InitMRUtils(mrb);
+  TRI_InitMRUtils(mrs);
 
+  
   // .............................................................................
   // set-up client connection
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (ServerAddressPort != "none");
+  bool useServer = (_endpointString != "none");
 
   if (useServer) {
-    AddressPort ap;
+    _endpoint = Endpoint::clientFactory(_endpointString);
 
-    if (! ap.split(ServerAddressPort)) {
-      if (! ServerAddress.empty()) {
-        printf("Could not split %s.\n", ServerAddress.c_str());
-        exit(EXIT_FAILURE);
-      }
+    if (_endpoint == 0) {
+      cerr << "invalid value for --server.endpoint ('" << _endpointString.c_str() << "')" << endl;
+      exit(EXIT_FAILURE);
     }
 
-    if (! ap._address.empty()) {
-      ServerAddress = ap._address;
-    }
-
-    ServerPort = ap._port;
-    
-    ClientConnection = new MRubyClientConnection(
-      mrb,
-      ServerAddress, 
-      ServerPort, 
-      (double) RequestTimeout,
-      DEFAULT_RETRIES, 
-      (double) ConnectTimeout,
-      false);
-
-    InitMRClientConnection(mrb, ClientConnection);
+    assert(_endpoint);
+   
+    _clientConnection = createConnection(mrs);
+    InitMRClientConnection(&mrs->_mrb, _clientConnection);
   }
-  
+
   // .............................................................................
   // banner
   // .............................................................................  
 
   // http://www.network-science.de/ascii/   Font: ogre
-  if (! Quite) {
+  if (! Quiet) {
     char const* g = DEF_GREEN;
     char const* r = DEF_RED;
     char const* z = DEF_RESET;
@@ -647,39 +689,35 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|_|_|  |_.__/ %s\n", g, r, z);
     printf("%s                       |___/      %s              %s\n", g, r, z);
 
-    printf("\n");
-    printf("Welcome to arangoirb %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
-    printf("Using MRUBY %s engine. Copyright (c) 2012 mruby developers.\n", TRI_MRUBY_VERSION);
+    cout << "Using MRUBY " << TRI_MRUBY_VERSION << " engine. Copyright (c) 2012 mruby developers." << endl;
 #endif
 
 #ifdef TRI_READLINE_VERSION
-    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
 #endif
 
-    printf("\n");
+    cout << endl;
 
     if (UsePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+      cout << "Using pager '" << OutputPager << "' for output buffering." << endl;
     }
  
     if (PrettyPrint) {
-      printf("Pretty print values.\n");    
+      cout << "Pretty print values." << endl;    
     }
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
-        if (! Quite) {
-          printf("Connected to Arango DB %s:%d Version %s\n", 
-                 ClientConnection->getHostname().c_str(), 
-                 ClientConnection->getPort(), 
-                 ClientConnection->getVersion().c_str());
+      if (_clientConnection->isConnected()) {
+        if (! Quiet) {
+          cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << _clientConnection->getVersion() << endl; 
         }
       }
       else {
-        printf("Could not connect to server %s:%d\n", ServerAddress.c_str(), ServerPort);
-        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+        cerr << "Could not connect to endpoint '" << _endpointString << "'" << endl;
+        cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
       }
     }
   }
@@ -703,7 +741,7 @@ int main (int argc, char* argv[]) {
   };
   
   for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = StartupLoader.loadScript(mrb, files[i]);
+    bool ok = StartupLoader.loadScript(&mrs->_mrb, files[i]);
     
     if (ok) {
       LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
@@ -718,7 +756,9 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  RunShell(mrb);
+  RunShell(mrs);
+  
+  TRIAGENS_REST_SHUTDOWN;
 
   return ret;
 }

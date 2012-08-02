@@ -384,14 +384,6 @@ bool ApplicationV8::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::isStartable () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool ApplicationV8::start () {
   _gcThread = new V8GcThread(this);
   _gcThread->start();
@@ -403,15 +395,7 @@ bool ApplicationV8::start () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::isStarted () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationV8::beginShutdown () {
+void ApplicationV8::close () {
   _stopping = 1;
   _contextCondition.broadcast();
 }
@@ -420,11 +404,8 @@ void ApplicationV8::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::shutdown () {
-  _contextCondition.broadcast();
-  usleep(1000);
-  _gcThread->stop();
-  _gcThread->join();
+void ApplicationV8::stop () {
+  _gcThread->shutdown();
   delete _gcThread;
 
   for (size_t i = 0;  i < _nrInstances;  ++i) {

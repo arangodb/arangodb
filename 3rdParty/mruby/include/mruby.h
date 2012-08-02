@@ -279,8 +279,7 @@ typedef struct mrb_state {
 
   struct RClass *eException_class;
   struct RClass *eStandardError_class;
-
-  void *ud; /* auxiliary data */
+  struct RClass *eRuntimeError_class;
 } mrb_state;
 
 typedef mrb_value (*mrb_func_t)(mrb_state *mrb, mrb_value);
@@ -333,10 +332,7 @@ mrb_value mrb_funcall(mrb_state*, mrb_value, const char*, int,...);
 mrb_value mrb_funcall_argv(mrb_state*, mrb_value, const char*, int, mrb_value*);
 mrb_value mrb_funcall_with_block(mrb_state*, mrb_value, const char*, int, mrb_value*, mrb_value);
 mrb_sym mrb_intern(mrb_state*,const char*);
-mrb_sym mrb_intern2(mrb_state*,const char*,int);
-mrb_sym mrb_intern_str(mrb_state*,mrb_value);
 const char *mrb_sym2name(mrb_state*,mrb_sym);
-const char *mrb_sym2name_len(mrb_state*,mrb_sym,int*);
 mrb_value mrb_str_format(mrb_state *, int, const mrb_value *, mrb_value);
 
 void *mrb_malloc(mrb_state*, size_t);
@@ -427,9 +423,9 @@ int mrb_block_given_p(void);
 void mrb_raise(mrb_state *mrb, struct RClass *c, const char *fmt, ...);
 void rb_raise(struct RClass *c, const char *fmt, ...);
 void mrb_warn(const char *fmt, ...);
+void mrb_warning(const char *fmt, ...);
 void mrb_bug(const char *fmt, ...);
 
-#define E_RUNTIME_ERROR             (mrb_class_obj_get(mrb, "RuntimeError"))
 #define E_TYPE_ERROR                (mrb_class_obj_get(mrb, "TypeError"))
 #define E_ARGUMENT_ERROR            (mrb_class_obj_get(mrb, "ArgumentError"))
 #define E_INDEX_ERROR               (mrb_class_obj_get(mrb, "IndexError"))
@@ -438,9 +434,13 @@ void mrb_bug(const char *fmt, ...);
 #define E_NOMETHOD_ERROR            (mrb_class_obj_get(mrb, "NoMethodError"))
 #define E_SCRIPT_ERROR              (mrb_class_obj_get(mrb, "ScriptError"))
 #define E_SYNTAX_ERROR              (mrb_class_obj_get(mrb, "SyntaxError"))
+#define E_LOAD_ERROR                (mrb_class_obj_get(mrb, "LoadError"))
+#define E_SYSTEMCALL_ERROR          (mrb_class_obj_get(mrb, "SystemCallError"))
 #define E_LOCALJUMP_ERROR           (mrb_class_obj_get(mrb, "LocalJumpError"))
 #define E_REGEXP_ERROR              (mrb_class_obj_get(mrb, "RegexpError"))
+#define E_ZERODIVISION_ERROR        (mrb_class_obj_get(mrb, "ZeroDivisionError"))
 
+#define E_ENCODING_ERROR            (mrb_class_obj_get(mrb, "EncodingError"))
 #define E_NOTIMP_ERROR              (mrb_class_obj_get(mrb, "NotImplementedError"))
 #define E_FLOATDOMAIN_ERROR         (mrb_class_obj_get(mrb, "FloatDomainError"))
 
@@ -469,6 +469,8 @@ mrb_value mrb_yield_with_self(mrb_state *mrb, mrb_value b, int argc, mrb_value *
 mrb_value mrb_class_new_instance(mrb_state *mrb, int, mrb_value*, struct RClass *);
 mrb_value mrb_class_new_instance_m(mrb_state *mrb, mrb_value klass);
 
+mrb_value mrb_exec_recursive(mrb_state *mrb, mrb_value(*)(mrb_state *, mrb_value, mrb_value, int),mrb_value,void *);
+
 #ifndef xmalloc
 #define xmalloc     malloc
 #define xrealloc    realloc
@@ -476,6 +478,7 @@ mrb_value mrb_class_new_instance_m(mrb_state *mrb, mrb_value klass);
 #define xfree       free
 #endif
 
+void mrb_garbage_collect(mrb_state *mrb);
 void mrb_gc_protect(mrb_state *mrb, mrb_value obj);
 mrb_value mrb_to_int(mrb_state *mrb, mrb_value val);
 void mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t);

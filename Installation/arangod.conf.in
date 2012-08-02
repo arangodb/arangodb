@@ -4,10 +4,7 @@ directory= @DATABASE@
 # remove-on-drop=true
 
 [server]
-http-port = localhost:8529
-http-auth = no
-disable-admin-interface = no
-admin-port = localhost:8530
+endpoint = tcp://localhost:8529
 admin-directory= @STATICFILES@/html/admin
 threads = 5
 

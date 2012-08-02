@@ -1,10 +1,76 @@
-v1.x.x (2012-XX-XX)
+v1.1.x (XXXX-XX-XX)
 -------------------
-* changed implementation of TRI_BlockCrc32 algorithm to use 8 bytes at a time
+
+* fixed issue #126: Access-Shaper must be cached
+
+* INCOMPATIBLE CHANGE: renamed parameters "connect-timeout" and "request-timeout" 
+  for arangosh and arangoimp to "--server.connect-timeout" and "--server.request-timeout"
+
+* INCOMPATIBLE CHANGE: authorization is now required on the server side
+  Clients sending requests without HTTP autorization will be rejected with HTTP 401
+  To allow backwards compatibility, the server can be started with the option
+  "--server.disable-authentication"
+
+* added options "--server.username" and "--server.password" for arangosh and arangoimp
+  These parameters must be used to specify the user and password to be used when
+  connecting to the server. If no password is given on the command line, arangosh/
+  arangoimp will interactively prompt for a password.
+  If no user name is specified on the command line, the default user "root" will be
+  used.
+
+* added startup option "--server.ssl-cipher-list" to determine which ciphers to
+  use in SSL context. also added SSL_OP_CIPHER_SERVER_PREFERENCE to SSL default 
+  options so ciphers are tried in server and not in client order
+
+* changed default SSL protocol to TLSv1 instead of SSLv2
+
+* changed log-level of SSL-related messages
+
+* added SSL connections if server is compiled with OpenSSL support. Use --help-ssl
+
+* INCOMPATIBLE CHANGE: removed startup option "--server.admin-port". 
+  The new endpoints feature (see --server.endpoint) allows opening multiple endpoints 
+  anyway, and the distinction between admin and "other" endpoints can be emulated 
+  later using privileges
+
+* INCOMPATIBLE CHANGE: removed startup options "--port", "--server.port", and 
+  "--server.http-port" for arangod. 
+  These options have been replaced by the new "--server.endpoint" parameter
+  
+* INCOMPATIBLE CHANGE: removed startup option "--server" for arangosh and arangoimp.
+  These options have been replaced by the new "--server.endpoint" parameter
+
+* Added "--server.endpoint" option to arangod, arangosh, and arangoimp.
+  For arangod, this option allows specifying the bind endpoints for the server
+  The server can be bound to one or multiple endpoints at once. For arangosh
+  and arangoimp, the option specifies the server endpoint to connect to.
+  The following endpoint syntax is currently supported:
+  - tcp://host:port or http@tcp://host:port (HTTP over IPv4)
+  - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
+  - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
+  - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
+  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
+
+  If no port is specified, the default port of 8529 will be used.
+
+* INCOMPATIBLE CHANGE: removed startup options "--server.require-keep-alive" and 
+  "--server.secure-require-keep-alive". 
+  The server will now behave as follows which should be more conforming to the 
+  HTTP standard:
+  * if a client sends a "Connection: close" header, the server will close the
+    connection
+  * if a client sends a "Connection: keep-alive" header, the server will not
+    close the connection
+  * if a client does not send any "Connection" header, the server will assume
+    "keep-alive" if the request was an HTTP/1.1 request, and "close" if the
+    request was an HTTP/1.0 request
+
+* (minimal) internal optimisations for HTTP request parsing and response header 
+  handling
 
 * fixed Unicode unescaping bugs for \f and surrogate pairs in BasicsC/strings.c
 
-* fixed issue #126: Access-Shaper must be cached
+* changed implementation of TRI_BlockCrc32 algorithm to use 8 bytes at a time
 
 * fixed issue #122: arangod doesn't start if <log.file> cannot be created
 
@@ -16,7 +82,7 @@ v1.x.x (2012-XX-XX)
 
 * fixed escaping of document data in HTML admin front end
 
-* added HTTP basic authentication, use "--server.http-auth yes" to enable
+* added HTTP basic authentication, this is always turned on
 
 * added server startup option --server.disable-admin-interface to turn off the
   HTML admin interface

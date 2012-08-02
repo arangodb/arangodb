@@ -13,13 +13,13 @@ describe ArangoDB do
 ## all query
 ################################################################################
 
-    context "all query:" do
+    context "all query (will take a while when using ssl):" do
       before do
 	@cn = "UnitTestsCollectionSimple"
 	ArangoDB.drop_collection(@cn)
 	@cid = ArangoDB.create_collection(@cn, false)
 
-	(0...3000).each{|i|
+	(0...1500).each{|i|
 	  ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
 	}
       end
@@ -39,7 +39,7 @@ describe ArangoDB do
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(true)
 	doc.parsed_response['result'].length.should eq(1000)
-	doc.parsed_response['count'].should eq(3000)
+	doc.parsed_response['count'].should eq(1500)
       end
 
       it "get all documents with limit" do
@@ -72,7 +72,7 @@ describe ArangoDB do
 
       it "get all documents with skip" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 2900 }"
+	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 1400 }"
 	doc = ArangoDB.log_put("#{prefix}-all-skip", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -86,7 +86,7 @@ describe ArangoDB do
 
       it "get all documents with skip and limit" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 2900, \"limit\" : 2 }"
+	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 1400, \"limit\" : 2 }"
 	doc = ArangoDB.log_put("#{prefix}-all-skip-limit", cmd, :body => body)
 
 	doc.code.should eq(201)

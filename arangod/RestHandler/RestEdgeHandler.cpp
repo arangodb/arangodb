@@ -99,7 +99,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestEdgeHandler::createDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -113,7 +113,7 @@ bool RestEdgeHandler::createDocument () {
 
   // extract the from
   bool found;
-  char const* from = request->value("from", found);
+  char const* from = _request->value("from", found);
 
   if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
@@ -123,7 +123,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the to
-  char const* to = request->value("to", found);
+  char const* to = _request->value("to", found);
 
   if (! found || *to == '\0') {
     generateError(HttpResponse::BAD,
@@ -133,7 +133,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the cid
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -143,11 +143,11 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left

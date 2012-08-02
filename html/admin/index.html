@@ -6,11 +6,17 @@
     <style type="text/css" title="screen"> 
       @import "css/layout.css";
       @import "css/jquery.snippet.css";
+      @import "css/jquery.qtip.css";
       @import "css/jquery-ui-1.8.19.custom.css";
       @import "css/jquery.dataTables_themeroller.css";  
     </style>
       <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.qtip.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.stack.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.resize.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.flot.crosshair.js"></script>
       <script type="text/javascript" language="javascript" src="js/json2.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
       <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
@@ -50,7 +56,10 @@
         <button class="minimal" id="Query">Query</button>
         <button class="minimal" id="AvocSH">Shell</button>
         <button class="minimal" id="Logs">Logs</button>
-        <a href="http://www.arangodb.org/manuals/" target="_blank"><button class="minimal" id="Documentation">Documentation</button></a>
+        <button class="minimal" id="Status">Statistics</button>
+        <a href="http://www.arangodb.org/manuals/" target="_blank">
+        <img class="externalLink" src="../html/media/icons/expand16icon.png" alt=""></img>
+        <button class="minimal" id="Documentation">Documentation</button></a>
       </div>
 
     </div>
@@ -393,6 +402,19 @@
       </div>
  
       <div id="statusView" style="display: none">
+        <div id="statisticRadioDiv" class="radioFormat">
+          <div class="ItemActionButtons">
+            <div id="divSaveButton" class="buttonset" style="float: left; font-size:0.6em; ">
+              <input id="btnAddNewStat" class="button" value="Add..." onclick="ItemActionButtons.onSaveExtraClick.apply(this)" type="button"></input>
+              <ul class="SaveExtraOptions ui-corner-bottom" id="btnSaveExtraOptions">
+                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowConnectionsStats.apply(this)"id="addconnectionsLiBtn">Connections</li>
+                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowRequestsStats.apply(this)"id="addrequestsLiBtn">Requests</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div id="graphBox"> 
+        </div>
       </div>
 
       <div id="configView" style="display: none">
@@ -419,12 +441,16 @@
           <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
       </div>
 
-      <div id="queryView" style="display: none">
-        <a style="color:#797979; font-size:0.9em;">Output:</a>
-        <div id="queryOutput">
-          <a style="padding-left:10px">Please enter your query in the box below</a>
+      <div id="queryView" style="display: none"> 
+        <div class="queryDiv">
+          <a>Output</a>
         </div>
-        <a style="color:#797979; font-size:0.9em;">Input:</a>
+        <div id="queryOutput">
+          <a style="padding-left:10px"></a>
+        </div>
+        <div class="queryDiv">
+          <a>Input</a>
+        </div>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>

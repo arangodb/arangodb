@@ -27,13 +27,6 @@
 
 #include "Initialise.h"
 
-#include "build.h"
-
-#include "Basics/Initialise.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
-#include "Rest/Url.h"
-
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -44,6 +37,14 @@
 #ifndef OPENSSL_THREADS
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
+
+#include "build.h"
+
+#include "Basics/Initialise.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
+#include "Rest/Url.h"
+#include "Statistics/statistics.h"
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -114,6 +115,7 @@ namespace triagens {
     void InitialiseRest (int argc, char* argv[]) {
       TRIAGENS_BASICS_INITIALISE(argc, argv);
 
+      TRI_InitialiseStatistics();
       TRI_InitialiseUrl();
 
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";

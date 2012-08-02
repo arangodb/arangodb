@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_DISPATCHER_JOB_H
 #define TRIAGENS_DISPATCHER_JOB_H 1
 
-#include "Basics/Common.h"
+#include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -42,6 +42,7 @@ namespace triagens {
 
   namespace rest {
     class DispatcherThread;
+    class JobObserver;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         class Job
@@ -56,7 +57,7 @@ namespace triagens {
 /// @brief abstract base class for jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Job {
+    class Job : public RequestStatisticsAgent {
       private:
         Job (Job const&);
         Job& operator= (Job const&);
@@ -92,21 +93,20 @@ namespace triagens {
 
         enum status_e {
           JOB_DONE,
-          JOB_DETACH,
 #ifdef TRI_ENABLE_ZEROMQ
           JOB_DONE_ZEROMQ,
 #endif
+          JOB_DETACH,
           JOB_REQUEUE,
           JOB_FAILED
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief notification positions
+/// @brief notification for job observers
 ////////////////////////////////////////////////////////////////////////////////
 
         enum notification_e {
           JOB_WORK,
-          JOB_FINISH,
           JOB_CLEANUP,
           JOB_SHUTDOWN
         };
@@ -161,6 +161,12 @@ namespace triagens {
         const string& getName () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief attach an observer
+////////////////////////////////////////////////////////////////////////////////
+
+        void attachObserver (JobObserver* observer);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,10 +214,10 @@ namespace triagens {
         virtual void cleanup () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns result via a bridge, cleans up after work and delete
+/// @brief shuts down the execution and deletes everything
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void finish (void* bridge) = 0;
+        virtual bool beginShutdown () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle error and delete
@@ -220,10 +226,25 @@ namespace triagens {
         virtual void handleError (basics::TriagensError const&) = 0;
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down the execution and deletes everything
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool beginShutdown () = 0;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Dispatcher
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief notify attached observers
+////////////////////////////////////////////////////////////////////////////////
+
+        void notifyObservers (const Job::notification_e type);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -238,12 +259,19 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for the name
+/// @brief name of the job
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
         const string& _name;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attached observers
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<JobObserver*> _observers;
     };
   }
 }
