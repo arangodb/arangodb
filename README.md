@@ -50,9 +50,7 @@ Start the server:
 
     > mkdir /tmp/vocbase
     > bin/arangod /tmp/vocbase
-    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 0.x.y) is ready for business
-    2012-03-30T12:54:19Z [11794] INFO HTTP client port: 127.0.0.1:8529
-    2012-03-30T12:54:19Z [11794] INFO HTTP admin port: 127.0.0.1:8530
+    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
 Start the shell in another windows:
@@ -65,11 +63,11 @@ Start the shell in another windows:
      \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
                            |___/                 
 
-    Welcome to arangosh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
+    Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
     Using Google V8 3.9.4.0 JavaScript engine.
     Using READLINE 6.1.
 
-    Connected to Arango DB 127.0.0.1:8529 Version 0.3.5
+    Connected to Arango DB 127.0.0.1:8529 Version 1.x.y
 
     arangosh> db._create("examples")
     [ArangoCollection 106097, "examples]
