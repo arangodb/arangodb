@@ -176,7 +176,8 @@ noinst_LIBRARIES = \
 
 sbin_PROGRAMS = \
 	bin/arangod \
-        bin/arango-password
+        bin/arango-password \
+	bin/arango-dfdb
 
 # exclude arango-password from sources list
 bin_arango_password_SOURCES =
@@ -260,7 +261,7 @@ endif
 if ENABLE_INSTALL_DBDIR
 
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
 
 endif
 
@@ -343,8 +344,8 @@ bin/arango-password: bin/arango-password.in
 if ENABLE_RELATIVE_DEVEL
 	sed \
 		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${databasedir}%g' \
-		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
 else   
@@ -357,6 +358,29 @@ else
 endif
 
 CLEANUP += bin/arango-password
+
+################################################################################
+### @brief arango datafile debugger
+################################################################################
+
+bin/arango-dfdb: bin/arango-dfdb.in
+if ENABLE_RELATIVE_DEVEL
+	sed \
+		-e 's%@SBINDIR@%bin%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+else   
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+endif
+
+CLEANUP += bin/arango-dfdb
 
 ################################################################################
 ## --SECTION--                                                      DEPENDENCIES

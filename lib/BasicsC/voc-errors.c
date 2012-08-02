@@ -38,6 +38,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "ready only");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_IDENTIFIER, "duplicate identifier");
+  REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE, "illegal parameter file");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_COLLECTION, "corrupted collection");
@@ -64,6 +65,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
   REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");

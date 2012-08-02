@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief installation guide
-///
+//
 /// @file
 ///
 /// DISCLAIMER
@@ -218,6 +218,7 @@
 /// <ul>
 ///  <li>@ref Compiling
 ///   <ul>
+///    <li>@ref CompilingAmazonMicroInstance</li>
 ///    <li>@ref CompilingAIO
 ///     <ul>
 ///      <li>@ref CompilingAIOPrerequisites
@@ -277,6 +278,19 @@
 /// and you cannot make changes to the flex or bison files.
 ///
 /// @EMBEDTOC{CompilingTOC}
+///
+/// @section CompilingAmazonMicroInstance Amazon Micro Instance
+///////////////////////////////////////////////////////////////
+///
+/// \@sohgoh has reported that it is very easy to install ArangoDB on a 
+/// Amazon Micro Instance:
+///
+/// @code
+/// > sudo yum install readline-devel
+/// > ./configure
+/// > make
+/// > make install
+/// @endcode
 ///
 /// @section CompilingAIO All-In-One Version
 ////////////////////////////////////////////

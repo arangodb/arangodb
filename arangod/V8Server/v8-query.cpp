@@ -29,11 +29,12 @@
 
 #include "v8-query.h"
 
+#include "BasicsC/logging.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
-#include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS

@@ -76,7 +76,16 @@
 ////////////////////////
 /// 
 /// @subsection HomeCLINQ C\# / LINQ
+///
+/// @subsection HomeNodeJS Node.JS
+///
+/// There is a Node.JS client from Anders Elo available in a separate project:
+/// https://github.com/kaerus/arango-client
 /// 
+/// @subsection HomePerl Perl
+///
+/// @@hide_o_55 is currently developing a Perl client.
+///
 /// @subsection HomePHP PHP
 /// 
 /// There is a PHP client available in a separate project:

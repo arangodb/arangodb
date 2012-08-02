@@ -21,6 +21,11 @@ elif [ "${OS}" = "Linux" ] ; then
   
   # use "lsb_release"
   DIST=$(lsb_release -d 2>/dev/null| awk '{ print $2 }')
+  DIST2=$(lsb_release -d 2>/dev/null| awk '{ print $3 }')
+  if [ "x${DIST2}" = "xMint" ] ; then
+     DIST="LinuxMint"
+  fi
+
   RELEASE=$(lsb_release -r 2>/dev/null | awk '{ print $2 }')
   CODENAME=$(lsb_release -c 2>/dev/null | awk '{ print $2 }')
 
@@ -45,6 +50,15 @@ elif [ "${OS}" = "Linux" ] ; then
     elif [ -f /etc/debian_version ] ; then
       DIST="Debian"
       RELEASE=`cat /etc/debian_version`
+
+    elif [ -f /etc/os-release ] ; then
+      ID=$(cat /etc/os-release | tr "\n" ' ' | sed s/.*ID=// | awk '{ print $1}')
+      if [ "${ID}" = "arch" ] ; then
+        DIST='ArchLinux'
+        RELEASE="current"
+        CODENAME="arch"
+      fi
+
     fi
   fi
 

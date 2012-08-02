@@ -25,12 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        DBA MANUAL
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManual ArangoDB's DBA Manual
 ///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref DbaManualBasics</li>
+///  <li>@ref DbaManualAuthentication</li>
+///  <li>@ref DbaManualDatafileDebugger</li>
 ///  <li>@ref ShellCollection</li>
 ///  <li>@ref ShellIndex</li>
 ///  <li>@ref IndexCap</li>
@@ -43,12 +49,17 @@
 /// </ul>
 /// @else
 /// @copydetails DbaManualBasicsTOC
+/// @copydetails DbaManualAuthenticationTOC
+/// @copydetails DbaManualDatafileDebuggerTOC
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellIndexTOC
 /// @copydetails IndexesTOC
-/// @copydetails DbaManualAuthenticationTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 DBA MANUAL BASCIS
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManualBasicsTOC
@@ -96,6 +107,10 @@
 /// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                         DBA MANUAL AUTHENTICATION
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManualAuthenticationTOC
 ///
@@ -129,6 +144,43 @@
 ///
 /// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      DBA MANUAL DATAFILE DEBUGGER
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualDatafileDebuggerTOC
+///
+/// <ul>
+///  <li>@ref DbaManualDatafileDebugger
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualDatafileDebugger Datafile Debugger
+///
+/// @EMBEDTOC{DbaManualDatafileDebuggerTOC}
+///
+/// AranagoDB uses append-only journals. The corruption should only occur when
+/// the database server is kill. In this case, the corruption should only
+/// occur in the last object(s) being written to the journal.
+///
+/// If a corruption occurs within a normal datafile, then this can only happen
+/// if a hardware fault occurred.
+///
+/// If a journal or datafile is corrupt, shutdown the database server and start
+/// the program
+///
+/// @LIT{arango-dfdb}
+///
+/// in order to check the consistency of the datafiles and journals.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++

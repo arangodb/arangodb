@@ -80,7 +80,96 @@ static void InitCollection (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief scans a collection and locates all files
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
+  TRI_col_file_structure_t structure;
+  TRI_vector_string_t files;
+  regex_t re;
+  size_t i;
+  size_t n;
+
+  // check files within the directory
+  files = TRI_FilesDirectory(path);
+  n = files._length;
+
+  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
+
+  TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
+
+  for (i = 0;  i < n;  ++i) {
+    char const* file = files._buffer[i];
+    regmatch_t matches[4];
+
+    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      char const* first = file + matches[1].rm_so;
+      size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+
+      char const* third = file + matches[3].rm_so;
+      size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
+
+      // .............................................................................
+      // file is an index
+      // .............................................................................
+
+      if (TRI_EqualString2("index", first, firstLen) && TRI_EqualString2("json", third, thirdLen)) {
+        char* filename;
+
+        filename = TRI_Concatenate2File(path, file);
+        TRI_PushBackVectorString(&structure._indexes, filename);
+      }
+
+      // .............................................................................
+      // file is a journal or datafile
+      // .............................................................................
+
+      else if (TRI_EqualString2("db", third, thirdLen)) {
+        char* filename;
+
+        filename = TRI_Concatenate2File(path, file);
+
+        // file is a journal
+        if (TRI_EqualString2("journal", first, firstLen)) {
+          TRI_PushBackVectorString(&structure._journals, filename);
+        }
+
+        // file is a compactor file
+        else if (TRI_EqualString2("compactor", first, firstLen)) {
+          TRI_PushBackVectorString(&structure._compactors, filename);
+        }
+
+        // file is a datafile
+        else if (TRI_EqualString2("datafile", first, firstLen)) {
+          TRI_PushBackVectorString(&structure._datafiles, filename);
+        }
+
+        // ups, what kind of file is that
+        else {
+          LOG_ERROR("unknown datafile '%s'", file);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        }
+      }
+      else {
+        LOG_ERROR("unknown datafile '%s'", file);
+      }
+    }
+  }
+
+  TRI_DestroyVectorString(&files);
+
+  regfree(&re);
+
+  return structure;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a collection
+///
+/// TODO: Use ScanCollectionDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckCollection (TRI_collection_t* collection) {
@@ -130,7 +219,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
-        // TODO: memory allocation might fail
         TRI_PushBackVectorString(&collection->_indexFiles, filename);
       }
 
@@ -246,11 +334,8 @@ static bool CheckCollection (TRI_collection_t* collection) {
       datafile = sealed._buffer[i];
 
       number = TRI_StringUInt32(datafile->_fid);
-      // TODO: memory allocation might fail
       dname = TRI_Concatenate3String("datafile-", number, ".db");
-      // TODO: memory allocation might fail
       filename = TRI_Concatenate2File(collection->_directory, dname);
-      // TODO: memory allocation might fail
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
       TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -936,6 +1021,25 @@ int TRI_CloseCollection (TRI_collection_t* collection) {
   CloseDataFiles(&collection->_datafiles);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the collection files
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const* path) {
+  return ScanCollectionDirectory(path);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
+  TRI_DestroyVectorString(&info->_journals);
+  TRI_DestroyVectorString(&info->_compactors);
+  TRI_DestroyVectorString(&info->_datafiles);
+  TRI_DestroyVectorString(&info->_indexes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
