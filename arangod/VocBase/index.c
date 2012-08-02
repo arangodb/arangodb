@@ -3553,7 +3553,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
   else if (document != NULL) {
   
     // ..........................................................................
-    // Assign the document to the SkiplistIndexElement structure so that it can 
+    // Assign the document to the element structure so that it can 
     // be retreived later.
     // ..........................................................................
     
@@ -3649,7 +3649,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   if (result != TRI_ERROR_NO_ERROR) {
   
     // ..........................................................................
-    // Deallocated the memory already allocated to skiplistElement.fields
+    // Deallocated the memory already allocated to element.fields
     // ..........................................................................
       
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
@@ -3666,12 +3666,25 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
         return TRI_ERROR_NO_ERROR;
       }  
 
+      
+      // ........................................................................
+      // This insert means that the document does NOT have the index attributes
+      // defined, however, we still insert it into aspecial 'undefined' column
+      // ........................................................................
+      
       result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
     }
     
     return result;
   }    
   
+  
+  // ............................................................................
+  // This insert means that the document has ALL attributes which have been defined
+  // in the index. However, it may happen that one or more attribute VALUES are
+  // unsupported within the index -- in this case the function below will return
+  // an error and insertion of the document is rolled back.
+  // ............................................................................
   
   result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
   
@@ -3923,7 +3936,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   
   result = BitarrayIndex_remove(baIndex->_bitarrayIndex, &element);
 
-  
+
   // ............................................................................
   // Deallocate memory allocated to element.fields above
   // ............................................................................
@@ -4022,7 +4035,7 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   if (result != TRI_ERROR_NO_ERROR) {
   
     // ..........................................................................
-    // Deallocated the memory already allocated to skiplistElement.fields
+    // Deallocated the memory already allocated to element.fields
     // ..........................................................................
       
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);

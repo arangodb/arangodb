@@ -314,6 +314,10 @@ extern "C" {
 /// - 3411: @CODE{bitarray index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a bitarray index
 ///   fails when document can not be located within that index.
+/// - 3413: @CODE{bitarray index insert failure - document attribute value unsupported in index}
+///   Will be raised when an attempt to insert a document into a bitarray index
+///   fails due to the fact that one or more values for an index attribute is
+///   not supported within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1651,6 +1655,19 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING             (3411)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3413: ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE
+///
+/// bitarray index insert failure - document attribute value unsupported in
+/// index
+///
+/// Will be raised when an attempt to insert a document into a bitarray index
+/// fails due to the fact that one or more values for an index attribute is not
+/// supported within that index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE     (3413)
 
 
 ////////////////////////////////////////////////////////////////////////////////
