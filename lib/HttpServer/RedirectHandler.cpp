@@ -54,16 +54,16 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     HttpHandler::status_e RedirectHandler::execute () {
-      response = new HttpResponse(HttpResponse::MOVED_PERMANENTLY);
+      _response = new HttpResponse(HttpResponse::MOVED_PERMANENTLY);
 
-      response->setHeader("location", _redirect);
-      response->setContentType("text/html");
+      _response->setHeader("location", _redirect);
+      _response->setContentType("text/html");
 
-      response->body().appendText("<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"");
-      response->body().appendText(_redirect);
-      response->body().appendText(">");
-      response->body().appendText(_redirect);
-      response->body().appendText("</a>.</p></body></html>");
+      _response->body().appendText("<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"");
+      _response->body().appendText(_redirect);
+      _response->body().appendText(">");
+      _response->body().appendText(_redirect);
+      _response->body().appendText("</a>.</p></body></html>");
 
       return HANDLER_DONE;
     }
@@ -71,7 +71,7 @@ namespace triagens {
 
 
     void RedirectHandler::handleError (TriagensError const&) {
-      response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      _response = new HttpResponse(HttpResponse::SERVER_ERROR);
     }
   }
 }

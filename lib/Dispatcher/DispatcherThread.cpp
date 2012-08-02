@@ -35,10 +35,6 @@
 #include "Dispatcher/Job.h"
 #include "Logger/Logger.h"
 
-#ifdef TRI_ENABLE_ZEROMQ
-#include "ZeroMQ/ApplicationZeroMQ.h"
-#endif
-
 using namespace triagens::basics;
 using namespace triagens::rest;
 
@@ -80,30 +76,6 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
-#ifdef TRI_ENABLE_ZEROMQ
-  void* zContext = _queue->_dispatcher->zeroMQContext();
-  void* zBridge = 0;
-
-  if (zContext != 0) {
-    zBridge = zmq_socket(zContext, ZMQ_DEALER);
-
-    if (zBridge == 0) {
-      LOGGER_FATAL << "cannot create Disptacher/ZeroMQ bridge: " << zmq_strerror(errno);
-      zmq_term(zContext);
-      exit(EXIT_FAILURE);
-    }
-
-    int zRes = zmq_bind(zBridge, ApplicationZeroMQ::ZEROMQ_INTERNAL_BRIDGE.c_str());
-
-    if (zRes != 0) {
-      LOGGER_FATAL << "cannot bind Disptacher/ZeroMQ bridge: " << zmq_strerror(errno);
-      zmq_close(zBridge);
-      zmq_term(zContext);
-      exit(EXIT_FAILURE);
-    }
-  }
-#endif
-
   _queue->_accessQueue.lock();
 
   _queue->_nrStarted--;
@@ -154,6 +126,7 @@ void DispatcherThread::run () {
       Job::status_e status = Job::JOB_FAILED;
 
       try {
+        RequestStatisticsAgentSetQueueEnd(job);
 
         // set current thread
         job->setDispatcherThread(this);
@@ -224,30 +197,25 @@ void DispatcherThread::run () {
       // trigger GC
       tick(false);
 
-      // require the lock
-      _queue->_accessQueue.lock();
-
-      // cleanup
-      _queue->_monopolizer = 0;
-
       // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
       // it is not safe to use detached jobs after job->work()
 
-      if (status != Job::JOB_DETACH) {
+      // detached jobs
+      if (status == Job::JOB_DETACH) {
+        // we must do absolutely nothing with dispatched jobs here because they might be
+        // killed asynchronously and this is not under our control
+      }
+
+      // normal jobs
+      else {
+
         // finish jobs
         try {
-          assert(status != Job::JOB_DETACH);
-
           job->setDispatcherThread(0);
 
           if (status == Job::JOB_DONE) {
             job->cleanup();
           }
-#ifdef TRI_ENABLE_ZEROMQ
-          else if (status == Job::JOB_DONE_ZEROMQ) {
-            job->finish(zBridge);
-          }
-#endif
           else if (status == Job::JOB_REQUEUE) {
             _queue->_dispatcher->addJob(job);
           }
@@ -259,7 +227,6 @@ void DispatcherThread::run () {
 #ifdef TRI_HAVE_POSIX_THREADS
           if (_queue->_stopping != 0) {
             LOGGER_WARNING << "caught cancellation exception during cleanup";
-            _queue->_accessQueue.unlock();
             throw;
           }
 #endif
@@ -267,6 +234,12 @@ void DispatcherThread::run () {
           LOGGER_WARNING << "caught error while cleaning up!";
         }
       }
+
+      // require the lock
+      _queue->_accessQueue.lock();
+
+      // cleanup
+      _queue->_monopolizer = 0;
 
       if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {
         _queue->_accessQueue.broadcast();
@@ -305,12 +278,6 @@ void DispatcherThread::run () {
   _queue->_nrUp--;
 
   _queue->_accessQueue.unlock();
-
-#ifdef TRI_ENABLE_ZEROMQ
-  if (zBridge != 0) {
-    zmq_close(zBridge);
-  }
-#endif
 
   LOGGER_TRACE << "dispatcher thread has finished";
 }

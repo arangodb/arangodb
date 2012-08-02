@@ -178,6 +178,9 @@ sbin_PROGRAMS = \
 	bin/arangod \
         bin/arango-password
 
+# exclude arango-password from sources list
+bin_arango_password_SOURCES =
+
 ################################################################################
 ### @brief /bin programs
 ################################################################################
@@ -337,12 +340,21 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ################################################################################
 
 bin/arango-password: bin/arango-password.in
+if ENABLE_RELATIVE_DEVEL
+	sed \
+		-e 's%@SBINDIR@%bin%g' \
+		-e 's%@DATABASE@%${databasedir}%g' \
+		-e 's%@STATICFILES@%${pkgdatadir}%g' \
+		$< > $@
+	chmod 755 $@
+else   
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
 		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
 		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
+endif
 
 CLEANUP += bin/arango-password
 

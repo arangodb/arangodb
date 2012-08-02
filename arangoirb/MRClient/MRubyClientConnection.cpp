@@ -41,6 +41,7 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
@@ -56,6 +57,7 @@ extern "C" {
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::mrclient;
+using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -71,21 +73,28 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
-                                              const std::string& hostname,
-                                              int port,
+MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
+                                              Endpoint* endpoint,
+                                              const string& username,
+                                              const string& password,
                                               double requestTimeout,
-                                              size_t retries,
                                               double connectionTimeout,
+                                              size_t numRetries,
                                               bool warn)
-  : _mrb(mrb),
-    _connected(false),
+  : _mrs(mrs),
+    _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
       
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  _connection = GeneralClientConnection::factory(endpoint, connectionTimeout, requestTimeout, numRetries);
+  if (_connection == 0) {
+    throw "out of memory";
+  }
+
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -107,7 +116,6 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
 
         if (vs && vs->getValue() == "arango") {
           // connected to arango server
-          _connected = true;
           vs = json->lookupString("version");
 
           if (vs) {
@@ -155,7 +163,7 @@ MRubyClientConnection::~MRubyClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MRubyClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,22 +190,6 @@ const std::string& MRubyClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& MRubyClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int MRubyClientConnection::getPort () {
-  return _client->getPort();
-}
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,10 +262,6 @@ mrb_value MRubyClientConnection::requestData (int method,
                                               string const& location,
                                               string const& body,
                                               map<string, string> const& headerFields) {
-  MR_state_t* mrs;
-
-  mrs = (MR_state_t*) _mrb->ud;
-
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
       
@@ -298,10 +286,10 @@ mrb_value MRubyClientConnection::requestData (int method,
         
     _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
         
-    mrb_value result = mrb_hash_new_capa(_mrb, 2);
+    mrb_value result = mrb_hash_new_capa(&_mrs->_mrb, 2);
 
-    mrb_hash_set(_mrb, result, mrs->_errorSym, mrb_true_value());
-    mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+    mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorSym, mrb_true_value());
+    mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_fixnum_value(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
 
     int errorNumber = 0;
 
@@ -323,11 +311,11 @@ mrb_value MRubyClientConnection::requestData (int method,
         break;
     }        
         
-    mrb_hash_set(_mrb, result, mrs->_errorNumSym, mrb_fixnum_value(errorNumber));
-    mrb_hash_set(_mrb,
+    mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorNumSym, mrb_fixnum_value(errorNumber));
+    mrb_hash_set(&_mrs->_mrb,
                  result,
-                 mrs->_errorMessageSym, 
-                 mrb_str_new(_mrb, _lastErrorMessage.c_str(), _lastErrorMessage.length()));
+                 _mrs->_errorMessageSym, 
+                 mrb_str_new(&_mrs->_mrb, _lastErrorMessage.c_str(), _lastErrorMessage.length()));
 
     return result;
   }
@@ -344,7 +332,7 @@ mrb_value MRubyClientConnection::requestData (int method,
 
         if (js != NULL) {
           // return v8 object
-          mrb_value result = MR_ObjectJson(_mrb, js);
+          mrb_value result = MR_ObjectJson(&_mrs->_mrb, js);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
 
           return result;
@@ -352,7 +340,7 @@ mrb_value MRubyClientConnection::requestData (int method,
       }
 
       // return body as string
-      mrb_value result = mrb_str_new(_mrb, 
+      mrb_value result = mrb_str_new(&_mrs->_mrb, 
                                      _httpResult->getBody().str().c_str(),
                                      _httpResult->getBody().str().length());
 
@@ -363,8 +351,8 @@ mrb_value MRubyClientConnection::requestData (int method,
       // this should not happen
       mrb_value result;
 
-      mrb_hash_set(_mrb, result, mrs->_errorSym, mrb_false_value());
-      mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(_httpResult->getHttpReturnCode()));
+      mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorSym, mrb_false_value());
+      mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_fixnum_value(_httpResult->getHttpReturnCode()));
 
       return result;
     }        

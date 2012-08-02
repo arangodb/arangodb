@@ -2060,7 +2060,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
-/// An error is thrown if the document does not exists.
+/// An error is thrown if the document does not exist.
 ///
 /// The document must be part of the @FA{collection}; otherwise, an error
 /// is thrown.
@@ -2140,7 +2140,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.dropIndex(@FA{index})}
 ///
-/// Drops the index. If the index does not exists, then @LIT{false} is
+/// Drops the index. If the index does not exist, then @LIT{false} is
 /// returned. If the index existed and was dropped, then @LIT{true} is
 /// returned. Note that you cannot drop the primary index.
 ///

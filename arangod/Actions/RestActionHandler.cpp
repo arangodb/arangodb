@@ -125,7 +125,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   // need an action
   if (_action == 0) {
-    generateNotImplemented(request->requestPath());
+    generateNotImplemented(_request->requestPath());
   }
 
   // need permission
@@ -137,7 +137,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   else {
 
     // extract the sub-request type
-    HttpRequest::HttpRequestType type = request->requestType();
+    HttpRequest::HttpRequestType type = _request->requestType();
 
     // prepare logging
     switch (type) {
@@ -191,14 +191,14 @@ HttpHandler::status_e RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::executeAction () {
-  response = _action->execute(_vocbase, request);
+  _response = _action->execute(_vocbase, _request);
 
-  if (response == 0) {
+  if (_response == 0) {
     generateNotImplemented(_action->_url);
     return false;
   }
 
-  return (int) response->responseCode() < 400;
+  return (int) _response->responseCode() < 400;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

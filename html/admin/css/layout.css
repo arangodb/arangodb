@@ -1,28 +1,177 @@
-.jediTextarea textarea {
-  border: solid 1px #525252; 
-  background-color: #F3F1EE; 
-  resize: vertical;  
-  -webkit-border-radius: 2px !important;
-  -moz-border-radius: 2px !important;
-  border-radius: 2px !important;
+img.externalLink {
+  position:absolute;
+  top:4px;
+  right:8px;
 }
 
-.jediTextarea button {
-  color: red !important;  
-  background: #e3e3e3 !important;
-  border: 1px solid #bbb !important;
-  -webkit-border-radius: 3px !important;
-  -moz-border-radius: 3px !important;
-  border-radius: 3px !important;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  box-shadow: inset 0 0 1px 1px #f6f6f6 !important; 
-  color: #333 !important;
-  font: 12px "helvetica neue", helvetica, arial, sans-serif !important;
-  text-align: center !important; 
-  text-shadow: 0 1px 0 #fff !important;
-  width: 50% !important; 
-  height: 20px !important; 
+#graphBox {
+  margin-right: 10px; 
+  padding-left: 20px; 
+}
+
+.chartContainer {
+  background-color: #F3F1EE;
+  border: 1px solid #525252; 
+  width:400px; 
+  height: 150px; 
+  padding-bottom: 40px; 
+}
+
+#requestChoices label {
+  width: 100% !important; 
+} 
+
+.statDisabled {
+  color: #C0C0C0;  
+}
+
+.statEnabled {
+  color: black; 
+}
+
+#btnSaveExtraOptions {
+  margin-top: -84px;
+}
+
+#btnSave, #btnAddNewStat {
+  font-size: 1.1em; 
+  margin:0px; 
+  height: 25px !important; 
+}
+
+.ItemActionButtons{}
+
+.ItemActionButtons .SaveExtraOptions  {
+  display: none; 
+  list-style-type: none; 
+  padding: 5px; 
+  margin: 0; 
+  border: 1px solid #DCDCDC; 
+  background-color: #fff;  
+  z-index: 999; 
+  position: absolute;
+}
+
+.ItemActionButtons .SaveExtraOptions li {
+  padding: 5px 3px 5px 3px; 
+  margin: 0; 
+  width: 150px; 
+  border: 1px solid #fff;
+}
+
+.ItemActionButtons .SaveExtraOptions li:hover {
+  cursor: pointer;
+  background-color: #DCDCDC;
+}
+
+.ItemActionButtons .SaveExtraOptions li a {
+  text-transform: none;
+}
+
+.resizable, .draggable {
+  min-width: 250px;
+  min-height: 90px;  
+  max-width: 100%;
+  max-height: 100%;  
+  position:fixed !important; 
+  box-shadow: 2px 2px 2px #888;
+}
+
+.placeholderBox, .placeholderBoxSettings {
+  margin-left: 7px; 
+  margin-right: 7px; 
+  margin-top: 7px;   
+  margin-bottom: 20px;   
+  font-size: 0.8em; 
+  height: 100%; 
+  min-height: 90px; 
+}
+
+.queryDiv {
+  height:20px; 
+  background-color: #525252;
+  color: white;
+  font-size: 0.8em;
+  padding-left: 5px; 
+  padding-top: 3px;    
+}
+
+.statsHeader, .statsHeaderGran {
+  font-size:0.8em; 
+  color: white;
+  padding-left: 5px;  
+}
+
+.statsClose, .statsSettings, .statsCharts {
+  font-size:0.8em; 
+  float: right; 
+  color: white;
+  padding-right: 2px;
+  cursor: pointer;
+}
+
+#sortable {   
+  list-style-type: none; 
+  margin: 0; 
+  padding: 0; 
+}
+
+#sortable li { 
+  float: left;
+  margin-top: 18px; 
+  margin-left: -7px;   
+  margin-right: 17px;
+  padding-bottom: 5px;  
+  padding-right: 5px;  
+  padding-left: 5px;  
+  text-align: left; 
+  width: 500px; 
+  background-color: #F3F1EE;
+  border: solid 1px #525252; 
+}
+
+.statsBoxes {
+  background-color: #F3F1EE;
+}
+
+.legend table {
+  top: 0px !important; 
+  bottom: 0px !important; 
+}
+
+.greydiv{
+  padding-top: 2px; 
+  height: 22px; 
+  background-color: #525252; 
+}
+
+#whitediv {
+  height: 10px; 
+  background-color: white; 
+}
+
+.ui-tooltip-content {
+  font-size: 0.7em !important;
+  font-weight:normal !important;
+  background-color: #525252; 
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+}
+
+.radioFormat {
+  height:26px !important;
+  margin-top: -2px; 
+}
+
+.radioFormat .ui-state-active {
+  background-color: #9EAF5A !important;
+  font-weight: normal;
+}
+
+.radioFormat .ui-state-default {
+  color: #555555;
+  font-weight: normal;
 }
 
 .cuttedContent, .prettify ul li, .writeable a {
@@ -50,11 +199,11 @@
 }
 
 #delete {
-  padding-right: 15px; 
+  margin-right: 30px; 
 }
 
 #deleteDoc {
-  margin-right: 15px; 
+  margin-right: 20px; 
 }
 
 button {
@@ -135,10 +284,10 @@ tr {
 th {
   font-size: 1.2em;
   height:30px;  
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
-  text-shadow: 0 1px 0 #fff;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
+// text-shadow: 0 1px 0 #fff;
 }
 td {
   height:30px;    
@@ -220,9 +369,9 @@ pre ul li span{
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
   background: url("images/ui-bg_flat_75_e6e6e6_40x100.png") repeat-x scroll 50% 50% #E6E6E6;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 .dataTables_info{
@@ -259,6 +408,8 @@ pre ul li span{
 }
 
 #brotkruemelnavi {
+  margin-left: 10px;
+  margin-right: 10px;  
   min-width: 1024px; 
   font-size: 1em;
   height:30px;
@@ -268,12 +419,11 @@ pre ul li span{
   color: #9EAF5A;
   font-weight: bold; 
   text-decoration: none;
-  border-top: 1px solid  #7E9246;
-  border-bottom: 1px solid #7E9246;
+  border: 1px solid  #7E9246;
   padding-left: 7px; 
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 #createCollection, #refreshCollections, #addDocumentButton, #saveEditedDocButton, #saveNewDocButton, #addEditedDocRowButton, #toggleEditedDocButton, #addNewDocButton, #toggleNewDocButton {
@@ -337,16 +487,20 @@ pre ul li span{
 }
 
 #brotkruemelnavi a {
-  margin-left:10px; 
+  margin-left:10px;
 }
 
 .ui-tabs-nav {
   font-size: 0.7em !important; 
   height: 30px; 
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
-  //border-bottom: 0px !important;  
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6 !important;
+//border-bottom: 0px !important;  
+  border-bottom-left-radius: 0px !important; 
+  border-bottom-right-radius: 0px !important; 
+  border-bottom-top-radius: 0px !important; 
+  border-bottom-bottom-radius: 0px !important;
 }
 
 .ui-tabs, .ui-tabs-panel {
@@ -422,6 +576,7 @@ form {
 
 
 #queryOutput {
+  margin-bottom: 5px; 
   height:35%; 
   overflow-y: auto; 
   border: 1px solid black;
@@ -525,9 +680,6 @@ form {
   height:75px;
   border:#999 1px solid;
   font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
-  transition: all 0.25s ease-in-out;
-  -webkit-transition: all 0.25s ease-in-out;
-  -moz-transition: all 0.25s ease-in-out;
   box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
@@ -682,9 +834,9 @@ form {
 .fg-toolbar {
   font-size: 0.7em; 
   border: 1px solid #D3D3D3 !important; 
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 /*
@@ -696,9 +848,9 @@ form {
   background: #e3e3e3;
   padding: 9px 0 8px; 
   border: 1px solid #bbb;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 0.7em Verdana,Arial,sans-serif;
   line-height: 1;
@@ -708,16 +860,16 @@ form {
 }
 #menue button.minimal:hover {
     background: #d9d9d9;
-    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
-    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
-    box-shadow: inset 0 0 1px 1px #eaeaea;
+//    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
+//    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
+//    box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
     cursor: pointer; }
 #menue  button.minimal:active {
     background: #d0d0d0;
-    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
-    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
-    box-shadow: inset 0 0 1px 1px #e3e3e3;
+//    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
+//    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
+//    box-shadow: inset 0 0 1px 1px #e3e3e3;
     color: #000; }
 /*
 ##############################################################################
@@ -757,7 +909,7 @@ form {
 }
 
 #queryForm {
-  margin-top: -3px;     
+  margin-top: -5px;     
 }
 
 #queryView {
@@ -777,12 +929,9 @@ form {
 #avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button  {
   background: #e3e3e3;
   border: 1px solid #bbb;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  border-radius: 3px;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 12px "helvetica neue", helvetica, arial, sans-serif;
   text-align: center;
@@ -794,9 +943,9 @@ form {
 
 #avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
     background: #d9d9d9;
-    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
-    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
-    box-shadow: inset 0 0 1px 1px #eaeaea;
+//    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
+//    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
+//    box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
     cursor: pointer; 
 }

@@ -29,6 +29,7 @@
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Rest/AnyServer.h"
+#include "Rest/OperationMode.h"
 
 #include "VocBase/vocbase.h"
 
@@ -39,11 +40,15 @@
 namespace triagens {
   namespace rest {
     class ApplicationDispatcher;
-    class ApplicationHttpServer;
-    class ApplicationHttpsServer;
+    class ApplicationEndpointServer;
     class ApplicationScheduler;
+#ifdef TRI_ENABLE_ZEROMQ
     class ApplicationZeroMQ;
+#endif 
     class HttpServer;
+#ifdef TRI_OPENSSL_VERSION
+    class HttpsServer;
+#endif
   }
 
   namespace admin {
@@ -63,18 +68,6 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server shell operation modes
-////////////////////////////////////////////////////////////////////////////////
-
-    typedef enum {
-      MODE_CONSOLE,
-      MODE_UNITTESTS,
-      MODE_JSLINT,
-      MODE_SCRIPT
-    }
-    server_operation_mode_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -138,6 +131,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -152,7 +160,7 @@ namespace triagens {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-        int executeConsole (server_operation_mode_e);
+        int executeConsole (triagens::rest::OperationMode::server_operation_mode_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the ruby emergency console
@@ -188,7 +196,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of command line arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,16 +228,10 @@ namespace triagens {
         rest::ApplicationDispatcher* _applicationDispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application http server
+/// @brief application endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::ApplicationHttpServer* _applicationHttpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application https server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::ApplicationHttpsServer* _applicationHttpsServer;
+        rest::ApplicationEndpointServer* _applicationEndpointServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed admin server application
@@ -261,72 +263,23 @@ namespace triagens {
 /// @brief ZeroMQ server
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZEROMQ
         rest::ApplicationZeroMQ* _applicationZeroMQ;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed http server
+/// @brief disable authentication for ALL client requests
+///
+/// @CMDOPT{--server.disable-authentication @CA{value}}
+///
+/// Setting @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
+///
+/// The default value is @LIT{false}.
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::HttpServer* _httpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed admin http server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::HttpServer* _adminHttpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for client requests
-///
-/// @CMDOPT{--server.http-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available. If you do not specify an admin port, then the http port
-/// will serve both client and administration request. If you have
-/// higher security requirements, you can use a special administration
-/// port.
-///
-/// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{address} and @CA{port} for HTTP requests by clients. This
-/// will bind to the given @CA{address}, which can be a numeric value like
-/// @CODE{192.168.1.1} or a name.
-///
-/// @CMDOPT{--port @CA{port}}
-///
-/// This variant can be used as command line option.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _httpPort;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use basic http authentication
-///
-/// @CMDOPT{--server.http-auth @CA{flag}}
-///
-/// If @CA{flag} is @LIT{yes}, then the HTTP access is secured with "HTTP Basic
-/// Authentication". The user and sha256 of the password are stored in a
-/// collection @LIT{_users}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _httpAuth;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for admin requests
-///
-/// @CMDOPT{--server.admin-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to any address available.
-///
-/// @CMDOPT{--server.admin-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to the given @CA{address}, which can be a numeric value like
-/// 192.168.1.1 or a name.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _adminPort;
+        bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker

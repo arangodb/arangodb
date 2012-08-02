@@ -45,10 +45,14 @@
 ///    </li>
 ///    <li>@ref CommandLineArango
 ///     <ul>
-///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
-///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
-///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
-///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
+///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
+///      <li>@ref CommandLineArangoDisableAuthentication "server.disable-authentication"</li>
+///      <li>@ref CommandLineArangoKeyFile "server.keyfile"</li>
+///      <li>@ref CommandLineArangoCaFile "server.cafile"</li>
+///      <li>@ref CommandLineArangoSslProtocol "server.ssl-protocol"</li>
+///      <li>@ref CommandLineArangoSslCacheMode "server.ssl-cache"</li>
+///      <li>@ref CommandLineArangoSslOptions "server.ssl-options"</li>
+///      <li>@ref CommandLineArangoSslCipherList "server.ssl-cipher-list"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
@@ -159,17 +163,32 @@
 /// @section CommandLineArango Command-Line Options for the ArangoDB
 ////////////////////////////////////////////////////////////////////
 ///
-/// @anchor CommandLineArangoHttpPort
-/// @copydetails triagens::arango::ArangoServer::_httpPort
+/// @anchor CommandLineArangoEndpoint
+/// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
-/// @anchor CommandLineArangoAdminPort
-/// @copydetails triagens::arango::ArangoServer::_adminPort
+/// @anchor CommandLineArangoDisableAuthentication
+/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
 ///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
+/// @anchor CommandLineArangoKeyFile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile
+///
+/// @anchor CommandLineArangoCaFile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_cafile
+///
+/// @anchor CommandLineArangoSslProtocol
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslProtocol
+///
+/// @anchor CommandLineArangoSslCacheMode
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCache
+///
+/// @anchor CommandLineArangoSslOptions
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslOptions
+///
+/// @anchor CommandLineArangoSslCipherList
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
-/// @CMDOPT{--disable-admin-interface}
+/// @CMDOPT{--server.disable-admin-interface}
 ///
 /// If this option is specified, then the HTML admininstration interface at 
 /// URL http://server:port/ will be disabled and cannot used by any user at all.

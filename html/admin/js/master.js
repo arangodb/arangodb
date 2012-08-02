@@ -10,9 +10,10 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh 1.0.alpha1 Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh 1.0.beta Copyright (c) 2012 triAGENS GmbH."
 
-
+var existingCharts; 
+var statDivCount;  
 // documents global vars
 var collectionCount;
 var totalCollectionCount;
@@ -28,7 +29,6 @@ var shArray = [];
 
 $(document).ready(function() {       
 showCursor();
-
 //hide incomplete functions 
 $("#uploadFile").attr("disabled", "disabled");
 $("#uploadFileImport").attr("disabled", "disabled");
@@ -92,6 +92,60 @@ $("#documents_first").live('click', function () {
 $("#documents_last").live('click', function () {
   createLastPagination("#documentsTable"); 
 });
+
+///////////////////////////////////////////////////////////////////////////////
+//statistics live click buttons close 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsClose").live('click', function () {
+  var divID = $(this).parent().parent();
+  var chart = $(this).parent().parent().attr('id');
+  var chartID = JSON.parse(chart.replace(/\D/g, '' ));
+  var todelete; 
+
+  $.each(existingCharts, function(x, i ) {
+    var tempid = i.id; 
+    if (tempid == chartID) {
+      todelete = x; 
+    } 
+  });  
+  
+  existingCharts.splice(todelete, 1);  
+  $("#chartBox"+chartID).remove();   
+
+  stateSaving(); 
+  
+  if (temptop > 150 && templeft > 20) {
+    templeft = templeft - 10; 
+    temptop = temptop - 10;
+  }
+
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistic settings 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsSettings").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  $(chartID).hide(); 
+  $(settingsID).fadeIn(); 
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistics charts
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsCharts").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  stateSaving(); 
+  updateChartBoxes(); 
+  $(settingsID).hide(); 
+  $(chartID).fadeIn(); 
+});
+
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -574,10 +628,16 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
+      $('#graphBox').empty(); 
+      stateReading(); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
-      createnav ("Status"); 
+      createnav ("Statistics"); 
+      makeDraggableAndResizable(); 
+      //TODO
+      createChartBoxes(); 
+      updateGraphs(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1635,7 +1695,7 @@ function drawCollectionsTable () {
         tempStatus = "new born collection";
       }
       else if (tempStatus == 2) {
-        tempStatus = "<font color=orange>unloaded</font>";
+        tempStatus = "unloaded";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
@@ -2434,4 +2494,509 @@ function validate(evt) {
     theEvent.returnValue = false;
     if(theEvent.preventDefault) theEvent.preventDefault();
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw hours statistics 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawConnections (placeholder, granularity) {
+  var array = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/connection-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+      if (data.start.length == data.httpDuration.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          array.push([data.start[i]*1000,data.httpDuration.count[i]]);
+        }
+
+        var options = {
+          legend: {
+            margin: 0,  
+            show: true,
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            lines: { show: true, 
+                     steps: false, 
+                     fill: true, 
+                     lineWidth: 0.5, 
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.6 } ] } 
+            },
+            points: { show: false },
+            label: "Connections"
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          grid: { hoverable: true, autoHighlight: false },
+          colors: ["#9EAF5A"],
+          grid: {
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true, 
+          }
+        };
+
+        $.plot($(placeholder), [array], options);
+
+        $(placeholder).qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$(placeholder).bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw requests (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawRequests (placeholder, granularity) {
+  var arraySent = [];
+  var arrayReceived = [];
+  var boxCount = placeholder.replace(/\D/g, '' );  
+ 
+  $.ajax({
+    type: "GET",
+    url: "/_admin/request-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+ 
+      if (data.start.length == data.bytesSent.count.length && data.start.length == data.bytesReceived.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          arraySent.push([data.start[i]*1000,data.bytesSent.count[i]/1000]);
+          arrayReceived.push([data.start[i]*1000,data.bytesReceived.count[i]/1000]);
+        }
+        var stack = 0, bars = true, lines = true, steps = true;
+        var options = {
+          legend: {
+            show: true,
+            margin: 0,  
+            noColumns: 0, 
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            stack: stack,
+            lines: { show: true, 
+                     steps: false,  
+                     fill: true, 
+                     lineWidth: 0.5,
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
+            },
+          }, 
+          xaxis: {
+            mode: "time",
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          colors: ["#9EAF5A", "#5C3317"],
+          grid: {
+            mouseActiveRadius: 5, 
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true 
+          }
+        };
+
+        var sent = $('input:checkbox[name=bytessent'+boxCount+']:checked').val(); 
+        var received = $('input:checkbox[name=bytesreceived'+boxCount+']:checked').val(); 
+
+        if ( sent == "on" && received == "on" ) {
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+        }
+        else if ( sent == "on" && received == undefined ) {
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}], options);
+        }   
+        else if ( sent == undefined && received == "on" ) {
+          $.plot($(placeholder), [{ label: "Bytes received", data: arrayReceived}], options);
+        }
+        else if ( sent == undefined && received == undefined ) {
+          $.plot($(placeholder), [], options);
+        }
+
+        $(placeholder).qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+  	$(placeholder).bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            if (item.series.label == "Bytes received") {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[2];
+            }
+            else {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            } 
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+	  }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+function updateGraphs() {
+    updateChartBoxes(); 
+    setTimeout(updateGraphs, 60000);
+}
+
+$(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
+$(document).delegate('#btnSaveExtraOptions', 'mouseenter', function () { ItemActionButtons.isHoverMenu = true; });
+$(document).delegate('#btnSaveExtraOptions', 'mouseleave', function () { $('#btnSaveExtraOptions').hide(); ItemActionButtons.isHoverMenu = false; });
+ 
+var $IsHoverExtraOptionsFlag = 0;
+ 
+$(document).ready(function () {
+  $(".button").button();
+  $(".buttonset").buttonset();
+ 
+  $('#btnAddNewStat').button({ icons: { primary: "ui-icon-plusthick" } });
+  $('#btnSaveExtraOptions li').addClass('ui-corner-all ui-widget');
+  $('#btnSaveExtraOptions li').hover(
+    function () {
+      $(this).addClass('ui-state-default'); 
+    },
+    function () {  
+      $(this).removeClass('ui-state-default'); 
+    }
+  );
+  $('#btnSaveExtraOptions li').mousedown(function () { 
+    $(this).addClass('ui-state-active'); 
+  });
+  $('#btnSaveExtraOptions li').mouseup(function () { 
+    $(this).removeClass('ui-state-active'); 
+  });
+});
+ 
+var ItemActionButtons = {
+
+  isHoverMenu: false,
+ 
+  AllowDelete: function (value) { value ? $("#btnDelete").show() : $("#btnDelete").hide() },
+  AllowCancel: function (value) { value ? $("#btnCancel").show() : $("#btnCancel").hide() },
+  AllowSave: function (value) { value ? $("#btnSave").show() : $("#btnSave").hide() },
+  AllowSaveExtra: function (value) { value ? $("#btnAddNewStat").show() : $("#btnAddNewStat").hide() },
+ 
+  onDeleteClick: function () { },
+  onCancelClick: function () { },
+  onSaveClick: function () { },
+  onSaveExtraClick: function () {
+    $('#btnSaveExtraOptions').toggle();
+    var btnLeft = $('#divSaveButton').offset().left;
+    var btnTop = $('#divSaveButton').offset().top + $('#divSaveButton').outerHeight(); // +$('#divSaveButton').css('padding');
+    var btnWidth = $('#divSaveButton').outerWidth();
+    $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
+  },
+  ShowConnectionsStats: function () {
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"connection", granularity:"minutes", top:50, left:50, id:JSON.parse(chartcount)});
+    statDivCount = chartcount; 
+    createSingleBox (chartcount, "connection"); 
+  },
+  ShowRequestsStats: function () { 
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"request", granularity:"minutes", sent:true, received:true, top:50, left: 50, id:chartcount});
+    statDivCount = chartcount;
+    createSingleBox (chartcount, "request", true);
+  }
+}
+
+$.fn.isVisible = function() {
+  return $.expr.filters.visible(this[0]);
+};
+
+function stateSaving () {
+  
+  $.each(existingCharts, function(v, i ) {
+    // position statesaving 
+    var tempcss = $("#chartBox"+this.id).position();  
+    // size statesaving 
+    var tempheight = $("#chartBox"+this.id).height();
+    var tempwidth = $("#chartBox"+this.id).width();
+    // granularity statesaving 
+    var grantouse = $('input[name=boxGranularity'+this.id+']:checked').val();
+
+    if (i.type == "request") {
+      var sent = $('input:checkbox[name=bytessent'+this.id+']:checked').val(); 
+      var received = $('input:checkbox[name=bytesreceived'+this.id+']:checked').val(); 
+      if ( sent == "on" ) {
+        this.sent = true; 
+      } 
+      else {
+        this.sent = false; 
+      }
+      if ( received = "on" ) {
+        this.received = true;  
+      }
+      else {
+        this.received = false; 
+      }
+    }
+ 
+    // edit obj
+    this.top = tempcss.top;
+    this.left = tempcss.left;
+    this.width = tempwidth; 
+    this.height = tempheight; 
+    this.granularity = grantouse;  
+  });
+  //write obj into local storage
+  localStorage.setItem("statobj", JSON.stringify(existingCharts)); 
+  localStorage.setItem("statDivCount", statDivCount); 
+}
+
+function stateReading () {
+
+  try { 
+    existingCharts = JSON.parse(localStorage.getItem("statobj"));  
+    statDivCount = localStorage.getItem("statDivCount");  
+    if (existingCharts != null) {
+    }
+    else {
+      existingCharts = [];
+      statDivCount = 0;  
+    }
+  }
+
+  catch (e) {
+    alert("no data:" +e); 
+  }
+}
+ 
+function createChartBoxes () {
+  $.each(existingCharts, function(v, i ) {
+    var boxCount = i.id; 
+    $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>');
+    $("#chartBox"+boxCount).css({top: i.top, left: i.left}); 
+    $("#chartBox"+boxCount).css({width: i.width, height: i.height}); 
+    $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+    $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+      '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+      '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+      '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+      '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    $.each(i, function(key, val ) {
+      $('#chartBox'+boxCount+i.granularity).click();
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+          switch (val) {
+            case "connection":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              drawConnections('#placeholderBox'+boxCount, grantouse); 
+              break; 
+            case "request":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+                '<input id="sent'+boxCount+'" type="checkbox" name="bytessent'+boxCount+'">'+
+                '<label for="sent'+boxCount+'">Bytes sent</label>'+
+                '<br>'+
+                '<input id="received'+boxCount+'" type="checkbox" name="bytesreceived'+boxCount+'">'+
+                '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+              '</p>');
+
+              if (i.sent == true) {
+                $('#sent'+boxCount).click(); 
+              }
+              if (i.received == true) {
+                $('#received'+boxCount).click(); 
+              } 
+
+              drawRequests('#placeholderBox'+boxCount, grantouse); 
+              break; 
+          }
+      } 
+    });
+  });
+  makeDraggableAndResizable (); 
+  $(".radioFormat").buttonset();
+}
+
+function updateChartBoxes () {
+  var boxCount; 
+  $.each(existingCharts, function(v, i ) {
+    boxCount = i.id;  
+    $.each(i, function(key, val ) {
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+        switch(val) { 
+          case "connection":
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawConnections('#placeholderBox'+boxCount, grantouse); 
+            break; 
+          case "request": 
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawRequests('#placeholderBox'+boxCount, grantouse); 
+            break;
+        }
+      }
+    });
+  });
+}
+
+function makeDraggableAndResizable () {
+      $( ".resizable" ).resizable({
+        grid: 10, 
+        stop: function (event, ui) {
+          stateSaving(); 
+        } 
+      }); 
+      $( ".draggable" ).draggable({
+        grid: [ 10,10 ],  
+        containment: "#centerView",  
+        stop: function (event, ui) {
+          stateSaving(); 
+        }
+      }); 
+}
+
+var temptop = 150; 
+var templeft = 20; 
+
+function createSingleBox (id, val, question) {
+  var boxCount = id;  
+ 
+
+  $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
+  $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
+  $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+  $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+    '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+    '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+    '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+    '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    switch (val) {
+      case "connection":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        drawConnections('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+      case "request":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+          '<input id="sent'+boxCount+'" type="checkbox" checked="checked" name="bytessent'+boxCount+'">'+
+          '<label for="sent'+boxCount+'">Bytes sent</label>'+
+          '<br>'+
+          '<input id="received'+boxCount+'" checked="checked" type="checkbox" name="bytesreceived'+boxCount+'">'+
+          '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+        '</p>');
+
+        if (question == true) {
+
+        }
+        else {
+          $('#sent'+boxCount).click(); 
+          $('#received'+boxCount).click(); 
+        }
+        drawRequests('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+    }
+  $('#placeholderBoxSettings'+boxCount).append('<button id="saveChanges'+boxCount+'" class="saveChanges"></button>');
+  makeDraggableAndResizable(); 
+  $(".radioFormat").buttonset();
+  templeft = templeft + 10; 
+  temptop = temptop + 10;
+  stateSaving();  
 }

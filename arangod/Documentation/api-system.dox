@@ -33,6 +33,8 @@
 ///   <ul>
 ///    <li>@ref HttpSystemLog "GET /_admin/log"</li>
 ///    <li>@ref HttpSystemStatus "GET /_admin/status"</li>
+///    <li>@ref HttpSystemConnectionStatistics "GET /_admin/connection-statistics"</li>
+///    <li>@ref HttpSystemRequestStatistics "GET /_admin/request-statistics"</li>
 ///    <li>@ref HttpSystemConfigDescription "GET /_admin/config/description"</li>
 ///    <li>@ref HttpSystemConfigConfiguration "GET /_admin/config/configuration"</li>
 ///    <li>@ref HtppSystemUserManagement
@@ -69,6 +71,12 @@
 ///
 /// @anchor HttpSystemStatus
 /// @copydetails JSF_GET_admin_status
+///
+/// @anchor HttpSystemConnectionStatistics
+/// @copydetails triagens::arango::ConnectionStatisticsHandler::compute
+///
+/// @anchor HttpSystemRequestStatistics
+/// @copydetails triagens::arango::RequestStatisticsHandler::compute
 ///
 /// @anchor HttpSystemConfigDescription
 /// @copydetails JSF_GET_admin_config_description
