@@ -1278,6 +1278,7 @@ WIKI = \
 	SimpleQueries \
 	UserManual \
 	UserManualBasics \
+	UserManualArangosh \
         Aql \
         AqlExamples \
 	jsUnity
