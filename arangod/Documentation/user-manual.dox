@@ -280,8 +280,8 @@
 ///
 /// @EMBEDTOC{UserManualArangoshTOC}
 ///
-/// @section UserManualArangoshOutput
-/////////////////////////////////////
+/// @section UserManualArangoshOutput Arango Shell Output
+/////////////////////////////////////////////////////////
 ///
 /// In general the Arango Shells prints its as output to standard output channel
 /// using the JSON stringifier.
