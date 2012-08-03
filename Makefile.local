@@ -3,6 +3,8 @@
 MANUAL_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals"
 IMAGES_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images"
 
+OUTPUT_FOLDER="Doxygen/manuals/$(PACKAGE_VERSION)"
+
 ################################################################################
 ## publish
 ################################################################################
@@ -10,22 +12,26 @@ IMAGES_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images"
 .PHONY: publish publish-wiki publish-html publish-pdf
 
 publish: publish-wiki publish-html publish-pdf
+	echo 'cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)'
 
 publish-wiki:
-	(cd Doxygen/wiki && git checkout --force -- . && git clean -f && git pull)
+	(cd Doxygen/wiki && git checkout --force -- . && git clean -f -d -x && git pull)
 	$(MAKE) wiki
 	(cd Doxygen/wiki && git add *.md; git commit -m "`date`" -a; git push)
 
-publish-html:
+publish-html: $(OUTPUT_FOLDER)
 	$(MAKE) doxygen
-	@for w in $(WIKI); do scp Doxygen/html/$$w.html $(MANUAL_DST); done
-	@for i in `ls Doxygen/web/images/*.png`; do scp $$i $(IMAGES_DST); done
+	@for w in $(WIKI); do cp Doxygen/html/$$w.html $(OUTPUT_FOLDER); done
+	@for i in `ls Doxygen/web/images/*.png`; do scp $$i $(OUTPUT_FOLDER); done
 
-publish-pdf:
+publish-pdf: $(OUTPUT_FOLDER)
 	$(MAKE) latex
 	$(MAKE) latex
-	scp Doxygen/latex/dba-manual.pdf $(MANUAL_DST)
-	scp Doxygen/latex/implementor-manual.pdf $(MANUAL_DST)
-	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
-	scp Doxygen/latex/user-manual.pdf $(MANUAL_DST)
-	scp Doxygen/latex/ref-manual.pdf $(MANUAL_DST)
+	scp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
+	scp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
+	scp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
+	scp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
+	scp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
+
+$(OUTPUT_FOLDER):
+	mkdir  -p $(OUTPUT_FOLDER)

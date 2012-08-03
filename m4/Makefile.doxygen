@@ -51,6 +51,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 Doxygen/arango-html.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
 
 doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-html.doxy > /dev/null
@@ -64,6 +65,7 @@ doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
 
 Doxygen/arango-xml.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
 
 wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
@@ -80,6 +82,7 @@ wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
 
 Doxygen/arango-latex.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
 
 latex: Doxygen/arango-latex.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-latex.doxy > /dev/null
