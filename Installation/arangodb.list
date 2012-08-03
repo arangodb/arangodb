@@ -58,6 +58,10 @@ d 0755 ${susr} ${sgrp} /var/log/arangodb -
 sed -e 's%@LOGDIR@%/var/log/arangodb%g' -e 's%@DATABASE@%${data_dir}/arangodb%g' -e 's%@STATICFILES@%${static_dir}/arangodb%g' /etc/arangodb/${vers_dir}/arangod.conf.template > /etc/arangodb/arangod.conf
 EOF
 
+## -----------------------------------------------------------------------------
+## MAC OS X
+## -----------------------------------------------------------------------------
+
 %ifdef macosx
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
 f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${project_dir}/Installation/org.arangodb.plist
@@ -73,6 +77,10 @@ launchctl stop de.triagens.arango
 launchctl unload /Library/LaunchDaemons/org.arangodb.plist
 EOF
 
+## -----------------------------------------------------------------------------
+## LINUX
+## -----------------------------------------------------------------------------
+
 %else
 %preinstall <<EOF
 getent group arango >/dev/null || groupadd -r arango 
@@ -80,19 +88,32 @@ getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir} -s /bin
 EOF
 %endif
 
-%ifdef insserv
+## -----------------------------------------------------------------------------
+## CHKCONF
+## -----------------------------------------------------------------------------
+
+%ifdef chkconf
+f 0755 ${rusr} ${rgrp} ${initdir}/arangod ${project_dir}/Installation/${START_SCRIPT}
+
 %postinstall <<EOF
-test -x /sbin/insserv && /sbin/insserv /etc/init.d/arango 2&>1 > /dev/null
-exit 0
+chkconfig --level ${runlevels} arangod on
 EOF
 
 %preremove <<EOF
-/etc/init.d/arango stop 2&>1 > /dev/null
-test -x /sbin/insserv && /sbin/insserv -r /etc/init.d/arango 2&>1 > /dev/null
-exit 0
+chkconfig --level ${runlevels} arangod off
+rcarangod stop || true
 EOF
-%endif
+
+%else
 
 %system linux
-i 0755 ${rusr} ${rgrp} arango ${project_dir}/Installation/${START_SCRIPT} ${runlevels}
-l 000 ${rusr} ${rgrp} ${sbindir}/rcarango /etc/init.d/arango 
+i 0755 ${rusr} ${rgrp} arangod ${project_dir}/Installation/${START_SCRIPT} runlevel(${runlevels})
+
+%endif
+
+## -----------------------------------------------------------------------------
+## RC skript
+## -----------------------------------------------------------------------------
+
+%system linux
+l 000 ${rusr} ${rgrp} ${sbindir}/rcarangod /etc/init.d/arangod 
