@@ -161,3 +161,4 @@ VC++
 3rdParty/protobuf-2.4.1/BUILD/
 Installation/arangod.conf
 lib/Documentation/*.pdf
+Doxygen/manuals
