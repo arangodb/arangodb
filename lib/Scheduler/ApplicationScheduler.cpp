@@ -28,6 +28,7 @@
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
+#include "BasicsC/process-utils.h"
 #include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
@@ -63,6 +64,10 @@ namespace {
 
     public:
       bool handleSignal () {
+        string msg = _server->getName() + " [shutting down]";
+
+        TRI_SetProcessTitle(msg.c_str());
+
         if (_seen == 0) {
           LOGGER_INFO << "control-c received, beginning shut down sequence";
           _server->beginShutdown();

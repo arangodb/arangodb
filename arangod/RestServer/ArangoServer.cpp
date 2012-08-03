@@ -245,7 +245,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
-  _applicationServer = new ApplicationServer("[<options>] <database-directory>", TRIAGENS_VERSION);
+  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setUserConfigFile(".arango/arangod.conf");
 
   // .............................................................................
