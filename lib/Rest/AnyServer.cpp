@@ -149,8 +149,7 @@ static void WritePidFile (string const& pidFile, int pid) {
 /// @brief forks a new process
 ////////////////////////////////////////////////////////////////////////////////
 
-static int forkProcess (string const& pidFile, string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
-  CheckPidFile(pidFile);
+static int forkProcess (string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
 
   // fork off the parent process
   pid_t pid = fork();
@@ -166,7 +165,7 @@ static int forkProcess (string const& pidFile, string const& workingDirectory, s
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
     LOGGER_DEBUG << "started child process with pid " << pid;
-    return 0;
+    return pid;
   }
 
   // reset the logging
@@ -183,9 +182,6 @@ static int forkProcess (string const& pidFile, string const& workingDirectory, s
     cerr << "cannot create sid\n";
     exit(EXIT_FAILURE);
   }
-
-  // write pid file
-  WritePidFile(pidFile, sid);
 
   // store current working directory
   int err = 0;
@@ -212,7 +208,7 @@ static int forkProcess (string const& pidFile, string const& workingDirectory, s
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  return 1;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,16 +335,18 @@ int AnyServer::startupSupervisor () {
 
   LOGGER_INFO << "starting up in supervisor mode";
   
+  CheckPidFile(_pidFile);
+
   string current;
-  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
+  int result = forkProcess(_workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
   
   // main process
-  if (result == 0) {
+  if (result != 0) {
     return 0;
   }
   
   // child process
-  else if (result == 1) {
+  else {
     time_t startTime = time(0);
     time_t t;
     bool done = false;
@@ -373,10 +371,14 @@ int AnyServer::startupSupervisor () {
         prctl(PR_SET_NAME, title, 0, 0, 0);
 #endif
 
+	WritePidFile(_pidFile, pid);
+
         int status;
         waitpid(pid, &status, 0);
         
         if (WIFEXITED(status)) {
+
+	  // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
             LOGGER_INFO << "child " << pid << " died of natural causes";
             done = true;
@@ -443,6 +445,17 @@ int AnyServer::startupSupervisor () {
         prepareServer();
         result = startupServer();
         
+	// remove pid file
+	if (FileUtils::changeDirectory(current)) {
+	  if (! FileUtils::remove(_pidFile)) {
+	    LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+	  }
+	}
+	else {
+	  LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
+		       << current << "' is missing";
+	}
+
         // and stop
         exit(result);
       }
@@ -460,11 +473,6 @@ int AnyServer::startupSupervisor () {
     }
   }
   
-  // upps,
-  else {
-    exit(EXIT_FAILURE);
-  }
-  
   return result;
 }
 
@@ -475,18 +483,22 @@ int AnyServer::startupSupervisor () {
 int AnyServer::startupDaemon () {
   LOGGER_INFO << "starting up in daemon mode";
   
+  CheckPidFile(_pidFile);
+
   string current;
-  int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
+  int result = forkProcess(_workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
   
   // main process
-  if (result == 0) {
+  if (result != 0) {
 #ifdef TRI_HAVE_SYS_PRCTL_H
-        prctl(PR_SET_NAME, "arangodb [daemon]", 0, 0, 0);
+    prctl(PR_SET_NAME, "arangodb [daemon]", 0, 0, 0);
 #endif
+
+    WritePidFile(_pidFile, result);
   }
   
   // child process
-  else if (result == 1) {
+  else {
     
     // and startup server
     prepareServer();
@@ -502,11 +514,6 @@ int AnyServer::startupDaemon () {
       LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
                    << current << "' is missing";
     }
-  }
-  
-  // upps,
-  else {
-    exit(EXIT_FAILURE);
   }
   
   return result;
