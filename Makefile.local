@@ -29,3 +29,4 @@ publish-pdf:
 	scp Doxygen/latex/install-manual.pdf $(MANUAL_DST)
 	scp Doxygen/latex/user-manual.pdf $(MANUAL_DST)
 	scp Doxygen/latex/ref-manual.pdf $(MANUAL_DST)
+	scp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(MANUAL_DST)
