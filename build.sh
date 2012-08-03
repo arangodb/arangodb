@@ -8,7 +8,7 @@ echo
 . config/detect_distro.sh
 
 OPTIONS="--disable-dependency-tracking --disable-relative"
-PREFIX="--prefix=/usr --sysconfdir=/etc"
+PREFIX="--sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
 
