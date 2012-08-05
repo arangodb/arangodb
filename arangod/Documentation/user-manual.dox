@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       USER MANUAL
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManual ArangoDB's User Manual
 ///
@@ -32,6 +36,7 @@
 /// <ul>
 ///  <li>@ref UserManualBasics</li>
 ///  <li>@ref FirstStepsArangoDB</li>
+///  <li>@ref UserManualArangosh</li>
 ///  <li>@ref ShellCollection</li>
 ///  <li>@ref ShellDocument</li>
 ///  <li>@ref ShellEdge</li>
@@ -45,6 +50,7 @@
 /// @else
 /// @copydetails UserManualBasicsTOC
 /// @copydetails FirstStepsArangoDBTOC
+/// @copydetails UserManualArangoshTOC
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellDocumentTOC
 /// @copydetails ShellEdgeTOC
@@ -53,6 +59,10 @@
 /// @copydetails CommandLineTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                USER MANUAL BASICS
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualBasicsTOC
@@ -227,7 +237,8 @@
 /// After the server has been @ref UserManualServerStartStop "started",
 /// you can use the ArangoDB shell (arangosh) to administrate the server. Without
 /// any arguments, the ArangoDB shell will try to contact the server
-/// on port 8529 on the localhost.
+/// on port 8529 on the localhost. For more information see @ref
+/// UserManualArangosh.
 ///
 /// @TINYEXAMPLE{arangosh-start,starting the shell}
 ///
@@ -257,6 +268,82 @@
 ///
 /// @EXAMPLE{start-emergency-console,emergency console}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              USER MANUAL ARANGOSH
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualArangoshTOC
+///
+/// <ul>
+///  <li>@ref UserManualArangosh
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualArangosh The Arango Shell
+///
+/// @EMBEDTOC{UserManualArangoshTOC}
+///
+/// @section UserManualArangoshOutput Arango Shell Output
+/////////////////////////////////////////////////////////
+///
+/// In general the Arango Shells prints its as output to standard output channel
+/// using the JSON stringifier.
+///
+/// @code
+/// arangosh> db.five.all().toArray();
+/// [{ _id : "2223655/3665447", _rev : 3665447, name : "one" }, 
+/// { _id : "2223655/3730983", _rev : 3730983, name : "two" }, 
+/// { _id : "2223655/3862055", _rev : 3862055, name : "four" }, 
+/// { _id : "2223655/3993127", _rev : 3993127, name : "three" }]
+/// @endcode
+///
+/// @FUN{start_pretty_print()}
+///
+/// While the standard JSON stringifier is very concise it is hard to read.
+/// Calling the function @FN{start_pretty_print} will enable the pretty printer
+/// which formats the output in a human readable way.
+///
+/// @code
+/// arangosh> start_pretty_print();
+/// using pretty printing
+/// arangosh> db.five.all().toArray();
+/// [
+///   { 
+///     _id : "2223655/3665447", 
+///     _rev : 3665447, 
+///     name : "one"
+///    }, 
+///   { 
+///     _id : "2223655/3730983", 
+///     _rev : 3730983, 
+///     name : "two"
+///    }, 
+///   { 
+///     _id : "2223655/3862055", 
+///     _rev : 3862055, 
+///     name : "four"
+///    }, 
+///   { 
+///     _id : "2223655/3993127", 
+///     _rev : 3993127, 
+///     name : "three"
+///    }
+/// ]
+/// @endcode
+///
+/// @FUN{start_pretty_print()}
+///
+/// The functions disable the pretty printer, switching back to the standard
+/// JSON output format.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++

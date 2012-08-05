@@ -10,7 +10,7 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh 1.0.beta Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.";
 
 var existingCharts; 
 var statDivCount;  
@@ -2561,7 +2561,7 @@ function drawConnections (placeholder, granularity) {
           }
         });
 
-  	$(placeholder).bind('plothover', function(event, coords, item) {
+        $(placeholder).bind('plothover', function(event, coords, item) {
           var self = $(this),
           api = $(this).qtip(), previousPoint, content; 
 
@@ -2586,7 +2586,7 @@ function drawConnections (placeholder, granularity) {
             api.elements.tooltip.stop(1, 1);
             // Show the tooltip, passing the coordinates
             api.show(coords);
-	  }
+          }
         });
 
       }
@@ -2680,7 +2680,7 @@ function drawRequests (placeholder, granularity) {
           }
         });
 
-  	$(placeholder).bind('plothover', function(event, coords, item) {
+        $(placeholder).bind('plothover', function(event, coords, item) {
           var self = $(this),
           api = $(this).qtip(), previousPoint, content; 
 
@@ -2709,7 +2709,7 @@ function drawRequests (placeholder, granularity) {
             api.elements.tooltip.stop(1, 1);
             // Show the tooltip, passing the coordinates
             api.show(coords);
-	  }
+          }
         });
 
       }

@@ -1,5 +1,4 @@
 > ./arangod /tmp/vocbase
 2012-05-13T12:37:08Z [8145] INFO using built-in JavaScript startup files
-2012-05-13T12:37:08Z [8145] INFO ArangoDB (version 0.5.0) is ready for business
-2012-05-13T12:37:08Z [8145] INFO HTTP client/admin port: 127.0.0.1:8529
+2012-05-13T12:37:08Z [8145] INFO ArangoDB (version 1.x.y) is ready for business
 2012-05-13T12:37:08Z [8145] INFO Have Fun!

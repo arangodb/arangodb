@@ -49,17 +49,18 @@
 ///////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref UserManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref DbaManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/dba-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref ImpManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/imp-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref UserManual @ifnot XML @SPC(<a href="user-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref DbaManual @ifnot XML @SPC(<a href="dba-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC(<a href="imp-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
+///   @ifnot XML <li><a href="arangodb_1.0_shell_reference_card.pdf">Cheat Sheet</a></li> @endif
 /// </ul>
 /// 
 /// @section ArangoDBAdminManual ArangoDB's Administrator Manuals (Version @VERSION)
 ////////////////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref InstallManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref InstallManual @ifnot XML @SPC(<a href="install-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
@@ -67,8 +68,8 @@
 //////////////////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref RefManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/ref-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="implementor-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref RefManual @ifnot XML @SPC(<a href="ref-manual.pdf">pdf</a>) @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 

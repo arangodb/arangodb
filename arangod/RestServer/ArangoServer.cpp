@@ -436,9 +436,11 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
+  bool disableAdminInterface = false;
+
   additional["Server Options:help-admin"]
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
-    ("server.disable-admin-interface", "turn off the HTML admin interface")
+    ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
   ;
 
   additional["THREAD Options:help-admin"]
@@ -469,7 +471,7 @@ void ArangoServer::buildApplicationServer () {
   // disable access to the HTML admin interface
   // .............................................................................
 
-  if (_applicationServer->programOptions().has("server.disable-admin-interface")) {
+  if (disableAdminInterface) {
     _applicationAdminServer->allowAdminDirectory(false);
   }
   

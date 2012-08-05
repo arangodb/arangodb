@@ -7,8 +7,8 @@ echo
 
 . config/detect_distro.sh
 
-OPTIONS="--disable-dependency-tracking --enable-relative=devel"
-PREFIX="--prefix=/usr --sysconfdir=/etc"
+OPTIONS="--disable-dependency-tracking --disable-relative"
+PREFIX="--prefix=/usr --localstatedir=/var --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
 

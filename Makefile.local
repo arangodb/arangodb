@@ -32,6 +32,7 @@ publish-pdf: $(OUTPUT_FOLDER)
 	scp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
 	scp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
 	scp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
+	scp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 $(OUTPUT_FOLDER):
 	mkdir  -p $(OUTPUT_FOLDER)
