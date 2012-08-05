@@ -3,11 +3,11 @@
 #
 # Author: Achim Brandt <a.brandt@triagens.de>
 #
-# /etc/init.d/arango
+# /etc/init.d/arangod
 #
 #   and symbolic its link
 #
-# /usr/sbin/rcarango
+# /usr/sbin/rcarangod
 #
 ### BEGIN INIT INFO
 # Provides: arangod
