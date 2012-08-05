@@ -15,7 +15,7 @@ sgrp=arango
 package_type=""
 product_name="arangodb"
 project_name="arangodb"
-runlevels="runlevel(035)"
+runlevels="035"
 curl_version="curl -s -o - http://localhost:8529/_api/version"
 
 # name of the epm configuration file
@@ -35,19 +35,18 @@ osvers=`uname -r | awk -F"." '{print $1 "." $2}'`
 prefix=/usr
 exec_prefix=${prefix}
 sbindir=${exec_prefix}/sbin
+initdir=/etc/init.d
 bindir=${exec_prefix}/bin
 data_dir=/var
 static_dir=${prefix}/share
 vers_dir=arango-${arangodb_version}
 docdir=${prefix}/share/doc/voc/${vers_dir}
 
-
 echo
 echo "########################################################"
 echo "Packetize on $TRI_OS_LONG"
 echo "########################################################"
 echo
-
 
 case $TRI_OS_LONG in
 
@@ -60,63 +59,54 @@ case $TRI_OS_LONG in
     echo "Using configuration for openSuSE"
     package_type="rpm"
     START_SCRIPT="rc.arangodb.OpenSuSE"
-    runlevels="runlevel(035)"
+    runlevels="035"
     docdir=${prefix}/share/doc/packages/voc/${vers_dir}
-
-    # export "insserv" for the epm configuration file
-    export insserv="true"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Debian"
-    runlevels="runlevel(035)"
+    runlevels="035"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
 
-    # export "insserv" for the epm configuration file
-    export insserv="true"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
     package_type="rpm"
     START_SCRIPT="rc.arangodb.Centos"
-    runlevels="runlevel(0235)"
+    runlevels="0235"
 
-    # export "insserv" for the epm configuration file
-    export insserv="true"
+    # exports for the epm configuration file
+    export chkconf="true"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Ubuntu"
-    runlevels="runlevel(02345)"
+    runlevels="02345"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
 
-    # export "insserv" for the epm configuration file
-    export insserv="true"
     ;;
 
   Linux-LinuxMint-*)
     echo "Using configuration for LinuxMint"
     package_type="deb"
     START_SCRIPT="rc.arangodb.Ubuntu"
-    runlevels="runlevel(02345)"
+    runlevels="02345"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
 
-    # export "insserv" for the epm configuration file
-    export insserv="true"
     ;;
 
   Darwin*)
@@ -203,44 +193,45 @@ sudo -E mkdir -p ${hudson_base}/${archfolder}/buildroot
 echo 
 echo "########################################################"
 echo "Export vars for epm"
-echo "   export arangodb_version=$arangodb_version"
 echo "   export arangodb_release=$arangodb_release"
-echo "   export rusr=$rusr"
-echo "   export rgrp=$rgrp"
-echo "   export susr=$susr"
-echo "   export sgrp=$sgrp"
-echo "   export prefix=$prefix"
-echo "   export exec_prefix=$exec_prefix"
-echo "   export sbindir=$sbindir"
+echo "   export arangodb_version=$arangodb_version"
 echo "   export bindir=$bindir"
 echo "   export data_dir=$data_dir"
+echo "   export docdir=$docdir"
+echo "   export exec_prefix=$exec_prefix"
+echo "   export initdir=$initdir"
+echo "   export prefix=$prefix"
+echo "   export project_dir=${sfolder_name}"
+echo "   export rgrp=$rgrp"
+echo "   export runlevels=$runlevels"
+echo "   export rusr=$rusr"
+echo "   export sbindir=$sbindir"
+echo "   export sgrp=$sgrp"
 echo "   export static_dir=$static_dir"
+echo "   export susr=$susr"
 echo "   export vers_dir=$vers_dir"
 echo "   export START_SCRIPT=$START_SCRIPT"
-echo "   export runlevels=$runlevels"
-echo "   export docdir=$docdir"
-echo "   export project_dir=${sfolder_name}"
 echo "########################################################"
 echo 
 
-export arangodb_version
 export arangodb_release
-export rusr
-export rgrp
-export susr
-export sgrp
-export prefix
-export exec_prefix
-export sbindir
+export arangodb_version
 export bindir
 export data_dir
+export docdir
+export exec_prefix
+export initdir
+export prefix
+export project_dir=${sfolder_name}
+export rgrp
+export runlevels
+export rusr
+export sbindir
+export sgrp
 export static_dir
+export susr
 export vers_dir
 export START_SCRIPT
-export runlevels
-export docdir
-export project_dir=${sfolder_name}
-
 
 echo 
 echo "########################################################"
@@ -272,7 +263,6 @@ cp -p ${hudson_base}/${archfolder}/${product_name}*.${package_type} ${sfolder_na
 echo "########################################################"
 echo 
 
-
 start_server=
 stop_server=
 install_package=
@@ -283,8 +273,8 @@ unmount_install_package=
 case $TRI_OS_LONG in
 
   Linux-openSUSE*)
-    start_server=""
-    stop_server=""
+    start_server="sudo /etc/init.d/arangod start"
+    stop_server="sudo /etc/init.d/arangod stop"
 
     install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
@@ -292,32 +282,32 @@ case $TRI_OS_LONG in
     ;;
 
   Linux-Debian*)
-    start_server=""
-    stop_server=""
+    start_server="sudo /etc/init.d/arangod start"
+    stop_server="sudo /etc/init.d/arangod stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
   Linux-CentOS-*)
-    start_server=""
-    stop_server=""
+    start_server="sudo /etc/init.d/arangod start"
+    stop_server="sudo /etc/init.d/arangod stop"
 
     install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
     ;;
 
   Linux-Ubuntu-*)
-    start_server="sudo /etc/init.d/arango start"
-    stop_server="sudo /etc/init.d/arango stop"
+    start_server="sudo /etc/init.d/arangod start"
+    stop_server="sudo /etc/init.d/arangod stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
   Linux-LinuxMint-*)
-    start_server=""
-    stop_server="sudo /etc/init.d/arango stop"
+    start_server="sudo /etc/init.d/arangod start"
+    stop_server="sudo /etc/init.d/arangod stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
@@ -338,7 +328,6 @@ case $TRI_OS_LONG in
     ;;
 
 esac
-
 
 echo 
 echo "########################################################"
@@ -383,6 +372,13 @@ fi
 
 echo "Successfully installed ${package_name}."
 echo "########################################################"
+
+if [ "${start_server}x" != "x" ]; then 
+echo "Start"
+echo "    ${start_server}"
+${start_server}
+echo "########################################################"
+fi
 
 echo "Check process"
 process=$(ps aux | grep arangod | grep -v grep)

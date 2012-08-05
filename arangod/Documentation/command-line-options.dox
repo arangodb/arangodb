@@ -188,10 +188,11 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
-/// @CMDOPT{--server.disable-admin-interface}
+/// @CMDOPT{--disable-admin-interface @CA{value}}
 ///
-/// If this option is specified, then the HTML admininstration interface at 
-/// URL http://server:port/ will be disabled and cannot used by any user at all.
+/// If this option is specified and @CA{value} is @LIT{true}, then the HTML
+/// administration interface at URL @LIT{http://server:port/} will be disabled
+/// and cannot used by any user at all.
 ///
 /// @anchor CommandLineArangoDirectory
 /// @copydetails triagens::arango::ArangoServer::_databasePath

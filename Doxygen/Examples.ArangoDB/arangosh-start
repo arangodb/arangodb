@@ -6,11 +6,11 @@
  \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
                        |___/                 
 
-Welcome to arangosh 0.5.0. Copyright (c) 2012 triAGENS GmbH.
+Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
 Using Google V8 3.9.4 JavaScript engine.
 Using READLINE 6.1.
 
-Connected to Arango DB 127.0.0.1:8529 Version 0.5.0
+Connected to Arango DB 127.0.0.1:8529 Version 1.x.y
 
 ------------------------------------- Help -------------------------------------
 Predefined objects:                                                 
