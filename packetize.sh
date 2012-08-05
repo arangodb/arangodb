@@ -158,7 +158,7 @@ export EPM_RPM_OPTION
 test -f ${SUBLIST} && rm -f ${SUBLIST}
 touch ${SUBLIST}
 
-share_base=${static_dir}/arango
+share_base=${static_dir}/arangodb
 sfolder_name=$(pwd)
 
 echo 

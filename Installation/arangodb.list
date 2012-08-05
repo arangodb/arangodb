@@ -39,8 +39,9 @@ d 0755 ${susr} ${sgrp} ${data_dir}/arangodb -
 
 # static files
 d 0755 ${susr} ${sgrp} ${static_dir} -
-d 0755 ${susr} ${sgrp} ${static_dir}/js -
-d 0755 ${susr} ${sgrp} ${static_dir}/html -
+d 0755 ${susr} ${sgrp} ${static_dir}/arangodb -
+d 0755 ${susr} ${sgrp} ${static_dir}/arangodb/js -
+d 0755 ${susr} ${sgrp} ${static_dir}/arangodb/html -
 
 # PID file directory
 d 0755 ${susr} ${sgrp} /var/run/arangodb -
@@ -80,7 +81,7 @@ EOF
 %else
 %preinstall <<EOF
 getent group arango >/dev/null || groupadd -r arango 
-getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir} -s /bin/false -c "ArangoDB Application User" arango 
+getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir}/arangodb -s /bin/false -c "ArangoDB Application User" arango 
 EOF
 %endif
 
