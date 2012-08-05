@@ -25,6 +25,7 @@ ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
 test -r $ARANGO_SYSCONFIG || exit 6
 
 
+ARANGO_TIMEOUT=120
 ARANGO_PIDFILE=/var/run/arangodb/arangod.pid
 
 . /etc/rc.status
@@ -65,7 +66,7 @@ case "$1" in
   stop)
     echo -n "Shutting down ARANGO daemon"
 
-    killproc -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
+    killproc -t $ARANGO_TIMEOUT -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
 
     # Remember status and be verbose
     rc_status -v
