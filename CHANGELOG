@@ -1,3 +1,17 @@
+
+not released yet  
+----------------
+
+* fix for issue #137: AQL optimizer should use indexes for ref accesses with 
+  2 named attributes
+
+v1.0.beta2 (2012-08-03)
+-----------------------
+
+* fix for issue #134: improvements for centos RPM
+
+* fixed problem with disable-admin-interface in config file
+
 v1.0.beta1 (2012-07-29)
 -----------------------
 
