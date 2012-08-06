@@ -73,8 +73,8 @@ typedef enum {
   TRI_AQL_ACCESS_LIST,             // a list of values is accessed
   TRI_AQL_ACCESS_RANGE_SINGLE,     // a range with one boundary is accessed
   TRI_AQL_ACCESS_RANGE_DOUBLE,     // a two bounded range is accessed
-  TRI_AQL_ACCESS_REFERENCE_EXACT,  // a reference can be used for eq access (a.x == b.x)
-  TRI_AQL_ACCESS_REFERENCE_RANGE,  // a reference can be used for rahe access (a.x > b.x)
+  TRI_AQL_ACCESS_REFERENCE,        // a reference can be used for eq access (a.x == b.x)
+                                   // or range access (a.x > b.x)
   TRI_AQL_ACCESS_ALL               // all values must be accessed (full scan)
 }
 TRI_aql_access_e;
@@ -118,12 +118,11 @@ typedef struct TRI_aql_field_access_s {
       TRI_aql_range_t _upper;     // upper bound
     }
     _between;                     // used for TRI_AQL_ACCESS_RANGE_DOUBLE
-    char* _name;                  // used for TRI_AQL_ACCESS_REFERENCE_EXACT
     struct {
       char* _name;
       TRI_aql_node_type_e _type; 
     }
-    _referenceRange;              // used for TRI_AQL_ACCESS_REFERENCE_RANGE
+    _reference;                   // used for TRI_AQL_ACCESS_REFERENCE
   } 
   _value;
 }
