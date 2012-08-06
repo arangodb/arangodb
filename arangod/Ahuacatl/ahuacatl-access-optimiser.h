@@ -120,7 +120,7 @@ typedef struct TRI_aql_field_access_s {
     _between;                     // used for TRI_AQL_ACCESS_RANGE_DOUBLE
     struct {
       char* _name;
-      TRI_aql_node_type_e _type; 
+      TRI_aql_node_type_e _operator; 
     }
     _reference;                   // used for TRI_AQL_ACCESS_REFERENCE
   } 

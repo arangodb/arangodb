@@ -88,7 +88,7 @@ static bool isExactCandidate (const TRI_aql_field_access_t* const candidate) {
   }
 
   if (candidate->_type == TRI_AQL_ACCESS_REFERENCE && 
-      candidate->_value._reference._type == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
+      candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // == ref
     return true;
   }

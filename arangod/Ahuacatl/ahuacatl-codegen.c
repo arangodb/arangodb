@@ -885,7 +885,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT || 
          fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
          (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE && 
-          fieldAccess->_value._reference._type == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+          fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
 
   if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
     ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_PRIMARY_LIST('");
@@ -899,7 +899,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputIndexId(generator, collection, idx);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-    assert(fieldAccess->_value._reference._type == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
 
     ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
   }
@@ -953,7 +953,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
 
     assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT || 
            (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE && 
-            fieldAccess->_value._reference._type == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
 
     if (i > 0) {
       ScopeOutput(generator, ", ");
@@ -962,7 +962,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1); 
     ScopeOutput(generator, " : ");
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-      assert(fieldAccess->_value._reference._type == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+      assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
 
       ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
     }
@@ -1055,7 +1055,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
     }
     else if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
       ScopeOutput(generator, " [ \"");
-      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._reference._type));
+      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._reference._operator));
       ScopeOutput(generator, "\", ");
       ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
       ScopeOutput(generator, " ] ");

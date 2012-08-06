@@ -882,8 +882,8 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
   assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
-    TRI_aql_node_type_e lhsType = lhs->_value._reference._type;
-    TRI_aql_node_type_e rhsType = rhs->_value._reference._type;
+    TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
+    TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
     bool isSameAttribute = TRI_EqualString(lhs->_value._reference._name, rhs->_value._reference._name);
     bool possible;
 
@@ -1384,8 +1384,8 @@ static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const contex
   assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
-    TRI_aql_node_type_e lhsType = lhs->_value._reference._type;
-    TRI_aql_node_type_e rhsType = rhs->_value._reference._type;
+    TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
+    TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
     bool isSameAttribute = TRI_EqualString(lhs->_value._reference._name, rhs->_value._reference._name);
 
     if (!isSameAttribute) {
@@ -1817,7 +1817,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   if (node->_type == TRI_AQL_NODE_REFERENCE) {
     // create the reference access
     fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE;
-    fieldAccess->_value._reference._type = operator;
+    fieldAccess->_value._reference._operator = operator;
     fieldAccess->_value._reference._name = TRI_AQL_NODE_STRING(node);
 
     return fieldAccess;
@@ -2239,7 +2239,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
     }
     
     case TRI_AQL_ACCESS_REFERENCE: {
-      fieldAccess->_value._reference._type = source->_value._reference._type;
+      fieldAccess->_value._reference._operator = source->_value._reference._operator;
       fieldAccess->_value._reference._name = source->_value._reference._name;
       break;
     }
