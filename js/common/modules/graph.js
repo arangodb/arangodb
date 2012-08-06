@@ -697,7 +697,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
   var predecessors = target_vertex.determinePredecessors(this, options || {});
-  return target_vertex.pathesForTree(predecessors);
+  return (predecessors ? target_vertex.pathesForTree(predecessors) : []);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -739,7 +739,8 @@ Vertex.prototype.determinePredecessors = function (source, options) {
     todo_list = [source_id],    // [ID]
     distances = {},             // { ID => Number }
     current_vertex,             // Vertex
-    current_vertex_id;          // ID
+    current_vertex_id,          // ID
+    return_value = false;       // { ID => [ID]}
   distances[source_id] = 0;
 
   if (options.cached) {
@@ -753,6 +754,8 @@ Vertex.prototype.determinePredecessors = function (source, options) {
       current_vertex = this._graph.getVertex(current_vertex_id);
 
       if (current_vertex_id === this.getId()) {
+        require("console").log("FOUND YOU!");
+        return_value = predecessors;
         break;
       } else {
         todo_list.removeLastOccurrenceOf(current_vertex_id);
@@ -769,7 +772,7 @@ Vertex.prototype.determinePredecessors = function (source, options) {
     graph.setCachedPredecessors(this, source, predecessors);
   }
 
-  return predecessors;
+  return return_value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
