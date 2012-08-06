@@ -53,10 +53,12 @@ using namespace triagens::rest;
 
 SocketTask::SocketTask (socket_t fd)
   : Task("SocketTask"),
+    keepAliveWatcher(0),
     readWatcher(0),
     writeWatcher(0),
     watcher(0),
     commSocket(fd),
+    _keepAliveTimeout(300.0),
     _writeBuffer(0),
 #ifdef TRI_ENABLE_FIGURES
     _writeBufferStatistics(0),
@@ -213,6 +215,12 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
 
     if (closed) {
       return false;
+    }
+
+    // rearm timer for keep-alive timeout
+    if (_keepAliveTimeout > 0.0) {
+      // TODO: do we need some lock before we modify the scheduler?
+      scheduler->rearmTimer(keepAliveWatcher, _keepAliveTimeout);
     }
   }
 
@@ -382,6 +390,11 @@ void SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, commSocket);
   writeWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, commSocket);
 
+  // install timer for keep-alive timeout with some high default value
+  keepAliveWatcher = scheduler->installTimerEvent(loop, this, 60.0);
+  // and stop it immediately so it's not actively at the start
+  scheduler->clearTimer(keepAliveWatcher);
+
   tid = Thread::currentThreadId();
 }
 
@@ -392,6 +405,9 @@ void SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 void SocketTask::cleanup () {
   scheduler->uninstallEvent(watcher);
   watcher = 0;
+  
+  scheduler->uninstallEvent(keepAliveWatcher);
+  keepAliveWatcher = 0;
 
   scheduler->uninstallEvent(readWatcher);
   readWatcher = 0;
@@ -408,7 +424,23 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
   bool closed = false;
 
+  if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
+    // got a keep-alive timeout
+    LOGGER_TRACE << "got keep-alive timeout signal, closing connection";
+
+    // TODO: do we need some lock before we modify the scheduler?
+    scheduler->clearTimer(token);
+
+    // this will close the connection and destroy the task
+    handleTimeout();
+    return false;
+  }
+
   if (token == readWatcher && (revents & EVENT_SOCKET_READ)) {
+    if (keepAliveWatcher != 0) {
+      // disable timer for keep-alive timeout
+      scheduler->clearTimer(keepAliveWatcher);
+    }
     result = handleRead(closed);
   }
 
