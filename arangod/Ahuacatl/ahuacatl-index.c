@@ -76,7 +76,7 @@ static void LogIndexString (const char* const what,
 /// @brief check whether a field access candidate is an exact access
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isExactCandidate (const TRI_aql_field_access_t* const candidate) {
+static bool IsExactCandidate (const TRI_aql_field_access_t* const candidate) {
   if (candidate->_type == TRI_AQL_ACCESS_EXACT) {
     // ==
     return true;
@@ -253,7 +253,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         // attribute is used in index
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (!isExactCandidate(candidate)) {
+          if (!IsExactCandidate(candidate)) {
             // wrong access type for primary index
             continue;
           }
@@ -261,7 +261,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-          if (!isExactCandidate(candidate)) {
+          if (!IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
@@ -290,7 +290,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             continue;
           }
 
-          candidateIsExact = isExactCandidate(candidate);
+          candidateIsExact = IsExactCandidate(candidate);
 
           if ((candidateIsExact && !lastTypeWasExact) ||
               (!candidateIsExact && !lastTypeWasExact)) {
