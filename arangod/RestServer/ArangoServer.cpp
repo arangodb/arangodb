@@ -462,6 +462,8 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   
