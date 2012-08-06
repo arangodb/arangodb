@@ -162,6 +162,29 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if two references refer to the same variable or attribute
+////////////////////////////////////////////////////////////////////////////////
+
+bool IsSameReference (const TRI_aql_field_access_t* const lhs,
+                      const TRI_aql_field_access_t* const rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  assert(rhs->_type == TRI_AQL_ACCESS_REFERENCE);
+
+  if (lhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE &&
+      rhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+    
+    return TRI_EqualString(lhs->_value._reference._ref._name, rhs->_value._reference._ref._name);
+  }
+
+  if (lhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS &&
+      rhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS) {
+    return TRI_EqualString(lhs->_fullName, rhs->_fullName);
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -884,7 +907,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
     TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
-    bool isSameAttribute = TRI_EqualString(lhs->_value._reference._name, rhs->_value._reference._name);
+    bool isSameAttribute = IsSameReference(lhs, rhs);
     bool possible;
 
     if (!isSameAttribute) {
@@ -1386,7 +1409,7 @@ static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const contex
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
     TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
-    bool isSameAttribute = TRI_EqualString(lhs->_value._reference._name, rhs->_value._reference._name);
+    bool isSameAttribute = IsSameReference(lhs, rhs);
 
     if (!isSameAttribute) {
       // references refer to different attributes
@@ -1814,15 +1837,22 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return fieldAccess;
   } 
 
-  if (node->_type == TRI_AQL_NODE_REFERENCE) {
+  if (node->_type == TRI_AQL_NODE_REFERENCE ||
+      node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     // create the reference access
     fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE;
     fieldAccess->_value._reference._operator = operator;
-    fieldAccess->_value._reference._name = TRI_AQL_NODE_STRING(node);
+    if (node->_type == TRI_AQL_NODE_REFERENCE) {
+      fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_VARIABLE;
+      fieldAccess->_value._reference._ref._name = TRI_AQL_NODE_STRING(node);
+    }
+    else if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
+      fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS;
+      fieldAccess->_value._reference._ref._node = (TRI_aql_node_t*) node;
+    }
 
     return fieldAccess;
   }
-
 
   // all other operation types require a value...
   value = TRI_NodeJsonAql(context, node);
@@ -1934,12 +1964,13 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
   if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     TRI_aql_attribute_name_t* field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(node, 0));
 
-    if (!field) {
+    if (field == NULL) {
       return NULL;
     }
 
     TRI_AppendCharStringBuffer(&field->_name, '.');
     TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
+
     return field;
   }
   else if (node->_type == TRI_AQL_NODE_REFERENCE) {
@@ -1947,7 +1978,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
     
     field = (TRI_aql_attribute_name_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_attribute_name_t), false);
 
-    if (!field) {
+    if (field == NULL) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
@@ -2041,14 +2072,14 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
         (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // collection.attribute|reference operator value|reference
+      // collection.attribute|reference operator const value|reference|attribute access
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
     }
     else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
              (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // value|reference operator collection.attribute|reference
+      // const value|reference|attribute access operator collection.attribute|reference
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
@@ -2061,11 +2092,12 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     if (node2->_type != TRI_AQL_NODE_VALUE && 
         node2->_type != TRI_AQL_NODE_LIST &&
         node2->_type != TRI_AQL_NODE_ARRAY &&
-        node2->_type != TRI_AQL_NODE_REFERENCE) {
+        node2->_type != TRI_AQL_NODE_REFERENCE &&
+        node2->_type != TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
       // only the above types are supported
       return NULL;
     }
-    
+
     field = GetAttributeName(context, node1);
 
     if (field) {
@@ -2239,8 +2271,14 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
     }
     
     case TRI_AQL_ACCESS_REFERENCE: {
+      fieldAccess->_value._reference._type = source->_value._reference._type;
       fieldAccess->_value._reference._operator = source->_value._reference._operator;
-      fieldAccess->_value._reference._name = source->_value._reference._name;
+      if (source->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        fieldAccess->_value._reference._ref._name = source->_value._reference._ref._name;
+      }
+      else {
+        fieldAccess->_value._reference._ref._node = source->_value._reference._ref._node;
+      }
       break;
     }
 
@@ -2454,16 +2492,42 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 const char* TRI_RangeOperatorAql (const TRI_aql_range_e type) {
   switch (type) {
     case TRI_AQL_RANGE_LOWER_EXCLUDED:
-      return ">";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_GT);
     case TRI_AQL_RANGE_LOWER_INCLUDED:
-      return ">=";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_GE);
     case TRI_AQL_RANGE_UPPER_EXCLUDED:
-      return "<";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_LT);
     case TRI_AQL_RANGE_UPPER_INCLUDED:
-      return "<=";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_LE);
+    default:
+      assert(false);
   }
  
-  assert(false);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the range operator string for a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e type) {
+  switch (type) {
+    case TRI_AQL_NODE_OPERATOR_BINARY_EQ:
+      return "==";
+    case TRI_AQL_NODE_OPERATOR_BINARY_NE:
+      return "!=";
+    case TRI_AQL_NODE_OPERATOR_BINARY_LT:
+      return "<";
+    case TRI_AQL_NODE_OPERATOR_BINARY_LE:
+      return "<=";
+    case TRI_AQL_NODE_OPERATOR_BINARY_GT:
+      return ">";
+    case TRI_AQL_NODE_OPERATOR_BINARY_GE:
+      return ">=";
+    default: 
+      assert(false);
+  }
+ 
   return NULL;
 }
 

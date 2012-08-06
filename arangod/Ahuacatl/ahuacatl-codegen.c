@@ -68,8 +68,11 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessNode (TRI_aql_codegen_js_t* const generator, 
-                         const TRI_aql_node_t* const node);
+static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const,
+                                    const TRI_aql_node_t* const);
+
+static void ProcessNode (TRI_aql_codegen_js_t* const, 
+                         const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -278,7 +281,7 @@ static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
     generator->_error = true;
   }
 }
-
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a JSON value in the current scope
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,7 +904,12 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
     assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
 
-    ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
+    if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+    }
+    else {
+      ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+    }
   }
   else {
     ScopeOutputJson(generator, fieldAccess->_value._value);
@@ -964,7 +972,12 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
       assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
 
-      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
     }
     else {
       ScopeOutputJson(generator, fieldAccess->_value._value);
@@ -1055,9 +1068,15 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
     }
     else if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
       ScopeOutput(generator, " [ \"");
-      ScopeOutput(generator, TRI_RangeOperatorAql(fieldAccess->_value._reference._operator));
+      ScopeOutput(generator, TRI_ComparisonOperatorAql(fieldAccess->_value._reference._operator));
       ScopeOutput(generator, "\", ");
-      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._name));
+
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
       ScopeOutput(generator, " ] ");
     }
 
