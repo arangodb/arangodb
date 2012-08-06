@@ -943,8 +943,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
       return;
     }
 
-    isReference = (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-                   fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE_RANGE);
+    isReference = (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE);
 
     variable = TRI_GetVariableStatementWalkerAql(walker, variableName, &scopeCount);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
