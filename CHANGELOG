@@ -1,3 +1,10 @@
+
+not released yet  
+----------------
+
+* fix for issue #137: AQL optimizer should use indexes for ref accesses with 
+  2 named attributes
+
 v1.0.beta2 (2012-08-03)
 -----------------------
 

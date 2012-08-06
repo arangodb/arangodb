@@ -57,10 +57,8 @@ static char* AccessName (const TRI_aql_access_e type) {
       return "single range";
     case TRI_AQL_ACCESS_RANGE_DOUBLE: 
       return "double range";
-    case TRI_AQL_ACCESS_REFERENCE_EXACT: 
-      return "eq reference";
-    case TRI_AQL_ACCESS_REFERENCE_RANGE: 
-      return "range reference";
+    case TRI_AQL_ACCESS_REFERENCE: 
+      return "reference";
     case TRI_AQL_ACCESS_ALL: 
       return "all";
   }
@@ -123,8 +121,7 @@ static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
       break;
     }
     
-    case TRI_AQL_ACCESS_REFERENCE_EXACT: 
-    case TRI_AQL_ACCESS_REFERENCE_RANGE: 
+    case TRI_AQL_ACCESS_REFERENCE: 
     case TRI_AQL_ACCESS_ALL:
     case TRI_AQL_ACCESS_IMPOSSIBLE: {
       // nada
@@ -162,6 +159,29 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
   fieldAccess->_type = type;
 
   return fieldAccess;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if two references refer to the same variable or attribute
+////////////////////////////////////////////////////////////////////////////////
+
+bool IsSameReference (const TRI_aql_field_access_t* const lhs,
+                      const TRI_aql_field_access_t* const rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  assert(rhs->_type == TRI_AQL_ACCESS_REFERENCE);
+
+  if (lhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE &&
+      rhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+    
+    return TRI_EqualString(lhs->_value._reference._ref._name, rhs->_value._reference._ref._name);
+  }
+
+  if (lhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS &&
+      rhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS) {
+    return TRI_EqualString(lhs->_fullName, rhs->_fullName);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,8 +337,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     return rhs;
   }
   
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // for simplicity, always return the const access
     TRI_FreeAccessAql(rhs);
     return lhs;
@@ -445,8 +464,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     return lhs;
   }
   
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // for simplicity, always return the const access
     TRI_FreeAccessAql(rhs);
     return lhs;
@@ -790,8 +808,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     return lhs;
   }
   
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // for simplicity, always return the const access
     TRI_FreeAccessAql(rhs);
     return lhs;
@@ -859,8 +876,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
     return lhs;
   }
 
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // for simplicity, always return the const access
     TRI_FreeAccessAql(rhs);
     return lhs;
@@ -880,112 +896,98 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two access structures using a logical AND
 ///
-/// left hand operand is a reference, so it will always be returned
+/// left hand operand is a reference
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_field_access_t* MergeAndReferenceExact (TRI_aql_context_t* const context,
-                                                       TRI_aql_field_access_t* lhs,
-                                                       TRI_aql_field_access_t* rhs) {
-  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT);
+static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const context,
+                                                  TRI_aql_field_access_t* lhs,
+                                                  TRI_aql_field_access_t* rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT) {
-    if (TRI_EqualString(lhs->_value._name,
-                        rhs->_value._name)) {
-      // reference to the same variable/attribute, no special treatment here
-      // fall-through
-    }
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
+    TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
+    TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
+    bool isSameAttribute = IsSameReference(lhs, rhs);
+    bool possible;
 
-    // reference to different variable/attribute
-    TRI_FreeAccessAql(rhs);
-    return lhs;
-  }
-
-
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
-    if (TRI_EqualString(lhs->_value._name,
-                        rhs->_value._referenceRange._name)) {
-      // reference to the same variable/attribute
-
-      if (rhs->_value._referenceRange._type == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
-          rhs->_value._referenceRange._type == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
-        // == && > or == && < => impossible
-        TRI_FreeAccessAql(rhs); 
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
-      
-        return lhs;
-      }
-         
-      // everything else results in lhs  
-      // == && >= or == && <=
+    if (!isSameAttribute) {
+      // different attribute names are referred to. we can return either
       TRI_FreeAccessAql(rhs);
       return lhs;
     }
-    
-    // reference to different variable/attribute, no special treatment here
-  }
 
-  TRI_FreeAccessAql(rhs);
-  return lhs;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two access structures using a logical AND
-///
-/// left hand operand is a reference, so it will always be returned
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_field_access_t* MergeAndReferenceRange (TRI_aql_context_t* const context,
-                                                       TRI_aql_field_access_t* lhs,
-                                                       TRI_aql_field_access_t* rhs) {
-  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE);
-
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
-    if (TRI_EqualString(lhs->_value._referenceRange._name,
-                        rhs->_value._referenceRange._name)) {
-      // both references refer to the same variable, now compare their operators
-      TRI_aql_node_type_e lhsType = lhs->_value._referenceRange._type;
-      TRI_aql_node_type_e rhsType = rhs->_value._referenceRange._type;
-      bool possible = true;
- 
-      if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
-          (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
-        // lhs < ref && (lhs >= ref || lhs > ref) => impossible
-        possible = false;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE && 
-               rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
-        // lhs <= ref && lhs > ref => impossible
-        possible = false;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT && 
-               (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT)) {
-        // lhs > ref && (lhs <= ref || lhs < ref) => impossible
-        possible = false;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE && 
-               rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
-        // lhs >= ref && lhs < ref => impossible
-        possible = false;
-      }
-    
-      if (!possible) {
-        // return the impossible range
-        TRI_FreeAccessAql(rhs); 
-        FreeAccessMembers(lhs);
-        lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
+    // both references refer to the same variable, now compare their operators
+    assert(isSameAttribute);
       
-        return lhs;
-      }
+    if (lhsType == rhsType) {
+      // same operator, i.e. the two references are absolutely identical
+      TRI_FreeAccessAql(rhs);
 
-      // fall-through
+      return lhs;
     }
 
-    // return either side (we pick lhs, but it does not matter)
+    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+      // < && <=, merge to <
+      TRI_FreeAccessAql(rhs);
+
+      return lhs;
+    }
+    if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+      // <= && <, merge to <
+      TRI_FreeAccessAql(lhs);
+
+      return rhs;
+    }
+    
+    possible = true;
+
+    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_EQ &&
+        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
+         rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
+      // lhs == ref && (lhs < ref || lhs > ref)
+      possible = false;
+    }
+    else if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_EQ &&
+             (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
+              lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
+      // (lhs < ref || lhs > ref) && lhs == ref
+      possible = false;
+    }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
+        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
+      // lhs < ref && (lhs >= ref || lhs > ref) => impossible
+      possible = false;
+    }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE && 
+             rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
+      // lhs <= ref && lhs > ref => impossible
+      possible = false;
+    }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT && 
+             (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT)) {
+      // lhs > ref && (lhs <= ref || lhs < ref) => impossible
+      possible = false;
+    }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE && 
+             rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
+      // lhs >= ref && lhs < ref => impossible
+      possible = false;
+    }
+      
+    if (!possible) {
+      // return the impossible range
+      TRI_FreeAccessAql(rhs); 
+      FreeAccessMembers(lhs);
+      lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
+      
+      return lhs;
+    }
+         
+    // everything else results in lhs  
     TRI_FreeAccessAql(rhs);
     return lhs;
   }
-
+    
   if (rhs->_type == TRI_AQL_ACCESS_ALL) {
     TRI_FreeAccessAql(rhs);
     return lhs;
@@ -1157,8 +1159,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     return rhs;
   }
   
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // reference cannot be ORed with anything else
     TRI_FreeAccessAql(rhs);
     FreeAccessMembers(lhs);
@@ -1374,8 +1375,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
     return lhs;
   }
   
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT || 
-      rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     // reference cannot be ORed with anything else
     TRI_FreeAccessAql(rhs);
     FreeAccessMembers(lhs);
@@ -1401,116 +1401,62 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
 /// left hand operand is reference access
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_field_access_t* MergeOrReferenceExact (TRI_aql_context_t* const context,
-                                                      TRI_aql_field_access_t* lhs,
-                                                      TRI_aql_field_access_t* rhs) {
-  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT);
+static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const context,
+                                                 TRI_aql_field_access_t* lhs,
+                                                 TRI_aql_field_access_t* rhs) {
+  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_EXACT) {
-    if (TRI_EqualString(lhs->_value._name, 
-                        rhs->_value._name)) {
-      // both references refer to the same variable
+  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
+    TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
+    TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
+    bool isSameAttribute = IsSameReference(lhs, rhs);
+
+    if (!isSameAttribute) {
+      // references refer to different attributes
+      TRI_FreeAccessAql(rhs);
+      FreeAccessMembers(lhs);
+      lhs->_type = TRI_AQL_ACCESS_ALL;
+
+      return lhs;
+    }
+
+    // both references refer to the same thing, now compare their operators
+    assert(isSameAttribute);
+
+    if (lhsType == rhsType) {
+      // same operator, i.e. the two references are identical
       TRI_FreeAccessAql(rhs);
 
       return lhs;
     }
-    // fall-through
-  }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+      // < || <=, merge to <=
+      TRI_FreeAccessAql(lhs);
 
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
-    if (TRI_EqualString(lhs->_value._name, 
-                        rhs->_value._referenceRange._name)) {
-      // both references refer to the same variable
-      TRI_aql_node_type_e lhsType = lhs->_value._referenceRange._type;
-      TRI_aql_node_type_e rhsType = rhs->_value._referenceRange._type;
-
-      if (lhsType == rhsType) {
-        // same operation
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
-
-      if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
-        TRI_FreeAccessAql(lhs);
-
-        return rhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
-        TRI_FreeAccessAql(lhs);
-
-        return rhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
+      return rhs;
     }
-    // fall-through
-  }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
+      // <= || <, merge to <=
+      TRI_FreeAccessAql(rhs);
 
-  // for everything else, we have to use the ALL range unfortunately
-  TRI_FreeAccessAql(rhs);
-  FreeAccessMembers(lhs);
-  lhs->_type = TRI_AQL_ACCESS_ALL;
-
-  return lhs;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two access structures using a logical OR
-///
-/// left hand operand is reference access
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_field_access_t* MergeOrReferenceRange (TRI_aql_context_t* const context,
-                                                      TRI_aql_field_access_t* lhs,
-                                                      TRI_aql_field_access_t* rhs) {
-  assert(lhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE);
-
-  if (rhs->_type == TRI_AQL_ACCESS_REFERENCE_RANGE) {
-    if (TRI_EqualString(lhs->_value._referenceRange._name, 
-                        rhs->_value._referenceRange._name)) {
-      // both references refer to the same variable
-      TRI_aql_node_type_e lhsType = lhs->_value._referenceRange._type;
-      TRI_aql_node_type_e rhsType = rhs->_value._referenceRange._type;
-
-      if (lhsType == rhsType) {
-        // same operation
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
-
-      if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
-        TRI_FreeAccessAql(lhs);
-
-        return rhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
-        TRI_FreeAccessAql(lhs);
-
-        return rhs;
-      }
-      else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
-        TRI_FreeAccessAql(rhs);
-
-        return lhs;
-      }
+      return lhs;
     }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
+      // > || >=, merge to >=
+      TRI_FreeAccessAql(lhs);
+
+      return rhs;
+    }
+    else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
+      // >= || >, merge to >=
+      TRI_FreeAccessAql(rhs);
+
+      return lhs;
+    }
+  
     // fall-through
   }
+
 
   // for everything else, we have to use the ALL range unfortunately
   TRI_FreeAccessAql(rhs);
@@ -1553,10 +1499,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
       return MergeAndRangeSingle(context, lhs, rhs);
     case TRI_AQL_ACCESS_RANGE_DOUBLE:
       return MergeAndRangeDouble(context, lhs, rhs);
-    case TRI_AQL_ACCESS_REFERENCE_EXACT:
-      return MergeAndReferenceExact(context, lhs, rhs);
-    case TRI_AQL_ACCESS_REFERENCE_RANGE:
-      return MergeAndReferenceRange(context, lhs, rhs);
+    case TRI_AQL_ACCESS_REFERENCE:
+      return MergeAndReference(context, lhs, rhs);
     case TRI_AQL_ACCESS_ALL:
       return MergeAndAll(context, lhs, rhs);
   }
@@ -1598,10 +1542,8 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
       return MergeOrRangeSingle(context, lhs, rhs);
     case TRI_AQL_ACCESS_RANGE_DOUBLE:
       return MergeOrRangeDouble(context, lhs, rhs);
-    case TRI_AQL_ACCESS_REFERENCE_EXACT:
-      return MergeOrReferenceExact(context, lhs, rhs);
-    case TRI_AQL_ACCESS_REFERENCE_RANGE:
-      return MergeOrReferenceRange(context, lhs, rhs);
+    case TRI_AQL_ACCESS_REFERENCE:
+      return MergeOrReference(context, lhs, rhs);
     case TRI_AQL_ACCESS_ALL:
       return MergeOrAll(context, lhs, rhs);
   }
@@ -1895,21 +1837,22 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return fieldAccess;
   } 
 
-  if (node->_type == TRI_AQL_NODE_REFERENCE) {
+  if (node->_type == TRI_AQL_NODE_REFERENCE ||
+      node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     // create the reference access
-    if (operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
-      fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE_EXACT;
-      fieldAccess->_value._name = TRI_AQL_NODE_STRING(node);
+    fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE;
+    fieldAccess->_value._reference._operator = operator;
+    if (node->_type == TRI_AQL_NODE_REFERENCE) {
+      fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_VARIABLE;
+      fieldAccess->_value._reference._ref._name = TRI_AQL_NODE_STRING(node);
     }
-    else {
-      fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE_RANGE;
-      fieldAccess->_value._referenceRange._type = operator;
-      fieldAccess->_value._referenceRange._name = TRI_AQL_NODE_STRING(node);
+    else if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
+      fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS;
+      fieldAccess->_value._reference._ref._node = (TRI_aql_node_t*) node;
     }
 
     return fieldAccess;
   }
-
 
   // all other operation types require a value...
   value = TRI_NodeJsonAql(context, node);
@@ -2021,12 +1964,13 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
   if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     TRI_aql_attribute_name_t* field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(node, 0));
 
-    if (!field) {
+    if (field == NULL) {
       return NULL;
     }
 
     TRI_AppendCharStringBuffer(&field->_name, '.');
     TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
+
     return field;
   }
   else if (node->_type == TRI_AQL_NODE_REFERENCE) {
@@ -2034,7 +1978,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
     
     field = (TRI_aql_attribute_name_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_attribute_name_t), false);
 
-    if (!field) {
+    if (field == NULL) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
@@ -2128,14 +2072,14 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
         (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // collection.attribute|reference operator value|reference
+      // collection.attribute|reference operator const value|reference|attribute access
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
     }
     else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
              (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // value|reference operator collection.attribute|reference
+      // const value|reference|attribute access operator collection.attribute|reference
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
@@ -2148,11 +2092,12 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     if (node2->_type != TRI_AQL_NODE_VALUE && 
         node2->_type != TRI_AQL_NODE_LIST &&
         node2->_type != TRI_AQL_NODE_ARRAY &&
-        node2->_type != TRI_AQL_NODE_REFERENCE) {
+        node2->_type != TRI_AQL_NODE_REFERENCE &&
+        node2->_type != TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
       // only the above types are supported
       return NULL;
     }
-    
+
     field = GetAttributeName(context, node1);
 
     if (field) {
@@ -2325,14 +2270,15 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
       break;
     }
     
-    case TRI_AQL_ACCESS_REFERENCE_EXACT: {
-      fieldAccess->_value._name = source->_value._name;
-      break;
-    }
-    
-    case TRI_AQL_ACCESS_REFERENCE_RANGE: {
-      fieldAccess->_value._referenceRange._type = source->_value._referenceRange._type;
-      fieldAccess->_value._referenceRange._name = source->_value._referenceRange._name;
+    case TRI_AQL_ACCESS_REFERENCE: {
+      fieldAccess->_value._reference._type = source->_value._reference._type;
+      fieldAccess->_value._reference._operator = source->_value._reference._operator;
+      if (source->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        fieldAccess->_value._reference._ref._name = source->_value._reference._ref._name;
+      }
+      else {
+        fieldAccess->_value._reference._ref._node = source->_value._reference._ref._node;
+      }
       break;
     }
 
@@ -2546,16 +2492,42 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 const char* TRI_RangeOperatorAql (const TRI_aql_range_e type) {
   switch (type) {
     case TRI_AQL_RANGE_LOWER_EXCLUDED:
-      return ">";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_GT);
     case TRI_AQL_RANGE_LOWER_INCLUDED:
-      return ">=";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_GE);
     case TRI_AQL_RANGE_UPPER_EXCLUDED:
-      return "<";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_LT);
     case TRI_AQL_RANGE_UPPER_INCLUDED:
-      return "<=";
+      return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_LE);
+    default:
+      assert(false);
   }
  
-  assert(false);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the range operator string for a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e type) {
+  switch (type) {
+    case TRI_AQL_NODE_OPERATOR_BINARY_EQ:
+      return "==";
+    case TRI_AQL_NODE_OPERATOR_BINARY_NE:
+      return "!=";
+    case TRI_AQL_NODE_OPERATOR_BINARY_LT:
+      return "<";
+    case TRI_AQL_NODE_OPERATOR_BINARY_LE:
+      return "<=";
+    case TRI_AQL_NODE_OPERATOR_BINARY_GT:
+      return ">";
+    case TRI_AQL_NODE_OPERATOR_BINARY_GE:
+      return ">=";
+    default: 
+      assert(false);
+  }
+ 
   return NULL;
 }
 
