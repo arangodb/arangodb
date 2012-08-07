@@ -2481,6 +2481,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
+  size_t inserted;
   void** end;
   void** ptr;
   int res;
@@ -2491,6 +2492,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 
   scanned = 0;
+  inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr != NULL) {
@@ -2509,10 +2511,16 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
 
           return res;
         }
+
+        ++inserted;
+
+        if (inserted % 10000 == 0) {
+          LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) collection->base.base._cid);
+        }
       }
 
       if (scanned % 10000 == 0) {
-        LOG_INFO("indexed %ld of %ld documents", scanned, n);
+        LOG_TRACE("scanned %ld of %ld datafile entries of collection %lu", scanned, n, (unsigned long) collection->base.base._cid);
       }
     }
   }
