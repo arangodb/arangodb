@@ -508,15 +508,38 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // blob collection use the name
   if (parameter->_type == TRI_COL_TYPE_BLOB) {
     filename = TRI_Concatenate2File(path, parameter->_name);
-    /* TODO FIXME: memory allocation might fail */
+    if (filename == NULL) {
+    
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+      return NULL;
+    }
   }
 
   // simple collection use the collection identifier
   else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
+    if (tmp1 == NULL) {
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
+
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
+    if (tmp2 == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
 
     filename = TRI_Concatenate2File(path, tmp2);
+    if (filename == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
@@ -573,7 +596,13 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
-    /* TODO FIXME: memory allocation might fail */
+    if (collection == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
   }
 
   InitCollection(vocbase, collection, filename, parameter);
@@ -640,7 +669,11 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
-  // TODO: memory allocation might fail
+  if (filename == NULL) {
+    LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
+
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -981,7 +1014,13 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
-    /* TODO FIXME: memory allocation might fail */
+
+    if (collection == NULL) {
+      LOG_ERROR("cannot open '%s', out of memory", path);
+
+      return NULL;
+    }
+
     freeCol = true;
   }
 
