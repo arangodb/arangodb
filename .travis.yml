@@ -1,0 +1,3 @@
+language: c
+before_script: "bash -c 'cd UnitTests/HttpInterface && bundle'"
+script: "./configure && make && ./unittests.sh"
