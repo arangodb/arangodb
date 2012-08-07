@@ -1449,7 +1449,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
     }
     default: {
       assert(false);
-      // todo: log error
+      // TODO: log error
       break;
     }    
   }  // end of switch statement
@@ -1459,7 +1459,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // do it here once off.
   // ..........................................................................  
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
-  /* FIXME: memory allocation might fail */
+  /* TODO: memory allocation might fail */
   
   // ..........................................................................  
   // Assign the element size
@@ -1489,7 +1489,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2);
   growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2);
   if (!growResult) {
-    // todo: truncate he nodes and return
+    // todo: truncate the nodes and return
     return;
   }
   
