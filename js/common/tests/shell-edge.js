@@ -27,6 +27,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -70,8 +71,33 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      edge.unload();
+
+      while (edge.status() != internal.ArangoCollection.STATUS_UNLOADED) {
+        console.log("waiting for collection '%s' to unload", en);
+        internal.wait(5);
+      }
+
       edge.drop();
+
+      while (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
+        console.log("waiting for collection '%s' to drop", en);
+        internal.wait(5);
+      }
+
+      vertex.unload();
+
+      while (vertex.status() != internal.ArangoCollection.STATUS_UNLOADED) {
+        console.log("waiting for collection '%s' to unload", vn);
+        internal.wait(5);
+      }
+
       vertex.drop();
+
+      while (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
+        console.log("waiting for collection '%s' to drop", vn);
+        internal.wait(5);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

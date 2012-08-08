@@ -280,6 +280,20 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.sha256 = SYS_SHA256;
 
 
+  // busy wait function
+  internal.wait = function(n) {
+    if (n <= 0) {
+      return;
+    }
+
+    var a = internal.time() + n;
+
+    while (internal.time() < a) {
+      ;
+    }
+  }
+
+
   // command line parameter
   internal.MODULES_PATH = "";
 
