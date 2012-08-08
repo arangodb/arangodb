@@ -75,28 +75,28 @@ function CollectionEdgeSuiteErrorHandling () {
 
       while (edge.status() != internal.ArangoCollection.STATUS_UNLOADED) {
         console.log("waiting for collection '%s' to unload", en);
-        internal.wait(5);
+        internal.wait(1);
       }
 
       edge.drop();
 
       while (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
         console.log("waiting for collection '%s' to drop", en);
-        internal.wait(5);
+        internal.wait(1);
       }
 
       vertex.unload();
 
       while (vertex.status() != internal.ArangoCollection.STATUS_UNLOADED) {
         console.log("waiting for collection '%s' to unload", vn);
-        internal.wait(5);
+        internal.wait(1);
       }
 
       vertex.drop();
 
       while (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
         console.log("waiting for collection '%s' to drop", vn);
-        internal.wait(5);
+        internal.wait(1);
       }
     },
 
