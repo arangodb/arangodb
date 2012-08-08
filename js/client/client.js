@@ -1117,11 +1117,22 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.status = function () {
+    var result;
+
     if (this._status === null) {
       this.refresh();
     }
 
-    return this._status;
+    // save original status
+    result = this._status;
+
+    if (this._status == ArangoCollection.STATUS_UNLOADING) {
+      // if collection is currently unloading, we must not cache this info
+      this._status = null;
+    }
+
+    // return the correct result
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
