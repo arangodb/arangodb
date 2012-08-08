@@ -344,7 +344,7 @@ void TRI_InitialiseMemory () {
 
     TriUnknownMemZone._zid = 1;
     TriUnknownMemZone._failed = false;
-    TriUnknownMemZone._failable = true;
+    TriUnknownMemZone._failable = false;
 
     CoreReserve = malloc(reserveSize);
 
