@@ -54,8 +54,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system
-SERVER_OPT += $(shell echo $$SERVER_OPT)
+SERVER_START := 
+SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system $(SERVER_START)
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
@@ -72,6 +72,8 @@ start-server:
 	@(test "$(PROTO)" == "https" && echo "<< STARTING SERVER ON SSL ENDPOINT                                            >>") || true
 	@(test "$(PROTO)" == "unix"  && echo "<< STARTING SERVER ON UNIX SOCKET ENDPOINT                                    >>") || true
 	@echo "================================================================================"
+	@echo
+	@echo "Server Options: $(SERVER_OPT)"
 	@echo
 
 	rm -f "$(PIDFILE)"
@@ -275,7 +277,7 @@ SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
 	@echo
 	@echo "================================================================================"
@@ -300,7 +302,7 @@ unittests-shell-client:
 .PHONY: unittests-http-server
 
 unittests-http-server:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
@@ -326,7 +328,7 @@ unittests-http-server:
 .PHONY: unittests-ssl-server
 
 unittests-ssl-server:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
 
 	@echo
 	@echo "================================================================================"
