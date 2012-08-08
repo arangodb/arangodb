@@ -330,6 +330,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
+  // TODO: header might be NULL and must be checked
 
   if (did > 0 && rid > 0) {
     // use existing document id & revision id
@@ -1339,6 +1340,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
@@ -1420,6 +1422,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       header->_did = d->_did;
@@ -2175,6 +2178,11 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
   // add a new header
   found = TRI_InsertKeyAssociativePointer(&sim->_primaryIndex, &header->_did, header, false);
 
+  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL. 
+  // in case the call succeeds but does not find any previous value, it also returns NULL
+  // this function here will continue happily in both cases.
+  // These two cases must be distinguishable in order to notify the caller about an error
+
   if (found != NULL) {
     LOG_ERROR("document %lu already existed with revision %lu while creating revision %lu",
               (unsigned long) header->_did,
@@ -2481,6 +2489,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
+  size_t inserted;
   void** end;
   void** ptr;
   int res;
@@ -2491,6 +2500,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 
   scanned = 0;
+  inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr != NULL) {
@@ -2509,10 +2519,16 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
 
           return res;
         }
+
+        ++inserted;
+
+        if (inserted % 10000 == 0) {
+          LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) collection->base.base._cid);
+        }
       }
 
       if (scanned % 10000 == 0) {
-        LOG_INFO("indexed %ld of %ld documents", scanned, n);
+        LOG_TRACE("scanned %ld of %ld datafile entries of collection %lu", scanned, n, (unsigned long) collection->base.base._cid);
       }
     }
   }

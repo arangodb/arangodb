@@ -325,19 +325,22 @@ void TRI_SetProcessTitle (char const* title) {
     }
     
     if (envLen > 0) {
-      size = environ[envLen-1] + strlen(environ[envLen-1]) - ARGV[0];
+      size = environ[envLen - 1] + strlen(environ[envLen - 1]) - ARGV[0];
     }
     else {
-      size = ARGV[ARGC-1] + strlen(ARGV[ARGC-1]) - ARGV[0];
+      size = ARGV[ARGC - 1] + strlen(ARGV[ARGC - 1]) - ARGV[0];
     }
     
     if (environ) {
-      char **newEnviron = malloc(envLen*sizeof(char *));
-      unsigned int i = -1;
+      char** newEnviron = TRI_Allocate(TRI_CORE_MEM_ZONE, (envLen + 1) * sizeof(char*), false);
+      size_t i = 0;
 
-      while (environ[++i]) {
-        newEnviron[i] = strdup(environ[i]);
+      while (environ[i]) {
+        newEnviron[i] = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, environ[i]);
+        ++i;
       }
+      // pad with a null pointer so we know the end of the array
+      newEnviron[i] = NULL;
         
       environ = newEnviron;
     }
@@ -391,6 +394,17 @@ void TRI_InitialiseProcess (int argc, char* argv[]) {
 
 void TRI_ShutdownProcess () {
   TRI_FreeString(TRI_CORE_MEM_ZONE, ProcessName);
+
+  if (environ) {
+    // free all arguments copied for environ
+    size_t i = 0;
+
+    while (environ[i]) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, environ[i]);
+      ++i;
+    }
+    TRI_Free(TRI_CORE_MEM_ZONE, environ);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

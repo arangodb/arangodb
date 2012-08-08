@@ -43,7 +43,9 @@
 /// @brief log information about the used index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LogIndexString (TRI_index_t const* idx,
+#ifdef TRI_DEBUG_AQL    
+static void LogIndexString (const char* const what,
+                            TRI_index_t const* idx,
                             char const* collectionName) {
   TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   size_t i;
@@ -60,12 +62,38 @@ static void LogIndexString (TRI_index_t const* idx,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  TRI_AQL_LOG("using %s index (%s) for '%s'", 
+  TRI_AQL_LOG("%s %s index (%s) for '%s'", 
+              what,
               TRI_TypeNameIndex(idx), 
               buffer->_buffer, 
               collectionName);
 
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a field access candidate is an exact access
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsExactCandidate (const TRI_aql_field_access_t* const candidate) {
+  if (candidate->_type == TRI_AQL_ACCESS_EXACT) {
+    // ==
+    return true;
+  }
+
+  if (candidate->_type == TRI_AQL_ACCESS_LIST) {
+    // in (...)
+    return true;
+  }
+
+  if (candidate->_type == TRI_AQL_ACCESS_REFERENCE && 
+      candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
+    // == ref
+    return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,14 +193,14 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
-    TRI_aql_access_e lastType;
     size_t numIndexFields = idx->_fields._length;
+    bool lastTypeWasExact;
     
     if (numIndexFields == 0) {
       // index should contain at least one field
       continue;
     }
-    
+
     // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
     switch (idx->_type) {
       case TRI_IDX_TYPE_GEO1_INDEX:
@@ -188,10 +216,14 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         // these indexes are valid candidates
         break;
     }
+    
+#ifdef TRI_DEBUG_AQL    
+    LogIndexString("checking", idx, collectionName);
+#endif
 
     TRI_ClearVectorPointer(&matches);
 
-    lastType = TRI_AQL_ACCESS_EXACT;
+    lastTypeWasExact = true;
 
     // now loop over all index fields, from left to right
     // index field order is important because skiplists can be used with leftmost prefixes as well,
@@ -221,9 +253,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         // attribute is used in index
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST &&
-              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT) {
+          if (!IsExactCandidate(candidate)) {
             // wrong access type for primary index
             continue;
           }
@@ -231,9 +261,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           TRI_PushBackVectorPointer(&matches, candidate);
         }
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-          if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST &&
-              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT) {
+          if (!IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
@@ -247,14 +275,12 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
           bool candidateIsExact;
-          bool lastIsExact;
 
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
               candidate->_type != TRI_AQL_ACCESS_LIST && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
               candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE &&
-              candidate->_type != TRI_AQL_ACCESS_REFERENCE_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_REFERENCE_RANGE) {
+              candidate->_type != TRI_AQL_ACCESS_REFERENCE) {
             // wrong access type for skiplists
             continue;
           }
@@ -264,17 +290,16 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             continue;
           }
 
-          candidateIsExact = (candidate->_type == TRI_AQL_ACCESS_EXACT || candidate->_type == TRI_AQL_ACCESS_REFERENCE_EXACT);
-          lastIsExact = (lastType == TRI_AQL_ACCESS_EXACT || lastType == TRI_AQL_ACCESS_REFERENCE_EXACT);
+          candidateIsExact = IsExactCandidate(candidate);
 
-          if ((candidateIsExact && !lastIsExact) ||
-              (!candidateIsExact && !lastIsExact)) {
+          if ((candidateIsExact && !lastTypeWasExact) ||
+              (!candidateIsExact && !lastTypeWasExact)) {
             // if we already had a range query, we cannot check for equality after that
             // if we already had a range query, we cannot check another range after that
             continue;
           }
 
-          lastType = candidate->_type;
+          lastTypeWasExact = candidateIsExact;
 
           TRI_PushBackVectorPointer(&matches, candidate);
         }
@@ -305,9 +330,11 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
   TRI_DestroyVectorPointer(&matches);
 
+#ifdef TRI_DEBUG_AQL    
   if (picked) {
-    LogIndexString(picked->_idx, collectionName);
+    LogIndexString("using", picked->_idx, collectionName);
   }
+#endif
 
   return picked;
 }

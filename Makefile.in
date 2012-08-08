@@ -614,8 +614,8 @@ am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
-bin_arango_dfdb_SOURCES = bin/arango-dfdb.c
-bin_arango_dfdb_OBJECTS = bin/arango-dfdb.$(OBJEXT)
+am_bin_arango_dfdb_OBJECTS =
+bin_arango_dfdb_OBJECTS = $(am_bin_arango_dfdb_OBJECTS)
 bin_arango_dfdb_LDADD = $(LDADD)
 am_bin_arango_password_OBJECTS =
 bin_arango_password_OBJECTS = $(am_bin_arango_password_OBJECTS)
@@ -821,7 +821,7 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) $(lib_libarango_mruby_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(UnitTests_basics_suite_SOURCES) \
-	$(UnitTests_geo_suite_SOURCES) bin/arango-dfdb.c \
+	$(UnitTests_geo_suite_SOURCES) $(bin_arango_dfdb_SOURCES) \
 	$(bin_arango_password_SOURCES) $(bin_arangod_SOURCES) \
 	$(bin_arangoimp_SOURCES) $(bin_arangoirb_SOURCES) \
 	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
@@ -832,11 +832,11 @@ DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(am__lib_libarango_mruby_a_SOURCES_DIST) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
-	$(am__UnitTests_geo_suite_SOURCES_DIST) bin/arango-dfdb.c \
-	$(bin_arango_password_SOURCES) $(am__bin_arangod_SOURCES_DIST) \
-	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
-	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
-	$(bin_zserver_SOURCES)
+	$(am__UnitTests_geo_suite_SOURCES_DIST) \
+	$(bin_arango_dfdb_SOURCES) $(bin_arango_password_SOURCES) \
+	$(am__bin_arangod_SOURCES_DIST) $(bin_arangoimp_SOURCES) \
+	$(am__bin_arangoirb_SOURCES_DIST) $(bin_arangosh_SOURCES) \
+	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -1158,8 +1158,9 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 	lib/libarango_fe.a lib/libarango_client.a $(am__append_8)
 
-# exclude arango-password from sources list
+# exclude arango-password and arango-dfdb from sources list, otherwise make TAGS will fail
 bin_arango_password_SOURCES = 
+bin_arango_dfdb_SOURCES = 
 
 ################################################################################
 ### @brief /etc data
@@ -1574,6 +1575,7 @@ bin_zserver_SOURCES = \
 FORCE = 0
 SKIP_BOOST = 0
 SKIP_GEO = 0
+SKIP_AHUACATL = 0
 SKIP_RANGES = 0
 VALGRIND = 
 USERNAME = root
@@ -1654,6 +1656,8 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@srcdir@/js/server/tests/ahuacatl-parse.js \
 			@srcdir@/js/server/tests/ahuacatl-hash.js \
 			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
+			@srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
+			@srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
@@ -2458,11 +2462,6 @@ UnitTests/geo_suite$(EXEEXT): $(UnitTests_geo_suite_OBJECTS) $(UnitTests_geo_sui
 bin/$(am__dirstamp):
 	@$(MKDIR_P) bin
 	@: > bin/$(am__dirstamp)
-bin/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) bin/$(DEPDIR)
-	@: > bin/$(DEPDIR)/$(am__dirstamp)
-bin/arango-dfdb.$(OBJEXT): bin/$(am__dirstamp) \
-	bin/$(DEPDIR)/$(am__dirstamp)
 arangod/Actions/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Actions
 	@: > arangod/Actions/$(am__dirstamp)
@@ -2913,7 +2912,6 @@ mostlyclean-compile:
 	-rm -f arangosh/V8Client/bin_arangosh-ImportHelper.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangosh-V8ClientConnection.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangosh-arangosh.$(OBJEXT)
-	-rm -f bin/arango-dfdb.$(OBJEXT)
 	-rm -f lib/Admin/ApplicationAdminServer.$(OBJEXT)
 	-rm -f lib/Admin/RestAdminBaseHandler.$(OBJEXT)
 	-rm -f lib/Admin/RestAdminFeConfigurationHandler.$(OBJEXT)
@@ -3177,7 +3175,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-arangosh.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@bin/$(DEPDIR)/arango-dfdb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/ApplicationAdminServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminFeConfigurationHandler.Po@am__quote@
@@ -5021,7 +5018,6 @@ distclean-generic:
 	-rm -f arangoirb/MRClient/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(am__dirstamp)
-	-rm -f bin/$(DEPDIR)/$(am__dirstamp)
 	-rm -f bin/$(am__dirstamp)
 	-rm -f lib/$(am__dirstamp)
 	-rm -f lib/Admin/$(DEPDIR)/$(am__dirstamp)
@@ -5084,7 +5080,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) bin/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5133,7 +5129,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) bin/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5248,6 +5244,7 @@ unittests-verbose:
 	@echo "## > make unittests FORCE=1                                                   ##"
 	@echo "## > make unittests SKIP_BOOST=1                                              ##"
 	@echo "## > make unittests SKIP_GEO=1                                                ##"
+	@echo "## > make unittests SKIP_AHUACATL=1                                           ##"
 	@echo "## > make unittests SKIP_RANGES=1                                             ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
@@ -5349,9 +5346,8 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
-
-	@test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo

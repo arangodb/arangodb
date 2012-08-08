@@ -1415,6 +1415,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
       if (i == options->_items._length) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
         return false;
       }
     }
@@ -1423,6 +1424,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
       if (c >= maxIdx) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
         return false;
       }
 
