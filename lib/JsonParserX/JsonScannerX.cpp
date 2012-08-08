@@ -610,12 +610,12 @@ static yyconst flex_int16_t yy_chk[293] =
 
 static yyconst flex_int16_t yy_rule_linenum[57] =
     {   0,
-       90,   94,  108,  113,  114,  115,  116,  117,  118,  119,
-      120,  122,  128,  133,  139,  143,  150,  151,  152,  166,
-      172,  178,  184,  194,  200,  206,  212,  222,  228,  238,
-      244,  253,  254,  255,  256,  257,  258,  261,  262,  263,
-      264,  265,  266,  267,  268,  269,  270,  271,  272,  273,
-      274,  275,  276,  277,  278,  287
+       92,   96,  110,  115,  116,  117,  118,  119,  120,  121,
+      122,  124,  130,  135,  141,  145,  152,  153,  154,  168,
+      174,  180,  186,  196,  202,  208,  214,  224,  230,  240,
+      246,  255,  256,  257,  258,  259,  260,  263,  264,  265,
+      266,  267,  268,  269,  270,  271,  272,  273,  274,  275,
+      276,  277,  278,  279,  280,  289
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -682,6 +682,8 @@ using namespace triagens::rest;
 #define yyterminate() return token::END
 #define YYSTYPE NAME_SPACE::JsonParserX::semantic_type
 #define YYLTYPE NAME_SPACE::location
+
+#define YY_NO_INPUT 1
 
 /* NOT USABLE HERE too MANY THREADS std::string buffer; */
  

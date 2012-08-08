@@ -184,7 +184,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        EventToken installPeriodicEvent (EventLoop, Task*, double offset, double intervall);
+        EventToken installPeriodicEvent (EventLoop, Task*, double offset, double interval);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
