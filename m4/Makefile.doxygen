@@ -41,6 +41,7 @@ Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-di
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
+	echo "CREATING XML FROM MD!!!"
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
@@ -65,8 +66,9 @@ doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
 Doxygen/arango-xml.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 
-wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
+wiki: wiki2 
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@for w in $(WIKI); do python @top_srcdir@/Doxygen/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
 wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
