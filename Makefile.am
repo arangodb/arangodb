@@ -179,6 +179,10 @@ sbin_PROGRAMS = \
         bin/arango-password \
 	bin/arango-dfdb
 
+# exclude arango-password and arango-dfdb from sources list, otherwise make TAGS will fail
+bin_arango_password_SOURCES =
+bin_arango_dfdb_SOURCES =
+
 ################################################################################
 ### @brief /bin programs
 ################################################################################
