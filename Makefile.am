@@ -179,10 +179,6 @@ sbin_PROGRAMS = \
         bin/arango-password \
 	bin/arango-dfdb
 
-# exclude arango-password and arango-dfdb from sources list, otherwise make TAGS will fail
-bin_arango_password_SOURCES =
-bin_arango_dfdb_SOURCES =
-
 ################################################################################
 ### @brief /bin programs
 ################################################################################
@@ -341,6 +337,9 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ### @brief arango password
 ################################################################################
 
+# exclude arango skrips from sources list
+bin_arango_password_SOURCES =
+
 bin/arango-password: bin/arango-password.in
 if ENABLE_RELATIVE_DEVEL
 	sed \
@@ -363,6 +362,9 @@ CLEANUP += bin/arango-password
 ################################################################################
 ### @brief arango datafile debugger
 ################################################################################
+
+# exclude arango skrips from sources list
+bin_arango_dfdb_SOURCES =
 
 bin/arango-dfdb: bin/arango-dfdb.in
 if ENABLE_RELATIVE_DEVEL
