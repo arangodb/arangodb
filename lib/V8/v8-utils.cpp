@@ -1104,6 +1104,38 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current time
+///
+/// @FUN{internal.wait(<seconds>)}
+///
+/// Wait for <seconds>, call the garbage collection.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: wait(<seconds>)")));
+  }
+
+  double n = TRI_ObjectToDouble(argv[0]);
+  double until = TRI_microtime() + n;
+
+  while(! v8::V8::IdleNotification()) {
+  }
+
+  while (TRI_microtime() < until) {
+    while(! v8::V8::IdleNotification()) {
+    }
+
+    usleep(100);
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1504,6 +1536,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_TIME"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_WAIT"),
+                         v8::FunctionTemplate::New(JS_Wait)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................
