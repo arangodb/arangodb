@@ -5223,7 +5223,7 @@ start-server:
 
 .PHONY: unittests-boost
 
-@ENABLE_BOOST_TEST_TRUE@unittests-boost:
+@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo "<< BOOST TESTS                                                                >>"
@@ -5234,8 +5234,6 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
-
-@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite
 
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo

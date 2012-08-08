@@ -81,7 +81,7 @@ start-server:
 
 if ENABLE_BOOST_TEST
 
-unittests-boost:
+unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
 	@echo "================================================================================"
 	@echo "<< BOOST TESTS                                                                >>"
@@ -92,8 +92,6 @@ unittests-boost:
 	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 	@echo
-
-unittests-boost: UnitTests/basics_suite
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
