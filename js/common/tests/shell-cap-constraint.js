@@ -69,7 +69,7 @@ function CapConstraintSuite() {
     collection.unload();
 
     while (collection.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-      console.log("waiting for collection '%s' to unload.");
+      console.log("waiting for collection '%s' to unload.", cn);
       internal.wait(1);
     }
 
