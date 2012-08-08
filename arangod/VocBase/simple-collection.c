@@ -330,6 +330,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
+  // TODO: header might be NULL and must be checked
 
   if (did > 0 && rid > 0) {
     // use existing document id & revision id
@@ -1339,6 +1340,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
@@ -1420,6 +1422,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       header->_did = d->_did;
