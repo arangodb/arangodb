@@ -2178,6 +2178,11 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
   // add a new header
   found = TRI_InsertKeyAssociativePointer(&sim->_primaryIndex, &header->_did, header, false);
 
+  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL. 
+  // in case the call succeeds but does not find any previous value, it also returns NULL
+  // this function here will continue happily in both cases.
+  // These two cases must be distinguishable in order to notify the caller about an error
+
   if (found != NULL) {
     LOG_ERROR("document %lu already existed with revision %lu while creating revision %lu",
               (unsigned long) header->_did,
