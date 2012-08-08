@@ -397,6 +397,8 @@ function RunCommandLineTests () {
       print(err.stack);
       result = false;
     }
+
+    internal.wait(0); // force GC
   }
 
   SYS_UNIT_TESTS_RESULT = result;

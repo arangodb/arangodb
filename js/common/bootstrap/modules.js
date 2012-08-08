@@ -278,20 +278,7 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.sprintf = SYS_SPRINTF;
   internal.time = SYS_TIME;
   internal.sha256 = SYS_SHA256;
-
-
-  // busy wait function
-  internal.wait = function(n) {
-    if (n <= 0) {
-      return;
-    }
-
-    var a = internal.time() + n;
-
-    while (internal.time() < a) {
-      ;
-    }
-  }
+  internal.wait = SYS_WAIT;
 
 
   // command line parameter
