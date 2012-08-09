@@ -810,6 +810,9 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           }
         }
 
+        while(! v8::V8::IdleNotification()) {
+        }
+
         if (ok) {
 
           // parameter array

@@ -1158,10 +1158,6 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 	lib/libarango_fe.a lib/libarango_client.a $(am__append_8)
 
-# exclude arango-password and arango-dfdb from sources list, otherwise make TAGS will fail
-bin_arango_password_SOURCES = 
-bin_arango_dfdb_SOURCES = 
-
 ################################################################################
 ### @brief /etc data
 ################################################################################
@@ -1589,11 +1585,8 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_OPT := --configuration none --javascript.startup-directory ./js \
-	--javascript.modules-path \
-	./js/server/modules:./js/common/modules \
-	--javascript.action-directory ./js/actions/system $(shell echo \
-	$$SERVER_OPT)
+SERVER_START := 
+SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system --database.maximal-journal-size 1000000 --javascript.gc-interval 1 $(SERVER_START)
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
@@ -1658,6 +1651,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 			@srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
@@ -1695,6 +1689,20 @@ UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 ################################################################################
 BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
 UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
+
+################################################################################
+### @brief arango password
+################################################################################
+
+# exclude arango skrips from sources list
+bin_arango_password_SOURCES = 
+
+################################################################################
+### @brief arango datafile debugger
+################################################################################
+
+# exclude arango skrips from sources list
+bin_arango_dfdb_SOURCES = 
 PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
@@ -5263,6 +5271,8 @@ start-server:
 	@(test "$(PROTO)" == "unix"  && echo "<< STARTING SERVER ON UNIX SOCKET ENDPOINT                                    >>") || true
 	@echo "================================================================================"
 	@echo
+	@echo "Server Options: $(SERVER_OPT)"
+	@echo
 
 	rm -f "$(PIDFILE)"
 	rm -rf "$(VOCDIR)"
@@ -5292,7 +5302,7 @@ unittests-make:
 
 .PHONY: unittests-boost
 
-@ENABLE_BOOST_TEST_TRUE@unittests-boost:
+@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo "<< BOOST TESTS                                                                >>"
@@ -5303,8 +5313,6 @@ unittests-make:
 @ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
-
-@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite
 
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
@@ -5355,7 +5363,7 @@ unittests-shell-server-ahuacatl:
 .PHONY: unittests-shell-client
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
 	@echo
 	@echo "================================================================================"
@@ -5379,7 +5387,7 @@ unittests-shell-client:
 .PHONY: unittests-http-server
 
 unittests-http-server:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
@@ -5403,7 +5411,7 @@ unittests-http-server:
 .PHONY: unittests-ssl-server
 
 unittests-ssl-server:
-	$(MAKE) start-server PID=$(PID) SERVER_OPT="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
 
 	@echo
 	@echo "================================================================================"
@@ -5471,10 +5479,6 @@ clean-local:
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
-################################################################################
-### @brief arango password
-################################################################################
-
 bin/arango-password: bin/arango-password.in
 @ENABLE_RELATIVE_DEVEL_TRUE@	sed \
 @ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
@@ -5488,10 +5492,6 @@ bin/arango-password: bin/arango-password.in
 @ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 @ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
 @ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
-
-################################################################################
-### @brief arango datafile debugger
-################################################################################
 
 bin/arango-dfdb: bin/arango-dfdb.in
 @ENABLE_RELATIVE_DEVEL_TRUE@	sed \
@@ -5552,6 +5552,7 @@ Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-di
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
+	echo "CREATING XML FROM MD!!!"
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
@@ -5578,8 +5579,9 @@ Doxygen/arango-xml.doxy: Doxygen/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-wiki: wiki2 $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
+wiki: wiki2 
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@for w in $(WIKI); do python @top_srcdir@/Doxygen/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
 wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
