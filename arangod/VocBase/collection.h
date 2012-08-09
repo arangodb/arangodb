@@ -301,7 +301,9 @@ int TRI_SaveParameterInfoCollection (char const* filename, TRI_col_info_t*);
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t*, TRI_col_parameter_t const*);
+int TRI_UpdateParameterInfoCollection (TRI_vocbase_t*,
+                                       TRI_collection_t*, 
+                                       TRI_col_parameter_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection

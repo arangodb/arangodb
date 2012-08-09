@@ -358,9 +358,9 @@ namespace triagens {
         uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default journal size
+/// @brief default wait-for-sync value
 ///
-/// @CMDOPT{--database.wait-for-size @CA{boolean}}
+/// @CMDOPT{--database.wait-for-value @CA{boolean}}
 ///
 /// Default wait-for-sync value. Can be overwritten when creating a new
 /// collection.
@@ -369,6 +369,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _defaultWaitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief force sync shapes
+///
+/// @CMDOPT{--database.force-sync-shapes @CA{boolean}}
+///
+/// Force synching of shape data to disk when writing shape information. 
+/// If turned off, synching will still happen for shapes of collections that
+/// have a waitForSync value of @LIT{true}. If turned on, synching of shape data
+/// will always happen, regards of the value of waitForSync.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _forceSyncShapes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

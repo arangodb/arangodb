@@ -3252,7 +3252,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(&sim->base.base, &newParameter);
+      int res = TRI_UpdateParameterInfoCollection(collection->_vocbase, &sim->base.base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);

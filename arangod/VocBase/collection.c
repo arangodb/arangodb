@@ -35,6 +35,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/blob-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -761,6 +763,7 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 
   // create a json info object
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  // TODO: memory allocation might fail
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
@@ -792,7 +795,9 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection, TRI_col_parameter_t const* parameter) {
+int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase, 
+                                       TRI_collection_t* collection, 
+                                       TRI_col_parameter_t const* parameter) {
   TRI_col_info_t info;
 
   if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
@@ -822,6 +827,16 @@ int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection, TRI_col_par
   }
 
   if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_sim_collection_t* simCollection = (TRI_sim_collection_t*) collection;
+
+    if (simCollection->base._shaper != NULL) {
+      TRI_blob_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_sim_collection_t*) collection)->base._shaper);
+
+      if (shapeCollection != NULL) {
+        // adjust wait for sync value of underlying blob collection
+        shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+      }
+    }
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
   }
 

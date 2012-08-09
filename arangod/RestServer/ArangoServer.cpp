@@ -204,6 +204,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
+    _forceSyncShapes(true),
     _vocbase(0) {
 
   // locate path to binary
@@ -417,6 +418,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
+    ("database.force-sync-shapes", &_forceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off")
   ;
 
   additional["DATABASE Options:help-devel"]
@@ -1116,6 +1118,7 @@ void ArangoServer::openDatabase () {
   _vocbase->_removeOnCompacted = _removeOnCompacted;
   _vocbase->_defaultMaximalSize = _defaultMaximalSize;
   _vocbase->_defaultWaitForSync = _defaultWaitForSync;
+  _vocbase->_forceSyncShapes = _forceSyncShapes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

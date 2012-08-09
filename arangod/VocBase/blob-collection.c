@@ -131,6 +131,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
 
+  // on journal creation, always use waitForSync = true
   res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -276,11 +277,11 @@ static int WriteElement (TRI_blob_collection_t* collection,
                          TRI_df_marker_t* position,
                          TRI_df_marker_t* marker,
                          TRI_voc_size_t markerSize,
-                          void const* body,
+                         void const* body,
                          size_t bodySize) {
   int res;
 
-  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, true);
+  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, collection->base._waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
@@ -325,6 +326,7 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
   info._cid = TRI_NewTickVocBase();
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._maximalSize = parameter->_maximalSize;
+  info._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
 
   collection = TRI_CreateCollection(vocbase, &blob->base, path, &info);
 

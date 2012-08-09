@@ -904,13 +904,16 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    char const* path,
-                                   char const* name) {
+                                   char const* name, 
+                                   const bool waitForSync) {
   voc_shaper_t* shaper;
   TRI_blob_collection_t* collection;
   TRI_col_parameter_t parameter;
   bool ok;
 
   TRI_InitParameterCollection(vocbase, &parameter, name, SHAPER_DATAFILE_SIZE);
+  // override wait for sync for shapes
+  parameter._waitForSync = waitForSync;
 
   collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
 
@@ -919,6 +922,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+  // TODO: memory allocation might fail
   TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
