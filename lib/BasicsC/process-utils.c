@@ -154,6 +154,12 @@ static bool IsEnvironmentEnlarged = false;
 static size_t MaximalProcessTitleSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief do we need to free the copy of the environ data on shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+static bool MustFreeEnvironment = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -343,6 +349,7 @@ void TRI_SetProcessTitle (char const* title) {
       newEnviron[i] = NULL;
         
       environ = newEnviron;
+      MustFreeEnvironment = true;
     }
 
     IsEnvironmentEnlarged = true;
@@ -395,9 +402,11 @@ void TRI_InitialiseProcess (int argc, char* argv[]) {
 void TRI_ShutdownProcess () {
   TRI_FreeString(TRI_CORE_MEM_ZONE, ProcessName);
 
-  if (environ) {
-    // free all arguments copied for environ
+  if (MustFreeEnvironment) {
     size_t i = 0;
+
+    assert(environ);
+    // free all arguments copied for environ
 
     while (environ[i]) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, environ[i]);
