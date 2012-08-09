@@ -1675,7 +1675,9 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   
   // create primary index
   primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
-  /* TODO FIXME: memory allocation might fail */
+  if (primary == NULL) {
+    return false;
+  }
 
   id = TRI_DuplicateString("_id");
 
@@ -1768,6 +1770,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
+  bool waitForSync;
 
   memset(&info, 0, sizeof(info));
   info._version = TRI_COL_VERSION;
@@ -1802,7 +1805,8 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   }
 
   // then the shape collection
-  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES");
+  waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
@@ -1814,7 +1818,14 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   }
 
   // create document collection and shaper
-  InitSimCollection(doc, shaper);
+  if (false == InitSimCollection(doc, shaper)) {
+    LOG_ERROR("cannot initialise shapes collection");
+
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection); // will free doc
+
+    return NULL;
+  }
 
   return doc;
 }
@@ -1907,6 +1918,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
+  TRI_blob_collection_t* shapeCollection;
   char* shapes;
 
   // first open the document collection
@@ -1946,7 +1958,21 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   }
 
   // create document collection and shaper
-  InitSimCollection(doc, shaper);
+  if (false == InitSimCollection(doc, shaper)) {
+    LOG_ERROR("cannot initialise shapes collection");
+
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
+
+    return NULL;
+  }
+  
+  assert(shaper);
+  shapeCollection = TRI_CollectionVocShaper(shaper);
+  if (shapeCollection != NULL) {
+    shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || collection->_waitForSync);
+  }
+
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
@@ -1960,7 +1986,6 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 
     collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
   }
-
 
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 

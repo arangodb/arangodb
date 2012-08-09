@@ -1139,8 +1139,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // defaults
   vocbase->_removeOnDrop = true;
   vocbase->_removeOnCompacted = true;
-  vocbase->_defaultWaitForSync = false;
+  vocbase->_defaultWaitForSync = false;    // default sync behavior for new collections
   vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
+  vocbase->_forceSyncShapes = true; // force sync of shape data to disk
 
   // scan the database path for collections
   res = ScanPath(vocbase, vocbase->_path);
@@ -1579,7 +1580,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     collection->_collection->base._deleted = true;
 
 
-    res = TRI_UpdateParameterInfoCollection(&collection->_collection->base, 0);
+    res = TRI_UpdateParameterInfoCollection(vocbase, &collection->_collection->base, 0);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
