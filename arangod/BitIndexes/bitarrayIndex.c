@@ -499,7 +499,7 @@ void* BitarrayIndexPrevIterationCallback(TRI_index_iterator_t* iterator) {
   }
   
   if (iterator->_currentInterval >= iterator->_intervals._length) {
-    return false;
+    return NULL;
   }  
   
   if (iterator->_intervals._length == 0) {
