@@ -279,6 +279,7 @@ static string JS_common_bootstrap_modules =
   "  internal.sprintf = SYS_SPRINTF;\n"
   "  internal.time = SYS_TIME;\n"
   "  internal.sha256 = SYS_SHA256;\n"
+  "  internal.wait = SYS_WAIT;\n"
   "\n"
   "\n"
   "  // command line parameter\n"

@@ -78,43 +78,46 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 /// @brief creates a new barrier element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_barrier_t* TRI_CreateBarrierElement (TRI_barrier_list_t* container) {
-  TRI_barrier_t* element;
+TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
+                                          size_t line,
+                                          char const* filename) {
+  TRI_barrier_blocker_t* element;
 
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_t), false);
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_blocker_t), false);
 
   if (element == NULL) {
     return NULL;
   }
 
-  element->_type = TRI_BARRIER_ELEMENT;
-  element->_container = container;
-  element->_datafile = NULL;
-  element->datafileCallback = NULL;
+  element->base._type = TRI_BARRIER_ELEMENT;
+  element->base._container = container;
+
+  element->_line = line;
+  element->_filename = filename;
 
   TRI_LockSpin(&container->_lock);
 
   // empty list
   if (container->_end == NULL) {
-    element->_next = NULL;
-    element->_prev = NULL;
+    element->base._next = NULL;
+    element->base._prev = NULL;
 
-    container->_begin = element;
-    container->_end = element;
+    container->_begin = &element->base;
+    container->_end = &element->base;
   }
 
   // add to the end
   else {
-    element->_next = NULL;
-    element->_prev = container->_end;
+    element->base._next = NULL;
+    element->base._prev = container->_end;
 
-    container->_end->_next = element;
-    container->_end = element;
+    container->_end->_next = &element->base;
+    container->_end = &element->base;
   }
 
   TRI_UnlockSpin(&container->_lock);
 
-  return element;
+  return &element->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
