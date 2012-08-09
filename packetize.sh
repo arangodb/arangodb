@@ -61,6 +61,9 @@ case $TRI_OS_LONG in
     START_SCRIPT="rc.arangodb.OpenSuSE"
     runlevels="035"
     docdir=${prefix}/share/doc/packages/voc/${vers_dir}
+
+    # exports for the epm configuration file
+    export insserv="true"
     ;;
 
   Linux-Debian*)
@@ -158,7 +161,7 @@ export EPM_RPM_OPTION
 test -f ${SUBLIST} && rm -f ${SUBLIST}
 touch ${SUBLIST}
 
-share_base=${static_dir}/arango
+share_base=${static_dir}/arangodb
 sfolder_name=$(pwd)
 
 echo 
@@ -196,10 +199,12 @@ echo "Export vars for epm"
 echo "   export arangodb_release=$arangodb_release"
 echo "   export arangodb_version=$arangodb_version"
 echo "   export bindir=$bindir"
+echo "   export chkconf=$chkconf"
 echo "   export data_dir=$data_dir"
 echo "   export docdir=$docdir"
 echo "   export exec_prefix=$exec_prefix"
 echo "   export initdir=$initdir"
+echo "   export insserv=$insserv"
 echo "   export prefix=$prefix"
 echo "   export project_dir=${sfolder_name}"
 echo "   export rgrp=$rgrp"

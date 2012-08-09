@@ -1,4 +1,5 @@
 # ArangoDB
+[![Build Status](https://secure.travis-ci.org/timoschilling/ArangoDB.png?branch=master)](http://travis-ci.org/timoschilling/ArangoDB)
 
 We recently started a new open source project - a nosql database
 called AvocadoDB which became ArangoDB in May 2012.  ArangoDB is

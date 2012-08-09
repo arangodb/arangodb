@@ -57,7 +57,7 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_START := 
-SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system $(SERVER_START)
+SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system --database.maximal-journal-size 1000000 --javascript.gc-interval 1 $(SERVER_START)
 CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
@@ -110,7 +110,7 @@ unittests-make:
 
 if ENABLE_BOOST_TEST
 
-unittests-boost:
+unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
 	@echo "================================================================================"
 	@echo "<< BOOST TESTS                                                                >>"
@@ -121,8 +121,6 @@ unittests-boost:
 	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
 	@echo
-
-unittests-boost: UnitTests/basics_suite
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
@@ -223,6 +221,7 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 			@srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
+			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \

@@ -362,7 +362,7 @@ int AnyServer::startupSupervisor () {
       }
       
       // parent
-      if (pid > 0) {
+      if (0 < pid) {
         char const* title = "arangodb [supervisor]";
 
         TRI_SetProcessTitle(title);
@@ -371,17 +371,17 @@ int AnyServer::startupSupervisor () {
         prctl(PR_SET_NAME, title, 0, 0, 0);
 #endif
 
-	WritePidFile(_pidFile, pid);
-
         int status;
         waitpid(pid, &status, 0);
+        bool horrible = true;
         
         if (WIFEXITED(status)) {
 
-	  // give information about cause of death
+          // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
             LOGGER_INFO << "child " << pid << " died of natural causes";
             done = true;
+            horrible = false;
           }
           else {
             t = time(0) - startTime;
@@ -405,6 +405,7 @@ int AnyServer::startupSupervisor () {
             case 15:
               LOGGER_INFO << "child " << pid << " died of natural causes " << WTERMSIG(status);
               done = true;
+              horrible = false;
               break;
               
             default:
@@ -427,11 +428,27 @@ int AnyServer::startupSupervisor () {
           LOGGER_ERROR << "child " << pid << " died a horrible death, unknown cause";
           done = false;
         }
+
+        // remove pid file
+        if (horrible) {
+          if (FileUtils::changeDirectory(current)) {
+            if (! FileUtils::remove(_pidFile)) {
+              LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+            }
+          }
+          else {
+            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
+                         << current << "' is missing";
+          }
+        }
       }
       
       // child
       else {
         
+        // write the pid file
+        WritePidFile(_pidFile, TRI_CurrentProcessId());
+
         // reset logging
         TRI_InitialiseLogging(TRI_ResetLogging());
         safe_cast<ApplicationServer*>(_applicationServer)->setupLogging();
@@ -445,31 +462,20 @@ int AnyServer::startupSupervisor () {
         prepareServer();
         result = startupServer();
         
-	// remove pid file
-	if (FileUtils::changeDirectory(current)) {
-	  if (! FileUtils::remove(_pidFile)) {
-	    LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
-	  }
-	}
-	else {
-	  LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
-		       << current << "' is missing";
-	}
+        // remove pid file
+        if (FileUtils::changeDirectory(current)) {
+          if (! FileUtils::remove(_pidFile)) {
+            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+          }
+        }
+        else {
+          LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
+                       << current << "' is missing";
+        }
 
         // and stop
         exit(result);
       }
-    }
-    
-    // remove pid file
-    if (FileUtils::changeDirectory(current)) {
-      if (! FileUtils::remove(_pidFile)) {
-        LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
-      }
-    }
-    else {
-      LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
-                   << current << "' is missing";
     }
   }
   

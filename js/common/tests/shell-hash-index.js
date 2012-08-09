@@ -35,6 +35,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -65,7 +66,19 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   tearDown : function () {
+    collection.unload();
+
+    while (collection.status() != internal.ArangoCollection.STATUS_UNLOADED) {
+      console.log("waiting for collection '%s' to unload", cn);
+      internal.wait(1);
+    }
+
     collection.drop();
+
+    while (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
+      console.log("waiting for collection '%s' to drop", cn);
+      internal.wait(1);
+    }
   },
 
 ////////////////////////////////////////////////////////////////////////////////

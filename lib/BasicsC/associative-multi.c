@@ -725,7 +725,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, void* element, 
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
-    return false;
+    return NULL;
   }
 
   // compute the hash
