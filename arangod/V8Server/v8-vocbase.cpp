@@ -1981,8 +1981,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   }
 
   if (argv.Length() != 1) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: datafileScan()")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: datafileScan(<path>)")));
   }
 
   string path = TRI_ObjectToString(argv[0]);
