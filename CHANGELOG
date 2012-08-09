@@ -2,6 +2,19 @@
 not released yet  
 ----------------
 
+* issue #147: added flag --database.force-sync-shapes to force synching of shape data
+  to disk. The default value is true so it is the same behavior as in version 1.0.
+  if set to false, shape data is synched to disk if waitForSync for the collection is
+  set to true, otherwise, shape data is not synched.
+  
+* fix for issue #145: strange issue on Travis: added epsilon for numeric comparion in
+  geo index
+
+* fix for issue #136: adjusted message during indexing
+
+* issue #131: added basic keep-alive timeout, default value is currently hard-coded
+  to 300 seconds.
+
 * fix for issue #137: AQL optimizer should use indexes for ref accesses with 
   2 named attributes
 
