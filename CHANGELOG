@@ -2,6 +2,10 @@
 not released yet  
 ----------------
 
+* avoid additional sync() calls when writing partial shape data (attribute name data) 
+  to disk. sync() will still be called when the shape marker (will be written after
+  the attributes) is written to disk 
+
 * issue #147: added flag --database.force-sync-shapes to force synching of shape data
   to disk. The default value is true so it is the same behavior as in version 1.0.
   if set to false, shape data is synched to disk if waitForSync for the collection is
