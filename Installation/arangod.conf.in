@@ -7,7 +7,7 @@ directory= @DATABASE@
 http-port = localhost:8529
 http-auth = no
 disable-admin-interface = no
-admin-port = localhost:8530
+# admin-port = localhost:8530
 admin-directory= @STATICFILES@/html/admin
 threads = 5
 
