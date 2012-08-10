@@ -118,7 +118,7 @@ To start up the ArangoDB server instance, use
     
 The server will response on port 8529 to client request and you can use
 
-    http://localhost:8530/
+    http://localhost:8529/
 
 to access the administration interface.
 
