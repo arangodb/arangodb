@@ -2,6 +2,10 @@
 not released yet  
 ----------------
 
+* increased sleep value in statistics creation loop from 10 to 500 microseconds. This
+  reduces accuracy of statistics values somewhere after the decimal points but saves
+  CPU time.
+
 * avoid additional sync() calls when writing partial shape data (attribute name data) 
   to disk. sync() will still be called when the shape marker (will be written after
   the attributes) is written to disk 

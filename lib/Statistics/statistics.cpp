@@ -492,22 +492,9 @@ static void StatisticsLoop (void* data) {
     TRI_UnlockSpin(&StatisticsTimeLock);
 
     UpdateRequestStatistics(StatisticsTime);
-
-    t = TRI_microtime();
-
-    TRI_LockSpin(&StatisticsTimeLock);
-    StatisticsTime = t;
-    TRI_UnlockSpin(&StatisticsTimeLock);
-
     UpdateConnectionStatistics(StatisticsTime);
 
-    t = TRI_microtime();
-
-    TRI_LockSpin(&StatisticsTimeLock);
-    StatisticsTime = t;
-    TRI_UnlockSpin(&StatisticsTimeLock);
-
-    usleep(10);
+    usleep(500);
   }
 }
 
