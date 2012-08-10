@@ -280,8 +280,22 @@ static int WriteElement (TRI_blob_collection_t* collection,
                          void const* body,
                          size_t bodySize) {
   int res;
+  bool waitForSync;
 
-  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, collection->base._waitForSync);
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    // this is a shape. we will honor the collection's waitForSync attribute
+    // which is determined by the global forceSyncShape flag and the actual collection's
+    // waitForSync flag
+    waitForSync = collection->base._waitForSync;
+  }
+  else {
+    // this is an attribute. we will not sync the data now, but when the shape information 
+    // containing the attribute is written (that means we defer the sync until the TRI_DF_MARKER_SHAPE
+    // marker is written)
+    waitForSync = false;
+  }
+
+  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
