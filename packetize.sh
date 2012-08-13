@@ -368,13 +368,6 @@ echo "    ${install_package}"
 ${install_package} || exit 1
 echo "########################################################"
 
-if [ "${start_server}x" != "x" ]; then 
-echo "Start"
-echo "    ${start_server}"
-${start_server} || exit 1
-echo "########################################################"
-fi
-
 echo "Successfully installed ${package_name}."
 echo "########################################################"
 
