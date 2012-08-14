@@ -1246,6 +1246,7 @@ WIKI = \
 	Home \
 	HttpCollection \
 	HttpCursor \
+	HttpImport \
 	HttpIndex \
 	HttpInterface \
 	HttpQueries \
@@ -5450,7 +5451,6 @@ Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-di
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
-	echo "CREATING XML FROM MD!!!"
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
