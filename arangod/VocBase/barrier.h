@@ -58,7 +58,8 @@ struct TRI_datafile_s;
 typedef enum {
   TRI_BARRIER_ELEMENT,
   TRI_BARRIER_DATAFILE_CALLBACK,
-  TRI_BARRIER_COLLECTION_CALLBACK,
+  TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK,
+  TRI_BARRIER_COLLECTION_DROP_CALLBACK,
 }
 TRI_barrier_type_e;
 
@@ -154,6 +155,12 @@ void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_doc_collecti
 void TRI_DestroyBarrierList (TRI_barrier_list_t* container);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the barrier list contains an element of a certain type
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e type);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new barrier element
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,13 +180,22 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
                                           void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection deletion barrier
+/// @brief creates a new collection unload barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
-                                            struct TRI_collection_s* collection,
-                                            bool (*callback) (struct TRI_collection_s*, void*),
-                                            void* data);
+TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
+                                                  struct TRI_collection_s* collection,
+                                                  bool (*callback) (struct TRI_collection_s*, void*),
+                                                  void* data);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection drop barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
+                                                struct TRI_collection_s* collection,
+                                                bool (*callback) (struct TRI_collection_s*, void*),
+                                                void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes and frees a barrier element or datafile deletion marker
