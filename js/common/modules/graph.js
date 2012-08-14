@@ -754,7 +754,6 @@ Vertex.prototype.determinePredecessors = function (source, options) {
       current_vertex = this._graph.getVertex(current_vertex_id);
 
       if (current_vertex_id === this.getId()) {
-        require("console").log("FOUND YOU!");
         return_value = predecessors;
         break;
       } else {
@@ -966,46 +965,38 @@ Vertex.prototype.outDegree = function () {
 ///
 /// @FUN{@FA{vertex}.measurement(@FA{measurement})}
 ///
-/// Calculates the eccentricity or closeness of the vertex
+/// Calculates the eccentricity, betweenness or closeness of the vertex
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.measurement = function (measurement) {
   var graph = this._graph,
     source = this,
-    vertices,
-    value,
-    options;
+    value;
 
   if (measurement === "betweenness") {
-    options = { grouped: true, threshold: true };
-
-    value = graph.geodesics(options).reduce(function (count, geodesic_group) {
+    value = graph.geodesics({
+      grouped: true,
+      threshold: true
+    }).reduce(function (count, geodesic_group) {
       var included = geodesic_group.filter(function (geodesic) {
         return geodesic.slice(1, -1).indexOf(source.getId()) > -1;
       });
 
       return (included ? count + (included.length / geodesic_group.length) : count);
     }, 0);
-  } else {
-    vertices = graph._vertices.toArray();
-
-    value = vertices.reduce(function (calculated, target) {
+  } else if (measurement === "eccentricity") {
+    value = graph._vertices.toArray().reduce(function (calculated, target) {
       var distance = source.distanceTo(graph.getVertex(target._id));
-
-      switch (measurement) {
-      case "eccentricity":
-        calculated = Math.max(calculated, distance);
-        break;
-      case "closeness":
-        calculated += distance;
-        break;
-      default:
-        throw "Unknown Measurement '" + measurement + "'";
-      }
-
-      return calculated;
+      return Math.max(calculated, distance);
     }, 0);
+  } else if (measurement === "closeness") {
+    value = graph._vertices.toArray().reduce(function (calculated, target) {
+      var distance = source.distanceTo(graph.getVertex(target._id));
+      return calculated + distance;
+    }, 0);
+  } else {
+    throw "Unknown Measurement '" + measurement + "'";
   }
 
   return value;

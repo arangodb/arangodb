@@ -56,8 +56,7 @@ function main(args) {
     Helper = require("test-helper").Helper,
     counter,
     i,
-    caching = false,
-    times = parseInt(args[3], 10);
+    caching = false;
 
     if (args[2] === "true") {
       caching = true;
@@ -96,20 +95,19 @@ function main(args) {
 
   console.log("Starting Tests");
 
-  iterator = function (row) {
+  processor = function (row) {
     v1 = graph.getVertex(row[0]);
     v2 = graph.getVertex(row[1]);
 
-    for (i = 0; i < times; i += 1) {
-      if (v1 !== null && v2 !== null) {
-        pathes = v1.pathTo(v2, { cached: caching });
-      }
+    if (v1 !== null && v2 !== null) {
+      pathes = v1.pathTo(v2, { cached: caching });
     }
+  };
+
+  while (true) {
+    Helper.process(base_path + "generated_testcases.csv", processor);
+    console.log("Round Finished");
   }
-  start_time = new Date();
-  Helper.process(base_path + "generated_testcases.csv", iterator);
-  end_time = new Date();
-  console.log((end_time - start_time) + " ms");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// tear down

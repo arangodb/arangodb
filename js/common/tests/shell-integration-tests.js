@@ -173,7 +173,7 @@ function dijkstraSuite() {
 /// @brief test suite: Measurements (Comparison with Gephi)
 ////////////////////////////////////////////////////////////////////////////////
 
-function measurementSuite() {
+function centralitySuite() {
   var Graph = require("graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -218,48 +218,41 @@ function measurementSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare with Gephi on a network of 50
+/// @brief compare with Gephi on a generated network
 ////////////////////////////////////////////////////////////////////////////////
 
-    testComparisonWithGephi50 : function () {
-      var base_path = "js/common/test-data/gephi50/",
-        console = require("console");
+    testComparisonWithGephi : function () {
+      var base_path = "js/common/test-data/gephi/",
+        console = require("console"),
+        number_of_edges = 0;
 
       Helper.process(base_path + "vertices.csv", function (row) {
         var vertex = graph.addVertex(row[0], {
-          in_degree: row[1],
-          out_degree: row[2],
-          degree: row[3],
-          eccentricity: row[4],
-          closeness: row[5],
-          betweenness: row[6]
+          degree       : row[1],
+          eccentricity : row[2],
+          closeness    : row[3],
+          betweenness  : row[4]
         });
       });
 
       Helper.process(base_path + "edges.csv", function (row) {
-        v1 = graph.getVertex(row[1]);
-        v2 = graph.getVertex(row[2]);
-        e = graph.addEdge(v1, v2, row[0]);
+        v1 = graph.getVertex(row[0]);
+        v2 = graph.getVertex(row[1]);
+        e = graph.addEdge(v1, v2);
+        number_of_edges += 1;
       });
-
-      assertEqual(graph.order(), 50);
-      assertEqual(graph.size(), 62);
 
       graph._vertices.toArray().forEach(function (raw_vertex) {
         var vertex = graph.getVertex(raw_vertex._id);
 
         assertEqual(vertex.getProperty("degree"), vertex.degree());
-        assertEqual(vertex.getProperty("in_degree"), vertex.inDegree());
-        assertEqual(vertex.getProperty("out_degree"), vertex.outDegree());
-        //assertEqual(parseFloat(vertex.getProperty("eccentricity")).toPrecision(21),
-          //vertex.measurement("eccentricity").toPrecision(21));
-        // console.log(vertex.getProperty("closeness"));
-        console.log("Reference: " + vertex.getProperty("closeness"));
-        console.log("Implementation: " + vertex.measurement("closeness"));
+        assertEqual(parseFloat(vertex.getProperty("eccentricity")),
+                    vertex.measurement("eccentricity"));
+        assertEqual(parseFloat(vertex.getProperty("betweenness")),
+                    vertex.measurement("betweenness"));
+        assertEqual(parseFloat(vertex.getProperty("closeness")),
+                    vertex.measurement("closeness") / number_of_edges);
       });
-
-      graph.normalizedMeasurement()
-
     }
   };
 }
@@ -271,7 +264,7 @@ function measurementSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(dijkstraSuite);
-jsunity.run(measurementSuite);
+jsunity.run(dijkstraSuite);
+jsunity.run(centralitySuite);
 
 return jsunity.done();
