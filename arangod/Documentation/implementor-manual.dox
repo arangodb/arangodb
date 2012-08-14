@@ -41,6 +41,7 @@
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
+///  <li>@ref HttpImport</li>
 ///  <li>@ref ArangoErrors</li>
 ///  <li>@ref IndexSkiplist</li>
 ///  <li>@ref Glossary</li>
@@ -64,6 +65,9 @@
 ///   @copydetails HttpCollectionTOC
 ///   @copydetails HttpIndexTOC
 ///   @copydetails HttpSystemTOC
+///  </li>
+///  <li>Interface for bulk imports
+///   @copydetails HttpImportTOC
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
