@@ -1,6 +1,8 @@
 v1.0.beta3 (2012-08-10)
 -----------------------
 
+* fix for issue #151: Memleak, collection data not removed
+
 * fix for issue #149: Inconsistent port for admin interface
 
 * fix for issue #137: AQL optimizer should use indexes for ref accesses with 
