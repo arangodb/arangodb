@@ -196,6 +196,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
     }
   }
 
+  TRI_FreeDatafile(datafile);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 }
 
