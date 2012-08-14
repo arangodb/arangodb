@@ -478,7 +478,12 @@ void ArangoServer::buildApplicationServer () {
   if (disableAdminInterface) {
     _applicationAdminServer->allowAdminDirectory(false);
   }
-  
+
+  if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+    // validate journal size
+    LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
+    exit(EXIT_FAILURE);
+  }
 
   // .............................................................................
   // set directories and scripts
