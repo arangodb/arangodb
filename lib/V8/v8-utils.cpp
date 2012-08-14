@@ -1106,9 +1106,9 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
-/// @FUN{internal.wait(<seconds>)}
+/// @FUN{internal.wait(@FA{seconds})}
 ///
-/// Wait for <seconds>, call the garbage collection.
+/// Wait for @FA{seconds}, call the garbage collection.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
