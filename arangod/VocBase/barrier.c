@@ -27,11 +27,56 @@
 
 #include "barrier.h"
 
+#include "BasicsC/logging.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           BARRIER
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts the barrier element into the linked list of barrier elemnents
+/// of the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* container) {
+  element->_container = container;
+
+  TRI_LockSpin(&container->_lock);
+
+  // empty list
+  if (container->_end == NULL) {
+    element->_next = NULL;
+    element->_prev = NULL;
+
+    container->_begin = element;
+    container->_end = element;
+  }
+
+  // add to the end
+  else {
+    element->_next = NULL;
+    element->_prev = container->_end;
+
+    container->_end->_next = element;
+    container->_end = element;
+  }
+  
+  TRI_UnlockSpin(&container->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -66,12 +111,46 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
   ptr = container->_begin;
 
   while (ptr != NULL) {
-    next = ptr->_next;
     ptr->_container = NULL;
+    next = ptr->_next;
+
+    if (ptr->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK ||
+        ptr->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK ||
+        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
+      // free data still allocated in barrier elements
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
+    }
+    else if (ptr->_type == TRI_BARRIER_ELEMENT) {
+      LOG_ERROR("logic error. shouldn't have barrier elements in barrierlist on unload");
+    }
+
     ptr = next;
   }
 
   TRI_DestroySpin(&container->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the barrier list contains an element of a certain type
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e type) {
+  TRI_barrier_t* ptr;
+
+  TRI_LockSpin(&container->_lock);
+
+  ptr = container->_begin;
+
+  while (ptr != NULL) {
+    if (ptr->_type == type) {
+      return true;
+    }
+    ptr = ptr->_next;
+  }
+
+  TRI_UnlockSpin(&container->_lock);
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,32 +169,11 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
   }
 
   element->base._type = TRI_BARRIER_ELEMENT;
-  element->base._container = container;
 
   element->_line = line;
   element->_filename = filename;
 
-  TRI_LockSpin(&container->_lock);
-
-  // empty list
-  if (container->_end == NULL) {
-    element->base._next = NULL;
-    element->base._prev = NULL;
-
-    container->_begin = &element->base;
-    container->_end = &element->base;
-  }
-
-  // add to the end
-  else {
-    element->base._next = NULL;
-    element->base._prev = container->_end;
-
-    container->_end->_next = &element->base;
-    container->_end = &element->base;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
+  LinkBarrierElement(&element->base, container);
 
   return &element->base;
 }
@@ -131,87 +189,75 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
   TRI_barrier_datafile_cb_t* element;
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_cb_t), false);
+
   if (!element) {
     return NULL;
   }
 
   element->base._type = TRI_BARRIER_DATAFILE_CALLBACK;
-  element->base._container = container;
 
   element->_datafile = datafile;
   element->_data = data;
 
   element->callback = callback;
 
-  TRI_LockSpin(&container->_lock);
-
-  // empty list
-  if (container->_end == NULL) {
-    element->base._next = NULL;
-    element->base._prev = NULL;
-
-    container->_begin = &element->base;
-    container->_end = &element->base;
-  }
-
-  // add to the end
-  else {
-    element->base._next = NULL;
-    element->base._prev = container->_end;
-
-    container->_end->_next = &element->base;
-    container->_end = &element->base;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
+  LinkBarrierElement(&element->base, container);
 
   return &element->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection deletion barrier
+/// @brief creates a new collection unload barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
-                                            struct TRI_collection_s* collection,
-                                            bool (*callback) (struct TRI_collection_s*, void*),
-                                            void* data) {
+TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
+                                                  struct TRI_collection_s* collection,
+                                                  bool (*callback) (struct TRI_collection_s*, void*),
+                                                  void* data) {
   TRI_barrier_collection_cb_t* element;
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
+
   if (!element) {
     return NULL;
   }
 
-  element->base._type = TRI_BARRIER_COLLECTION_CALLBACK;
-  element->base._container = container;
+  element->base._type = TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK;
 
   element->_collection = collection;
   element->_data = data;
 
   element->callback = callback;
 
-  TRI_LockSpin(&container->_lock);
+  LinkBarrierElement(&element->base, container);
 
-  // empty list
-  if (container->_end == NULL) {
-    element->base._next = NULL;
-    element->base._prev = NULL;
+  return &element->base;
+}
 
-    container->_begin = &element->base;
-    container->_end = &element->base;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection drop barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
+                                                struct TRI_collection_s* collection,
+                                                bool (*callback) (struct TRI_collection_s*, void*),
+                                                void* data) {
+  TRI_barrier_collection_cb_t* element;
+
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
+
+  if (!element) {
+    return NULL;
   }
 
-  // add to the end
-  else {
-    element->base._next = NULL;
-    element->base._prev = container->_end;
+  element->base._type = TRI_BARRIER_COLLECTION_DROP_CALLBACK;
 
-    container->_end->_next = &element->base;
-    container->_end = &element->base;
-  }
+  element->_collection = collection;
+  element->_data = data;
 
-  TRI_UnlockSpin(&container->_lock);
+  element->callback = callback;
+
+  LinkBarrierElement(&element->base, container);
 
   return &element->base;
 }
