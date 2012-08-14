@@ -2,6 +2,15 @@
 not released yet  
 ----------------
 
+* fix for issue #152: Memleak for barriers
+
+* fix for issue #151: Memleak, collection data not removed
+
+* value of --database.maximal-journal-size parameter is now validated on startup. If
+  value is smaller than the minimum value (currently 1048576), an error is thrown and
+  the server will not start. Before this change, the global value of maximal journal 
+  size was not validated at server start, but only on collection level
+
 * increased sleep value in statistics creation loop from 10 to 500 microseconds. This
   reduces accuracy of statistics values somewhere after the decimal points but saves
   CPU time.
