@@ -506,11 +506,11 @@ function normalizedSuite() {
 
       eccentricity = graph.normalizedMeasurement("eccentricity");
 
-      assertEqual(eccentricity[v1.getId()].toPrecision(1), '0.67');
+      assertEqual(eccentricity[v1.getId()].toPrecision(1), '0.7');
       assertEqual(eccentricity[v2.getId()].toPrecision(1), '1');
       assertEqual(eccentricity[v3.getId()].toPrecision(1), '1');
       assertEqual(eccentricity[v4.getId()].toPrecision(1), '1');
-      assertEqual(eccentricity[v5.getId()].toPrecision(1), '0.67');
+      assertEqual(eccentricity[v5.getId()].toPrecision(1), '0.7');
     }
   };
 }
