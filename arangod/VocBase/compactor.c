@@ -32,7 +32,6 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/simple-collection.h"
-#include "VocBase/shadow-data.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -399,10 +398,11 @@ static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CompactifySimCollection (TRI_sim_collection_t* sim) {
+static bool CompactifySimCollection (TRI_sim_collection_t* sim) {
   TRI_vector_t vector;
   size_t n;
   size_t i;
+  bool worked = false;
 
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
@@ -442,106 +442,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
               (unsigned long) dfi->_numberDeletion);
 
     CompactifyDatafile(sim, dfi->_fid);
+    worked = true;
   }
 
   // cleanup local variables
   TRI_DestroyVector(&vector);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks all datafiles of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupSimCollection (TRI_sim_collection_t* sim) {
-  // loop until done
-  while (true) {
-    TRI_barrier_list_t* container;
-    TRI_barrier_t* element;
-    bool hasUnloaded = false;
-
-    container = &sim->base._barrierList;
-    element = NULL;
-
-    // check and remove a callback elements at the beginning of the list
-    TRI_LockSpin(&container->_lock);
-
-    if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
-      // did not find anything on top of the barrier list or found an element marker
-      // this means we must exit
-      TRI_UnlockSpin(&container->_lock);
-      return;
-    }
-
-    element = container->_begin;
-    assert(element);
-
-    // found an element to go on with
-    container->_begin = element->_next;
-
-    if (element->_next == NULL) {
-      container->_end = NULL;
-    }
-    else {
-      element->_next->_prev = NULL;
-    }
-
-    TRI_UnlockSpin(&container->_lock);
-
-    // execute callback, sone of the callbacks might delete or free our collection
-    if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
-      TRI_barrier_datafile_cb_t* de;
-
-      de = (TRI_barrier_datafile_cb_t*) element;
-
-      de->callback(de->_datafile, de->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      // next iteration
-    }
-    else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
-      // collection is unloaded
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      
-      if (hasUnloaded) {
-        // this has unloaded and freed the collection
-        return;
-      }
-    }
-    else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
-      // collection is dropped
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-
-      if (hasUnloaded) {
-        // this has dropped the collection
-        return;
-      }
-    }
-    else {
-      // unknown type
-      LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-    }
-
-    // next iteration
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clean up shadows
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
-  LOG_TRACE("cleaning shadows");
-  
-  // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, force);
+  return worked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,7 +472,7 @@ void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
   
-  assert(vocbase->_active);
+  assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -573,15 +480,9 @@ void TRI_CompactorVocBase (void* data) {
     size_t n;
     size_t i;
     TRI_col_type_e type;
-    // keep initial _active value as vocbase->_active might change during compaction loop
-    int active = vocbase->_active; 
-
-    if (active == 2) {
-      // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections 
-      // and collections cannot be closed properly
-      CleanupShadows(vocbase, true);
-    }
+    // keep initial _state value as vocbase->_state might change during compaction loop
+    int state = vocbase->_state; 
+    bool worked = false;
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -612,27 +513,28 @@ void TRI_CompactorVocBase (void* data) {
       // for simple document collection, compactify datafiles
       if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-          CompactifySimCollection((TRI_sim_collection_t*) doc);
+          TRI_barrier_t* ce = TRI_CreateBarrierElement(&doc->_barrierList);
+
+          worked = CompactifySimCollection((TRI_sim_collection_t*) doc);
+          if (ce != NULL) {
+            TRI_FreeBarrier(ce);
+          }
         }
       }
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-      // now release the lock and maybe unload the collection or some datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-        CleanupSimCollection((TRI_sim_collection_t*) doc);
+      if (worked) {
+        // TODO: signal the cleanup thread that we worked and that it can now wake up
       }
     }
 
-    if (vocbase->_active == 1) {
-      // clean up unused shadows
-      CleanupShadows(vocbase, false);
-
+    if (vocbase->_state == 1) {
       // only sleep while server is still running
       usleep(COMPACTOR_INTERVAL);
     }
 
-    if (active == 2) {
+    if (state == 2) {
       // server shutdown
       break;
     }

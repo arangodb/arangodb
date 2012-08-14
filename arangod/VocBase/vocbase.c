@@ -39,6 +39,7 @@
 #include "BasicsC/threads.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
+#include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shadow-data.h"
@@ -1141,6 +1142,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
 
+  TRI_InitCondition(&vocbase->_cleanupCondition);
+
   // .............................................................................
   // scan directory for collections
   // .............................................................................
@@ -1174,7 +1177,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // vocbase is now active
   // .............................................................................
 
-  vocbase->_active = 1;
+  vocbase->_state = 1;
 
   // .............................................................................
   // start helper threads
@@ -1187,6 +1190,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
   TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
+  
+  // start cleanup thread
+  TRI_InitThread(&vocbase->_cleanup);
+  TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
   // .............................................................................
   // load auth information
@@ -1215,11 +1222,15 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
   
   // this will signal the synchroniser and the compactor to do one last iteration
-  vocbase->_active = 2;
+  vocbase->_state = 2;
 
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
+  
+  // this will signal the cleanup thread to do one last iteration
+  vocbase->_state = 3;
+  TRI_JoinThread(&vocbase->_cleanup);
 
   // free dead collections (already dropped but pointers still around)
   for (i = 0;  i < vocbase->_deadCollections._length;  ++i) {
@@ -1262,6 +1273,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
+  TRI_DestroyCondition(&vocbase->_cleanupCondition);
 
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
@@ -1506,6 +1518,11 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
                                     UnloadCollectionCallback,
                                     collection);
 
+  // wake up the cleanup thread
+  TRI_LockCondition(&vocbase->_cleanupCondition);
+  TRI_SignalCondition(&vocbase->_cleanupCondition);
+  TRI_UnlockCondition(&vocbase->_cleanupCondition);
+
   // release locks
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_ERROR_NO_ERROR;
@@ -1605,6 +1622,11 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
                                     &collection->_collection->base,
                                     DropCollectionCallback,
                                     collection);
+  
+    // wake up the cleanup thread
+    TRI_LockCondition(&vocbase->_cleanupCondition);
+    TRI_SignalCondition(&vocbase->_cleanupCondition);
+    TRI_UnlockCondition(&vocbase->_cleanupCondition);
 
     return TRI_ERROR_NO_ERROR;
   }
