@@ -171,6 +171,7 @@ endif
 
 SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-compactor.js \
                @srcdir@/js/common/tests/shell-collection.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
