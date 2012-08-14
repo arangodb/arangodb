@@ -1622,6 +1622,7 @@ CERT_FILE := @srcdir@/UnitTests/server.pem
 ################################################################################
 SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-compactor.js \
                @srcdir@/js/common/tests/shell-collection.js \
                @srcdir@/js/common/tests/shell-simple-query.js \
                @srcdir@/js/common/tests/shell-index.js \
@@ -5552,7 +5553,6 @@ Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-di
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
-	echo "CREATING XML FROM MD!!!"
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
