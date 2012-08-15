@@ -46,6 +46,8 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCompactAfterTruncate : function () {
+      var maxWait;
+      var waited;
       var cn = "example";
       var n = 1500;
       var payload = "the quick brown fox jumped over the lazy dog. the quick dog jumped over the lazy brown fox";
@@ -76,12 +78,35 @@ function CompactionSuite () {
       
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
-      internal.wait(20);
 
+      // set max wait time
+      if (VALGRIND) {
+        maxWait = 600;
+      }
+      else {
+        maxWait = 20;
+      }
+
+      waited = 0;
+
+      while (waited < maxWait) {
+        internal.wait(5);
+        waited += 5;
+      
+        c1 = internal.db[cn];
+        c1.load();
+
+        fig = c1.figures();
+        if (fig["dead"]["deletion"] >= n && fig["dead"]["count"] >= n) {
+          break;
+        }
+
+        c1.unload();
+      }
+      
+            
       c1 = internal.db[cn];
       c1.load();
-
-
       fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
