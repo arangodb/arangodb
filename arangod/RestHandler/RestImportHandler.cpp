@@ -167,6 +167,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 bool RestImportHandler::createByArray () {
   size_t numCreated = 0;
   size_t numError = 0;
+  size_t numEmpty = 0;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -203,7 +204,7 @@ bool RestImportHandler::createByArray () {
     releaseCollection();
     
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
+                  res,
                   "Could not use collection");
     return false;
   }
@@ -231,7 +232,9 @@ bool RestImportHandler::createByArray () {
       start = next + 1;      
     }
 
+    StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
+      ++numEmpty;
       continue;
     }
     
@@ -268,7 +271,7 @@ bool RestImportHandler::createByArray () {
   releaseCollection();
 
   // generate result
-  generateDocumentsCreated(numCreated, numError);
+  generateDocumentsCreated(numCreated, numError, numEmpty);
   
   return true;
 }
@@ -291,6 +294,7 @@ bool RestImportHandler::createByArray () {
 bool RestImportHandler::createByList () {
   size_t numCreated = 0;
   size_t numError = 0;
+  size_t numEmpty = 0;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -326,7 +330,7 @@ bool RestImportHandler::createByList () {
   
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "No JSON list in second line found");
     return false;            
   }
@@ -343,8 +347,8 @@ bool RestImportHandler::createByList () {
     if (!keys) {
       LOGGER_WARNING << "No JSON data in first line: " << line;
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON data found");
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "No JSON data found");
       return false;      
     }
     
@@ -353,8 +357,8 @@ bool RestImportHandler::createByList () {
         LOGGER_WARNING << "No JSON string list in first line found: " << line;
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON string list in first line found");
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "No JSON string list in first line found");
         return false;        
       }
       start = next + 1;
@@ -363,7 +367,7 @@ bool RestImportHandler::createByList () {
       LOGGER_WARNING << "Wrong JSON data in first line: " << line;
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Wrong JSON data");
       return false;      
     }        
@@ -371,7 +375,7 @@ bool RestImportHandler::createByList () {
   else {
     LOGGER_WARNING << "No JSON data in first line: " << line;
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "No JSON data found");
     return false;      
   }        
@@ -387,7 +391,7 @@ bool RestImportHandler::createByList () {
     }
  
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
+                  res,
                   "Could not use collection");
     return false;
   }
@@ -408,8 +412,10 @@ bool RestImportHandler::createByList () {
       line = body.substr(start, next - start);
       start = next + 1;      
     }
-
+    
+    StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
+      ++numEmpty;
       continue;
     }
     
@@ -463,14 +469,14 @@ bool RestImportHandler::createByList () {
   releaseCollection();
 
   // generate result
-  generateDocumentsCreated(numCreated, numError);
+  generateDocumentsCreated(numCreated, numError, numEmpty);
   
   return true;
 }
 
 
 
-void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError) {
+void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
   _response = new HttpResponse(HttpResponse::CREATED);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -480,6 +486,8 @@ void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numE
     .appendInteger(numCreated)
     .appendText(",\"errors\":")
     .appendInteger(numError)
+    .appendText(",\"empty\":")
+    .appendInteger(numEmpty)
     .appendText("}");
 }
 
