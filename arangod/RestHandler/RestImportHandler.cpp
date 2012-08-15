@@ -255,7 +255,7 @@ bool RestImportHandler::createByArray () {
       
     }
     else {
-      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      LOGGER_WARNING << "no valid JSON data in line " << line;            
       ++numError;
     }
             
@@ -331,13 +331,14 @@ bool RestImportHandler::createByList () {
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "No JSON list in second line found");
+                  "no JSON list in second line found");
     return false;            
   }
   
   TRI_json_t* keys = 0;
     
   string line = body.substr(start, next);
+  StringUtils::trimInPlace(line, "\r\n\t ");
 
   // get first line
   if (line != "") { 
@@ -345,38 +346,38 @@ bool RestImportHandler::createByList () {
     keys = parseJsonLine(line);
     
     if (!keys) {
-      LOGGER_WARNING << "No JSON data in first line: " << line;
+      LOGGER_WARNING << "no JSON data in first line";
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "No JSON data found");
+                    "no JSON string list in first line found");
       return false;      
     }
     
     if (keys->_type == TRI_JSON_LIST) {
       if (!checkKeys(keys)) {
-        LOGGER_WARNING << "No JSON string list in first line found: " << line;
+        LOGGER_WARNING << "no JSON string list in first line found";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "No JSON string list in first line found");
+                      "no JSON string list in first line found");
         return false;        
       }
       start = next + 1;
     }
     else {
-      LOGGER_WARNING << "Wrong JSON data in first line: " << line;
+      LOGGER_WARNING << "no JSON string list in first line found";
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Wrong JSON data");
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "no JSON string list in first line found");
       return false;      
     }        
   }
   else {
-    LOGGER_WARNING << "No JSON data in first line: " << line;
+    LOGGER_WARNING << "no JSON string list in first line found";
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "No JSON data found");
+                  "no JSON string list in first line found");
     return false;      
   }        
       
@@ -432,7 +433,7 @@ bool RestImportHandler::createByList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
       if (!json) {
-        LOGGER_WARNING << "no valid JSON data in line: " << (line);            
+        LOGGER_WARNING << "no valid JSON data in line: " << line;            
         ++numError;          
         continue;
       }
@@ -449,7 +450,7 @@ bool RestImportHandler::createByList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
     }
     else {
-      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      LOGGER_WARNING << "no valid JSON data in line: " << line;            
       ++numError;
     }
             
