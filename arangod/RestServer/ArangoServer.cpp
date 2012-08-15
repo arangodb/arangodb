@@ -39,6 +39,8 @@
 
 #include "build.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -191,6 +193,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
+    _runningOnValgrind(false),
     _binaryPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
@@ -212,6 +215,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
+
+  if (RUNNING_ON_VALGRIND > 0) {
+    _runningOnValgrind = true;
+  }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
@@ -482,6 +489,8 @@ void ArangoServer::buildApplicationServer () {
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     // validate journal size
     LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -493,6 +502,8 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   else if (1 == arguments.size()) {
@@ -532,6 +543,8 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
       cerr << "no pid-file defined, but daemon mode requested\n";
       LOGGER_INFO << "please use the '--pid-file' option";
+      ApplicationUserManager::unloadUsers();
+      ApplicationUserManager::unloadRoles();
       exit(EXIT_FAILURE);
     }
   }
@@ -540,6 +553,8 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_FATAL << "no database path has been supplied, giving up";
     cerr << "no database path has been supplied, giving up\n";
     LOGGER_INFO << "please use the '--database.directory' option";
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 }
@@ -705,6 +720,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -750,6 +767,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
         }
 
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -783,6 +801,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
         }
 
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -1029,6 +1048,8 @@ int ArangoServer::executeRubyConsole () {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
