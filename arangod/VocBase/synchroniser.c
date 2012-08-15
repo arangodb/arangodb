@@ -337,7 +337,7 @@ void TRI_SynchroniserVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
 
-  assert(vocbase->_active);
+  assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -346,8 +346,8 @@ void TRI_SynchroniserVocBase (void* data) {
     size_t i;
     bool worked;
 
-    // keep initial _active value as vocbase->_active might change during compaction loop
-    int active = vocbase->_active; 
+    // keep initial _state value as vocbase->_state might change during compaction loop
+    int state = vocbase->_state; 
 
     worked = false;
 
@@ -396,7 +396,7 @@ void TRI_SynchroniserVocBase (void* data) {
     }
 
     // only sleep while server is still running and no-one is waiting
-    if (! worked && vocbase->_active == 1) {
+    if (! worked && vocbase->_state == 1) {
       TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
 
       if (vocbase->_syncWaiters == 0) {
@@ -407,7 +407,7 @@ void TRI_SynchroniserVocBase (void* data) {
     }
 
     // server shutdown
-    if (active == 2) {
+    if (state == 2) {
       break;
     }
   }

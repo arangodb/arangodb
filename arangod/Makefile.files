@@ -75,6 +75,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c \
 	arangod/VocBase/blob-collection.c \
+	arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
