@@ -836,10 +836,19 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   // someone is trying to unload the collection, cancel this,
   // release the WRITE lock and try again
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+    // check if there is a deferred drop action going on for this collection
+    if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_DROP_CALLBACK)) {
+      // drop call going on, we must abort
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    // no drop action found, go on
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     
-    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -1491,10 +1500,10 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   collection->_status = TRI_VOC_COL_STATUS_UNLOADING;
 
   // added callback for unload
-  TRI_CreateBarrierCollection(&collection->_collection->_barrierList,
-                              &collection->_collection->base,
-                              UnloadCollectionCallback,
-                              collection);
+  TRI_CreateBarrierUnloadCollection(&collection->_collection->_barrierList,
+                                    &collection->_collection->base,
+                                    UnloadCollectionCallback,
+                                    collection);
 
   // release locks
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1591,10 +1600,10 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     // added callback for dropping
-    TRI_CreateBarrierCollection(&collection->_collection->_barrierList,
-                                &collection->_collection->base,
-                                DropCollectionCallback,
-                                collection);
+    TRI_CreateBarrierDropCollection(&collection->_collection->_barrierList,
+                                    &collection->_collection->base,
+                                    DropCollectionCallback,
+                                    collection);
 
     return TRI_ERROR_NO_ERROR;
   }
