@@ -2,6 +2,15 @@
 not released yet  
 ----------------
 
+* fix for issue #59: added tests for /_api/import
+
+* modified return value for calls to /_api/import: now, the attribute "empty" is 
+  returned as well, stating the number of empty lines in the input. Also changed the
+  return value of the error code attribute ("errorNum") from 1100 ("corrupted datafile")
+  to 400 ("bad request") in case invalid/unexpected JSON data was sent to the server. 
+  This error code is more appropriate as no datafile is broken but just input data is
+  incorrect.
+
 * fix for issue #152: Memleak for barriers
 
 * fix for issue #151: Memleak, collection data not removed
