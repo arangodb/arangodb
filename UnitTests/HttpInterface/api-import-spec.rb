@@ -104,7 +104,7 @@ describe ArangoDB do
 	body = "{ \"sample\" : \"garbage\" }"
 	doc = ArangoDB.log_post("#{prefix}-self-contained-nonexist", cmd, :body => body)
  
-	doc.code.should eq(400)
+	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
       end
@@ -232,7 +232,7 @@ describe ArangoDB do
 	body =  "[ \"name\" ]\n"
 	doc = ArangoDB.log_post("#{prefix}-data-nonexist", cmd, :body => body)
  
-	doc.code.should eq(400)
+	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
       end
