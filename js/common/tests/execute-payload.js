@@ -45,23 +45,13 @@ function main(args) {
     edge = "UnitTestsCollectionEdge",
     graph = null,
     base_path = args[1] + "/",
-    v1,
-    v2,
-    e,
-    pathes,
-    results = [],
-    neo4j_results = [],
-    single_result = {},
     console = require("console"),
     Helper = require("test-helper").Helper,
-    counter,
+    start_time,
+    end_time,
+    query,
     i,
-    caching = false,
-    times = parseInt(args[3], 10);
-
-    if (args[2] === "true") {
-      caching = true;
-    }
+    times = parseInt(args[2], 10);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// set up
@@ -83,31 +73,47 @@ function main(args) {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// compare with Neo4j on a given network
+/// Search for Payload
 ////////////////////////////////////////////////////////////////////////////////
 
   console.log("Importing");
 
-  Helper.process(base_path + "generated_edges.csv", function (row) {
-    v1 = graph.getOrAddVertex(row[1]);
-    v2 = graph.getOrAddVertex(row[2]);
-    e = graph.addEdge(v1, v2);
+  Helper.process(base_path + "generated_payload.csv", function (row) {
+    graph.addVertex(row[0], {
+      name : row[1],
+      age  : parseInt(row[2], 10),
+      bio  : row[3]
+    });
   });
 
-  console.log("Starting Tests");
+  db[vertex].ensureHashIndex("name");
+  db[vertex].ensureSkiplist("age", "bio");
 
-  iterator = function (row) {
-    v1 = graph.getVertex(row[0]);
-    v2 = graph.getVertex(row[1]);
-
+  query = function(filter) {
     for (i = 0; i < times; i += 1) {
-      if (v1 !== null && v2 !== null) {
-        pathes = v1.pathTo(v2, { cached: caching });
-      }
+      rows = AHUACATL_RUN(
+        "for x in " + vertex +
+        " filter " + filter +
+        "return x.name"
+      ).getRows();
     }
-  }
+  };
+
+  console.log("Starting Search for 'John Doe'");
   start_time = new Date();
-  Helper.process(base_path + "generated_testcases.csv", iterator);
+  query("x.name == 'John Doe'");
+  end_time = new Date();
+  console.log((end_time - start_time) + " ms");
+
+  console.log("Starting Search for age > 23");
+  start_time = new Date();
+  query("x.age > 23");
+  end_time = new Date();
+  console.log((end_time - start_time) + " ms");
+
+  console.log("Starting Searching for Bio starting with 'Qui'");
+  start_time = new Date();
+  query("x.bio >= 'Qui' && x.bio < 'Quia'");
   end_time = new Date();
   console.log((end_time - start_time) + " ms");
 
