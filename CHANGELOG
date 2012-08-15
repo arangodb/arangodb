@@ -2,6 +2,8 @@
 not released yet  
 ----------------
 
+* fix for issue #156: fixed memleaks in /_api/import
+
 * fix for issue #59: added tests for /_api/import
 
 * modified return value for calls to /_api/import: now, the attribute "empty" is 
