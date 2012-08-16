@@ -4,6 +4,7 @@ TAG=1
 
 if [ "$1" == "--no-tag" ];  then
   TAG=0
+  shift
 fi
 
 if [ "$#" -ne 1 ];  then
