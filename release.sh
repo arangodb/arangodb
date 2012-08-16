@@ -1,5 +1,11 @@
 #!/bin/bash
 
+TAG=1
+
+if [ "$1" == "--no-tag" ];  then
+  TAG=0
+fi
+
 if [ "$#" -ne 1 ];  then
   echo "usage: $0 <major>.<minor>.<patchlevel>"
   exit 1
@@ -39,5 +45,8 @@ make wiki
 git commit -m "release version $VERSION" -a
 git push
 
-git tag "v$VERSION"
-git push --tags
+if [ "$TAG" == "1" ];  then
+  git tag "v$VERSION"
+  git push --tags
+fi
+
