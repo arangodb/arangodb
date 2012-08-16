@@ -28,9 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Home ArangoDB (@VERSION)
 ///
-/// @xmlonly
-/// @section ArangoDB (@VERSION)
-/// @endxmlonly
+/// @if XML
+/// @section ArangoDBVersion ArangoDB Version @VERSION
+/// @endif
 ///
 /// My colleagues and I started developing a document-store, which focuses on
 /// durability of the data taking advantage of new technologies like SSD,
