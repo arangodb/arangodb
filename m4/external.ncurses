@@ -55,8 +55,23 @@ if test "x$tr_NCURSES" = xyes;  then
 fi
 
 if test "x$tr_NCURSES" != xyes;  then
-  AC_MSG_ERROR([Please install the ncurses library])
+  AC_MSG_ERROR([Please install the ncurses library and header files])
 fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl check if ncurses headers are present
+dnl -----------------------------------------------------------------------------------------
+    
+AC_CHECK_HEADERS(curses.h, [tr_NCURSES="yes"], [tr_NCURSES="no"])
+if test "x$tr_NCURSES" != xyes;  then
+  AC_MSG_ERROR([Please install the ncurses header files])
+fi
+
+AC_CHECK_HEADERS(term.h, [tr_NCURSES="yes"], [tr_NCURSES="no"])
+if test "x$tr_NCURSES" != xyes;  then
+  AC_MSG_ERROR([Please install the ncurses header files])
+fi
+
 
 AC_MSG_CHECKING([NCURSES version])
 AC_MSG_RESULT([$TRI_NCURSES_VERSION])

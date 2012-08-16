@@ -74,6 +74,10 @@ if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
   fi
 fi
 
+if test "x$tr_READLINE" = xno;  then
+  AC_MSG_ERROR([Please install readline support])
+fi
+
 dnl -----------------------------------------------------------------------------------------
 dnl grep readline version number
 dnl -----------------------------------------------------------------------------------------
@@ -96,6 +100,11 @@ _ACEOF
 AC_MSG_CHECKING([READLINE version])
 eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
 TRI_READLINE_VERSION=`cat conftest.output`
+
+if test -z "$TRI_READLINE_VERSION"; then
+  AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
+fi
+
 AC_MSG_RESULT([$TRI_READLINE_VERSION])
 rm -f conftest*
 
