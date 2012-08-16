@@ -1249,6 +1249,7 @@ WIKI = \
 	Home \
 	HttpCollection \
 	HttpCursor \
+	HttpImport \
 	HttpIndex \
 	HttpInterface \
 	HttpQueries \
