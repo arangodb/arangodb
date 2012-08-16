@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               INSTALLATION MANUAL
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallManual ArangoDB's Installation Manual
 ///
@@ -45,18 +49,18 @@
 /// <ul>
 ///  <li>@ref Installing
 ///   <ul>
-///     <li>@ref BinaryPackages
+///     <li>@ref InstallingLinux
 ///     </li>
-///     <li>@ref PackagesManager
+///     <li>@ref InstallingLinuxPackageManager
 ///      <ul>
-///       <li>@ref OpenSUSE
-///       <li>@ref CentOS
-///       <li>@ref Debian
+///       <li>@ref InstallingCentOS
+///       <li>@ref InstallingDebian
+///       <li>@ref InstallingOpenSUSE
 ///      </ul>
 ///     </li>
-///     <li>@ref MacOSX
+///     <li>@ref InstallingMacOSX
 ///      <ul>
-///       <li>@ref MacOSXHomebrew
+///       <li>@ref InstallingMacOSXHomebrew
 ///      </ul>
 ///     </li>
 ///   </ul>
@@ -65,50 +69,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Installing Installing the ArangoDB
+/// @page Installing Installing ArangoDB
 ///
 /// @EMBEDTOC{InstallingTOC}
 ///
-/// @section BinaryPackages Binary Packages
-///////////////////////////////////////////
+/// @section InstallingLinux Linux
+//////////////////////////////////
 ///
-/// You can find various binary packages here:
+/// You can find binary packages for various Linux distributions here:
 ///
 /// @LIT{http://www.arangodb.org/repositories/}
 ///
 ///
-/// @section PackagesManager Install ArangoDB by a package manager
-//////////////////////////////////////////////////////////////////
+/// @subsection InstallingLinuxPackageManager Using a Package Manager to install ArangoDB
+/////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// @subsection OpenSUSE
-////////////////////////
-///
-/// Add the repository as follows:
-///
-/// @code
-/// zypper addrepo -f -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
-/// @endcode
-///
-/// Update repository data:
-///
-/// @code
-/// zypper refresh
-/// @endcode
-///
-/// Search for arangodb:
-///
-/// @code
-/// zypper search arangodb
-/// @endcode
-///
-/// Install arangodb:
-///
-/// @code
-/// zypper install arangodb
-/// @endcode
-///
-/// @subsection CentOS
-//////////////////////
+/// @subsubsection InstallingCentOS CentoOS
+///////////////////////////////////////////
 ///
 /// Download and import GPG-PublicKey
 ///
@@ -147,9 +124,8 @@
 /// yum install arangodb
 /// @endcode
 ///
-///
-/// @subsection Debian Debian and Ubuntu
-////////////////////////////////////////
+/// @subsubsection InstallingDebian Debian, Linux-Mint, and Ubuntu
+//////////////////////////////////////////////////////////////////
 ///
 /// Download and import GPG-PublicKey
 ///
@@ -158,45 +134,83 @@
 /// apt-key add RPM-GPG-KEY-www.arangodb.org
 /// @endcode
 ///
-/// Add the repository in file  @LIT{/etc/apt/sources.list}
+/// Add the corresponding repository in file  @LIT{/etc/apt/sources.list}:
 /// @code
 /// deb http://www.arangodb.org/repositories Debian-6.0 main
+/// @endcode
+/// or
+/// @code
+/// deb http://www.arangodb.org/repositories LinuxMint-13 main
 /// @endcode
 /// or
 /// @code
 /// deb http://www.arangodb.org/repositories Ubuntu-11.10 main
 /// @endcode
 ///
-/// Update repository data:
+/// Update the repository data:
 ///
 /// @code
 /// aptitude update
 /// @endcode
 ///
-/// Search for arangodb:
+/// Now you should be able to search for arangodb:
 ///
 /// @code
 /// aptitude search arangodb
 /// @endcode
 ///
-/// Install arangodb:
+/// In order to install arangodb:
 ///
 /// @code
 /// aptitude install arangodb
 /// @endcode
 ///
-/// @section MacOSX
-///////////////////
+/// @subsubsection Gentoo
+/////////////////////////
 ///
-/// You can find MacOSX packages here:
+/// Please use the 
+/// @EXTRES{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
+/// provided by @@mgiken.
+///
+/// @subsubsection InstallingOpenSUSE OpenSuSE
+//////////////////////////////////////////////
+///
+/// Add the repository as follows:
+///
+/// @code
+/// zypper addrepo -f -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
+/// @endcode
+///
+/// Update repository data:
+///
+/// @code
+/// zypper refresh
+/// @endcode
+///
+/// Search for arangodb:
+///
+/// @code
+/// zypper search arangodb
+/// @endcode
+///
+/// Install arangodb:
+///
+/// @code
+/// zypper install arangodb
+/// @endcode
+///
+/// @section InstallingMacOSX Mac OS X
+//////////////////////////////////////
+///
+/// You can find the MacOSX packages here:
 ///
 /// @LIT{http://www.arangodb.org/repositories/MacOSX}
 ///
-/// @subsection MacOSXHomebrew
-//////////////////////////////
+/// @subsection InstallingMacOSXHomebrew Homebrew
+/////////////////////////////////////////////////
 ///
 /// If you are using <a href="http://mxcl.github.com/homebrew/">homebrew</a>,
-/// than you can install the ArangoDB using @CODE{brew} as follows:
+/// then you can install the ArangoDB using @CODE{brew} as follows:
 ///
 /// @code
 /// brew install arangodb
@@ -211,6 +225,10 @@
 /// brew install --HEAD arangodb
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         COMPILING
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CompilingTOC
@@ -253,7 +271,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Compiling Compiling the ArangoDB from scratch
+/// @page Compiling Compiling ArangoDB from scratch
 ///
 /// The following sections describe how to compile and build the ArangoDB from
 /// scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
@@ -355,7 +373,7 @@
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to any address. You should see the startup messages
 ///
-/// @verbinclude startup1
+/// @TINYEXAMPLE{startup1,startup message}
 ///
 /// Use your favorite browser to access the URL
 ///
@@ -363,11 +381,11 @@
 ///
 /// This should produce a JSON object like
 ///
-/// @LIT{\{"server":"arango"\,"version":"0.0.8 [exported]"\}}
+/// @LIT{\{"server":"arango"\,"version":"1.x.y"\}}
 ///
 /// as result.
 ///
-/// Note that starting arangodb in this way will result in error messages being
+/// Note that starting ArangoDB in this way will result in error messages being
 /// displayed, because the paths are not yet set up. This will be corrected in
 /// the next step.
 ///
@@ -477,6 +495,10 @@
 ///
 /// Now continue with @ref CompilingAIOCompile.
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++

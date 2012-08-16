@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    SIMPLE QUERIES
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page SimpleQueriesTOC
 ///
@@ -83,27 +87,34 @@
 ///
 /// @EMBEDTOC{ SimpleQueriesTOC}
 ///
+/// @CLEARPAGE
 /// @section SimpleQueriesQueries Queries
 /////////////////////////////////////////
 ///
 /// @anchor SimpleQueryAll
 /// @copydetails JSF_ArangoCollection_prototype_all
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryByExample
 /// @copydetails JSF_ArangoCollection_prototype_byExample
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryFirstExample
 /// @copydetails JSF_ArangoCollection_prototype_firstExample
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryRange
 /// @copydetails JSF_ArangoCollection_prototype_range
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryCollectionCount
 /// @copydetails JS_CountVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryToArray
 /// @copydetails JSF_ArangoCollection_prototype_toArray
 ///
+/// @CLEARPAGE
 /// @section SimpleQueriesGeoQueries Geo Queries
 ////////////////////////////////////////////////
 ///
@@ -123,15 +134,19 @@
 /// this case you must give a hint using the @FN{geo} operator which of indexes
 /// should be used in a query.
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryNear
 /// @copydetails JSF_ArangoCollection_prototype_near
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryWithin
 /// @copydetails JSF_ArangoCollection_prototype_within
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryGeo
 /// @copydetails JSF_ArangoCollection_prototype_geo
 ///
+/// @CLEARPAGE
 /// @section SimpleQueriesPagination Pagination
 ///////////////////////////////////////////////
 ///
@@ -148,27 +163,37 @@
 /// This result should be sorted, so that the pagination works in a predicable
 /// way.
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryLimit
 /// @copydetails JSF_SimpleQuery_prototype_limit
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQuerySkip
 /// @copydetails JSF_SimpleQuery_prototype_skip
 ///
+/// @CLEARPAGE
 /// @section SimpleQueriesCursor Sequential Access and Cursors
 //////////////////////////////////////////////////////////////
 ///
 /// @anchor SimpleQueryHasNext
 /// @copydetails JSF_SimpleQuery_prototype_hasNext
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryNext
 /// @copydetails JSF_SimpleQuery_prototype_next
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryDispose
 /// @copydetails JSF_SimpleQuery_prototype_dispose
 ///
+/// @CLEARPAGE
 /// @anchor SimpleQueryCount
 /// @copydetails JSF_SimpleQuery_prototype_count
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

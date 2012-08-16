@@ -124,9 +124,10 @@
 /// @LIT{db.@FA{collection-name}}
 ///
 /// This call will either return the collection named @FA{collection-name}
-/// or create a new one which that name and a set of default
+/// or create a new one with that name and a set of default
 /// properties.
 ///
+/// @CLEARPAGE
 /// @section ShellCollectionShell Working with Collections
 //////////////////////////////////////////////////////////
 ///
@@ -136,42 +137,54 @@
 /// @anchor ShellCollectionDrop
 /// @copydetails JS_DropVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionTruncate
 /// @copydetails JSF_ArangoCollection_prototype_truncate
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionProperties
 /// @copydetails JS_PropertiesVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionFigures
 /// @copydetails JS_FiguresVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionLoad
 /// @copydetails JS_LoadVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionUnload
 /// @copydetails JS_UnloadVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionRename
 /// @copydetails JS_RenameVocbaseCol
 ///
+/// @CLEARPAGE
 /// @subsection ShellCollectionDatabaseMethods Database Methods
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionCreate
 /// @copydetails JS_CreateVocBase
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionReadAll
 /// @copydetails JS_CollectionsVocBase
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionReadShortCut
 /// @copydetails MapGetVocBase
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionDropDb
 /// @copydetails JSF_ArangoDatabase_prototype__drop
 ///
+/// @CLEARPAGE
 /// @anchor ShellCollectionTruncateDb
 /// @copydetails JSF_ArangoDatabase_prototype__truncate
 ////////////////////////////////////////////////////////////////////////////////
