@@ -220,6 +220,7 @@ ALIASES += EXTREF{2}="@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a
 ALIASES += EXTRES{2}="@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href="\1">\2</a>@endif"
 ALIASES += INTREF{2}="@if LATEX \2@else@ref \1 \"\2\"@endif"
 ALIASES += SPC="&nbsp;"
+ALIASES += CLEARPAGE="@if LATEX @latexonly\clearpage@endlatexonly@endif"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.

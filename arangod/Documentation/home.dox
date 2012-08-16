@@ -26,7 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Home ArangoDB @VERSION
+/// @page Home ArangoDB (@VERSION)
+///
+/// @xmlonly
+/// @section ArangoDB (@VERSION)
+/// @endxmlonly
 ///
 /// My colleagues and I started developing a document-store, which focuses on
 /// durability of the data taking advantage of new technologies like SSD,
@@ -48,9 +52,9 @@
 ////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref UserManual @ifnot XML @SPC(<a href="user-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref DbaManual @ifnot XML @SPC(<a href="dba-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref ImpManual @ifnot XML @SPC(<a href="imp-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref UserManual @ifnot XML @SPC[<a href="user-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref DbaManual @ifnot XML @SPC[<a href="dba-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC[<a href="imp-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 ///   @ifnot XML <li><a href="arangodb_1.0_shell_reference_card.pdf">Cheat Sheet</a></li> @endif
 /// </ul>
@@ -59,7 +63,7 @@
 /////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref InstallManual @ifnot XML @SPC(<a href="install-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref InstallManual @ifnot XML @SPC[<a href="install-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
@@ -67,8 +71,8 @@
 ///////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="implementor-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref RefManual @ifnot XML @SPC(<a href="ref-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImplementorManual @ifnot XML @SPC[<a href="implementor-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref RefManual @ifnot XML @SPC[<a href="ref-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 

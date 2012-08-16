@@ -30,7 +30,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page InstallManual ArangoDB's Installation Manual
+/// @page InstallManual ArangoDB's Installation Manual (@VERSION)
 ///
 /// @if LATEX
 /// <ul>
