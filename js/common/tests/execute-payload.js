@@ -105,9 +105,9 @@ function main(args) {
   end_time = new Date();
   console.log((end_time - start_time) + " ms");
 
-  console.log("Starting Search for age > 23");
+  console.log("Starting Search for 20 < age < 30");
   start_time = new Date();
-  query("x.age > 23");
+  query("x.age > 20 && x.age < 30");
   end_time = new Date();
   console.log((end_time - start_time) + " ms");
 
