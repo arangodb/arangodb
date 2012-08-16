@@ -7653,8 +7653,46 @@ fi
 fi
 
 if test "x$tr_NCURSES" != xyes;  then
-  as_fn_error $? "Please install the ncurses library" "$LINENO" 5
+  as_fn_error $? "Please install the ncurses library and header files" "$LINENO" 5
 fi
+
+
+for ac_header in curses.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "curses.h" "ac_cv_header_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_curses_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_CURSES_H 1
+_ACEOF
+ tr_NCURSES="yes"
+else
+  tr_NCURSES="no"
+fi
+
+done
+
+if test "x$tr_NCURSES" != xyes;  then
+  as_fn_error $? "Please install the ncurses header files" "$LINENO" 5
+fi
+
+for ac_header in term.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "term.h" "ac_cv_header_term_h" "$ac_includes_default"
+if test "x$ac_cv_header_term_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_TERM_H 1
+_ACEOF
+ tr_NCURSES="yes"
+else
+  tr_NCURSES="no"
+fi
+
+done
+
+if test "x$tr_NCURSES" != xyes;  then
+  as_fn_error $? "Please install the ncurses header files" "$LINENO" 5
+fi
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking NCURSES version" >&5
 $as_echo_n "checking NCURSES version... " >&6; }
@@ -7937,6 +7975,10 @@ fi
   fi
 fi
 
+if test "x$tr_READLINE" = xno;  then
+  as_fn_error $? "Please install readline support" "$LINENO" 5
+fi
+
 
 if test "x$tr_READLINE" = xyes;  then
 
@@ -7957,6 +7999,11 @@ _ACEOF
 $as_echo_n "checking READLINE version... " >&6; }
 eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
 TRI_READLINE_VERSION=`cat conftest.output`
+
+if test -z "$TRI_READLINE_VERSION"; then
+  as_fn_error $? "Readline support is not working. Please re-install readline support" "$LINENO" 5
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $TRI_READLINE_VERSION" >&5
 $as_echo "$TRI_READLINE_VERSION" >&6; }
 rm -f conftest*
