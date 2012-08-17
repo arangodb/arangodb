@@ -2,6 +2,11 @@
 not released yet  
 ----------------
 
+* fix for issue #109: if a collection that exists on the server is unknown in arangosh,
+  print some friendly error message asking the user to run the db._collections() method
+  to refresh the list of collections in arangosh. do not refresh automatically for
+  performance reasons
+
 * fix for issue #156: fixed memleaks in /_api/import
 
 * fix for issue #59: added tests for /_api/import
