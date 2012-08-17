@@ -43,10 +43,10 @@ make doxygen
 make latex
 make wiki
 
-git commit -m "release version $VERSION" -a
-git push
-
 if [ "$TAG" == "1" ];  then
+  git commit -m "release version $VERSION" -a
+  git push
+
   git tag "v$VERSION"
   git push --tags
 fi
