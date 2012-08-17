@@ -1859,6 +1859,11 @@ function ArangoDatabase (connection) {
   var internal = require("internal");
   var client = require("arangosh");
 
+  if (typeof ArangoDatabaseIntercepted !== 'undefined') {
+    // ArangoDatabase is a sub-class of ArangoDatabaseIntercepted
+    ArangoDatabase.prototype = new ArangoDatabaseIntercepted();
+    ArangoDatabase.prototype.constructor = ArangoDatabase;
+  }
   internal.ArangoDatabase = ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////

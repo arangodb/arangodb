@@ -1148,6 +1148,22 @@ static void addColors (v8::Handle<v8::Context> context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief property get interceptor for ArangoDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> DatabaseGetIntercept (v8::Local<v8::String> name,
+                                                   const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> self = info.Holder();
+  if (self->HasRealNamedProperty(name)) {
+    return scope.Close(self->GetRealNamedProperty(name));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("collection not found. try using db._collections() to the refresh collection list if you think the collection exists on the server.")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1312,6 +1328,20 @@ int main (int argc, char* argv[]) {
 
   // set pretty print default: (used in print.js)
   context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(PrettyPrint));
+  
+ 
+  // .............................................................................
+  // define base class with PropertyGet interceptor
+  // .............................................................................  
+  
+  v8::Handle<v8::ObjectTemplate> rt;
+  v8::Handle<v8::FunctionTemplate> ft;
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("ArangoDatabaseIntercepted"));
+  rt = ft->InstanceTemplate();
+  rt->SetNamedPropertyHandler(DatabaseGetIntercept);
+  context->Global()->Set(v8::String::New("ArangoDatabaseIntercepted"), ft->GetFunction());
+
   
   // add colors for print.js
   addColors(context);
