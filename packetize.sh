@@ -168,7 +168,7 @@ echo
 echo "########################################################"
 echo "Call mkepmlist to create a sublist"
 
-  for dir in js/server/modules js/common/modules js/actions/system js/client js/common/bootstrap; do
+  for dir in js/actions/system js/server js/server/modules js/client js/client/modules js/common/modules js/common/bootstrap; do
       echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
       mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
@@ -367,13 +367,6 @@ echo "Install"
 echo "    ${install_package}"
 ${install_package} || exit 1
 echo "########################################################"
-
-if [ "${start_server}x" != "x" ]; then 
-echo "Start"
-echo "    ${start_server}"
-${start_server} || exit 1
-echo "########################################################"
-fi
 
 echo "Successfully installed ${package_name}."
 echo "########################################################"

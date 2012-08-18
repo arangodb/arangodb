@@ -1,4 +1,4 @@
-> curl -X GET --dump - http://localhost:8530/_api/database/collection/examples
+> curl -X GET --dump - http://localhost:8529/_api/database/collection/examples
 
 HTTP/1.1 200 OK
 content-type: application/json

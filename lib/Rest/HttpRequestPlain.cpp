@@ -511,7 +511,7 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
                 ++e;
               }
 
-              if (end - e > strlen("http/1.x")) {
+              if ((size_t)(end - e) > strlen("http/1.x")) {
                 if ((e[0] == 'h' || e[0] == 'H') &&
                     (e[1] == 't' || e[1] == 'T') &&
                     (e[2] == 't' || e[2] == 'T') &&
