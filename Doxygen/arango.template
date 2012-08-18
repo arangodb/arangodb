@@ -31,7 +31,7 @@ PROJECT_NAME           = "ArangoDB"
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 1.0.beta2
+PROJECT_NUMBER         = 1.0.0
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description for a project that appears at the top of each page and should give viewer a quick idea about the purpose of the project. Keep the description short.
 
@@ -212,13 +212,15 @@ ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
 ALIASES += EXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly"
 ALIASES += TINYEXAMPLE{2}="@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly"
-ALIASES += VERSION="1.0.beta2"
+ALIASES += VERSION="1.0.0"
 ALIASES += EMBEDTOC{1}="@ifnot LATEX<hr>@copydoc \1<hr>@endif"
 ALIASES += RESTHEADER{2}="@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif"
 ALIASES += LATEXBREAK="@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly"
 ALIASES += EXTREF{2}="@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href="\1">\2</a>@endif"
+ALIASES += EXTRES{2}="@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href="\1">\2</a>@endif"
 ALIASES += INTREF{2}="@if LATEX \2@else@ref \1 \"\2\"@endif"
 ALIASES += SPC="&nbsp;"
+ALIASES += CLEARPAGE="@if LATEX @latexonly\clearpage@endlatexonly@endif"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.
@@ -1548,7 +1550,7 @@ HIDE_UNDOC_RELATIONS   = YES
 # toolkit from AT&T and Lucent Bell Labs. The other options in this section
 # have no effect if this option is set to NO (the default)
 
-HAVE_DOT               = YES
+HAVE_DOT               = NO
 
 # The DOT_NUM_THREADS specifies the number of dot invocations doxygen is
 # allowed to run in parallel. When set to 0 (the default) doxygen will

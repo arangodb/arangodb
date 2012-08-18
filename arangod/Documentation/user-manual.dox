@@ -30,7 +30,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManual ArangoDB's User Manual
+/// @page UserManual ArangoDB's User Manual (@VERSION)
 ///
 /// @if LATEX
 /// <ul>
@@ -119,11 +119,11 @@
 /// For more in-depth information
 ///
 /// <ul>
-///  <li> read more on the@SPC@EXTREF{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
+///  <li> read more on the @EXTRES{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
 ///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
 ///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
 ///       is about.</li>
-///  <li> or  give it a@SPC@INTREF{InstallManual,try}.</li>
+///  <li> or give it a @EXTRES{http://www.arangodb.org/try,try}.</li>
 /// </ul>
 ///
 /// The ArangoDB database groups documents into collections. Collections and
@@ -301,6 +301,7 @@
 /// { _id : "2223655/3993127", _rev : 3993127, name : "three" }]
 /// @endcode
 ///
+/// @CLEARPAGE
 /// @FUN{start_pretty_print()}
 ///
 /// While the standard JSON stringifier is very concise it is hard to read.
@@ -335,7 +336,8 @@
 /// ]
 /// @endcode
 ///
-/// @FUN{start_pretty_print()}
+/// @CLEARPAGE
+/// @FUN{stop_pretty_print()}
 ///
 /// The functions disable the pretty printer, switching back to the standard
 /// JSON output format.

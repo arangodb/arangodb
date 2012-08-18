@@ -1,5 +1,12 @@
 #!/bin/bash
 
+TAG=1
+
+if [ "$1" == "--no-tag" ];  then
+  TAG=0
+  shift
+fi
+
 if [ "$#" -ne 1 ];  then
   echo "usage: $0 <major>.<minor>.<patchlevel>"
   exit 1
@@ -36,8 +43,11 @@ make doxygen
 make latex
 make wiki
 
-git commit -m "release version $VERSION" -a
-git push
+if [ "$TAG" == "1" ];  then
+  git commit -m "release version $VERSION" -a
+  git push
 
-git tag "v$VERSION"
-git push --tags
+  git tag "v$VERSION"
+  git push --tags
+fi
+
