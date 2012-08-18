@@ -2790,7 +2790,6 @@ $.fn.isVisible = function() {
 };
 
 function stateSaving () {
-  
   $.each(existingCharts, function(v, i ) {
     // position statesaving 
     var tempcss = $("#chartBox"+this.id).position();  
@@ -2948,7 +2947,6 @@ var templeft = 20;
 
 function createSingleBox (id, val, question) {
   var boxCount = id;  
- 
 
   $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
   $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
