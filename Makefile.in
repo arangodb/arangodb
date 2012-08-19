@@ -18,9 +18,6 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief m4 directory
 ################################################################################
 
@@ -256,10 +253,10 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
-DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.unittests \
-	$(srcdir)/PerfTests/Makefile.files \
+DIST_COMMON = $(am__configure_deps) $(srcdir)/Doxygen/Makefile.doxygen \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.files \
+	$(srcdir)/Makefile.in $(srcdir)/PerfTests/Makefile.files \
+	$(srcdir)/UnitTests/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
 	$(srcdir)/arangoirb/Makefile.files \
 	$(srcdir)/arangosh/Makefile.files $(srcdir)/lib/Makefile.files \
@@ -268,9 +265,9 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/m4/Makefile.all-in-one-protobuf \
 	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(srcdir)/m4/Makefile.all-in-one-zeromq \
-	$(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.doxygen \
-	$(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.javascript \
-	$(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.protobuf \
+	$(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.flex \
+	$(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.mruby \
+	$(srcdir)/m4/Makefile.protobuf \
 	$(top_srcdir)/Doxygen/arango.template.in \
 	$(top_srcdir)/config/compile $(top_srcdir)/config/config.guess \
 	$(top_srcdir)/config/config.h.in \
@@ -1163,10 +1160,10 @@ PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-AM_CPPFLAGS = -I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
-	$(am__append_1) $(am__append_2) $(am__append_3) \
+AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
+	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ \
+	@V8_CPPFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_5)
 @ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = $(localstatedir)/log/$(PACKAGE_TARNAME)
 @ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = /tmp
@@ -1188,9 +1185,6 @@ AM_CPPFLAGS = -I@top_srcdir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 	@NCURSES_LDFLAGS@ @OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ \
 	@PROTOBUF_LDFLAGS@ @V8_LDFLAGS@ $(am__append_4)
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief auxiliary libraries
@@ -1627,8 +1621,8 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_START := 
-SERVER_OPT := --configuration none --javascript.startup-directory ./js --javascript.modules-path ./js/server/modules:./js/common/modules --javascript.action-directory ./js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 $(SERVER_START)
-CLIENT_OPT := --javascript.startup-directory ./js --javascript.modules-path ./js/client/modules:./js/common/modules --no-colors --quiet
+SERVER_OPT := --configuration none --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules --javascript.action-directory @top_srcdir@/js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 $(SERVER_START)
+CLIENT_OPT := --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
 CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
@@ -1760,7 +1754,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/m4/Makefile.mruby $(srcdir)/Doxygen/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1783,7 +1777,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/Makefile.unittests $(srcdir)/m4/Makefile.mruby $(srcdir)/m4/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq:
+$(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/m4/Makefile.mruby $(srcdir)/Doxygen/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -5095,6 +5089,7 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 
 
 Installation/arangod.conf: Installation/arangod.conf.in Makefile
+	@test -d Installation || mkdir Installation
 	sed \
 		-e 's%@LOGDIR@%${TRI_LOG_DIR}%g' \
 		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
@@ -5107,9 +5102,6 @@ Installation/arangod.conf: Installation/arangod.conf.in Makefile
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
 @ENABLE_INSTALL_DBDIR_TRUE@	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief version number
@@ -5766,9 +5758,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief mruby
 ################################################################################
 
@@ -5793,9 +5782,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief libev and V8
 ################################################################################
 
@@ -5805,9 +5791,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 ################################################################################
 ### @brief zeromq
-################################################################################
-
-################################################################################
 ################################################################################
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

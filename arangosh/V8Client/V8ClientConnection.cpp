@@ -41,14 +41,13 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8/v8-conv.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantString.h"
-
-#include "json.h"
-#include "V8/v8-conv.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
