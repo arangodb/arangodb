@@ -40,19 +40,14 @@
 
 #include <sstream>
 
-#include "BasicsC/csv.h"
-
-#include <Basics/StringUtils.h>
-
+#include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantBoolean.h"
 #include "Variant/VariantInt64.h"
 #include "Variant/VariantString.h"
-
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include "json.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
