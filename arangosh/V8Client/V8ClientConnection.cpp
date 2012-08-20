@@ -244,6 +244,16 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "PATCH" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
+                                                     std::string const& body, 
+                                                     map<string, string> const& headerFields) {
+  return requestData(SimpleHttpClient::PATCH, location, body, headerFields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

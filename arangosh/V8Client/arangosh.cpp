@@ -854,6 +854,37 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "httpPatch"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  // check params
+  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
+  }
+
+  v8::String::Utf8Value url(argv[0]);
+  v8::String::Utf8Value body(argv[1]);
+
+  // check header fields
+  map<string, string> headerFields;
+  if (argv.Length() > 2) {
+    objectToMap(headerFields, argv[2]);
+  }
+
+  return scope.Close(connection->patchData(*url, *body, headerFields));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1333,6 +1364,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
     connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
+    connection_proto->Set("PATCH", v8::FunctionTemplate::New(ClientConnection_httpPatch));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
