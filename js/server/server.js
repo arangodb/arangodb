@@ -299,12 +299,7 @@
       return;
     }
 
-    var all = collection.ALL(null, null).documents;
-    var i;
-
-    for (i = 0;  i < all.length;  ++i) {
-      collection.remove(all[i]._id);
-    }
+    collection.truncate();
   };
 
   ArangoEdges.prototype._truncate = ArangoDatabase.prototype._truncate;

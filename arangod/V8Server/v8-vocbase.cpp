@@ -3526,6 +3526,64 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_LAST_WRITE;
+  TRI_voc_rid_t oldRid = 0;
+
+  TRI_vector_pointer_t documents;
+  TRI_InitVectorPointer(&documents, TRI_UNKNOWN_MEM_ZONE);
+
+  doc->beginWrite(collection->_collection);
+  
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const** end;
+
+  ptr = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table);
+  end = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc);
+  
+  // first, collect all document pointers by traversing the primary index
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr && (*ptr)->_deletion == 0) {
+      TRI_PushBackVectorPointer(&documents, (void*) *ptr);
+    }
+  }
+
+  // now delete all documents. this will modify the index as well
+  for (size_t i = 0; i < documents._length; ++i) {
+    TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
+    
+    int res = doc->destroy(doc, d->_did, d->_rid, &oldRid, policy, false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred, but we simply go on because truncate should remove all documents
+    }
+  }
+
+  doc->endWrite(collection->_collection);
+  
+  TRI_ReleaseCollection(collection);
+
+  TRI_DestroyVectorPointer(&documents);
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4924,6 +4982,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
+  v8::Handle<v8::String> TruncateFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncate"));
   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
 
@@ -5091,6 +5150,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
 
@@ -5142,6 +5202,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
 
