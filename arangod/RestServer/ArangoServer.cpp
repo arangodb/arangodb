@@ -216,7 +216,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
 
-  if (RUNNING_ON_VALGRIND > 0) {
+  if ((RUNNING_ON_VALGRIND) > 0) {
     _runningOnValgrind = true;
   }
 
@@ -826,6 +826,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       case OperationMode::MODE_SCRIPT: {
         v8::TryCatch tryCatch;
 
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
+
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
           bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
 
@@ -881,6 +883,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);

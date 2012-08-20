@@ -32,6 +32,8 @@
 
 #include "build.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "BasicsC/csv.h"
 
 #include "Basics/ProgramOptions.h"
@@ -1441,6 +1443,7 @@ int main (int argc, char* argv[]) {
   }
 
   context->Global()->Set(v8::String::New("ARANGO_QUIET"), Quiet ? v8::True() : v8::False(), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("VALGRIND"), ((RUNNING_ON_VALGRIND) > 0) ? v8::True() : v8::False());
 
   // load all init files
   char const* files[] = {
