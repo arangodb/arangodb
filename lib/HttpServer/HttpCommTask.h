@@ -198,6 +198,7 @@ namespace triagens {
 
                 case HttpRequest::HTTP_REQUEST_POST:
                 case HttpRequest::HTTP_REQUEST_PUT:
+                case HttpRequest::HTTP_REQUEST_PATCH:
                   this->_bodyLength = this->_request->contentLength();
 
                   if (this->_bodyLength > 0) {
