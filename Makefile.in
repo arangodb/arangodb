@@ -536,7 +536,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/ResultGenerator/XmlResultGenerator.$(OBJEXT) \
 	lib/Scheduler/ApplicationScheduler.$(OBJEXT) \
 	lib/Scheduler/AsyncTask.$(OBJEXT) \
-	lib/Scheduler/ConnectionTask.$(OBJEXT) \
 	lib/Scheduler/ListenTask.$(OBJEXT) \
 	lib/Scheduler/PeriodicTask.$(OBJEXT) \
 	lib/Scheduler/Scheduler.$(OBJEXT) \
@@ -1388,7 +1387,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
-	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
 	lib/Scheduler/PeriodicTask.cpp \
 	lib/Scheduler/Scheduler.cpp \
@@ -2218,8 +2216,6 @@ lib/Scheduler/ApplicationScheduler.$(OBJEXT):  \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/AsyncTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
-lib/Scheduler/ConnectionTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
-	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/ListenTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/PeriodicTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
@@ -3025,7 +3021,6 @@ mostlyclean-compile:
 	-rm -f lib/ResultGenerator/XmlResultGenerator.$(OBJEXT)
 	-rm -f lib/Scheduler/ApplicationScheduler.$(OBJEXT)
 	-rm -f lib/Scheduler/AsyncTask.$(OBJEXT)
-	-rm -f lib/Scheduler/ConnectionTask.$(OBJEXT)
 	-rm -f lib/Scheduler/ListenTask.$(OBJEXT)
 	-rm -f lib/Scheduler/PeriodicTask.$(OBJEXT)
 	-rm -f lib/Scheduler/Scheduler.$(OBJEXT)
@@ -3288,7 +3283,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ResultGenerator/$(DEPDIR)/XmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ApplicationScheduler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/AsyncTask.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ConnectionTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ListenTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/Scheduler.Po@am__quote@

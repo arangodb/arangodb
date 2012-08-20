@@ -114,13 +114,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
-        GeneralServer (Scheduler* scheduler)
+        GeneralServer (Scheduler* scheduler, double keepAliveTimeout)
           : EndpointServer(),
             _scheduler(scheduler), 
             _listenTasks(),
             _commTasks(),
             _handlers(1024),
-            _task2handler(1024) {
+            _task2handler(1024),
+            _keepAliveTimeout(keepAliveTimeout) {
           GENERAL_SERVER_INIT(&_commTasksLock);
           GENERAL_SERVER_INIT(&_mappingLock);
         }
@@ -236,7 +237,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
-          GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
+          GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, _keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&_commTasksLock);
           _commTasks.insert(task);
@@ -594,6 +595,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::AssociativeArray<Task*, handler_task_job_t, handler_task_job_task_desc> _task2handler;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keep-alive timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        double _keepAliveTimeout;
     };
   }
 }
