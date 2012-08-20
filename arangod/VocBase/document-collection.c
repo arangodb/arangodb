@@ -150,7 +150,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a json document given the identifier
+/// @brief deletes a json document given the identifier under a write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DestroyLock (TRI_doc_collection_t* document,
