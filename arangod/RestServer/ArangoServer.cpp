@@ -200,7 +200,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _applicationUserManager(0),
-    _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath("/var/lib/arangodb"),
     _removeOnDrop(true),
@@ -447,15 +446,13 @@ void ArangoServer::buildApplicationServer () {
 
   bool disableAdminInterface = false;
 
-  additional["Server Options:help-admin"]
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
+  additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
   ;
 
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
-  
   
   // .............................................................................
   // endpoint server
@@ -623,11 +620,6 @@ int ArangoServer::startupServer () {
                                    RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                    (void*) &httpOptions);
   
-  if (_disableAuthentication) {
-    // turn off authentication
-    handlerFactory->setAuthenticationCallback(0);
-  }
-
 
   // .............................................................................
   // create a http handler factory for zeromq
@@ -658,10 +650,6 @@ int ArangoServer::startupServer () {
 
 #endif
   
-  if (_disableAuthentication) {
-    LOGGER_INFO << "Authentication is turned off";
-  }
-
   // .............................................................................
   // start the main event loop
   // .............................................................................

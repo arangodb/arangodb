@@ -93,6 +93,8 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _servers(),
     _endpointList(),
     _endpoints(),
+    _disableAuthentication(false),
+    _keepAliveTimeout(300.0),
     _httpsKeyfile(),
     _cafile(),
     _sslProtocol(HttpsServer::TLS_V1),
@@ -138,12 +140,20 @@ bool ApplicationEndpointServer::buildServers () {
   assert(_applicationScheduler->scheduler() != 0);
   
   EndpointServer* server;
+
+  // turn off authentication
+  if (_disableAuthentication) {
+    _handlerFactory->setAuthenticationCallback(0);
+    LOGGER_INFO << "Authentication is turned off";
+  }
+
   
   // unencrypted endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
     // http endpoints 
     server = new HttpServer(_applicationScheduler->scheduler(), 
                             _applicationDispatcher->dispatcher(), 
+                            _keepAliveTimeout,
                             _handlerFactory); 
  
     server->setEndpointList(&_endpointList);
@@ -154,6 +164,7 @@ bool ApplicationEndpointServer::buildServers () {
     // binary endpoints 
     server = new BinaryServer(_applicationScheduler->scheduler(), 
                               _applicationDispatcher->dispatcher(), 
+                              _keepAliveTimeout,
                               _handlerFactory); 
  
     server->setEndpointList(&_endpointList);
@@ -174,6 +185,7 @@ bool ApplicationEndpointServer::buildServers () {
     // https 
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
+                             _keepAliveTimeout,
                              _handlerFactory,
                              _sslContext);
 
@@ -204,6 +216,11 @@ bool ApplicationEndpointServer::buildServers () {
 void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
   options[ApplicationServer::OPTIONS_SERVER]
     ("server.endpoint", &_endpoints, "endpoint for client requests")
+  ;
+  
+  options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
+    ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]

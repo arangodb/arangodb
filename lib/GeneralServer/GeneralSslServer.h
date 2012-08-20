@@ -199,9 +199,10 @@ namespace triagens {
 
         GeneralSslServer (Scheduler* scheduler,
                           Dispatcher* dispatcher,
+                          double keepAliveTimeout,
                           HF* handlerFactory,
                           SSL_CTX* ctx)
-        : GeneralServer<S, HF, CT>(scheduler),
+        : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
           ctx(ctx),
           verificationMode(SSL_VERIFY_NONE),
           verificationCallback(0) {
@@ -304,7 +305,7 @@ namespace triagens {
           SSL_set_bio(ssl, sbio, sbio);
 
           // create an ssl task
-          SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, sbio);
+          SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, this->_keepAliveTimeout, sbio);
 
           // add the task, otherwise it will not be shut down properly          
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
