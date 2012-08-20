@@ -1858,12 +1858,7 @@ function ArangoDatabase (connection) {
 (function () {
   var internal = require("internal");
   var client = require("arangosh");
-
-  if (typeof ArangoDatabaseIntercepted !== 'undefined') {
-    // ArangoDatabase is a sub-class of ArangoDatabaseIntercepted
-    ArangoDatabase.prototype = new ArangoDatabaseIntercepted();
-    ArangoDatabase.prototype.constructor = ArangoDatabase;
-  }
+  
   internal.ArangoDatabase = ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2654,7 +2649,9 @@ ArangoEdges.prototype = new ArangoDatabase();
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
   ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
   ' > help                                  show help pages            ' + "\n" +
-  ' > exit                                                             ';
+  ' > exit                                                             ' + "\n" +
+  'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +
+  ' > db._collections();                                               ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query help
