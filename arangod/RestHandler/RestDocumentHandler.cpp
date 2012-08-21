@@ -131,8 +131,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
     case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
     case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(false); break;
-    case HttpRequest::HTTP_REQUEST_PATCH: res = updateDocument(true); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH: res = updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
       res = false;
@@ -615,7 +615,7 @@ bool RestDocumentHandler::checkDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
+/// @brief replaces a document
 ///
 /// @RESTHEADER{PUT /_api/document,updates a document}
 ///
@@ -675,6 +675,14 @@ bool RestDocumentHandler::checkDocument () {
 /// Alternative to header field:
 ///
 /// @verbinclude rest-update-document-rev-other
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestDocumentHandler::replaceDocument () {
+  return modifyDocument(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document
 ///
 /// @RESTHEADER{PATCH /_api/document,patches a document}
 ///
@@ -707,7 +715,15 @@ bool RestDocumentHandler::checkDocument () {
 /// @verbinclude rest-patch-document
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::updateDocument (bool isPatch) {
+bool RestDocumentHandler::updateDocument () {
+  return modifyDocument(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for replaceDocument and updateDocument
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestDocumentHandler::modifyDocument (bool isPatch) {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
@@ -759,12 +775,13 @@ bool RestDocumentHandler::updateDocument (bool isPatch) {
   TRI_doc_mptr_t mptr;
 
   if (isPatch) {
+    // patching an existing document
     bool nullMeansRemove;
     bool found;
 
     char const* valueStr = _request->value("keepNull", found);
     if (!found || StringUtils::boolean(valueStr)) {
-      // keep null values
+      // default: null values are saved as Null
       nullMeansRemove = false;
     }
     else {
@@ -788,6 +805,7 @@ bool RestDocumentHandler::updateDocument (bool isPatch) {
     }
   }
   else {
+    // replacing an existing document
     mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
   }
   res = mptr._did == 0 ? TRI_errno() : 0;

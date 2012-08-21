@@ -1039,8 +1039,9 @@ function ArangoCollection (database, data) {
   '  count()                         number of documents               ' + "\n" +
   '  save(<data>)                    create document and return handle ' + "\n" +
   '  document(<id>)                  get document by handle            ' + "\n" +
-  '  replace(<id>, <data>)           over-writes document              ' + "\n" +
-  '  delete(<id>)                    deletes document                  ' + "\n" +
+  '  replace(<id>, <data>)           overwrite document                ' + "\n" +
+  '  update(<id>, <data>)            update document                   ' + "\n" +
+  '  delete(<id>)                    delete document                   ' + "\n" +
   '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
   '  _database                       database object                   ' + "\n" +
@@ -1777,7 +1778,7 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document in the collection, identified by its id
+/// @brief replace a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.replace = function (id, data, overwrite) { 
@@ -1806,6 +1807,59 @@ function ArangoCollection (database, data) {
     else {
       requestResult = this._database._connection.PUT(
         "/_api/document/" + id + policy, JSON.stringify(data),
+        {'if-match' : '"' + rev + '"' });
+    }
+
+    if (requestResult !== null && requestResult.error === true) {
+      var s = id.split("/");
+
+      if (s.length !== 2) {
+        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
+      }
+      else if (parseInt(s[0]) !== this._id) {
+        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
+      }
+
+      throw new ArangoError(requestResult);
+    }
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.update = function (id, data, overwrite, keepNull) { 
+    var rev = null;
+    var requestResult;
+
+    if (id.hasOwnProperty("_id")) {
+      if (id.hasOwnProperty("_rev")) {
+        rev = id._rev;
+      }
+
+      id = id._id;
+    }
+
+    // set default value for keepNull
+    var keepNullValue = ((typeof keepNull == "undefined") ? true : keepNull);
+    var params = "?keepNull=" + (keepNullValue ? "true" : "false");
+
+    if (overwrite) {
+      params += "&policy=last";
+    }
+
+    if (rev === null) {
+      requestResult = this._database._connection.PATCH(
+        "/_api/document/" + id + params, 
+        JSON.stringify(data));
+    }
+    else {
+      requestResult = this._database._connection.PATCH(
+        "/_api/document/" + id + params, JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
 
@@ -1894,8 +1948,9 @@ function ArangoDatabase (connection) {
   '                                                                    ' + "\n" +
   'Document Functions:                                                 ' + "\n" +
   '  _document(<id>)                 get document by handle            ' + "\n" +
-  '  _replace(<id>, <data>)          over-writes document              ' + "\n" +
-  '  _remove(<id>)                   deletes document                  ' + "\n" +
+  '  _replace(<id>, <data>)          overwrite document                ' + "\n" +
+  '  _update(<id>, <data>)           update document                   ' + "\n" +
+  '  _remove(<id>)                   delete document                   ' + "\n" +
   '                                                                    ' + "\n" +
   'Query Functions:                                                    ' + "\n" +
   '  _createStatement(<data>);      create and return select query     ' + "\n" +
@@ -2217,7 +2272,7 @@ function ArangoDatabase (connection) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document in the collection, identified by its id
+/// @brief replace a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._replace = function (id, data, overwrite) { 
@@ -2245,6 +2300,55 @@ function ArangoDatabase (connection) {
     }
     else {
       requestResult = this._connection.PUT(
+        "/_api/document/" + id + policy,
+        JSON.stringify(data),
+        {'if-match' : '"' + rev + '"' });
+    }
+
+    if (requestResult !== null && requestResult.error === true) {
+      var s = id.split("/");
+
+      if (s.length !== 2) {
+        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
+      }
+
+      throw new ArangoError(requestResult);
+    }
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._update = function (id, data, overwrite) { 
+    var rev = null;
+    var requestResult;
+
+    if (id.hasOwnProperty("_id")) {
+      if (id.hasOwnProperty("_rev")) {
+        rev = id._rev;
+      }
+
+      id = id._id;
+    }
+
+    var policy = "";
+
+    if (overwrite) {
+      policy = "?policy=last";
+    }
+
+    if (rev === null) {
+      requestResult = this._connection.PATCH(
+        "/_api/document/" + id + policy,
+        JSON.stringify(data));
+    }
+    else {
+      requestResult = this._connection.PATCH(
         "/_api/document/" + id + policy,
         JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
