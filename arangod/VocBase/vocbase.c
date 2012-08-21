@@ -1553,11 +1553,23 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+    char* tmpFile;
+
     res = TRI_LoadParameterInfoCollection(collection->_path, &info);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
       return TRI_set_errno(res);
+    }
+
+    // remove dangling .json.tmp file if it exists
+    tmpFile = TRI_Concatenate4String(collection->_path, "/", TRI_COL_PARAMETER_FILE, ".tmp");
+    if (tmpFile != NULL) {
+      if (TRI_ExistsFile(tmpFile)) {
+        TRI_UnlinkFile(tmpFile);
+        LOG_WARNING("removing dangling temporary file '%s'", tmpFile); 
+      }
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpFile);
     }
 
     if (! info._deleted) {
