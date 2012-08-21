@@ -763,7 +763,14 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 
   // create a json info object
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  // TODO: memory allocation might fail
+  if (json == NULL) {
+    // out of memory
+    LOG_ERROR("cannot save info block '%s': out of memory", filename);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
