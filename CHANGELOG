@@ -1,6 +1,16 @@
 
 not released yet  
 ----------------
+* issue #110: added support for partial updates
+  The REST API for documents now offers a HTTP PATCH method to partially update
+  documents. Overwriting/replacing documents is still available via the HTTP PUT method
+  as before.
+  The Javascript API in the shell also offers a new update() method in extension to
+  the previously existing replace() method.
+
+* fix for issue #163: server cannot create collection because of abandoned files
+
+* fix for issue #157: check for readline and ncurses headers, not only libraries
 
 * fix for issue #108: db.<collection>.truncate() inefficient
 

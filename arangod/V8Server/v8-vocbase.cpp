@@ -708,7 +708,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   bool nullMeansRemove;
   if (4 <= argv.Length()) {
     // delete null attributes
-    nullMeansRemove = TRI_ObjectToBoolean(argv[3]);
+    nullMeansRemove = !TRI_ObjectToBoolean(argv[3]);
   }
   else {
     // default value: null values are saved as Null
