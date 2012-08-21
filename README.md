@@ -3,9 +3,9 @@
 
 We recently started a new open source project - a nosql database
 called AvocadoDB which became ArangoDB in May 2012.  ArangoDB is
-currently available as an alpha version. 
+currently available as a beta version. 
 We want to have a stable version 1 ready soon. A multi server version is planned 
-for the third quarter of 2012. For details see the roadmap.
+for the end of 2012. For details see the roadmap.
 
 Key features include:
 
