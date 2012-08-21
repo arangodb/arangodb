@@ -1039,8 +1039,10 @@ function ArangoCollection (database, data) {
   '  count()                         number of documents               ' + "\n" +
   '  save(<data>)                    create document and return handle ' + "\n" +
   '  document(<id>)                  get document by handle            ' + "\n" +
-  '  replace(<id>, <data>)           overwrite document                ' + "\n" +
-  '  update(<id>, <data>)            update document                   ' + "\n" +
+  '  replace(<id>, <data>,           overwrite document                ' + "\n" +
+  '          <overwrite>)                                              ' + "\n" +
+  '  update(<id>, <data>,            update document                   ' + "\n" +
+  '         <overwrite>, <keepNull>)                                   ' + "\n" +
   '  delete(<id>)                    delete document                   ' + "\n" +
   '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
@@ -1937,26 +1939,28 @@ function ArangoDatabase (connection) {
   ' > db = new ArangoDatabase(connection);                             ' + "\n" +
   '                                                                    ' + "\n" +
   'Administration Functions:                                           ' + "\n" +
-  '  _help();                       this help                          ' + "\n" +
+  '  _help();                         this help                        ' + "\n" +
   '                                                                    ' + "\n" +
   'Collection Functions:                                               ' + "\n" +
-  '  _collections()                 list all collections               ' + "\n" +
-  '  _collection(<identifier>)      get collection by identifier/name  ' + "\n" +
-  '  _create(<name>, <props>)       creates a new collection           ' + "\n" +
-  '  _truncate(<name>)              delete all documents               ' + "\n" +
-  '  _drop(<name>)                  delete a collection                ' + "\n" +
+  '  _collections()                   list all collections             ' + "\n" +
+  '  _collection(<identifier>)        get collection by identifier/name' + "\n" +
+  '  _create(<name>, <props>)         creates a new collection         ' + "\n" +
+  '  _truncate(<name>)                delete all documents             ' + "\n" +
+  '  _drop(<name>)                    delete a collection              ' + "\n" +
   '                                                                    ' + "\n" +
   'Document Functions:                                                 ' + "\n" +
-  '  _document(<id>)                 get document by handle            ' + "\n" +
-  '  _replace(<id>, <data>)          overwrite document                ' + "\n" +
-  '  _update(<id>, <data>)           update document                   ' + "\n" +
-  '  _remove(<id>)                   delete document                   ' + "\n" +
+  '  _document(<id>)                  get document by handle           ' + "\n" +
+  '  _replace(<id>, <data>,           overwrite document               ' + "\n" +
+  '           <overwrite>)                                             ' + "\n" +
+  '  _update(<id>, <data>,            update document                  ' + "\n" +
+  '          <overwrite>, <keepNull>)                                  ' + "\n" +
+  '  _remove(<id>)                    delete document                  ' + "\n" +
   '                                                                    ' + "\n" +
   'Query Functions:                                                    ' + "\n" +
-  '  _createStatement(<data>);      create and return select query     ' + "\n" +
+  '  _createStatement(<data>);        create and return select query   ' + "\n" +
   '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
-  '  <collection names>             collection with the given name     ';
+  '  <collection names>               collection with the given name   ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print the help for ArangoDatabase
@@ -2324,10 +2328,10 @@ function ArangoDatabase (connection) {
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoDatabase.prototype._update = function (id, data, overwrite) { 
+  ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull) { 
     var rev = null;
     var requestResult;
-
+    
     if (id.hasOwnProperty("_id")) {
       if (id.hasOwnProperty("_rev")) {
         rev = id._rev;
@@ -2336,20 +2340,22 @@ function ArangoDatabase (connection) {
       id = id._id;
     }
 
-    var policy = "";
+    // set default value for keepNull
+    var keepNullValue = ((typeof keepNull == "undefined") ? true : keepNull);
+    var params = "?keepNull=" + (keepNullValue ? "true" : "false");
 
     if (overwrite) {
-      policy = "?policy=last";
+      params += "&policy=last";
     }
 
     if (rev === null) {
       requestResult = this._connection.PATCH(
-        "/_api/document/" + id + policy,
+        "/_api/document/" + id + params,
         JSON.stringify(data));
     }
     else {
       requestResult = this._connection.PATCH(
-        "/_api/document/" + id + policy,
+        "/_api/document/" + id + params,
         JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
