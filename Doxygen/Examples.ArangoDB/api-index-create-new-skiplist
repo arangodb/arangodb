@@ -1,4 +1,4 @@
-> curl --data @- -X POST --dump - http://localhost:8529/_api/index/109061392
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=109061392
 { "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ] }
 
 HTTP/1.1 201 Created
