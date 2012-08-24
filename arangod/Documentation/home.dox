@@ -81,6 +81,11 @@
 /// 
 /// @subsection HomeCLINQ C\# / LINQ
 ///
+/// @subsection HomeD D
+///
+/// @@repeatedly has developed a driver for the programming language D:
+/// https://github.com/repeatedly/reed
+///
 /// @subsection HomeNodeJS Node.JS
 ///
 /// There is a Node.JS client from Anders Elo available in a separate project:
