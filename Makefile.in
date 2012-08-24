@@ -554,7 +554,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/ResultGenerator/XmlResultGenerator.$(OBJEXT) \
 	lib/Scheduler/ApplicationScheduler.$(OBJEXT) \
 	lib/Scheduler/AsyncTask.$(OBJEXT) \
-	lib/Scheduler/ConnectionTask.$(OBJEXT) \
 	lib/Scheduler/ListenTask.$(OBJEXT) \
 	lib/Scheduler/PeriodicTask.$(OBJEXT) \
 	lib/Scheduler/Scheduler.$(OBJEXT) \
@@ -1422,7 +1421,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
-	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
 	lib/Scheduler/PeriodicTask.cpp \
 	lib/Scheduler/Scheduler.cpp \
@@ -1621,7 +1619,7 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_START := 
-SERVER_OPT := --configuration none --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules --javascript.action-directory @top_srcdir@/js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 $(SERVER_START)
+SERVER_OPT := --configuration none --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules --javascript.action-directory @top_srcdir@/js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 --server.threads 4 $(SERVER_START)
 CLIENT_OPT := --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
@@ -2248,8 +2246,6 @@ lib/Scheduler/ApplicationScheduler.$(OBJEXT):  \
 	lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/AsyncTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
-	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
-lib/Scheduler/ConnectionTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/ListenTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
@@ -3062,7 +3058,6 @@ mostlyclean-compile:
 	-rm -f lib/ResultGenerator/XmlResultGenerator.$(OBJEXT)
 	-rm -f lib/Scheduler/ApplicationScheduler.$(OBJEXT)
 	-rm -f lib/Scheduler/AsyncTask.$(OBJEXT)
-	-rm -f lib/Scheduler/ConnectionTask.$(OBJEXT)
 	-rm -f lib/Scheduler/ListenTask.$(OBJEXT)
 	-rm -f lib/Scheduler/PeriodicTask.$(OBJEXT)
 	-rm -f lib/Scheduler/Scheduler.$(OBJEXT)
@@ -3325,7 +3320,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ResultGenerator/$(DEPDIR)/XmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ApplicationScheduler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/AsyncTask.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ConnectionTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/ListenTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/Scheduler.Po@am__quote@
@@ -5193,7 +5187,7 @@ start-server:
 	@(test "$(PROTO)" == "unix" && sleep 2) || true
 	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
-	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 30; else sleep 2; fi
+	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
 	@echo
 
 ################################################################################

@@ -77,11 +77,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         BinaryServer (Scheduler* scheduler,
-                    Dispatcher* dispatcher,
-                    HttpHandlerFactory* handlerFactory) 
-        : GeneralServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler),
-          GeneralServerDispatcher<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher),
-          GeneralBinaryServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher, handlerFactory) {
+                      Dispatcher* dispatcher,
+                      double keepAliveTimeout,
+                      HttpHandlerFactory* handlerFactory) 
+        : GeneralServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, keepAliveTimeout),
+          GeneralServerDispatcher<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher, keepAliveTimeout),
+          GeneralBinaryServer<BinaryServer, HttpHandlerFactory, BinaryCommTask<BinaryServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

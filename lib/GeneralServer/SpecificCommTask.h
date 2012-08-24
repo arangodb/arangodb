@@ -72,9 +72,9 @@ namespace triagens {
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-        SpecificCommTask (S* server, socket_t fd, ConnectionInfo const& info)
+        SpecificCommTask (S* server, socket_t fd, ConnectionInfo const& info, double keepAliveTimeout)
           : Task("SpecificCommTask"),
-            T(server, fd, info) {
+            T(server, fd, info, keepAliveTimeout) {
         }
     };
   }

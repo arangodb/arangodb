@@ -51,14 +51,14 @@ using namespace triagens::rest;
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-SocketTask::SocketTask (socket_t fd)
+SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
   : Task("SocketTask"),
     keepAliveWatcher(0),
     readWatcher(0),
     writeWatcher(0),
     watcher(0),
     commSocket(fd),
-    _keepAliveTimeout(300.0), // TODO: check if default is reasonable or make configurable
+    _keepAliveTimeout(keepAliveTimeout), 
     _writeBuffer(0),
 #ifdef TRI_ENABLE_FIGURES
     _writeBufferStatistics(0),

@@ -555,14 +555,16 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// an object containing the index details.
 ///
 /// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
-/// @ref IndexSkiplistHttp for details.
+/// @ref IndexSkiplistHttp for details. By default, non-unique indexes will
+/// be created. To change this, use the @LIT{unique} attribute in the index details
+/// and set its value to @LIT{true}.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// returned. It is possible to specify a name instead of an identifier. 
 ///
 /// @EXAMPLES
 ///

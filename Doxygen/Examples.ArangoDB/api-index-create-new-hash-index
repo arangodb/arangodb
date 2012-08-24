@@ -1,4 +1,4 @@
-> curl --data @- -X POST --dump - http://localhost:8529/_api/index/105981200
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=105981200
 { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] }
 
 HTTP/1.1 201 Created

@@ -75,9 +75,10 @@ namespace triagens {
 
         GeneralHttpServer (Scheduler* scheduler,
                            Dispatcher* dispatcher,
+                           double keepAliveTimeout,
                            HF* handlerFactory)
-        : GeneralServer<S, HF, CT>(scheduler),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher),
+        : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
+          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher, keepAliveTimeout),
           _handlerFactory(handlerFactory) {
         }
 

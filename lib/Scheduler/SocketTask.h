@@ -88,7 +88,7 @@ namespace triagens {
       public:
 
         explicit
-        SocketTask (socket_t fd);
+        SocketTask (socket_t fd, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a socket task

@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "Rest/JsonContainer.h"
@@ -632,6 +633,122 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "cannot replace document")));
+  }
+
+  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
+  result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
+
+  TRI_ReleaseCollection(collection);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
+                                               TRI_vocbase_col_t const* collection,
+                                               v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // check the arguments
+  if (argv.Length() < 2) {
+    TRI_ReleaseCollection(collection);
+
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>)")));
+  }
+
+  TRI_voc_did_t did;
+  TRI_voc_rid_t rid;
+
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
+
+  if (! err.IsEmpty()) {
+    if (collection != 0) {
+      TRI_ReleaseCollection(collection);
+    }
+
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // convert data
+  TRI_doc_collection_t* doc = collection->_collection;
+  TRI_json_t* json = TRI_JsonObject(argv[1]);
+
+  if (json == 0) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_errno(),
+                                               "<data> is no valid JSON")));
+  }
+
+  // check policy
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
+
+  if (3 <= argv.Length()) {
+    bool overwrite = TRI_ObjectToBoolean(argv[2]);
+
+    if (overwrite) {
+      policy = TRI_DOC_UPDATE_LAST_WRITE;
+    }
+    else {
+      policy = TRI_DOC_UPDATE_CONFLICT;
+    }
+  }
+
+  bool nullMeansRemove;
+  if (4 <= argv.Length()) {
+    // delete null attributes
+    nullMeansRemove = !TRI_ObjectToBoolean(argv[3]);
+  }
+  else {
+    // default value: null values are saved as Null
+    nullMeansRemove = false; 
+  }
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  collection->_collection->beginWrite(collection->_collection);
+  
+  // init target document
+  TRI_doc_mptr_t mptr;
+
+  TRI_voc_rid_t oldRid = 0;
+  TRI_doc_mptr_t document = doc->read(doc, did);
+  TRI_json_t* old = TRI_JsonShapedJson(doc->_shaper, &document._document);
+
+  if (old != 0) {
+    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+    TRI_FreeJson(doc->_shaper->_memoryZone, old);
+
+    if (patchedJson != 0) {
+      mptr = doc->updateJson(doc, patchedJson, did, rid, &oldRid, policy, true);
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+    }
+  }
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  if (mptr._did == 0) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_errno(),
+                                               "cannot update document")));
   }
 
   string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -3391,11 +3508,11 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_update-document,updating a document}
+/// @TINYEXAMPLE{shell_replace-document,replacing a document}
 ///
 /// Use a document handle:
 ///
-/// @TINYEXAMPLE{shell_update-document-handle,updating a document}
+/// @TINYEXAMPLE{shell_replace-document-handle,replacing a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
@@ -3410,6 +3527,73 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   }
 
   return ReplaceVocbaseCol(collection->_vocbase, collection, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document
+///
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull})}
+///
+/// Updates an existing @FA{document}. The @FA{document} must be a document in
+/// the current collection. This document is then patched with the
+/// @FA{data} given as second argument. The optional @FA{overwrite} parameter can 
+/// be used to control the behavior in case of version conflicts (see below).
+/// The optional @FA{keepNull} parameter can be used to modify the behavior when
+/// handling @LIT{null} values. Normally, @LIT{null} values are stored in the
+/// database. By setting the @FA{keepNull} parameter to @LIT{false}, this behavior
+/// can be changed so that all attributes in @FA{data} with @LIT{null} values will 
+/// be removed from the target document.
+///
+/// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
+/// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
+/// updated document, the attribute @LIT{_rev} contains the document revision of
+/// the updated document, the attribute @LIT{_oldRev} contains the revision of
+/// the old (now replaced) document.
+///
+/// If there is a conflict, i. e. if the revision of the @LIT{document} does not
+/// match the revision in the collection, then an error is thrown.
+///
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, true)}
+///
+/// As before, but in case of a conflict, the conflict is ignored and the old
+/// document is overwritten.
+///
+/// @FUN{@FA{collection}.update(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Create and update a document:
+///
+/// @TINYEXAMPLE{shell_update-document,updating a document}
+///
+/// Use a document handle:
+///
+/// @TINYEXAMPLE{shell_update-document-handle,updating a document}
+///
+/// Use the keepNull parameter to remove attributes with null values:
+///
+/// @TINYEXAMPLE{shell_update-document-keep-null,updating a document}
+///
+/// Patching array values:
+///
+/// @TINYEXAMPLE{shell_update-document-array,updating a document}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return UpdateVocbaseCol(collection->_vocbase, collection, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3523,6 +3707,64 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   return scope.Close(v8::Number::New((int) status));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_LAST_WRITE;
+  TRI_voc_rid_t oldRid = 0;
+
+  TRI_vector_pointer_t documents;
+  TRI_InitVectorPointer(&documents, TRI_UNKNOWN_MEM_ZONE);
+
+  doc->beginWrite(collection->_collection);
+  
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const** end;
+
+  ptr = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table);
+  end = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc);
+  
+  // first, collect all document pointers by traversing the primary index
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr && (*ptr)->_deletion == 0) {
+      TRI_PushBackVectorPointer(&documents, (void*) *ptr);
+    }
+  }
+
+  // now delete all documents. this will modify the index as well
+  for (size_t i = 0; i < documents._length; ++i) {
+    TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
+    
+    int res = doc->destroy(doc, d->_did, d->_rid, &oldRid, policy, false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred, but we simply go on because truncate should remove all documents
+    }
+  }
+
+  doc->endWrite(collection->_collection);
+  
+  TRI_ReleaseCollection(collection);
+
+  TRI_DestroyVectorPointer(&documents);
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4068,7 +4310,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_update-document-db,updating a document}
+/// @TINYEXAMPLE{shell_replace-document-db,replacing a document}
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
@@ -4081,6 +4323,49 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
   }
 
   return ReplaceVocbaseCol(vocbase, 0, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document
+///
+/// @FUN{@FA{db}._update(@FA{document}, @FA{data})}
+///
+/// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
+/// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
+/// updated document, the attribute @LIT{_rev} contains the document revision of
+/// the updated document, the attribute @LIT{_oldRev} contains the revision of
+/// the old (now replaced) document.
+///
+/// If there is a conflict, i. e. if the revision of the @LIT{document} does not
+/// match the revision in the collection, then an error is thrown.
+///
+/// @FUN{@FA{db}._update(@FA{document}, @FA{data})}
+///
+/// As before, but in case of a conflict, the conflict is ignored and the old
+/// document is overwritten.
+///
+/// @FUN{@FA{db}._update(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Create and update a document:
+///
+/// @TINYEXAMPLE{shell_update-document-db,updating a document}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  return UpdateVocbaseCol(vocbase, 0, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4924,16 +5209,19 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
+  v8::Handle<v8::String> TruncateFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncate"));
   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
+  v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
 
   v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> _CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
   v8::Handle<v8::String> _CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
-  v8::Handle<v8::String> _RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("_remove"));
   v8::Handle<v8::String> _DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document"));
+  v8::Handle<v8::String> _RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("_remove"));
   v8::Handle<v8::String> _ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("_replace"));
+  v8::Handle<v8::String> _UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_update"));
 
   // .............................................................................
   // query types
@@ -4989,9 +5277,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
 
-  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
+  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
+  rt->Set(_UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbase));
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -5016,9 +5305,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateEdges));
 
-  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
+  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
+  rt->Set(_UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbase));
 
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -5091,11 +5381,13 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
 
-  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
+  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
+  rt->Set(UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbaseCol));
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("ArangoCollection"),
@@ -5142,8 +5434,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
+  rt->Set(UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbaseCol));
 
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
 

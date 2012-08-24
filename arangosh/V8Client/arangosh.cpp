@@ -32,6 +32,8 @@
 
 #include "build.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "BasicsC/csv.h"
 
 #include "Basics/ProgramOptions.h"
@@ -852,6 +854,37 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "httpPatch"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  // check params
+  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
+  }
+
+  v8::String::Utf8Value url(argv[0]);
+  v8::String::Utf8Value body(argv[1]);
+
+  // check header fields
+  map<string, string> headerFields;
+  if (argv.Length() > 2) {
+    objectToMap(headerFields, argv[2]);
+  }
+
+  return scope.Close(connection->patchData(*url, *body, headerFields));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1148,22 +1181,6 @@ static void addColors (v8::Handle<v8::Context> context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief property get interceptor for ArangoDatabase
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> DatabaseGetIntercept (v8::Local<v8::String> name,
-                                                   const v8::AccessorInfo& info) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::Object> self = info.Holder();
-  if (self->HasRealNamedProperty(name)) {
-    return scope.Close(self->GetRealNamedProperty(name));
-  }
-
-  return scope.Close(v8::ThrowException(v8::String::New("collection not found. try using db._collections() to the refresh collection list if you think the collection exists on the server.")));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1330,19 +1347,6 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(PrettyPrint));
   
  
-  // .............................................................................
-  // define base class with PropertyGet interceptor
-  // .............................................................................  
-  
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoDatabaseIntercepted"));
-  rt = ft->InstanceTemplate();
-  rt->SetNamedPropertyHandler(DatabaseGetIntercept);
-  context->Global()->Set(v8::String::New("ArangoDatabaseIntercepted"), ft->GetFunction());
-
-  
   // add colors for print.js
   addColors(context);
 
@@ -1360,6 +1364,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
     connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
+    connection_proto->Set("PATCH", v8::FunctionTemplate::New(ClientConnection_httpPatch));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
@@ -1470,6 +1475,7 @@ int main (int argc, char* argv[]) {
   }
 
   context->Global()->Set(v8::String::New("ARANGO_QUIET"), Quiet ? v8::True() : v8::False(), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("VALGRIND"), ((RUNNING_ON_VALGRIND) > 0) ? v8::True() : v8::False());
 
   // load all init files
   char const* files[] = {

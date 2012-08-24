@@ -88,8 +88,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
-        GeneralServerDispatcher (Scheduler* scheduler)
-          : GeneralServer<S, HF, CT>(scheduler),
+        GeneralServerDispatcher (Scheduler* scheduler, double keepAliveTimeout)
+          : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
             _dispatcher(0) {
         }
 
@@ -97,8 +97,8 @@ namespace triagens {
 /// @brief constructs a new general server
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher)
-          : GeneralServer<S, HF, CT>(scheduler),
+        GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher, double keepAliveTimeout)
+          : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
             _dispatcher(dispatcher) {
         }
 
@@ -289,7 +289,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleConnected (socket_t socket, ConnectionInfo& info) {
-          GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info);
+          GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, this->_keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
           this->_commTasks.insert(dynamic_cast<GeneralCommTask<S, HF>*>(task));
