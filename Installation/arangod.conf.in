@@ -5,6 +5,7 @@ directory= @DATABASE@
 
 [server]
 endpoint = tcp://localhost:8529
+disable-admin-interface = no
 admin-directory= @STATICFILES@/html/admin
 threads = 5
 

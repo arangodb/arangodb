@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    HANDLING EDGES
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellEdgeTOC
 ///
@@ -67,21 +71,29 @@
 ///
 /// @copydoc GlossaryEdgeCollection
 ///
+/// @CLEARPAGE
 /// @section ShellEdgeShell Working with Edges
 //////////////////////////////////////////////
 ///
 /// @anchor ShellEdgeCreate
 /// @copydetails JS_SaveEdgesCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellEdgeEdges
 /// @copydetails JS_EdgesQuery
 ///
+/// @CLEARPAGE
 /// @anchor ShellEdgeInEdges
 /// @copydetails JS_InEdgesQuery
 ///
+/// @CLEARPAGE
 /// @anchor ShellEdgeOutEdges
 /// @copydetails JS_OutEdgesQuery
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++

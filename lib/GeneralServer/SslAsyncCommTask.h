@@ -367,7 +367,7 @@ namespace triagens {
           }
 
           // we might have a new write buffer
-          this->scheduler->sendAsync(SocketTask::watcher);
+          this->scheduler->sendAsync(this->SocketTask::watcher);
 
           return true;
         }
