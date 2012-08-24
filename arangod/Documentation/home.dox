@@ -26,7 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Home ArangoDB
+/// @page Home ArangoDB (@VERSION)
+///
+/// @if XML
+/// @section ArangoDBVersion ArangoDB Version @VERSION
+/// @endif
 ///
 /// My colleagues and I started developing a document-store, which focuses on
 /// durability of the data taking advantage of new technologies like SSD,
@@ -40,36 +44,35 @@
 /// @xmlonly The HTML and PDF versions of the manual can be found <ulink url="http://www.arangodb.org/manuals">here</ulink>. @endxmlonly
 ///
 /// @warning
-/// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
-/// of May 2012, a multi server version is planned for the third quarter of
-/// 2012. The document is still far from complete. Please contact
-/// <a href="http://www.arangodb.org/connect">us</a>, if you have any questions.
+/// The documentation is still far from complete. Please contact <a
+/// href="http://www.arangodb.org/connect">us</a>, if you have any
+/// questions.
 ///
-/// @section ArangoDBUserManual ArgangoDB's User Manuals (Version @VERSION)
-///////////////////////////////////////////////////////////////////////////
+/// @section ArangoDBUserManual ArgangoDB's User Manuals
+////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref UserManual @ifnot XML @SPC(<a href="user-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref DbaManual @ifnot XML @SPC(<a href="dba-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref ImpManual @ifnot XML @SPC(<a href="imp-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref UserManual @ifnot XML @SPC[<a href="user-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref DbaManual @ifnot XML @SPC[<a href="dba-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC[<a href="imp-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 ///   @ifnot XML <li><a href="arangodb_1.0_shell_reference_card.pdf">Cheat Sheet</a></li> @endif
 /// </ul>
 /// 
-/// @section ArangoDBAdminManual ArangoDB's Administrator Manuals (Version @VERSION)
-////////////////////////////////////////////////////////////////////////////////////
+/// @section ArangoDBAdminManual ArangoDB's Administrator Manuals
+/////////////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref InstallManual @ifnot XML @SPC(<a href="install-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref InstallManual @ifnot XML @SPC[<a href="install-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
-/// @section ArangoDBAPIManual ArangoDB's Developer Manuals (Version @VERSION)
-//////////////////////////////////////////////////////////////////////////////
+/// @section ArangoDBAPIManual ArangoDB's Developer Manuals
+///////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="implementor-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref RefManual @ifnot XML @SPC(<a href="ref-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImplementorManual @ifnot XML @SPC[<a href="implementor-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref RefManual @ifnot XML @SPC[<a href="ref-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
