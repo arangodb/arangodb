@@ -85,8 +85,8 @@ namespace triagens {
         ApplicationEndpointServer (ApplicationServer*,
                                    ApplicationScheduler*,
                                    ApplicationDispatcher*,
-                                   std::string const& authenticationRealm,
-                                   HttpHandlerFactory::auth_fptr checkAuthentication);
+                                   std::string const&,
+                                   HttpHandlerFactory::auth_fptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -289,6 +289,34 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable authentication for ALL client requests
+///
+/// @CMDOPT{--server.disable-authentication @CA{value}}
+///
+/// Setting @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
+///
+/// The default value is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableAuthentication;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout for HTTP keep-alive
+///
+/// @CMDOPT{--server.keep-alive-timeout}
+///
+/// Allows to specify the timeout for HTTP keep-alive connections. The timeout
+/// value must be specified in seconds.
+/// Idle keep-alive connections will be closed by the server automatically when
+/// the timeout is reached. A keep-alive-timeout value 0 will disable the keep
+/// alive feature entirely.
+////////////////////////////////////////////////////////////////////////////////
+        
+        double _keepAliveTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keyfile containing server certificate

@@ -47,6 +47,7 @@
 ///     <ul>
 ///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
 ///      <li>@ref CommandLineArangoDisableAuthentication "server.disable-authentication"</li>
+///      <li>@ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"</li>
 ///      <li>@ref CommandLineArangoKeyFile "server.keyfile"</li>
 ///      <li>@ref CommandLineArangoCaFile "server.cafile"</li>
 ///      <li>@ref CommandLineArangoSslProtocol "server.ssl-protocol"</li>
@@ -168,7 +169,10 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
 /// @anchor CommandLineArangoDisableAuthentication
-/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
+/// @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+///
+/// @anchor CommandLineArangoKeepAliveTimeout
+/// @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 ///
 /// @anchor CommandLineArangoKeyFile
 /// @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile

@@ -274,20 +274,6 @@ namespace triagens {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disable authentication for ALL client requests
-///
-/// @CMDOPT{--server.disable-authentication @CA{value}}
-///
-/// Setting @CA{value} to true will turn off authentication on the server side
-/// so all clients can execute any action without authorisation and privilege
-/// checks.
-///
-/// The default value is @LIT{false}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _disableAuthentication;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
 /// @CMDOPT{--server.threads @CA{number}}

@@ -80,11 +80,12 @@ namespace triagens {
 
         HttpsServer (Scheduler* scheduler,
                      Dispatcher* dispatcher,
+                     double keepAliveTimeout,
                      HttpHandlerFactory* handlerFactory,
                      SSL_CTX* ctx) 
-        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler),
-          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
-          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory) {
+        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, keepAliveTimeout),
+          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory, ctx), 
+          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
