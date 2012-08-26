@@ -79,42 +79,9 @@
 /// @section HomeApi API
 ////////////////////////
 /// 
-/// @subsection HomeCLINQ C\# / LINQ
-///
-/// @subsection HomeD D
-///
-/// @@repeatedly has developed a driver for the programming language D:
-/// https://github.com/repeatedly/reed
-///
-/// @subsection HomeNodeJS Node.JS
-///
-/// There is a Node.JS client from Anders Elo available in a separate project:
-/// https://github.com/kaerus/arango-client
-/// 
-/// @subsection HomePerl Perl
-///
-/// @@hide_o_55 is currently developing a Perl client.
-///
-/// @subsection HomePHP PHP
-/// 
-/// There is a PHP client available in a separate project:
-/// https://github.com/triAGENS/ArangoDB-PHP
-///
-/// See also Packagist:
-/// http://packagist.org/packages/triagens/ArangoDb
-/// 
-/// @subsection HomePython Python
-///
-/// There is a Python client available in a separate project:
-/// https://github.com/joymax/arango-python
-/// 
-/// @subsection HomeRuby Ruby
-///
-/// There is a Ruby client available in a separate project:
-/// https://github.com/triAGENS/Ashikawa
-///
-/// A discussion group can be found here:
-/// https://groups.google.com/forum/#!forum/ashikawa
+/// Though arangoDB is yet a young project, a couple of people started
+/// to add APIs for different programming languages/frameworks. See
+/// http://www.arangodb.org/api
 ///
 /// @section HomeStayInContact Stay in Contact
 //////////////////////////////////////////////
