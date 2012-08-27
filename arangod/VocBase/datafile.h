@@ -160,7 +160,8 @@ typedef enum {
   TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
   TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
   TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
-  TRI_DOC_MARKER_EDGE               = 3006
+  TRI_DOC_MARKER_EDGE               = 3006,
+  TRI_DOC_MARKER_ATTACHMENT         = 3007
 }
 TRI_df_marker_type_e;
 

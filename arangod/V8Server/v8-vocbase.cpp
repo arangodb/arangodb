@@ -5122,6 +5122,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
     result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, marker->_fromDid));
     result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
   }
+  else if (type == TRI_DOC_MARKER_ATTACHMENT) {
+    TRI_doc_attachment_marker_t* marker = (TRI_doc_attachment_marker_t*) document->_data;
+
+    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
+  }
 
   // and return
   return scope.Close(result);
