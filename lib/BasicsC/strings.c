@@ -250,6 +250,7 @@ static void DecodeUnicodeEscape (char** dst, char const* src) {
   else if (n <= 0x7FF) {
     *(*dst)++ = 0xC0 + (n >> 6);
     *(*dst)   = 0x80 + (n & 0x3F);
+
   }
   else {
     *(*dst)++ = 0xE0 + (n >> 12);
@@ -1229,6 +1230,8 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
           *qtr = *ptr;
           break;
       }
+
+      continue;
     }
     
     *qtr = *ptr;
@@ -1237,7 +1240,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *qtr = '\0';
   *outLength = qtr - buffer;
 
- 
+
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters
   if (*outLength < (ptr - in)) {
