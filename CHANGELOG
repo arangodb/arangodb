@@ -1,7 +1,10 @@
-v1.0.0 (2012-08-17)
+v1.0.1 (2012-XX-XX)
 -------------------
 
 * fix for issue #163: server cannot create collection because of abandoned files
+
+v1.0.0 (2012-08-17)
+-------------------
 
 * fix for issue #157: check for readline and ncurses headers, not only libraries
 
