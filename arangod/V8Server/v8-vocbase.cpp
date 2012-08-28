@@ -1034,6 +1034,10 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   return scope.Close(v8::True());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a collection
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_type_e collectionType) {
   v8::HandleScope scope;
 
@@ -3831,6 +3835,59 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a parameter attribute of a collection
+///
+/// This function does evil things so it is hidden
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+  
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: setAttribute(<key>, <value>)")));
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  string key = TRI_ObjectToString(argv[0]);
+  string value = TRI_ObjectToString(argv[1]);
+
+  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_col_info_t info;
+  res = TRI_LoadParameterInfoCollection(collection->_path, &info);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (key == "type") {
+      info._type = (TRI_col_type_e) atoi(value.c_str());
+    }
+    else if (key == "version") {
+      info._version = atoi(value.c_str());
+    }
+    else {
+      res = TRI_ERROR_BAD_PARAMETER;
+    }
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_SaveParameterInfoCollection(collection->_path, &info);
+    }
+  }
+
+  TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed")));
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4005,6 +4062,31 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the version of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_col_info_t info;
+  int res = TRI_LoadParameterInfoCollection(collection->_path, &info);
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info")));
+  }
+
+  return scope.Close(v8::Number::New((int) info._version));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4054,8 +4136,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
   if (   key == "toString"
       || key == "toJSON"
-      || key == "hasOwnProperty"
-      || key[0] == '_') {
+      || key == "hasOwnProperty" // this prevents calling the property getter again (i.e. recursion!)
+      || key[0] == '_') { // hide system collections
     return v8::Handle<v8::Value>();
   }
 
@@ -5089,12 +5171,14 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> RenameFuncName = v8::Persistent<v8::String>::New(v8::String::New("rename"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
+  v8::Handle<v8::String> SetAttributeFuncName = v8::Persistent<v8::String>::New(v8::String::New("setAttribute"));
   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
   v8::Handle<v8::String> TruncateFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncate"));
   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
   v8::Handle<v8::String> TypeFuncName = v8::Persistent<v8::String>::New(v8::String::New("type"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
   v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
+  v8::Handle<v8::String> VersionFuncName = v8::Persistent<v8::String>::New(v8::String::New("version"));
 
   v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
@@ -5237,11 +5321,13 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
   rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
+  rt->Set(SetAttributeFuncName, v8::FunctionTemplate::New(JS_SetAttributeVocbaseCol), v8::DontEnum);
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(TypeFuncName, v8::FunctionTemplate::New(JS_TypeVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
+  rt->Set(VersionFuncName, v8::FunctionTemplate::New(JS_VersionVocbaseCol));
   
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
@@ -5318,6 +5404,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
                          TRI_WrapVocBase(vocbase),
                          v8::ReadOnly);
 
+  // DEPRECATED: only here for compatibility
   context->Global()->Set(v8::String::New("edges"),
                          TRI_WrapVocBase(vocbase),
                          v8::ReadOnly);

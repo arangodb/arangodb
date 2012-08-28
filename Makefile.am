@@ -178,6 +178,7 @@ noinst_LIBRARIES = \
 sbin_PROGRAMS = \
 	bin/arangod \
         bin/arango-password \
+        bin/arango-upgrade \
 	bin/arango-dfdb
 
 ################################################################################
@@ -338,7 +339,7 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 ### @brief arango password
 ################################################################################
 
-# exclude arango skrips from sources list
+# exclude arango skripts from sources list
 bin_arango_password_SOURCES =
 
 bin/arango-password: bin/arango-password.in
@@ -359,6 +360,32 @@ else
 endif
 
 CLEANUP += bin/arango-password
+
+################################################################################
+### @brief arango upgrade
+################################################################################
+
+# exclude arango skripts from sources list
+bin_arango_upgrade_SOURCES =
+
+bin/arango-upgrade: bin/arango-upgrade.in
+if ENABLE_RELATIVE_DEVEL
+	sed \
+		-e 's%@SBINDIR@%bin%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+else   
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
+		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
+		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
+		$< > $@
+	chmod 755 $@
+endif
+
+CLEANUP += bin/arango-upgrade
 
 ################################################################################
 ### @brief arango datafile debugger

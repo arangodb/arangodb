@@ -1078,18 +1078,12 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph(name, vertices, edges) {
-  var gdb = internal.db._collection("_graph"),
+  var gdb = internal.db._collection("_graphs"),
     graphProperties,
     graphPropertiesId;
 
   if (gdb === null) {
-    gdb = internal.db._create("_graph", {
-      waitForSync : true,
-      isSystem : true
-    });
-
-    // Currently buggy:
-    // gdb.ensureUniqueConstraint("name");
+    throw "_graphs collection does not exist. please run arango-upgrade";
   }
 
   if (typeof name !== "string" || name === "") {
@@ -1210,7 +1204,7 @@ function Graph(name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function () {
-  var gdb = internal.db._collection("_graph");
+  var gdb = internal.db._collection("_graphs");
 
   gdb.remove(this._properties);
 
