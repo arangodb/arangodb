@@ -1,6 +1,11 @@
 not released yet
 ----------------
 
+* added program arango-upgrade. This program must be run after installing ArangoDB
+  and after upgrading from a previous version of ArangoDB. The arango-upgrade script
+  will ensure all system collections are created and present in the correct state.
+  It will also perform any necessary data updates.
+
 * issue #153: edge collection should be a flag for a collection
   collections now have a type: the type can be queried in Javascript using the 
   <collection>.type() method. When new collections are created using 
