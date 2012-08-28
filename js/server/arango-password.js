@@ -45,9 +45,9 @@ function main (argv) {
 
   users = db._collection("_users");
 
-  if (db._collection("_users") == null) {
-    console.log("creating users collection '_users'");
-    users = db._create("_users", { isSystem: true, waitForSync: true });
+  if (users == null) {
+    console.error("users collection '_users' not available. please run arango-upgrade.");
+    return 2;
   }
 
   internal.output("\n");
