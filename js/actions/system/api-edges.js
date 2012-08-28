@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
 var actions = require("actions");
 var API = "/_api/edges";
 
@@ -77,7 +78,7 @@ function GET_edges (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = edges._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);

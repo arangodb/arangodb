@@ -378,7 +378,7 @@ void TRI_SynchroniserVocBase (void* data) {
       // for simple document collection, first sync and then seal
       type = doc->base._type;
 
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      if (TRI_IS_SIMPLE_COLLECTION(type)) {
         result = CheckSyncSimCollection((TRI_sim_collection_t*) doc);
         worked |= result;
 

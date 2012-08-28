@@ -615,7 +615,7 @@ void TRI_CompactorVocBase (void* data) {
       type = doc->base._type;
 
       // for simple document collection, compactify datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      if (TRI_IS_SIMPLE_COLLECTION(type)) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
           CompactifySimCollection((TRI_sim_collection_t*) doc);
         }
@@ -624,7 +624,7 @@ void TRI_CompactorVocBase (void* data) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // now release the lock and maybe unload the collection or some datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      if (TRI_IS_SIMPLE_COLLECTION(type)) {
         CleanupSimCollection((TRI_sim_collection_t*) doc);
       }
     }

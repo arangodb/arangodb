@@ -5,7 +5,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -64,8 +64,8 @@ function GraphCreationSuite() {
       graph = new Graph(graph_name, vertex, edge);
 
       assertEqual(graph_name, graph._properties.name);
-      assertTrue(graph._vertices instanceof ArangoCollection);
-      assertTrue(graph._edges instanceof ArangoEdgesCollection);
+      assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
+      assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
 
       graph.drop();
     },

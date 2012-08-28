@@ -197,7 +197,7 @@ TRI_index_t* TRI_LookupIndex (TRI_doc_collection_t* collection, TRI_idx_iid_t ii
   TRI_index_t* idx;
   size_t i;
 
-  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (! TRI_IS_SIMPLE_COLLECTION(collection->base._type)) {
     TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }

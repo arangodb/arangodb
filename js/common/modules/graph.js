@@ -35,7 +35,6 @@
 var internal = require("internal"),
   db = internal.db,
   ArangoCollection = internal.ArangoCollection,
-  ArangoEdgesCollection = internal.ArangoEdgesCollection,
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
 
@@ -48,7 +47,7 @@ findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._create(name);
-  } else if (!(col instanceof ArangoCollection)) {
+  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -64,12 +63,12 @@ findOrCreateCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 findOrCreateEdgeCollectionByName = function (name) {
-  var col = internal.edges._collection(name);
+  var col = internal.db._collection(name);
 
   if (col === null) {
-    col = internal.edges._create(name);
-  } else if (!(col instanceof ArangoEdgesCollection)) {
-    throw "<" + name + "> must be a document collection";
+    col = internal.db._createEdgeCollection(name);
+  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
+    throw "<" + name + "> must be an edge collection";
   }
 
   if (col === null) {
@@ -1121,7 +1120,7 @@ function Graph(name, vertices, edges) {
       throw "vertex collection '" + graphProperties.vertices + "' has vanished";
     }
 
-    edges = internal.edges._collection(graphProperties.edges);
+    edges = internal.db._collection(graphProperties.edges);
 
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
@@ -1732,7 +1731,6 @@ Graph.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.ArangoCollection = ArangoCollection;
-exports.ArangoEdgesCollection = ArangoEdgesCollection;
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;

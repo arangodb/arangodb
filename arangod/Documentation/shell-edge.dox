@@ -76,7 +76,7 @@
 //////////////////////////////////////////////
 ///
 /// @anchor ShellEdgeCreate
-/// @copydetails JS_SaveEdgesCol
+/// @copydetails SaveEdgeCol
 ///
 /// @CLEARPAGE
 /// @anchor ShellEdgeEdges

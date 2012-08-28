@@ -56,8 +56,8 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      edges._drop(en);
-      edge = edges._create(en, { waitForSync : false });
+      internal.db._drop(en);
+      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
 
       internal.db._drop(vn);
       vertex = internal.db._create(vn, { waitForSync : false });
@@ -73,30 +73,30 @@ function CollectionEdgeSuiteErrorHandling () {
     tearDown : function () {
       edge.unload();
 
+      console.log("waiting for collection '%s' to drop", en);
       while (edge.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-        console.log("waiting for collection '%s' to unload", en);
-        internal.wait(1);
+        internal.wait(0.25);
       }
 
       edge.drop();
 
       while (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
-        console.log("waiting for collection '%s' to drop", en);
-        internal.wait(1);
+        internal.wait(0.25);
       }
+
+      edge = null;
 
       vertex.unload();
 
+      console.log("waiting for collection '%s' to drop", vn);
       while (vertex.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-        console.log("waiting for collection '%s' to unload", vn);
-        internal.wait(1);
+        internal.wait(0.25);
       }
 
       vertex.drop();
 
       while (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
-        console.log("waiting for collection '%s' to drop", vn);
-        internal.wait(1);
+        internal.wait(0.25);
       }
     },
 
@@ -147,8 +147,9 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      edges._drop(en);
-      edge = edges._create(en, { waitForSync : false });
+      internal.db._drop(en);
+      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
+      assertEqual(ArangoCollection.TYPE_EDGE, edge.type());
 
       internal.db._drop(vn);
       vertex = internal.db._create(vn, { waitForSync : false });
@@ -164,6 +165,7 @@ function CollectionEdgeSuite () {
     tearDown : function () {
       edge.drop();
       vertex.drop();
+      edge = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,7 +437,28 @@ function CollectionEdgeSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid collection type for edges
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesCollectionTypeInvalid : function () {
+      var dn = "UnitTestsCollectionInvalid";
+
+      internal.db._drop(dn);
+      var c = internal.db._create(dn);
+      
+      try {
+        var e = c.edges("the fox");
+      } 
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+
+      internal.db._drop(dn);
     }
+
   };
 }
 

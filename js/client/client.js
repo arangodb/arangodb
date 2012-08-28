@@ -933,16 +933,19 @@ function ArangoCollection (database, data) {
     this._id = null;
     this._name = data;
     this._status = null;
+    this._type = null;
   }
   else if (data !== undefined) {
     this._id = data.id;
     this._name = data.name;
     this._status = data.status;
+    this._type = data.type;
   }
   else {
     this._id = null;
     this._name = null;
     this._status = null;
+    this._type = null;
   }
 }
 
@@ -1002,6 +1005,24 @@ function ArangoCollection (database, data) {
   ArangoCollection.STATUS_DELETED = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief document collection
+////////////////////////////////////////////////////////////////////////////////
+  
+  ArangoCollection.TYPE_DOCUMENT = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.TYPE_EDGE = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attachment collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.TYPE_ATTACHMENT = 4;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1026,6 +1047,7 @@ function ArangoCollection (database, data) {
   'Administration Functions:                                           ' + "\n" +
   '  name()                          collection name                   ' + "\n" +
   '  status()                        status of the collection          ' + "\n" +
+  '  type()                          type of the collection            ' + "\n" +
   '  truncate()                      delete all documents              ' + "\n" +
   '  properties()                    show collection properties        ' + "\n" +
   '  drop()                          delete a collection               ' + "\n" +
@@ -1062,7 +1084,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype._PRINT = function () {  
-    var status = "unknown";
+    var status = type = "unknown";
 
     switch (this.status()) {
       case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
@@ -1073,11 +1095,18 @@ function ArangoCollection (database, data) {
       case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
     }
 
+    switch (this.type()) {
+      case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
+      case ArangoCollection.TYPE_EDGE: type = "edge"; break;
+      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
+    }
+
     internal.output("[ArangoCollection ",
                     this._id, 
                     ", \"", 
                     this.name(), 
-                    "\" (status ",
+                    "\" (type ",
+                    type, ", status ",
                     status,
                     ")]");
   };
@@ -1136,6 +1165,20 @@ function ArangoCollection (database, data) {
 
     // return the correct result
     return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the type of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.type = function () {
+    var result;
+
+    if (this._type === null) {
+      this.refresh();
+    }
+
+    return this._type;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1637,6 +1680,7 @@ function ArangoCollection (database, data) {
 
     this._name = requestResult['name'];
     this._status = requestResult['status'];
+    this._type = requestResult['type'];
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1714,10 +1758,42 @@ function ArangoCollection (database, data) {
 /// @brief save a document in the collection, return its id
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.save = function (data) {    
-    var requestResult = this._database._connection.POST(
-      "/_api/document?collection=" + encodeURIComponent(this._id),
-      JSON.stringify(data));
+  ArangoCollection.prototype.save = function () {
+    var requestResult;
+    var type = this.type();
+    
+    if (type == undefined) {
+      type = ArangoCollection.TYPE_DOCUMENT;
+    }
+
+    if (type == ArangoCollection.TYPE_DOCUMENT) { 
+      var data = arguments[0];
+
+      requestResult = this._database._connection.POST(
+        "/_api/document?collection=" + encodeURIComponent(this._id),
+        JSON.stringify(data));
+    }
+    else if (type == ArangoCollection.TYPE_EDGE) {
+      var from = arguments[0];
+      var to = arguments[1];
+      var data = arguments[2];
+
+      if (from.hasOwnProperty("_id")) {
+        from = from._id;
+      }
+
+      if (to.hasOwnProperty("_id")) {
+        to = to._id;
+      }
+
+      var url = "/_api/edge?collection=" + encodeURIComponent(this._id)
+              + "&from=" + encodeURIComponent(from)
+              + "&to=" + encodeURIComponent(to);
+
+      requestResult = this._database._connection.POST(
+        url,
+        JSON.stringify(data));
+    }
 
     client.checkRequestResult(requestResult);
 
@@ -1881,6 +1957,104 @@ function ArangoCollection (database, data) {
     client.checkRequestResult(requestResult);
 
     return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges starting or ending in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.edges = function (vertex) {
+    // if vertex is a list, iterator and concat
+    if (vertex instanceof Array) {
+      var edges = [];
+      var i;
+
+      for (i = 0;  i < vertex.length;  ++i) {
+        var e = this.edges(vertex[i]);
+
+        edges.push.apply(edges, e);
+      }
+
+      return edges;
+    }
+
+    if (vertex.hasOwnProperty("_id")) {
+      vertex = vertex._id;
+    }
+
+    // get the edges
+    var requestResult = this._database._connection.GET(
+      "/_api/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult['edges'];
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges ending in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.inEdges = function (vertex) {
+    // if vertex is a list, iterator and concat
+    if (vertex instanceof Array) {
+      var edges = [];
+      var i;
+
+      for (i = 0;  i < vertex.length;  ++i) {
+        var e = this.inEdges(vertex[i]);
+
+        edges.push.apply(edges, e);
+      }
+
+      return edges;
+    }
+
+    if (vertex.hasOwnProperty("_id")) {
+      vertex = vertex._id;
+    }
+
+    // get the edges
+    var requestResult = this._database._connection.GET(
+      "/_api/edges/" + encodeURIComponent(this._id)
+      + "?direction=in&vertex=" + encodeURIComponent(vertex));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult['edges'];
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges starting in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.outEdges = function (vertex) {
+    // if vertex is a list, iterator and concat
+    if (vertex instanceof Array) {
+      var edges = [];
+      var i;
+
+      for (i = 0;  i < vertex.length;  ++i) {
+        var e = this.outEdges(vertex[i]);
+
+        edges.push.apply(edges, e);
+      }
+
+      return edges;
+    }
+
+    if (vertex.hasOwnProperty("_id")) {
+      vertex = vertex._id;
+    }
+
+    // get the edges
+    var requestResult = this._database._connection.GET(
+      "/_api/edges/" + encodeURIComponent(this._id)
+      + "?direction=out&vertex=" + encodeURIComponent(vertex));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult['edges'];
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2051,9 +2225,10 @@ function ArangoDatabase (connection) {
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoDatabase.prototype._create = function (name, properties) {
+  ArangoDatabase.prototype._create = function (name, properties, type) {
     var body = {
-      "name" : name
+      "name" : name,
+      "type" : ArangoCollection.TYPE_DOCUMENT
     };
 
     if (properties !== undefined) {
@@ -2070,6 +2245,10 @@ function ArangoDatabase (connection) {
       }
     }
 
+    if (type != undefined && type == ArangoCollection.TYPE_EDGE) {
+      body.type = type;
+    }
+
     var requestResult = this._connection.POST(
       "/_api/collection",
       JSON.stringify(body));
@@ -2084,6 +2263,22 @@ function ArangoDatabase (connection) {
     }
   
     return undefined;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new document collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._createDocumentCollection = function (name, properties) {
+    return this._create(name, properties, ArangoCollection.TYPE_DOCUMENT);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new edges collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._createEdgeCollection = function (name, properties) {
+    return this._create(name, properties, ArangoCollection.TYPE_EDGE);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2403,334 +2598,6 @@ function ArangoDatabase (connection) {
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             ArangoEdgesCollection
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoEdgesCollection (database, data) {
-  this._database = database;
-
-  if (typeof data === "string") {
-    this._name = data;
-  }
-  else {
-    this._id = data.id;
-    this._name = data.name;
-    this._status = data.status;
-  }
-}
-
-ArangoEdgesCollection.prototype = new ArangoCollection();
-
-(function () {
-  var internal = require("internal");
-  var client = require("arangosh");
-
-  internal.ArangoEdgesCollection = ArangoEdgesCollection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief help for ArangoCollection
-////////////////////////////////////////////////////////////////////////////////
-
-  client.helpArangoEdgesCollection = client.createHelpHeadline("ArangoEdgesCollection help") +
-  'ArangoEdgesCollection constructor:                                  ' + "\n" +
-  ' > col = edges.mycoll;                                              ' + "\n" +
-  ' > col = db._create("mycoll");                                      ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  _database                       database object                   ' + "\n" +
-  '  _id                             collection identifier             ';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype.toString = function () {  
-    return client.getIdString(this, "ArangoEdgesCollection");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype._PRINT = function () {  
-    var status = "unknown";
-
-    switch (this.status()) {
-      case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
-      case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-      case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
-      case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
-      case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-      case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
-    }
-
-    internal.output("[ArangoEdgesCollection ",
-                    this._id,
-                    ", \"",
-                    this.name(),
-                    "\" (status " + status + ")]");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for ArangoCollection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype._help = function () {  
-    internal.print(client.helpArangoEdgesCollection);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save a document in the collection, return its id
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype.save = function (from, to, data) {    
-    if (from.hasOwnProperty("_id")) {
-      from = from._id;
-    }
-
-    if (to.hasOwnProperty("_id")) {
-      to = to._id;
-    }
-
-    var url = "/_api/edge?collection=" + encodeURIComponent(this._id)
-            + "&from=" + encodeURIComponent(from)
-            + "&to=" + encodeURIComponent(to);
-
-    var requestResult = this._database._connection.POST(
-      url,
-      JSON.stringify(data));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the edges starting or ending in a vertex
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype.edges = function (vertex) {
-
-    // if vertex is a list, iterator and concat
-    if (vertex instanceof Array) {
-      var edges = [];
-      var i;
-
-      for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.edges(vertex[i]);
-
-        edges.push.apply(edges, e);
-      }
-
-      return edges;
-    }
-
-    if (vertex.hasOwnProperty("_id")) {
-      vertex = vertex._id;
-    }
-
-    // get the edges
-    var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult['edges'];
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the edges ending in a vertex
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype.inEdges = function (vertex) {
-
-    // if vertex is a list, iterator and concat
-    if (vertex instanceof Array) {
-      var edges = [];
-      var i;
-
-      for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.inEdges(vertex[i]);
-
-        edges.push.apply(edges, e);
-      }
-
-      return edges;
-    }
-
-    if (vertex.hasOwnProperty("_id")) {
-      vertex = vertex._id;
-    }
-
-    // get the edges
-    var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id)
-      + "?direction=in&vertex=" + encodeURIComponent(vertex));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult['edges'];
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the edges starting in a vertex
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdgesCollection.prototype.outEdges = function (vertex) {
-
-    // if vertex is a list, iterator and concat
-    if (vertex instanceof Array) {
-      var edges = [];
-      var i;
-
-      for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.outEdges(vertex[i]);
-
-        edges.push.apply(edges, e);
-      }
-
-      return edges;
-    }
-
-    if (vertex.hasOwnProperty("_id")) {
-      vertex = vertex._id;
-    }
-
-    // get the edges
-    var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id)
-      + "?direction=out&vertex=" + encodeURIComponent(vertex));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult['edges'];
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-}());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ArangoEdges
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoEdges (connection) {
-  this._connection = connection;
-  this._collectionConstructor = ArangoEdgesCollection;
-}
-
-ArangoEdges.prototype = new ArangoDatabase();
-
-(function () {
-  var internal = require("internal");
-  var client = require("arangosh");
-
-  internal.ArangoEdges = ArangoEdges;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief help for ArangoEdges
-////////////////////////////////////////////////////////////////////////////////
-
-  client.helpArangoEdges = client.createHelpHeadline("ArangoEdges help") +
-  'ArangoEdges constructor:                                            ' + "\n" +
-  ' > edges = new ArangoEdges(connection);                             ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Administration Functions:                                           ' + "\n" +
-  '  _help();                       this help                          ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  <collection names>             collection with the given name     ';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for ArangoEdges
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdges.prototype._help = function () {  
-    internal.print(client.helpArangoEdges);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the database object
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoEdges.prototype.toString = function () {  
-    return "[object ArangoEdges]";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-}());
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                      initialisers
 // -----------------------------------------------------------------------------
 
@@ -2751,7 +2618,6 @@ ArangoEdges.prototype = new ArangoDatabase();
   'Predefined objects:                                                 ' + "\n" +
   '  arango:                                ArangoConnection           ' + "\n" +
   '  db:                                    ArangoDatabase             ' + "\n" +
-  '  edges:                                 ArangoEdges                ' + "\n" +
   'Example:                                                            ' + "\n" +
   ' > db._collections();                    list all collections       ' + "\n" +
   ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
@@ -2822,11 +2688,10 @@ ArangoEdges.prototype = new ArangoDatabase();
 
       // default databases
       db = internal.db = new ArangoDatabase(arango);
-      edges = internal.edges = new ArangoEdges(arango);
+      edges = internal.edges = db;
 
       // load collection data
       internal.db._collections();
-      internal.edges._collections();
 
       // load simple queries
       require("simple-query");

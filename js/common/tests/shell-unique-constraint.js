@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -68,16 +68,15 @@ function UniqueConstraintSuite() {
   tearDown : function () {
     collection.unload();
 
+    console.log("waiting for collection '%s' to drop", cn);
     while (collection.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-      console.log("waiting for collection '%s' to unload", cn);
-      internal.wait(1);
+      internal.wait(0.25);
     }
 
     collection.drop();
 
     while (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
-      console.log("waiting for collection '%s' to drop", cn);
-      internal.wait(1);
+      internal.wait(0.25);
     }
   },
 

@@ -911,7 +911,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   TRI_col_parameter_t parameter;
   bool ok;
 
-  TRI_InitParameterCollection(vocbase, &parameter, name, SHAPER_DATAFILE_SIZE);
+  TRI_InitParameterCollection(vocbase, &parameter, name, TRI_COL_TYPE_BLOB, SHAPER_DATAFILE_SIZE);
   // override wait for sync for shapes
   parameter._waitForSync = waitForSync;
 

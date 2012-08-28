@@ -456,11 +456,12 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
                                   TRI_col_parameter_t* parameter,
                                   char const* name,
+                                  TRI_col_type_e type,
                                   TRI_voc_size_t maximalSize) {
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_parameter_t));
 
-  parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
+  parameter->_type = type;
 
   parameter->_waitForSync = vocbase->_defaultWaitForSync;
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
@@ -518,7 +519,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   // simple collection use the collection identifier
-  else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  else if (TRI_IS_SIMPLE_COLLECTION(parameter->_type)) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
     if (tmp1 == NULL) {
       LOG_ERROR("cannot create collection '%s', out of memory", path);
@@ -807,7 +808,7 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
                                        TRI_col_parameter_t const* parameter) {
   TRI_col_info_t info;
 
-  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
   }
 
@@ -833,7 +834,7 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
     info._waitForSync = collection->_waitForSync;
   }
 
-  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
     TRI_sim_collection_t* simCollection = (TRI_sim_collection_t*) collection;
 
     if (simCollection->base._shaper != NULL) {
