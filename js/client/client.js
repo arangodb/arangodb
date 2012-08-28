@@ -2620,7 +2620,7 @@ function ArangoDatabase (connection) {
   '  db:                                    ArangoDatabase             ' + "\n" +
   'Example:                                                            ' + "\n" +
   ' > db._collections();                    list all collections       ' + "\n" +
-  ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
+  ' > db.<coll_name>.all().toArray();       list all documents         ' + "\n" +
   ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
   ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
