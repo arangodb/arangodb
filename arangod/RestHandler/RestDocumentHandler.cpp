@@ -264,10 +264,9 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
+  int res = useCollection(collection, getCollectionType(), create);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -287,7 +286,7 @@ bool RestDocumentHandler::createDocument () {
   // outside write transaction
   // .............................................................................
 
-  // release collection and free json
+  // release collection
   releaseCollection();
 
   // generate result
@@ -408,11 +407,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string collection = suffix[0];
   string did = suffix[1];
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -497,16 +495,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
-
   // extract the cid
   bool found;
   string collection = _request->value("collection", found);
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -753,11 +749,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -934,11 +929,10 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 

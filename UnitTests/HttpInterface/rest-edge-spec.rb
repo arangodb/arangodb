@@ -64,16 +64,19 @@ describe ArangoDB do
 
     context "known collection name:" do
       before do
-	@cn = "UnitTestsCollectionEdge"
-	@cid = ArangoDB.create_collection(@cn, true, 3) # type 3 = edge collection
+	@ce = "UnitTestsCollectionEdge"
+	@eid = ArangoDB.create_collection(@ce, true, 3) # type 3 = edge collection
+	@cv = "UnitTestsCollectionVertex"
+	@vid = ArangoDB.create_collection(@cv, true, 2) # type 2 = document collection
       end
 
       after do
-	ArangoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@ce)
+	ArangoDB.drop_collection(@cv)
       end
 
       it "creating an edge" do
-	cmd = "/_api/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@vid}"
 
 	# create first vertex
 	body = "{ \"a\" : 1 }"
@@ -96,7 +99,7 @@ describe ArangoDB do
 	id2 = doc.parsed_response['_id']
 
 	# create edge
-	cmd = "/_api/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -117,7 +120,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
 	# create another edge
-	cmd = "/_api/edge?collection=#{@cid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}"
 	body = "{ \"e\" : 1 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -139,7 +142,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# create third edge
-	cmd = "/_api/edge?collection=#{@cid}&from=#{id2}&to=#{id1}"
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id2}&to=#{id1}"
 	body = "{ \"e\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -161,7 +164,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# check ANY edges
-	cmd = "/_api/edges/#{@cid}?vertex=#{id1}"
+	cmd = "/_api/edges/#{@eid}?vertex=#{id1}"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-any", cmd);
 
 	doc.code.should eq(200)
@@ -169,7 +172,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(3)
 
 	# check IN edges
-	cmd = "/_api/edges/#{@cid}?vertex=#{id1}&direction=in"
+	cmd = "/_api/edges/#{@eid}?vertex=#{id1}&direction=in"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-in", cmd);
 
 	doc.code.should eq(200)
@@ -177,7 +180,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(1)
 
 	# check OUT edges
-	cmd = "/_api/edges/#{@cid}?vertex=#{id1}&direction=out"
+	cmd = "/_api/edges/#{@eid}?vertex=#{id1}&direction=out"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-out", cmd);
 
 	doc.code.should eq(200)

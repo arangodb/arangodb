@@ -641,7 +641,9 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 /// @brief bears a new collection or returns an existing one by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char const* name) {
+static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                                 char const* name,
+                                                 TRI_col_type_e type) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
   TRI_vocbase_col_t* collection;
   TRI_col_parameter_t parameter;
@@ -685,7 +687,7 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
   }
 
   // create a new collection
-  collection = AddCollection(vocbase, TRI_COL_TYPE_SIMPLE_DOCUMENT, name, TRI_NewTickVocBase(), NULL);
+  collection = AddCollection(vocbase, type, name, TRI_NewTickVocBase(), NULL);
 
   if (collection == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -780,6 +782,33 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     return TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a collection by name or creates it
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
+                                                       char const* name, 
+                                                       bool bear, 
+                                                       TRI_col_type_e type) {
+  union { void const* v; TRI_vocbase_col_t* c; } found;
+
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  if (found.v != NULL) {
+    return found.c;
+  }
+
+  if (! bear) {
+    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return NULL;
+  }
+
+  return BearCollectionVocBase(vocbase, name, type);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads an existing (document) collection
@@ -1320,26 +1349,27 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a (document) collection by name
+/// @brief finds a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  return TRI_FindDocumentCollectionByNameVocBase(vocbase, name, bear);
+}
 
-  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
-  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a document collection by name
+////////////////////////////////////////////////////////////////////////////////
 
-  if (found.v != NULL) {
-    return found.c;
-  }
+TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
+  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_SIMPLE_DOCUMENT);
+}
 
-  if (! bear) {
-    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return NULL;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an edge collection by name
+////////////////////////////////////////////////////////////////////////////////
 
-  return BearCollectionVocBase(vocbase, name);
+TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
+  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_SIMPLE_EDGE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
