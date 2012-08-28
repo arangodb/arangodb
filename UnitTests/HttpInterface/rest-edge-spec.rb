@@ -65,7 +65,7 @@ describe ArangoDB do
     context "known collection name:" do
       before do
 	@cn = "UnitTestsCollectionEdge"
-	@cid = ArangoDB.create_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn, true, 3) # type 3 = edge collection
       end
 
       after do

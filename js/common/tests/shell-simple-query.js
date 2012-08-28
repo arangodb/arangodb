@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class

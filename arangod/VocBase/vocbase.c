@@ -212,7 +212,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  if (collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (! TRI_IS_SIMPLE_COLLECTION(collection->_collection->base._type)) {
     LOG_ERROR("cannot unload collection '%s' of type '%d'",
               collection->_name,
               (int) collection->_collection->base._type);
@@ -279,7 +279,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    if (collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    if (! TRI_IS_SIMPLE_COLLECTION(collection->_collection->base._type)) {
       LOG_ERROR("cannot drop collection '%s' of type '%d'",
                 collection->_name,
                 (int) collection->_collection->base._type);
@@ -442,7 +442,7 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
-                                         TRI_col_type_t type,
+                                         TRI_col_type_e type,
                                          char const* name,
                                          TRI_voc_cid_t cid,
                                          char const* path) {
@@ -458,7 +458,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
 
   collection->_vocbase = vocbase;
-  collection->_type = type;
+  collection->_type = (TRI_col_type_t) type;
   TRI_CopyString(collection->_name, name, sizeof(collection->_name));
   if (path == NULL) {
     collection->_path = NULL;
@@ -516,7 +516,6 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
 static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
   TRI_vector_string_t files;
-  TRI_col_type_e type;
   regmatch_t matches[2];
   regex_t re;
   int res;
@@ -599,9 +598,9 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         }
       }
       else {
-        type = info._type;
+        TRI_col_type_e type = (TRI_col_type_e) info._type;
 
-        if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+        if (TRI_IS_SIMPLE_COLLECTION(type)) {
           TRI_vocbase_col_t* c;
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
@@ -745,15 +744,15 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
   // manifest the collection
   // .............................................................................
 
-  type = collection->_type;
+  type = (TRI_col_type_e) collection->_type;
 
-  if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(type)) {
     TRI_sim_collection_t* sim;
     TRI_col_parameter_t parameter;
 
-    TRI_InitParameterCollection(vocbase, &parameter, collection->_name, vocbase->_defaultMaximalSize);
+    TRI_InitParameterCollection(vocbase, &parameter, collection->_name, type, vocbase->_defaultMaximalSize);
 
-    parameter._type = type;
+    parameter._type = (TRI_col_type_t) type;
 
     sim = TRI_CreateSimCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
@@ -880,9 +879,9 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    type = collection->_type;
+    type = (TRI_col_type_e) collection->_type;
 
-    if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    if (TRI_IS_SIMPLE_COLLECTION(type)) {
       TRI_sim_collection_t* sim;
 
       sim = TRI_OpenSimCollection(vocbase, collection->_path);
@@ -902,7 +901,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
       // release the WRITE lock and try again
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     
-      // TODO: might this cause endless recursion in some obscure cases??
       return LoadCollectionVocBase(vocbase, collection);
     }
     else {
@@ -1405,9 +1403,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   doc = NULL;
-  type = parameter->_type;
+  type = (TRI_col_type_e) parameter->_type;
 
-  if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(type)) {
     TRI_sim_collection_t* sim;
 
     sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, cid);
@@ -1422,7 +1420,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   else {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    LOG_ERROR("unknown collection type: %d", parameter->_type);
+    LOG_ERROR("unknown collection type: %d", (int) parameter->_type);
 
     TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
@@ -1436,7 +1434,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                              doc->base._directory);
 
   if (collection == NULL) {
-    if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    if (TRI_IS_SIMPLE_COLLECTION(type)) {
       TRI_CloseSimCollection((TRI_sim_collection_t*) doc);
       TRI_FreeSimCollection((TRI_sim_collection_t*) doc);
     }

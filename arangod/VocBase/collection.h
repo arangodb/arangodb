@@ -92,10 +92,30 @@ extern "C" {
 #define TRI_COL_VERSION         (1)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximal path length
+/// @brief collection meta info filename
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COL_PARAMETER_FILE  "parameter.json"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the collection is a simple collection
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_IS_SIMPLE_COLLECTION(type) \
+  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE || (type) == TRI_COL_TYPE_SIMPLE_ATTACHMENT)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -147,7 +167,9 @@ typedef uint32_t TRI_col_version_t;
 
 typedef enum {
   TRI_COL_TYPE_BLOB = 1,
-  TRI_COL_TYPE_SIMPLE_DOCUMENT = 2
+  TRI_COL_TYPE_SIMPLE_DOCUMENT = 2,
+  TRI_COL_TYPE_SIMPLE_EDGE = 3,
+  TRI_COL_TYPE_SIMPLE_ATTACHMENT = 4
 }
 TRI_col_type_e;
 
@@ -158,7 +180,7 @@ TRI_col_type_e;
 typedef struct TRI_col_header_marker_s {
   TRI_df_marker_t base;
 
-  TRI_col_type_t _type;
+  TRI_col_type_e _type;
   TRI_voc_cid_t _cid;
 }
 TRI_col_header_marker_t;
@@ -168,7 +190,7 @@ TRI_col_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_parameter_s {
-  TRI_col_type_e _type;              // collection type
+  TRI_col_type_t _type;              // collection type
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
@@ -185,7 +207,7 @@ TRI_col_parameter_t;
 
 typedef struct TRI_col_info_s {
   TRI_col_version_t _version;        // collection version
-  TRI_col_type_t _type;              // collection type
+  TRI_col_type_e _type;              // collection type
   TRI_voc_cid_t _cid;                // collection identifier
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
@@ -202,7 +224,7 @@ TRI_col_info_t;
 
 typedef struct TRI_collection_s {
   TRI_col_version_t _version;        // collection version, will be set
-  TRI_col_type_t _type;              // collection type, will be set
+  TRI_col_type_e _type;              // collection type, will be set
   TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
@@ -247,6 +269,7 @@ TRI_collection_t;
 void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
                                   TRI_col_parameter_t*,
                                   char const* name,
+                                  TRI_col_type_e type,
                                   TRI_voc_size_t maximalSize);
 
 ////////////////////////////////////////////////////////////////////////////////

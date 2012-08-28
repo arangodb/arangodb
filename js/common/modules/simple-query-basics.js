@@ -27,7 +27,6 @@
 
 var internal = require("internal");
 var ArangoCollection = internal.ArangoCollection;
-var ArangoEdgesCollection = internal.ArangoEdgesCollection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
@@ -549,8 +548,6 @@ ArangoCollection.prototype.all = function () {
   return new SimpleQueryAll(this);
 }
 
-ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,8 +790,6 @@ ArangoCollection.prototype.byExample = function () {
   return new SimpleQueryByExample(this, example);
 }
 
-ArangoEdgesCollection.prototype.byExample = ArangoCollection.prototype.byExample;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,8 +895,6 @@ ArangoCollection.prototype.range = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 0);
 }
 
-ArangoEdgesCollection.prototype.range = ArangoCollection.prototype.range;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a closed range query for a collection
 ///
@@ -927,8 +920,6 @@ ArangoEdgesCollection.prototype.range = ArangoCollection.prototype.range;
 ArangoCollection.prototype.closedRange = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 1);
 }
-
-ArangoEdgesCollection.prototype.closedRange = ArangoCollection.prototype.closedRange;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1092,8 +1083,6 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
   return new SimpleQueryGeo(this, idx.id);
 }
-
-ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1267,8 +1256,6 @@ SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 ArangoCollection.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this, lat, lon);
 }
-
-ArangoEdgesCollection.prototype.near = ArangoCollection.prototype.near;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1453,8 +1440,6 @@ SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this, lat, lon, radius);
 }
-
-ArangoEdgesCollection.prototype.within = ArangoCollection.prototype.within;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

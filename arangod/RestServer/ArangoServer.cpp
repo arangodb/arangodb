@@ -941,9 +941,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 #ifdef TRI_ENABLE_MRUBY
 
 struct RClass* ArangoDatabaseClass;
-struct RClass* ArangoEdgesClass;
 struct RClass* ArangoCollectionClass;
-struct RClass* ArangoEdgesCollectionClass;
 
 mrb_value MR_ArangoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
   printf("initializer of ArangoDatabase called\n");
@@ -999,9 +997,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   // setup the classes
 #if 0
   struct RClass* ArangoDatabaseClass = mrb_define_class(mrb, "ArangoDatabase", mrb->object_class);
-  struct RClass* ArangoEdgesClass = mrb_define_class(mrb, "ArangoEdges", mrb->object_class);
   struct RClass* ArangoCollectionClass = mrb_define_class(mrb, "ArangoCollection", mrb->object_class);
-  struct RClass* ArangoEdgesCollectionClass = mrb_define_class(mrb, "ArangoEdgesCollection", mrb->object_class);
 
   // add an initializer (for TESTING only)
   mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Inialize, ARGS_ANY());

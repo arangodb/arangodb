@@ -133,6 +133,8 @@ extern "C" {
 /// - 1217: @CODE{collection must be unloaded}
 ///   Will be raised when a collection should be unloaded, but has a different
 ///   status.
+/// - 1218: @CODE{collection type invalid}
+///   Will be raised when an invalid collection type is used in a request.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -900,6 +902,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          (1217)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1218: ERROR_ARANGO_COLLECTION_TYPE_INVALID
+///
+/// collection type invalid
+///
+/// Will be raised when an invalid collection type is used in a request.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

@@ -1,6 +1,21 @@
 not released yet
 ----------------
 
+* issue #153: edge collection should be a flag for a collection
+  collections now have a type: the type can be queried in Javascript using the 
+  <collection>.type() method. When new collections are created using 
+  db._create(), they will be document collections by default. To explicitly
+  create a document collection, use db._createDocumentCollection(). To
+  create an edge collection, use db._createEdgeCollection(). The previous
+  functionality to create edge collections via edges._create() has been removed.
+  The distinction between document and edge collections is now done at runtime
+  using a collection's type value, and not by addressing collections via two 
+  different base objects (db.* and edges.*).
+  The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
+  completely.
+  All internal and test code has been adjusted for this, however, client code
+  that uses edges.* must be adjusted to use db.* instead.
+
 * issue #110: added support for partial updates
 
   The REST API for documents now offers a HTTP PATCH method to partially update
