@@ -1,4 +1,4 @@
-arango> edges.relation.outEdges("86294/1528086");
+arango> db.relation.outEdges("86294/1528086");
 [
   {
     "_id" : "1659158/3100950",
@@ -9,5 +9,5 @@ arango> edges.relation.outEdges("86294/1528086");
     "knows"
   }
 ]
-arango> edges.relation.outEdges("86294/1593622");
+arango> db.relation.outEdges("86294/1593622");
 [ ]
