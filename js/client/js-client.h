@@ -2645,7 +2645,7 @@ static string JS_client_client =
   "  '  edges:                                 ArangoEdges                ' + \"\\n\" +\n"
   "  'Example:                                                            ' + \"\\n\" +\n"
   "  ' > db._collections();                    list all collections       ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.all();                 list all documents         ' + \"\\n\" +\n"
+  "  ' > db.<coll_name>.all().toArray();       list all documents         ' + \"\\n\" +\n"
   "  ' > id = db.<coll_name>.save({ ... });    save a document            ' + \"\\n\" +\n"
   "  ' > db.<coll_name>.remove(<_id>);         delete a document          ' + \"\\n\" +\n"
   "  ' > db.<coll_name>.document(<_id>);       get a document             ' + \"\\n\" +\n"
