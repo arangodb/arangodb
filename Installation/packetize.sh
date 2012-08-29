@@ -19,9 +19,9 @@ runlevels="035"
 curl_version="curl -s -o - http://localhost:8529/_api/version"
 
 # name of the epm configuration file
-LIST="Installation/${project_name}.list"
+LIST="Installation/epm/${project_name}.list"
 # name of a created epm  include file
-SUBLIST="Installation/${project_name}.sublist"
+SUBLIST="Installation/epm/${project_name}.sublist"
 
 START_SCRIPT="";
 
@@ -39,8 +39,8 @@ initdir=/etc/init.d
 bindir=${exec_prefix}/bin
 data_dir=/var
 static_dir=${prefix}/share
-vers_dir=arango-${arangodb_version}
-docdir=${prefix}/share/doc/voc/${vers_dir}
+vers_dir=arangodb-${arangodb_version}
+docdir=${prefix}/share/doc/${vers_dir}
 
 echo
 echo "########################################################"
@@ -60,7 +60,7 @@ case $TRI_OS_LONG in
     package_type="rpm"
     START_SCRIPT="rc.arangodb.OpenSuSE"
     runlevels="035"
-    docdir=${prefix}/share/doc/packages/voc/${vers_dir}
+    docdir=${prefix}/share/doc/packages/${vers_dir}
 
     # exports for the epm configuration file
     export insserv="true"

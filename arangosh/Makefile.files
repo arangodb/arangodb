@@ -20,6 +20,7 @@ bin_arangosh_LDADD = \
 	@V8_LIBS@
 
 bin_arangosh_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangosh.cpp
@@ -40,6 +41,7 @@ bin_arangoimp_LDADD = \
 	@V8_LIBS@
 
 bin_arangoimp_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangoimp.cpp

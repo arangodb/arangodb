@@ -295,7 +295,8 @@ ModuleCache["/internal"] = new Module("/internal");
 
   internal.ARANGO_QUIET = false;
 
-  internal.COLOR_OUTPUT = undefined;
+  internal.COLOR_OUTPUT = false;
+  internal.COLOR_OUTPUT_DEFAULT = "";
   internal.COLOR_OUTPUT_RESET = "";
   internal.COLOR_BRIGHT = "";
 
@@ -323,6 +324,26 @@ ModuleCache["/internal"] = new Module("/internal");
 
   if (typeof PRETTY_PRINT !== "undefined") {
     internal.PRETTY_PRINT = PRETTY_PRINT;
+  }
+
+  if (internal.COLOR_OUTPUT) {
+    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;
+
+    internal.COLOR_BLACK = COLOR_BLACK;
+    internal.COLOR_BOLD_BLACK = COLOR_BOLD_BLACK;
+    internal.COLOR_BLINK = COLOR_BLINK;
+    internal.COLOR_BLUE = COLOR_BLUE;
+    internal.COLOR_BOLD_BLUE = COLOR_BOLD_BLUE;
+    internal.COLOR_BRIGHT = COLOR_BRIGHT;
+    internal.COLOR_GREEN = COLOR_GREEN;
+    internal.COLOR_BOLD_GREEN = COLOR_BOLD_GREEN;
+    internal.COLOR_RED = COLOR_RED;
+    internal.COLOR_BOLD_RED = COLOR_BOLD_RED;
+    internal.COLOR_WHITE = COLOR_WHITE;
+    internal.COLOR_BOLD_WHITE = COLOR_BOLD_WHITE;
+    internal.COLOR_YELLOW = COLOR_YELLOW;
+    internal.COLOR_BOLD_YELLOW = COLOR_BOLD_YELLOW;
+    internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

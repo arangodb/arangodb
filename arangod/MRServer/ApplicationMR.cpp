@@ -96,7 +96,7 @@ namespace {
 ApplicationMR::ApplicationMR (string const& binaryPath)
   : ApplicationFeature("MRuby"),
     _startupPath(),
-    _startupModules("mr/modules"),
+    _startupModules(),
     _actionPath(),
     _gcInterval(1000),
     _startupLoader(),
@@ -108,44 +108,6 @@ ApplicationMR::ApplicationMR (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _stopping(0) {
-
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-    _actionPath = binaryPath + "/../share/arango/mr/actions/system";
-    _startupModules = binaryPath + "/../share/arango/mr/server/modules"
-              + ";" + binaryPath + "/../share/arango/mr/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-    _actionPath = binaryPath + "/../mr/actions/system";
-    _startupModules = binaryPath + "/../mr/server/modules"
-              + ";" + binaryPath + "/../mr/common/modules";
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#else
-
-#ifdef _PKGDATADIR_
-    _actionPath = string(_PKGDATADIR_) + "/mr/actions/system";
-    _startupModules = string(_PKGDATADIR_) + "/mr/server/modules"
-              + ";" + string(_PKGDATADIR_) + "/mr/common/modules";
-
-#endif
-
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +269,15 @@ void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationMR::prepare () {
-  LOGGER_INFO << "using Ruby modules path '" << _startupModules << "'";
+
+  // check the startup modules
+  if (_startupModules.empty()) {
+    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    exit(EXIT_FAILURE);
+  }
+  else {
+    LOGGER_INFO << "using Ruby modules path '" << _startupModules << "'";
+  }
 
   // set up the startup loader
   if (_startupPath.empty()) {
@@ -323,7 +293,11 @@ bool ApplicationMR::prepare () {
   }
 
   // set up action loader
-  if (! _actionPath.empty()) {
+  if (_actionPath.empty()) {
+    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    exit(EXIT_FAILURE);
+  }
+  else {
     LOGGER_INFO << "using Ruby action files at '" << _actionPath << "'";
 
     _actionLoader.setDirectory(_actionPath);

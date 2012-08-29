@@ -18,7 +18,7 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief m4 directory
+### @brief source to build before compile
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -83,15 +83,6 @@
 ################################################################################
 
 ################################################################################
-### @brief sets up the directories
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
-################################################################################
 ### @brief directory setup
 ################################################################################
 
@@ -110,31 +101,10 @@
 ################################################################################
 
 ################################################################################
-### @brief built sources
+### @brief sets up the directories
 ################################################################################
 
 # -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
-################################################################################
-### @brief built sources
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
-################################################################################
-### @brief Protobuf
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief built sources
@@ -143,7 +113,16 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
+### @brief built sources
 ################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+### @brief built sources
+################################################################################
+
+# -*- mode: Makefile; -*-
 
 ################################################################################
 ### @brief libev
@@ -152,7 +131,10 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
+### @brief Protobuf
 ################################################################################
+
+# -*- mode: Makefile; -*-
 
 ################################################################################
 ### @brief V8
@@ -161,16 +143,10 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief mruby
 ################################################################################
 
 # -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief ZeroMQ
@@ -201,13 +177,11 @@ target_triplet = @target@
 @ENABLE_ZEROMQ_TRUE@am__append_1 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_CPPFLAGS@
 
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@am__append_2 = \
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+@ENABLE_RELATIVE_TRUE@am__append_2 = \
+@ENABLE_RELATIVE_TRUE@	-D_SYSCONFDIR_='"etc/relative"'
 
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@am__append_3 = \
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+@ENABLE_RELATIVE_FALSE@am__append_3 = \
+@ENABLE_RELATIVE_FALSE@	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
 
 @ENABLE_ZEROMQ_TRUE@am__append_4 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LDFLAGS@
@@ -236,9 +210,15 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
-DIST_COMMON = $(am__configure_deps) $(srcdir)/Doxygen/Makefile.doxygen \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.files \
-	$(srcdir)/Makefile.in $(srcdir)/PerfTests/Makefile.files \
+DIST_COMMON = $(am__configure_deps) \
+	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
+	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
+	$(srcdir)/3rdParty/Makefile.all-in-one-protobuf \
+	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
+	$(srcdir)/3rdParty/Makefile.all-in-one-zeromq \
+	$(srcdir)/Documentation/Makefile.doxygen $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
+	$(srcdir)/PerfTests/Makefile.files \
 	$(srcdir)/UnitTests/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
 	$(srcdir)/arangoirb/Makefile.files \
@@ -298,9 +278,11 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Doxygen/Makefile.doxygen \
 ### @brief CLEANUP
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_23 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_24 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_25 = @ZEROMQ_LIBS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_23 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_24 = @PROTOBUF_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_25 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_26 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_27 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -308,7 +290,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.static \
-	$(top_srcdir)/m4/configure.32bit \
 	$(top_srcdir)/m4/configure.memory \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
@@ -321,13 +302,15 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.ncurses \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
-	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/all-in-one.v8 \
-	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.mruby \
-	$(top_srcdir)/m4/all-in-one.protobuf \
-	$(top_srcdir)/m4/all-in-one.zeromq \
 	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/external.boost \
+	$(top_srcdir)/m4/all-in-one.libev \
+	$(top_srcdir)/m4/external.libev \
+	$(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/all-in-one.protobuf \
+	$(top_srcdir)/m4/external.protobuf \
+	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.v8 \
+	$(top_srcdir)/m4/all-in-one.zeromq \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -337,7 +320,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/lib/BasicsC/local-configuration.h
-CONFIG_CLEAN_FILES = Doxygen/arango.template
+CONFIG_CLEAN_FILES = Documentation/arango.template
 CONFIG_CLEAN_VPATH_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -755,6 +738,7 @@ bin_arangod_DEPENDENCIES = lib/libarango_fe.a lib/libarango_v8.a \
 	lib/libarango.a $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
 	$(am__DEPENDENCIES_1)
 am_bin_arangoimp_OBJECTS =  \
+	arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT) \
 	arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT) \
 	arangosh/V8Client/bin_arangoimp-V8ClientConnection.$(OBJEXT) \
 	arangosh/V8Client/bin_arangoimp-arangoimp.$(OBJEXT)
@@ -771,6 +755,7 @@ bin_arangoirb_OBJECTS = $(am_bin_arangoirb_OBJECTS)
 @ENABLE_MRUBY_TRUE@	lib/libarango_client.a lib/libarango.a \
 @ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
 am_bin_arangosh_OBJECTS =  \
+	arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT) \
 	arangosh/V8Client/bin_arangosh-ImportHelper.$(OBJEXT) \
 	arangosh/V8Client/bin_arangosh-V8ClientConnection.$(OBJEXT) \
 	arangosh/V8Client/bin_arangosh-arangosh.$(OBJEXT)
@@ -956,6 +941,7 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PROTOBUF_CPPFLAGS = @PROTOBUF_CPPFLAGS@
 PROTOBUF_LDFLAGS = @PROTOBUF_LDFLAGS@
 PROTOBUF_LIBS = @PROTOBUF_LIBS@
+PROTOBUF_PROTOC = @PROTOBUF_PROTOC@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
@@ -1031,17 +1017,12 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ACLOCAL_AMFLAGS = -I m4
-
-################################################################################
-### @brief source to build before compile
-################################################################################
 BUILT_SOURCES = build.h Installation/arangod.conf $(JAVASCRIPT_HEADER) \
 	$(JAVASCRIPT_BROWSER) $(MRUBY_HEADER) $(am__append_16) \
-	$(am__append_17) Doxygen/.setup-directories \
-	.setup-js-directories $(am__append_19) $(am__append_21) \
-	@PROTOBUF_LIBS@ $(PROTOBUF_FILES) $(am__append_23) \
-	$(am__append_24) $(am__append_25)
+	Documentation/.setup-directories .setup-js-directories \
+	$(am__append_17) $(am__append_19) $(am__append_21) \
+	$(PROTOBUF_FILES) $(am__append_23) $(am__append_24) \
+	$(am__append_25) $(am__append_26) $(am__append_27)
 
 ################################################################################
 ### @brief files to cleanup
@@ -1122,6 +1103,11 @@ BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
 PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
 
 ################################################################################
+### @brief m4 directory
+################################################################################
+ACLOCAL_AMFLAGS = -I m4
+
+################################################################################
 ### @brief preprocessor flags
 ################################################################################
 AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
@@ -1129,19 +1115,6 @@ AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_5)
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = $(localstatedir)/log/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_LOG_DIR = /tmp
-@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_LOG_DIR = $(prefix)/var/log/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_PKGDATA_DIR = ${pkgdatadir}
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_PKGDATA_DIR = .
-@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_PKGDATA_DIR = $(prefix)/share/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SBIN_DIR = ${sbindir}
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SBIN_DIR = bin
-@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_SBIN_DIR = ${prefix}/sbin
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_SYSCONF_DIR = $(sysconfdir)/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_SYSTEM_TRUE@TRI_SYSCONF_DIR = ${prefix}/etc/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_DEVEL_FALSE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_DATABASE_DIR = $(localstatedir)/$(PACKAGE_TARNAME)
-@ENABLE_RELATIVE_DEVEL_TRUE@@ENABLE_RELATIVE_SYSTEM_FALSE@TRI_DATABASE_DIR = $(localstatedir)/$(PACKAGE_TARNAME)
 
 ################################################################################
 ### @brief linker flags
@@ -1502,6 +1475,7 @@ bin_arangosh_LDADD = \
 	@V8_LIBS@
 
 bin_arangosh_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangosh.cpp
@@ -1522,6 +1496,7 @@ bin_arangoimp_LDADD = \
 	@V8_LIBS@
 
 bin_arangoimp_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangoimp.cpp
@@ -1583,13 +1558,31 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_START := 
-SERVER_OPT := --configuration none --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules --javascript.action-directory @top_srcdir@/js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 --server.threads 4 $(SERVER_START)
-CLIENT_OPT := --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
 CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
-CERT_FILE := @srcdir@/UnitTests/server.pem
+CERT_FILE := @top_srcdir@/UnitTests/server.pem
+SERVER_START := 
+SERVER_OPT := \
+	--configuration none \
+	--database.maximal-journal-size 1048576 \
+	--javascript.action-directory @top_srcdir@/js/actions/system \
+	--javascript.gc-interval 1 \
+	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.startup-directory @top_srcdir@/js \
+	--ruby.action-directory @top_srcdir@/mr/actions/system \
+	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
+	--server.threads 4 \
+	--server.admin-directory ./html/admin \
+	$(SERVER_START)
+
+CLIENT_OPT := \
+	--configuration none \
+	--javascript.startup-directory @top_srcdir@/js \
+	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--no-colors \
+	--quiet
+
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
@@ -1618,75 +1611,75 @@ CERT_FILE := @srcdir@/UnitTests/server.pem
 
 ################################################################################
 ################################################################################
-SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
-               @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-compactor.js \
-               @srcdir@/js/common/tests/shell-collection.js \
-               @srcdir@/js/common/tests/shell-simple-query.js \
-               @srcdir@/js/common/tests/shell-index.js \
-               @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js \
-               @srcdir@/js/common/tests/shell-unique-constraint.js \
-               @srcdir@/js/common/tests/shell-hash-index.js
+SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
+               @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-compactor.js \
+               @top_srcdir@/js/common/tests/shell-collection.js \
+               @top_srcdir@/js/common/tests/shell-simple-query.js \
+               @top_srcdir@/js/common/tests/shell-index.js \
+               @top_srcdir@/js/common/tests/shell-index-geo.js \
+               @top_srcdir@/js/common/tests/shell-cap-constraint.js \
+               @top_srcdir@/js/common/tests/shell-unique-constraint.js \
+               @top_srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
-			@srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
-			@srcdir@/js/server/tests/ahuacatl-escaping.js \
-			@srcdir@/js/server/tests/ahuacatl-functions.js \
-			@srcdir@/js/server/tests/ahuacatl-variables.js \
-			@srcdir@/js/server/tests/ahuacatl-bind.js \
-			@srcdir@/js/server/tests/ahuacatl-complex.js \
-			@srcdir@/js/server/tests/ahuacatl-logical.js \
-			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
-			@srcdir@/js/server/tests/ahuacatl-relational.js \
-			@srcdir@/js/server/tests/ahuacatl-ternary.js \
-			@srcdir@/js/server/tests/ahuacatl-parse.js \
-			@srcdir@/js/server/tests/ahuacatl-hash.js \
-			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
-			@srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-		        @srcdir@/js/server/tests/ahuacatl-operators.js
+SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
+			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
+			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
+			@top_srcdir@/js/server/tests/ahuacatl-bind.js \
+			@top_srcdir@/js/server/tests/ahuacatl-complex.js \
+			@top_srcdir@/js/server/tests/ahuacatl-logical.js \
+			@top_srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@top_srcdir@/js/server/tests/ahuacatl-relational.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
+			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
+			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
+			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
+			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL))
 UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
 
 ################################################################################
 ################################################################################
-SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
+SHELL_CLIENT = $(SHELL_COMMON) @top_srcdir@/js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 ################################################################################
 ################################################################################
-BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
+BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
 UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
 
 ################################################################################
@@ -1709,13 +1702,7 @@ bin_arango_upgrade_SOURCES =
 
 # exclude arango skrips from sources list
 bin_arango_dfdb_SOURCES = 
-PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
-@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
-@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_CFLAGS_X = -O2 -g
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_CFLAGS_X = -m32 -O2 -g
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_LDFLAGS_X = 
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_LDFLAGS_X = -m32
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_ZEROMQ_TRUE@ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -1724,7 +1711,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/m4/Makefile.mruby $(srcdir)/Doxygen/Makefile.doxygen $(srcdir)/m4/Makefile.javascript $(srcdir)/m4/Makefile.flex $(srcdir)/m4/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-protobuf $(srcdir)/m4/Makefile.protobuf $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(srcdir)/m4/Makefile.all-in-one-zeromq $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/Documentation/Makefile.doxygen $(srcdir)/js/Makefile.javascript $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/lib/Makefile.protobuf $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-protobuf $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1783,7 +1770,7 @@ lib/BasicsC/stamp-h2: $(top_srcdir)/lib/BasicsC/local-configuration.h.in $(top_b
 
 distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 lib/BasicsC/local-configuration.h lib/BasicsC/stamp-h2
-Doxygen/arango.template: $(top_builddir)/config.status $(top_srcdir)/Doxygen/arango.template.in
+Documentation/arango.template: $(top_builddir)/config.status $(top_srcdir)/Documentation/arango.template.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 clean-noinstLIBRARIES:
@@ -2762,6 +2749,15 @@ arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT):  \
 bin/arangod$(EXEEXT): $(bin_arangod_OBJECTS) $(bin_arangod_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangod$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangod_OBJECTS) $(bin_arangod_LDADD) $(LIBS)
+arangosh/ArangoShell/$(am__dirstamp):
+	@$(MKDIR_P) arangosh/ArangoShell
+	@: > arangosh/ArangoShell/$(am__dirstamp)
+arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arangosh/ArangoShell/$(DEPDIR)
+	@: > arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
+arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT):  \
+	arangosh/ArangoShell/$(am__dirstamp) \
+	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
 arangosh/V8Client/$(am__dirstamp):
 	@$(MKDIR_P) arangosh/V8Client
 	@: > arangosh/V8Client/$(am__dirstamp)
@@ -2795,6 +2791,9 @@ arangoirb/MRClient/bin_arangoirb-arangoirb.$(OBJEXT):  \
 bin/arangoirb$(EXEEXT): $(bin_arangoirb_OBJECTS) $(bin_arangoirb_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangoirb$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangoirb_OBJECTS) $(bin_arangoirb_LDADD) $(LIBS)
+arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT):  \
+	arangosh/ArangoShell/$(am__dirstamp) \
+	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
 arangosh/V8Client/bin_arangosh-ImportHelper.$(OBJEXT):  \
 	arangosh/V8Client/$(am__dirstamp) \
 	arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -2918,6 +2917,8 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-vocbase.$(OBJEXT)
 	-rm -f arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.$(OBJEXT)
 	-rm -f arangoirb/MRClient/bin_arangoirb-arangoirb.$(OBJEXT)
+	-rm -f arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT)
+	-rm -f arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangoimp-V8ClientConnection.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangoimp-arangoimp.$(OBJEXT)
@@ -3180,6 +3181,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-arangoirb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangosh-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-arangoimp.Po@am__quote@
@@ -4537,9 +4540,6 @@ arangod/MRServer/bin_arangod-mr-actions.obj: arangod/MRServer/mr-actions.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangod/MRServer/mr-actions.cpp' object='arangod/MRServer/bin_arangod-mr-actions.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-mr-actions.obj `if test -f 'arangod/MRServer/mr-actions.cpp'; then $(CYGPATH_W) 'arangod/MRServer/mr-actions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/mr-actions.cpp'; fi`
-
-arangosh/V8Client/bin_arangoimp-ImportHelper.o: arangosh/V8Client/ImportHelper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoimp_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangoimp-ImportHelper.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Tpo -c -o arangosh/V8Client/bin_arangoimp-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Po
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/ImportHelper.cpp' object='arangosh/V8Client/bin_arangoimp-ImportHelper.o' libtool=no @AMDEPBACKSLASH@
@@ -4615,8 +4615,6 @@ arangoirb/MRClient/bin_arangoirb-arangoirb.obj: arangoirb/MRClient/arangoirb.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-arangoirb.Tpo arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-arangoirb.Po
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangoirb/MRClient/arangoirb.cpp' object='arangoirb/MRClient/bin_arangoirb-arangoirb.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangoirb/MRClient/bin_arangoirb-arangoirb.obj `if test -f 'arangoirb/MRClient/arangoirb.cpp'; then $(CYGPATH_W) 'arangoirb/MRClient/arangoirb.cpp'; else $(CYGPATH_W) '$(srcdir)/arangoirb/MRClient/arangoirb.cpp'; fi`
 
 arangosh/V8Client/bin_arangosh-ImportHelper.o: arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangosh_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangosh-ImportHelper.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangosh-ImportHelper.Tpo -c -o arangosh/V8Client/bin_arangosh-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp
@@ -5026,6 +5024,8 @@ distclean-generic:
 	-rm -f arangod/VocBase/$(am__dirstamp)
 	-rm -f arangoirb/MRClient/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangoirb/MRClient/$(am__dirstamp)
+	-rm -f arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
+	-rm -f arangosh/ArangoShell/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangosh/V8Client/$(am__dirstamp)
 	-rm -f bin/$(am__dirstamp)
@@ -5090,7 +5090,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5139,7 +5139,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5207,7 +5207,7 @@ build.h: configure.ac
 ### @brief local modifications
 ################################################################################
 
--include Makefile.local
+-include Installation/Makefile.local
 
 ################################################################################
 ################################################################################
@@ -5395,7 +5395,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -5419,7 +5419,7 @@ unittests-ssl-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=1 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=1 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -5479,94 +5479,38 @@ clean-local:
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
-bin/arango-password: bin/arango-password.in
-@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
+.PHONY: Documentation/js Documentation/js/system Documentation/js/modules
 
-bin/arango-upgrade: bin/arango-upgrade.in
-@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
-
-bin/arango-dfdb: bin/arango-dfdb.in
-@ENABLE_RELATIVE_DEVEL_TRUE@	sed \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@SBINDIR@%bin%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_TRUE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_TRUE@	chmod 755 $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	sed \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-@ENABLE_RELATIVE_DEVEL_FALSE@		$< > $@
-@ENABLE_RELATIVE_DEVEL_FALSE@	chmod 755 $@
-
-@ENABLE_MRUBY_TRUE@.setup-mr-directories:
-@ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
-@ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
-@ENABLE_MRUBY_TRUE@	@touch $@
-
-@ENABLE_MRUBY_TRUE@mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
-
-@ENABLE_MRUBY_TRUE@mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
-@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
-
-################################################################################
-################################################################################
-
-.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
-
-Doxygen/.setup-directories:
-	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
-	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
-	@test -d Doxygen/js/common || mkdir Doxygen/js/common
-	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
-	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
-	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
-	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/web || mkdir Doxygen/web
+Documentation/.setup-directories:
+	@test -d Documentation/js || mkdir Documentation/js
+	@test -d Documentation/js/actions || mkdir Documentation/js/actions
+	@test -d Documentation/js/actions/system || mkdir Documentation/js/actions/system
+	@test -d Documentation/js/common || mkdir Documentation/js/common
+	@test -d Documentation/js/common/bootstrap || mkdir Documentation/js/common/bootstrap
+	@test -d Documentation/js/common/modules || mkdir Documentation/js/common/modules
+	@test -d Documentation/js/server || mkdir Documentation/js/server
+	@test -d Documentation/js/server/modules || mkdir Documentation/js/server/modules
+	@test -d Documentation/js/client || mkdir Documentation/js/client
+	@test -d Documentation/web || mkdir Documentation/web
 	@touch $@
 
-Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+Documentation/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+Documentation/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+Documentation/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+Documentation/js/server/%.c: @srcdir@/js/server/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+Documentation/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Doxygen/xml/%.md: Doxygen/xml/%.xml
-	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+Documentation/xml/%.md: Documentation/xml/%.xml
+	@python @top_srcdir@/Documentation/Scripts/xml2md.py $< > $@
 
 ################################################################################
 ### @brief doxygen
@@ -5574,13 +5518,13 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-Doxygen/arango-html.doxy: Doxygen/arango.template
+Documentation/arango-html.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
+doxygen: Documentation/arango-html.doxy $(DOXYGEN)
+	doxygen Documentation/arango-html.doxy > /dev/null
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Documentation/html/$$w.html Documentation/web/$$w.html; done
 
 ################################################################################
 ### @brief wiki
@@ -5588,17 +5532,17 @@ doxygen: Doxygen/arango-html.doxy $(DOXYGEN)
 
 .PHONY: wiki wiki2
 
-Doxygen/arango-xml.doxy: Doxygen/arango.template
+Documentation/arango-xml.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
 wiki: wiki2 
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do python @top_srcdir@/Doxygen/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
+	@test -d Documentation/wiki || mkdir Documentation/wiki
+	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Documentation/xml/$$w.xml > Documentation/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Documentation/xml/$$w.md; done
 
-wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-xml.doxy > /dev/null
+wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
+	doxygen Documentation/arango-xml.doxy > /dev/null
 
 ################################################################################
 ### @brief latex
@@ -5606,32 +5550,32 @@ wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Doxygen/arango-latex.doxy: Doxygen/arango.template
+Documentation/arango-latex.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-latex: Doxygen/arango-latex.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-latex.doxy > /dev/null
+latex: Documentation/arango-latex.doxy $(DOXYGEN)
+	doxygen Documentation/arango-latex.doxy > /dev/null
 
-	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Documentation/latex/version.tex
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/InstallManual.tex > Documentation/latex/InstallManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode install-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/UserManual.tex > Documentation/latex/UserManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode user-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImplementorManual.tex > Documentation/latex/ImplementorManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode implementor-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/RefManual.tex > Documentation/latex/RefManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode ref-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/DbaManual.tex > Documentation/latex/DbaManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
-	python @top_srcdir@/Doxygen/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImpManual.tex > Documentation/latex/ImpManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode imp-manual.tex || true
 
 ################################################################################
 ################################################################################
@@ -5669,6 +5613,20 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 ################################################################################
 
+@ENABLE_MRUBY_TRUE@.setup-mr-directories:
+@ENABLE_MRUBY_TRUE@	@test -d mr || mkdir mr
+@ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
+@ENABLE_MRUBY_TRUE@	@touch $@
+
+@ENABLE_MRUBY_TRUE@mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
+@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
+
+@ENABLE_MRUBY_TRUE@mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
+@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
+
+################################################################################
+################################################################################
+
 ################################################################################
 ### @brief flex
 ################################################################################
@@ -5682,9 +5640,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 @ENABLE_FLEX_TRUE@%.cpp: %.ll
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief BISON
@@ -5701,92 +5656,77 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
 ################################################################################
-################################################################################
-
-@PROTOBUF_LIBS@: .protobuf-build-@TRI_BITS@
-
-.protobuf-build-@TRI_BITS@:
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING Protocol Buffers"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-	cd @top_srcdir@/3rdParty/protobuf-2.4.1 \
-		&& ./configure \
-			--disable-dependency-tracking \
-			--disable-shared \
-			--prefix=$(PROTOBUFDIR) \
-			--libdir=$(PROTOBUFDIR)/lib@TRI_BITS@
-	cd @top_srcdir@/3rdParty/protobuf-2.4.1 && $(MAKE) install
-
-	touch .protobuf-build-@TRI_BITS@
-
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILD Protocol Buffers FINISHED"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-################################################################################
-################################################################################
-
-################################################################################
 ### @brief protocol buffers
 ################################################################################
 
 %.pb.cpp: %.proto
-	@top_srcdir@/3rdParty/protobuf-2.4.1/BUILD/bin/protoc --cpp_out . $<
+	@PROTOBUF_PROTOC@ --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 
-################################################################################
-################################################################################
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: .libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@.libev-build-@TRI_BITS@:
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@.libev-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && ../configure --disable-shared
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE)
 
-@ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" orig_CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" LDFLAGS="$(LIBEV_BUILD_LDFLAGS_X)" ../configure --disable-shared
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && $(MAKE)
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	touch .libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD LIBEV FINISHED"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD LIBEV FINISHED"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@@PROTOBUF_LIBS@: .protobuf-build-@TRI_BITS@
 
-################################################################################
-################################################################################
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@.protobuf-build-@TRI_BITS@:
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "BUILDING Protocol Buffers"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	cd @top_srcdir@/3rdParty/protobuf-2.4.1 \
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@		&& ./configure \
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@			--disable-dependency-tracking \
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@			--disable-shared \
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@			--prefix=$(PROTOBUFDIR) \
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@			--libdir=$(PROTOBUFDIR)/lib@TRI_BITS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	cd @top_srcdir@/3rdParty/protobuf-2.4.1 && $(MAKE) install
 
-@ENABLE_ALL_IN_ONE_TRUE@.v8-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	touch .protobuf-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "BUILD Protocol Buffers FINISHED"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@V8_LIBS@: .v8-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD V8 FINISHED"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_V8_TRUE@.v8-build-@TRI_BITS@:
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILDING V8"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
-################################################################################
-################################################################################
+@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@	touch .v8-build-@TRI_BITS@
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILD V8 FINISHED"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
 @ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build-@TRI_BITS@
 
@@ -5806,9 +5746,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@	@echo "BUILD mruby FINISHED"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
-
-################################################################################
-################################################################################
 
 @ENABLE_ZEROMQ_TRUE@@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@ .czmq-build-@TRI_BITS@
 
@@ -5862,13 +5799,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@	@echo
 
 ################################################################################
-################################################################################
-
-################################################################################
-### @brief mruby
-################################################################################
-
-################################################################################
 ### @brief documentation
 ################################################################################
 
@@ -5877,19 +5807,31 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ################################################################################
 
 ################################################################################
-### @brief flex
+### @brief mruby
 ################################################################################
 
 ################################################################################
-### @brief bison
+### @brief generate all flex files
 ################################################################################
 
 ################################################################################
-### @brief protocol buffers
+### @brief generate all bison files
 ################################################################################
 
 ################################################################################
-### @brief libev and V8
+### @brief generate all protocol buffers
+################################################################################
+
+################################################################################
+### @brief libev
+################################################################################
+
+################################################################################
+### @brief protcol buffers
+################################################################################
+
+################################################################################
+### @brief V8
 ################################################################################
 
 ################################################################################
