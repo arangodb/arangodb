@@ -1,14 +1,8 @@
 # -*- mode: Makefile; -*-
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                 FLAGS & VARIABLES
+## --SECTION--                                                             FILES
 ## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief m4 directory
-################################################################################
-
-ACLOCAL_AMFLAGS = -I m4
 
 ################################################################################
 ### @brief source to build before compile
@@ -52,6 +46,16 @@ BISONXX_FILES =
 
 PROTOBUF_FILES =
 
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             FLAGS
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief m4 directory
+################################################################################
+
+ACLOCAL_AMFLAGS = -I m4
+
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
@@ -68,6 +72,7 @@ AM_CPPFLAGS = \
 	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
+
 if ENABLE_ZEROMQ
 
 AM_CPPFLAGS += \
@@ -76,39 +81,17 @@ AM_CPPFLAGS += \
 endif
 
 
-
-if ENABLE_RELATIVE_SYSTEM
-
-TRI_LOG_DIR=$(prefix)/var/log/$(PACKAGE_TARNAME)
-TRI_PKGDATA_DIR=$(prefix)/share/$(PACKAGE_TARNAME)
-TRI_SBIN_DIR=${prefix}/sbin
-TRI_SYSCONF_DIR=${prefix}/etc/$(PACKAGE_TARNAME)
-
-else
-if ENABLE_RELATIVE_DEVEL
-
-TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
-TRI_LOG_DIR=/tmp
-TRI_PKGDATA_DIR=.
-TRI_SBIN_DIR=bin
+if ENABLE_RELATIVE
 
 AM_CPPFLAGS += \
-	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+	-D_SYSCONFDIR_='"etc/relative"'
+
 
 else
 
-TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
-TRI_LOG_DIR=$(localstatedir)/log/$(PACKAGE_TARNAME)
-TRI_PKGDATA_DIR=${pkgdatadir}
-TRI_SBIN_DIR=${sbindir}
-TRI_SYSCONF_DIR=$(sysconfdir)/$(PACKAGE_TARNAME)
-
 AM_CPPFLAGS += \
-	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
-	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
-	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
 
-endif
 endif
 
 ################################################################################
@@ -280,7 +263,7 @@ build.h: configure.ac
 ### @brief local modifications
 ################################################################################
 
--include Makefile.local
+-include Installation/Makefile.local
 
 ################################################################################
 ### @brief source files
@@ -342,22 +325,13 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 # exclude arango skripts from sources list
 bin_arango_password_SOURCES =
 
-bin/arango-password: bin/arango-password.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
+bin/arango-password: utils/arango-password.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
 		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
 		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
-endif
 
 CLEANUP += bin/arango-password
 
@@ -394,22 +368,13 @@ CLEANUP += bin/arango-upgrade
 # exclude arango skrips from sources list
 bin_arango_dfdb_SOURCES =
 
-bin/arango-dfdb: bin/arango-dfdb.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
+bin/arango-dfdb: utils/arango-dfdb.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
 		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
 		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
 		$< > $@
 	chmod 755 $@
-endif
 
 CLEANUP += bin/arango-dfdb
 
@@ -418,59 +383,77 @@ CLEANUP += bin/arango-dfdb
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief mruby
-################################################################################
-
-if ENABLE_MRUBY
-include m4/Makefile.mruby
-endif
-
-################################################################################
 ### @brief documentation
 ################################################################################
 
-include Doxygen/Makefile.doxygen
+include Documentation/Makefile.doxygen
 
 ################################################################################
 ### @brief javascript
 ################################################################################
 
-include m4/Makefile.javascript
+include js/Makefile.javascript
 
 ################################################################################
-### @brief flex
+### @brief mruby
+################################################################################
+
+if ENABLE_MRUBY
+include mr/Makefile.mruby
+endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                   GENERATED FILES
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief generate all flex files
 ################################################################################
 
 if ENABLE_FLEX
-include m4/Makefile.flex
+include lib/Makefile.flex
 endif
 
 ################################################################################
-### @brief bison
+### @brief generate all bison files
 ################################################################################
 
 if ENABLE_BISON
-include m4/Makefile.bison
+include lib/Makefile.bison
 endif
 
 ################################################################################
-### @brief protocol buffers
+### @brief generate all protocol buffers
 ################################################################################
 
-include m4/Makefile.all-in-one-protobuf
-include m4/Makefile.protobuf
+include lib/Makefile.protobuf
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief libev and V8
+### @brief libev
 ################################################################################
 
-if ENABLE_ALL_IN_ONE
-include m4/Makefile.all-in-one-libev
-include m4/Makefile.all-in-one-v8
+if ENABLE_ALL_IN_ONE_LIBEV
+include 3rdParty/Makefile.all-in-one-libev
+endif
+
+################################################################################
+### @brief protcol buffers
+################################################################################
+
+if ENABLE_ALL_IN_ONE_PROTOBUF
+include 3rdParty/Makefile.all-in-one-protobuf
+endif
+
+################################################################################
+### @brief V8
+################################################################################
+
+if ENABLE_ALL_IN_ONE_V8
+include 3rdParty/Makefile.all-in-one-v8
 endif
 
 ################################################################################
@@ -478,7 +461,7 @@ endif
 ################################################################################
 
 if ENABLE_MRUBY
-include m4/Makefile.all-in-one-mruby
+include 3rdParty/Makefile.all-in-one-mruby
 endif
 
 ################################################################################
@@ -486,7 +469,7 @@ endif
 ################################################################################
 
 if ENABLE_ZEROMQ
-include m4/Makefile.all-in-one-zeromq
+include 3rdParty/Makefile.all-in-one-zeromq
 endif
 
 ## -----------------------------------------------------------------------------

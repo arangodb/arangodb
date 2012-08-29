@@ -25,38 +25,36 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <v8.h>
+#include <mruby.h>
+#include <mruby/proc.h>
+#include <mruby/data.h>
+#include <mruby/variable.h>
+#include <mruby/compile.h>
 
 #include <stdio.h>
 #include <fstream>
 
 #include "build.h"
 
-#include "BasicsC/csv.h"
-
+#include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
-#include "Rest/Initialise.h"
-#include "Rest/Endpoint.h"
 #include "MRClient/MRubyClientConnection.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
 #include "MRuby/mr-utils.h"
+#include "Rest/Endpoint.h"
+#include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include "mruby.h"
-#include "mruby/proc.h"
-#include "mruby/data.h"
-#include "mruby/variable.h"
-#include "mruby/compile.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -117,28 +115,34 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief configuration file
+////////////////////////////////////////////////////////////////////////////////
+
+static string ConfigFile = "";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a password was specified on the command line
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool _hasPassword = false;
+static bool HasPassword = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static Endpoint* _endpoint = 0;
+static Endpoint* EndpointServer = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-MRubyClientConnection* _clientConnection = 0;
+MRubyClientConnection* ClientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t _connectTimeout = DEFAULT_CONNECTION_TIMEOUT;
+static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable auto completion
@@ -159,12 +163,6 @@ static bool NoColors = false;
 static string OutputPager = "less -X -R -F -L";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the pager FILE 
-////////////////////////////////////////////////////////////////////////////////
-
-// static FILE* PAGER = stdout;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use pretty print
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,25 +178,25 @@ static bool Quiet = false;
 /// @brief request timeout (in s) 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t _requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to connect to
 ////////////////////////////////////////////////////////////////////////////////
 
-static string _endpointString;
+static string EndpointServerString;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static string _username = "root";
+static string Username = "root";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief password to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static string _password = "";
+static string Password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup MR files
@@ -271,21 +269,6 @@ static mrb_value ClientConnection_httpGet (mrb_state* mrb, mrb_value self) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print to pager
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static void InternalPrint (const char *format, const char *str = 0) {
-  if (str) {
-    fprintf(PAGER, format, str);    
-  }
-  else {
-    fprintf(PAGER, "%s", format);    
-  }
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -299,49 +282,16 @@ static void InternalPrint (const char *format, const char *str = 0) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts pager
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static void StartPager () {
-  if (! UsePager || OutputPager == "" || OutputPager == "stdout") {
-    PAGER = stdout;
-    return;
-  }
-  
-  PAGER = popen(OutputPager.c_str(), "w");
-
-  if (PAGER == 0) {
-    printf("popen() failed! defaulting PAGER to stdout!\n");
-    PAGER = stdout;
-    UsePager = false;
-  }
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops pager
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static void StopPager () {
-  if (PAGER != stdout) {
-    pclose(PAGER);
-  }
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
   
 static MRubyClientConnection* createConnection (MR_state_t* mrs) {
   return new MRubyClientConnection(mrs,
-                                   _endpoint,
-                                   _username,
-                                   _password, 
-                                   (double) _requestTimeout, 
-                                   (double) _connectTimeout, 
+                                   EndpointServer,
+                                   Username,
+                                   Password, 
+                                   (double) RequestTimeout, 
+                                   (double) ConnectTimeout, 
                                    DEFAULT_RETRIES,
                                    false);
 }
@@ -354,32 +304,34 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   string level = "info";
 
   ProgramOptionsDescription description("STANDARD options");
-
+  ProgramOptionsDescription ruby("RUBY options");
+  ProgramOptionsDescription client("CLIENT options");
+  ProgramOptionsDescription logging("LOGGING options");
   ProgramOptionsDescription hidden("HIDDEN options");
 
   hidden
+    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
     ("colors", "activate color support")
     ("no-pretty-print", "disable pretty printting")          
-    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
+  ;
+
+  ruby
+    ("ruby.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
+    ("ruby.modules-path", &StartupModules, "one or more directories separated by cola")
   ;
 
   description
+    ("configuration,c", &ConfigFile, "read configuration file")
     ("help,h", "help message")
-    ("quiet,s", "no banner")
-    ("log.level,l", &level,  "log level")
-    ("startup.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
-    ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
-    ("pager", &OutputPager, "output pager")
-    ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
-    ("server.username", &_username, "username to use when connecting")
-    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
-    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
-    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
-    ("use-pager", "use pager")
-    ("pretty-print", "pretty print values")          
-    ("no-colors", "deactivate color support")
     ("no-auto-complete", "disable auto completion")
-    // ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("no-colors", "deactivate color support")
+    ("pager", &OutputPager, "output pager")
+    ("pretty-print", "pretty print values")          
+    ("quiet,s", "no banner")
+    ("use-pager", "use pager")
+    (client, false)
+    (javascript, false)
+    (logging, false)
     (hidden, true)
   ;
 
@@ -402,7 +354,52 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
   
-  _hasPassword =  options.has("server.password");
+  // parse config file
+  string configFile = "";
+
+#ifdef _SYSCONFDIR_
+
+  string sysDir = string(_SYSCONFDIR_);
+  string systemConfigFile = "arangosh.conf";
+
+  if (! sysDir.empty()) {
+    if (sysDir[sysDir.size() - 1] != '/') {
+      sysDir += "/" + systemConfigFile;
+    }
+    else {
+      sysDir += systemConfigFile;
+    }
+
+    if (FileUtils::exists(sysDir)) {
+      configFile = sysDir;
+    }
+    else {
+      LOGGER_DEBUG << "no system init file '" << sysDir << "'";
+    }
+  }
+  
+#endif
+
+  if (! ConfigFile.empty()) {
+    if (StringUtils::tolower(ConfigFile) == string("none")) {
+      LOGGER_INFO << "using no init file at all";
+    }
+    else {
+      configFile = ConfigFile;
+    }
+  }
+
+  if (! configFile.empty()) {
+    LOGGER_DEBUG << "using init file '" << configFile << "'";
+
+    if (! options.parse(description, configFile)) {
+      cout << "cannot parse config file '" << configFile << "': " << options.lastError() << endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  // check if have a password
+  HasPassword =  options.has("server.password");
 
   // set colors
   if (options.has("colors")) {
@@ -413,6 +410,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     NoColors = true;
   }
 
+  // set auto-completion
   if (options.has("auto-complete")) {
     NoAutoComplete = false;
   }
@@ -421,6 +419,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     NoAutoComplete = true;
   }
 
+  // set pretty print
   if (options.has("pretty-print")) {
     PrettyPrint = true;
   }
@@ -429,12 +428,20 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     PrettyPrint = false;
   }
 
+  // set pager
   if (options.has("use-pager")) {
     UsePager = true;
   }
 
+  // set quiet
   if (options.has("quiet")) {
     Quiet = true;
+  }
+
+  // check module path
+  if (StartupModules.empty()) {
+    LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
+    exit(EXIT_FAILURE);
   }
 }
     
@@ -550,88 +557,42 @@ int main (int argc, char* argv[]) {
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-  {
-    char* binaryPath = TRI_LocateBinaryPath(argv[0]);
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  
-    StartupModules = string(binaryPath) + "/../share/arango/rb/client/modules"
-             + ";" + string(binaryPath) + "/../share/arango/rb/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_STARTUP_MODULES_PATH
-    StartupModules = TRI_STARTUP_MODULES_PATH;
-#else
-    StartupModules = string(binaryPath) + "/rb/client/modules"
-             + ";" + string(binaryPath) + "/rb/common/modules";
-#endif
-
-#else
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#ifdef _PKGDATADIR_
-
-    StartupModules = string(_PKGDATADIR_) + "/rb/client/modules"
-             + ";" + string(_PKGDATADIR_) + "/rb/common/modules";
-
-#endif
-
-#endif
-#endif
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
-  }
+  EndpointServerString = Endpoint::getDefaultEndpoint();
 
   // .............................................................................
   // parse the program options
   // .............................................................................
   
-  _endpointString = Endpoint::getDefaultEndpoint();
-
   ParseProgramOptions(argc, argv);
   
   // check connection args
-  if (_connectTimeout <= 0) {
+  if (ConnectTimeout <= 0) {
     cerr << "invalid value for --server.connect-timeout" << endl;
     exit(EXIT_FAILURE);
   }
 
-  if (_requestTimeout <= 0) {
+  if (RequestTimeout <= 0) {
     cerr << "invalid value for --server.request-timeout" << endl;
     exit(EXIT_FAILURE);
   }
   
-  if (_username.size() == 0) {
+  if (Username.size() == 0) {
     // must specify a user name
     cerr << "no value specified for --server.username" << endl;
     exit(EXIT_FAILURE);
   }
 
-  if (! _hasPassword) {
+  if (! HasPassword) {
     // no password given on command-line
     cout << "Please specify a password:" << endl;
     // now prompt for it
 #ifdef TRI_HAVE_TERMIOS_H
     TRI_SetStdinVisibility(false);
-    getline(cin, _password);
+    getline(cin, Password);
 
     TRI_SetStdinVisibility(true);
 #else
-    getline(cin, _password);
+    getline(cin, Password);
 #endif
   }
   
@@ -650,20 +611,20 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (_endpointString != "none");
+  bool useServer = (EndpointServerString != "none");
 
   if (useServer) {
-    _endpoint = Endpoint::clientFactory(_endpointString);
+    EndpointServer = Endpoint::clientFactory(EndpointServerString);
 
-    if (_endpoint == 0) {
-      cerr << "invalid value for --server.endpoint ('" << _endpointString.c_str() << "')" << endl;
+    if (EndpointServer == 0) {
+      cerr << "invalid value for --server.endpoint ('" << EndpointServerString.c_str() << "')" << endl;
       exit(EXIT_FAILURE);
     }
 
-    assert(_endpoint);
+    assert(EndpointServer);
    
-    _clientConnection = createConnection(mrs);
-    InitMRClientConnection(&mrs->_mrb, _clientConnection);
+    ClientConnection = createConnection(mrs);
+    InitMRClientConnection(&mrs->_mrb, ClientConnection);
   }
 
   // .............................................................................
@@ -710,14 +671,14 @@ int main (int argc, char* argv[]) {
     }
 
     if (useServer) {
-      if (_clientConnection->isConnected()) {
+      if (ClientConnection->isConnected()) {
         if (! Quiet) {
-          cout << "Connected to ArangoDB '" << _endpoint->getSpecification() << "' Version " << _clientConnection->getVersion() << endl; 
+          cout << "Connected to ArangoDB '" << EndpointServer->getSpecification() << "' Version " << ClientConnection->getVersion() << endl; 
         }
       }
       else {
-        cerr << "Could not connect to endpoint '" << _endpointString << "'" << endl;
-        cerr << "Error message '" << _clientConnection->getErrorMessage() << "'" << endl;
+        cerr << "Could not connect to endpoint '" << EndpointServerString << "'" << endl;
+        cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
       }
     }
   }
@@ -731,7 +692,7 @@ int main (int argc, char* argv[]) {
     StartupLoader.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
   }
   else {
-    LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+    LOGGER_DEBUG << "using Ruby startup files at '" << StartupPath << "'";
     StartupLoader.setDirectory(StartupPath);
   }
 
@@ -766,6 +727,10 @@ int main (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
